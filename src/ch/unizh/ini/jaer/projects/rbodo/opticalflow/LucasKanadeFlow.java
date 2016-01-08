@@ -352,22 +352,17 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
                 imuFlowEstimator.calculateImuFlow((PolarityEvent) inItr.next());
                 setGroundTruth();
             }
-            if (isInvalidAddress(searchDistance + d)) {
-                continue;
-            }
+            if (isInvalidAddress(searchDistance + d)) continue;
             timestamps[x][y][type].add(ts); // Add most recent event to queue.
             timestamps2[x][y][type].add(ts);
-            if (!updateTimesmap()) {
-                continue;
-            }
-            if (xyFilter()) {
-                continue;
-            }
+            if (!updateTimesmap()) continue;
+            if (xyFilter()) continue;
             countIn++;
-            if (SavitzkyGolayFilter) {
-                computeFittingParameters();
-            }
+            
+            if (SavitzkyGolayFilter) computeFittingParameters();
+            
             computeDerivatives();
+            
             // <editor-fold defaultstate="collapsed" desc="Solve for optical flow with LS">
             /**
              * With the least squares principle applied to data (A,b) the
@@ -418,9 +413,8 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
             v = (float) Math.sqrt(vx * vx + vy * vy);
             // </editor-fold>
 
-            if (accuracyTests()) {
-                continue;
-            }
+            if (accuracyTests()) continue;
+            
             writeOutputEvent();
             if (measureAccuracy) {
                 motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);

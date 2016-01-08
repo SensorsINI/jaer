@@ -10,7 +10,6 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
-import net.sf.jaer.eventprocessing.filter.Steadicam;
 import net.sf.jaer.util.jama.Matrix;
 
 /**
@@ -66,8 +65,9 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         planeEstimate = new Matrix(4,1);
         try {
             planeEstimator = LocalPlanesFlow.PlaneEstimator.valueOf(getString("planeEstimator", "IterativeFit"));
-        } catch (IllegalArgumentException e) {
-            log.warning("bad preference " + getString("planeEstimator", "IterativeFit") + " for preferred PlaneEstimator, choosing default IterativeFit");
+        } catch (IllegalArgumentException ex) {
+            log.log(Level.WARNING, "bad preference {0} for preferred PlaneEstimator,"
+                    + "choosing default IterativeFit", getString("planeEstimator", "IterativeFit"));
             planeEstimator =  LocalPlanesFlow.PlaneEstimator.IterativeFit;
             putString("planeEstimator", "IterativeFit");
         }
@@ -108,13 +108,19 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         jj = 0;
         if (fitOrder == 1) {
             a[0][0] = 0;
-            a[0][1] = 0;
             a[1][0] = 0;
+            a[0][1] = 0;
             for (sy = -searchDistance; sy <= searchDistance; sy++)
                 for (sx = -searchDistance; sx <= searchDistance; sx++) {
-                    a[0][0] += C[0][jj]*(lastTimesMap[x+sx][y+sy][type]-firstTs);
-                    a[0][1] += C[2][jj]*(lastTimesMap[x+sx][y+sy][type]-firstTs);
-                    a[1][0] += C[1][jj]*(lastTimesMap[x+sx][y+sy][type]-firstTs);
+                    tmp = lastTimesMap[x+sx][y+sy][type];
+                    if (ts - tmp < maxDtThreshold) {
+                    a[0][0] += C[0][jj]*tmp;
+                    a[1][0] += C[1][jj]*tmp;
+                    a[0][1] += C[2][jj]*tmp;
+                    } else {
+                        a[1][0] += C[1][jj]*ts;
+                        a[0][1] += C[2][jj]*ts;
+                    }
                     jj++;
                 }
         } else {
@@ -124,7 +130,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                     a[i][j] = 0;
                     for (sy = -searchDistance; sy <= searchDistance; sy++)
                         for (sx = -searchDistance; sx <= searchDistance; sx++) 
-                            a[i][j] += C[ii][jj++]*(lastTimesMap[x+sx][y+sy][type]-firstTs);
+                            a[i][j] += C[ii][jj++]*lastTimesMap[x+sx][y+sy][type];
                     ii++;
                     jj = 0;
                 }
@@ -161,10 +167,8 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             // Calculate motion flow from the gradient of the timesmap smoothed
             // with a first order Savitzky-Golay filter.
             computeFittingParameters();
-            a[1][0] /= a[0][0];
-            a[0][1] /= a[0][0];
-            vx = Math.abs(a[1][0]) < th3 ? 0 : (float) (20/a[1][0]);
-            vy = Math.abs(a[0][1]) < th3 ? 0 : (float) (20/a[0][1]);
+            vx = Math.abs(a[1][0]) < th3*1e6 ? 0 : (float) (1e6/a[1][0]);
+            vy = Math.abs(a[0][1]) < th3*1e6 ? 0 : (float) (1e6/a[0][1]);
         } else if (singleFit) { 
             // Calculate motion flow by fitting a plane to the event's neighborhood.
             initializeNeighborhood();
@@ -327,7 +331,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     public PlaneEstimator getPlaneEstimator() {return planeEstimator;}
     
     synchronized public void setPlaneEstimator(PlaneEstimator planeEstimator) {
-        PlaneEstimator old=planeEstimator;
+        PlaneEstimator old = planeEstimator;
         this.planeEstimator = planeEstimator;
         putString("planeEstimator", planeEstimator.toString());
         singleFit = false;
@@ -361,17 +365,29 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     // </editor-fold>
     
     // Prints the surface of active events in the neighborhood of a certain pixel.
-    // Used for debugging and visualization of algorithm in MATLAB.
+    // Used for debugging and visualization of the algorithm in MATLAB.
     synchronized private void printNeighborhood() {
-        if (neighborhood == null) return;
-        neighb = "[";
-        for (i = 0; i < neighborhood.size(); i++)
-            neighb += Arrays.toString(neighborhood.get(i))+"; ";
-        neighb += "]";
-        log.log(Level.INFO,String.format(Locale.ENGLISH,"T = %1$s; pe = [%2$2.2f "
-            + "%3$2.2f %4$2.2f %5$2.2f]; v = [%6$2.2f %7$2.2f]; vIMU = [%8$2.2f %9$2.2f];", 
-            new Object[]{neighb, planeEstimate.get(0,0), planeEstimate.get(1,0), 
-            planeEstimate.get(2,0), planeEstimate.get(3,0), vx, vy, vxGT, vyGT}));
+        if (linearSavitzkyGolay) {
+            neighb = "[";
+            for (sx = -searchDistance; sx <= searchDistance; sx++) 
+                for (sy = -searchDistance; sy <= searchDistance; sy++)
+                    neighb += String.format(Locale.ENGLISH,"[%1$d %2$d %3$2.2f];",x+sx,y+sy,
+                        lastTimesMap[x+sx][y+sy][type]*1e-6f);
+            neighb += "]";
+            log.log(Level.INFO,String.format(Locale.ENGLISH,"T = %1$s; pe = [%2$2.2f "
+                + "%3$2.2f %4$2.2f]; v = [%5$2.2f %6$2.2f]; vIMU = [%7$2.2f %8$2.2f];", 
+                new Object[]{neighb, a[1][0], a[0][1], a[0][0], vx, vy, vxGT, vyGT}));
+        } else {
+            if (neighborhood == null) return;
+            neighb = "[";
+            for (i = 0; i < neighborhood.size(); i++)
+                neighb += Arrays.toString(neighborhood.get(i))+"; ";
+            neighb += "]";
+            log.log(Level.INFO,String.format(Locale.ENGLISH,"T = %1$s; pe = [%2$2.2f "
+                + "%3$2.2f %4$2.2f %5$2.2f]; v = [%6$2.2f %7$2.2f]; vIMU = [%8$2.2f %9$2.2f];", 
+                new Object[]{neighb, planeEstimate.get(0,0), planeEstimate.get(1,0), 
+                planeEstimate.get(2,0), planeEstimate.get(3,0), vx, vy, vxGT, vyGT}));
+        }
     }
     
     @Override synchronized public EventPacket filterPacket(EventPacket in) {
@@ -390,6 +406,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             countIn++;
             computePlaneEstimate();
             if (accuracyTests()) continue;
+//            printNeighborhood();
             writeOutputEvent();
             if (measureAccuracy) motionFlowStatistics.update(vx,vy,v,vxGT,vyGT,vGT);
         }
