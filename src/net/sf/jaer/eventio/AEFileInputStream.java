@@ -26,10 +26,12 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
-import net.sf.jaer.graphics.AbstractAEPlayer;
+import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.util.EngineeringFormat;
+import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 
 /**
  * Class to stream in packets of events from binary input stream from a file
@@ -111,7 +113,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     private long markIn = 0, markOut = Long.MAX_VALUE;
 
     private int eventSizeBytes = AEFileInputStream.EVENT16_SIZE; // size of event in bytes, set finally after reading file header
-    protected boolean firstReadCompleted = false;
+    private boolean firstReadCompleted = false;
     private boolean repeat;
     private long absoluteStartingTimeMs = 0; // parsed from filename if possible
     private boolean enableTimeWrappingExceptionsChecking = true;
@@ -121,7 +123,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     private int mostRecentTimestamp, firstTimestamp, lastTimestamp;
     // this marks the present read time for packets
     private int currentStartTimestamp;
-    FileChannel fileChannel = null;
+    private FileChannel fileChannel = null;
     /**
      * Maximum size of raw packet in events.
      */
@@ -146,18 +148,18 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /**
      * the packet used for reading events.
      */
-    protected AEPacketRaw packet = new AEPacketRaw(MAX_BUFFER_SIZE_EVENTS);
-    EventRaw tmpEvent = new EventRaw();
+    private AEPacketRaw packet = new AEPacketRaw(MAX_BUFFER_SIZE_EVENTS);
+    private EventRaw tmpEvent = new EventRaw();
     /**
      * The memory-mapped byte buffer pointing to the file.
      */
-    protected MappedByteBuffer byteBuffer = null;
+    private MappedByteBuffer byteBuffer = null;
     /**
      * absolute position in file in events, points to next event number, 0 based
      * (1 means 2nd event)
      */
-    protected long position = 0;
-    protected ArrayList<String> header = new ArrayList<String>();
+    private long position = 0;
+    private ArrayList<String> header = new ArrayList<String>();
     private int headerOffset = 0; // this is starting position in file for rewind or to add to positioning via slider
     private int chunkNumber = 0; // current memory mapped file chunk, starts with 0 past header
     private int numChunks = 1; // set by parseFileFormatVersion, this is at least 1 and includes the last portion which may be smaller than chunkSizeBytes
@@ -167,13 +169,24 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     private int timestampOffset = 0; // set by nonzero bitmask result on address to that events timestamp, subtracted from all timestamps
 
     /**
+     * The AEChip object associated with this stream. This field was added for
+     * supported jAER 3.0 format files to support translating bit locations in
+     * events.
+     */
+    private AEChip chip = null;
+
+    // jaer3 files
+    private Jaer3FileInputStream jaer3fileinputstream = null; // if non-null, then we have a jaer 3 file
+
+    /**
      * Creates a new instance of AEInputStream
      *
      * @param f the file to open
      * @throws FileNotFoundException if file doesn't exist or can't be read
      */
-    public AEFileInputStream(File f) throws IOException {
+    public AEFileInputStream(File f, AEChip chip) throws IOException {
         super(new FileInputStream(f));
+        this.chip = chip;
         init(new FileInputStream(f));
 
         setFile(f);
@@ -261,8 +274,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         return readEventForwards(Integer.MAX_VALUE);
     }
 
-    private int zeroTimestampWarningCount=0;
-    private final int ZERO_TIMESTAMP_MAX_WARNINGS=10;
+    private int zeroTimestampWarningCount = 0;
+    private final int ZERO_TIMESTAMP_MAX_WARNINGS = 10;
+
     /**
      * Reads the next event forward, sets mostRecentTimestamp, returns null if
      * the next timestamp is later than maxTimestamp.
@@ -278,6 +292,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         int ts = firstTimestamp;
         int addr = 0;
         int lastTs = mostRecentTimestamp;
+        if(jaer3fileinputstream!=null){
+            return jaer3fileinputstream.readEventForwards();
+        }
         try {
             if (position == markOut) { // TODO check exceptions here for markOut set before markIn
                 if (repeat) {
@@ -590,27 +607,26 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //                    ts[i] = ae.timestamp;
 //                    i++;
                 }
-            } else { // read backwards
-                if (!bigWrap) {
-                    do {
-                        ae = readEventBackwards();
-                        addr[i] = ae.address;
-                        ts[i] = ae.timestamp;
-                        i++;
-                    } while ((mostRecentTimestamp > endTimestamp) && (i < addr.length) && (mostRecentTimestamp <= startTimestamp));
-                } else {
-                    do {
-                        ae = readEventBackwards();
-                        addr[i] = ae.address;
-                        ts[i] = ae.timestamp;
-                        i++;
-                    } while ((mostRecentTimestamp < 0) && (i < (addr.length - 1)));
-
+            } else // read backwards
+            if (!bigWrap) {
+                do {
                     ae = readEventBackwards();
                     addr[i] = ae.address;
                     ts[i] = ae.timestamp;
                     i++;
-                }
+                } while ((mostRecentTimestamp > endTimestamp) && (i < addr.length) && (mostRecentTimestamp <= startTimestamp));
+            } else {
+                do {
+                    ae = readEventBackwards();
+                    addr[i] = ae.address;
+                    ts[i] = ae.timestamp;
+                    i++;
+                } while ((mostRecentTimestamp < 0) && (i < (addr.length - 1)));
+
+                ae = readEventBackwards();
+                addr[i] = ae.address;
+                ts[i] = ae.timestamp;
+                i++;
             }
         } catch (WrappedTimeException w) {
             log.info(w.toString());
@@ -916,6 +932,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     /**
+     * @return the byteBuffer
+     */
+    public MappedByteBuffer getByteBuffer() {
+        return byteBuffer;
+    }
+
+    /**
      * class used to signal a backwards read from input stream
      */
     public class NonMonotonicTimeException extends Exception {
@@ -1061,7 +1084,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /**
      * Maps in the next chunk of the file.
      */
-    protected void mapNextChunk() throws IOException {
+    public void mapNextChunk() throws IOException {
         chunkNumber++; // increment the chunk number
         if (chunkNumber >= numChunks) {
             // if we try now to map a chunk past the last one then throw an EOF
@@ -1208,12 +1231,17 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             } catch (NumberFormatException numberFormatException) {
                 log.warning("While parsing header line " + s + " got " + numberFormatException.toString());
             }
-            if (version < 2) {
+            if (Math.floor(version) == 1) { // #!AEDAT-1.0
                 addressType = Short.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Short.SIZE / 8);
-            } else if (version >= 2) { // this is hack to avoid parsing the AEDataFile. format number string...
+            } else if (Math.floor(version) == 2) { //  #!AEDAT-2.0
                 addressType = Integer.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Integer.SIZE / 8);
+            } else if (Math.floor(version) == 3) { //  #!AEDAT-3.x
+                addressType = Integer.TYPE;
+                eventSizeBytes = (Integer.SIZE / 8) + (Integer.SIZE / 8);
+                log.warning("This is a jAER 3.0 format file; parsing is a work in progress - no sensible output will be produced now");
+                jaer3fileinputstream = new Jaer3FileInputStream(this, chip);
             }
             log.info("Data file version=" + version + " and has addressType=" + addressType);
         }
@@ -1267,7 +1295,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     /**
-     * Called to signal first read from file. Fires PropertyChange AEInputStream.EVENT_INIT, with new value this.
+     * Called to signal first read from file. Fires PropertyChange
+     * AEInputStream.EVENT_INIT, with new value this.
      */
     protected void fireInitPropertyChange() {
         getSupport().firePropertyChange(AEInputStream.EVENT_INIT, null, this);

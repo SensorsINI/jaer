@@ -405,7 +405,7 @@ public class AEChip extends Chip2D {
      * @throws IOException on any IO exception
      */
     public AEFileInputStream constuctFileInputStream(File file) throws IOException {
-        AEFileInputStream stream = new AEFileInputStream(file);
+        AEFileInputStream stream = new AEFileInputStream(file,this);
         aeInputStream = stream;
         return stream;
     }
@@ -423,7 +423,7 @@ public class AEChip extends Chip2D {
     public void writeAdditionalAEFileOutputStreamHeader(AEFileOutputStream os) throws IOException, BackingStoreException {
         log.info("writing preferences for " + this.toString() + " to " + os);
         os.writeHeaderLine(" AEChip: " + this.getClass().getName());
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(200000);  // bos to hold preferences XML as byte array
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(200000);  // bos to hold preferences XML as byte array, tobi sized prefs as 186kB of text and about 2200 lines for set of preferences at INI
         getPrefs().exportSubtree(bos);
         bos.flush();
         os.writeHeaderLine("Start of Preferences for this AEChip"); // write header to AE data file for prefs
@@ -444,5 +444,16 @@ public class AEChip extends Chip2D {
         os.writeHeaderLine("End of Preferences for this AEChip"); // write end of prefs header
         log.info("done writing preferences to " + os);
 
+    }
+    
+    /** Default implementation of a method to translate the bit locations 
+     * of data from jAER3.0 source like cAER to jAER internal address format, as specified in
+     *  http://inilabs.com/support/software/fileformat/ .
+     * 
+     * @param address the address from cAER 3.0 format sources.
+     * @return the transformed address. The default implementation returns the same address.
+     */
+    public int translateJaer3AddressToJaerAddress(int address){
+        return address;
     }
 }

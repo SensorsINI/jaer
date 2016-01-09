@@ -153,7 +153,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                     // see http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4715154
                     // http://bugs.sun.com/bugdatabase/view_bug.do;:YfiG?bug_id=4724038
                 }
-                ais = new AEFileInputStream(file);
+                ais = new AEFileInputStream(file,chip);
                 try {
                     ais.rewind();
                 } catch (IOException e) {

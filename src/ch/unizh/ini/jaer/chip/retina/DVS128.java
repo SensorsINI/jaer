@@ -114,7 +114,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         }//        if(c!=null)c.setBorderSpacePixels(5);// make border smaller than default
         dvsRenderer = new AEFrameChipRenderer(this);
         setRenderer(dvsRenderer);
-        
+
         dvsDisplayMethod = new ChipRendererDisplayMethodRGBA(this.getCanvas());
         getCanvas().addDisplayMethod(dvsDisplayMethod);
         getCanvas().setDisplayMethod(dvsDisplayMethod);
@@ -163,17 +163,15 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 if (setArrayResetMenuItem != null) {
                     setArrayResetMenuItem.setEnabled(false);
                 }
-            } else {
-                if (arrayResetMenuItem != null) {
-                    arrayResetMenuItem.setEnabled(true);
-                    setArrayResetMenuItem.setEnabled(true);
-                }
+            } else if (arrayResetMenuItem != null) {
+                arrayResetMenuItem.setEnabled(true);
+                setArrayResetMenuItem.setEnabled(true);
             }
             if (!(getHardwareInterface() instanceof HasSyncEventOutput)) {
                 if (syncEnabledMenuItem != null) {
                     syncEnabledMenuItem.setEnabled(false);
                 }
-            } else if(syncEnabledMenuItem!=null) {
+            } else if (syncEnabledMenuItem != null) {
                 syncEnabledMenuItem.setEnabled(true);
                 HasSyncEventOutput hasSync = (HasSyncEventOutput) getHardwareInterface();
                 syncEnabledMenuItem.setSelected(hasSync.isSyncEventEnabled());
@@ -187,7 +185,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 if (ledMenu != null) {
                     ledMenu.setEnabled(false);
                 }
-            } else if(ledMenu!=null) {
+            } else if (ledMenu != null) {
                 ledMenu.setEnabled(true);
                 HasLEDControl ledControlled = (HasLEDControl) getHardwareInterface();
                 switch (ledControlled.getLEDState(0)) {
@@ -203,7 +201,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 }
 
             }
-                               // show warning dialog (which can be suppressed) about this setting if special disabled and we are the only camera, since
+            // show warning dialog (which can be suppressed) about this setting if special disabled and we are the only camera, since
             // timestamps will not advance in this case
 
         }
@@ -228,9 +226,9 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 arrayResetMenuItem.addActionListener(new ActionListener() {
 
                     @Override
-					public void actionPerformed(ActionEvent evt) {
+                    public void actionPerformed(ActionEvent evt) {
                         HardwareInterface hw = getHardwareInterface();
-                        if(hw==null){
+                        if (hw == null) {
                             log.warning("null hardware interface");
                             return;
                         }
@@ -250,13 +248,13 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 setArrayResetMenuItem.addActionListener(new ActionListener() {
 
                     @Override
-					public void actionPerformed(ActionEvent evt) {
+                    public void actionPerformed(ActionEvent evt) {
                         HardwareInterface hw = getHardwareInterface();
-                        if(hw==null){
+                        if (hw == null) {
                             log.warning("null hardware interface");
                             return;
                         }
-                       if (!(hw instanceof HasResettablePixelArray)) {
+                        if (!(hw instanceof HasResettablePixelArray)) {
                             log.warning("cannot reset pixels with hardware interface=" + hw + " (class " + hw.getClass() + "), interface doesn't implement HasResettablePixelArray");
                             return;
                         }
@@ -270,15 +268,15 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 
             if (syncEnabledMenuItem == null) {
                 syncEnabledMenuItem = new JCheckBoxMenuItem("Timestamp master / Enable sync event input");
-                syncEnabledMenuItem.setToolTipText("<html>Sets this device as timestamp master and enables sync event generation on external IN pin falling edges (disables slave clock input).<br>Falling edges inject special sync events with raw event address " + HexString.toString(CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK) +" (see logging output for cooked special event address)<br>These events are not rendered but are logged and can be used to synchronize an external signal to the recorded data.<br>If you are only using one camera, enable this option.<br>If you want to synchronize two DVS128, disable this option in one of the cameras and connect the OUT pin of the master to the IN pin of the slave and also connect the two GND pins.");
+                syncEnabledMenuItem.setToolTipText("<html>Sets this device as timestamp master and enables sync event generation on external IN pin falling edges (disables slave clock input).<br>Falling edges inject special sync events with raw event address " + HexString.toString(CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK) + " (see logging output for cooked special event address)<br>These events are not rendered but are logged and can be used to synchronize an external signal to the recorded data.<br>If you are only using one camera, enable this option.<br>If you want to synchronize two DVS128, disable this option in one of the cameras and connect the OUT pin of the master to the IN pin of the slave and also connect the two GND pins.");
                 HasSyncEventOutput h = (HasSyncEventOutput) getHardwareInterface();
 
                 syncEnabledMenuItem.addActionListener(new ActionListener() {
 
                     @Override
-					public void actionPerformed(ActionEvent evt) {
+                    public void actionPerformed(ActionEvent evt) {
                         HardwareInterface hw = getHardwareInterface();
-                       if(hw==null){
+                        if (hw == null) {
                             log.warning("null hardware interface");
                             return;
                         }
@@ -313,11 +311,11 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         HardwareInterface hw = getHardwareInterface();
-                        if(hw==null){
+                        if (hw == null) {
                             log.warning("null hardware interface");
                             return;
                         }
-                       if (!(hw instanceof HasLEDControl)) {
+                        if (!(hw instanceof HasLEDControl)) {
                             log.warning("cannot set LED of " + hw + " (class " + hw.getClass() + "), interface doesn't implement HasLEDControl");
                             return;
                         }
@@ -342,10 +340,9 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 getAeViewer().addMenu(dvs128Menu);
             }
 
-        } else { // disable menu
-            if (dvs128Menu != null) {
-                getAeViewer().removeMenu(dvs128Menu);
-            }
+        } else // disable menu
+        if (dvs128Menu != null) {
+            getAeViewer().removeMenu(dvs128Menu);
         }
     }
 
@@ -508,7 +505,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                     e.type = -1;
                     e.polarity = PolarityEvent.Polarity.On;
                     if (printedSyncBitWarningCount > 0) {
-                        log.warning("BasicEvent.address="+e.address+" , raw address=" + addr + " is >32767 (0xefff); either sync (external input event) or stereo bit is set");
+                        log.warning("BasicEvent.address=" + e.address + " , raw address=" + addr + " is >32767 (0xefff); either sync (external input event) or stereo bit is set");
                         printedSyncBitWarningCount--;
                         if (printedSyncBitWarningCount == 0) {
                             log.warning("suppressing futher warnings about msb of raw address");
@@ -704,7 +701,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             pane.addMouseListener(new java.awt.event.MouseAdapter() {
 
                 @Override
-				public void mouseClicked(java.awt.event.MouseEvent evt) {
+                public void mouseClicked(java.awt.event.MouseEvent evt) {
                     getPrefs().putInt("DVS128.selectedBiasgenControlTab", pane.getSelectedIndex());
                 }
             });
@@ -719,7 +716,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
          * @param val -1 to 1 range
          */
         @Override
-		public void setBandwidthTweak(float val) {
+        public void setBandwidthTweak(float val) {
             if (val > 1) {
                 val = 1;
             } else if (val < -1) {
@@ -743,7 +740,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
          * @param val -1 to 1 range
          */
         @Override
-		public void setMaxFiringRateTweak(float val) {
+        public void setMaxFiringRateTweak(float val) {
             if (val > 1) {
                 val = 1;
             } else if (val < -1) {
@@ -765,7 +762,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
          * @param val -1 to 1 range
          */
         @Override
-		public void setThresholdTweak(float val) {
+        public void setThresholdTweak(float val) {
             if (val > 1) {
                 val = 1;
             } else if (val < -1) {
@@ -789,7 +786,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
          * @param val -1 to 1 range.
          */
         @Override
-		public void setOnOffBalanceTweak(float val) {
+        public void setOnOffBalanceTweak(float val) {
             if (val > 1) {
                 val = 1;
             } else if (val < -1) {
@@ -886,4 +883,9 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         }
     } // DVS128Biasgen
 
+    @Override
+    public int translateJaer3AddressToJaerAddress(int address) {
+        return ((address & 0xfe0000) >> 16) + ((address & 0x1fc) << 6) + ((address & 2) >> 1);     //just for DVS128 data format convertion
     }
+
+}

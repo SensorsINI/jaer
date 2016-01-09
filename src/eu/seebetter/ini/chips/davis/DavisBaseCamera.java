@@ -427,6 +427,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		return (super.constuctFileInputStream(file));
 	}
 
+        /** shows the histogram of image APS values
+         * 
+         * @param yes true to show
+         */
 	@Override
 	public void setShowImageHistogram(final boolean yes) {
 		showImageHistogram = yes;
@@ -688,6 +692,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			a.y = -1;
 			a.address = -1;
 			a.readoutType = flag;
+//                        a.special=true;  // not really special
 			return a;
 		}
 

@@ -24,6 +24,7 @@ import java.util.prefs.Preferences;
 import net.sf.jaer.aemonitor.AENetworkRawPacket;
 import net.sf.jaer.aemonitor.AEPacket;
 import net.sf.jaer.aemonitor.EventRaw;
+import net.sf.jaer.chip.AEChip;
 
 /**
  * Receives input via datagram (connectionless, UDP) packets from a server.
@@ -62,7 +63,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private boolean printedHost = false;
     private int port = prefs.getInt("AEUnicastInput.port", AENetworkInterfaceConstants.DATAGRAM_PORT);
     private boolean sequenceNumberEnabled = prefs.getBoolean("AEUnicastInput.sequenceNumberEnabled", true);
-    private boolean cAERDisplayEnabled = prefs.getBoolean("AEUnicastInput.cAERDisplayEnabled", true);
+    private boolean cAERStreamEnabled = prefs.getBoolean("AEUnicastInput.cAERDisplayEnabled", true);
     private boolean addressFirstEnabled = prefs.getBoolean("AEUnicastInput.addressFirstEnabled", true);
     private ArrayBlockingQueue<ByteBuffer> filledBufferQueue = new ArrayBlockingQueue(NBUFFERS), availableBufferQueue=new ArrayBlockingQueue(NBUFFERS);
     private AENetworkRawPacket packet = new AENetworkRawPacket();
@@ -84,6 +85,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private Semaphore pauseSemaphore = new Semaphore(1);
     private volatile boolean paused = false;
     private Reader readingThread = null;
+    private AEChip chip=null; // needed to support cAER jaer3.0 decoding to jAER format
 
     /**
      * Constructs an instance of AEUnicastInput and binds it to the default
@@ -96,7 +98,8 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
      * @see AENetworkInterfaceConstants
      *
      */
-    public AEUnicastInput() { // TODO basic problem here is that if port is unavailable, then we cannot construct and set port
+    public AEUnicastInput(AEChip chip) { // TODO basic problem here is that if port is unavailable, then we cannot construct and set port
+        this.chip=chip;
     }
 
     /**
@@ -105,8 +108,8 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
      * @param port the UDP port number.
      * @see AEUnicastInput#AEUnicastInput()
      */
-    public AEUnicastInput(int port) {
-        this();
+    public AEUnicastInput(int port, AEChip chip) {
+        this(chip);
         setPort(port);
     }
 
@@ -396,7 +399,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             int seqNumLength = sequenceNumberEnabled ? Integer.SIZE / 8 : 0;
             int eventSize = eventSize();
             //log.info("event size " + eventSize);
-            int nEventsInPacket = (buffer.limit() - seqNumLength - 28) / eventSize;    // 28 is the byte numbers of cAER Header
+            int nEventsInPacket = (buffer.limit() - seqNumLength - (cAERStreamEnabled?28:0)) / eventSize;    // 28 is the byte numbers of cAER Header
             //log.info("nr of events " + nEventsInPacket);
             //deprecated ... int ts = !timestampsEnabled || localTimestampsEnabled ? (int)( System.nanoTime() / 1000 ) : 0; // if no timestamps coming, add system clock for all.
             int ts = !timestampsEnabled || localTimestampsEnabled ? (int) (((System.nanoTime() / 1000) << 32) >> 32) : 0; // if no timestamps coming, add system clock for all.
@@ -408,11 +411,10 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             final int[] timestamps = packet.getTimestamps();
             int nTmpAddr = 0;    //tmp value for address
 
-            if(cAERDisplayEnabled) {
+            if(cAERStreamEnabled) {
                 nTmp = swapByteOrder(buffer.getInt());
-                if(nTmp != 0x10001)
-                {
-                log.warning("!!!!!!!!!!The first byte of the packet is not 0x10001, is" + nTmp);
+                if(nTmp != 0x10001) {
+                    log.warning("!!!!!!!!!!The first byte of the packet is not 0x10001 as it should be for cEAR packet, but is instead" + nTmp);
                 }
                 nTmp = swapByteOrder(buffer.getInt());     //eventsize
                 nTmp = buffer.getInt();     //eventoffset
@@ -425,7 +427,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             for (int i = 0; i < nEventsInPacket; i++) {
                 if (addressFirstEnabled) {
                     if (use4ByteAddrTs) {
-                        if(cAERDisplayEnabled) {
+                        if(cAERStreamEnabled) {
                             nTmpAddr = swapByteOrder(buffer.getInt()); // swab(buffer.getInt()); // swapInt is switched to handle big endian event sources (like ARC camera)          
                             //                        x_addr                          y_addr                     on_off event
                             // eventRaw.address = ((nTmpAddr & 0xfe0000) >> 16) + ((nTmpAddr  & 0x1fc) << 6) + ((nTmpAddr & 2) >> 1);     //just for DVS128 data format convertion
@@ -643,7 +645,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     
     @Override   
     public boolean iscAERDisplayEnabled() {
-        return cAERDisplayEnabled;
+        return cAERStreamEnabled;
     }
     
     
@@ -655,7 +657,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
      */
     @Override
     public void setCAERDisplayEnabled(boolean cAERDisplayEnabled) {
-        this.cAERDisplayEnabled = cAERDisplayEnabled;
+        this.cAERStreamEnabled = cAERDisplayEnabled;
         prefs.putBoolean("AEUnicastInput.cAERDisplayEnabled", cAERDisplayEnabled);
     }
     

@@ -3947,7 +3947,7 @@ two interfaces). otherwise force user choice.
 	private void sequenceFile(File file) {
 		try {
 			setCurrentFile(file);
-			AEFileInputStream fileAEInputStream = new AEFileInputStream(file);
+			AEFileInputStream fileAEInputStream = new AEFileInputStream(file,getChip());
 			fileAEInputStream.setFile(file);
                         fileAEInputStream.setRepeat(aePlayer.isRepeat());
 			fileAEInputStream.setNonMonotonicTimeExceptionsChecked(false); // the code below has to take care about non-monotonic time anyway
@@ -5143,7 +5143,7 @@ two interfaces). otherwise force user choice.
 			setPlayMode(PlayMode.WAITING);
 		} else {
 			try {
-				unicastInput = new AEUnicastInput();
+				unicastInput = new AEUnicastInput(chip);
 				addPropertyChangeListener(EVENT_PAUSED, unicastInput);
 				AEUnicastDialog dlg =
 					new AEUnicastDialog(this, true, unicastInput);

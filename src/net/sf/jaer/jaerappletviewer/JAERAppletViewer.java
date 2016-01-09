@@ -237,7 +237,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             if (aeLiveInputStream != null) {
                 aeLiveInputStream.close();
             }
-            aeLiveInputStream = new AEUnicastInput();
+            aeLiveInputStream = new AEUnicastInput(liveChip);
             aeLiveInputStream.setPort(unicastInputPort);
             aeLiveInputStream.set4ByteAddrTimestampEnabled(AEUnicastSettings.ARC_TDS_4_BYTE_ADDR_AND_TIMESTAMPS);
             aeLiveInputStream.setAddressFirstEnabled(AEUnicastSettings.ARC_TDS_ADDRESS_BYTES_FIRST_ENABLED);
