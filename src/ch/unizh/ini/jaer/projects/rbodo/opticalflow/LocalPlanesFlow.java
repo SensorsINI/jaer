@@ -47,6 +47,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     private Matrix planeEstimate, planeEstimate_old, A;
     
     private float sx2, sy2, st2, sxy, sxt, syt, sxx, syy, stt;
+    private int xx, yy;
     
     public enum PlaneEstimator {SingleFit, IterativeFit, LinearSavitzkyGolay, HomogeneousCoordinates};
     private PlaneEstimator planeEstimator;
@@ -107,22 +108,28 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     synchronized private void computeFittingParameters() {
         jj = 0;
         if (fitOrder == 1) {
-            a[0][0] = 0;
             a[1][0] = 0;
             a[0][1] = 0;
-            for (sy = -searchDistance; sy <= searchDistance; sy++)
-                for (sx = -searchDistance; sx <= searchDistance; sx++) {
+            ii = 0;
+            jj = 0;
+            for (sx = -searchDistance; sx <= searchDistance; sx++)
+                for (sy = -searchDistance; sy <= searchDistance; sy++) {
                     tmp = lastTimesMap[x+sx][y+sy][type];
                     if (ts - tmp < maxDtThreshold) {
-                    a[0][0] += C[0][jj]*tmp;
-                    a[1][0] += C[1][jj]*tmp;
-                    a[0][1] += C[2][jj]*tmp;
-                    } else {
-                        a[1][0] += C[1][jj]*ts;
-                        a[0][1] += C[2][jj]*ts;
+                        for (xx = sx+1; xx <= searchDistance; xx++)
+                            if (ts - lastTimesMap[x+xx][y+sy][type] < maxDtThreshold) {
+                                a[1][0] += (lastTimesMap[x+xx][y+sy][type]-tmp)/(xx-sx);
+                                ii++;
+                            }
+                        for (yy = sy+1; yy <= searchDistance; yy++)
+                            if (ts - lastTimesMap[x+sx][y+yy][type] < maxDtThreshold) {
+                                a[0][1] += (lastTimesMap[x+sx][y+yy][type]-tmp)/(yy-sy);
+                                jj++;
+                            }
                     }
-                    jj++;
                 }
+            a[1][0] = ii==0? 0: a[1][0]/ii;
+            a[0][1] = jj==0? 0: a[0][1]/jj;
         } else {
             ii = 0;
             for (j = 0; j <= fitOrder; j++)
