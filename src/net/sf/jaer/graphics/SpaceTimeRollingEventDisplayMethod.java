@@ -230,7 +230,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             if (n == 0) {
                 return;
             }
-            final int t0ThisPacket = packet.getFirstTimestamp();
+//            final int t0ThisPacket = packet.getFirstTimestamp();
             final int t1 = packet.getLastTimestamp();
 //        final int dtThisPacket = t1 - t0ThisPacket + 1;
             // the time that is displayed in rolling window is some multiple of either current frame duration (for live playback) or timeslice (for recorded playback)
@@ -249,18 +249,19 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             }
             timeWindowUs = newTimeWindowUs;
             t0 = t1 - timeWindowUs;
-            pruneOldEvents(t0);
+           pruneOldEvents(t0);
 
             sx = chip.getSizeX();
             sy = chip.getSizeY();
             smax = chip.getMaxSize();
             tfac = (float) (smax * aspectRatio) / timeWindowUs;
 
-            addEventsToEventList(packet);
-            checkEventBufferAllocation(eventList.size());
+            addEventsToEventList(packet); 
+             checkEventBufferAllocation(eventList.size());
             eventVertexBuffer.clear();// TODO should not really clear, rather should erase old events
 
             for (BasicEvent ev : eventList) {
+                if(ev.timestamp<t0 || ev.timestamp>t1) continue; // don't render events outside of box, no matter how they get there
                 eventVertexBuffer.putFloat(ev.x);
                 eventVertexBuffer.putFloat(ev.y);
                 eventVertexBuffer.putFloat(tfac * (ev.timestamp - t1)); // negative z

@@ -83,7 +83,7 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
 					input.close();
 				}
 
-				input = new AEUnicastInput(STREAM_PORT);
+				input = new AEUnicastInput(STREAM_PORT,new AEChip()); // need any AEChip here, won't be used
 				input.setSequenceNumberEnabled(false);
 				input.setAddressFirstEnabled(true);
 				input.setSwapBytesEnabled(true);
