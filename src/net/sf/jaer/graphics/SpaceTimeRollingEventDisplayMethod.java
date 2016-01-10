@@ -40,6 +40,9 @@ import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.util.gl2.GLUT;
 
 import eu.seebetter.ini.chips.davis.DavisDisplayConfigInterface;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.prefs.Preferences;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 
@@ -58,12 +61,13 @@ import javax.swing.JMenu;
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements DisplayMethod3D {
 
-    EngineeringFormat engFmt = new EngineeringFormat();
+    private EngineeringFormat engFmt = new EngineeringFormat();
+    static final Preferences prefs = Preferences.userNodeForPackage(SpaceTimeRollingEventDisplayMethod.class);
 
     private DavisDisplayConfigInterface config;
 //    private boolean displayEvents = true;
 //    private boolean displayFrames = true;
-    boolean spikeListCreated = false;
+    private boolean spikeListCreated = false;
     private GLUT glut = null;
     private GLU glu = null;
     private boolean shadersInstalled = false;
@@ -74,20 +78,23 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private int vbo;
     final int v_vert = 0;
     private final int BUF_INITIAL_SIZE_EVENTS = 100000;
-    int sx, sy, smax;
-    float tfac;
+    private int sx, sy, smax;
+    private float tfac;
 //    private int timeSlice = 0;
     private final FloatBuffer mv = FloatBuffer.allocate(16);
     private final FloatBuffer proj = FloatBuffer.allocate(16);
     private int idMv, idProj, idt0, idt1, idPointSize;
     private ArrayList<BasicEvent> eventList = null, eventListTmp = null;
-    ByteBuffer eventVertexBuffer, eventVertexBufferTmp;
+    private ByteBuffer eventVertexBuffer, eventVertexBufferTmp;
     private int timeWindowUs = 100000, t0;
     private static final int EVENT_SIZE_BYTES = (Float.SIZE / 8) * 3;// size of event in shader ByteBuffer
     private int axesDisplayListId = -1;
     private boolean regenerateAxesDisplayList = true;
     private final int aspectRatio = 4; // depth of 3d cube compared to max of x and y chip dimension
     private float pointSize = 4f;
+
+    private boolean additiveColorEnabled = prefs.getBoolean("SpaceTimeRollingEventDisplayMethod.additiveColorEnabled", false);
+    private boolean largePointSizeEnabled = prefs.getBoolean("SpaceTimeRollingEventDisplayMethod.largePointSizeEnabled", false);
 
     /**
      * Creates a new instance of SpaceTimeEventDisplayMethod
@@ -249,19 +256,21 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             }
             timeWindowUs = newTimeWindowUs;
             t0 = t1 - timeWindowUs;
-           pruneOldEvents(t0);
+            pruneOldEvents(t0);
 
             sx = chip.getSizeX();
             sy = chip.getSizeY();
             smax = chip.getMaxSize();
             tfac = (float) (smax * aspectRatio) / timeWindowUs;
 
-            addEventsToEventList(packet); 
-             checkEventBufferAllocation(eventList.size());
+            addEventsToEventList(packet);
+            checkEventBufferAllocation(eventList.size());
             eventVertexBuffer.clear();// TODO should not really clear, rather should erase old events
 
             for (BasicEvent ev : eventList) {
-                if(ev.timestamp<t0 || ev.timestamp>t1) continue; // don't render events outside of box, no matter how they get there
+                if (ev.timestamp < t0 || ev.timestamp > t1) {
+                    continue; // don't render events outside of box, no matter how they get there
+                }
                 eventVertexBuffer.putFloat(ev.x);
                 eventVertexBuffer.putFloat(ev.y);
                 eventVertexBuffer.putFloat(tfac * (ev.timestamp - t1)); // negative z
@@ -376,17 +385,17 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             final int FS = 1; // distance in pixels of text from endZoom of axis
             float w;
             gl.glColor3f(0, 0, 1);
-            gl.glRasterPos3f(sx*1.05f, 0, 0);
+            gl.glRasterPos3f(sx * 1.05f, 0, 0);
             glut.glutBitmapString(font, "x=" + sx);
-            gl.glRasterPos3f(0, sy*1.05f, 0);
+            gl.glRasterPos3f(0, sy * 1.05f, 0);
             glut.glutBitmapString(font, "y=" + sy);
             w = glut.glutBitmapLength(font, "t=0");
-            gl.glRasterPos3f(-2*w * modelScale, 0, 0);
+            gl.glRasterPos3f(-2 * w * modelScale, 0, 0);
             glut.glutBitmapString(font, "t=0");
             gl.glColor3f(.5f, 0, 0);
             String tMaxString = "t=" + engFmt.format(-dtS) + "s";
             w = glut.glutBitmapLength(font, tMaxString);
-            gl.glRasterPos3f(sx*1.05f, 0, -zmax);
+            gl.glRasterPos3f(sx * 1.05f, 0, -zmax);
             glut.glutBitmapString(font, tMaxString);
             checkGLError(gl, "drawing axes labels");
             gl.glEndList();
@@ -419,7 +428,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glDisable(GL.GL_BLEND);
         gl.glEnable(GL2ES1.GL_POINT_SMOOTH);
         gl.glEnable(GL.GL_BLEND);
-        if (additiveColorMenuItem==null || additiveColorMenuItem.isSelected()) {
+        if (additiveColorMenuItem == null || additiveColorMenuItem.isSelected()) {
             gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
         } else {
             gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
@@ -463,7 +472,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
         gl.glUniform1f(idt0, -zmax);
         gl.glUniform1f(idt1, 0);
-        if (largePointsMenuItem!=null && largePointsMenuItem.isSelected()) {
+        if (largePointsMenuItem != null && largePointsMenuItem.isSelected()) {
             pointSize = 12;
         } else {
             pointSize = 4;
@@ -561,13 +570,32 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
         AEChip aeChip = (AEChip) chip;
         AEViewer viewer = aeChip.getAeViewer();
-        if(viewer==null ){
+        if (viewer == null) {
             log.warning("cannot add menu item to control SpaceTimeRollingEventDisplayMethod, AEViewer is null");
             return;
         }
         displayMenu = new JMenu("3-D Display Options");
         additiveColorMenuItem = new JCheckBoxMenuItem("Enable additive color");
+        additiveColorMenuItem.setSelected(additiveColorEnabled);
         largePointsMenuItem = new JCheckBoxMenuItem("Enable large event points");
+        largePointsMenuItem.setSelected(largePointSizeEnabled);
+
+        additiveColorMenuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                additiveColorEnabled = additiveColorMenuItem.isSelected();
+                prefs.putBoolean("SpaceTimeRollingEventDisplayMethod.additiveColorEnabled", additiveColorEnabled);
+            }
+        });
+
+        largePointsMenuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                largePointSizeEnabled = largePointsMenuItem.isSelected();
+                prefs.putBoolean("SpaceTimeRollingEventDisplayMethod.largePointSizeEnabled", largePointSizeEnabled);
+            }
+        });
+
         displayMenu.add(additiveColorMenuItem);
         displayMenu.add(largePointsMenuItem);
         displayMenu.getPopupMenu().setLightWeightPopupEnabled(false);
