@@ -307,9 +307,9 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                     vy = 0;
                 } else {
                     tmp = -planeEstimate.get(2,0)/(planeEstimate.get(0,0)*planeEstimate.get(0,0)
-                                                + planeEstimate.get(1,0)*planeEstimate.get(1,0));
+                                                  +planeEstimate.get(1,0)*planeEstimate.get(1,0));
                     vx = (float) (planeEstimate.get(0,0)*tmp);
-                    vx = (float) (planeEstimate.get(1,0)*tmp);
+                    vy = (float) (planeEstimate.get(1,0)*tmp);
                 }
             } else {
                 // <editor-fold defaultstate="collapsed" desc="Comment">
