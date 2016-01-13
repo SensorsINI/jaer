@@ -58,7 +58,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     
     private String neighb;
     
-    private double tmp;
+    private float tmp;
     
     public LocalPlanesFlow(AEChip chip) {
         super(chip);
@@ -106,6 +106,20 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     }
     
     synchronized private void computeFittingParameters() {
+        /** This function computes the parameters that fit in the Least-Squares
+         * sense a polynomial of order "fitOrder" to the data, which in this case
+         * consists of the most recent timestamps "lastTimesMap" as a function 
+         * of pixel location (x,y). The underlying method is the convolution of 
+         * a patch of the timesmap with a Savitzky-Golay smoothing kernel.
+         * Important assumption for calculating the fitting parameters:
+         * All points in the neighborhood must exist and be valid, e.g. not too
+         * old or negative or zero. Because this is not always satisfied for our
+         * timesmap, the Savitzky-Golay kernel cannot be applied directly. 
+         * However, for the 2D linear fit (plane), we can instead perform the 
+         * low-level derivative computations, which as a whole constitute the
+         * kernel, by hand and thus control the inclusion of each point individually.
+         */
+
         jj = 0;
         if (fitOrder == 1) {
             a[1][0] = 0;
@@ -130,7 +144,11 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                 }
             a[1][0] = ii==0? 0: a[1][0]/ii;
             a[0][1] = jj==0? 0: a[0][1]/jj;
-        } else {
+        } else { // While mathematically correct, this higher order smoothing
+                 // should not be used in flow computation because (unlike the 
+                 // first order filter above) in the present form it does not 
+                 // take into account invalid / old events on the
+                 // surface of most recent events.
             ii = 0;
             for (j = 0; j <= fitOrder; j++)
                 for (i = 0; i <= fitOrder-j; i++) {
@@ -144,7 +162,16 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         }
     }
     
-    synchronized void smoothTimesmap() { // TODO make private, add comment
+    synchronized private void smoothTimesmap() {
+        /** This function convolutes a patch of the timesmap with a Savitzky-Golay
+         * smoothing kernel. In other words, it applies a Least-Squares polynomial
+         * fit to the surface of most recent events to decrease noise. 
+         * Important assumption for calculating the fitting parameters:
+         * All points in the neighborhood must exist and be valid.
+         * This function is at present not used in the Local Plane method, because
+         * a direct computation of the plane fit using the first order Savitzky-
+         * Golay filter is faster.
+         */
         computeFittingParameters();
         ii = 0;
         jj = 0;
@@ -169,6 +196,30 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     }
     
     // <editor-fold defaultstate="collapsed" desc="Various plane estimation methods">
+
+    private void velFromPar(float a, float b, float c) {
+        /** Let the plane that fits a patch of the surface of most recent events
+         * be given by the normal vector (a,b,c), i.e. the timestamps t(x,y) as 
+         * a function of pixel location (x,y) satisfy the equation ax+by+ct+d == 0.
+         * Then the gradient on the surface t(x,y) is given by g == (-a/c, -b/c)
+         * and the velocity vector by v == g/|g|^2 == -c/(a^2+b^2) (a, b).
+         * The threshold th3 asserts non-vanishing divisors. Vanishing a and b,
+         * i.e. vanishing gradients on approximately flat planes, correspond to
+         * unrealistically fast motion. Since time resolution is one microsecond,
+         * a neighbor-event should only then be taken as the result of motion if
+         * the gradient in that direction is at least 1e-6. Otherwise set the 
+         * velocity to zero.
+         */
+        if (Math.abs(a) < th3 && Math.abs(b) < th3) {
+                vx = 0;
+                vy = 0;
+            } else {
+                tmp = -c/(a*a + b*b);
+                vx = a*tmp;
+                vy = b*tmp;
+            }
+    }
+
     synchronized void computePlaneEstimate() {
         if (linearSavitzkyGolay) {
             // Calculate motion flow from the gradient of the timesmap smoothed
@@ -176,14 +227,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             computeFittingParameters();
             a[1][0] *= 1e-6;
             a[0][1] *= 1e-6;
-            if (Math.abs(a[1][0]) < th3 && Math.abs(a[0][1]) < th3) {
-                    vx = 0;
-                    vy = 0;
-                } else {
-                    tmp = a[1][0]*a[1][0] + a[0][1]*a[0][1];
-                    vx = (float) (a[1][0]/tmp);
-                    vy = (float) (a[0][1]/tmp);
-                }
+            velFromPar((float) a[1][0], (float) a[0][1], -1);
         } else if (singleFit) { 
             // Calculate motion flow by fitting a plane to the event's neighborhood.
             initializeNeighborhood();
@@ -205,24 +249,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             planeParameters[0] = sxx*(syt*syt-sy2*st2)+syy*(sxy*st2-sxt*syt)+stt*(sxt*sy2-sxy*syt);
             planeParameters[1] = sxx*(sxy*st2-syt*sxt)+syy*(sxt*sxt-sx2*st2)+stt*(sx2*syt-sxy*sxt);
             planeParameters[2] = sxx*(sxt*sy2-sxy*syt)+syy*(sx2*syt-sxy*sxt)+stt*(sxy*sxy-sx2*sy2);                
-            // <editor-fold defaultstate="collapsed" desc="Comment">
-            /** When an edge is moving, we have a whole line of events with 
-             *  similar timestamp, so the local plane will have zero gradient 
-             *  along the edge orientation. This is falsely interpreted as an 
-             *  infinitely high velocity, though there really is none. Since 
-             *  time resolution is one microsecond, a neighbor-event should 
-             *  only then be taken as the result of motion if the gradient in 
-             *  that direction is at least 1e-6. Otherwise set velocity to zero.
-             *  If th3 < 1e-5, those fast flow vectors appear in parallel to the
-             *  moving edge. If th3 > 1e-3, many events are falsely filtered out.
-             *  The gradient (dt/dx,dt/dy) of the fitted plane 
-             *  a1*x + a2*y + a3*t = -1 is (-a1/a3,-a2/a3). 
-             *  The velocity in x and y direction is given by the inverse 
-             *  of its entries: v = (dx/dt,dy/dt) = (-a3/a1,-a3/a2).
-             */
-            // </editor-fold>
-            vx = Math.abs(planeParameters[0]) < th3 ? 0 : -planeParameters[2]/planeParameters[0];
-            vy = Math.abs(planeParameters[1]) < th3 ? 0 : -planeParameters[2]/planeParameters[1];
+            velFromPar(planeParameters[0], planeParameters[1], planeParameters[2]);
         } else { // Iterative fit
             // <editor-fold defaultstate="collapsed" desc="Comment">
             /** 
@@ -308,15 +335,9 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                 }
             } 
             if (homogeneousCoordinates) {
-                if (Math.abs(planeEstimate.get(0,0)) < th3 && Math.abs(planeEstimate.get(1,0)) < th3) {
-                    vx = 0;
-                    vy = 0;
-                } else {
-                    tmp = -planeEstimate.get(2,0)/(planeEstimate.get(0,0)*planeEstimate.get(0,0)
-                                                  +planeEstimate.get(1,0)*planeEstimate.get(1,0));
-                    vx = (float) (planeEstimate.get(0,0)*tmp);
-                    vy = (float) (planeEstimate.get(1,0)*tmp);
-                }
+                velFromPar((float) planeEstimate.get(0,0),
+                           (float) planeEstimate.get(1,0),
+                           (float) planeEstimate.get(2,0));
             } else {
                 // <editor-fold defaultstate="collapsed" desc="Comment">
                 /** When an edge is moving, we have a whole line of events with 

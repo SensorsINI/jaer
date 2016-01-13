@@ -65,6 +65,10 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
 
     private int[] neighb;
     private String deriv;
+    
+    // If enabled, the AEViewer draws an event-histogram in the neighborhood of the event.
+    // Used for debugging and visualization of the algorithm.
+    private boolean drawHistogramEnabled;
 
     public LucasKanadeFlow(AEChip chip) {
         super(chip);
@@ -73,8 +77,8 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
         try {
             de = DerivativeEstimator.valueOf(getString("derivator", "CentralFiniteDifferenceFirstOrder"));
             setDerivativeEstimator(de);
-        } catch (IllegalArgumentException e) {
-            log.warning("bad preference " + getString("derivator", "CentralFiniteDifferenceFirstOrder") + " for preferred DerivativeEstimator, choosing default CentralFiniteDifferenceFirstOrder");
+        } catch (IllegalArgumentException ex) {
+            log.log(Level.WARNING, "bad preference {0} for preferred DerivativeEstimator, choosing default CentralFiniteDifferenceFirstOrder", getString("derivator", "CentralFiniteDifferenceFirstOrder"));
             setDerivativeEstimator(DerivativeEstimator.CentralFiniteDifferenceFirstOrder);
             putString("derivator", "CentralFiniteDifferenceFirstOrder");
         }
@@ -83,6 +87,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
         setPropertyTooltip("Lucas Kanade", "thr", "threshold to discard events with too small intensity gradient");
         setPropertyTooltip("Lucas Kanade", "derivativeEstimator", "select method to calculate intensity gradients");
         setPropertyTooltip("Lucas Kanade", "secondTempDerivative", "Use second temporal derivative");
+        drawHistogramEnabled = false;
     }
 
     @Override
@@ -91,32 +96,34 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
 
         // Draws an event-histogram in the neighborhood of the event.
         // Used for debugging and visualization of the algorithm.
-//        if (!isFilterEnabled()) return;
-//        GL2 gl = drawable.getGL().getGL2();
-//        if (gl == null) return;
-//        checkBlend(gl);
-//        ArrayDeque<Integer>[][][] timest = timestamps.clone();
-//        for (i = 0; i < sizex; i++)
-//            for (j = 0; j < sizey; j++) {
-//                while (!timest[i][j][1].isEmpty() && dirPacket.getLastTimestamp() 
-//                      > timest[i][j][1].peekFirst()+maxDtThreshold)
-//                        timest[i][j][1].removeFirst();
-//                gl.glPushMatrix();
-//                gl.glColor4f(timest[i][j][1].size()/10f,timest[i][j][1].size()/10f, 0, 0.25f);
-//                gl.glRectf(i,j,i+1,j+1);
-//                gl.glPopMatrix();
-//            }
-//        
-//        for(Object o : dirPacket){
-//            gl.glPushMatrix();
-//            MotionOrientationEventInterface ei = (MotionOrientationEventInterface) o;
-//            for (sy = -searchDistance; sy <= searchDistance; sy++)
-//                for (sx = -searchDistance; sx <= searchDistance; sx++) {
-//                    gl.glColor4f(timestamps[ei.getX()+sx][ei.getY()+sy][ei.getType()].size()/100f,timestamps[ei.getX()+sx][ei.getY()+sy][ei.getType()].size()/100f, 0, 0.25f);
-//                    gl.glRectf(ei.getX()+sx, ei.getY()+sy, ei.getX()+sx+1, ei.getY()+sy+1);
-//                }
-//            gl.glPopMatrix();
-//        }
+        if (drawHistogramEnabled) {
+            if (!isFilterEnabled()) return;
+            GL2 gl = drawable.getGL().getGL2();
+            if (gl == null) return;
+            checkBlend(gl);
+            ArrayDeque<Integer>[][][] timest = timestamps.clone();
+            for (i = 0; i < sizex; i++)
+                for (j = 0; j < sizey; j++) {
+                    while (!timest[i][j][1].isEmpty() && dirPacket.getLastTimestamp() 
+                          > timest[i][j][1].peekFirst()+maxDtThreshold)
+                            timest[i][j][1].removeFirst();
+                    gl.glPushMatrix();
+                    gl.glColor4f(timest[i][j][1].size()/10f,timest[i][j][1].size()/10f, 0, 0.25f);
+                    gl.glRectf(i,j,i+1,j+1);
+                    gl.glPopMatrix();
+                }
+
+            for(Object o : dirPacket){
+                gl.glPushMatrix();
+                MotionOrientationEventInterface ei = (MotionOrientationEventInterface) o;
+                for (sy = -searchDistance; sy <= searchDistance; sy++)
+                    for (sx = -searchDistance; sx <= searchDistance; sx++) {
+                        gl.glColor4f(timestamps[ei.getX()+sx][ei.getY()+sy][ei.getType()].size()/100f,timestamps[ei.getX()+sx][ei.getY()+sy][ei.getType()].size()/100f, 0, 0.25f);
+                        gl.glRectf(ei.getX()+sx, ei.getY()+sy, ei.getX()+sx+1, ei.getY()+sy+1);
+                    }
+                gl.glPopMatrix();
+            }
+        }
     }
 
     @Override
@@ -139,6 +146,17 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
     }
 
     synchronized private void computeFittingParameters() {
+        /** This function computes the parameters that fit in the Least-Squares
+         * sense a polynomial of order "fitOrder" to the data, which in this case
+         * consists of the number of events ("timestamps[x][y][pol].size()") at
+         * each pixel location (x,y). The underlying method is the convolution of
+         * a patch of the datafunction with a Savitzky-Golay smoothing kernel.
+         * Important assumption for calculating the fitting parameters:
+         * All points in the neighborhood must exist and be valid. In contrast to
+         * the LocalPlanes method, the data function of the LucasKanade algorithm
+         * satisfies this condition always.
+         */
+        
         jj = 0;
         if (fitOrder == 1) {
             a[0][1] = 0;
