@@ -49,7 +49,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     private float sx2, sy2, st2, sxy, sxt, syt, sxx, syy, stt;
     private int xx, yy;
     
-    public enum PlaneEstimator {SingleFit, IterativeFit, LinearSavitzkyGolay, HomogeneousCoordinates};
+    public enum PlaneEstimator {SingleFit, IterativeFit, LinearSavitzkyGolay, HomogeneousCoordinates}; // TODO change method name to "RobustSG"
     private PlaneEstimator planeEstimator;
     private boolean singleFit, iterativeFit, linearSavitzkyGolay, homogeneousCoordinates;
     
@@ -75,10 +75,10 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         iterativeFit = true;
         numInputTypes = 2;
         resetFilter();
-        setPropertyTooltip("Local Planes","th1","accuracy of iterative estimation");
-        setPropertyTooltip("Local Planes","th2","threshold of discarding events too far away from fitted plane");
-        setPropertyTooltip("Local Planes","th3","threshold for flat planes");
-        setPropertyTooltip("Local Planes","planeEstimator","select method to fit plane to neighborhood of event");
+        setPropertyTooltip("Local Planes","th1","accuracy of iterative estimation"); // TODO add units to guide user, which does number mean?
+        setPropertyTooltip("Local Planes","th2","threshold of discarding events too far away from fitted plane"); // TODO check default, add units to guide user which methods and values
+        setPropertyTooltip("Local Planes","th3","threshold for flat planes"); // TODO improve tip, to what methods does it apply?
+        setPropertyTooltip("Local Planes","planeEstimator","select method to fit plane to most-recent timestamps map in neighborhood of event");
     }    
     
     synchronized void initializeDataMatrix() {
@@ -144,7 +144,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         }
     }
     
-    synchronized void smoothTimesmap() {
+    synchronized void smoothTimesmap() { // TODO make private, add comment
         computeFittingParameters();
         ii = 0;
         jj = 0;
