@@ -174,8 +174,16 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             // Calculate motion flow from the gradient of the timesmap smoothed
             // with a first order Savitzky-Golay filter.
             computeFittingParameters();
-            vx = Math.abs(a[1][0]) < th3*1e6 ? 0 : (float) (1e6/a[1][0]);
-            vy = Math.abs(a[0][1]) < th3*1e6 ? 0 : (float) (1e6/a[0][1]);
+            a[1][0] *= 1e-6;
+            a[0][1] *= 1e-6;
+            if (Math.abs(a[1][0]) < th3 && Math.abs(a[0][1]) < th3) {
+                    vx = 0;
+                    vy = 0;
+                } else {
+                    tmp = a[1][0]*a[1][0] + a[0][1]*a[0][1];
+                    vx = (float) (a[1][0]/tmp);
+                    vy = (float) (a[0][1]/tmp);
+                }
         } else if (singleFit) { 
             // Calculate motion flow by fitting a plane to the event's neighborhood.
             initializeNeighborhood();
@@ -213,10 +221,8 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
              *  of its entries: v = (dx/dt,dy/dt) = (-a3/a1,-a3/a2).
              */
             // </editor-fold>
-            vx = planeParameters[0]==0 ? 0 : -planeParameters[2]/planeParameters[0];
-            vy = planeParameters[1]==0 ? 0 : -planeParameters[2]/planeParameters[1];
-            vx = Math.abs(vx) >  1/th3 ? 0 : vx;
-            vy = Math.abs(vy) >  1/th3 ? 0 : vy;
+            vx = Math.abs(planeParameters[0]) < th3 ? 0 : -planeParameters[2]/planeParameters[0];
+            vy = Math.abs(planeParameters[1]) < th3 ? 0 : -planeParameters[2]/planeParameters[1];
         } else { // Iterative fit
             // <editor-fold defaultstate="collapsed" desc="Comment">
             /** 
@@ -302,7 +308,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                 }
             } 
             if (homogeneousCoordinates) {
-                if (planeEstimate.get(0,0) < th3 && planeEstimate.get(1,0) < th3) {
+                if (Math.abs(planeEstimate.get(0,0)) < th3 && Math.abs(planeEstimate.get(1,0)) < th3) {
                     vx = 0;
                     vy = 0;
                 } else {
