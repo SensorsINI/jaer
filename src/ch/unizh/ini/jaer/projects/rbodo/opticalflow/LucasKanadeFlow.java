@@ -73,17 +73,15 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
     public LucasKanadeFlow(AEChip chip) {
         super(chip);
         numInputTypes = 2;
-        DerivativeEstimator de = DerivativeEstimator.CentralFiniteDifferenceFirstOrder;
         try {
-            de = DerivativeEstimator.valueOf(getString("derivator", "CentralFiniteDifferenceFirstOrder"));
-            setDerivativeEstimator(de);
+            derivator = DerivativeEstimator.valueOf(getString("derivator", "CentralFiniteDifferenceFirstOrder"));
         } catch (IllegalArgumentException ex) {
-            log.log(Level.WARNING, "bad preference {0} for preferred DerivativeEstimator, choosing default CentralFiniteDifferenceFirstOrder", getString("derivator", "CentralFiniteDifferenceFirstOrder"));
-            setDerivativeEstimator(DerivativeEstimator.CentralFiniteDifferenceFirstOrder);
+            log.log(Level.WARNING, "bad preference {0} for preferred DerivativeEstimator, choosing default CentralFiniteDifferenceFirstOrder",
+                    getString("derivator", "CentralFiniteDifferenceFirstOrder"));
+            derivator = DerivativeEstimator.CentralFiniteDifferenceFirstOrder;
             putString("derivator", "CentralFiniteDifferenceFirstOrder");
         }
-
-        setDerivativeEstimator(DerivativeEstimator.CentralFiniteDifferenceFirstOrder);
+        setDerivativeEstimator(derivator);
         setPropertyTooltip("Lucas Kanade", "thr", "threshold to discard events with too small intensity gradient");
         setPropertyTooltip("Lucas Kanade", "derivativeEstimator", "select method to calculate intensity gradients");
         setPropertyTooltip("Lucas Kanade", "secondTempDerivative", "Use second temporal derivative");

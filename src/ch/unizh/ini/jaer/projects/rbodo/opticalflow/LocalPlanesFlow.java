@@ -30,16 +30,16 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     // Magnitude of accuracy from iterative estimation algorithm. 
     // In each iteration of the local plane-fitting, this threshold is compared 
     // to the distance of the most recent plane estimate to the previous.
-    private float th1 = getFloat("th1",50e-3f); 
+    private float th1 = getFloat("th1",1e-5f); 
     private float eps;
     private boolean change;
     
     // When an event in the neighborhood is farther away from the local plane estimate 
     // than this threshold value, it is discarded from the data set.
-    private float th2 = getFloat("th2",50e-6f); 
+    private float th2 = getFloat("th2",1e-2f); 
     
-    // Threshold for flat planes (events that are wrongly interpreted as having
-    // infinite velocity).
+    // Threshold for flat planes causing events to be assigned an unrealistically
+    // high velocity.
     private float th3 = getFloat("th3",5e-3f);
     
     private ArrayList<double[]> neighborhood;
@@ -49,7 +49,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     private float sx2, sy2, st2, sxy, sxt, syt, sxx, syy, stt;
     private int xx, yy;
     
-    public enum PlaneEstimator {SingleFit, IterativeFit, LinearSavitzkyGolay, HomogeneousCoordinates}; // TODO change method name to "RobustSG"
+    public enum PlaneEstimator {SingleFit, IterativeFit, LinearSavitzkyGolay, HomogeneousCoordinates};
     private PlaneEstimator planeEstimator;
     private boolean singleFit, iterativeFit, linearSavitzkyGolay, homogeneousCoordinates;
     
@@ -65,20 +65,25 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         planeParameters = new float[3];
         planeEstimate = new Matrix(4,1);
         try {
-            planeEstimator = LocalPlanesFlow.PlaneEstimator.valueOf(getString("planeEstimator", "IterativeFit"));
+            planeEstimator = PlaneEstimator.valueOf(getString("planeEstimator", "IterativeFit"));
         } catch (IllegalArgumentException ex) {
-            log.log(Level.WARNING, "bad preference {0} for preferred PlaneEstimator,"
-                    + "choosing default IterativeFit", getString("planeEstimator", "IterativeFit"));
+            log.log(Level.WARNING, "bad preference {0} for preferred PlaneEstimator, choosing default IterativeFit",
+                    getString("planeEstimator", "IterativeFit"));
             planeEstimator =  LocalPlanesFlow.PlaneEstimator.IterativeFit;
             putString("planeEstimator", "IterativeFit");
         }
-        iterativeFit = true;
+        setPlaneEstimator(planeEstimator);
         numInputTypes = 2;
         resetFilter();
-        setPropertyTooltip("Local Planes","th1","accuracy of iterative estimation"); // TODO add units to guide user, which does number mean?
-        setPropertyTooltip("Local Planes","th2","threshold of discarding events too far away from fitted plane"); // TODO check default, add units to guide user which methods and values
-        setPropertyTooltip("Local Planes","th3","threshold for flat planes"); // TODO improve tip, to what methods does it apply?
-        setPropertyTooltip("Local Planes","planeEstimator","select method to fit plane to most-recent timestamps map in neighborhood of event");
+        setPropertyTooltip("Local Planes","th1","Accuracy of iterative estimation. The 'IterativeFit' " +
+                           "and 'HomogeneousCoordinates' algorithm will reject outliers and recompute " +
+                           "the plane as long as the summed difference between old and new fit parameters " +
+                           "is greater than this threshold. Usually not set lower than 1e-5.");
+        setPropertyTooltip("Local Planes","th2","In 'IterativeFit' and 'HomogeneousCoordinates', events that are further away" +
+                           "from the fitted plane than this threshold are discarded. Usually not set lower than 0.01.");
+        setPropertyTooltip("Local Planes","th3","When the gradient of the fitted plane is below this threshold, " +
+                           "the corresponding velocity component is set to zero (unrealistically high speed due to flat plane). Usually not set higher than 0.01.");
+        setPropertyTooltip("Local Planes","planeEstimator","Select method to fit plane to most-recent timestamps map in neighborhood of event");
     }    
     
     synchronized void initializeDataMatrix() {
@@ -196,8 +201,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     }
     
     // <editor-fold defaultstate="collapsed" desc="Various plane estimation methods">
-
-    private void velFromPar(float a, float b, float c) {
+    private void velFromPar(float a, float b, float c, float thr) {
         /** Let the plane that fits a patch of the surface of most recent events
          * be given by the normal vector (a,b,c), i.e. the timestamps t(x,y) as 
          * a function of pixel location (x,y) satisfy the equation ax+by+ct+d == 0.
@@ -210,7 +214,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
          * the gradient in that direction is at least 1e-6. Otherwise set the 
          * velocity to zero.
          */
-        if (Math.abs(a) < th3 && Math.abs(b) < th3) {
+        if (Math.abs(a) < thr && Math.abs(b) < thr) {
                 vx = 0;
                 vy = 0;
             } else {
@@ -227,7 +231,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             computeFittingParameters();
             a[1][0] *= 1e-6;
             a[0][1] *= 1e-6;
-            velFromPar((float) a[1][0], (float) a[0][1], -1);
+            velFromPar((float) a[1][0], (float) a[0][1], -1, th3);
         } else if (singleFit) { 
             // Calculate motion flow by fitting a plane to the event's neighborhood.
             initializeNeighborhood();
@@ -248,8 +252,8 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             }
             planeParameters[0] = sxx*(syt*syt-sy2*st2)+syy*(sxy*st2-sxt*syt)+stt*(sxt*sy2-sxy*syt);
             planeParameters[1] = sxx*(sxy*st2-syt*sxt)+syy*(sxt*sxt-sx2*st2)+stt*(sx2*syt-sxy*sxt);
-            planeParameters[2] = sxx*(sxt*sy2-sxy*syt)+syy*(sx2*syt-sxy*sxt)+stt*(sxy*sxy-sx2*sy2);                
-            velFromPar(planeParameters[0], planeParameters[1], planeParameters[2]);
+            planeParameters[2] = sxx*(sxt*sy2-sxy*syt)+syy*(sx2*syt-sxy*sxt)+stt*(sxy*sxy-sx2*sy2);
+            velFromPar(planeParameters[0], planeParameters[1], planeParameters[2], th3*1e4f);
         } else { // Iterative fit
             // <editor-fold defaultstate="collapsed" desc="Comment">
             /** 
@@ -337,7 +341,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             if (homogeneousCoordinates) {
                 velFromPar((float) planeEstimate.get(0,0),
                            (float) planeEstimate.get(1,0),
-                           (float) planeEstimate.get(2,0));
+                           (float) planeEstimate.get(2,0), th3);
             } else {
                 // <editor-fold defaultstate="collapsed" desc="Comment">
                 /** When an edge is moving, we have a whole line of events with 
@@ -361,42 +365,6 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         }
         v = (float) Math.sqrt(vx*vx+vy*vy);
     }
-    
-    public PlaneEstimator getPlaneEstimator() {return planeEstimator;}
-    
-    synchronized public void setPlaneEstimator(PlaneEstimator planeEstimator) {
-        PlaneEstimator old = planeEstimator;
-        this.planeEstimator = planeEstimator;
-        putString("planeEstimator", planeEstimator.toString());
-        singleFit = false;
-        iterativeFit = false;
-        linearSavitzkyGolay = false;
-        homogeneousCoordinates = false;
-        switch (planeEstimator) {
-            case SingleFit:
-                singleFit = true;
-                resetFilter();
-                break;
-            case IterativeFit:
-                iterativeFit = true;
-                resetFilter();
-                break;
-            case LinearSavitzkyGolay: 
-                linearSavitzkyGolay = true;
-                resetFilter();
-                break;
-            case HomogeneousCoordinates:
-                homogeneousCoordinates = true;
-                resetFilter();
-                break;
-            default: 
-                iterativeFit = true;
-                resetFilter();
-                break;
-        }
-        getSupport().firePropertyChange("planeEstimator",old,planeEstimator);
-    }
-    // </editor-fold>
     
     // Prints the surface of active events in the neighborhood of a certain pixel.
     // Used for debugging and visualization of the algorithm in MATLAB.
@@ -473,6 +441,43 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     public void setTh3(final float th3) {
         this.th3 = th3;
         putFloat("th3",th3);
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --planeEstimator--">
+    public PlaneEstimator getPlaneEstimator() {return planeEstimator;}
+    
+    synchronized public void setPlaneEstimator(PlaneEstimator planeEstimator) {
+        PlaneEstimator old = planeEstimator;
+        this.planeEstimator = planeEstimator;
+        putString("planeEstimator", planeEstimator.toString());
+        singleFit = false;
+        iterativeFit = false;
+        linearSavitzkyGolay = false;
+        homogeneousCoordinates = false;
+        switch (planeEstimator) {
+            case SingleFit:
+                singleFit = true;
+                resetFilter();
+                break;
+            case IterativeFit:
+                iterativeFit = true;
+                resetFilter();
+                break;
+            case LinearSavitzkyGolay: 
+                linearSavitzkyGolay = true;
+                resetFilter();
+                break;
+            case HomogeneousCoordinates:
+                homogeneousCoordinates = true;
+                resetFilter();
+                break;
+            default: 
+                iterativeFit = true;
+                resetFilter();
+                break;
+        }
+        getSupport().firePropertyChange("planeEstimator",old,planeEstimator);
     }
     // </editor-fold>
 }
