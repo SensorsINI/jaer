@@ -49,9 +49,9 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     private float sx2, sy2, st2, sxy, sxt, syt, sxx, syy, stt;
     private int xx, yy;
     
-    public enum PlaneEstimator {SingleFit, IterativeFit, LinearSavitzkyGolay, HomogeneousCoordinates};
+    public enum PlaneEstimator {OriginalLP, RobustLP, SingleFit, LinearSavitzkyGolay};
     private PlaneEstimator planeEstimator;
-    private boolean singleFit, iterativeFit, linearSavitzkyGolay, homogeneousCoordinates;
+    private boolean originalLP, robustLP, singleFit, linearSavitzkyGolay;
     
     // First timestamp of input packet.
     private int firstTs; 
@@ -65,12 +65,12 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         planeParameters = new float[3];
         planeEstimate = new Matrix(4,1);
         try {
-            planeEstimator = PlaneEstimator.valueOf(getString("planeEstimator", "IterativeFit"));
+            planeEstimator = PlaneEstimator.valueOf(getString("planeEstimator", "RobustLP"));
         } catch (IllegalArgumentException ex) {
-            log.log(Level.WARNING, "bad preference {0} for preferred PlaneEstimator, choosing default IterativeFit",
-                    getString("planeEstimator", "IterativeFit"));
-            planeEstimator =  LocalPlanesFlow.PlaneEstimator.IterativeFit;
-            putString("planeEstimator", "IterativeFit");
+            log.log(Level.WARNING, "bad preference {0} for preferred PlaneEstimator, choosing default RobustLP",
+                    getString("planeEstimator", "RobustLP"));
+            planeEstimator =  LocalPlanesFlow.PlaneEstimator.RobustLP;
+            putString("planeEstimator", "RobustLP");
         }
         setPlaneEstimator(planeEstimator);
         numInputTypes = 2;
@@ -338,7 +338,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                     return;
                 }
             } 
-            if (homogeneousCoordinates) {
+            if (robustLP) {
                 velFromPar((float) planeEstimate.get(0,0),
                            (float) planeEstimate.get(1,0),
                            (float) planeEstimate.get(2,0), th3);
@@ -451,29 +451,29 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         PlaneEstimator old = planeEstimator;
         this.planeEstimator = planeEstimator;
         putString("planeEstimator", planeEstimator.toString());
+        originalLP = false;
+        robustLP = false;
         singleFit = false;
-        iterativeFit = false;
         linearSavitzkyGolay = false;
-        homogeneousCoordinates = false;
         switch (planeEstimator) {
-            case SingleFit:
-                singleFit = true;
+            case OriginalLP:
+                originalLP = true;
                 resetFilter();
                 break;
-            case IterativeFit:
-                iterativeFit = true;
+            case RobustLP:
+                robustLP = true;
+                resetFilter();
+                break;
+            case SingleFit:
+                singleFit = true;
                 resetFilter();
                 break;
             case LinearSavitzkyGolay: 
                 linearSavitzkyGolay = true;
                 resetFilter();
                 break;
-            case HomogeneousCoordinates:
-                homogeneousCoordinates = true;
-                resetFilter();
-                break;
             default: 
-                iterativeFit = true;
+                robustLP = true;
                 resetFilter();
                 break;
         }
