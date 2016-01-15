@@ -121,7 +121,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // Discard events that are considerably faster than average
     private float avgSpeed = 0;
-    boolean speedControlEnabled = getBoolean("speedControlEnabled", true);
+    boolean speedControlEnabled = getBoolean("speedControlEnabled", false);
     private float speedMixingFactor = getFloat("speedMixingFactor", 1e-3f);
     private float excessSpeedRejectFactor = getFloat("excessSpeedRejectFactor", 2f);
 
@@ -702,8 +702,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         if (showGlobalEnabled) {
             motionFlowStatistics.globalMotion.update(vx, vy, v, eout.x, eout.y);
         }
-        if(motionVectorEventLogger!=null){
-            String s=String.format("%d %d %d %.3g %.3g %.3g %d",eout.timestamp,eout.x,eout.y,eout.type,eout.velocity.x, eout.velocity.y, eout.speed, eout.hasDirection?1:0);
+        if(motionVectorEventLogger!=null && motionVectorEventLogger.isEnabled()){
+            String s=String.format("%d %d %d %d %.3g %.3g %.3g %d",eout.timestamp,eout.x,eout.y,eout.type,eout.velocity.x, eout.velocity.y, eout.speed, eout.hasDirection?1:0);
+            motionVectorEventLogger.log(s);
         }
     }
 
@@ -758,8 +759,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         String filename = null, filepath = null;
         final JFileChooser fc = new JFileChooser();
         fc.setCurrentDirectory(new File(getString("lastFile", System.getProperty("user.dir"))));  // defaults to startup runtime folder
-        fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
         fc.setSelectedFile(new File(getString("lastFile", System.getProperty("user.dir"))));
+        fc.setDialogTitle("Select folder and base file name for the logged motion vector event data");
         int ret = fc.showOpenDialog(chip.getAeViewer() != null && chip.getAeViewer().getFilterFrame() != null ? chip.getAeViewer().getFilterFrame() : null);
         if (ret == JFileChooser.APPROVE_OPTION) {
             File file = fc.getSelectedFile();
