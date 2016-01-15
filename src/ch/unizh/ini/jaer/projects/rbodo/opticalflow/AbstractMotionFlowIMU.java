@@ -69,9 +69,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // xyFilter.
     private int xMin = getInt("xMin", 0);
-    int xMax = getInt("xMax", 240);
+    int xMax = getInt("xMax", 1000); // (tobi) set to large value to make sure any chip will have full area processed by default
     private int yMin = getInt("yMin", 0);
-    int yMax = getInt("yMax", 180);
+    int yMax = getInt("yMax", 1000);
 
     // Display
     private boolean showVectorsEnabled = getBoolean("showVectorsEnabled", true);
