@@ -507,7 +507,10 @@ public class JAERViewer {
         try {
             for (AEViewer v : viewers) {
                 File f = v.stopLogging(getNumViewers() == 1); // only confirm filename if there is only a single viewer
-
+                if(f==null){
+                    log.warning("something is wrong; the logging file is null when you tried to stop logging data. Ignoring this AEViewer instance. \nYou may be trying to do synchronized logging when using only a single AEViewer. \n Disable this functionality from the menu File/Synchronize AEViewer logging/playback");
+                    continue;
+                }
                 if (f.exists()) { // if not cancelled
                     if (getNumViewers() > 1) {
 
