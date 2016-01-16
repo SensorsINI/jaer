@@ -774,7 +774,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         if (ret == JFileChooser.APPROVE_OPTION) {
             File file = fc.getSelectedFile();
             putString("lastFile", file.toString());
-            motionVectorEventLogger = new TobiLogger(file.getName(), file.getPath());
+            motionVectorEventLogger = new TobiLogger(file.getPath(), "Motion vector events output from normal optical flow method");
             motionVectorEventLogger.setNanotimeEnabled(false);
             motionVectorEventLogger.setHeaderLine("system_time(ms) timestamp(us) x y type vx(pps) vy(pps) speed(pps) validity");
             motionVectorEventLogger.setEnabled(true);
