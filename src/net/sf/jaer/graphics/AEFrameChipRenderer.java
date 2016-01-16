@@ -92,6 +92,13 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     protected FloatBuffer pixBuffer;
     protected FloatBuffer onMap, onBuffer;
     protected FloatBuffer offMap, offBuffer;
+    /**
+     * pix map used for annotation overlay.
+     *
+     * @see #setAnnotateAlpha(float)
+     * @see #setDisplayAnnotation(boolean)
+     * @see #setAnnotateColorRGBA(int, int, float[]) and similar methods
+     */
     protected FloatBuffer annotateMap;
     // double buffered histogram so we can accumulate new histogram while old one is still being rendered and returned to caller
     private final int histStep = 4; // histogram bin step in ADC counts of 1024 levels
@@ -395,7 +402,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             }
             int val = ((int) buf[index] - e.getAdcSample());
             if (val < 0) {
-            	val = 0;
+                val = 0;
             }
             if ((val >= 0) && (val < minValue)) { // tobi only update min if it is >0, to deal with sensors with bad column read, like 240C
                 minValue = val;
@@ -411,7 +418,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                     // randomly add histogram values to histogram depending on distance from center of image
                     // to implement a simple form of center weighting of the histogram
                     float d = (1 - Math.abs(((float) e.x - (sizeX / 2)) / sizeX)) + Math.abs(((float) e.y - (sizeY / 2)) / sizeY); // d is zero at center, 1 at corners
-                    d*=d;
+                    d *= d;
                     float r = random.nextFloat();
                     if (r > d) {
                         nextHist.add(val);
@@ -675,8 +682,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     /**
      * Overridden to combine ON and OFF map values to a gray value by averaging
-     * them. Note that this method returns rendering of frame image; it  returns the 
-     * rendered APS samples and not the raw ADC values.
+     * them. Note that this method returns rendering of frame image; it returns
+     * the rendered APS samples and not the raw ADC values.
      *
      * @param x
      * @param y
@@ -885,6 +892,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      * transparency of the annotation.
      *
      * @param annotateAlpha the annotateAlpha to set
+     * @see #setDisplayAnnotation(boolean)
+     * @see #setAnnotateColorRGBA(int, int, float[]) and similar methods
      */
     public void setAnnotateAlpha(float annotateAlpha) {
         this.annotateAlpha = annotateAlpha;
