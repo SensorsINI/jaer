@@ -24,7 +24,7 @@ import net.sf.jaer.util.jama.Matrix;
  * @author rbodo
  */
 
-@Description("Class for amplitude and orientation of local motion optical flow using surface of active events.")
+@Description("Computes normal optical flow events with speed and vector direction using robust gradient of last events timestamp surface.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class LocalPlanesFlow extends AbstractMotionFlow {
     // Magnitude of accuracy from iterative estimation algorithm. 
@@ -83,7 +83,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                            "from the fitted plane than this threshold are discarded. Usually not set lower than 0.01.");
         setPropertyTooltip("Local Planes","th3","When the gradient of the fitted plane is below this threshold, " +
                            "the corresponding velocity component is set to zero (unrealistically high speed due to flat plane). Usually not set higher than 0.01.");
-        setPropertyTooltip("Local Planes","planeEstimator","Select method to fit plane to most-recent timestamps map in neighborhood of event");
+        setPropertyTooltip("Local Planes","planeEstimator","<html>Select method to fit plane to most-recent timestamps map in neighborhood of event<ul><li>OriginalLP:Non robust least squares fit<li>RobustLP: least squares fit disregarding events older than maxDtThreshold <li>SingleFit: <li>LinearSavitzkyGolay: feedforward computation of slopes using smoothing of derivatives in perpindicular direction and not including events older than maxDtThreshold"); // TODO expand explanations
     }    
     
     synchronized void initializeDataMatrix() {

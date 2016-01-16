@@ -30,6 +30,8 @@ import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.graphics.AEChipRenderer;
+import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -136,9 +138,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     // deviates from ground truth by more than epsilon.
     float epsilon = getFloat("epsilon", 10f);
 
+    /**
+     * Used for logging motion vector events to a text log file
+     */
     protected TobiLogger motionVectorEventLogger = null;
 
-    final String filterClassName;
+       final String filterClassName;
 
     private boolean exportedFlowToMatlab;
     private double[][] vxOut = null;
@@ -176,7 +181,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(imu, "discardOutliersEnabled", "discard measured local motion vector if it deviates from IMU estimate");
         setPropertyTooltip(imu, "epsilon", "threshold angle in degree. Discard measured optical flow vector if it deviates from IMU-estimate by more than epsilon");
         setPropertyTooltip(imu, "lensFocalLengthMm", "lens focal length in mm. Used for computing the IMU flow from pan and tilt camera rotations. 4.5mm is focal length for dataset data.");
-        // check lastLoggingFolder to see if it really exists, if not, default to user.dir
         File lf = new File(loggingFolder);
         if (!lf.exists() || !lf.isDirectory()) {
             log.log(Level.WARNING, "loggingFolder {0} doesn't exist or isn't a directory, defaulting to {1}", new Object[]{lf, lf});
@@ -630,8 +634,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 motionFlowStatistics.angularError.getStdDev()}));
             gl.glPopMatrix();
         }
+
+ 
     }
 
+ 
     synchronized void setupFilter(EventPacket in) {
         addListeners(chip);
         inItr = in.iterator();
@@ -1067,4 +1074,5 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         radPerPixel = (float) Math.atan(chip.getPixelWidthUm() / (1000 * lensFocalLengthMm));
     }
 
+  
 }
