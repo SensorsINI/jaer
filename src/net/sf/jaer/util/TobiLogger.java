@@ -112,7 +112,7 @@ public class TobiLogger {
                 log.warning("disabling logging but stream was never created");
                 return;
             }
-            log.info("closing log file "+fileNameBase+" in folder "+System.getProperties().getProperty("user.dir"));
+            log.info("closing logging file "+fileNameActual);
             logStream.flush();
             logStream.close();
             logStream=null;
