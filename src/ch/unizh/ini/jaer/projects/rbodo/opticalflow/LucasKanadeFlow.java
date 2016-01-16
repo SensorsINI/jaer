@@ -290,7 +290,19 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
                 if (secondTempDerivative) {
                     tempDerivNeighb[ii] /= maxDtThreshold * 1e-6f;
                 }
-                tempDerivNeighb[ii] *= 20; // Derivative approximation contains some systematic error
+                // The original formulation in the paper multiplies the temporal
+                // derivative by a factor (eventGenerationThreshold/maxDtThreshold):
+                // tempDerivNeighb[ii] *= theta * 1e-6 / maxDtThreshold;
+                // This simply scales the flow vector amplitude. Increasing 
+                // maxDtThreshold should in principle increase the number of events
+                // counted and therefore not change the ratio Sum[events]/maxDtThreshold.
+                // In reality however, event distribution is sparse and this ratio
+                // (and thus vector length) is extremely dependent on maxDtThreshold.
+                // The other problem is the event generation threshold theta,
+                // which was not specified further (how do the units match up??).
+                // A heuristic solution is to combine those two factors into this:
+                tempDerivNeighb[ii] *= 20;
+                
                 ii++;
             }
         }
