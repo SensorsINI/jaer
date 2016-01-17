@@ -68,7 +68,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
     
     // If enabled, the AEViewer draws an event-histogram in the neighborhood of the event.
     // Used for debugging and visualization of the algorithm.
-    private boolean drawHistogramEnabled;
+    private boolean drawCollectedEventsHistogramEnabled;
 
     public LucasKanadeFlow(AEChip chip) {
         super(chip);
@@ -82,10 +82,14 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
             putString("derivator", "CentralFiniteDifferenceFirstOrder");
         }
         setDerivativeEstimator(derivator);
-        setPropertyTooltip("Lucas Kanade", "thr", "threshold to discard events with too small intensity gradient");
-        setPropertyTooltip("Lucas Kanade", "derivativeEstimator", "select method to calculate intensity gradients");
-        setPropertyTooltip("Lucas Kanade", "secondTempDerivative", "Use second temporal derivative");
-        drawHistogramEnabled = false;
+        setPropertyTooltip("Lucas Kanade", "thr", "threshold to discard events with too small intensity gradient"); // TODO describe typical value of thr and what exactly it tests
+        setPropertyTooltip("Lucas Kanade", "secondTempDerivative", "Use second temporal derivative"); // TODO what does this parameter do exactly, and is it described in paper? If not remove it.
+        setPropertyTooltip("Lucas Kanade", "drawCollectedEventsHistogramEnabled", "Draws the collected 2D event histogram on output of sensor to allow visualizing the data");
+        setPropertyTooltip("Lucas Kanade", "derivativeEstimator", "<html>Method of computing spatial derivative of collected 2D event histogram<ul><li>"
+                + "BackwardFiniteDifference: Original method, has bias to left and downwards" +
+"<li>CentralFiniteDifferenceFirstOrder: First order centered derivative estimate" +
+"<li>CentralFiniteDifferenceSecondOrder: 2nd order centered derivative estimate" +
+"<li>SavitzkyGolayFilter: Smoothed derivative estimate that estimates derivative by smoothing it in perpindicular direction</ul>");
     }
 
     @Override
@@ -94,7 +98,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
 
         // Draws an event-histogram in the neighborhood of the event.
         // Used for debugging and visualization of the algorithm.
-        if (drawHistogramEnabled) {
+        if (isDrawCollectedEventsHistogramEnabled()) {
             if (!isFilterEnabled()) return;
             GL2 gl = drawable.getGL().getGL2();
             if (gl == null) return;
@@ -474,4 +478,18 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
         putBoolean("secondTempDerivative", secondTempDerivative);
     }
     // </editor-fold>
+
+    /**
+     * @return the drawCollectedEventsHistogramEnabled
+     */
+    public boolean isDrawCollectedEventsHistogramEnabled() {
+        return drawCollectedEventsHistogramEnabled;
+    }
+
+    /**
+     * @param drawCollectedEventsHistogramEnabled the drawCollectedEventsHistogramEnabled to set
+     */
+    public void setDrawCollectedEventsHistogramEnabled(boolean drawCollectedEventsHistogramEnabled) {
+        this.drawCollectedEventsHistogramEnabled = drawCollectedEventsHistogramEnabled;
+    }
 }
