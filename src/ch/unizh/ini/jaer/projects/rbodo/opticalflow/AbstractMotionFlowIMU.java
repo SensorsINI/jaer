@@ -83,7 +83,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // A pixel can fire an event only after this period. Used for smoother flow
     // and speedup.
-    int refractoryPeriodUs = getInt("refractoryPeriodUs", 10000);
+    int refractoryPeriodUs = getInt("refractoryPeriodUs", 0);
 
     // Global translation, rotation and expansion.
     boolean showGlobalEnabled = getBoolean("showGlobalEnabled", true);
@@ -133,10 +133,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // Motion flow vectors can be filtered out if the angle between the observed 
     // optical flow and ground truth is greater than a certain threshold.
-    boolean discardOutliersEnabled = getBoolean("discardOutliersEnabled", false);
+    // At the moment, this option is not included in the jAER filter settings
+    // and defaults to false.
+    boolean discardOutliersEnabled = false;
     // Threshold angle in degree. Discard measured optical flow vector if it 
     // deviates from ground truth by more than epsilon.
-    float epsilon = getFloat("epsilon", 10f);
+    float epsilon = 10f;
 
     /**
      * Used for logging motion vector events to a text log file
@@ -174,12 +176,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(disp, "yMin", "events with y-coordinate below this are filtered out.");
         setPropertyTooltip(disp, "yMax", "events with y-coordinate above this are filtered out.");
         setPropertyTooltip(smoo, "subSampleShift", "shift subsampled timestamp map stores by this many bits");
-        setPropertyTooltip(smoo, "refractoryPeriodUs", "compute motion only if the pixel didn't fire during this period.");
+        setPropertyTooltip(smoo, "refractoryPeriodUs", "compute no flow vector if a flow vector has already been computed within this period at the same location.");
         setPropertyTooltip(smoo, "speedControlEnabled", "enables filtering of excess speeds");
         setPropertyTooltip(smoo, "speedControl_ExcessSpeedRejectFactor", "local speeds this factor higher than average are rejected as non-physical");
         setPropertyTooltip(smoo, "speedControl_speedMixingFactor", "speeds computed are mixed with old values with this factor");
-        setPropertyTooltip(imu, "discardOutliersEnabled", "discard measured local motion vector if it deviates from IMU estimate");
-        setPropertyTooltip(imu, "epsilon", "threshold angle in degree. Discard measured optical flow vector if it deviates from IMU-estimate by more than epsilon");
+//        setPropertyTooltip(imu, "discardOutliersEnabled", "discard measured local motion vector if it deviates from IMU estimate");
+//        setPropertyTooltip(imu, "epsilon", "threshold angle in degree. Discard measured optical flow vector if it deviates from IMU-estimate by more than epsilon");
         setPropertyTooltip(imu, "lensFocalLengthMm", "lens focal length in mm. Used for computing the IMU flow from pan and tilt camera rotations. 4.5mm is focal length for dataset data.");
         File lf = new File(loggingFolder);
         if (!lf.exists() || !lf.isDirectory()) {
@@ -841,29 +843,29 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --epsilon--">
-    public float getEpsilon() {
-        return epsilon;
-    }
-
-    synchronized public void setEpsilon(float epsilon) {
-        if (epsilon > 180) {
-            epsilon = 180;
-        }
-        this.epsilon = epsilon;
-        putFloat("epsilon", epsilon);
-    }
+//    public float getEpsilon() {
+//        return epsilon;
+//    }
+//
+//    synchronized public void setEpsilon(float epsilon) {
+//        if (epsilon > 180) {
+//            epsilon = 180;
+//        }
+//        this.epsilon = epsilon;
+//        putFloat("epsilon", epsilon);
+//    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --discardOutliersEnabled--">
-    public boolean getDiscardOutliersEnabled() {
-        return this.discardOutliersEnabled;
-    }
-
-    public void setDiscardOutliersEnabled(final boolean discardOutliersEnabled) {
-        support.firePropertyChange("discardOutliersEnabled", this.discardOutliersEnabled, discardOutliersEnabled);
-        this.discardOutliersEnabled = discardOutliersEnabled;
-        putBoolean("discardOutliersEnabled", discardOutliersEnabled);
-    }
+//    public boolean getDiscardOutliersEnabled() {
+//        return this.discardOutliersEnabled;
+//    }
+//
+//    public void setDiscardOutliersEnabled(final boolean discardOutliersEnabled) {
+//        support.firePropertyChange("discardOutliersEnabled", this.discardOutliersEnabled, discardOutliersEnabled);
+//        this.discardOutliersEnabled = discardOutliersEnabled;
+//        putBoolean("discardOutliersEnabled", discardOutliersEnabled);
+//    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --loggingFolder--">

@@ -21,7 +21,7 @@ import net.sf.jaer.util.jama.Matrix;
 @DevelopmentStatus(DevelopmentStatus.Status.Abstract)
 abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
 
-    int searchDistance = getInt("searchDistance", 2);
+    int searchDistance = getInt("searchDistance", 3);
 
     // Events must occur in this time interval to be considered.
     int maxDtThreshold = getInt("maxDtThreshold", 100000);
@@ -38,7 +38,7 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
     // Coefficients for the Savitzky-Golay filter, and parameters for the polynomial fit.
     double[][] C, a;
     private double[][] A;
-    int fitOrder = getInt("fitOrder", 2);
+    int fitOrder = 1;
 
     // Indices.
     int sx, sy, i, j, ii, jj;
@@ -48,7 +48,6 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
         computeSavitzkyGolayCoefficients();
         setPropertyTooltip("searchDistance", "search distance to each side");
         setPropertyTooltip(smoo, "maxDtThreshold", "max delta time (us) of timestamps from current event time that are considered. Also sets grayscale scaling of showTimestampMap display.");
-        setPropertyTooltip(smoo, "fitOrder", "Order of fitting polynomial used for smoothing");
         setPropertyTooltip(disp, "showTimestampMap", "Superimposes a color-coded timestamp map on the display. This map shows the lastTimesMap[][][] of the latest event as a color code. The type of events shown is set by showTimestampMapMask.");
         setPropertyTooltip(disp, "showTimestampMapMask", "The timestamps shown from the map are set by this mask value. ");
         setPropertyTooltip(disp, "showTimestampMapAlpha", "The alpha (brightness) of the overlaid timestamp map when showTimestampMap is enabled. ");
@@ -170,22 +169,24 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --fitOrder--">
-    public int getFitOrder() {
-        return this.fitOrder;
-    }
-
-    synchronized public void setFitOrder(int fitOrder) {
-        while ((2 * searchDistance + 1) * (2 * searchDistance + 1) < (fitOrder + 1) * (fitOrder + 2) / 2) {
-            fitOrder--;
-        }
-        this.fitOrder = fitOrder;
-        putInt("fitOrder", fitOrder);
-        support.firePropertyChange("fitOrder", this.fitOrder, fitOrder);
-        resetFilter();
-        computeSavitzkyGolayCoefficients();
-    }
-    // </editor-fold>
+    //    // <editor-fold defaultstate="collapsed" desc="getter/setter for --fitOrder--">
+    // Keep this code in case the fitOrder parameter has to be made accessible
+    // to users via the jAER filter settings.
+//    public int getFitOrder() {
+//        return this.fitOrder;
+//    }
+//
+//    synchronized public void setFitOrder(int fitOrder) {
+//        while ((2 * searchDistance + 1) * (2 * searchDistance + 1) < (fitOrder + 1) * (fitOrder + 2) / 2) {
+//            fitOrder--;
+//        }
+//        this.fitOrder = fitOrder;
+//        putInt("fitOrder", fitOrder);
+//        support.firePropertyChange("fitOrder", this.fitOrder, fitOrder);
+//        resetFilter();
+//        computeSavitzkyGolayCoefficients();
+//    }
+//    // </editor-fold>
 
     /**
      * @return the showTimestampMap
