@@ -36,7 +36,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     
     // When an event in the neighborhood is farther away from the local plane estimate 
     // than this threshold value, it is discarded from the data set.
-    private float th2 = getFloat("th2",1e-2f); 
+    private float th2 = getFloat("th2",5e-2f); 
     
     // Threshold for flat planes causing events to be assigned an unrealistically
     // high velocity.
