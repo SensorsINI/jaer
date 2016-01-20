@@ -96,6 +96,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     // important for calculation of header offset
 
     public static int NUM_HEADER_LINES_TO_PRINT = 15;
+    
+    /** The offset of the marked position in events, to allow users to mark a position before they hit the mark button */
+    public int MARK_OFFSET_EVENTS=100000;
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     static Logger log = Logger.getLogger("net.sf.jaer.eventio");
@@ -776,8 +779,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         if (here > markOut) {
             return markIn;
         }
+        here-=MARK_OFFSET_EVENTS;
+        if(here<0) here=0;
         long old = markIn;
-        markIn = position();
+        markIn = here;
         markIn = (markIn / eventSizeBytes) * eventSizeBytes; // to avoid marking inside an event
         getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, old, markIn);
         return markIn;
