@@ -95,7 +95,7 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
                              ts1 = ts = lastTimesMap[x][y][1];
                             ts = ts0 > ts1 ? ts0 : ts1;
                     }
-                    if (ts == 0) {
+                    if (ts == Integer.MIN_VALUE) {
                         continue; // don't bother for uninitialized timestamps
                     }
                     float v = (1 - ((float) (maxTs - ts) / maxDtThreshold)); // TODO should be maxDtThreshold
