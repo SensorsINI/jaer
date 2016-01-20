@@ -58,25 +58,28 @@ import com.jogamp.opengl.GLProfile;
 import com.jogamp.opengl.JoglVersion;
 
 /**
- * Used to show multiple chips simultaneously in separate instances of {@link net.sf.jaer.graphics.AEViewer}, each running
- * in its own thread, and each with its own hardware interface thread or {@link net.sf.jaer.eventio.AEInputStream}.
- * A single viewer is launched
- * with a default {@link net.sf.jaer.chip.AEChip}.
- * New viewers can be constructed from the File menu.
+ * Used to show multiple chips simultaneously in separate instances of
+ * {@link net.sf.jaer.graphics.AEViewer}, each running in its own thread, and
+ * each with its own hardware interface thread or
+ * {@link net.sf.jaer.eventio.AEInputStream}. A single viewer is launched with a
+ * default {@link net.sf.jaer.chip.AEChip}. New viewers can be constructed from
+ * the File menu.
+ *
  * @author tobi
  */
 public class JAERViewer {
 
-
-    public JAERViewer()
-    {   this(false); // set arg to true to enable experiment global view mode of JAERViewer (Peter O'Connor mode)
+    public JAERViewer() {
+        this(false); // set arg to true to enable experiment global view mode of JAERViewer (Peter O'Connor mode)
     }
 
-    /** Root preferences object for jAER
+    /**
+     * Root preferences object for jAER
      *
      */
     protected static Preferences prefs;
-    /** Root Logger
+    /**
+     * Root Logger
      *
      */
     protected static Logger log;
@@ -98,28 +101,31 @@ public class JAERViewer {
     private SyncPlayer syncPlayer = new SyncPlayer(null, this); // TODO ugly, create here and then recreate later
     protected static final String JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY = "JAERViewer.viewerChipClassNames";
 
-    public GlobalViewer globalViewer=new GlobalViewer();
+    public GlobalViewer globalViewer = new GlobalViewer();
 
     // Internal switch: go into multiple-display mode right away?
-    boolean multistartmode=false;
+    boolean multistartmode = false;
 
-    /** This shared GLAutoDrawable is constructed here and is used by all ChipCanvas to set the shared JOGL context. */
+    /**
+     * This shared GLAutoDrawable is constructed here and is used by all
+     * ChipCanvas to set the shared JOGL context.
+     */
     public static GLAutoDrawable sharedDrawable; // TODO tobi experimental to deal with graphics creation woes.
     // see also http://forum.jogamp.org/Multiple-GLCanvas-FPSAnimator-Hang-td4030581.html
 
-
-    /** Creates a new instance of JAERViewer
+    /**
+     * Creates a new instance of JAERViewer
      *
-     * @param multimode set to true to enable global viewer so that all sources are aggregated to one window.
+     * @param multimode set to true to enable global viewer so that all sources
+     * are aggregated to one window.
      * @see net.sf.jaer.graphics.GlobalViewer
      */
     public JAERViewer(boolean multimode) {
 
-        multistartmode=multimode;
+        multistartmode = multimode;
 
         Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("jAER UncaughtExceptionHandler");
         Thread.setDefaultUncaughtExceptionHandler(handler);
-
 
         final java.awt.SplashScreen splash = java.awt.SplashScreen.getSplashScreen();
         if (splash != null) {
@@ -128,17 +134,15 @@ public class JAERViewer {
             log.warning("no Java 6 splash screen to animate");
         }
 
-               // GLProfile and GLCapabilities should be equal across all shared GL drawable/context.
+        // GLProfile and GLCapabilities should be equal across all shared GL drawable/context.
         // tobi implemented this from user guide for JOGL that suggests a shared drawable context for all uses of JOGL
         GLProfile.initSingleton(); // recommneded by https://sites.google.com/site/justinscsstuff/jogl-tutorial-2 especially for linux systems
-        final GLCapabilities caps = new GLCapabilities(GLProfile.getDefault()) ;
+        final GLCapabilities caps = new GLCapabilities(GLProfile.getDefault());
         final GLProfile glp = caps.getGLProfile();
         final boolean createNewDevice = true; // use 'own' display device!
         sharedDrawable = GLDrawableFactory.getFactory(glp).createDummyAutoDrawable(null, createNewDevice, caps, null);
         sharedDrawable.display(); // triggers GLContext object creation and native realization. sharedDrawable is a static variable that can be used by all AEViewers and file preview dialogs
-        log.info("JOGL version information: "+JoglVersion.getInstance().toString());
-
-
+        log.info("JOGL version information: " + JoglVersion.getInstance().toString());
 
 //        if(true){
 //        throw new RuntimeException("test exception");
@@ -151,7 +155,7 @@ public class JAERViewer {
 
         SwingUtilities.invokeLater(new RunningThread());
 
-         try {
+        try {
             // Create temp file.
             File temp = new File("JAERViewerRunning.txt");
 
@@ -204,31 +208,29 @@ public class JAERViewer {
         });
     }
 
-
-
-    class RunningThread implements Runnable{
+    class RunningThread implements Runnable {
 
         @Override
-            public void run() {
-                if (multistartmode)
-                {   setViewMode(true);
-                    return;
-                }
+        public void run() {
+            if (multistartmode) {
+                setViewMode(true);
+                return;
+            }
 
-                // try to load a list of previous chip classes that running in viewers and then reOGloopen them
-                ArrayList<String> classNames = null;
-                try {
-                    byte[] bytes = prefs.getByteArray(JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY, null);
-                    if (bytes != null) {
-                        ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
-                        classNames = (ArrayList<String>) in.readObject();
-                        in.close();
-                    }
-                } catch (Exception e) {
-                    log.info("couldn't load previous viewer AEChip classes, starting with last class");
+            // try to load a list of previous chip classes that running in viewers and then reOGloopen them
+            ArrayList<String> classNames = null;
+            try {
+                byte[] bytes = prefs.getByteArray(JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY, null);
+                if (bytes != null) {
+                    ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
+                    classNames = (ArrayList<String>) in.readObject();
+                    in.close();
                 }
+            } catch (Exception e) {
+                log.info("couldn't load previous viewer AEChip classes, starting with last class");
+            }
 
-                try {
+            try {
                 if (classNames == null) {
                     AEViewer v = new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
 //                player=new SyncPlayer(v); // associate with the initial viewer
@@ -245,18 +247,20 @@ public class JAERViewer {
                 }
             } catch (java.lang.UnsatisfiedLinkError err) {
 
-                    log.info("Unsatisfied link error.  Chances are that you are not running the right project configuration.  Set the project configuration to the appropiate platform (win,win64,linux32,linux64,etc...). The jAER project must be set to use a JVM that matches the project runtime configuration, e.g., if you are using a 32 bit JVM to run jAER (as selected in the project properties/Libraries/Java Platform), then you must choose the \"win\" configuration so that java.libray.path is set so that your DLLs come from host/java/jars/win32.");
+                log.info("Unsatisfied link error.  Chances are that you are not running the right project configuration.  Set the project configuration to the appropiate platform (win,win64,linux32,linux64,etc...). The jAER project must be set to use a JVM that matches the project runtime configuration, e.g., if you are using a 32 bit JVM to run jAER (as selected in the project properties/Libraries/Java Platform), then you must choose the \"win\" configuration so that java.libray.path is set so that your DLLs come from host/java/jars/win32.");
 
-                    err.printStackTrace();
-                }
-
+                err.printStackTrace();
             }
+
+        }
 
     }
 
-
-    /** The main launcher for AEViewer's.
-    @param args the first argument can be a recorded AE data filename (.dat) with full path; the viewer will play this file
+    /**
+     * The main launcher for AEViewer's.
+     *
+     * @param args the first argument can be a recorded AE data filename (.dat)
+     * with full path; the viewer will play this file
      */
     public static void main(String[] args) {
         //redirect output to DataViewer window
@@ -273,7 +277,7 @@ public class JAERViewer {
 //            }
 //        }
         if (args.length > 0) {
-            log.info("starting with args[0]=" + args[0]+" in working directory="+System.getProperty("user.dir"));
+            log.info("starting with args[0]=" + args[0] + " in working directory=" + System.getProperty("user.dir"));
             final File f = new File(args[0]);
             try {
                 JAERViewer jv = new JAERViewer();
@@ -288,13 +292,11 @@ public class JAERViewer {
             SwingUtilities.invokeLater(new Runnable() {
 
                 @Override
-				public void run() {
-                     new JAERViewer();
+                public void run() {
+                    new JAERViewer();
                 }
             });
         }
-
-
 
     }
 
@@ -340,9 +342,9 @@ public class JAERViewer {
             if ((starty + cursor) > (d.height - textheight)) {
                 cursor = 0;
             }
-            try{
+            try {
                 splashScreen.update();
-            }catch(IllegalStateException e){
+            } catch (IllegalStateException e) {
                 System.err.println(e.toString());
             }
 
@@ -429,7 +431,6 @@ public class JAERViewer {
         bbb.setSelected(isSyncEnabled());
         bbb.setAction(getToggleSyncEnabledAction());
 
-
         boolean en = true; //viewers.size()>1? true:false;
         for (AbstractButton bb : syncEnableButtons) {
             bb.setEnabled(en);
@@ -452,7 +453,9 @@ public class JAERViewer {
         }
     }
 
-    /** @return collection of viewers we manage */
+    /**
+     * @return collection of viewers we manage
+     */
     public ArrayList<AEViewer> getViewers() {
         return viewers;
     }
@@ -470,7 +473,9 @@ public class JAERViewer {
         return dateString;
     }
 
-    /** Creates the index file at location path with timestamped name */
+    /**
+     * Creates the index file at location path with timestamped name
+     */
     private File createIndexFile(String path) {
         String indexFileName = indexFileNameHeader + getDateString() + indexFileSuffix;
         log.info("createIndexFile " + path + File.separator + indexFileName);
@@ -507,11 +512,11 @@ public class JAERViewer {
         try {
             for (AEViewer v : viewers) {
                 File f = v.stopLogging(getNumViewers() == 1); // only confirm filename if there is only a single viewer
-                if(f==null){
+                if (f == null) {
                     log.warning("something is wrong; the logging file is null when you tried to stop logging data. Ignoring this AEViewer instance. \nYou may be trying to do synchronized logging when using only a single AEViewer. \n Disable this functionality from the menu File/Synchronize AEViewer logging/playback");
                     continue;
                 }
-                log.info("Stopped logging to file "+f);
+                log.info("Stopped logging to file " + f);
                 if (f.exists()) { // if not cancelled
                     if (getNumViewers() > 1) {
 
@@ -541,7 +546,6 @@ public class JAERViewer {
         // resume all viewers
         viewers.get(0).aePlayer.resume();
 
-
         loggingEnabled = false;
     }
 
@@ -561,7 +565,6 @@ public class JAERViewer {
         for (AEViewer v : viewers) {
             v.zeroTimestamps();
 
-
         }
 //        }else{
 //            log.warning("JAERViewer.zeroTimestamps(): electricalSyncEnabled, not resetting all viewer device timestamps");
@@ -578,7 +581,10 @@ public class JAERViewer {
 //    }
     File logIndexFile;
 
-    /** this action toggles logging, possibily for all viewers depending on switch */
+    /**
+     * this action toggles logging, possibily for all viewers depending on
+     * switch
+     */
     public class ToggleLoggingAction extends AbstractAction {
 
         AEViewer viewer; // to find source of logging action
@@ -592,18 +598,16 @@ public class JAERViewer {
         }
 
         @Override
-		public void actionPerformed(ActionEvent e) {
+        public void actionPerformed(ActionEvent e) {
 //            log.info("JAERViewer.ToggleLoggingAction.actionPerformed");
             if (isSyncEnabled()) {
                 toggleSynchronizedLogging();
                 if (loggingEnabled) {
                     putValue(NAME, "Stop logging");
+                } else if (viewers.get(0).getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
+                    putValue(NAME, "Start Re-logging");
                 } else {
-                    if (viewers.get(0).getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
-                        putValue(NAME, "Start Re-logging");
-                    } else {
-                        putValue(NAME, "Start logging");
-                    }
+                    putValue(NAME, "Start logging");
                 }
                 log.info("loggingEnabled=" + loggingEnabled);
             } else {
@@ -612,7 +616,8 @@ public class JAERViewer {
         }
     }
 
-    /** Toggles player synchronization over all viewers.
+    /**
+     * Toggles player synchronization over all viewers.
      *
      */
     public class ToggleSyncEnabledAction extends AbstractAction {
@@ -625,7 +630,7 @@ public class JAERViewer {
         }
 
         @Override
-		public void actionPerformed(ActionEvent e) {
+        public void actionPerformed(ActionEvent e) {
             log.info("JAERViewer.ToggleSyncEnabledAction.actionPerformed");
             setSyncEnabled(!isSyncEnabled());
             for (AbstractButton b : syncEnableButtons) {
@@ -638,7 +643,9 @@ public class JAERViewer {
         }
     }
 
-    /** Controls whether multiple viewers are synchronized for logging and playback.
+    /**
+     * Controls whether multiple viewers are synchronized for logging and
+     * playback.
      *
      * @return true if sychronized.
      */
@@ -646,7 +653,9 @@ public class JAERViewer {
         return syncEnabled;
     }
 
-    /** Controls whether multiple viewers are synchronized for logging and playback.
+    /**
+     * Controls whether multiple viewers are synchronized for logging and
+     * playback.
      *
      * @param syncEnabled true to be synchronized.
      */
@@ -663,11 +672,14 @@ public class JAERViewer {
         return syncPlayer;
     }
 
-    /** @return true if boards are electrically connected and this connection synchronizes the local timestamp value */
+    /**
+     * @return true if boards are electrically connected and this connection
+     * synchronizes the local timestamp value
+     */
     /*public boolean isElectricalSyncEnabled(){
     return electricalTimestampResetEnabled;
     }*/
-    /* public void setElectricalSyncEnabled(boolean b) {
+ /* public void setElectricalSyncEnabled(boolean b) {
     electricalTimestampResetEnabled=b;
     prefs.putBoolean("JAERViewer.electricalTimestampResetEnabled",electricalTimestampResetEnabled);
     for(AEViewer v:viewers){
@@ -719,7 +731,6 @@ public class JAERViewer {
 //    }
 
     //</editor-fold>
-
 //    public void launchMultiModeViewer()
 //    {
 //        // Below lines added to to display problem when reusing open ones
@@ -749,36 +760,32 @@ public class JAERViewer {
 //
 //
 //    }
+    public void setViewMode(final boolean multi) {
 
-
-    public void setViewMode(final boolean multi)
-    {
-
-        class MultiLauncher implements Runnable{
+        class MultiLauncher implements Runnable {
 //        SwingUtilities.invokeLater(new Runnable(){
 
             @Override
-            public void run(){
+            public void run() {
 
-                if (multi){
+                if (multi) {
 
-                    int nInterfaces=HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+                    int nInterfaces = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
 
                     // Open however many viewers need to be opened
-                    int vsize=viewers.size();
-                    for (int i=0; i<(nInterfaces-vsize); i++) {
-						new AEViewer(JAERViewer.this);
-					}
+                    int vsize = viewers.size();
+                    for (int i = 0; i < (nInterfaces - vsize); i++) {
+                        new AEViewer(JAERViewer.this);
+                    }
 
                     // Set one inteface per viewer
-                    for (int i=0; i<viewers.size(); i++)
-                    {
-                        AEViewer v=viewers.get(i);
-                        HardwareInterface hi=HardwareInterfaceFactory.instance().getInterface(i);
-                        Class guess=AEViewer.hardwareInterface2chipClassName(hi);
-                        if (guess!=null) {
-							v.setAeChipClass(guess);
-						}
+                    for (int i = 0; i < viewers.size(); i++) {
+                        AEViewer v = viewers.get(i);
+                        HardwareInterface hi = HardwareInterfaceFactory.instance().getInterface(i);
+                        Class guess = AEViewer.hardwareInterface2chipClassName(hi);
+                        if (guess != null) {
+                            v.setAeChipClass(guess);
+                        }
 
                         v.getChip().setHardwareInterface(hi);
 //                        v.setVisible(true);
@@ -790,10 +797,10 @@ public class JAERViewer {
 
                     globalViewer.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-                }else{
+                } else {
 
-                    for (AEViewer v: viewers)
-                    {   v.setVisible(true);
+                    for (AEViewer v : viewers) {
+                        v.setVisible(true);
 
                     }
 
@@ -802,21 +809,16 @@ public class JAERViewer {
             }
         }
 
-
-        if (SwingUtilities.isEventDispatchThread())
-        {   MultiLauncher m=new MultiLauncher();
+        if (SwingUtilities.isEventDispatchThread()) {
+            MultiLauncher m = new MultiLauncher();
             m.run();
+        } else {
+            SwingUtilities.invokeLater(new MultiLauncher());
         }
-		else {
-			SwingUtilities.invokeLater(new MultiLauncher());
-		}
-
 
 //        else
 //            SwingUtilities.
 //            SwingUtilities.invokeLater(new MultiLauncher());
-
     }
-
 
 }
