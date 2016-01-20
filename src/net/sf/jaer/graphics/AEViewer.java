@@ -4706,9 +4706,15 @@ two interfaces). otherwise force user choice.
 		String serialNumber = "";
 		if ((chip.getHardwareInterface() != null) && (chip.getHardwareInterface() instanceof USBInterface)) {
 			USBInterface usb = (USBInterface) chip.getHardwareInterface();
+                        // debug
 			if ((usb.getStringDescriptors() != null) && (usb.getStringDescriptors().length == 3) && (usb.getStringDescriptors()[2] != null)) {
 				serialNumber = "-" + usb.getStringDescriptors()[2];
 			}
+                        // replace non-printable characters with X to avoid errors on windows 10 with creating such filenames. 
+                        // this sitation can occur with early prototypes that lack serial number (i.e. serial number is integer 0)
+                       serialNumber="\u0000\u0000\u0000\u0000";
+                        serialNumber=serialNumber.replaceAll("\\p{C}", "X");
+                        
 		}
 		boolean succeeded = false;
 		String filename;
