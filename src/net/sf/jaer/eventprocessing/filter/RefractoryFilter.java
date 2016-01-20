@@ -1,5 +1,7 @@
 package net.sf.jaer.eventprocessing.filter;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
@@ -9,8 +11,12 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEInputStream;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.graphics.AbstractAEPlayer;
 
 /**
  * Adds a refractory period to pixels so that they events only pass if there is
@@ -22,7 +28,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  */
 @Description("Applies a refractory period to pixels so that they events only pass if there is sufficient time since the last event from that pixel")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class RefractoryFilter extends EventFilter2D implements Observer {
+public class RefractoryFilter extends EventFilter2D implements Observer, PropertyChangeListener {
 
     final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
     /**
@@ -39,6 +45,9 @@ public class RefractoryFilter extends EventFilter2D implements Observer {
     private int subsampleBy = getPrefs().getInt("RefractoryFilter.subsampleBy", 0);
     private boolean passShortISIsEnabled = prefs().getBoolean("RefractoryFilter.passShortISIsEnabled", false);
     int[][] lastTimestamps;
+
+    private boolean addedViewerPropertyChangeListener = false; // TODO promote these to base EventFilter class
+    private boolean addTimeStampsResetPropertyChangeListener = false;
 
     public RefractoryFilter(AEChip chip) {
         super(chip);
@@ -68,7 +77,8 @@ public class RefractoryFilter extends EventFilter2D implements Observer {
         if (lastTimestamps == null) {
             allocateMaps(chip);
         }
-        int sx=chip.getSizeX(), sy=chip.getSizeY();
+        maybeAddListeners(chip);
+        int sx = chip.getSizeX(), sy = chip.getSizeY();
         // for each event only write it to the out buffers if it is 
         // more than refractoryPeriodUs after the last time an event happened in neighborhood
 //        OutputEventIterator outItr = getOutputPacket().outputIterator();
@@ -76,8 +86,12 @@ public class RefractoryFilter extends EventFilter2D implements Observer {
 //        int sy = chip.getSizeY() - 1;
         for (Object e : in) {
             BasicEvent i = (BasicEvent) e;
-            if(i.isSpecial()) continue;
-            if(i.x>=sx || i.x<0 || i.y>=sy|| i.y<0) continue;
+            if (i.isSpecial()) {
+                continue;
+            }
+            if (i.x >= sx || i.x < 0 || i.y >= sy || i.y < 0) {
+                continue;
+            }
             ts = i.timestamp;
             short x = (short) (i.x >>> subsampleBy), y = (short) (i.y >>> subsampleBy);
             int lastt = lastTimestamps[x][y];
@@ -87,7 +101,7 @@ public class RefractoryFilter extends EventFilter2D implements Observer {
 //                BasicEvent o = (BasicEvent) outItr.nextOutput();
 //                o.copyFrom(i);
                 i.setFilteredOut(false);
-            }else{
+            } else {
                 i.setFilteredOut(true);
             }
             lastTimestamps[x][y] = ts;
@@ -115,7 +129,7 @@ public class RefractoryFilter extends EventFilter2D implements Observer {
     public void setRefractoryPeriodUs(final int refractoryPeriodUs) {
         this.refractoryPeriodUs = refractoryPeriodUs;
         getPrefs().putInt("RefractoryFilter.refractoryPeriodUs", refractoryPeriodUs);
-         getSupport().firePropertyChange("refractoryPeriodUs", null, refractoryPeriodUs);
+        getSupport().firePropertyChange("refractoryPeriodUs", null, refractoryPeriodUs);
     }
 
     public Object getFilterState() {
@@ -123,8 +137,8 @@ public class RefractoryFilter extends EventFilter2D implements Observer {
     }
 
     void resetLastTimestamps() {
-        for (int i = 0; i < lastTimestamps.length; i++) {
-            Arrays.fill(lastTimestamps[i], DEFAULT_TIMESTAMP);
+        for (int[] a:lastTimestamps ) {
+            Arrays.fill(a, DEFAULT_TIMESTAMP);
         }
     }
 
@@ -163,8 +177,8 @@ public class RefractoryFilter extends EventFilter2D implements Observer {
             subsampleBy = 4;
         }
         this.subsampleBy = subsampleBy;
-         getSupport().firePropertyChange("subsampleBy", null, subsampleBy);
-       getPrefs().putInt("RefractoryFilter.subsampleBy", subsampleBy);
+        getSupport().firePropertyChange("subsampleBy", null, subsampleBy);
+        getPrefs().putInt("RefractoryFilter.subsampleBy", subsampleBy);
     }
 
     /**
@@ -183,4 +197,46 @@ public class RefractoryFilter extends EventFilter2D implements Observer {
         prefs().putBoolean("RefractoryFilter.passShortISIsEnabled", passShortISIsEnabled);
         getSupport().firePropertyChange("passShortISIsEnabled", old, passShortISIsEnabled);
     }
+
+    private void maybeAddListeners(AEChip chip) { // TODO promote to EventFilter
+        if (chip.getAeViewer() != null) {
+            if (!addedViewerPropertyChangeListener) {
+                chip.getAeViewer().addPropertyChangeListener(this);
+                addedViewerPropertyChangeListener = true;
+            }
+            if (!addTimeStampsResetPropertyChangeListener) {
+                chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
+                addTimeStampsResetPropertyChangeListener = true;
+            }
+        }
+    }
+
+    /**
+     * Unfortunately we need to add ourselves as listeners for these property
+     * changes because the resetFilter is only called when the user rewinds, not
+     * for reminds to IN marker in a file playback. This messes up some event
+     * filters.
+     *
+     * @param evt
+     */
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (this.filterEnabled) {
+            switch (evt.getPropertyName()) {
+                case AEViewer.EVENT_TIMESTAMPS_RESET:
+                case AEInputStream.EVENT_REWIND:
+                    resetFilter();
+                    break;
+                case AEViewer.EVENT_FILEOPEN:
+                    log.info("File Open");
+                    AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
+                    AEFileInputStream in = (player.getAEInputStream());
+                    in.getSupport().addPropertyChangeListener(this);
+                    // Treat FileOpen same as a rewind
+                    resetFilter();
+                    break;
+            }
+        }
+    }
+
 }
