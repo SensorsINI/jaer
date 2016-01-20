@@ -18,6 +18,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.BufferUnderflowException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
@@ -179,8 +181,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     private AEChip chip = null;
 
     // jaer3 files
-    private Jaer3FileInputStream jaer3fileinputstream = null; // if non-null, then we have a jaer 3 file
+    // private Jaer3FileInputStream jaer3fileinputstream = null; // if non-null, then we have a jaer 3 file
 
+    // jaer3 parse
+    private Jaer3BufferParser jaer3BufferParser = null; // if non-null, then we have a jaer 3 file     
+    private boolean jaer3EnableFlg = false;      // jaer3 parse enable flag
+    // private ByteBuffer jaer3ByteBuffer;          // output buffer of jaer3ParseBuffer
+    
     /**
      * Creates a new instance of AEInputStream
      *
@@ -295,9 +302,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         int ts = firstTimestamp;
         int addr = 0;
         int lastTs = mostRecentTimestamp;
-        if(jaer3fileinputstream!=null){
-            return jaer3fileinputstream.readEventForwards();
-        }
+        
+        ByteBuffer tmpEventBuffer = ByteBuffer.allocate(8);
+        
+        // if(jaer3fileinputstream!=null){
+            // return jaer3fileinputstream.readEventForwards();
+        // }
         try {
             if (position == markOut) { // TODO check exceptions here for markOut set before markIn
                 if (repeat) {
@@ -312,12 +322,22 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //            eventByteBuffer.rewind();
 //            addr=eventByteBuffer.getShort();
 //            ts=eventByteBuffer.getInt();
-            if (addressType == Integer.TYPE) {
-                addr = byteBuffer.getInt();
-            } else {
-                addr = (byteBuffer.getShort() & 0xffff); // TODO reads addr as negative number if msb is set
+            
+            if (jaer3EnableFlg) {
+                tmpEventBuffer = jaer3BufferParser.GetJaer2EventBuf();
+                addr = tmpEventBuffer.getInt();
+                ts = tmpEventBuffer.getInt();
+            }    
+            else {
+                if (addressType == Integer.TYPE) {
+                    addr = byteBuffer.getInt();
+                } else {
+                    addr = (byteBuffer.getShort() & 0xffff); // TODO reads addr as negative number if msb is set
+                }     
+                ts = byteBuffer.getInt();         
             }
-            ts = byteBuffer.getInt();
+
+
             if (ts == 0) {
                 if (zeroTimestampWarningCount++ < ZERO_TIMESTAMP_MAX_WARNINGS) {
                     log.warning("zero timestamp: position=" + position + " ts=" + ts);
@@ -1239,14 +1259,17 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             if (Math.floor(version) == 1) { // #!AEDAT-1.0
                 addressType = Short.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Short.SIZE / 8);
+                jaer3EnableFlg = false;
             } else if (Math.floor(version) == 2) { //  #!AEDAT-2.0
                 addressType = Integer.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Integer.SIZE / 8);
+                jaer3EnableFlg = false;
             } else if (Math.floor(version) == 3) { //  #!AEDAT-3.x
                 addressType = Integer.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Integer.SIZE / 8);
                 log.warning("This is a jAER 3.0 format file; parsing is a work in progress - no sensible output will be produced now");
-                jaer3fileinputstream = new Jaer3FileInputStream(this, chip);
+                // jaer3fileinputstream = new Jaer3FileInputStream(this, chip);
+                jaer3EnableFlg = true;
             }
             log.info("Data file version=" + version + " and has addressType=" + addressType);
         }
@@ -1259,6 +1282,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         numChunks = (int) ((fileSize / chunkSizeBytes) + 1); // used to limit chunkNumber to prevent overflow of position and for EOF
         log.info("fileSize=" + fileSize + " chunkSizeBytes=" + chunkSizeBytes + " numChunks=" + numChunks);
         mapChunk(0);
+        
+        if(jaer3EnableFlg) {
+            jaer3BufferParser = new Jaer3BufferParser(byteBuffer);
+            // jaer3ParseBuffer.setInBuffer(byteBuffer);
+            //  jaer3ByteBuffer =  jaer3ParseBuffer.extractAddrAndTs();
+        }
     }
 
     /**
