@@ -16,7 +16,7 @@ import net.sf.jaer.aemonitor.EventRaw;
  * This class parses the buffer from the data files or network streams containing jAER 3.0
  * format data, as specified in http://inilabs.com/support/software/fileformat/
  * 
- * The most public interface for outside is the GetJaer2EventBuf(), by this method, the event
+ * The most useful public interface for outside is the GetJaer2EventBuf(), by this method, the event
  * buffer just include addr and timestamp (like jAER 2.0 did) will be returned. After get this
  * buffer similar to jAER 2.0, all other things will be processed by AEFileInputStream. The stream
  * will be treated like it's a jAER 2.0 buffer. 
@@ -40,7 +40,7 @@ public class Jaer3BufferParser {
     public Jaer3BufferParser(MappedByteBuffer byteBuffer) throws IOException {
         in = byteBuffer;
         in.order(ByteOrder.LITTLE_ENDIAN);    //AER3.0 spec is little endian
-        findAndSetPacketHeader();
+        findAndSetPacketHeader(1);
     }
 
     public int GetCurrentEventOffset() throws IOException {
@@ -49,7 +49,7 @@ public class Jaer3BufferParser {
         int nextPktPos = currentPktPos + packetHeader.eventNumber * packetHeader.eventSize + PKT_HEADER_SIZE;
         
         if(currentPosition >= nextPktPos) {  // current position is not in the current packet, so we need to update currentPktPos
-            findAndSetPacketHeader();        // TODO: In fact, findAndSetPacketHeader() just work when currentPosition equals to nextPktPos
+            findAndSetPacketHeader(-1);        // TODO: In fact, findAndSetPacketHeader() just work when currentPosition equals to nextPktPos
                                              // When currentPosition > nextPktPos, it can only find the next packet and not the current packet
                                              // So it should add a method to find the current packet even when the current position > current packet header position
         }
@@ -79,7 +79,7 @@ public class Jaer3BufferParser {
         // The current position is in the last event of the current packet and not the event header, so the next event will be in the next packet.
         // We should update the currentPktPos first.
         if(currentEventOffset + eventSize >= nextPktPos) {
-            findAndSetPacketHeader();
+            findAndSetPacketHeader(1);
             return currentPktPos + PKT_HEADER_SIZE;
         }
         
@@ -140,33 +140,41 @@ public class Jaer3BufferParser {
        
  
 
-    private void findAndSetPacketHeader() throws IOException {
+    private void findAndSetPacketHeader(int direction) throws IOException {
         PacketDescriptor d = new PacketDescriptor();
         int eventTypeInt;    
         int currentPosition = in.position();  //store current position, guarntee the position didn't change in this function
-        
-        //if in.position is 0, it indicates it's the first time to search the packet, we don't need to calculate the distance 
+
+
+        if(direction != 1 && direction != -1) {
+            log.warning("Search direction can only be 1(forward) or -1(backward!)");
+            return;
+        }
+        /*
+        // If in.position is 0, it indicates it's the first time to search the packet, we don't need to calculate the distance 
         // between current position to last currentPktPos, because we still don't have the currentPktPos yet. 
+        // This is mainly used to accelerate the search speed by excluding the positions in the current packet.
         if(in.position() != 0) {            
             if((in.position()  - currentPktPos < PKT_HEADER_SIZE + packetHeader.eventNumber * packetHeader.eventSize)) {
                 in.position(currentPktPos + PKT_HEADER_SIZE + packetHeader.eventNumber * packetHeader.eventSize);
             }    
         }
-
+        */
         
-        while(in.position() <= in.limit() - PKT_HEADER_SIZE) {               
+        
+        while((in.position() <= in.limit() - PKT_HEADER_SIZE) || in.position() >= 0) {               
             int currentSearchPosition = in.position();
             eventTypeInt = in.getShort(); 
             //  By default, eventTypeInt should range from 0 to 7
             if(eventTypeInt > 7 || eventTypeInt < 0) {
-                in.position(currentSearchPosition + 1);
+                in.position(currentSearchPosition + direction);
                 continue;
             }
             d.eventType = EventType.values()[eventTypeInt];
             d.eventSource = in.getShort();
             d.eventSize = in.getInt();
             if(d.eventSize <= 0) {
-                in.position(currentSearchPosition + 1);
+                in.position(currentSearchPosition + direction);
                 continue;
             }
             d.eventTSOffset = in.getInt();     //eventoverflow
@@ -174,19 +182,19 @@ public class Jaer3BufferParser {
             // timestamp offset can only be 6(Configuration Event), 12 (Frame Event) or 4(other events).
             if(d.eventType  == EventType.ConfigEvent) {
                 if(d.eventTSOffset != 6) {
-                    in.position(currentSearchPosition + 1);
+                    in.position(currentSearchPosition + direction);
                     continue;
                 }
             }
             else if(d.eventType  == EventType.FrameEvent) {
                 if(d.eventTSOffset != 12) {
-                    in.position(currentSearchPosition + 1);
+                    in.position(currentSearchPosition + direction);
                     continue;
                 }
             }
             else {
                 if(d.eventTSOffset != 4) {
-                    in.position(currentSearchPosition + 1);                    
+                    in.position(currentSearchPosition + direction);                    
                     continue;
                 }
             }
@@ -196,14 +204,14 @@ public class Jaer3BufferParser {
             
             d.eventNumber = in.getInt();        //eventnumber
             if(d.eventNumber <= 0) {
-                in.position(currentSearchPosition + 1);                
+                in.position(currentSearchPosition + direction);                
                 continue;
             }
             // if(d.eventNumber != d.eventCapacity) continue;
                         
             d.eventValid = in.getInt();         //eventValid
             if(d.eventValid <= 0) {
-                in.position(currentSearchPosition + 1);                
+                in.position(currentSearchPosition + direction);                
                 continue;
             }
             

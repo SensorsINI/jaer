@@ -303,7 +303,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         int addr = 0;
         int lastTs = mostRecentTimestamp;
         
-        ByteBuffer tmpEventBuffer = ByteBuffer.allocate(8);
         
         // if(jaer3fileinputstream!=null){
             // return jaer3fileinputstream.readEventForwards();
@@ -324,6 +323,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //            ts=eventByteBuffer.getInt();
             
             if (jaer3EnableFlg) {
+                ByteBuffer tmpEventBuffer;       
+                tmpEventBuffer = ByteBuffer.allocate(8);
                 tmpEventBuffer = jaer3BufferParser.GetJaer2EventBuf();
                 addr = tmpEventBuffer.getInt();
                 ts = tmpEventBuffer.getInt();
