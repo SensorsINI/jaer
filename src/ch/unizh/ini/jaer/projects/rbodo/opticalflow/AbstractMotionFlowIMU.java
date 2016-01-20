@@ -12,6 +12,7 @@ import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Observable;
 import java.util.Observer;
@@ -20,7 +21,6 @@ import javax.swing.JFileChooser;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
@@ -30,8 +30,6 @@ import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.graphics.AEChipRenderer;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -105,7 +103,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     // Conversion factor is atan(pixelWidth/focalLength).
     private float radPerPixel;
 
-    private boolean addedViewerPropertyChangeListener = false;
+    private boolean addedViewerPropertyChangeListener = false; // TODO promote these to base EventFilter class
     private boolean addTimeStampsResetPropertyChangeListener = false;
 
     // Labels for setPropertyTooltip.
@@ -145,7 +143,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      */
     protected TobiLogger motionVectorEventLogger = null;
 
-       final String filterClassName;
+    final String filterClassName;
 
     private boolean exportedFlowToMatlab;
     private double[][] vxOut = null;
@@ -213,7 +211,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         chip.addObserver(this);
     }
 
-    public final void addListeners(AEChip chip) {
+    public final void maybeAddListeners(AEChip chip) {
         if (chip.getAeViewer() != null) {
             if (!addedViewerPropertyChangeListener) {
                 chip.getAeViewer().addPropertyChangeListener(this);
@@ -478,10 +476,26 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     public abstract EventPacket filterPacket(EventPacket in);
 
     synchronized void allocateMap() {
-        subsampledPixelIsSet = new boolean[subSizeX][subSizeY];
-        lastTimesMap = new int[subSizeX][subSizeY][numInputTypes];
+
+        if(subSizeY*subSizeX*numInputTypes==0) return;
+        
+        if (subsampledPixelIsSet == null) {
+            subsampledPixelIsSet = new boolean[subSizeX][subSizeY];
+        }
+
+        for (boolean[] a : subsampledPixelIsSet) {
+            Arrays.fill(a, false);
+        }
+        if (lastTimesMap == null ) {
+            lastTimesMap = new int[subSizeX][subSizeY][numInputTypes];  
+        }
+        for (int[][] a : lastTimesMap) {
+            for (int[] b : a) {
+                Arrays.fill(b, Integer.MIN_VALUE);
+            }
+        }
         motionFlowStatistics.globalMotion.reset(subSizeX, subSizeY);
-        log.info("Reallocated filter storage after parameter change or reset.");
+        log.info("Reset filter storage after parameter change or reset.");
     }
 
     @Override
@@ -542,6 +556,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      * @param e the event
      */
     protected void drawMotionVector(GL2 gl, MotionOrientationEventInterface e) {
+        if(e.getSpeed()<1) return;
         float angle = (float) (Math.atan2(e.getVelocity().y, e.getVelocity().x) / (2 * Math.PI) + 0.5);
         gl.glColor3f(angle, 1 - angle, 1 / (1 + 10 * angle));
         gl.glPushMatrix();
@@ -637,12 +652,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             gl.glPopMatrix();
         }
 
- 
     }
 
- 
     synchronized void setupFilter(EventPacket in) {
-        addListeners(chip);
+        maybeAddListeners(chip);
         inItr = in.iterator();
         outItr = dirPacket.outputIterator();
         subsampledPixelIsSet = new boolean[subSizeX][subSizeY];
@@ -1076,5 +1089,4 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         radPerPixel = (float) Math.atan(chip.getPixelWidthUm() / (1000 * lensFocalLengthMm));
     }
 
-  
 }

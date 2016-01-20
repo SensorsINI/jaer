@@ -83,7 +83,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                            "from the fitted plane than this threshold are discarded. Usually not set lower than 0.01.");
         setPropertyTooltip("Local Planes","th3","When the gradient of the fitted plane is below this threshold, " +
                            "the corresponding velocity component is set to zero (unrealistically high speed due to flat plane). Usually not set higher than 0.01.");
-        setPropertyTooltip("Local Planes","planeEstimator","<html>Select method to fit plane to most-recent timestamps map in neighborhood of event<ul><li>OriginalLP:Robust iterative least squares fit using th1 and th2 but with biased derivative estimate that skews vector angles<li>RobustLP: least squares fit iterative least squares fit using th1 and th2 and disregarding events older than maxDtThreshold and computing velocity using homogenous coordinates that properly handles small x or y derivatives<li>SingleFit: single linear fit including outliers (timestamps that are obsolute); disregards th1 th2 and th3<li>LinearSavitzkyGolay: feedforward computation of slopes using smoothing of derivatives in perpindicular direction and not including events older than maxDtThreshold"); // TODO expand explanations
+        setPropertyTooltip("Local Planes","planeEstimator","<html>Select method to fit plane to most-recent timestamps map in neighborhood of event<ul><li>OriginalLP:Robust iterative least squares fit using th1 and th2 but with biased derivative estimate that skews vector angles<li>RobustLP: least squares fit iterative least squares fit using th1 and th2 and disregarding events older than maxDtThreshold and computing velocity using homogenous coordinates that properly handles small x or y derivatives<li>SingleFit: single linear fit including outliers (timestamps that are obsolute); disregards th1 th2 and th3<li>LinearSavitzkyGolay: feedforward computation of slopes using smoothing of derivatives in perpindicular direction and not including events older than maxDtThreshold"); 
     }    
     
     synchronized void initializeDataMatrix() {
@@ -182,7 +182,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         jj = 0;
         for (sy = -searchDistance; sy <= searchDistance; sy++)
             for (sx = -searchDistance; sx <= searchDistance; sx++) {
-                lastTimesMap[ii][jj][type] = 0;
+                lastTimesMap[ii][jj][type] = Integer.MIN_VALUE;  // TODO fill with Integer.MIN_VALUE
                 for (j = 0; j <= fitOrder; j++)
                     for (i = 0; i <= fitOrder-j; i++)
                         lastTimesMap[ii][jj++][type] += a[i][j]*Math.pow(sx,i)*Math.pow(sy,j);
