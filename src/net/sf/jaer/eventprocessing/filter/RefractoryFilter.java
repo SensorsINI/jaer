@@ -96,7 +96,7 @@ public class RefractoryFilter extends EventFilter2D implements Observer, Propert
             short x = (short) (i.x >>> subsampleBy), y = (short) (i.y >>> subsampleBy);
             int lastt = lastTimestamps[x][y];
             int deltat = (ts - lastt);
-            boolean longISI = deltat > refractoryPeriodUs && lastt != DEFAULT_TIMESTAMP; // if refractoryPeriodUs==0, then all events with ISI==0 pass if passShortISIsEnabled
+            boolean longISI = lastt == DEFAULT_TIMESTAMP || deltat > refractoryPeriodUs; // if refractoryPeriodUs==0, then all events with ISI==0 pass if passShortISIsEnabled
             if ((longISI && !passShortISIsEnabled) || (!longISI && passShortISIsEnabled)) {
 //                BasicEvent o = (BasicEvent) outItr.nextOutput();
 //                o.copyFrom(i);
