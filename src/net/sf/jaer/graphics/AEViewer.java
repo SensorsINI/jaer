@@ -4750,7 +4750,7 @@ two interfaces). otherwise force user choice.
 			loggingButton.setText("Start logging");
 			loggingMenuItem.setText("Start logging data");
 			try {
-				log.info("stopped logging at " + AEDataFile.DATE_FORMAT.format(new Date())+" with "+loggingOutputStream);
+				log.info("stopped logging at " + AEDataFile.DATE_FORMAT.format(new Date())+" to file "+loggingFile);
 				synchronized (loggingOutputStream) {
 					loggingEnabled = false;
 					loggingOutputStream.close();
