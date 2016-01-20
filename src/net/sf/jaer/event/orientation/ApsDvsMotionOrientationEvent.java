@@ -135,6 +135,10 @@ public class ApsDvsMotionOrientationEvent extends ApsDvsOrientationEvent impleme
         return direction;
     }
 
+    /** Return speed in pixels per second
+     * 
+     * @return PPS speed
+     */
     @Override
     public float getSpeed() {
         return speed;

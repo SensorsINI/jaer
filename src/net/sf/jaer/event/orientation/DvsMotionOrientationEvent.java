@@ -122,7 +122,9 @@ public class DvsMotionOrientationEvent extends DvsOrientationEvent implements Mo
     }
 
     /**
-     * @return the speed */
+     * Returns the magnitude of velocity in pixels/sec
+     * @return the speed in pixel/second
+     */
     @Override public float getSpeed() {
         return speed;
     }

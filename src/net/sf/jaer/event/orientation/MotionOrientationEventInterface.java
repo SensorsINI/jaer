@@ -56,7 +56,8 @@ public interface MotionOrientationEventInterface extends OrientationEventInterfa
     byte getDirection();
 
     /**
-     * @return the speed
+     * Returns the magnitude of velocity, in pixels/sec
+     * @return the speed in pixels/sec
      */
     float getSpeed();
 
