@@ -44,8 +44,7 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
         chain.add(targetLabeler);
         setEnclosedFilterChain(chain);
-        apsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
-        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
+        apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
     }
 
     @Override
@@ -106,11 +105,8 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
         GL2 gl = drawable.getGL().getGL2();
         checkBlend(gl);
         int sy = chip.getSizeY();
-        if (apsNet != null && apsNet.outputLayer!=null && apsNet.outputLayer.activations != null && isProcessAPSFrames()) {
-            drawDecisionOutput(gl, sy, apsNet, Color.RED);
-        }
-        if (dvsNet != null && dvsNet.outputLayer!=null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
-            drawDecisionOutput(gl, sy, dvsNet, Color.YELLOW);
+        if (apsDvsNet != null && apsDvsNet.outputLayer!=null && apsDvsNet.outputLayer.activations != null && isProcessAPSFrames()) {
+            drawDecisionOutput(gl, sy, apsDvsNet, Color.RED);
         }
 
         if (totalDecisions > 0) {

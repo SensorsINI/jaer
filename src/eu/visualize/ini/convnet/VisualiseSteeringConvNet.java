@@ -11,7 +11,10 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Arrays;
+import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -35,6 +38,10 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
     private TargetLabeler targetLabeler = null;
     private Error error = new Error();
+    private boolean sendUDPSteeringMessages=getBoolean("sendUDPSteeringMessages",false);
+    private String host=getString("host","localhost");
+    private int port=getInt("host",5678);
+    private InetAddress udpAddress=null;
 
     public VisualiseSteeringConvNet(AEChip chip) {
         super(chip);
@@ -42,12 +49,15 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(s,"showAnalogDecisionOutput", "shows output units as analog shading rather than binary");
         setPropertyTooltip(s,"hideOutput", "hides output unit rendering as shading over sensor image");
         setPropertyTooltip(s,"pixelErrorAllowedForSteering", "If ground truth location is within this many pixels of closest border then the descision is still counted as corret");
+        String udp="UDP messages";
+        setPropertyTooltip(udp,"sendUDPSteeringMessages","sends UDP packets with steering network output to host:port in hostAndPort");
+        setPropertyTooltip(udp,"hostAndPort","hostname:port to send UDP messages to, e.g. localhost:6789");
         FilterChain chain = new FilterChain(chip);
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
         chain.add(targetLabeler);
         setEnclosedFilterChain(chain);
-        apsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
-        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
+        apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
+//        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
     }
 
     @Override
@@ -116,12 +126,12 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         checkBlend(gl);
         int third = chip.getSizeX() / 3;
         int sy = chip.getSizeY();
-        if (apsNet != null && apsNet.outputLayer != null && apsNet.outputLayer.activations != null && (isProcessAPSFrames() | isProcessAPSDVSTogetherInAPSNet())) {
-            drawDecisionOutput(third, gl, sy, apsNet, Color.RED);
+        if (apsDvsNet != null && apsDvsNet.outputLayer != null && apsDvsNet.outputLayer.activations != null) {
+            drawDecisionOutput(third, gl, sy, apsDvsNet, Color.RED);
         }
-        if (dvsNet != null && dvsNet.outputLayer != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
-            drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
-        }
+//        if (dvsNet != null && dvsNet.outputLayer != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
+//            drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
+//        }
 
         MultilineAnnotationTextRenderer.renderMultilineString(String.format("DVS subsampler, inst/avg interval %6.1f/%6.1f ms", dvsSubsampler.getLastSubsamplerFrameIntervalUs()*1e-3f, dvsSubsampler.getFilteredSubsamplerIntervalUs()*1e-3f));
         MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
@@ -196,6 +206,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName() != DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
             super.propertyChange(evt);
+            if(sendUDPSteeringMessages){
+                // TODO send the messages
+            }
         } else {
             DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
             error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit, net.isLastInputTypeProcessedWasApsFrame());
@@ -209,6 +222,58 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 //                }
 //            }
         }
+    }
+
+    /**
+     * @return the sendUDPSteeringMessages
+     */
+    public boolean isSendUDPSteeringMessages() {
+        return sendUDPSteeringMessages;
+    }
+
+    /**
+     * @param sendUDPSteeringMessages the sendUDPSteeringMessages to set
+     */
+    public void setSendUDPSteeringMessages(boolean sendUDPSteeringMessages) {
+        this.sendUDPSteeringMessages = sendUDPSteeringMessages;
+        putBoolean("sendUDPSteeringMessages",sendUDPSteeringMessages);
+    }
+
+    /**
+     * @return the host
+     */
+    public String getHost() {
+        return host;
+    }
+
+    /**
+     * @param host the host to set
+     */
+    public void setHost(String host) {
+        try{
+            InetAddress udpAddress=InetAddress.getByName(host);
+        }catch(UnknownHostException e){
+            log.warning("can't find "+host+": caught "+e);
+            JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), e.toString(), "Bad host for UDP steering messages", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        this.host = host;
+        putString("host",host);
+    }
+
+    /**
+     * @return the port
+     */
+    public int getPort() {
+        return port;
+    }
+
+    /**
+     * @param port the port to set
+     */
+    public void setPort(int port) {
+        this.port = port;
+        putInt("port",port);
     }
 
     private class Error {

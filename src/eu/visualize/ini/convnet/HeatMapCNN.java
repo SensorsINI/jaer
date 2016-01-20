@@ -55,8 +55,8 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         int sy = chip.getSizeY()/strideY;
         heatMap = new float[sx*sy];
         Arrays.fill(heatMap, 0.0f);
-        apsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
-        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
+        apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
+//        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
         renderer = (AEFrameChipRenderer) chip.getRenderer();
     }
 // initialization
@@ -125,13 +125,13 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         checkBlend(gl);
         int third = chip.getSizeX() / 3;
         int sy = chip.getSizeY();
-        if (apsNet != null && apsNet.outputLayer.activations != null && isProcessAPSFrames()) {
-            drawDecisionOutput(third, gl, sy, apsNet, Color.RED);
+        if (apsDvsNet != null && apsDvsNet.outputLayer.activations != null && isProcessAPSFrames()) {
+            drawDecisionOutput(third, gl, sy, apsDvsNet, Color.RED);
         }
         
-        if (dvsNet != null && dvsNet.outputLayer != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
-            drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
-        }
+//        if (dvsNet != null && dvsNet.outputLayer != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
+//            drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
+//        }
 
         if (totalDecisions > 0) {
             float errorRate = (float) incorrect / totalDecisions;
@@ -202,18 +202,18 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName().equals(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)) {
-            if (apsNet != null && processAPSFrames) {
+            if (apsDvsNet != null && processAPSFrames) {
                 long startTime = 0;
                 if (measurePerformance) {
                     startTime = System.nanoTime();
                 }
-                int dimx2 = apsNet.inputLayer.dimx/2;
-                int dimy2 = apsNet.inputLayer.dimy/2;
+                int dimx2 = apsDvsNet.inputLayer.dimx/2;
+                int dimy2 = apsDvsNet.inputLayer.dimy/2;
                 int idx = 0;
                 for(int x = dimx2; x< chip.getSizeX()-dimx2; x+= strideX){
                     for(int y = dimy2; y< chip.getSizeY()-dimy2; y+= strideY){
-                        float[] outputs = apsNet.processInputPatchFrame((AEFrameChipRenderer) (chip.getRenderer()), x, y);
-                        apsNet.drawActivations();
+                        float[] outputs = apsDvsNet.processInputPatchFrame((AEFrameChipRenderer) (chip.getRenderer()), x, y);
+                        apsDvsNet.drawActivations();
                         heatMap[idx]=outputs[0];
                         idx++;
                     }

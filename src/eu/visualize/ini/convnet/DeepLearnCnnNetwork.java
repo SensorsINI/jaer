@@ -17,6 +17,7 @@ import java.util.Arrays;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GL2ES3;
+import java.io.IOException;
 import java.util.Random;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
@@ -72,8 +73,8 @@ import net.sf.jaer.graphics.ImageDisplay;
  *
  *
  * </pre>
- * 
-* @author tobi
+ *
+ * @author tobi
  */
 public class DeepLearnCnnNetwork {
 
@@ -93,8 +94,8 @@ public class DeepLearnCnnNetwork {
     private String xmlFilename = null;
     private boolean printActivations = false;
     private boolean printWeights = false;
-    protected boolean lastInputTypeProcessedWasApsFrame=false;
-    
+    protected boolean lastInputTypeProcessedWasApsFrame = false;
+
     /**
      * This PropertyChange is emitted when either APS or DVS net outputs. The
      * new value is the network. The old value is null.
@@ -171,7 +172,9 @@ public class DeepLearnCnnNetwork {
 
     void drawActivations() {
         checkActivationsFrame();
-        if(layers==null) return;
+        if (layers == null) {
+            return;
+        }
         for (Layer l : layers) {
             if ((l instanceof ConvLayer) && hideConvLayers) {
                 continue;
@@ -278,7 +281,8 @@ public class DeepLearnCnnNetwork {
     }
 
     /**
-     * @param lastInputTypeProcessedWasApsFrame the lastInputTypeProcessedWasApsFrame to set
+     * @param lastInputTypeProcessedWasApsFrame the
+     * lastInputTypeProcessedWasApsFrame to set
      */
     public void setLastInputTypeProcessedWasApsFrame(boolean lastInputTypeProcessedWasApsFrame) {
         this.lastInputTypeProcessedWasApsFrame = lastInputTypeProcessedWasApsFrame;
@@ -491,8 +495,12 @@ public class DeepLearnCnnNetwork {
 //            if (frame == null || frameWidth == 0 || (frame.length / type.samplesPerPixel()) % frameWidth != 0) {
 //                throw new IllegalArgumentException("input frame is null or frame array length is not a multiple of width=" + frameWidth);
 //            }
+
             if (activations == null) {
                 activations = new float[nUnits];
+            }
+            if (subsampler == null) {
+                return activations;
             }
             for (int y = 0; y < dimy; y++) {
                 for (int x = 0; x < dimy; x++) {  // take every xstride, ystride pixels as output
@@ -554,7 +562,7 @@ public class DeepLearnCnnNetwork {
             }
             for (int x = 0; x < dimx; x++) {
                 for (int y = 0; y < dimy; y++) {
-                    imageDisplay.setPixmapGray(y, dimx - x - 1, .5f+a(0, x, y)/4); // try to fit mean 0 std 1 into 0-1 range nicely by offset and gain of .5
+                    imageDisplay.setPixmapGray(y, dimx - x - 1, .5f + a(0, x, y) / 4); // try to fit mean 0 std 1 into 0-1 range nicely by offset and gain of .5
                 }
             }
             imageDisplay.repaint();
@@ -607,11 +615,11 @@ public class DeepLearnCnnNetwork {
                 sum2 += (f * f);
             }
             float m = sum / n;
-            float var = (sum2 / n)-(m*m);
+            float var = (sum2 / n) - (m * m);
             if (n == 0) {
                 var = 1;
             }
-            float r = (float)(1 / Math.sqrt(var));
+            float r = (float) (1 / Math.sqrt(var));
             for (int i = 0; i < n; i++) {
                 activations[i] = r * (activations[i] - m);
             }
@@ -1133,7 +1141,6 @@ public class DeepLearnCnnNetwork {
 //            gl.glVertex2f(1, 1);
 //            gl.glVertex2f(width - 1, 1);
 //            gl.glEnd();
-
             gl.glBegin(GL.GL_LINE_STRIP);
             for (int i = 0; i < activations.length; i++) {
                 float y = 1 + (sy * activations[i]);
@@ -1216,13 +1223,14 @@ public class DeepLearnCnnNetwork {
         }
     }
 
-    public void loadFromXMLFile(File f) {
+    public void loadFromXMLFile(File f) throws IOException {
+        EasyXMLReader networkReader;
+        networkReader = new EasyXMLReader(f);
+        if (!networkReader.hasFile()) {
+            log.warning("No file for reader; file=" + networkReader.getFile());
+            throw new IOException("Exception thrown in EasyXMLReader for file " + f);
+        }
         try {
-            EasyXMLReader networkReader = new EasyXMLReader(f);
-            if (!networkReader.hasFile()) {
-                log.warning("No file for reader; file=" + networkReader.getFile());
-                return;
-            }
 
             if (activationsFrame != null) {
                 activationsFrame.dispose();
@@ -1287,6 +1295,7 @@ public class DeepLearnCnnNetwork {
         } catch (RuntimeException e) {
             log.warning("couldn't load net from file: caught " + e.toString());
             e.printStackTrace();
+            throw new IOException("Exception thrown in body of parser for file " + f);
         }
     }
 

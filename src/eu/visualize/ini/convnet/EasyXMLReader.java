@@ -91,10 +91,13 @@ public class EasyXMLReader {
 
         } catch (SAXException ex) {
             Logger.getLogger(EasyXMLReader.class.getName()).log(Level.SEVERE, null, ex);
+            file=null;
         } catch (IOException ex) {
             Logger.getLogger(EasyXMLReader.class.getName()).log(Level.SEVERE, null, ex);
+            file=null;
         } catch (ParserConfigurationException ex) {
             Logger.getLogger(EasyXMLReader.class.getName()).log(Level.SEVERE, null, ex);
+            file=null;
         }
     }
     
