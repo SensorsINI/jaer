@@ -1,7 +1,7 @@
 /*
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * and openChannel the template in the editor.
  */
 package eu.visualize.ini.convnet;
 
@@ -11,15 +11,23 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import java.io.IOException;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.nio.channels.DatagramChannel;
 import java.util.Arrays;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventio.AEUnicastOutput;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
@@ -38,20 +46,28 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
     private TargetLabeler targetLabeler = null;
     private Error error = new Error();
-    private boolean sendUDPSteeringMessages=getBoolean("sendUDPSteeringMessages",false);
-    private String host=getString("host","localhost");
-    private int port=getInt("host",5678);
-    private InetAddress udpAddress=null;
+//    /** This object used to publish the results to ROS */
+//    public VisualiseSteeringNetRosNodePublisher visualiseSteeringNetRosNodePublisher=new VisualiseSteeringNetRosNodePublisher();
+
+    private boolean sendUDPSteeringMessages = getBoolean("sendUDPSteeringMessages", false);
+    private String host = getString("host", "localhost");
+    private int port = getInt("host", 5678);
+    private DatagramSocket socket = null;
+    private InetSocketAddress client = null;
+    private DatagramChannel channel = null;
+    private ByteBuffer buf = ByteBuffer.allocate(2);
+    private int seqNum = 0;
 
     public VisualiseSteeringConvNet(AEChip chip) {
         super(chip);
-        String s="Steering Output";
-        setPropertyTooltip(s,"showAnalogDecisionOutput", "shows output units as analog shading rather than binary");
-        setPropertyTooltip(s,"hideOutput", "hides output unit rendering as shading over sensor image");
-        setPropertyTooltip(s,"pixelErrorAllowedForSteering", "If ground truth location is within this many pixels of closest border then the descision is still counted as corret");
-        String udp="UDP messages";
-        setPropertyTooltip(udp,"sendUDPSteeringMessages","sends UDP packets with steering network output to host:port in hostAndPort");
-        setPropertyTooltip(udp,"hostAndPort","hostname:port to send UDP messages to, e.g. localhost:6789");
+        String s = "Steering Output";
+        setPropertyTooltip(s, "showAnalogDecisionOutput", "shows output units as analog shading rather than binary");
+        setPropertyTooltip(s, "hideOutput", "hides output unit rendering as shading over sensor image");
+        setPropertyTooltip(s, "pixelErrorAllowedForSteering", "If ground truth location is within this many pixels of closest border then the descision is still counted as corret");
+        String udp = "UDP messages";
+        setPropertyTooltip(udp, "sendUDPSteeringMessages", "sends UDP packets with steering network output to host:port in hostAndPort");
+        setPropertyTooltip(udp, "host", "hostname or IP address to send UDP messages to, e.g. localhost");
+        setPropertyTooltip(udp, "port", "destination UDP port address to send UDP messages to, e.g. 5678");
         FilterChain chain = new FilterChain(chip);
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
         chain.add(targetLabeler);
@@ -113,6 +129,16 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             };
             SwingUtilities.invokeLater(r);
         }
+        if (yes && sendUDPSteeringMessages) {
+            try {
+                openChannel();
+            } catch (IOException ex) {
+                log.warning("Caught exception when trying to open datagram channel to host:port - " + ex);
+            }
+        }
+        if(!yes){
+            closeChannel();
+        }
     }
 
     @Override
@@ -133,15 +159,16 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 //            drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
 //        }
 
-        MultilineAnnotationTextRenderer.renderMultilineString(String.format("DVS subsampler, inst/avg interval %6.1f/%6.1f ms", dvsSubsampler.getLastSubsamplerFrameIntervalUs()*1e-3f, dvsSubsampler.getFilteredSubsamplerIntervalUs()*1e-3f));
+        if (dvsSubsampler != null) {
+            MultilineAnnotationTextRenderer.renderMultilineString(String.format("DVS subsampler, inst/avg interval %6.1f/%6.1f ms", dvsSubsampler.getLastSubsamplerFrameIntervalUs() * 1e-3f, dvsSubsampler.getFilteredSubsamplerIntervalUs() * 1e-3f));
+        }
         MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
-        
+
 //        if (totalDecisions > 0) {
 //            float errorRate = (float) incorrect / totalDecisions;
 //            String s = String.format("Error rate %.2f%% (total=%d correct=%d incorrect=%d)\n", errorRate * 100, totalDecisions, correct, incorrect);
 //            MultilineAnnotationTextRenderer.renderMultilineString(s);
 //        }
-
     }
 
     private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
@@ -206,21 +233,27 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName() != DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
             super.propertyChange(evt);
-            if(sendUDPSteeringMessages){
-                // TODO send the messages
-            }
+
         } else {
             DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
             error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit, net.isLastInputTypeProcessedWasApsFrame());
-//            Boolean correctDecision = correctDescisionFromTargetLabeler(targetLabeler, net);
-//            if (correctDecision != null) {
-//                totalDecisions++;
-//                if (correctDecision) {
-//                    correct++;
-//                } else {
-//                    incorrect++;
-//                }
-//            }
+            if (sendUDPSteeringMessages) {
+                if (checkClient()) { // if client not there, just continue - maybe it comes back
+                    buf.clear();
+                    buf.put((byte) (seqNum & 0xFF)); // mask bits to cast to unsigned byte value 0-255
+                    seqNum++;
+                    if (seqNum > 255) {
+                        seqNum = 0;
+                    }
+                    buf.put((byte) net.outputLayer.maxActivatedUnit);
+                    try {
+//                        log.info("sending buf="+buf+" to client="+client);
+                        channel.send(buf, client);
+                    } catch (IOException e) {
+                        log.warning("Exception trying to send UDP datagram to ROS: "+e);
+                    }
+                }
+            }
         }
     }
 
@@ -236,7 +269,12 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
      */
     public void setSendUDPSteeringMessages(boolean sendUDPSteeringMessages) {
         this.sendUDPSteeringMessages = sendUDPSteeringMessages;
-        putBoolean("sendUDPSteeringMessages",sendUDPSteeringMessages);
+        putBoolean("sendUDPSteeringMessages", sendUDPSteeringMessages);
+        try {
+            openChannel();
+        } catch (IOException ex) {
+            log.warning("Caught exception when trying to open datagram channel to host:port - " + ex);
+        }
     }
 
     /**
@@ -250,15 +288,15 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
      * @param host the host to set
      */
     public void setHost(String host) {
-        try{
-            InetAddress udpAddress=InetAddress.getByName(host);
-        }catch(UnknownHostException e){
-            log.warning("can't find "+host+": caught "+e);
+        try {
+            InetAddress udpAddress = InetAddress.getByName(host);
+        } catch (UnknownHostException e) {
+            log.warning("can't find " + host + ": caught " + e);
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), e.toString(), "Bad host for UDP steering messages", JOptionPane.WARNING_MESSAGE);
             return;
         }
         this.host = host;
-        putString("host",host);
+        putString("host", host);
     }
 
     /**
@@ -273,7 +311,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
      */
     public void setPort(int port) {
         this.port = port;
-        putInt("port",port);
+        putInt("port", port);
     }
 
     private class Error {
@@ -331,8 +369,26 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                     } else {
                         dvsCorrect++;
                     }
+                } else if (getPixelErrorAllowedForSteering() == 0) {
+                    incorrect[gtDescision]++;
+                    totalIncorrect++;
+                    if (apsType) {
+                        apsIncorrect++;
+                    } else {
+                        dvsIncorrect++;
+                    }
                 } else {
-                    if (getPixelErrorAllowedForSteering() == 0) {
+                    boolean wrong = true;
+                    // might be error but maybe not if the descision is e.g. to left and the target location is just over the border to middle
+                    float gtX = gtTargetLocation.location.x;
+                    if (descision == LEFT && gtX < third + pixelErrorAllowedForSteering) {
+                        wrong = false;
+                    } else if (descision == CENTER && gtX >= third - pixelErrorAllowedForSteering && gtX <= 2 * third + pixelErrorAllowedForSteering) {
+                        wrong = false;
+                    } else if (descision == RIGHT && gtX >= 2 * third - pixelErrorAllowedForSteering) {
+                        wrong = false;
+                    }
+                    if (wrong) {
                         incorrect[gtDescision]++;
                         totalIncorrect++;
                         if (apsType) {
@@ -340,27 +396,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                         } else {
                             dvsIncorrect++;
                         }
-                    } else {
-                        boolean wrong = true;
-                        // might be error but maybe not if the descision is e.g. to left and the target location is just over the border to middle
-                        float gtX = gtTargetLocation.location.x;
-                        if (descision == LEFT && gtX < third + pixelErrorAllowedForSteering) {
-                            wrong = false;
-                        } else if (descision == CENTER && gtX >= third - pixelErrorAllowedForSteering && gtX <= 2 * third + pixelErrorAllowedForSteering) {
-                            wrong = false;
-                        } else if (descision == RIGHT && gtX >= 2 * third - pixelErrorAllowedForSteering) {
-                            wrong = false;
-                        }
-                        if (wrong) {
-                            incorrect[gtDescision]++;
-                            totalIncorrect++;
-                            if (apsType) {
-                                apsIncorrect++;
-                            } else {
-                                dvsIncorrect++;
-                            }
 
-                        }
                     }
                 }
 
@@ -428,4 +464,40 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         }
 
     }
+
+    /**
+     * returns true if socket exists and is bound
+     */
+    private boolean checkClient() {
+        if (socket == null) {
+            return false;
+        }
+
+        try {
+            if (socket.isBound()) {
+                return true;
+            }
+            client = new InetSocketAddress(host, port);
+            return true;
+        } catch (Exception se) { // IllegalArgumentException or SecurityException
+            log.warning("While checking client host=" + host + " port=" + port + " caught " + se.toString());
+            return false;
+        }
+    }
+
+    public void openChannel() throws IOException {
+        closeChannel();
+        channel = DatagramChannel.open();
+        socket = channel.socket(); // bind to any available port because we will be sending datagrams with included host:port info
+        socket.setTrafficClass(0x10 + 0x08); // low delay
+        log.info("opened channel on local port to send UDP messages to ROS. local port number =" + socket.getLocalPort());
+    }
+
+    public void closeChannel() {
+        if (socket == null) {
+            return;
+        }
+        socket.close();
+    }
+
 }

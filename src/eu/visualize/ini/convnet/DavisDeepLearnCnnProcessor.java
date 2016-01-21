@@ -173,17 +173,20 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             final int sizeY = chip.getSizeY();
             for (BasicEvent e : in) {
                 PolarityEvent p = (PolarityEvent) e;
-                if(dvsSubsampler!=null) dvsSubsampler.addEvent(p, sizeX, sizeY);
-                if (dvsSubsampler!=null && dvsSubsampler.getAccumulatedEventCount() > dvsMinEvents) {
+                if (dvsSubsampler != null) {
+                    dvsSubsampler.addEvent(p, sizeX, sizeY);
+                }
+                if (dvsSubsampler != null && dvsSubsampler.getAccumulatedEventCount() > dvsMinEvents) {
                     long startTime = 0;
                     if (measurePerformance) {
                         startTime = System.nanoTime();
                     }
-//                    if (processDVSTimeSlices) {
-//                        dvsNet.processDvsTimeslice(dvsSubsampler);
-//                    }
-                    apsDvsNet.processDvsTimeslice(dvsSubsampler); // generates PropertyChange EVENT_MADE_DECISION
-                    if(dvsSubsampler!=null) dvsSubsampler.clear();
+                    if (processDVSTimeSlices) {
+                        apsDvsNet.processDvsTimeslice(dvsSubsampler); // generates PropertyChange EVENT_MADE_DECISION
+                    }
+                    if (dvsSubsampler != null) {
+                        dvsSubsampler.clear();
+                    }
                     if (measurePerformance) {
                         long dt = System.nanoTime() - startTime;
                         float ms = 1e-6f * dt;

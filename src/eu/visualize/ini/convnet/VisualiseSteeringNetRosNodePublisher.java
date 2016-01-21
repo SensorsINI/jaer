@@ -11,7 +11,7 @@ import net.sf.jaer.Description;
  @author Tobi
 */
 @Description("RosJava node supplying data to ROS master")
-public class VisualliseSteeringNetRosNodePublisher {
+public class VisualiseSteeringNetRosNodePublisher {
     /** Steering net winning output
      * 0=left, 1=center, 2=right, 3=no target
      */
