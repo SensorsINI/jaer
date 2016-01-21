@@ -744,6 +744,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 mapChunk(newChunkNumber);
             }
             byteBuffer.position((int) ((event * eventSizeBytes) % chunkSizeBytes));
+            
+            // Update in buffer at the same time, just for jAER 3.0 format file
+            if(this.jaer3EnableFlg) {
+                jaer3BufferParser.setInBuffer(byteBuffer);
+                jaer3BufferParser.setInBufferOrder(ByteOrder.LITTLE_ENDIAN);               
+            }
             position = event;
         } catch (ClosedByInterruptException e3) {
             log.info("caught interrupt, probably from single stepping this file");

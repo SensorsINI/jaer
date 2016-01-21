@@ -250,6 +250,10 @@ public class Jaer3BufferParser {
         in = BufferToBeProcessed; //To change body of generated methods, choose Tools | Templates.
     }
     
+    public void setInBufferOrder(ByteOrder order) {
+        in.order(order);
+    }
+    
     public enum EventType {
 
         SpecialEvent, PolarityEvent, FrameEvent, Imu6Event, Imu9Event, SampleEvent, EarEvent, ConfigEvent // ordered according to id code
