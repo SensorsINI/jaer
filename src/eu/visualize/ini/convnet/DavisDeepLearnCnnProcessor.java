@@ -232,7 +232,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         // new activationsFrame is available, process it
-        if ((apsDvsNet != null && (processAPSFrames))) {
+        if (isFilterEnabled() && (apsDvsNet != null) && (processAPSFrames)) {
 //            float[] frame = frameExtractor.getNewFrame();
 //            if (frame == null || frame.length == 0 || frameExtractor.getWidth() == 0) {
 //                return;
