@@ -112,7 +112,7 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
                 }
             }
 
-        }
+        } 
     }
 
     // Compute the convolution coefficients of a two-dimensional Savitzky-Golay
@@ -187,7 +187,6 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
 //        computeSavitzkyGolayCoefficients();
 //    }
 //    // </editor-fold>
-
     /**
      * @return the showTimestampMap
      */
@@ -245,6 +244,17 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
             AEFrameChipRenderer frameRenderer = (AEFrameChipRenderer) renderer;
             frameRenderer.setAnnotateAlpha(showTimestampMapAlpha);
         }
+    }
+
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes); //To change body of generated methods, choose Tools | Templates.
+        AEChipRenderer renderer;
+        renderer = (AEChipRenderer) chip.getRenderer();
+        if (renderer == null) {
+            return;
+        }
+        renderer.setExternalRenderer(showTimestampMap && yes);
     }
 
 }
