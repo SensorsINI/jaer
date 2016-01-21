@@ -4707,11 +4707,19 @@ two interfaces). otherwise force user choice.
 		if ((chip.getHardwareInterface() != null) && (chip.getHardwareInterface() instanceof USBInterface)) {
 			USBInterface usb = (USBInterface) chip.getHardwareInterface();
 			if ((usb.getStringDescriptors() != null) && (usb.getStringDescriptors().length == 3) && (usb.getStringDescriptors()[2] != null)) {
-				serialNumber = "-" + usb.getStringDescriptors()[2];
+				serialNumber = usb.getStringDescriptors()[2];
 			}
                         // replace non-printable characters with X to avoid errors on windows 10 with creating such filenames. 
-                        // this sitation can occur with early prototypes that lack serial number (i.e. serial number is integer 0)
-                        serialNumber=serialNumber.replaceAll("\\p{C}", "X"); // from http://stackoverflow.com/questions/6198986/how-can-i-replace-non-printable-unicode-characters-in-java
+                    // this sitation can occur with early prototypes that lack serial number (i.e. serial number is integer 0)
+                    StringBuilder sb = new StringBuilder("-");
+                    for (Character c : serialNumber.toCharArray()) {
+                        if (Character.isLetterOrDigit(c)) {
+                            sb.append(c);
+                        } else {
+                            sb.append('X');
+                        }
+                    }
+                    serialNumber = sb.toString(); 
                         
 		}
 		boolean succeeded = false;
