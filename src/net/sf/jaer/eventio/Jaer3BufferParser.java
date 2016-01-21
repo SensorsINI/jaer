@@ -40,19 +40,18 @@ public class Jaer3BufferParser {
     public Jaer3BufferParser(MappedByteBuffer byteBuffer) throws IOException {
         in = byteBuffer;
         in.order(ByteOrder.LITTLE_ENDIAN);    //AER3.0 spec is little endian
-        findAndSetPacketHeader(1);
+        findAndSetPacketHeader(0, 1);
     }
 
     public int GetCurrentEventOffset() throws IOException {
         int currentPosition = in.position();
-        int eventSize = packetHeader.eventSize;
         int nextPktPos = currentPktPos + packetHeader.eventNumber * packetHeader.eventSize + PKT_HEADER_SIZE;
         
-        if(currentPosition >= nextPktPos) {  // current position is not in the current packet, so we need to update currentPktPos
-            findAndSetPacketHeader(-1);        // TODO: In fact, findAndSetPacketHeader() just work when currentPosition equals to nextPktPos
-                                             // When currentPosition > nextPktPos, it can only find the next packet and not the current packet
-                                             // So it should add a method to find the current packet even when the current position > current packet header position
-        }
+        // current position is not in the current packet, so we need to find the packet the current position belongs to
+        if(currentPosition >= nextPktPos || currentPosition <= currentPktPos) {   
+            findAndSetPacketHeader(currentPosition, -1);              // TODO: add a function to find the current position's packet, sometimes the position
+                                                                      // doesn't belong to any packet (e.g a invalid data), then the method here will not work
+        }        
         
         // Now we get the correct currentPktPos
         if(currentPosition - currentPktPos <= PKT_HEADER_SIZE && currentPosition - currentPktPos >=0) {  //current position is in the packet header, then the offset is the first event offset
@@ -61,12 +60,13 @@ public class Jaer3BufferParser {
         
         // currentPktPos + PKT_HEADER_SIZE is the first event offset, so (currentPosition - (currentPktPos + PKT_HEADER_SIZE))%eventSize is the distance
         // between current position and current event offset
+        int eventSize = packetHeader.eventSize;        
         return currentPosition - (currentPosition - (currentPktPos + PKT_HEADER_SIZE))%eventSize;     
     }
     
     public int GetNextEventOffset() throws IOException {
-        int eventSize = packetHeader.eventSize;
         int currentEventOffset = GetCurrentEventOffset();
+        int eventSize = packetHeader.eventSize;        
         int currentPosition = in.position();
         int nextPktPos = currentPktPos + packetHeader.eventNumber * packetHeader.eventSize + PKT_HEADER_SIZE;        
         
@@ -79,11 +79,11 @@ public class Jaer3BufferParser {
         // The current position is in the last event of the current packet and not the event header, so the next event will be in the next packet.
         // We should update the currentPktPos first.
         if(currentEventOffset + eventSize >= nextPktPos) {
-            findAndSetPacketHeader(1);
+            findAndSetPacketHeader(nextPktPos, 1);
             return currentPktPos + PKT_HEADER_SIZE;
         }
         
-        // Now we get the correct currentPktPos
+        // Now we get the correct currentPktPos and the current position is in the header.
         if(currentPosition - currentPktPos <= PKT_HEADER_SIZE && currentPosition - currentPktPos >=0) {  //current position is in the packet header, then the next offset is the first event offset
             return currentPktPos + PKT_HEADER_SIZE;
         }
@@ -93,6 +93,23 @@ public class Jaer3BufferParser {
    
     public ByteBuffer GetJaer2EventBuf() throws IOException {
         int nextEventOffset = GetNextEventOffset();
+
+        int validMask = 0x00000001;
+        int eventFirstInt;
+        in.position(nextEventOffset);        
+        eventFirstInt = in.getInt();        
+        
+        // This while loop is used to exclude the invalid events and non-polarity packets
+        while((eventFirstInt & validMask) != 1 || (packetHeader.eventType != EventType.PolarityEvent)) {
+            if(packetHeader.eventType != EventType.PolarityEvent) {
+                in.position(currentPktPos + packetHeader.eventNumber * packetHeader.eventSize + PKT_HEADER_SIZE);
+            }
+            nextEventOffset = GetNextEventOffset();
+            in.position(nextEventOffset);        
+            eventFirstInt = in.getInt();              
+        }       
+
+        
         int addrOffset = GetAddrOffset();
         int tsOffset = packetHeader.eventTSOffset;
         ByteBuffer jaer2Buffer = ByteBuffer.allocate(8);
@@ -140,7 +157,7 @@ public class Jaer3BufferParser {
        
  
 
-    private void findAndSetPacketHeader(int direction) throws IOException {
+    private void findAndSetPacketHeader(int startPosition, int direction) throws IOException {
         PacketDescriptor d = new PacketDescriptor();
         int eventTypeInt;    
         int currentPosition = in.position();  //store current position, guarntee the position didn't change in this function
@@ -150,17 +167,8 @@ public class Jaer3BufferParser {
             log.warning("Search direction can only be 1(forward) or -1(backward!)");
             return;
         }
-        /*
-        // If in.position is 0, it indicates it's the first time to search the packet, we don't need to calculate the distance 
-        // between current position to last currentPktPos, because we still don't have the currentPktPos yet. 
-        // This is mainly used to accelerate the search speed by excluding the positions in the current packet.
-        if(in.position() != 0) {            
-            if((in.position()  - currentPktPos < PKT_HEADER_SIZE + packetHeader.eventNumber * packetHeader.eventSize)) {
-                in.position(currentPktPos + PKT_HEADER_SIZE + packetHeader.eventNumber * packetHeader.eventSize);
-            }    
-        }
-        */
-        
+
+        in.position(startPosition);
         
         while((in.position() <= in.limit() - PKT_HEADER_SIZE) || in.position() >= 0) {               
             int currentSearchPosition = in.position();
@@ -210,7 +218,7 @@ public class Jaer3BufferParser {
             // if(d.eventNumber != d.eventCapacity) continue;
                         
             d.eventValid = in.getInt();         //eventValid
-            if(d.eventValid <= 0) {
+            if(d.eventValid < 0) {
                 in.position(currentSearchPosition + direction);                
                 continue;
             }

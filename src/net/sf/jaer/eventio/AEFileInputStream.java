@@ -303,6 +303,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         int addr = 0;
         int lastTs = mostRecentTimestamp;
         
+        ByteBuffer tmpEventBuffer = ByteBuffer.allocate(8);       
         
         // if(jaer3fileinputstream!=null){
             // return jaer3fileinputstream.readEventForwards();
@@ -323,8 +324,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //            ts=eventByteBuffer.getInt();
             
             if (jaer3EnableFlg) {
-                ByteBuffer tmpEventBuffer;       
-                tmpEventBuffer = ByteBuffer.allocate(8);
                 tmpEventBuffer = jaer3BufferParser.GetJaer2EventBuf();
                 addr = tmpEventBuffer.getInt();
                 ts = tmpEventBuffer.getInt();
@@ -346,12 +345,20 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 if (zeroTimestampWarningCount == ZERO_TIMESTAMP_MAX_WARNINGS) {
                     log.warning("suppressing further messages about zero timestamps");
                 }
-                if (addressType == Integer.TYPE) {
-                    addr = byteBuffer.getInt();
-                } else {
-                    addr = (byteBuffer.getShort() & 0xffff); // TODO reads addr as negative number if msb is set
+                
+                if (jaer3EnableFlg) {
+                    tmpEventBuffer = jaer3BufferParser.GetJaer2EventBuf();
+                    addr = tmpEventBuffer.getInt();
+                    ts = tmpEventBuffer.getInt();
+                }    
+                else {
+                    if (addressType == Integer.TYPE) {
+                        addr = byteBuffer.getInt();
+                    } else {
+                        addr = (byteBuffer.getShort() & 0xffff); // TODO reads addr as negative number if msb is set
+                    }     
+                    ts = byteBuffer.getInt();         
                 }
-                ts = byteBuffer.getInt();
 
             }
             // for marking sync in a recording using the result of bitmask with input
@@ -365,19 +372,27 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 // push back event onto byteBuffer.
                 // we've already read the event, but have not updated the position field.
                 // therefore we just set position back to its value now (the event we are reading)
-                position(position); // we haven't updated our position field yet
+                if(jaer3EnableFlg == false) {
+                    position(position); // we haven't updated our position field yet
+                }
                 ts = lastTs; // this is the one last read successfully
                 mostRecentTimestamp = ts;
                 return null;
             }
             // check for non-monotonic increasing timestamps, if we get one, reset our notion of the starting time
             if (isWrappedTime(ts, mostRecentTimestamp, 1)) {
+                if(jaer3EnableFlg) {
+                    log.log(Level.INFO, "The current packet file position is {0} and current file position is {1}", new Object[]{jaer3BufferParser.GetCurrentPktPos(), byteBuffer.position()});  
+                }
                 throw new WrappedTimeException(ts, mostRecentTimestamp, position);
 //                           WrappedTimeException e = new WrappedTimeException(ts, mostRecentTimestamp, position);
 //                log.info(e.toString());
 //                getSupport().firePropertyChange(AEInputStream.EVENT_WRAPPED_TIME,e.getPreviousTimestamp(),e.getCurrentTimestamp());
             }
             if (enableTimeWrappingExceptionsChecking && (ts < mostRecentTimestamp)) {
+                if(jaer3EnableFlg) {
+                    log.log(Level.INFO, "The current packet file position is {0} and current file position is {1}", new Object[]{jaer3BufferParser.GetCurrentPktPos(), byteBuffer.position()});  
+                }
 //                log.warning("AEInputStream.readEventForwards returned ts="+ts+" which goes backwards in time (mostRecentTimestamp="+mostRecentTimestamp+")");
                 throw new NonMonotonicTimeException(ts, mostRecentTimestamp, position);
             }
