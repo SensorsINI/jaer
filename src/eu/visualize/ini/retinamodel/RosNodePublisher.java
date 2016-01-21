@@ -6,15 +6,15 @@ import net.sf.jaer.Description;
 //-- end packages ------------------------------------------------------------//
 //****************************************************************************//
 
-//****************************************************************************//
-//-- Description -------------------------------------------------------------//
-//----------------------------------------------------------------------------//
-// Java Ros Node, sending to master node
-// @author diederik
-//-- end description ---------------------------------------------------------//
-//****************************************************************************//
-@Description("RosJava node sending commands to Ros master")
-
+/**
+ * RosJava node supplying data to ROS master.
+ * This publisher supplies the X,Y,Z locations of the target (prey) but has no option for "prey not visible".
+ * 
+ * 
+ * 
+ @author diederik
+*/
+@Description("RosJava node supplying data to ROS master")
 public class RosNodePublisher {
     int xCoordinate;
     int yCoordinate;
