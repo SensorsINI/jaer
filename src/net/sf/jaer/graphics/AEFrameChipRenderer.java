@@ -757,11 +757,12 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     /**
-     * sets a specific color (rgb float 0-1) of the pixmap
+     * sets a specific color (rgb float 0-1) of the pixmap with default alpha value
      *
      * @param x
      * @param y
-     * @param value
+     * @param value a float[3] array of RGB values
+     * @see #setAnnotateAlpha(float) 
      */
     @Override
     public void setAnnotateColorRGB(int x, int y, float[] value) {
@@ -773,11 +774,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     /**
-     * sets a specific color (rgb float 0-1) of the pixmap
+     * sets a specific color (rgb float 0-1) of the pixmap including alpha
      *
      * @param x
      * @param y
-     * @param value
+     * @param value a float[4] array of RGBA values
      */
     public void setAnnotateColorRGBA(int x, int y, float[] value) {
         int index = getPixMapIndex(x, y);
@@ -786,6 +787,19 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         annotateMap.put(index + 2, value[2]);
         annotateMap.put(index + 3, value[3]);
     }
+    
+       /**
+     * sets the alpha value of a specific pixel
+     *
+     * @param x
+     * @param y
+     * @param value a float alpha value
+     */
+    public void setAnnotateAlpha(int x, int y, float alpha) {
+        int index = getPixMapIndex(x, y);
+        annotateMap.put(index + 3, alpha);
+    }
+
 
     /**
      * Returns the width of the texture used to render output. Note this is NOT
