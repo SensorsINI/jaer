@@ -256,9 +256,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         try {
             EventRaw ev = readEventForwards(); // init timestamp
             firstTimestamp = ev.timestamp;
-            position(size() - 2);
-            ev = readEventForwards();
-            lastTimestamp = ev.timestamp;
+            if(true == jaer3EnableFlg) {
+                lastTimestamp = jaer3BufferParser.GetLastTimeStamp();
+            } else {
+                position(size() - 2);
+                ev = readEventForwards();
+                lastTimestamp = ev.timestamp;           
+            }
             position(0);
             currentStartTimestamp = firstTimestamp;
             mostRecentTimestamp = firstTimestamp;
@@ -302,6 +306,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         int ts = firstTimestamp;
         int addr = 0;
         int lastTs = mostRecentTimestamp;
+        int lastBufferPosition = 0;
         
         ByteBuffer tmpEventBuffer = ByteBuffer.allocate(8);       
         
@@ -324,6 +329,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //            ts=eventByteBuffer.getInt();
             
             if (jaer3EnableFlg) {
+                lastBufferPosition = byteBuffer.position();
                 tmpEventBuffer = jaer3BufferParser.GetJaer2EventBuf();
                 addr = tmpEventBuffer.getInt();
                 ts = tmpEventBuffer.getInt();
@@ -374,6 +380,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 // therefore we just set position back to its value now (the event we are reading)
                 if(jaer3EnableFlg == false) {
                     position(position); // we haven't updated our position field yet
+                } else {
+                    byteBuffer.position(lastBufferPosition);
                 }
                 ts = lastTs; // this is the one last read successfully
                 mostRecentTimestamp = ts;
