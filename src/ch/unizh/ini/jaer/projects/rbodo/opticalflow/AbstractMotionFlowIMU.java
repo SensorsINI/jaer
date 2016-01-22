@@ -560,7 +560,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         float angle = (float) (Math.atan2(e.getVelocity().y, e.getVelocity().x) / (2 * Math.PI) + 0.5);
         gl.glColor3f(angle, 1 - angle, 1 / (1 + 10 * angle));
         gl.glPushMatrix();
-        DrawGL.drawVector(gl, e.getX(), e.getY(), e.getVelocity().x, e.getVelocity().y, 1, ppsScale);
+        DrawGL.drawVector(gl, e.getX()+.5f, e.getY()+.5f, e.getVelocity().x, e.getVelocity().y, 1, ppsScale);
         gl.glPopMatrix();
     }
 
