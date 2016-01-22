@@ -477,8 +477,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     synchronized void allocateMap() {
 
-        if(subSizeY*subSizeX*numInputTypes==0) return;
-        
+        if (subSizeY * subSizeX * numInputTypes == 0) {
+            return;
+        }
+
         if (subsampledPixelIsSet == null) {
             subsampledPixelIsSet = new boolean[subSizeX][subSizeY];
         }
@@ -486,8 +488,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         for (boolean[] a : subsampledPixelIsSet) {
             Arrays.fill(a, false);
         }
-        if (lastTimesMap == null ) {
-            lastTimesMap = new int[subSizeX][subSizeY][numInputTypes];  
+        if (lastTimesMap == null) {
+            lastTimesMap = new int[subSizeX][subSizeY][numInputTypes];
         }
         for (int[][] a : lastTimesMap) {
             for (int[] b : a) {
@@ -559,7 +561,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         float angle = (float) (Math.atan2(e.getVelocity().y, e.getVelocity().x) / (2 * Math.PI) + 0.5);
         gl.glColor3f(angle, 1 - angle, 1 / (1 + 10 * angle));
         gl.glPushMatrix();
-        DrawGL.drawVector(gl, e.getX()+.5f, e.getY()+.5f, e.getVelocity().x, e.getVelocity().y, 1, ppsScale);
+        DrawGL.drawVector(gl, e.getX() + .5f, e.getY() + .5f, e.getVelocity().x, e.getVelocity().y, 1, ppsScale);
         gl.glPopMatrix();
     }
 
@@ -691,6 +693,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         return x < xMin || x >= xMax || y < yMin || y >= yMax;
     }
 
+    /**
+     * returns true if timestamp is invalid
+     *
+     * @return true if invalid timestamp, older than refractoryPeriodUs ago
+     */
     synchronized boolean isInvalidTimestamp() {
         lastTs = lastTimesMap[x][y][type];
         lastTimesMap[x][y][type] = ts;
@@ -867,7 +874,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 //        putFloat("epsilon", epsilon);
 //    }
     // </editor-fold>
-
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --discardOutliersEnabled--">
 //    public boolean getDiscardOutliersEnabled() {
 //        return this.discardOutliersEnabled;
@@ -879,7 +885,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 //        putBoolean("discardOutliersEnabled", discardOutliersEnabled);
 //    }
     // </editor-fold>
-
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --loggingFolder--">
     public String getLoggingFolder() {
         return loggingFolder;
