@@ -31,7 +31,7 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             extractEventInfo(ein);
             imuFlowEstimator.calculateImuFlow((PolarityEvent) inItr.next());
             if (isInvalidAddress(0)) continue;
-            if (!updateTimesmap()) continue;
+            if (isInvalidTimestamp()) continue;
             if (xyFilter()) continue;
             countIn++;
             vx = imuFlowEstimator.getVx();

@@ -556,7 +556,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      * @param e the event
      */
     protected void drawMotionVector(GL2 gl, MotionOrientationEventInterface e) {
-        if(e.getSpeed()<1) return;
         float angle = (float) (Math.atan2(e.getVelocity().y, e.getVelocity().x) / (2 * Math.PI) + 0.5);
         gl.glColor3f(angle, 1 - angle, 1 / (1 + 10 * angle));
         gl.glPushMatrix();
@@ -692,13 +691,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         return x < xMin || x >= xMax || y < yMin || y >= yMax;
     }
 
-    synchronized boolean updateTimesmap() {
+    synchronized boolean isInvalidTimestamp() {
         lastTs = lastTimesMap[x][y][type];
         lastTimesMap[x][y][type] = ts;
         if (ts < lastTs) {
             resetFilter(); // For NonMonotonicTimeException.
         }
-        return ts > lastTs + refractoryPeriodUs;
+        return ts < lastTs + refractoryPeriodUs;
     }
 
     synchronized void extractEventInfo(Object ein) {

@@ -92,7 +92,7 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
                 setGroundTruth();
             }
             if (isInvalidAddress(searchDistance)) continue;
-            if (!updateTimesmap()) continue;
+            if (isInvalidTimestamp()) continue;
             if (xyFilter()) continue;
             countIn++;
             

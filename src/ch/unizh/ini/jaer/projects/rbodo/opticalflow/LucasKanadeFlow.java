@@ -387,7 +387,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
             if (isInvalidAddress(searchDistance + d)) continue;
             timestamps[x][y][type].add(ts); // Add most recent event to queue.
             timestamps2[x][y][type].add(ts);
-            if (!updateTimesmap()) continue;
+            if (isInvalidTimestamp()) continue;
             if (xyFilter()) continue;
             countIn++;
             

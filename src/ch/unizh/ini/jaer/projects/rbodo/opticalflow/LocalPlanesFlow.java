@@ -194,10 +194,13 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     synchronized void initializeNeighborhood() {
         neighborhood = new ArrayList<>();
         for (sx = -searchDistance; sx <= searchDistance; sx++) 
-            for (sy = -searchDistance; sy <= searchDistance; sy++)
-                if (ts - lastTimesMap[x+sx][y+sy][type] < maxDtThreshold)
-                    neighborhood.add(new double[] {x+sx,y+sy,
-                    (lastTimesMap[x+sx][y+sy][type]-firstTs)*1e-6f,1});
+            for (sy = -searchDistance; sy <= searchDistance; sy++){
+                int lts = lastTimesMap[x + sx][y + sy][type];
+                if (lts != Integer.MIN_VALUE && ts - lts < maxDtThreshold) {
+                    neighborhood.add(new double[]{x + sx, y + sy,
+                        (lts - firstTs) * 1e-6f, 1});
+                }
+            }
     }
     
     // <editor-fold defaultstate="collapsed" desc="Various plane estimation methods">
@@ -403,7 +406,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                 setGroundTruth();
             }
             if (isInvalidAddress(searchDistance)) continue;
-            if (!updateTimesmap()) continue;
+            if (isInvalidTimestamp()) continue;
             if (xyFilter()) continue;
             countIn++;
             computePlaneEstimate();
