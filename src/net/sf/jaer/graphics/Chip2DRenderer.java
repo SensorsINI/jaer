@@ -117,8 +117,9 @@ public class Chip2DRenderer implements Observer {
     /**
      * sets a specific value of the pixmap
      *
-     * @param index
-     * @param value
+     * @param index index into pixmap. Add offset for G (1) B(2)
+     * @param value float value, 0-1 range
+     * @see #getPixMapIndex(int, int) 
      */
     public void setAnnotateValue(int index, float value) {
         pixmap.put(index, value);
@@ -128,7 +129,8 @@ public class Chip2DRenderer implements Observer {
      * sets a specific color (rgb float 0-1) of the pixmap
      *
      * @param index
-     * @param value
+     * @param value float[3] vector containing RGB values
+     * @see #getPixMapIndex(int, int) 
      */
     public void setAnnotateColorRGB(int index, float[] value) {
         pixmap.put(index, value[0]);
