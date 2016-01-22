@@ -58,14 +58,11 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable); //To change body of generated methods, choose Tools | Templates.
         if (showTimestampMap) {
-            AEChipRenderer renderer;
-            renderer = (AEChipRenderer) chip.getRenderer();
+            AEFrameChipRenderer renderer;
+            renderer = (AEFrameChipRenderer) chip.getRenderer();
             renderer.setExternalRenderer(true);
             renderer.resetAnnotationFrame(0.0f);
-            if (renderer instanceof AEFrameChipRenderer) {
-                AEFrameChipRenderer frameRenderer = (AEFrameChipRenderer) renderer;
-                frameRenderer.setAnnotateAlpha(showTimestampMapAlpha);
-            }
+            renderer.setAnnotateAlpha(showTimestampMapAlpha);
             int sx = chip.getSizeX(), sy = chip.getSizeY();
             // scale all timetamp values by maxDtThreshold
             int maxTs = Integer.MIN_VALUE;
@@ -96,23 +93,27 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
                             ts = ts0 > ts1 ? ts0 : ts1;
                     }
                     if (ts == Integer.MIN_VALUE) {
+                        renderer.setAnnotateAlpha(x, y, 1);
                         continue; // don't bother for uninitialized timestamps
                     }
-                    float v = (1 - ((float) (maxTs - ts) / maxDtThreshold)); // TODO should be maxDtThreshold
+                    float v = (1 - ((float) (maxTs - ts) / maxDtThreshold));
+                    float a = showTimestampMapAlpha;
                     if (v > 1) {
                         v = 1;
                     } else if (v < 0) {
                         v = 0;
+                        a = 0;
                     }
-                    float[] colors = new float[3];
+                    float[] colors = new float[4];
                     colors[0] = v;
                     colors[1] = v;
                     colors[2] = v;
-                    renderer.setAnnotateColorRGB(x, y, colors);
+                    colors[3] = a;
+                    renderer.setAnnotateColorRGBA(x, y, colors);
                 }
             }
 
-        } 
+        }
     }
 
     // Compute the convolution coefficients of a two-dimensional Savitzky-Golay
