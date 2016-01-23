@@ -34,7 +34,7 @@ public class Jaer3BufferParser {
     private final int PKT_HEADER_SIZE = 28;
     
     private PacketDescriptor currentPkt = new PacketDescriptor();
-    // private int currentPktPos = 0;
+    private long numEvents = 0;
    
     
     public enum EventType {
@@ -112,7 +112,7 @@ public class Jaer3BufferParser {
         in.position(startPosition);
         
      
-        while((in.position() <= in.limit() - PKT_HEADER_SIZE) || in.position() >= 0) {               
+        while((in.position() <= in.limit() - PKT_HEADER_SIZE) && in.position() >= 0) {               
             int currentSearchPosition = in.position();
             eventTypeInt = in.getShort(); 
             //  By default, eventTypeInt should range from 0 to 7
@@ -205,8 +205,22 @@ public class Jaer3BufferParser {
         in = byteBuffer;
         in.order(ByteOrder.LITTLE_ENDIAN);    //AER3.0 spec is little endian
         currentPkt = searchPacketHeader(0, 1);
+        try {
+            numEvents = BufferNumEvents();
+        } catch (IOException ex) {
+                log.warning(ex.toString());
+                Logger.getLogger(AEFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
-
+    
+    /**
+     * gets the size of the stream in events
+     *
+     * @return size in events
+     */
+    public long size() {
+        return numEvents;
+    }
     public int GetCurrentEventOffset() throws IOException {
         int currentPosition = in.position();
         int nextPktPos = currentPkt.pktPosition + currentPkt.pktHeader.eventNumber * currentPkt.pktHeader.eventSize + PKT_HEADER_SIZE;
@@ -340,6 +354,18 @@ public class Jaer3BufferParser {
         jaer2Buffer.putInt(ts);
         jaer2Buffer.flip();
         return jaer2Buffer;
+    }
+    
+    public long BufferNumEvents() throws IOException {
+        PacketDescriptor pkt = GetNextPkt(0);
+        long numEvents = 0;
+        while(pkt != null) {
+            if(pkt.pktHeader.eventType == EventType.PolarityEvent) {
+                numEvents += pkt.pktHeader.eventValid;                
+            }
+            pkt = GetNextPkt(pkt.pktPosition + 1);
+        }
+        return numEvents;
     }
     
     private int GetAddrOffset(PacketHeader packetHeader) throws IOException {

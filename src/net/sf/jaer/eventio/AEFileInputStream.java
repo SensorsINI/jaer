@@ -735,7 +735,11 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      */
     @Override
     public long size() {
-        return (fileSize - headerOffset) / eventSizeBytes;
+        if(jaer3EnableFlg) {
+            return jaer3BufferParser.size();
+        } else {
+            return (fileSize - headerOffset) / eventSizeBytes;
+        }        
     }
 
     /**
