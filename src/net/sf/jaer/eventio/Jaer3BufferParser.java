@@ -480,135 +480,48 @@ public class Jaer3BufferParser {
             final int[] datas = in.getAddresses();
             final int[] timestamps = in.getTimestamps();
             final OutputEventIterator outItr = out.outputIterator();
+            final PacketHeader pktHeader = Jaer3BufferParser.this.currentPkt.pktHeader;
             // NOTE we must make sure we write ApsDvsEvents when we want them, not reuse the IMUSamples
 
             // at this point the raw data from the USB IN packet has already been digested to extract timestamps,
             // including timestamp wrap events and timestamp resets.
             // The datas array holds the data, which consists of a mixture of AEs and ADC values.
             // Here we extract the datas and leave the timestamps alone.
-            // TODO entire rendering / processing approach is not very efficient now
             // System.out.println("Extracting new packet "+out);
-            for (int i = 0; i < n; i++) { // TODO implement skipBy/subsampling, but without missing the frame start/end
-                    // events and still delivering frames
-                    final int data = datas[i];
-
-
-                    final ApsDvsEvent e = nextApsDvsEvent(outItr);
-                    
-                    e.adcSample = -1; // TODO hack to mark as not an ADC sample
-                    e.special = false;
-                    e.address = data;
-                    e.timestamp = (timestamps[i]);
-                    e.polarity = ((data & JAER3POLMASK)  >> JAER3POLSHIFT) == (JAER3POLMASK >> JAER3POLSHIFT) ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
-                    e.type = 0;
-                    e.x = (short) (sx1 - ((data & JAER3XMASK) >>> JAER3XSHIFT));
-                    e.y = (short) ((data & JAER3YMASK) >>> JAER3YSHIFT);
-
-                    e.setIsDVS(true);         
-                    // autoshotEventsSinceLastShot++; // number DVS events captured here
-    
-                    /*
-                    if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_DVS) {
-                            // DVS event
-                            final ApsDvsEvent e = nextApsDvsEvent(outItr);
-                            if ((data & DavisChip.EVENT_TYPE_MASK) == DavisChip.EXTERNAL_INPUT_EVENT_ADDR) {
-                                    e.adcSample = -1; // TODO hack to mark as not an ADC sample
-                                    e.special = true; // TODO special is set here when capturing frames which will mess us up if
-                                    // this is an IMUSample used as a plain ApsDvsEvent
-                                    e.address = data;
-                                    e.timestamp = (timestamps[i]);
-                                    e.setIsDVS(true);
-                            }
-                            else {
-                                    e.adcSample = -1; // TODO hack to mark as not an ADC sample
-                                    e.special = false;
-                                    e.address = data;
-                                    e.timestamp = (timestamps[i]);
-                                    e.polarity = (data & DavisChip.POLMASK) == DavisChip.POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
-                                    e.type = (byte) ((data & DavisChip.POLMASK) == DavisChip.POLMASK ? 1 : 0);
-                                    e.x = (short) (sx1 - ((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
-                                    e.y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
-                                    e.setIsDVS(true);
-                                    // System.out.println(data);
-                                    // autoshot triggering
-                                    autoshotEventsSinceLastShot++; // number DVS events captured here
-                            }
-                    }
-                    else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_APS) {
-                            // APS event
-                            // We first calculate the positions, so we can put events such as StartOfFrame at their
-                            // right place, before the actual APS event denoting (0, 0) for example.
-                            final int timestamp = timestamps[i];
-
-                            final short x = (short) (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
-                            final short y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
-
-                            final boolean pixFirst = firstFrameAddress(x, y); // First event of frame (addresses get flipped)
-                            final boolean pixLast = lastFrameAddress(x, y); // Last event of frame (addresses get flipped)
-
-                            ApsDvsEvent.ReadoutType readoutType = ApsDvsEvent.ReadoutType.Null;
-                            switch ((data & DavisChip.ADC_READCYCLE_MASK) >> ADC_NUMBER_OF_TRAILING_ZEROS) {
-                                    case 0:
-                                            readoutType = ApsDvsEvent.ReadoutType.ResetRead;
-                                            break;
-
-                                    case 1:
-                                            readoutType = ApsDvsEvent.ReadoutType.SignalRead;
-                                            break;
-
-                                    case 3:
-                                            Chip.log.warning("Event with readout cycle null was sent out!");
-                                            break;
-
-                                    default:
-                                            if ((warningCount < 10) || ((warningCount % DavisBaseCamera.DavisEventExtractor.WARNING_COUNT_DIVIDER) == 0)) {
-                                                    Chip.log.warning(
-                                                            "Event with unknown readout cycle was sent out! You might be reading a file that had the deprecated C readout mode enabled.");
-                                            }
-                                            warningCount++;
-                                            break;
-                            }
-
-                            if (pixFirst && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) {
-                                    createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamp);
-
-
-                            }
-
-
-                            final ApsDvsEvent e = nextApsDvsEvent(outItr);
-                            e.adcSample = data & DavisChip.ADC_DATA_MASK;
-                            e.readoutType = readoutType;
-                            e.special = false;
-                            e.timestamp = timestamp;
-                            e.address = data;
-                            e.x = x;
-                            e.y = y;
-                            e.type = (byte) (2);
-
-                            // end of exposure, same for both
-                            if (pixFirst && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
-                                    createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOE, timestamp);
-                                    frameExposureEndTimestampUs = timestamp;
-                                    exposureDurationUs = timestamp - frameExposureStartTimestampUs;
-                            }
-
-                            if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
-                                    createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
-
-                                    setFrameCount(getFrameCount() + 1);
-                            }
-                    }
-            }
-
-            if ((getAutoshotThresholdEvents() > 0) && (autoshotEventsSinceLastShot > getAutoshotThresholdEvents())) {
-                    takeSnapshot();
-                    autoshotEventsSinceLastShot = 0;
-            */
-            }                       
-
-            return out;
-    } // extractPacket
+                for (int i = 0; i < n; i++) { 
+                        // events and still delivering frames
+                        final int data = datas[i];
+                        
+                        switch (pktHeader.eventType) {
+                            case PolarityEvent:
+                                readDVS(outItr, data, timestamps[i]);
+                                break;
+                            case FrameEvent:
+                                // readFrame(packetHeader);
+                                break;
+                            case SampleEvent:
+                                // readSample();
+                                break;
+                            case ConfigEvent:
+                                // readConfig();
+                                break;
+                            case Imu6Event:
+                                // readImu6();
+                                break;
+                            case Imu9Event:
+                                // readImu9();;
+                                break;
+                            default: 
+                        }
+                    /*    
+                    if ((getAutoshotThresholdEvents() > 0) && (autoshotEventsSinceLastShot > getAutoshotThresholdEvents())) {
+                            takeSnapshot();
+                            autoshotEventsSinceLastShot = 0;            
+                    }     
+                    */              
+            }     
+            return out;    
+        }// extractPacket
         
         // TODO hack to reuse IMUSample events as ApsDvsEvents holding only APS or DVS data by using the special flags
         protected ApsDvsEvent nextApsDvsEvent(final OutputEventIterator outItr) {
@@ -619,6 +532,22 @@ public class Jaer3BufferParser {
                         // ((IMUSample) e).imuSampleEvent = false;
                 // }
                 return e;
+        }
+    
+        private void readDVS(final OutputEventIterator outItr, final int data, final int timestamp) {
+            final int sx1 = chip.getSizeX() - 1;            
+            final ApsDvsEvent e = nextApsDvsEvent(outItr);
+
+            e.adcSample = -1; // TODO hack to mark as not an ADC sample
+            e.special = false;
+            e.address = data;
+            e.timestamp = timestamp;
+            e.polarity = ((data & JAER3POLMASK)  >> JAER3POLSHIFT) == (JAER3POLMASK >> JAER3POLSHIFT) ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
+            e.type = 0;
+            e.x = (short) (sx1 - ((data & JAER3XMASK) >>> JAER3XSHIFT));
+            e.y = (short) ((data & JAER3YMASK) >>> JAER3YSHIFT);
+
+            e.setIsDVS(true);     
         }
     }
   
