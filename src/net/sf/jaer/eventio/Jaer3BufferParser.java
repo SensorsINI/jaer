@@ -12,6 +12,7 @@ import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.sf.jaer.chip.AEChip;
 
 /**
  * This class parses the buffer from the data files or network streams containing jAER 3.0
@@ -36,6 +37,23 @@ public class Jaer3BufferParser {
     private PacketDescriptor currentPkt = new PacketDescriptor();
     private long numEvents = 0;
    
+    /**
+     * The AEChip object associated with this stream. This field was added for
+     * supported jAER 3.0 format files to support translating bit locations in
+     * events.
+     */
+    private AEChip chip = null;
+    
+    /**
+     * Field for decoding jaer 3.0 address
+     */
+    public static final int YSHIFT = 2,
+                YMASK = 32767 << YSHIFT, // 9 bits from bits 22 to 30
+                XSHIFT = 17,
+                XMASK = 32767 << XSHIFT, // 10 bits from bits 12 to 21
+                POLSHIFT = 1,
+                POLMASK = 1 << POLSHIFT; //,    // 1 bit at bit 11
+ 
     
     public enum EventType {
         SpecialEvent, PolarityEvent, FrameEvent, Imu6Event, Imu9Event, SampleEvent, EarEvent, ConfigEvent // ordered according to id code
@@ -184,7 +202,7 @@ public class Jaer3BufferParser {
         return pkt;
     } // searchPacketHeader
     
-    private PacketDescriptor GetCurrentPkt(int targetPosition) throws IOException {
+    private PacketDescriptor getCurrentPkt(int targetPosition) throws IOException {
         
         PacketDescriptor pkt = searchPacketHeader(targetPosition, -1);
         
@@ -197,16 +215,17 @@ public class Jaer3BufferParser {
         }
     }
     
-    private PacketDescriptor GetNextPkt(int targetPosition) throws IOException {
+    private PacketDescriptor getNextPkt(int targetPosition) throws IOException {
         return searchPacketHeader(targetPosition, 1);
     }
     
-    public Jaer3BufferParser(MappedByteBuffer byteBuffer) throws IOException {
+    public Jaer3BufferParser(MappedByteBuffer byteBuffer, AEChip chip) throws IOException {
         in = byteBuffer;
         in.order(ByteOrder.LITTLE_ENDIAN);    //AER3.0 spec is little endian
+        this.chip = chip;
         currentPkt = searchPacketHeader(0, 1);
         try {
-            numEvents = BufferNumEvents();
+            numEvents = bufferNumEvents();
         } catch (IOException ex) {
                 log.warning(ex.toString());
                 Logger.getLogger(AEFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
@@ -221,13 +240,13 @@ public class Jaer3BufferParser {
     public long size() {
         return numEvents;
     }
-    public int GetCurrentEventOffset() throws IOException {
+    public int getCurrentEventOffset() throws IOException {
         int currentPosition = in.position();
         int nextPktPos = currentPkt.pktPosition + currentPkt.pktHeader.eventNumber * currentPkt.pktHeader.eventSize + PKT_HEADER_SIZE;
         
         // current position is not in the current packet, so we need to find the packet the current position belongs to
         if(currentPosition >= nextPktPos || currentPosition <= currentPkt.pktPosition) {   
-            currentPkt = GetCurrentPkt(currentPosition);
+            currentPkt = getCurrentPkt(currentPosition);
             if(currentPkt == null) {
                 return -1;            // It's an invalid position, it doesn't have packet header and event data.
             }                                                                    
@@ -248,12 +267,12 @@ public class Jaer3BufferParser {
         return currentPosition - (currentPosition - (currentPktPos + PKT_HEADER_SIZE))%eventSize;     
     }
     
-    public int GetNextEventOffset() throws IOException {
-        int currentEventOffset = GetCurrentEventOffset();
+    public int getNextEventOffset() throws IOException {
+        int currentEventOffset = getCurrentEventOffset();
         int currentPosition = in.position();
         
         if(-1 == currentEventOffset) {   // Current position is an invalid data or in the file end, 
-            currentPkt = GetNextPkt(currentPosition); 
+            currentPkt = getNextPkt(currentPosition); 
             if(null == currentPkt) {     //It's in the file end
                 return -1;
             } else {
@@ -275,7 +294,7 @@ public class Jaer3BufferParser {
         // The current position is in the last event of the current packet and not the event header, so the next event will be in the next packet.
         // We should update the currentPktPos first.
         if(currentEventOffset + eventSize >= nextPktPos) {
-            currentPkt = GetNextPkt(currentPosition);
+            currentPkt = getNextPkt(currentPosition);
             if(null == currentPkt) {     //It's in the file end
                 return -1;
             } else {
@@ -289,11 +308,11 @@ public class Jaer3BufferParser {
         }
         
         return currentEventOffset + eventSize;
-    }
+    } //GetNumEventOffset
     
-    public int GetLastTimeStamp() throws IOException {
+    public int getLastTimeStamp() throws IOException {
         int currentPosition = in.position();
-        PacketDescriptor pkt = this.GetCurrentPkt(in.limit() - PKT_HEADER_SIZE);
+        PacketDescriptor pkt = getCurrentPkt(in.limit() - PKT_HEADER_SIZE);
         int lastTs;
         if(pkt.pktHeader.eventNumber == pkt.pktHeader.eventValid) {
             int position = pkt.pktPosition + PKT_HEADER_SIZE + (pkt.pktHeader.eventNumber - 1) * pkt.pktHeader.eventSize + pkt.pktHeader.eventTSOffset;
@@ -303,7 +322,7 @@ public class Jaer3BufferParser {
             ByteBuffer tmpBuffer = ByteBuffer.allocate(8);
             in.position(pkt.pktPosition);
             for(int i = 0; i < pkt.pktHeader.eventValid; i++) {
-                tmpBuffer = GetJaer2EventBuf();
+                tmpBuffer = getJaer2EventBuf();
             }
             tmpBuffer.getInt();   //addr
             lastTs = tmpBuffer.getInt();
@@ -313,8 +332,8 @@ public class Jaer3BufferParser {
         return lastTs;        
     }
     
-    public ByteBuffer GetJaer2EventBuf() throws IOException {
-        int nextEventOffset = GetNextEventOffset();
+    public ByteBuffer getJaer2EventBuf() throws IOException {
+        int nextEventOffset = getNextEventOffset();
         if(-1 == nextEventOffset) {
             log.warning("Reach the end of file, can't read data!");
             return null;
@@ -335,7 +354,7 @@ public class Jaer3BufferParser {
                 log.log(Level.INFO, "Packet Position is {0} and current position is {1}", new Object[]{currentPkt.pktPosition, in.position()});
             }
 
-            nextEventOffset = GetNextEventOffset();
+            nextEventOffset = getNextEventOffset();
             in.position(nextEventOffset);        
             eventFirstInt = in.getInt();              
         }       
@@ -347,6 +366,7 @@ public class Jaer3BufferParser {
         
         in.position(nextEventOffset + addrOffset);
         int addr =  in.getInt();
+        addr = this.extractJaer2Addr(addr);
         in.position(nextEventOffset + tsOffset);
         int ts = in.getInt();
         
@@ -355,17 +375,27 @@ public class Jaer3BufferParser {
         jaer2Buffer.flip();
         return jaer2Buffer;
     }
-    
-    public long BufferNumEvents() throws IOException {
-        PacketDescriptor pkt = GetNextPkt(0);
+        
+    public long bufferNumEvents() throws IOException {
+        PacketDescriptor pkt = getNextPkt(0);
         long numEvents = 0;
         while(pkt != null) {
             if(pkt.pktHeader.eventType == EventType.PolarityEvent) {
                 numEvents += pkt.pktHeader.eventValid;                
             }
-            pkt = GetNextPkt(pkt.pktPosition + 1);
+            pkt = getNextPkt(pkt.pktPosition + 1);
         }
         return numEvents;
+    }
+    
+    private int extractJaer2Addr(int jaer3Addr) {
+        int x = (jaer3Addr & XMASK) >> XSHIFT;
+        int y = (jaer3Addr & YMASK) >> YSHIFT;
+        int polarity = (jaer3Addr & POLMASK)  >> POLSHIFT;
+        
+        // this.chip.
+        
+        return (x << 12) + (y << 22) + (polarity << 1);
     }
     
     private int GetAddrOffset(PacketHeader packetHeader) throws IOException {
@@ -398,11 +428,11 @@ public class Jaer3BufferParser {
         return eventAddrOffset;
     }       
      
-    public int GetCurrentPktPos() {
+    public int getCurrentPktPos() {
         return currentPkt.pktPosition;
     }
     
-    public PacketHeader GetPacketHeader() {
+    public PacketHeader getPacketHeader() {
         return currentPkt.pktHeader;
     }
 

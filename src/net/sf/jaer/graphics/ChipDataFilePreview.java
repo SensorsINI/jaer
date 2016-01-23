@@ -65,6 +65,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
      * @param chip the AEChip to preview.
      */
     public ChipDataFilePreview(JFileChooser jfc, AEChip chip) {
+        this.chip = chip;
         canvas = new ChipCanvas(chip);
 //        if(chip.getCanvas().getDisplayMethod()==null){
 //            canvas.setDisplayMethod(new ChipRendererDisplayMethod(canvas)); // needs a default display method

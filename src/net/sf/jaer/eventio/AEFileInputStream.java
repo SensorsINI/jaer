@@ -257,7 +257,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             EventRaw ev = readEventForwards(); // init timestamp
             firstTimestamp = ev.timestamp;
             if(true == jaer3EnableFlg) {
-                lastTimestamp = jaer3BufferParser.GetLastTimeStamp();
+                lastTimestamp = jaer3BufferParser.getLastTimeStamp();
             } else {
                 position(size() - 2);
                 ev = readEventForwards();
@@ -330,7 +330,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             
             if (jaer3EnableFlg) {
                 lastBufferPosition = byteBuffer.position();
-                tmpEventBuffer = jaer3BufferParser.GetJaer2EventBuf();
+                tmpEventBuffer = jaer3BufferParser.getJaer2EventBuf();
                 addr = tmpEventBuffer.getInt();
                 ts = tmpEventBuffer.getInt();
             }    
@@ -353,7 +353,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 }
                 
                 if (jaer3EnableFlg) {
-                    tmpEventBuffer = jaer3BufferParser.GetJaer2EventBuf();
+                    tmpEventBuffer = jaer3BufferParser.getJaer2EventBuf();
                     addr = tmpEventBuffer.getInt();
                     ts = tmpEventBuffer.getInt();
                 }    
@@ -390,7 +390,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             // check for non-monotonic increasing timestamps, if we get one, reset our notion of the starting time
             if (isWrappedTime(ts, mostRecentTimestamp, 1)) {
                 if(jaer3EnableFlg) {
-                    log.log(Level.INFO, "The current packet file position is {0} and current file position is {1}", new Object[]{jaer3BufferParser.GetCurrentPktPos(), byteBuffer.position()});  
+                    log.log(Level.INFO, "The current packet file position is {0} and current file position is {1}", new Object[]{jaer3BufferParser.getCurrentPktPos(), byteBuffer.position()});  
                 }
                 throw new WrappedTimeException(ts, mostRecentTimestamp, position);
 //                           WrappedTimeException e = new WrappedTimeException(ts, mostRecentTimestamp, position);
@@ -399,7 +399,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             }
             if (enableTimeWrappingExceptionsChecking && (ts < mostRecentTimestamp)) {
                 if(jaer3EnableFlg) {
-                    log.log(Level.INFO, "The current packet file position is {0} and current file position is {1}", new Object[]{jaer3BufferParser.GetCurrentPktPos(), byteBuffer.position()});  
+                    log.log(Level.INFO, "The current packet file position is {0} and current file position is {1}", new Object[]{jaer3BufferParser.getCurrentPktPos(), byteBuffer.position()});  
                 }
 //                log.warning("AEInputStream.readEventForwards returned ts="+ts+" which goes backwards in time (mostRecentTimestamp="+mostRecentTimestamp+")");
                 throw new NonMonotonicTimeException(ts, mostRecentTimestamp, position);
@@ -1318,7 +1318,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         mapChunk(0);
         
         if(jaer3EnableFlg) {
-            jaer3BufferParser = new Jaer3BufferParser(byteBuffer);
+            jaer3BufferParser = new Jaer3BufferParser(byteBuffer, chip);
             // jaer3ParseBuffer.setInBuffer(byteBuffer);
             //  jaer3ByteBuffer =  jaer3ParseBuffer.extractAddrAndTs();
         }
