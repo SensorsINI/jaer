@@ -882,6 +882,8 @@ public class CochleaLP extends CochleaChip implements Observer {
         private int qTuning;
         private final int qTuningLength = 8;
         private final int qTuningPosition = 0;
+        
+        private CochleaLPControlPanel.CochleaChannelControlPanel controlPanel=null;
 
         public CochleaChannel(final String configName, final String toolTip, final int channelAddr) {
             super(configName, toolTip);
@@ -984,18 +986,33 @@ public class CochleaLP extends CochleaChip implements Observer {
                     getAttenuatorConfig(), qTuning);
         }
 
-        private synchronized int getFullValue() {
+        /** Returns binary encoded full state value
+         * 
+         * @return 
+         */
+        public synchronized int getFullValue() {
             return configValue;
         }
 
-        private synchronized void setFullValue(final int fullValue) {
+        /** Sets binary encoded full state value, and calls Observers if value is changed.
+         * 
+         * @param fullValue 
+         */
+        public synchronized void setFullValue(final int fullValue) {
             checkValueLimits(fullValue, configValueLength);
 
             if (configValue != fullValue) {
                 setChanged();
             }
 
-            configValue = fullValue;
+            configValue = fullValue; // TODO set individual fields from full value without calling back here!
+           // Also update the various components of the full config value on preference load.
+            comparatorSelfOscillationEnable = ((configValue >>> comparatorSelfOscillationEnablePosition) == 1) ? (true) : (false);
+            delayCapConfigADM = (configValue >>> delayCapConfigADMPosition) & ((1 << delayCapConfigADMLength) - 1);
+            resetCapConfigADM = (configValue >>> resetCapConfigADMPosition) & ((1 << resetCapConfigADMLength) - 1);
+            lnaGainConfig = (configValue >>> lnaGainConfigPosition) & ((1 << lnaGainConfigLength) - 1);
+            attenuatorConfig = (configValue >>> attenuatorConfigPosition) & ((1 << attenuatorConfigLength) - 1);
+            qTuning = (configValue >>> qTuningPosition) & ((1 << qTuningLength) - 1);
 
             notifyObservers();
         }
@@ -1037,18 +1054,25 @@ public class CochleaLP extends CochleaChip implements Observer {
         public void loadPreference() {
             setFullValue(getPrefs().getInt(getPreferencesKey(), 0));
 
-            // Also update the various components of the full config value on preference load.
-            comparatorSelfOscillationEnable = ((configValue >>> comparatorSelfOscillationEnablePosition) == 1) ? (true) : (false);
-            delayCapConfigADM = (configValue >>> delayCapConfigADMPosition) & ((1 << delayCapConfigADMLength) - 1);
-            resetCapConfigADM = (configValue >>> resetCapConfigADMPosition) & ((1 << resetCapConfigADMLength) - 1);
-            lnaGainConfig = (configValue >>> lnaGainConfigPosition) & ((1 << lnaGainConfigLength) - 1);
-            attenuatorConfig = (configValue >>> attenuatorConfigPosition) & ((1 << attenuatorConfigLength) - 1);
-            qTuning = (configValue >>> qTuningPosition) & ((1 << qTuningLength) - 1);
-        }
+         }
 
         @Override
         public void storePreference() {
             getPrefs().putInt(getPreferencesKey(), getFullValue());
+        }
+
+        /**
+         * @return the controlPanel
+         */
+        public CochleaLPControlPanel.CochleaChannelControlPanel getControlPanel() {
+            return controlPanel;
+        }
+
+        /**
+         * @param controlPanel the controlPanel to set
+         */
+        public void setControlPanel(CochleaLPControlPanel.CochleaChannelControlPanel controlPanel) {
+            this.controlPanel = controlPanel;
         }
     }
 }
