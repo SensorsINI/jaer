@@ -240,6 +240,8 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                     }
                 }
                 if (aeRaw != null) {
+                    extractor = chip.getEventExtractor();  // Desipte extrator is initiliazed at first, if jAER 3.0 file used, then Jaer3BufferParser
+                                                           // will update the extrator, so we need to update this value here.
                     ae = extractor.extractPacket(aeRaw);
                 }
             }

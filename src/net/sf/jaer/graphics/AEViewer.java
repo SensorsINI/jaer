@@ -1678,6 +1678,7 @@ two interfaces). otherwise force user choice.
 			if (isPaused()) {
 				extractor.setSubsamplingEnabled(false);
 			}
+                        AEViewer.this.extractor = AEViewer.this.chip.getEventExtractor();   // Jaer3BufferParser will update the extractor in the chip, so we should monitor this value all the time
 			EventPacket packet = extractor.extractPacket(aeRaw);
 			packet.setRawPacket(aeRaw);
 			if (isPaused()) {
