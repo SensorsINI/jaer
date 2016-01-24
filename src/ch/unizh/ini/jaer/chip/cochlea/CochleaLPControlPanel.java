@@ -112,7 +112,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
         JPanel colPan = new JPanel();
         colPan.setLayout(new BoxLayout(colPan, BoxLayout.Y_AXIS));
         colPan.setAlignmentY(0); // puts panel at top
-        CochleaChannelControlPanel gPan = new CochleaChannelControlPanel(null);
+        CochleaChannelControlPanel gPan = new CochleaChannelControlPanel(null); // global control
         colPan.add(gPan);
 
         for (final CochleaChannel chan : biasgen.cochleaChannels) {  // TODO add preference change or update listener to synchronize when config is loaded
