@@ -232,7 +232,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
         @Override
         public void actionPerformed(final ActionEvent e) {
             final JRadioButton button = (JRadioButton) e.getSource();
-            bitConfig.set(button.isSelected());
+            bitConfig.set(button.isSelected()); // TODO add undo
             setFileModified();
         }
     }
@@ -250,7 +250,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             final JTextField tf = (JTextField) e.getSource();
 
             try {
-                intConfig.set(Integer.parseInt(tf.getText()));
+                intConfig.set(Integer.parseInt(tf.getText())); // TODO add undo
                 setFileModified();
 
                 tf.setBackground(Color.white);
