@@ -676,10 +676,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             lastFile = new File(lastFilePath);
 
             // tobi changed to avoid writing always to startup folder, which causes a major problem if this folder is not writeable, e.g. under NFS shared folder
-            String defaultLoggingFolderName = System.getProperty("user.home"); //System.getProperty("user.dir");
+            String defaultLoggingFolderName = System.getProperty("java.io.tmpdir"); //System.getProperty("user.dir");
             log.info("using "+defaultLoggingFolderName+" as the defaultLoggingFolderName");
             // lastLoggingFolder starts off at user.dir which is startup folder "host/java" where .exe launcher lives
             lastLoggingFolder = new File(prefs.get("AEViewer.lastLoggingFolder", defaultLoggingFolderName));
+            log.info("AEViewer.lastLoggingFolder="+lastLoggingFolder);
 
             // check lastLoggingFolder to see if it really exists, if not, default to user.dir
             if (!lastLoggingFolder.exists() || !lastLoggingFolder.isDirectory()) {
