@@ -302,7 +302,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             }
             add(label);
 
-            but.setToolTipText("Comparator self-oscillation enable.");
+            but.setToolTipText("Comparator self-oscillation enable. i.e. spike generation enable 1 bit, select to turn on");
             but.setSelected(chan == null ? true : chan.isComparatorSelfOscillationEnable());
             but.setAlignmentX(Component.LEFT_ALIGNMENT);
             but.addActionListener(new ActionListener() {
@@ -321,7 +321,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             });
             add(but);
 
-            tf0.setToolTipText((chan == null ? "global" : chan.getName()) + " - Delay cap configuration in ADM.");
+            tf0.setToolTipText((chan == null ? "global" : chan.getName()) + " - Delay cap configuration in ADM. Reset signal φrst pulse width control 3bits, 0 is shortest delay, if pulse is too short then ADM does not function correctly");
             tf0.setText(chan == null ? "" : Integer.toString(chan.getDelayCapConfigADM()));
             tf0.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
             tf0.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
@@ -331,7 +331,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             tf0.addMouseWheelListener(new CochleaChannelMouseWheelAction(chan, 0));
             add(tf0);
 
-            tf1.setToolTipText((chan == null ? "global" : chan.getName()) + " - Reset cap configuration in ADM.");
+            tf1.setToolTipText((chan == null ? "global" : chan.getName()) + " - Reset cap configuration in ADM. ADM reset level control, 2bits, 0 is lowest subtraction 1delta, 1 is 1.5delta, 2 is 2delta, 3 is max subtraction 2.5delta, used to compensate slope overload and delay.");
             tf1.setText(chan == null ? "" : Integer.toString(chan.getResetCapConfigADM()));
             tf1.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
             tf1.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
@@ -341,7 +341,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             tf1.addMouseWheelListener(new CochleaChannelMouseWheelAction(chan, 1));
             add(tf1);
 
-            tf2.setToolTipText((chan == null ? "global" : chan.getName()) + " - LNA gain configuration.");
+            tf2.setToolTipText((chan == null ? "global" : chan.getName()) + " - PGA gain configuration. PGA gain control 3 bits, effectively 4 levels, uses only values 0,1,3,7. 0 is highest gain (40dB designed), 7 is lowest (18dB designed??)");
             tf2.setText(chan == null ? "" : Integer.toString(chan.getLnaGainConfig()));
             tf2.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
             tf2.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
@@ -351,7 +351,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             tf2.addMouseWheelListener(new CochleaChannelMouseWheelAction(chan, 2));
             add(tf2);
 
-            tf3.setToolTipText((chan == null ? "global" : chan.getName()) + " - Attenuator configuration.");
+            tf3.setToolTipText((chan == null ? "global" : chan.getName()) + " - Attenuator configuration. Attenuation level control 3 bits, 8 levels, 0 is no attenuation, 7 is ~18dB");
             tf3.setText(chan == null ? "" : Integer.toString(chan.getAttenuatorConfig()));
             tf3.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
             tf3.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
@@ -361,7 +361,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             tf3.addMouseWheelListener(new CochleaChannelMouseWheelAction(chan, 3));
             add(tf3);
 
-            tf4.setToolTipText((chan == null ? "global" : chan.getName()) + " - QTuning configuration.");
+            tf4.setToolTipText((chan == null ? "global" : chan.getName()) + " - QTuning configuration. Q control, 8 bits. 255 is lowest Q, 0 is highest (unstable). Reduce to increase effective Q.");
             tf4.setText(chan == null ? "" : Integer.toString(chan.getqTuning()));
             tf4.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
             tf4.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
