@@ -39,6 +39,7 @@ import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.chip.TypedEventExtractor;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.graphics.AEChipRenderer;
@@ -600,6 +601,9 @@ public class CochleaLP extends CochleaChip implements Observer {
                 e.x = getXFromAddress(addr);
                 e.y = getYFromAddress(addr);
                 e.type = getTypeFromAddress(addr);
+                if((e.address&BasicEvent.SPECIAL_EVENT_BIT_MASK) !=0){
+                    e.setSpecial(true);
+                }
 
                 j++;
                 if (j == incEach) {
