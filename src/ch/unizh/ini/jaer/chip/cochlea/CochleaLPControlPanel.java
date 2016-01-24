@@ -112,6 +112,8 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
         JPanel colPan = new JPanel();
         colPan.setLayout(new BoxLayout(colPan, BoxLayout.Y_AXIS));
         colPan.setAlignmentY(0); // puts panel at top
+        CochleaChannelControlPanel gPan = new CochleaChannelControlPanel(null);
+        colPan.add(gPan);
 
         for (final CochleaChannel chan : biasgen.cochleaChannels) {  // TODO add preference change or update listener to synchronize when config is loaded
             // TODO add undo/redo support for channels
@@ -261,7 +263,10 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
         }
     }
 
-    /** Complex class to control a single channel of cochlea, enable key and mouse listeners in text fields, and provide undo support */
+    /**
+     * Complex class to control a single channel of cochlea, enable key and
+     * mouse listeners in text fields, and provide undo support
+     */
     public class CochleaChannelControlPanel extends JPanel implements StateEditable {
 
         final JRadioButton but = new JRadioButton();
@@ -277,30 +282,47 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
         private long lastMouseWheelMovementTime = 0;
         private final long minDtMsForWheelEditPost = 500;
 
+        /**
+         * Construct control for one channel
+         *
+         * @param chan, the channel, or null to control all channels
+         */
         public CochleaChannelControlPanel(final CochleaChannel chan) {
             this.chan = chan;
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 
-            final JLabel label = new JLabel(chan.getName());
-            label.setToolTipText("<html>" + chan.toString() + "<br>" + chan.getDescription()
-                    + "<br>Enter value or use mouse wheel or arrow keys to change value.");
+            final JLabel label = new JLabel();
+            if (chan == null) {
+                label.setText("global");
+                label.setToolTipText("<html> all channels: " + "<br>Enter value or use mouse wheel or arrow keys to change value.");
+            } else if (chan != null) {
+                label.setText(chan.getName());
+                label.setToolTipText("<html>" + chan.toString() + "<br>" + chan.getDescription()
+                        + "<br>Enter value or use mouse wheel or arrow keys to change value.");
+            }
             add(label);
 
             but.setToolTipText("Comparator self-oscillation enable.");
-            but.setSelected(chan.isComparatorSelfOscillationEnable());
+            but.setSelected(chan == null ? true : chan.isComparatorSelfOscillationEnable());
             but.setAlignmentX(Component.LEFT_ALIGNMENT);
             but.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(final ActionEvent e) {
                     final JRadioButton button = (JRadioButton) e.getSource();
-                    chan.setComparatorSelfOscillationEnable(button.isSelected());
+                    if (chan == null) {
+                        for (CochleaChannel c : biasgen.cochleaChannels) {
+                            c.setComparatorSelfOscillationEnable(button.isSelected());
+                        }
+                    } else {
+                        chan.setComparatorSelfOscillationEnable(button.isSelected());
+                    }
                     setFileModified();
                 }
             });
             add(but);
 
-            tf0.setToolTipText(chan.getName() + " - Delay cap configuration in ADM.");
-            tf0.setText(Integer.toString(chan.getDelayCapConfigADM()));
+            tf0.setToolTipText((chan == null ? "global" : chan.getName()) + " - Delay cap configuration in ADM.");
+            tf0.setText(chan == null ? "" : Integer.toString(chan.getDelayCapConfigADM()));
             tf0.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
             tf0.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
             tf0.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
@@ -309,8 +331,8 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             tf0.addMouseWheelListener(new CochleaChannelMouseWheelAction(chan, 0));
             add(tf0);
 
-            tf1.setToolTipText(chan.getName() + " - Reset cap configuration in ADM.");
-            tf1.setText(Integer.toString(chan.getResetCapConfigADM()));
+            tf1.setToolTipText((chan == null ? "global" : chan.getName()) + " - Reset cap configuration in ADM.");
+            tf1.setText(chan == null ? "" : Integer.toString(chan.getResetCapConfigADM()));
             tf1.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
             tf1.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
             tf1.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
@@ -319,8 +341,8 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             tf1.addMouseWheelListener(new CochleaChannelMouseWheelAction(chan, 1));
             add(tf1);
 
-            tf2.setToolTipText(chan.getName() + " - LNA gain configuration.");
-            tf2.setText(Integer.toString(chan.getLnaGainConfig()));
+            tf2.setToolTipText((chan == null ? "global" : chan.getName()) + " - LNA gain configuration.");
+            tf2.setText(chan == null ? "" : Integer.toString(chan.getLnaGainConfig()));
             tf2.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
             tf2.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
             tf2.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
@@ -329,8 +351,8 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             tf2.addMouseWheelListener(new CochleaChannelMouseWheelAction(chan, 2));
             add(tf2);
 
-            tf3.setToolTipText(chan.getName() + " - Attenuator configuration.");
-            tf3.setText(Integer.toString(chan.getAttenuatorConfig()));
+            tf3.setToolTipText((chan == null ? "global" : chan.getName()) + " - Attenuator configuration.");
+            tf3.setText(chan == null ? "" : Integer.toString(chan.getAttenuatorConfig()));
             tf3.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
             tf3.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
             tf3.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
@@ -339,8 +361,8 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             tf3.addMouseWheelListener(new CochleaChannelMouseWheelAction(chan, 3));
             add(tf3);
 
-            tf4.setToolTipText(chan.getName() + " - QTuning configuration.");
-            tf4.setText(Integer.toString(chan.getqTuning()));
+            tf4.setToolTipText((chan == null ? "global" : chan.getName()) + " - QTuning configuration.");
+            tf4.setText(chan == null ? "" : Integer.toString(chan.getqTuning()));
             tf4.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
             tf4.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
             tf4.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
@@ -349,8 +371,10 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             tf4.addMouseWheelListener(new CochleaChannelMouseWheelAction(chan, 4));
             add(tf4);
 
-            chan.setControlPanel(this);
-            chan.addObserver(CochleaLPControlPanel.this);
+            if (chan != null) {
+                chan.setControlPanel(this);
+                chan.addObserver(CochleaLPControlPanel.this);
+            }
             addAncestorListener(new javax.swing.event.AncestorListener() {
                 @Override
                 public void ancestorMoved(final javax.swing.event.AncestorEvent evt) {
@@ -412,25 +436,50 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
                 try {
                     switch (componentID) {
                         case 0:
-                            channel.setDelayCapConfigADM(Integer.parseInt(tf.getText()));
+                            if (channel != null) {
+                                channel.setDelayCapConfigADM(Integer.parseInt(tf.getText()));
+                            } else {
+                                for (CochleaChannel c : biasgen.cochleaChannels) {
+                                    c.setDelayCapConfigADM(Integer.parseInt(tf.getText()));
+                                }
+                            }
                             break;
-
                         case 1:
-                            channel.setResetCapConfigADM(Integer.parseInt(tf.getText()));
+                            if (channel != null) {
+                                channel.setResetCapConfigADM(Integer.parseInt(tf.getText()));
+                            } else {
+                                for (CochleaChannel c : biasgen.cochleaChannels) {
+                                    c.setResetCapConfigADM(Integer.parseInt(tf.getText()));
+                                }
+                            }
                             break;
-
                         case 2:
-                            channel.setLnaGainConfig(Integer.parseInt(tf.getText()));
+                            if (channel != null) {
+                                channel.setLnaGainConfig(Integer.parseInt(tf.getText()));
+                            } else {
+                                for (CochleaChannel c : biasgen.cochleaChannels) {
+                                    c.setLnaGainConfig(Integer.parseInt(tf.getText()));
+                                }
+                            }
                             break;
-
                         case 3:
-                            channel.setAttenuatorConfig(Integer.parseInt(tf.getText()));
+                            if (channel != null) {
+                                channel.setAttenuatorConfig(Integer.parseInt(tf.getText()));
+                            } else {
+                                for (CochleaChannel c : biasgen.cochleaChannels) {
+                                    c.setAttenuatorConfig(Integer.parseInt(tf.getText()));
+                                }
+                            }
                             break;
-
                         case 4:
-                            channel.setqTuning(Integer.parseInt(tf.getText()));
+                            if (channel != null) {
+                                channel.setqTuning(Integer.parseInt(tf.getText()));
+                            } else {
+                                for (CochleaChannel c : biasgen.cochleaChannels) {
+                                    c.setqTuning(Integer.parseInt(tf.getText()));
+                                }
+                            }
                             break;
-
                         default:
                             log.warning("Unknown component ID for CochleaChannel GUI.");
                             return;
@@ -473,19 +522,49 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
                 try {
                     switch (componentID) {
                         case 0:
-                            channel.setDelayCapConfigADM(channel.getDelayCapConfigADM() + inc);
+                            if (channel != null) {
+                                channel.setDelayCapConfigADM(channel.getDelayCapConfigADM() + inc);
+                            } else {
+                                for (CochleaChannel c : biasgen.cochleaChannels) {
+                                    c.setDelayCapConfigADM(c.getDelayCapConfigADM() + inc);
+                                }
+                            }
                             break;
                         case 1:
-                            channel.setResetCapConfigADM(channel.getResetCapConfigADM() + inc);
+                            if (channel != null) {
+                                channel.setResetCapConfigADM(channel.getResetCapConfigADM() + inc);
+                            } else {
+                                for (CochleaChannel c : biasgen.cochleaChannels) {
+                                    c.setResetCapConfigADM(c.getResetCapConfigADM() + inc);
+                                }
+                            }
                             break;
                         case 2:
-                            channel.setLnaGainConfig(channel.getLnaGainConfig() + inc);
+                            if (channel != null) {
+                                channel.setLnaGainConfig(channel.getLnaGainConfig() + inc);
+                            } else {
+                                for (CochleaChannel c : biasgen.cochleaChannels) {
+                                    c.setLnaGainConfig(c.getLnaGainConfig() + inc);
+                                }
+                            }
                             break;
                         case 3:
-                            channel.setAttenuatorConfig(channel.getAttenuatorConfig() + inc);
+                            if (channel != null) {
+                                channel.setAttenuatorConfig(channel.getAttenuatorConfig() + inc);
+                            } else {
+                                for (CochleaChannel c : biasgen.cochleaChannels) {
+                                    c.setAttenuatorConfig(c.getAttenuatorConfig() + inc);
+                                }
+                            }
                             break;
                         case 4:
-                            channel.setqTuning(channel.getqTuning() + inc);
+                            if (channel != null) {
+                                channel.setqTuning(channel.getqTuning() + inc);
+                            } else {
+                                for (CochleaChannel c : biasgen.cochleaChannels) {
+                                    c.setqTuning(c.getqTuning() + inc);
+                                }
+                            }
                             break;
                         default:
                             log.warning("Unknown component ID for CochleaChannel GUI.");
@@ -528,19 +607,49 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
                 try {
                     switch (componentID) {
                         case 0:
-                            channel.setDelayCapConfigADM(channel.getDelayCapConfigADM() + inc);
+                            if (channel != null) {
+                                channel.setDelayCapConfigADM(channel.getDelayCapConfigADM() + inc);
+                            } else {
+                                for (CochleaChannel c : biasgen.cochleaChannels) {
+                                    c.setDelayCapConfigADM(c.getDelayCapConfigADM() + inc);
+                                }
+                            }
                             break;
                         case 1:
-                            channel.setResetCapConfigADM(channel.getResetCapConfigADM() + inc);
+                            if (channel != null) {
+                                channel.setResetCapConfigADM(channel.getResetCapConfigADM() + inc);
+                            } else {
+                                for (CochleaChannel c : biasgen.cochleaChannels) {
+                                    c.setResetCapConfigADM(c.getResetCapConfigADM() + inc);
+                                }
+                            }
                             break;
                         case 2:
-                            channel.setLnaGainConfig(channel.getLnaGainConfig() + inc);
+                            if (channel != null) {
+                                channel.setLnaGainConfig(channel.getLnaGainConfig() + inc);
+                            } else {
+                                for (CochleaChannel c : biasgen.cochleaChannels) {
+                                    c.setLnaGainConfig(c.getLnaGainConfig() + inc);
+                                }
+                            }
                             break;
                         case 3:
-                            channel.setAttenuatorConfig(channel.getAttenuatorConfig() + inc);
-                            break;
+                            if (channel != null) {
+                                channel.setAttenuatorConfig(channel.getAttenuatorConfig() + inc);
+                                break;
+                            } else {
+                                for (CochleaChannel c : biasgen.cochleaChannels) {
+                                    c.setAttenuatorConfig(c.getAttenuatorConfig() + inc);
+                                }
+                            }
                         case 4:
-                            channel.setqTuning(channel.getqTuning() + inc);
+                            if (channel != null) {
+                                channel.setqTuning(channel.getqTuning() + inc);
+                            } else {
+                                for (CochleaChannel c : biasgen.cochleaChannels) {
+                                    c.setqTuning(c.getqTuning() + inc);
+                                }
+                            }
                             break;
                         default:
                             log.warning("Unknown component ID for CochleaChannel GUI.");
@@ -562,6 +671,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             if (edit != null) {
                 return;
             }
+            if(chan==null) return;
             edit = new MyStateEdit(this, "pot change");
             oldValue = chan.getFullValue();
         }
@@ -569,6 +679,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
         String STATE_KEY = "cochlea channel state";
 
         void endEdit() {
+            if(chan==null) return;
             if (oldValue == chan.getFullValue()) {
                 return;
             }
@@ -582,6 +693,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
         @Override
         public void storeState(final Hashtable<Object, Object> hashtable) {
             // System.out.println(" storeState "+pot);
+            if(chan==null) return;
             hashtable.put(STATE_KEY, new Integer(chan.getFullValue()));
         }
 
