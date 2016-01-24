@@ -302,6 +302,21 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             }
             add(label);
 
+            float[] sums = new float[5];
+            int nchan = 0;
+            if (chan == null) {
+                // compute summed values for global control which will show average to start with
+                for (CochleaChannel c : biasgen.cochleaChannels) {
+                    sums[0] += c.getDelayCapConfigADM();
+                    sums[1] += c.getResetCapConfigADM();
+                    sums[2] += c.getLnaGainConfig();
+                    sums[3] += c.getAttenuatorConfig();
+                    sums[4] += c.getqTuning();
+                    nchan++;
+                }
+
+            }
+
             but.setToolTipText("Comparator self-oscillation enable. i.e. spike generation enable 1 bit, select to turn on");
             but.setSelected(chan == null ? true : chan.isComparatorSelfOscillationEnable());
             but.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -322,7 +337,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             add(but);
 
             tf0.setToolTipText((chan == null ? "global" : chan.getName()) + " - Delay cap configuration in ADM. Reset signal φrst pulse width control 3bits, 0 is shortest delay, if pulse is too short then ADM does not function correctly");
-            tf0.setText(chan == null ? "" : Integer.toString(chan.getDelayCapConfigADM()));
+            tf0.setText(chan == null ? Integer.toString((int) (sums[0] / nchan)) : Integer.toString(chan.getDelayCapConfigADM()));
             tf0.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
             tf0.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
             tf0.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
@@ -332,7 +347,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             add(tf0);
 
             tf1.setToolTipText((chan == null ? "global" : chan.getName()) + " - Reset cap configuration in ADM. ADM reset level control, 2bits, 0 is lowest subtraction 1delta, 1 is 1.5delta, 2 is 2delta, 3 is max subtraction 2.5delta, used to compensate slope overload and delay.");
-            tf1.setText(chan == null ? "" : Integer.toString(chan.getResetCapConfigADM()));
+            tf1.setText(chan == null ? Integer.toString((int) (sums[1] / nchan)) : Integer.toString(chan.getResetCapConfigADM()));
             tf1.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
             tf1.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
             tf1.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
@@ -342,7 +357,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             add(tf1);
 
             tf2.setToolTipText((chan == null ? "global" : chan.getName()) + " - PGA gain configuration. PGA gain control 3 bits, effectively 4 levels, uses only values 0,1,3,7. 0 is highest gain (40dB designed), 7 is lowest (18dB designed??)");
-            tf2.setText(chan == null ? "" : Integer.toString(chan.getLnaGainConfig()));
+            tf2.setText(chan == null ? Integer.toString((int) (sums[2] / nchan)) : Integer.toString(chan.getLnaGainConfig()));
             tf2.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
             tf2.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
             tf2.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
@@ -351,8 +366,8 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             tf2.addMouseWheelListener(new CochleaChannelMouseWheelAction(chan, 2));
             add(tf2);
 
-            tf3.setToolTipText((chan == null ? "global" : chan.getName()) + " - Attenuator configuration. Attenuation level control 3 bits, 8 levels, 0 is no attenuation, 7 is ~18dB");
-            tf3.setText(chan == null ? "" : Integer.toString(chan.getAttenuatorConfig()));
+            tf3.setToolTipText((chan == null ? "global" : chan.getName()) + " - Attenuator configuration. Attenuation level control 3 bits, 8 levels, 7 is no attenuation, 0 is -18dB");
+            tf3.setText(chan == null ? Integer.toString((int) (sums[3] / nchan)) : Integer.toString(chan.getAttenuatorConfig()));
             tf3.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
             tf3.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
             tf3.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
@@ -362,7 +377,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             add(tf3);
 
             tf4.setToolTipText((chan == null ? "global" : chan.getName()) + " - QTuning configuration. Q control, 8 bits. 255 is lowest Q, 0 is highest (unstable). Reduce to increase effective Q.");
-            tf4.setText(chan == null ? "" : Integer.toString(chan.getqTuning()));
+            tf4.setText(chan == null ? Integer.toString((int) (sums[4] / nchan)) : Integer.toString(chan.getqTuning()));
             tf4.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
             tf4.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
             tf4.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
@@ -672,7 +687,9 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
             if (edit != null) {
                 return;
             }
-            if(chan==null) return;
+            if (chan == null) {
+                return;
+            }
             edit = new MyStateEdit(this, "pot change");
             oldValue = chan.getFullValue();
         }
@@ -680,7 +697,9 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
         String STATE_KEY = "cochlea channel state";
 
         void endEdit() {
-            if(chan==null) return;
+            if (chan == null) {
+                return;
+            }
             if (oldValue == chan.getFullValue()) {
                 return;
             }
@@ -694,7 +713,9 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
         @Override
         public void storeState(final Hashtable<Object, Object> hashtable) {
             // System.out.println(" storeState "+pot);
-            if(chan==null) return;
+            if (chan == null) {
+                return;
+            }
             hashtable.put(STATE_KEY, new Integer(chan.getFullValue()));
         }
 
