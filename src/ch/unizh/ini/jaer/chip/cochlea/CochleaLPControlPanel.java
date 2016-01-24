@@ -599,7 +599,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
                 }
                 lastMouseWheelMovementTime = t;
 
-                int inc = clicks;
+                int inc = -clicks;
                 if (clicks == 0) {
                     return;
                 }
@@ -642,6 +642,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
                                     c.setAttenuatorConfig(c.getAttenuatorConfig() + inc);
                                 }
                             }
+                            break;
                         case 4:
                             if (channel != null) {
                                 channel.setqTuning(channel.getqTuning() + inc);
