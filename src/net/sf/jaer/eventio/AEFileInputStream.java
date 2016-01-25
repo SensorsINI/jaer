@@ -31,6 +31,7 @@ import java.util.logging.Logger;
 import javax.swing.JOptionPane;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
+import net.sf.jaer.aemonitor.EventRaw.EventType;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
@@ -264,6 +265,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 lastTimestamp = ev.timestamp;           
             }
             position(0);
+            if(true == jaer3EnableFlg) {
+                jaer3BufferParser.setInFrameEvent(false);                
+            }
             currentStartTimestamp = firstTimestamp;
             mostRecentTimestamp = firstTimestamp;
 
@@ -305,10 +309,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     private EventRaw readEventForwards(int maxTimestamp) throws IOException, NonMonotonicTimeException {
         int ts = firstTimestamp;
         int addr = 0;
+        int pixelData = 0;      //For jAER 3.0, no influence on jAER 2.0
+        EventType etype = EventType.PolarityEvent; //For jAER 3.0, no influence on jAER 2.0
         int lastTs = mostRecentTimestamp;
         int lastBufferPosition = 0;
         
-        ByteBuffer tmpEventBuffer = ByteBuffer.allocate(8);       
+        ByteBuffer tmpEventBuffer = ByteBuffer.allocate(32);       
         
         // if(jaer3fileinputstream!=null){
             // return jaer3fileinputstream.readEventForwards();
@@ -331,8 +337,11 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             if (jaer3EnableFlg) {
                 lastBufferPosition = byteBuffer.position();
                 tmpEventBuffer = jaer3BufferParser.getJaer2EventBuf();
+                int etypeValue = tmpEventBuffer.getInt();
+                etype = EventType.values()[etypeValue];
                 addr = tmpEventBuffer.getInt();
                 ts = tmpEventBuffer.getInt();
+                pixelData = tmpEventBuffer.getInt();                
             }    
             else {
                 if (addressType == Integer.TYPE) {
@@ -354,8 +363,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 
                 if (jaer3EnableFlg) {
                     tmpEventBuffer = jaer3BufferParser.getJaer2EventBuf();
+                    tmpEventBuffer = jaer3BufferParser.getJaer2EventBuf();
+                    int etypeValue = tmpEventBuffer.getInt();
+                    etype = EventType.values()[etypeValue];
                     addr = tmpEventBuffer.getInt();
                     ts = tmpEventBuffer.getInt();
+                    pixelData = tmpEventBuffer.getInt();
                 }    
                 else {
                     if (addressType == Integer.TYPE) {
@@ -407,6 +420,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
             tmpEvent.address = addr;
             tmpEvent.timestamp = ts;
+            tmpEvent.eventtype = etype;  //For jAER 3.0, no influence on jAER 2.0
+            tmpEvent.pixelData = pixelData; //For jAER 3.0, no influence on jAER 2.0
             position++;
 
             return tmpEvent;
@@ -620,6 +635,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         int startTimestamp = mostRecentTimestamp;
         int[] addr = packet.getAddresses();
         int[] ts = packet.getTimestamps();
+        EventType[] etypes = packet.getEventtypes();  // For jAER 3.0, no influence on jAER 2.0
+        int[] pixelDataArray = packet.getPixelDataArray();
         long oldPosition = position();
         EventRaw ae;
         int i = 0;
@@ -634,6 +651,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                         }
                         addr[i] = ae.address;
                         ts[i] = ae.timestamp;
+                        etypes[i] = ae.eventtype;
+                        pixelDataArray[i] = ae.pixelData;
                         i++;
                     } while ((mostRecentTimestamp < endTimestamp) && (i < addr.length) && (mostRecentTimestamp >= startTimestamp)); // if time jumps backwards (e.g. timestamp reset during recording) then will read a huge number of events.
                 } else { // read should wrap around
@@ -645,6 +664,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                         }
                         addr[i] = ae.address;
                         ts[i] = ae.timestamp;
+                        etypes[i] = ae.eventtype;
+                        pixelDataArray[i] = ae.pixelData;
                         i++;
                     } while ((mostRecentTimestamp > 0) && (i < addr.length)); // read to where bigwrap occurs, then terminate - but wrapped time exception will happen first
                     // never gets here because of wrap exception

@@ -11,6 +11,7 @@
 package net.sf.jaer.aemonitor;
 
 import java.util.logging.Logger;
+import net.sf.jaer.aemonitor.EventRaw.EventType;
 
 /**
  * The superclass for raw event packets, as captured from an AEMonitorInterface. These packets are not used for processed events.
@@ -33,6 +34,9 @@ public abstract class AEPacket {
     protected int numEvents=0;
     protected int capacity=0;
     public int[] timestamps;
+    
+    public EventType[] eventtypes;    //Just for jAER 3.0
+    public int[] pixelDataArray;               //Just for jAER 3.0 Frame Event
 
     protected EventRaw[] events;
 
@@ -59,7 +63,23 @@ public abstract class AEPacket {
     public int[] getTimestamps() {
         return this.timestamps;
     }
+    
+    /** Returns the event types array. Just for jAER 3.0 data
+     * 
+     * @return the array of event types. Only elements up to numEvents-1 are valid.
+     */
+    public EventType[] getEventtypes() {
+        return this.eventtypes;
+    }
 
+    /** Returns the data array. Just for jAER 3.0  Frame Event
+     * 
+     * @return the array of event types. Only elements up to numEvents-1 are valid.
+     */
+    public int[] getPixelDataArray() {
+        return this.pixelDataArray;
+    }
+    
     /** @param n the index (0 based) of the timestamp. Only values up to numEvents-1 are valid.
      *@return the timestamp. 
      */
@@ -101,6 +121,26 @@ public abstract class AEPacket {
 		}
     }
 
+    public void setEventtypes(final EventType[] etypes) {
+        this.eventtypes = etypes;
+        if(etypes==null) {
+			numEvents=0;
+		}
+		else {
+			numEvents=etypes.length;
+		}
+    }    
+    
+    public void setData(final int[] dataArray) {
+        this.pixelDataArray = dataArray;
+        if(dataArray==null) {
+			numEvents=0;
+		}
+		else {
+			numEvents=dataArray.length;
+		}
+    } 
+    
     /**
      * Returns the maximum capacity for events.
      *

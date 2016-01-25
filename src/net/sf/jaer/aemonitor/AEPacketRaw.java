@@ -10,6 +10,7 @@
 package net.sf.jaer.aemonitor;
 
 import java.util.Collection;
+import net.sf.jaer.aemonitor.EventRaw.EventType;
 
 /**
  * A structure containing a packer of AEs: addresses, timestamps.
@@ -49,7 +50,6 @@ public class AEPacketRaw extends AEPacket {
     /** Creates a new instance of AEPacketRaw with 0 capacity. */
     public AEPacketRaw() {
     }
-
     /** Creates a new instance of AEPacketRaw from addresses and timestamps
      * @param addresses
      * @param timestamps
@@ -60,6 +60,25 @@ public class AEPacketRaw extends AEPacket {
         }
         setAddresses(addresses);
         setTimestamps(timestamps);
+        if (addresses.length != timestamps.length) {
+            throw new RuntimeException("addresses.length=" + addresses.length + "!=timestamps.length=" + timestamps.length);
+        }
+        capacity = addresses.length;
+        numEvents = addresses.length;
+    }
+    
+    /** Creates a new instance of AEPacketRaw from addresses and timestamps and EventTypes
+     * @param addresses
+     * @param timestamps
+     * @param etypes
+     */
+    public AEPacketRaw(int[] addresses, int[] timestamps, EventType[] etypes) {
+        if ((addresses == null) || (timestamps == null)) {
+            return;
+        }
+        setAddresses(addresses);
+        setTimestamps(timestamps);
+        setEventtypes(etypes);
         if (addresses.length != timestamps.length) {
             throw new RuntimeException("addresses.length=" + addresses.length + "!=timestamps.length=" + timestamps.length);
         }
@@ -131,6 +150,8 @@ public class AEPacketRaw extends AEPacket {
     private void allocateArrays(int size) {
         addresses = new int[size]; //new E[size];
         timestamps = new int[size];
+        eventtypes = new EventType[size];
+        pixelDataArray = new int[size];
         this.capacity = size;
         numEvents = 0;
     }
@@ -152,6 +173,8 @@ public class AEPacketRaw extends AEPacket {
     final public EventRaw getEvent(int k) {
         event.timestamp = timestamps[k];
         event.address = addresses[k];
+        event.eventtype = eventtypes[k];
+        event.pixelData = pixelDataArray[k];
         return event;
     }
 

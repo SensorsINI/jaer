@@ -5,6 +5,9 @@
  */
 package net.sf.jaer.eventio;
 
+import java.awt.Point;
+import java.io.DataOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -20,17 +23,19 @@ import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.aemonitor.EventRaw.EventType;
 
 /**
  * This class parses the buffer from the data files or network streams containing jAER 3.0
  * format data, as specified in http://inilabs.com/support/software/fileformat/
  * 
- * The most useful public interface for outside is the GetJaer2EventBuf(), by this method, the event
+ * The most useful public interface for outside is the getJaer2EventBuf(), by this method, the event
  * buffer just include addr and timestamp (like jAER 2.0 did) will be returned. After get this
  * buffer similar to jAER 2.0, all other things will be processed by AEFileInputStream. The stream
  * will be treated like it's a jAER 2.0 buffer. 
  * 
  * @author min liu
+ * @author tobi
  */
 public class Jaer3BufferParser {
     
@@ -41,9 +46,14 @@ public class Jaer3BufferParser {
     
     private final int PKT_HEADER_SIZE = 28;
     
+    private int framePixelArrayOffset = 0;   // Just for frame events and this is the origin index
+    private int arrayIndex = 0;              // This is the correct index
+    
     private PacketDescriptor currentPkt = new PacketDescriptor();
     private long numEvents = 0;
-   
+ 
+    private DataOutputStream outFile = new DataOutputStream(new FileOutputStream("ae2dat"));  
+
     /**
      * The AEChip object associated with this stream. This field was added for
      * supported jAER 3.0 format files to support translating bit locations in
@@ -52,19 +62,27 @@ public class Jaer3BufferParser {
     private AEChip chip = null;
     
     /**
-     * Field for decoding jaer 3.0 address
+     * Field for decoding jaer 3.0 dvs address
      */
     public static final int JAER3YSHIFT = 2,
-                JAER3YMASK = 32767 << JAER3YSHIFT, // 9 bits from bits 22 to 30
+                JAER3YMASK = 32767 << JAER3YSHIFT, // 15 bits from bits 22 to 30
                 JAER3XSHIFT = 17,
-                JAER3XMASK = 32767 << JAER3XSHIFT, // 10 bits from bits 12 to 21
+                JAER3XMASK = 32767 << JAER3XSHIFT, // 15 bits from bits 12 to 21
                 JAER3POLSHIFT = 1,
-                JAER3POLMASK = 1 << JAER3POLSHIFT; //,    // 1 bit at bit 11
- 
+                JAER3POLMASK = 1 << JAER3POLSHIFT; //,    // 1 bit at bit 11   
+    /**
+     * Field for decoding jaer 3.0 aps address
+     */
+    public static final int JAER3APSYSHIFT = 0,
+                JAER3APSYMASK = 65535 << JAER3APSYSHIFT, // 16 bits from bits 16 to 31
+                JAER3APSXSHIFT = 16,
+                JAER3APSXMASK = 65535 << JAER3APSXSHIFT; // 16 bits from bits 0 to 15
+   
     
-    public enum EventType {
-        SpecialEvent, PolarityEvent, FrameEvent, Imu6Event, Imu9Event, SampleEvent, EarEvent, ConfigEvent // ordered according to id code
-    }
+    private boolean inFrameEvent = false;
+    private int frameCurrentEventOffset;
+    private boolean readOutType = false;
+
 
     public class PacketHeader {
 
@@ -212,7 +230,7 @@ public class Jaer3BufferParser {
     private PacketDescriptor getCurrentPkt(int targetPosition) throws IOException {
         
         PacketDescriptor pkt = searchPacketHeader(targetPosition, -1);
-        
+
         if (targetPosition - pkt.pktPosition > (pkt.pktHeader.eventSize)*(pkt.pktHeader.eventNumber) +PKT_HEADER_SIZE) {
             log.warning("Current position data is an invalid data, it doesn't belong to any packet!");
             return null;
@@ -252,8 +270,17 @@ public class Jaer3BufferParser {
     }
     public int getCurrentEventOffset() throws IOException {
         int currentPosition = in.position();
-        int nextPktPos = currentPkt.pktPosition + currentPkt.pktHeader.eventNumber * currentPkt.pktHeader.eventSize + PKT_HEADER_SIZE;
-        
+        int nextPktPos = 0;
+        try {
+            nextPktPos = currentPkt.pktPosition + currentPkt.pktHeader.eventNumber * currentPkt.pktHeader.eventSize + PKT_HEADER_SIZE;
+        } catch(NullPointerException npe) {
+            currentPkt = getCurrentPkt(currentPosition);
+            if(currentPkt == null) {
+                return -1;            // It's an invalid position, it doesn't have packet header and event data.
+            }
+            nextPktPos = currentPkt.pktPosition + currentPkt.pktHeader.eventNumber * currentPkt.pktHeader.eventSize + PKT_HEADER_SIZE;
+        }
+      
         // current position is not in the current packet, so we need to find the packet the current position belongs to
         if(currentPosition >= nextPktPos || currentPosition <= currentPkt.pktPosition) {   
             currentPkt = getCurrentPkt(currentPosition);
@@ -303,8 +330,8 @@ public class Jaer3BufferParser {
         
         // The current position is in the last event of the current packet and not the event header, so the next event will be in the next packet.
         // We should update the currentPktPos first.
-        if(currentEventOffset + eventSize >= nextPktPos) {
-            currentPkt = getNextPkt(currentPosition);
+        if(currentPosition + eventSize >= nextPktPos) {
+            currentPkt = getNextPkt(nextPktPos);
             if(null == currentPkt) {     //It's in the file end
                 return -1;
             } else {
@@ -329,11 +356,12 @@ public class Jaer3BufferParser {
             in.position(position);
             lastTs =  in.getInt();
         } else {
-            ByteBuffer tmpBuffer = ByteBuffer.allocate(8);
+            ByteBuffer tmpBuffer = ByteBuffer.allocate(32);
             in.position(pkt.pktPosition);
             for(int i = 0; i < pkt.pktHeader.eventValid; i++) {
-                tmpBuffer = getJaer2EventBuf();
+                tmpBuffer = getJaer2EventBuf();     //TODO, catch BufferUnderFlowException() here 
             }
+            tmpBuffer.getInt();   //event type
             tmpBuffer.getInt();   //addr
             lastTs = tmpBuffer.getInt();
         }
@@ -341,47 +369,129 @@ public class Jaer3BufferParser {
         in.position(currentPosition);   //Restore last position
         return lastTs;        
     }
-    
-    public ByteBuffer getJaer2EventBuf() throws IOException {
+
+    public int getNextValidEventOffset() throws IOException {
         int nextEventOffset = getNextEventOffset();
+        
         if(-1 == nextEventOffset) {
-            log.warning("Reach the end of file, can't read data!");
-            return null;
+            log.warning("Reach the end of the buffer, can't read data!");
+            throw new BufferUnderflowException();
         }
 
         final int validMask = 0x00000001;
         int eventFirstInt;
         in.position(nextEventOffset);        
-        eventFirstInt = in.getInt();        
-        
-        // This while loop is used to exclude the invalid events and non-polarity packets
-        while((eventFirstInt & validMask) != 1 || (currentPkt.pktHeader.eventType != EventType.PolarityEvent)) {
+        eventFirstInt = in.getInt();    
+          
+        // This while loop is used to exclude the invalid events
+        while((eventFirstInt & validMask) != 1 ||(currentPkt.pktHeader.eventType == EventType.Imu6Event)) {
+            /*
             try {
                 if(currentPkt.pktHeader.eventType != EventType.PolarityEvent) {
-                    in.position(currentPkt.pktPosition + currentPkt.pktHeader.eventNumber * currentPkt.pktHeader.eventSize + PKT_HEADER_SIZE);
+                    //in.position(currentPkt.pktPosition + currentPkt.pktHeader.eventNumber * currentPkt.pktHeader.eventSize + PKT_HEADER_SIZE);
                 }                
             } catch(IllegalArgumentException e) {
                 log.log(Level.INFO, "Packet Position is {0} and current position is {1}", new Object[]{currentPkt.pktPosition, in.position()});
-            }
+            }   
+            */
+            nextEventOffset = getNextEventOffset(); 
+            if(-1 == nextEventOffset) {
+                log.warning("Reach the end of the buffer, can't read data!");
+                throw new BufferUnderflowException();
+            } 
+            in.position(nextEventOffset);                  
+            eventFirstInt = in.getInt();           
+        }      
+        return nextEventOffset;
+    }
+    
+    public void setInFrameEvent(boolean frameEventFlg) {
+        this.inFrameEvent = frameEventFlg;
+    }
+   
 
-            nextEventOffset = getNextEventOffset();
-            in.position(nextEventOffset);        
-            eventFirstInt = in.getInt();              
-        }       
+    public ByteBuffer getJaer2EventBuf() throws IOException {   
+        ByteBuffer jaer2Buffer = ByteBuffer.allocate(32);
+      
+        int nextEventOffset = 0;
+        if(!inFrameEvent) {
+            nextEventOffset = getNextValidEventOffset();  
+            frameCurrentEventOffset = nextEventOffset; 
+            framePixelArrayOffset = 0;
+            arrayIndex = 0;
+        }
 
+        // First check if it's a frame event, if it's a frame event, we must check 
+        // whether the current event is finished or not
+        if(currentPkt.pktHeader.eventType == EventType.FrameEvent) {
+            int xlengthOffset = frameCurrentEventOffset + 20;
+            int xlength = in.getInt(xlengthOffset);
+            int ylengthOffset = frameCurrentEventOffset + 24;
+            int ylength = in.getInt(ylengthOffset);
+            // int channelNumber = (in.getInt(frameCurrentEventOffset) & 0xe) >> 1;
+            int tsOffset = currentPkt.pktHeader.eventTSOffset;
+            int ts = in.getInt(frameCurrentEventOffset + tsOffset);              
+            
+            if(arrayIndex <= 2 * xlength * ylength - 1) {
+                inFrameEvent = true;
+                // framePixelArrayOffset = arrayIndex;
+                framePixelArrayOffset = arrayIndex/ylength + xlength*(arrayIndex%ylength);
+                jaer2Buffer.putInt(currentPkt.pktHeader.eventType.getValue());  //type
+                // jaer2Buffer.putInt(((framePixelArrayOffset/ylength)<< 16) + framePixelArrayOffset%ylength);     //addr
+           
+                int jaer2FrameAddr;
+                int data;
+         
+                if(arrayIndex >= xlength * ylength && arrayIndex <= 2 * xlength * ylength - 1) {
+                    jaer2FrameAddr = (((arrayIndex - xlength * ylength)/ylength )<< 17) + (((arrayIndex - xlength * ylength)%ylength) << 2) + 1;    
+                    
+                    // Signal Read Array
+                    data = 0; 
+                    ts = in.getInt(frameCurrentEventOffset + 16);                 
+                                                           
+                } else {
+                    jaer2FrameAddr = (((arrayIndex)/ylength) << 17) + (((arrayIndex)%ylength) << 2) + 0;  
+
+                   // Reset Read Array
+                    int dataOffset = 36 + 2*(framePixelArrayOffset);
+                    if(frameCurrentEventOffset + dataOffset >= in.limit()) {
+                        throw new BufferUnderflowException();    //Reach the end of the buffer
+                    }                    
+                    data =  in.getShort(frameCurrentEventOffset + dataOffset);                          
+                }
+           
+                jaer2Buffer.putInt(jaer2FrameAddr);         
+                jaer2Buffer.putInt(ts);       //ts                
+                jaer2Buffer.putInt(data);                //pixeldata
+                jaer2Buffer.flip();
+                
+                // outFile.writeInt(jaer2FrameData);
+                // outFile.writeInt(ts);
+                // outFile.close();
+                arrayIndex += 1;
+                return jaer2Buffer;
+            } else {
+                inFrameEvent = false;
+                readOutType = !readOutType;
+                // framePixelArrayOffset = 0;
+                in.position(frameCurrentEventOffset + currentPkt.pktHeader.eventSize);
+                return getJaer2EventBuf();
+            }           
+
+        }
         
-        int addrOffset = GetAddrOffset(currentPkt.pktHeader);
+        int dataOffset = GetDataOffset(currentPkt.pktHeader);
         int tsOffset = currentPkt.pktHeader.eventTSOffset;
-        ByteBuffer jaer2Buffer = ByteBuffer.allocate(8);
         
-        in.position(nextEventOffset + addrOffset);
+        in.position(nextEventOffset + dataOffset);
         int addr =  in.getInt();
-        // addr = this.extractJaer2Addr(addr);
         in.position(nextEventOffset + tsOffset);
         int ts = in.getInt();
         
+        jaer2Buffer.putInt(currentPkt.pktHeader.eventType.getValue());
         jaer2Buffer.putInt(addr);
         jaer2Buffer.putInt(ts);
+        jaer2Buffer.putInt(0);  // pixelData just for frame event, other events don't use it;
         jaer2Buffer.flip();
         return jaer2Buffer;
     }
@@ -393,6 +503,12 @@ public class Jaer3BufferParser {
             if(pkt.pktHeader.eventType == EventType.PolarityEvent) {
                 numEvents += pkt.pktHeader.eventValid;                
             }
+            if(pkt.pktHeader.eventType == EventType.FrameEvent) {
+                int xlength = in.getInt(pkt.pktPosition + PKT_HEADER_SIZE + 20);
+                int ylength = in.getInt(pkt.pktPosition + PKT_HEADER_SIZE + 24);               
+                
+                numEvents += xlength * ylength * (pkt.pktHeader.eventValid);
+            }
             pkt = getNextPkt(pkt.pktPosition + 1);
         }
         return numEvents;
@@ -400,34 +516,32 @@ public class Jaer3BufferParser {
     
 
     
-    private int GetAddrOffset(PacketHeader packetHeader) throws IOException {
-        int eventAddrOffset = 0;
+    private int GetDataOffset(PacketHeader packetHeader) throws IOException {
+        int eventDataOffset = 0;
         
         switch (packetHeader.eventType) {
                 case PolarityEvent:
-                    eventAddrOffset = 0;
+                    eventDataOffset = 0;
                     break;
-                    //readNextPacket();                    ;
                 case FrameEvent:
-                    eventAddrOffset = 0;
-                    // readFrame(packetHeader);
+                    eventDataOffset = 36 + 2*framePixelArrayOffset;  //TODO, Consider the channel number
                     break;
                 case SampleEvent:
-                    eventAddrOffset = 0;
+                    eventDataOffset = 0;
                     break;
                 case ConfigEvent:
-                    eventAddrOffset = 0;
+                    eventDataOffset = 0;
                     break;
                 case Imu6Event:
-                    eventAddrOffset = 0;
+                    eventDataOffset = 0;
                     break;
                 case Imu9Event:
-                    eventAddrOffset = 0;
+                    eventDataOffset = 0;
                     break;
-                default: eventAddrOffset = 0;
+                default: eventDataOffset = 0;
             }
  
-        return eventAddrOffset;
+        return eventDataOffset;
     }       
      
     public int getCurrentPktPos() {
@@ -477,10 +591,11 @@ public class Jaer3BufferParser {
             final int sx1 = chip.getSizeX() - 1;
             chip.getSizeY();
 
-            final int[] datas = in.getAddresses();
+            final int[] addrs = in.getAddresses();
             final int[] timestamps = in.getTimestamps();
-            final OutputEventIterator outItr = out.outputIterator();
-            final PacketHeader pktHeader = Jaer3BufferParser.this.currentPkt.pktHeader;
+            final EventType[] etypes = in.getEventtypes();
+            final int[] pixelDatas = in.getPixelDataArray();
+            final OutputEventIterator outItr = out.outputIterator();          
             // NOTE we must make sure we write ApsDvsEvents when we want them, not reuse the IMUSamples
 
             // at this point the raw data from the USB IN packet has already been digested to extract timestamps,
@@ -490,14 +605,15 @@ public class Jaer3BufferParser {
             // System.out.println("Extracting new packet "+out);
                 for (int i = 0; i < n; i++) { 
                         // events and still delivering frames
-                        final int data = datas[i];
+                        final int addr = addrs[i];
+                        final int data = pixelDatas[i];
                         
-                        switch (pktHeader.eventType) {
+                        switch (etypes[i]) {
                             case PolarityEvent:
-                                readDVS(outItr, data, timestamps[i]);
+                                readDVS(outItr, addr, timestamps[i]);
                                 break;
                             case FrameEvent:
-                                // readFrame(packetHeader);
+                                readFrame(outItr, addr, data, timestamps[i]);
                                 break;
                             case SampleEvent:
                                 // readSample();
@@ -534,7 +650,7 @@ public class Jaer3BufferParser {
                 return e;
         }
     
-        private void readDVS(final OutputEventIterator outItr, final int data, final int timestamp) {
+        protected void readDVS(final OutputEventIterator outItr, final int data, final int timestamp) {
             final int sx1 = chip.getSizeX() - 1;            
             final ApsDvsEvent e = nextApsDvsEvent(outItr);
 
@@ -549,6 +665,106 @@ public class Jaer3BufferParser {
 
             e.setIsDVS(true);     
         }
+        
+        protected void readFrame(final OutputEventIterator outItr, final int addr, final int data, final int timestamp) {
+            final int sx1 = chip.getSizeX() - 1;            
+            final ApsDvsEvent e = nextApsDvsEvent(outItr);
+            // APS event
+            // We first calculate the positions, so we can put events such as StartOfFrame at their
+            // right place, before the actual APS event denoting (0, 0) for example.
+
+            final short x = (short) (((addr & JAER3XMASK) >> JAER3XSHIFT));
+            final short y = (short) ((addr & JAER3YMASK) >> JAER3YSHIFT);
+            // final short x = (short) (((addr & (1023 << 12)) >>> 12));
+            // final short y = (short) ((addr & (511 << 22)) >>> 22);
+            
+            final boolean pixFirst = firstFrameAddress(x, y); // First event of frame (addresses get flipped)
+            final boolean pixLast = lastFrameAddress(x, y); // Last event of frame (addresses get flipped)
+
+            ApsDvsEvent.ReadoutType readoutType = ApsDvsEvent.ReadoutType.Null;
+            switch (addr & 0x3) {
+                    case 0:
+                            readoutType = ApsDvsEvent.ReadoutType.ResetRead;
+                            break;
+
+                    case 1:
+                            readoutType = ApsDvsEvent.ReadoutType.SignalRead;
+                            break;
+
+                    case 3:
+                            log.warning("Event with readout cycle null was sent out!");
+                            break;
+
+                    default:
+
+                            break;
+            }
+            e.adcSample = data & 0x3ff; 
+            e.readoutType = readoutType;
+            e.special = false;
+            e.timestamp = timestamp;
+            e.address = addr;
+            e.type = 2;
+            e.x = x;
+            e.y = y;
+            
+            if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
+                createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
+
+                // setFrameCount(getFrameCount() + 1);
+            }
+        }
+  
+	/**
+	 * Subclasses should set the apsFirstPixelReadOut and apsLastPixelReadOut
+	 *
+	 * @param x
+	 *            the x location of APS readout
+	 * @param y
+	 *            the y location of APS readout
+	 * @see #apsFirstPixelReadOut
+	 */
+	public boolean firstFrameAddress(final short x, final short y) {
+		final boolean yes = (x == -1) && (y == -1);
+		return yes;
+	}
+    
+    	/**
+	 * Subclasses should set the apsFirstPixelReadOut and apsLastPixelReadOut
+	 *
+	 * @param x
+	 *            the x location of APS readout
+	 * @param y
+	 *            the y location of APS readout
+	 * @see #apsLastPixelReadOut
+	 */
+	public boolean lastFrameAddress(final short x, final short y) {
+		final boolean yes = (x == 0) && (y == 0);
+		return yes;
+	}    
+        
+        /**
+         * creates a special ApsDvsEvent in output packet just for flagging APS
+         * frame markers such as start of frame, reset, end of frame.
+         *
+         * @param outItr
+         * @param flag
+         * @param timestamp
+         * @return
+         */
+        protected ApsDvsEvent createApsFlagEvent(final OutputEventIterator outItr, final ApsDvsEvent.ReadoutType flag,
+                final int timestamp) {
+                final ApsDvsEvent a = nextApsDvsEvent(outItr);
+                a.adcSample = 0; // set this effectively as ADC sample even though fake
+                a.timestamp = timestamp;
+                a.x = -1;
+                a.y = -1;
+                a.address = -1;
+                a.readoutType = flag;
+//                        a.special=true;  // not really special
+                return a;
+        }        
+        
     }
   
 }
