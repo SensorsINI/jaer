@@ -401,7 +401,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         
         for (Object ein : in) {
             extractEventInfo(ein);
-            if (measureAccuracy || discardOutliersEnabled) {
+            if (measureAccuracy || discardOutliersForStatisticaMeasurementEnabled) {
                 imuFlowEstimator.calculateImuFlow((PolarityEvent) inItr.next());
                 setGroundTruth();
             }

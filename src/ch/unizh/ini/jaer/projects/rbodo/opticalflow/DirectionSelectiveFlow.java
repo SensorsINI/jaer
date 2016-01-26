@@ -87,7 +87,7 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
         // </editor-fold>
         for (Object ein : oriPacket) {
             extractEventInfo(ein);
-            if (measureAccuracy || discardOutliersEnabled) {
+            if (measureAccuracy || discardOutliersForStatisticaMeasurementEnabled) {
                 imuFlowEstimator.calculateImuFlow((PolarityEvent) inItr.next());
                 setGroundTruth();
             }

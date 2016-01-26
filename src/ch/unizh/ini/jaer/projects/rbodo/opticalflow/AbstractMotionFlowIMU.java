@@ -133,10 +133,18 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     // optical flow and ground truth is greater than a certain threshold.
     // At the moment, this option is not included in the jAER filter settings
     // and defaults to false.
-    boolean discardOutliersEnabled = false;
+    protected boolean discardOutliersForStatisticaMeasurementEnabled = false;
     // Threshold angle in degree. Discard measured optical flow vector if it 
-    // deviates from ground truth by more than epsilon.
-    float epsilon = 10f;
+    // deviates from ground truth by more than discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg.
+    protected float discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg = 10f;
+
+    // outlier filtering that only allows through motion events that agree with at least N most-recent neigbor events 
+    // in max angle difference
+    protected boolean outlierMotionFilteringEnabled = getBoolean("outlierMotionFilteringEnabled", false);
+    protected float outlierMotionFilteringMaxAngleDifferenceDeg = getFloat("outlierMotionFilteringMaxAngleDifferenceDeg", 30f);
+    protected int outlierMotionFilteringSubsampleShift = getInt("outlierMotionFilteringSubsampleShift", 1);
+    protected int outlierMotionFilteringMinSameAngleInNeighborhood=getInt("outlierMotionFilteringMinSameAngleInNeighborhood",2);
+    protected int[][] outlierMotionFilteringLastAngles = null;
 
     /**
      * Used for logging motion vector events to a text log file
@@ -178,8 +186,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(smoo, "speedControlEnabled", "enables filtering of excess speeds");
         setPropertyTooltip(smoo, "speedControl_ExcessSpeedRejectFactor", "local speeds this factor higher than average are rejected as non-physical");
         setPropertyTooltip(smoo, "speedControl_speedMixingFactor", "speeds computed are mixed with old values with this factor");
-//        setPropertyTooltip(imu, "discardOutliersEnabled", "discard measured local motion vector if it deviates from IMU estimate");
-//        setPropertyTooltip(imu, "epsilon", "threshold angle in degree. Discard measured optical flow vector if it deviates from IMU-estimate by more than epsilon");
+//        setPropertyTooltip(imu, "discardOutliersForStatisticaMeasurementEnabled", "discard measured local motion vector if it deviates from IMU estimate");
+//        setPropertyTooltip(imu, "discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg", "threshold angle in degree. Discard measured optical flow vector if it deviates from IMU-estimate by more than discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg");
         setPropertyTooltip(imu, "lensFocalLengthMm", "lens focal length in mm. Used for computing the IMU flow from pan and tilt camera rotations. 4.5mm is focal length for dataset data.");
         File lf = new File(loggingFolder);
         if (!lf.exists() || !lf.isDirectory()) {
@@ -741,9 +749,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         // 1.) Filter out events with speed high above average.
         // 2.) Filter out events whose velocity deviates from IMU estimate by a 
         // certain degree.
-        return speedControlEnabled && isSpeeder() || discardOutliersEnabled
+        return speedControlEnabled && isSpeeder() || discardOutliersForStatisticaMeasurementEnabled
                 && Math.abs(motionFlowStatistics.angularError.calculateError(vx, vy, v, vxGT, vyGT, vGT))
-                > epsilon;
+                > discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg;
     }
 
     // <editor-fold defaultstate="collapsed" desc="Speed Control">
@@ -861,28 +869,28 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --epsilon--">
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg--">
 //    public float getEpsilon() {
-//        return epsilon;
+//        return discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg;
 //    }
 //
-//    synchronized public void setEpsilon(float epsilon) {
-//        if (epsilon > 180) {
-//            epsilon = 180;
+//    synchronized public void setEpsilon(float discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg) {
+//        if (discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg > 180) {
+//            discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg = 180;
 //        }
-//        this.epsilon = epsilon;
-//        putFloat("epsilon", epsilon);
+//        this.discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg = discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg;
+//        putFloat("discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg", discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg);
 //    }
     // </editor-fold>
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --discardOutliersEnabled--">
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --discardOutliersForStatisticaMeasurementEnabled--">
 //    public boolean getDiscardOutliersEnabled() {
-//        return this.discardOutliersEnabled;
+//        return this.discardOutliersForStatisticaMeasurementEnabled;
 //    }
 //
-//    public void setDiscardOutliersEnabled(final boolean discardOutliersEnabled) {
-//        support.firePropertyChange("discardOutliersEnabled", this.discardOutliersEnabled, discardOutliersEnabled);
-//        this.discardOutliersEnabled = discardOutliersEnabled;
-//        putBoolean("discardOutliersEnabled", discardOutliersEnabled);
+//    public void setDiscardOutliersEnabled(final boolean discardOutliersForStatisticaMeasurementEnabled) {
+//        support.firePropertyChange("discardOutliersForStatisticaMeasurementEnabled", this.discardOutliersForStatisticaMeasurementEnabled, discardOutliersForStatisticaMeasurementEnabled);
+//        this.discardOutliersForStatisticaMeasurementEnabled = discardOutliersForStatisticaMeasurementEnabled;
+//        putBoolean("discardOutliersForStatisticaMeasurementEnabled", discardOutliersForStatisticaMeasurementEnabled);
 //    }
     // </editor-fold>
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --loggingFolder--">
@@ -1091,6 +1099,27 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     public void setLensFocalLengthMm(float aLensFocalLengthMm) {
         lensFocalLengthMm = aLensFocalLengthMm;
         radPerPixel = (float) Math.atan(chip.getPixelWidthUm() / (1000 * lensFocalLengthMm));
+    }
+    
+    protected boolean outlierMotionFilteringKeepThisEvent(MotionOrientationEventInterface e){
+        if(outlierMotionFilteringLastAngles==null){
+            outlierMotionFilteringLastAngles=new int[chip.getSizeX()][chip.getSizeY()];
+        }
+        
+        
+    }
+
+    /**
+     * returns unsigned angle difference that is in range 0-180
+     *
+     * @param a
+     * @param b
+     * @return unsigned angle difference that is in range 0-180
+     */
+    private int angleDiff(int a, int b) {
+        int d = Math.abs(a - b) % 360;
+        int r = d > 180 ? 360 - d : d;
+        return r;
     }
 
 }
