@@ -1105,7 +1105,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         if(outlierMotionFilteringLastAngles==null){
             outlierMotionFilteringLastAngles=new int[chip.getSizeX()][chip.getSizeY()];
         }
-        
+         return true;
         
     }
 
