@@ -314,7 +314,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         int lastTs = mostRecentTimestamp;
         int lastBufferPosition = 0;
         
-        ByteBuffer tmpEventBuffer = ByteBuffer.allocate(32);       
+        ByteBuffer tmpEventBuffer = ByteBuffer.allocate(16);       
         
         // if(jaer3fileinputstream!=null){
             // return jaer3fileinputstream.readEventForwards();
@@ -742,6 +742,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             }
         } catch (NonMonotonicTimeException e) {
             log.log(Level.INFO, "rewind from timestamp={0} to timestamp={1}", new Object[]{e.getPreviousTimestamp(), e.getCurrentTimestamp()});
+        }
+        if(this.jaer3EnableFlg == true) {
+           jaer3BufferParser.setInFrameEvent(false);
         }
         currentStartTimestamp = mostRecentTimestamp;
 //        System.out.println("AEInputStream.rewind(): set position="+byteBuffer.position()+" mostRecentTimestamp="+mostRecentTimestamp);

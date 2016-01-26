@@ -757,7 +757,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			return address;
 		}
 
-		protected void setFrameCount(final int i) {
+		public void setFrameCount(final int i) {   //TODO when the jaer's uniform extractor finished, change it back to protected
 			frameCount = i;
 		}
 
