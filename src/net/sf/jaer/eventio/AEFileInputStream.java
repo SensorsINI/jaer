@@ -257,7 +257,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         try {
             EventRaw ev = readEventForwards(); // init timestamp
             firstTimestamp = ev.timestamp;
-            if(true == jaer3EnableFlg) {
+            if(true == jaer3EnableFlg && fileSize <= chunkSizeBytes) {
                 lastTimestamp = jaer3BufferParser.getLastTimeStamp();
             } else {
                 position(size() - 2);
@@ -778,13 +778,15 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         try {
             if ((newChunkNumber = getChunkNumber(event)) != chunkNumber) {
                 mapChunk(newChunkNumber);
+                
             }
             byteBuffer.position((int) ((event * eventSizeBytes) % chunkSizeBytes));
             
             // Update in buffer at the same time, just for jAER 3.0 format file
             if(this.jaer3EnableFlg) {
                 jaer3BufferParser.setInBuffer(byteBuffer);
-                jaer3BufferParser.setInBufferOrder(ByteOrder.LITTLE_ENDIAN);               
+                jaer3BufferParser.setInBufferOrder(ByteOrder.LITTLE_ENDIAN); 
+                jaer3BufferParser.setInFrameEvent(false);
             }
             position = event;
         } catch (ClosedByInterruptException e3) {
@@ -1178,6 +1180,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             chunkNumber = 0; // overflow will wrap<0
         }
         mapChunk(chunkNumber);
+        
+        // Update in buffer at the same time, just for jAER 3.0 format file
+        if(this.jaer3EnableFlg) {
+            jaer3BufferParser.setInBuffer(byteBuffer);
+            jaer3BufferParser.setInBufferOrder(ByteOrder.LITTLE_ENDIAN); 
+            jaer3BufferParser.setInFrameEvent(false);
+        }
     }
 
     /**
@@ -1193,6 +1202,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             chunkNumber = 0; // overflow will wrap<0
         }
         mapChunk(chunkNumber);
+        
+        // Update in buffer at the same time, just for jAER 3.0 format file
+        if(this.jaer3EnableFlg) {
+            jaer3BufferParser.setInBuffer(byteBuffer);
+            jaer3BufferParser.setInBufferOrder(ByteOrder.LITTLE_ENDIAN); 
+            jaer3BufferParser.setInFrameEvent(false);
+        }
     }
 
     private int chunksMapped = 0;
