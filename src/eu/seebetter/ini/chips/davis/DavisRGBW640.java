@@ -5,6 +5,8 @@
  */
 package eu.seebetter.ini.chips.davis;
 
+import java.awt.Point;
+
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.Description;
@@ -18,6 +20,7 @@ import net.sf.jaer.event.ApsDvsEventRGBW.ColorFilter;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 /**
  * CDAVIS camera with heterogenous mixture of DAVIS and RGB APS global shutter
@@ -27,11 +30,10 @@ import net.sf.jaer.event.TypedEvent;
  */
 @Description("DAVIS APS-DVS camera with RGBW CFA color filter array and 640x480 APS pixels and 320x240 DAVIS pixels")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class DavisRGBW640 extends Davis346BaseCamera {
+public class DavisRGBW640 extends DavisBaseCamera {
 
 	public static final short WIDTH_PIXELS = 640;
 	public static final short HEIGHT_PIXELS = 480;
-	protected DavisRGBW640Config davisConfig;
 
 	public DavisRGBW640() {
 		setName("DavisRGBW640");
@@ -41,14 +43,21 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 
 		setEventClass(ApsDvsEventRGBW.class);
 
-		setBiasgen(davisConfig = new DavisRGBW640Config(this));
-
 		setEventExtractor(new DavisRGBWEventExtractor(this));
 
-		apsDVSrenderer = new DavisRGBW640Renderer(this); // must be called after configuration is constructed, because
-		// it needs to know if frames are enabled to reset pixmap
-		apsDVSrenderer.setMaxADC(DavisChip.MAX_ADC);
-		setRenderer(apsDVSrenderer);
+		setBiasgen(davisConfig = new DavisRGBW640Config(this));
+
+		davisRenderer = new DavisRGBW640Renderer(this);
+		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
+		setRenderer(davisRenderer);
+
+		setApsFirstPixelReadOut(new Point(getSizeX() - 1, getSizeY() - 1));
+		setApsLastPixelReadOut(new Point(0, 0));
+	}
+
+	public DavisRGBW640(final HardwareInterface hardwareInterface) {
+		this();
+		setHardwareInterface(hardwareInterface);
 	}
 
 	/**
@@ -63,10 +72,6 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 	 * <p>
 	 */
 	public class DavisRGBWEventExtractor extends DavisBaseCamera.DavisEventExtractor {
-
-		/**
-		 *
-		 */
 		private static final long serialVersionUID = -4739546277540104560L;
 
 		public DavisRGBWEventExtractor(final DavisBaseCamera chip) {
@@ -228,14 +233,14 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 					}
 
 					// Start of Frame (SOF)
-					if (pixFirst && !getDavisConfig().getApsReadoutControl().isGlobalShutterMode()
+					if (pixFirst && !getDavisConfig().isGlobalShutter()
 						&& (readoutType == ApsDvsEventRGBW.ReadoutType.ResetRead)) { // RS
 						createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.SOF, timestamp);
 
 						frameIntervalUs = timestamp - frameExposureStartTimestampUs;
 						frameExposureStartTimestampUs = timestamp;
 					}
-					if (pixFirst && getDavisConfig().getApsReadoutControl().isGlobalShutterMode()
+					if (pixFirst && getDavisConfig().isGlobalShutter()
 						&& (readoutType == ApsDvsEventRGBW.ReadoutType.SignalRead)) { // GS
 						createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.SOF, timestamp);
 
@@ -255,24 +260,24 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 					e.setColorFilter(ColorFilter);
 
 					// TODO: figure out exposure for both GS and RS, and start of frame for GS.
-					if (pixLast && !getDavisConfig().getApsReadoutControl().isGlobalShutterMode()
+					if (pixLast && !getDavisConfig().isGlobalShutter()
 						&& (readoutType == ApsDvsEventRGBW.ReadoutType.SignalRead)) {
 						// if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and we
 						// are at last APS pixel, then write EOF event
 						// insert a new "end of frame" event not present in original data
 						createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.EOF, timestamp);
 
-						setFrameCount(getFrameCount() + 1);
+						increaseFrameCount(1);
 					}
 
-					if (pixLast && getDavisConfig().getApsReadoutControl().isGlobalShutterMode()
+					if (pixLast && getDavisConfig().isGlobalShutter()
 						&& (readoutType == ApsDvsEventRGBW.ReadoutType.ResetRead)) {
 						// if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and we
 						// are at last APS pixel, then write EOF event
 						// insert a new "end of frame" event not present in original data
 						createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.EOF, timestamp);
 
-						setFrameCount(getFrameCount() + 1);
+						increaseFrameCount(1);
 					}
 				}
 			}

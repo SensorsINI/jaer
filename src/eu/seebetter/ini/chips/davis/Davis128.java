@@ -1,5 +1,7 @@
 package eu.seebetter.ini.chips.davis;
 
+import java.awt.Point;
+
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.Description;
@@ -25,7 +27,6 @@ public class Davis128 extends DavisBaseCamera {
 
 	public static final short WIDTH_PIXELS = 128;
 	public static final short HEIGHT_PIXELS = 128;
-	protected DavisConfig davisConfig;
 
 	/**
 	 * Creates a new instance.
@@ -35,13 +36,19 @@ public class Davis128 extends DavisBaseCamera {
 		setDefaultPreferencesFile("biasgenSettings/Davis128/Davis128.xml");
 		setSizeX(Davis128.WIDTH_PIXELS);
 		setSizeY(Davis128.HEIGHT_PIXELS);
-		setBiasgen(davisConfig = new DavisConfig(this));
-		setEventExtractor(new Davis128EventExtractor(this));
-		apsDVSrenderer = new Davis128Renderer(this); // must be called after configuration is constructed, because it
-														// needs to know if frames are enabled to reset pixmap
-		apsDVSrenderer.setMaxADC(DavisChip.MAX_ADC);
-		setRenderer(apsDVSrenderer);
+
 		setEventClass(ApsDvsEventRGBW.class);
+
+		setEventExtractor(new Davis128EventExtractor(this));
+
+		setBiasgen(davisConfig = new DavisTowerBaseConfig(this));
+
+		davisRenderer = new Davis128Renderer(this);
+		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
+		setRenderer(davisRenderer);
+
+		setApsFirstPixelReadOut(new Point(getSizeX() - 1, getSizeY() - 1));
+		setApsLastPixelReadOut(new Point(0, 0));
 	}
 
 	/**
@@ -70,9 +77,6 @@ public class Davis128 extends DavisBaseCamera {
 	 */
 	public class Davis128EventExtractor extends DavisBaseCamera.DavisEventExtractor {
 
-		/**
-		 *
-		 */
 		private static final long serialVersionUID = -130532611830199045L;
 
 		public Davis128EventExtractor(final DavisBaseCamera chip) {
@@ -249,7 +253,7 @@ public class Davis128 extends DavisBaseCamera {
 					if (pixFirst && (readoutType == ApsDvsEventRGBW.ReadoutType.ResetRead)) {
 						createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.SOF, timestamp);
 
-						if (!getDavisConfig().getApsReadoutControl().isGlobalShutterMode()) {
+						if (!getDavisConfig().isGlobalShutter()) {
 							// rolling shutter start of exposureControlRegister (SOE)
 							createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.SOE, timestamp);
 							frameIntervalUs = timestamp - frameExposureStartTimestampUs;
@@ -258,7 +262,7 @@ public class Davis128 extends DavisBaseCamera {
 					}
 
 					if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)
-						&& getDavisConfig().getApsReadoutControl().isGlobalShutterMode()) {
+						&& getDavisConfig().isGlobalShutter()) {
 						// global shutter start of exposureControlRegister (SOE)
 						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamp);
 						frameIntervalUs = timestamp - frameExposureStartTimestampUs;
@@ -286,7 +290,7 @@ public class Davis128 extends DavisBaseCamera {
 					if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
 						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
 
-						setFrameCount(getFrameCount() + 1);
+						increaseFrameCount(1);
 					}
 				}
 			}

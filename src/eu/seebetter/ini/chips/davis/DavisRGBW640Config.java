@@ -5,17 +5,18 @@
  */
 package eu.seebetter.ini.chips.davis;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
-import ch.unizh.ini.jaer.config.cpld.CPLDInt;
-import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
-import eu.seebetter.ini.chips.davis.imu.ImuControl;
+import ch.unizh.ini.jaer.config.spi.SPIConfigBit;
+import ch.unizh.ini.jaer.config.spi.SPIConfigInt;
+import ch.unizh.ini.jaer.config.spi.SPIConfigValue;
 import net.sf.jaer.biasgen.AddressedIPotArray;
-import net.sf.jaer.biasgen.Pot;
-import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
+import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 
 /**
  * Base configuration for Davis356 (ApsDvs346) on Tower wafer designs
@@ -23,207 +24,97 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * @author tobi
  */
 public class DavisRGBW640Config extends DavisTowerBaseConfig {
-	protected CPLDInt Transfer_D = new CPLDInt(chip, 167, 152, (1 << 16) - 1, "Transfer_D", "Transfer time counter (3 in GS, 1 in RS).", 0);
-	protected CPLDInt RSFDSettle_D = new CPLDInt(chip, 183, 168, (1 << 12) - 1, "RSFDSettle_D", "RS counter 0.", 0);
-	protected CPLDInt GSPDReset_D = new CPLDInt(chip, 199, 184, (1 << 12) - 1, "GSPDReset_D", "GS counter 0.", 0);
-	protected CPLDInt GSResetFall_D = new CPLDInt(chip, 215, 200, (1 << 12) - 1, "GSResetFall_D", "GS counter 1.", 0);
-	protected CPLDInt GSTXFall_D = new CPLDInt(chip, 231, 216, (1 << 12) - 1, "GSTXFall_D", "GS counter 2.", 0);
-	protected CPLDInt GSFDReset_D = new CPLDInt(chip, 247, 232, (1 << 12) - 1, "GSFDReset_D", "GS counter 3.", 0);
-
 	public DavisRGBW640Config(final Chip chip) {
 		super(chip);
+		setName("DavisRGBW640Config");
 
-		addConfigValue(Transfer_D);
-		addConfigValue(RSFDSettle_D);
-		addConfigValue(GSPDReset_D);
-		addConfigValue(GSResetFall_D);
-		addConfigValue(GSTXFall_D);
-		addConfigValue(GSFDReset_D);
+		ipots = new AddressedIPotArray(this);
 
-		setPotArray(new AddressedIPotArray(this)); // garbage collect IPots added in super by making this new potArray
-
-		vdacs = new TowerOnChip6BitVDAC[8];
-		// TODO fix this code for actual vdacs
-		// getPotArray().addPot(new TowerOnChip6BitVDAC(this, "", 0, 0, ""));
-		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ApsCasBpc", 0, 0,
+		// VDAC biases
+		ipots.addPot(new TowerOnChip6BitVDAC(this, "ApsCasBpc", 0, 0,
 			"N-type cascode for protecting drain of DVS photoreceptor log feedback FET from APS transients"));
-		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "OVG1Lo", 1, 1,
+		ipots.addPot(new TowerOnChip6BitVDAC(this, "OVG1Lo", 1, 0,
 			"Logic low level of the overflow gate in the DAVIS pixel if it's configured as adjustable"));
-		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "OVG2Lo", 2, 2,
+		ipots.addPot(new TowerOnChip6BitVDAC(this, "OVG2Lo", 2, 0,
 			"Logic low level of the overflow gate in the APS pixel if it's configured as adjustable"));
-		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "TX2OVG2Hi", 3, 3,
+		ipots.addPot(new TowerOnChip6BitVDAC(this, "TX2OVG2Hi", 3, 0,
 			"Logic high level of the overflow gate and transfer gate in the APS pixel if it's configured as adjustable"));
-		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "Gnd07", 4, 4, "Elevated ground source at 0.7V for producing 4V reset signals"));
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "VTestADC", 5, 5, "A fixed voltage to test the on-chip ADC if it's configured to test mode"));
-		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADCRefHigh", 6, 6, "The upper limit of the input voltage to the on chip ADC"));
-		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADCRefLow", 7, 7, "The lower limit of the input voltage to the on chip ADC"));
+		ipots.addPot(new TowerOnChip6BitVDAC(this, "Gnd07", 4, 0, "Elevated ground source at 0.7V for producing 4V reset signals"));
+		ipots.addPot(
+			new TowerOnChip6BitVDAC(this, "VTestADC", 5, 0, "A fixed voltage to test the on-chip ADC if it's configured to test mode"));
+		ipots.addPot(new TowerOnChip6BitVDAC(this, "ADCRefHigh", 6, 0, "The upper limit of the input voltage to the on chip ADC"));
+		ipots.addPot(new TowerOnChip6BitVDAC(this, "ADCRefLow", 7, 0, "The lower limit of the input voltage to the on chip ADC"));
 
-		try {
-			// added from gdoc
-			// https://docs.google.com/spreadsheet/ccc?key=0AuXeirzvZroNdHNLMWVldWVJdkdqNGNxOG5ZOFdXcHc#gid=6
-			// private AddressedIPotCF diffOn, diffOff, refr, pr, sf, diff;
-			addAIPot("IFRefrBn,n,normal,Bias calibration refractory period"); // 8
-			addAIPot("IFThrBn,n,normal,Bias calibration neuron threshold");// 9
-			addAIPot("LocalBufBn,n,normal,Local buffer strength");// 10
-			addAIPot("PadFollBn,n,normal,Follower-pad buffer strength");// 11
-			addAIPot("Blk1N,n,normal,Ununsed N type");// 12
-			addAIPot("PixInvBn,n,normal,DVS request inversion static inverter strength");// 13
-			diff = addAIPot("DiffBn,n,normal,DVS differenciator gain");// 14
-			diffOn = addAIPot("OnBn,n,normal,DVS on event threshold");// 15
-			diffOff = addAIPot("OffBn,n,normal,DVS off event threshold");// 16
-			pr = addAIPot("PrBp,p,normal,Photoreceptor bias current");// 17
-			sf = addAIPot("PrSFBp,p,normal,Photoreceptor follower bias current"); // 18
-			refr = addAIPot("RefrBp,p,normal,DVS refractory period"); // 19
-			addAIPot("ArrayBiasBufferBn,n,normal,Row/column bias buffer strength"); // 20
-			addAIPot("Blk1P,p,normal,Ununsed P type"); // 21
-			addAIPot("ArrayLogicBufferBn,n,normal,Row logic level buffer strength"); // 22
-			addAIPot("FalltimeBn,n,normal,Fall time of the APS control signals");// 23
-			addAIPot("RisetimeBp,p,normal,Rise time of the APS control signals");// 24
-			addAIPot("ReadoutBufBp,p,normal,APS analog readout buffer strangth");// 25
-			addAIPot("ApsROSFBn,n,normal,APS readout source follower strength"); // 26
-			addAIPot("ADCcompBp,p,normal,ADC comparator gain"); // 27
-			addAIPot("DACBufBp,p,normal,ADC ramp buffer strength"); // 28
-			addAIPot("Blk2P,p,normal,Ununsed P type"); // 29
-			addAIPot("LcolTimeoutBn,n,normal,No column request timeout"); // 30
-			addAIPot("AEPdBn,n,normal,Request encoder static pulldown strength"); // 31
-			addAIPot("AEPuXBp,p,normal,AER column pullup strength"); // 32
-			addAIPot("AEPuYBp,p,normal,AER row pullup strength"); // 33
-			addAIPot("BiasBuffer,n,normal,Biasgen buffer strength");// 34
+		// CoarseFine biases
+		DavisConfig.addAIPot(ipots, this, "IFRefrBn,8,n,normal,Bias calibration refractory period"); // 8
+		DavisConfig.addAIPot(ipots, this, "IFThrBn,9,n,normal,Bias calibration neuron threshold");// 9
+		DavisConfig.addAIPot(ipots, this, "LocalBufBn,10,n,normal,Local buffer strength");// 10
+		DavisConfig.addAIPot(ipots, this, "PadFollBn,11,n,normal,Follower-pad buffer strength");// 11
+		DavisConfig.addAIPot(ipots, this, "Blk1N,12,n,normal,Ununsed N type");// 12
+		DavisConfig.addAIPot(ipots, this, "PixInvBn,13,n,normal,DVS request inversion static inverter strength");// 13
+		diff = DavisConfig.addAIPot(ipots, this, "DiffBn,14,n,normal,DVS differenciator gain");// 14
+		diffOn = DavisConfig.addAIPot(ipots, this, "OnBn,15,n,normal,DVS on event threshold");// 15
+		diffOff = DavisConfig.addAIPot(ipots, this, "OffBn,16,n,normal,DVS off event threshold");// 16
+		pr = DavisConfig.addAIPot(ipots, this, "PrBp,17,p,normal,Photoreceptor bias current");// 17
+		sf = DavisConfig.addAIPot(ipots, this, "PrSFBp,18,p,normal,Photoreceptor follower bias current"); // 18
+		refr = DavisConfig.addAIPot(ipots, this, "RefrBp,19,p,normal,DVS refractory period"); // 19
+		DavisConfig.addAIPot(ipots, this, "ArrayBiasBufferBn,20,n,normal,Row/column bias buffer strength"); // 20
+		DavisConfig.addAIPot(ipots, this, "ArrayLogicBufferBn,22,n,normal,Row logic level buffer strength"); // 22
+		DavisConfig.addAIPot(ipots, this, "FalltimeBn,23,n,normal,Fall time of the APS control signals");// 23
+		DavisConfig.addAIPot(ipots, this, "RisetimeBp,24,p,normal,Rise time of the APS control signals");// 24
+		DavisConfig.addAIPot(ipots, this, "ReadoutBufBp,25,p,normal,APS analog readout buffer strangth");// 25
+		DavisConfig.addAIPot(ipots, this, "ApsROSFBn,26,n,normal,APS readout source follower strength"); // 26
+		DavisConfig.addAIPot(ipots, this, "ADCcompBp,27,p,normal,ADC comparator gain"); // 27
+		DavisConfig.addAIPot(ipots, this, "DACBufBp,28,p,normal,ADC ramp buffer strength"); // 28
+		DavisConfig.addAIPot(ipots, this, "LcolTimeoutBn,30,n,normal,No column request timeout"); // 30
+		DavisConfig.addAIPot(ipots, this, "AEPdBn,31,n,normal,Request encoder static pulldown strength"); // 31
+		DavisConfig.addAIPot(ipots, this, "AEPuXBp,32,p,normal,AER column pullup strength"); // 32
+		DavisConfig.addAIPot(ipots, this, "AEPuYBp,33,p,normal,AER row pullup strength"); // 33
+		DavisConfig.addAIPot(ipots, this, "BiasBuffer,34,n,normal,Biasgen buffer strength");// 34
 
-			// shifted sources
-			ssn = new ShiftedSourceBiasCF(this);
-			ssn.setSex(Pot.Sex.N);
-			ssn.setName("SSN");
-			ssn.setTooltipString("n-type shifted source that generates a regulated voltage near ground");
-			ssn.addObserver(this);
-			ssn.setAddress(36);
+		setPotArray(ipots);
 
-			ssp = new ShiftedSourceBiasCF(this);
-			ssp.setSex(Pot.Sex.P);
-			ssp.setName("SSP");
-			ssp.setTooltipString("p-type shifted source that generates a regulated voltage near Vdd");
-			ssp.addObserver(this);
-			ssp.setAddress(35);
+		// Additional APS parameters.
+		final List<SPIConfigValue> apsControlLocal = new ArrayList<>();
 
-			ssBiases[1] = ssn;
-			ssBiases[0] = ssp;
+		apsControlLocal
+			.add(new SPIConfigInt("APS.Transfer_D", "Transfer time counter (3 in GS, 1 in RS).", CypressFX3.FPGA_APS, (short) 50, 16, 0, this));
+		apsControlLocal.add(new SPIConfigInt("APS.RSFDSettle_D", "RS counter 0.", CypressFX3.FPGA_APS, (short) 51, 12, 0, this));
+		apsControlLocal.add(new SPIConfigInt("APS.GSPDReset_D", "GS counter 0.", CypressFX3.FPGA_APS, (short) 52, 12, 0, this));
+		apsControlLocal.add(new SPIConfigInt("APS.GSResetFall_D", "GS counter 1.", CypressFX3.FPGA_APS, (short) 53, 12, 0, this));
+		apsControlLocal.add(new SPIConfigInt("APS.GSTXFall_D", "GS counter 2.", CypressFX3.FPGA_APS, (short) 54, 12, 0, this));
+		apsControlLocal.add(new SPIConfigInt("APS.GSFDReset_D", "GS counter 3.", CypressFX3.FPGA_APS, (short) 55, 12, 0, this));
 
+		for (final SPIConfigValue cfgVal : apsControlLocal) {
+			cfgVal.addObserver(this);
+			allPreferencesList.add(cfgVal);
 		}
-		catch (final Exception e) {
-			throw new Error(e.toString());
-		} // TODO fix this code for actual vdacs
 
-		// graphicOptions
-		videoControl = new VideoControl();
-		videoControl.addObserver(this);
+		apsControl.addAll(apsControlLocal);
 
-		// on-chip configuration chain
-		chipConfigChain = new DavisRGBW640ChipConfigChain(chip);
-		chipConfigChain.addObserver(this);
+		// Additional chip control bits.
+		final List<SPIConfigValue> chipControlLocal = new ArrayList<>();
 
-		// control of log readout
-		apsReadoutControl = new DavisRGBW640APSReadoutControl();
+		chipControlLocal.add(new SPIConfigBit("Chip.AdjustOVG1Lo", "Adjust OVG1 Low.", CypressFX3.FPGA_CHIPBIAS, (short) 145, true, this));
+		chipControlLocal.add(new SPIConfigBit("Chip.AdjustOVG2Lo", "Adjust OVG2 Low.", CypressFX3.FPGA_CHIPBIAS, (short) 146, false, this));
+		chipControlLocal.add(new SPIConfigBit("Chip.AdjustTX2OVG2Hi", "Adjust TX2OVG2Hi.", CypressFX3.FPGA_CHIPBIAS, (short) 147, false, this));
 
-		// imuControl
-		imuControl = new ImuControl(this);
+		for (final SPIConfigValue cfgVal : chipControlLocal) {
+			cfgVal.addObserver(this);
+			allPreferencesList.add(cfgVal);
+		}
+
+		chipControl.addAll(chipControlLocal);
 
 		setBatchEditOccurring(true);
 		loadPreferences();
 		setBatchEditOccurring(false);
+
 		try {
 			sendConfiguration(this);
 		}
 		catch (final HardwareInterfaceException ex) {
-			Logger.getLogger(DAVIS240BaseCamera.class.getName()).log(Level.SEVERE, null, ex);
-		}
-	}
-
-	public class DavisRGBW640ChipConfigChain extends DavisTowerBaseChipConfigChain {
-		OnchipConfigBit adjustOVG1Lo = new OnchipConfigBit(chip, "AdjustOVG1Lo", 9, "Adjust OVG1 Low.", true);
-		OnchipConfigBit adjustOVG2Lo = new OnchipConfigBit(chip, "AdjustOVG2Lo", 10, "Adjust OVG2 Low.", false);
-		OnchipConfigBit adjustTX2OVG2Hi = new OnchipConfigBit(chip, "AdjustTX2OVG2Hi", 11, "Adjust TX2OVG2Hi.", false);
-
-		public DavisRGBW640ChipConfigChain(final Chip chip) {
-			super(chip);
-
-			// DavisRGBW640 has no global shutter config bit, it's a pad.
-			configBits[6].deleteObservers();
-			configBits[6] = null;
-
-			configBits[9] = adjustOVG1Lo;
-			configBits[9].addObserver(this);
-			configBits[10] = adjustOVG2Lo;
-			configBits[10].addObserver(this);
-			configBits[11] = adjustTX2OVG2Hi;
-			configBits[11].addObserver(this);
-		}
-	}
-
-	public class DavisRGBW640APSReadoutControl extends ApsReadoutControl {
-		public DavisRGBW640APSReadoutControl() {
-			super();
-
-			Transfer_D.addObserver(this);
-			tooltipSupport.setPropertyTooltip("Transfer_D", Transfer_D.getDescription());
-			RSFDSettle_D.addObserver(this);
-			tooltipSupport.setPropertyTooltip("RSFDSettle_D", RSFDSettle_D.getDescription());
-			GSPDReset_D.addObserver(this);
-			tooltipSupport.setPropertyTooltip("GSPDReset_D", GSPDReset_D.getDescription());
-			GSResetFall_D.addObserver(this);
-			tooltipSupport.setPropertyTooltip("GSResetFall_D", GSResetFall_D.getDescription());
-			GSTXFall_D.addObserver(this);
-			tooltipSupport.setPropertyTooltip("GSTXFall_D", GSTXFall_D.getDescription());
-			GSFDReset_D.addObserver(this);
-			tooltipSupport.setPropertyTooltip("GSFDReset_D", GSFDReset_D.getDescription());
-		}
-
-		public void setTransfer_D(final int cc) {
-			Transfer_D.set(cc);
-		}
-
-		public int getTransfer_D() {
-			return Transfer_D.get();
-		}
-
-		public void setRSFDSettle_D(final int cc) {
-			RSFDSettle_D.set(cc);
-		}
-
-		public int getRSFDSettle_D() {
-			return RSFDSettle_D.get();
-		}
-
-		public void setGSPDReset_D(final int cc) {
-			GSPDReset_D.set(cc);
-		}
-
-		public int getGSPDReset_D() {
-			return GSPDReset_D.get();
-		}
-
-		public void setGSResetFall_D(final int cc) {
-			GSResetFall_D.set(cc);
-		}
-
-		public int getGSResetFall_D() {
-			return GSResetFall_D.get();
-		}
-
-		public void setGSTXFall_D(final int cc) {
-			GSTXFall_D.set(cc);
-		}
-
-		public int getGSTXFall_D() {
-			return GSTXFall_D.get();
-		}
-
-		public void setGSFDReset_D(final int cc) {
-			GSFDReset_D.set(cc);
-		}
-
-		public int getGSFDReset_D() {
-			return GSFDReset_D.get();
+			Biasgen.log.log(Level.SEVERE, null, ex);
 		}
 	}
 }

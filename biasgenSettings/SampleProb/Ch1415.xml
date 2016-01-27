@@ -19,20 +19,20 @@
                   <entry key="FilterChain.timeLimitMs" value="10"/>
                   <entry key="Info.useLocalTimeZone" value="true"/>
                   <entry key="SampleProbControlPanel.bgTabbedPaneSelectedIndex" value="1"/>
-                  <entry key="SPIConfigBit.DACRun" value="true"/>
-                  <entry key="SPIConfigBit.ForceBiasEnable" value="false"/>
-                  <entry key="SPIConfigBit.AERRun" value="true"/>
-                  <entry key="SPIConfigInt.AERAckDelay" value="0"/>
-                  <entry key="SPIConfigInt.AERAckExtension" value="0"/>
-                  <entry key="SPIConfigBit.AERWaitOnTransferStall" value="false"/>
-                  <entry key="SPIConfigBit.AERExternalAERControl" value="false"/>
-                  <entry key="SPIConfigInt.MasterBias" value="255"/>
-                  <entry key="SPIConfigInt.SelSpikeExtend" value="2"/>
-                  <entry key="SPIConfigInt.SelHazardIV" value="127"/>
-                  <entry key="SPIConfigBit.SelCH" value="true"/>
-                  <entry key="SPIConfigBit.SelNS" value="false"/>
-                  <entry key="SPIConfigBit.ClockEnable" value="true"/>
-                  <entry key="SPIConfigInt.ClockPeriod" value="240"/>
+                  <entry key="SampleProb.DACRun" value="true"/>
+                  <entry key="SampleProb.ForceBiasEnable" value="false"/>
+                  <entry key="SampleProb.AERRun" value="true"/>
+                  <entry key="SampleProb.AERAckDelay" value="0"/>
+                  <entry key="SampleProb.AERAckExtension" value="0"/>
+                  <entry key="SampleProb.AERWaitOnTransferStall" value="false"/>
+                  <entry key="SampleProb.AERExternalAERControl" value="false"/>
+                  <entry key="SampleProb.MasterBias" value="255"/>
+                  <entry key="SampleProb.SelSpikeExtend" value="2"/>
+                  <entry key="SampleProb.SelHazardIV" value="127"/>
+                  <entry key="SampleProb.SelCH" value="true"/>
+                  <entry key="SampleProb.SelNS" value="false"/>
+                  <entry key="SampleProb.ClockEnable" value="true"/>
+                  <entry key="SampleProb.ClockPeriod" value="240"/>
                   <entry key="SampleProb.IPot.Bias0" value="3145728"/>
                   <entry key="SampleProb.IPot.Bias1" value="3145728"/>
                   <entry key="SampleProb.IPot.Bias2" value="327680"/>

@@ -22,86 +22,86 @@
                   <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.gain1" value="1"/>
                   <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.gain2" value="1"/>
                   <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.gain3" value="1"/>
-                  <entry key="SPIConfigBit.ScannerEnable" value="true"/>
-                  <entry key="SPIConfigBit.ScannerEar" value="false"/>
-                  <entry key="SPIConfigInt.ScannerChannel" value="36"/>
-                  <entry key="SPIConfigBit.DACRun" value="true"/>
-                  <entry key="SPIConfigBit.MultiplexerRun" value="true"/>
-                  <entry key="SPIConfigBit.AERRun" value="true"/>
-                  <entry key="SPIConfigInt.AERAckDelay" value="25"/>
-                  <entry key="SPIConfigInt.AERAckExtension" value="0"/>
-                  <entry key="SPIConfigBit.AERWaitOnTransferStall" value="false"/>
-                  <entry key="SPIConfigBit.AERExternalAERControl" value="false"/>
-                  <entry key="SPIConfigInt.ChipResetCapConfigADM" value="0"/>
-                  <entry key="SPIConfigInt.ChipDelayCapConfigADM" value="0"/>
-                  <entry key="SPIConfigBit.ChipComparatorSelfOsc" value="false"/>
-                  <entry key="SPIConfigInt.ChipLNAGainConfig" value="0"/>
-                  <entry key="SPIConfigBit.ChipLNADoubleInputSelect" value="false"/>
-                  <entry key="SPIConfigBit.ChipTestScannerBias" value="false"/>
-                  <entry key="CochleaChannel.Channel 0" value="581423"/>
-                  <entry key="CochleaChannel.Channel 1" value="581422"/>
-                  <entry key="CochleaChannel.Channel 2" value="581422"/>
-                  <entry key="CochleaChannel.Channel 3" value="581425"/>
-                  <entry key="CochleaChannel.Channel 4" value="581426"/>
-                  <entry key="CochleaChannel.Channel 5" value="581425"/>
-                  <entry key="CochleaChannel.Channel 6" value="581417"/>
-                  <entry key="CochleaChannel.Channel 7" value="581436"/>
-                  <entry key="CochleaChannel.Channel 8" value="581432"/>
-                  <entry key="CochleaChannel.Channel 9" value="581442"/>
-                  <entry key="CochleaChannel.Channel 10" value="581442"/>
-                  <entry key="CochleaChannel.Channel 11" value="581433"/>
-                  <entry key="CochleaChannel.Channel 12" value="581436"/>
-                  <entry key="CochleaChannel.Channel 13" value="581442"/>
-                  <entry key="CochleaChannel.Channel 14" value="581438"/>
-                  <entry key="CochleaChannel.Channel 15" value="581438"/>
-                  <entry key="CochleaChannel.Channel 16" value="581446"/>
-                  <entry key="CochleaChannel.Channel 17" value="581450"/>
-                  <entry key="CochleaChannel.Channel 18" value="581440"/>
-                  <entry key="CochleaChannel.Channel 19" value="581454"/>
-                  <entry key="CochleaChannel.Channel 20" value="581454"/>
-                  <entry key="CochleaChannel.Channel 21" value="581454"/>
-                  <entry key="CochleaChannel.Channel 22" value="581454"/>
-                  <entry key="CochleaChannel.Channel 23" value="581456"/>
-                  <entry key="CochleaChannel.Channel 24" value="581446"/>
-                  <entry key="CochleaChannel.Channel 25" value="581446"/>
-                  <entry key="CochleaChannel.Channel 26" value="581442"/>
-                  <entry key="CochleaChannel.Channel 27" value="581442"/>
-                  <entry key="CochleaChannel.Channel 28" value="581457"/>
-                  <entry key="CochleaChannel.Channel 29" value="581455"/>
-                  <entry key="CochleaChannel.Channel 30" value="581450"/>
-                  <entry key="CochleaChannel.Channel 31" value="581458"/>
-                  <entry key="CochleaChannel.Channel 32" value="581468"/>
-                  <entry key="CochleaChannel.Channel 33" value="581461"/>
-                  <entry key="CochleaChannel.Channel 34" value="581459"/>
-                  <entry key="CochleaChannel.Channel 35" value="581464"/>
-                  <entry key="CochleaChannel.Channel 36" value="581472"/>
-                  <entry key="CochleaChannel.Channel 37" value="581472"/>
-                  <entry key="CochleaChannel.Channel 38" value="581469"/>
-                  <entry key="CochleaChannel.Channel 39" value="581463"/>
-                  <entry key="CochleaChannel.Channel 40" value="581478"/>
-                  <entry key="CochleaChannel.Channel 41" value="581474"/>
-                  <entry key="CochleaChannel.Channel 42" value="581464"/>
-                  <entry key="CochleaChannel.Channel 43" value="581484"/>
-                  <entry key="CochleaChannel.Channel 44" value="581473"/>
-                  <entry key="CochleaChannel.Channel 45" value="581473"/>
-                  <entry key="CochleaChannel.Channel 46" value="581482"/>
-                  <entry key="CochleaChannel.Channel 47" value="581470"/>
-                  <entry key="CochleaChannel.Channel 48" value="581444"/>
-                  <entry key="CochleaChannel.Channel 49" value="581444"/>
-                  <entry key="CochleaChannel.Channel 50" value="581444"/>
-                  <entry key="CochleaChannel.Channel 51" value="581445"/>
-                  <entry key="CochleaChannel.Channel 52" value="581446"/>
-                  <entry key="CochleaChannel.Channel 53" value="581443"/>
-                  <entry key="CochleaChannel.Channel 54" value="581443"/>
-                  <entry key="CochleaChannel.Channel 55" value="581441"/>
-                  <entry key="CochleaChannel.Channel 56" value="581438"/>
-                  <entry key="CochleaChannel.Channel 57" value="581450"/>
-                  <entry key="CochleaChannel.Channel 58" value="581454"/>
-                  <entry key="CochleaChannel.Channel 59" value="581438"/>
-                  <entry key="CochleaChannel.Channel 60" value="581448"/>
-                  <entry key="CochleaChannel.Channel 61" value="581444"/>
-                  <entry key="CochleaChannel.Channel 62" value="581432"/>
-                  <entry key="CochleaChannel.Channel 63" value="581438"/>
+                  <entry key="CochleaLP.ScannerEnable" value="true"/>
+                  <entry key="CochleaLP.ScannerEar" value="false"/>
+                  <entry key="CochleaLP.ScannerChannel" value="36"/>
+                  <entry key="CochleaLP.DACRun" value="true"/>
+                  <entry key="CochleaLP.MultiplexerRun" value="true"/>
+                  <entry key="CochleaLP.AERRun" value="true"/>
+                  <entry key="CochleaLP.AERAckDelay" value="25"/>
+                  <entry key="CochleaLP.AERAckExtension" value="0"/>
+                  <entry key="CochleaLP.AERWaitOnTransferStall" value="false"/>
+                  <entry key="CochleaLP.AERExternalAERControl" value="false"/>
+                  <entry key="CochleaLP.ChipResetCapConfigADM" value="0"/>
+                  <entry key="CochleaLP.ChipDelayCapConfigADM" value="0"/>
+                  <entry key="CochleaLP.ChipComparatorSelfOsc" value="false"/>
+                  <entry key="CochleaLP.ChipLNAGainConfig" value="0"/>
+                  <entry key="CochleaLP.ChipLNADoubleInputSelect" value="false"/>
+                  <entry key="CochleaLP.ChipTestScannerBias" value="false"/>
+                  <entry key="CochleaLP.Channel 0" value="581423"/>
+                  <entry key="CochleaLP.Channel 1" value="581422"/>
+                  <entry key="CochleaLP.Channel 2" value="581422"/>
+                  <entry key="CochleaLP.Channel 3" value="581425"/>
+                  <entry key="CochleaLP.Channel 4" value="581426"/>
+                  <entry key="CochleaLP.Channel 5" value="581425"/>
+                  <entry key="CochleaLP.Channel 6" value="581417"/>
+                  <entry key="CochleaLP.Channel 7" value="581436"/>
+                  <entry key="CochleaLP.Channel 8" value="581432"/>
+                  <entry key="CochleaLP.Channel 9" value="581442"/>
+                  <entry key="CochleaLP.Channel 10" value="581442"/>
+                  <entry key="CochleaLP.Channel 11" value="581433"/>
+                  <entry key="CochleaLP.Channel 12" value="581436"/>
+                  <entry key="CochleaLP.Channel 13" value="581442"/>
+                  <entry key="CochleaLP.Channel 14" value="581438"/>
+                  <entry key="CochleaLP.Channel 15" value="581438"/>
+                  <entry key="CochleaLP.Channel 16" value="581446"/>
+                  <entry key="CochleaLP.Channel 17" value="581450"/>
+                  <entry key="CochleaLP.Channel 18" value="581440"/>
+                  <entry key="CochleaLP.Channel 19" value="581454"/>
+                  <entry key="CochleaLP.Channel 20" value="581454"/>
+                  <entry key="CochleaLP.Channel 21" value="581454"/>
+                  <entry key="CochleaLP.Channel 22" value="581454"/>
+                  <entry key="CochleaLP.Channel 23" value="581456"/>
+                  <entry key="CochleaLP.Channel 24" value="581446"/>
+                  <entry key="CochleaLP.Channel 25" value="581446"/>
+                  <entry key="CochleaLP.Channel 26" value="581442"/>
+                  <entry key="CochleaLP.Channel 27" value="581442"/>
+                  <entry key="CochleaLP.Channel 28" value="581457"/>
+                  <entry key="CochleaLP.Channel 29" value="581455"/>
+                  <entry key="CochleaLP.Channel 30" value="581450"/>
+                  <entry key="CochleaLP.Channel 31" value="581458"/>
+                  <entry key="CochleaLP.Channel 32" value="581468"/>
+                  <entry key="CochleaLP.Channel 33" value="581461"/>
+                  <entry key="CochleaLP.Channel 34" value="581459"/>
+                  <entry key="CochleaLP.Channel 35" value="581464"/>
+                  <entry key="CochleaLP.Channel 36" value="581472"/>
+                  <entry key="CochleaLP.Channel 37" value="581472"/>
+                  <entry key="CochleaLP.Channel 38" value="581469"/>
+                  <entry key="CochleaLP.Channel 39" value="581463"/>
+                  <entry key="CochleaLP.Channel 40" value="581478"/>
+                  <entry key="CochleaLP.Channel 41" value="581474"/>
+                  <entry key="CochleaLP.Channel 42" value="581464"/>
+                  <entry key="CochleaLP.Channel 43" value="581484"/>
+                  <entry key="CochleaLP.Channel 44" value="581473"/>
+                  <entry key="CochleaLP.Channel 45" value="581473"/>
+                  <entry key="CochleaLP.Channel 46" value="581482"/>
+                  <entry key="CochleaLP.Channel 47" value="581470"/>
+                  <entry key="CochleaLP.Channel 48" value="581444"/>
+                  <entry key="CochleaLP.Channel 49" value="581444"/>
+                  <entry key="CochleaLP.Channel 50" value="581444"/>
+                  <entry key="CochleaLP.Channel 51" value="581445"/>
+                  <entry key="CochleaLP.Channel 52" value="581446"/>
+                  <entry key="CochleaLP.Channel 53" value="581443"/>
+                  <entry key="CochleaLP.Channel 54" value="581443"/>
+                  <entry key="CochleaLP.Channel 55" value="581441"/>
+                  <entry key="CochleaLP.Channel 56" value="581438"/>
+                  <entry key="CochleaLP.Channel 57" value="581450"/>
+                  <entry key="CochleaLP.Channel 58" value="581454"/>
+                  <entry key="CochleaLP.Channel 59" value="581438"/>
+                  <entry key="CochleaLP.Channel 60" value="581448"/>
+                  <entry key="CochleaLP.Channel 61" value="581444"/>
+                  <entry key="CochleaLP.Channel 62" value="581432"/>
+                  <entry key="CochleaLP.Channel 63" value="581438"/>
                   <entry key="CochleaLP.ShiftedSourceBias.SSP.RefValue" value="0"/>
                   <entry key="CochleaLP.ShiftedSourceBias.SSP.RegBitValue" value="63"/>
                   <entry key="CochleaLP.ShiftedSourceBias.SSP.OperatingMode" value="ShiftedSource"/>
@@ -160,8 +160,8 @@
                   <entry key="Masterbias.rx" value="8200.0"/>
                   <entry key="Masterbias.rint" value="46000.0"/>
                   <entry key="Masterbias.internalResistorUsed" value="false"/>
-                  <entry key="SPIConfigBit.ForceBiasEnable" value="true"/>
-                  <entry key="SPIConfigBit.TestAEREnable" value="false"/>
+                  <entry key="CochleaLP.ForceBiasEnable" value="true"/>
+                  <entry key="CochleaLP.TestAEREnable" value="false"/>
                   <entry key="CochleaLPControlPanel.bgTabbedPaneSelectedIndex" value="2"/>
                   <entry key="ScannerHardwareInterface.scanX" value="0"/>
                   <entry key="ScannerHardwareInterface.scanContinuouslyEnabled" value="false"/>
@@ -249,7 +249,7 @@
                   <entry key="Pot.Vpm" value="0"/>
                   <entry key="Pot.Vhm" value="0"/>
                   <entry key="ITDFilter.filterEnabled" value="true"/>
-                  <entry key="ITDFilter.numOfCochleaChannels" value="64"/>
+                  <entry key="ITDFilter.numOfCochleaLPs" value="64"/>
                   <entry key="CorrelatorFilter.filterEnabled" value="true"/>
                   <entry key="CorrelatorFilter.display" value="true"/>
                   <entry key="ITDFilter.display" value="true"/>

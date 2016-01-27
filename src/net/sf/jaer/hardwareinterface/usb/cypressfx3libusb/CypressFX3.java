@@ -81,15 +81,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 	protected static final Logger log = Logger.getLogger("CypressFX3");
 	protected AEChip chip;
-	// A .bix file format is needed for RAM download.
-	// The binary file format .iic (i2c) format are image files for the EEPROM.
-	// IIC files will not
-	// correctly download to RAM. Therefore they cannot be used to bootstrap a
-	// blank device.
-	// The bootstrap code is necessary in order to write the Cypress EEPROM.
-	// An Intel .hex file should also be OK for RAM download but it does not
-	// include the device descriptor TODO could be
-	// wrong
 
 	/**
 	 * A blank Cypress FX2 has VID/PID of 0x04b4/0x8613. This VID/PID pair is
@@ -203,7 +194,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	/** The pool of raw AE packets, used for data transfer */
 	protected AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
 	private String stringDescription = "CypressFX3"; // default which is
-       private USBPacketStatistics usbPacketStatistics=new USBPacketStatistics();
+	private USBPacketStatistics usbPacketStatistics = new USBPacketStatistics();
 
 	// modified by opening
 
@@ -553,7 +544,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 
 		if (updateStringBuilder.length() > 0) {
-			updateStringBuilder.append("Please updated by following the Flashy upgrade documentation at 'http://inilabs.com/support/reflashing/'.");
+			updateStringBuilder
+				.append("Please updated by following the Flashy upgrade documentation at 'http://inilabs.com/support/reflashing/'.");
 
 			final String updateString = updateStringBuilder.toString();
 
@@ -772,14 +764,24 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 	}
 
-	public synchronized void spiConfigSend(final short moduleAddr, final short paramAddr, final int param)
-		throws HardwareInterfaceException {
+	protected int adjustHWParam(final short moduleAddr, final short paramAddr, int param) {
+		// No change by default.
+		return (param);
+	}
+
+	public synchronized void spiConfigSend(final short moduleAddr, final short paramAddr, int param) throws HardwareInterfaceException {
+		// Some values have to be adjusted based on hardware features, so we do that here.
+		param = adjustHWParam(moduleAddr, paramAddr, param);
+
 		final byte[] configBytes = new byte[4];
 
 		configBytes[0] = (byte) ((param >>> 24) & 0x00FF);
 		configBytes[1] = (byte) ((param >>> 16) & 0x00FF);
 		configBytes[2] = (byte) ((param >>> 8) & 0x00FF);
 		configBytes[3] = (byte) ((param >>> 0) & 0x00FF);
+
+		// System.out.println(String.format("SPI Config sent with modAddr=%d, paramAddr=%d, value=%d.\n", moduleAddr,
+		// paramAddr, param));
 
 		sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, moduleAddr, paramAddr, configBytes);
 	}
@@ -805,18 +807,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		final SPIConfigSequence configSequence = new SPIConfigSequence();
 
-		// Slow down DVS ACK for rows on small boards.
-		if (getPID() == DAViSFX3HardwareInterface.PID_FX2) {
-			configSequence.addConfig(CypressFX3.FPGA_DVS, (short) 4, 14);
-			configSequence.addConfig(CypressFX3.FPGA_DVS, (short) 6, 4);
-		}
-
 		configSequence.addConfig(CypressFX3.FPGA_USB, (short) 0, 1);
 
 		configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 1, 1);
 		configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 0, 1);
-
-		configSequence.addConfig(CypressFX3.FPGA_EXTINPUT, (short) 0, 1);
 
 		configSequence.sendConfigSequence();
 
@@ -836,7 +830,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			configSequence.addConfig(CypressFX3.FPGA_IMU, (short) 0, 0);
 			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 4, 0);
 			configSequence.addConfig(CypressFX3.FPGA_DVS, (short) 3, 0);
-			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 3, 0); // Ensure chip turns off.
+
 			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 1, 0); // Turn off timestamp too.
 			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 0, 0);
 			configSequence.addConfig(CypressFX3.FPGA_USB, (short) 0, 0);
@@ -1011,7 +1005,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			public void processTransfer(final RestrictedTransfer transfer) {
 				synchronized (aePacketRawPool) {
 					if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
-                                usbPacketStatistics.addSample(transfer);
+						usbPacketStatistics.addSample(transfer);
 						translateEvents(transfer.buffer());
 
 						if ((chip != null) && (chip.getFilterChain() != null)
@@ -1439,11 +1433,11 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		// start the thread that listens for device status information.
 		// This is only preset on FX3 devices.
-		if (getPID() == DAViSFX3HardwareInterface.PID) {
-			// asyncStatusThread = new AsyncStatusThread(this);
-			// asyncStatusThread.startThread();
-			// TODO: fix USBTransferThread to only use one thread to handle USB events.
-		}
+		// if (getPID() == DAViSFX3HardwareInterface.PID_FX3) {
+		// asyncStatusThread = new AsyncStatusThread(this);
+		// asyncStatusThread.startThread();
+		// TODO: fix USBTransferThread to only use one thread to handle USB events.
+		// }
 	}
 
 	/**
@@ -1878,21 +1872,25 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 		return false;
 	}
-        
-    public void setShowUsbStatistics(boolean yes) {
-        usbPacketStatistics.setShowUsbStatistics(yes);
-    }
 
-    public void setPrintUsbStatistics(boolean yes) {
-        usbPacketStatistics.setPrintUsbStatistics(yes);
-    }
+	@Override
+	public void setShowUsbStatistics(boolean yes) {
+		usbPacketStatistics.setShowUsbStatistics(yes);
+	}
 
-    public boolean isShowUsbStatistics() {
-        return usbPacketStatistics.isShowUsbStatistics();
-    }
+	@Override
+	public void setPrintUsbStatistics(boolean yes) {
+		usbPacketStatistics.setPrintUsbStatistics(yes);
+	}
 
-    public boolean isPrintUsbStatistics() {
-        return usbPacketStatistics.isPrintUsbStatistics();
-    }
+	@Override
+	public boolean isShowUsbStatistics() {
+		return usbPacketStatistics.isShowUsbStatistics();
+	}
+
+	@Override
+	public boolean isPrintUsbStatistics() {
+		return usbPacketStatistics.isPrintUsbStatistics();
+	}
 
 }

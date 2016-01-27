@@ -12,13 +12,6 @@ package net.sf.jaer.hardwareinterface.usb.cypressfx2;
 import java.util.ArrayList;
 import java.util.logging.Logger;
 
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
-import net.sf.jaer.hardwareinterface.usb.USBInterface;
-import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
-import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_AeSequencer;
-import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_DVS128;
-import net.sf.jaer.util.HexString;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1bHardwareInterface;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cHardwareInterface;
 import de.thesycon.usbio.PnPNotify;
@@ -26,8 +19,13 @@ import de.thesycon.usbio.PnPNotifyInterface;
 import de.thesycon.usbio.UsbIo;
 import de.thesycon.usbio.UsbIoErrorCodes;
 import de.thesycon.usbio.structs.USB_DEVICE_DESCRIPTOR;
-import eu.seebetter.ini.chips.SeeBetterHardwareInterface;
-import eu.seebetter.ini.chips.seebetter30.SeeBetter30HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
+import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
+import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_AeSequencer;
+import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_DVS128;
+import net.sf.jaer.util.HexString;
 
 /**
  * Manufactures USBIO-driver-based hardware interface; these are mostly CypressFX2-based but also include
@@ -134,7 +132,7 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
 //                } else {
                 int status2 = dev.acquireDevice();
                 if (status2 == USBIO_ERR_SUCCESS) { // only add device if it can be exclusively bound. If devices are alredy opened exclusively, then they will not appear in the list
-                    usbioList.add(dev); 
+                    usbioList.add(dev);
                     log.info("found device with UsbIo device handle "+dev+" at list address "+i);
                 }
 //                System.out.println("added "+dev);
@@ -148,23 +146,25 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
     /** returns the first interface in the list
      *@return reference to the first interface in the list
      */
-    synchronized public USBInterface getFirstAvailableInterface() {
+    @Override
+	synchronized public USBInterface getFirstAvailableInterface() {
         return getInterface(0);
     }
 
     /** returns the n-th interface in the list, either Tmpdiff128Retina, USBAERmini2 or USB2AERmapper, DVS320, or MonitorSequencer depending on PID,
      * <p>
-     * For unknown or blank device PID a bare CypressFX2 is returned which should be discarded 
+     * For unknown or blank device PID a bare CypressFX2 is returned which should be discarded
      * after it is used to download to the device RAM some preferred default firmware.
      * A new CypressFX2 should then be manufactured that will be correctly constructed here.
      * <p>
      * This method hardcodes the mapping from VID/PID and the HardwareInterface object that is contructed for it.
-     * 
+     *
      *@param n the number to instance (0 based)
      */
-    synchronized public USBInterface getInterface(int n) {
+    @Override
+	synchronized public USBInterface getInterface(int n) {
         int numAvailable = getNumInterfacesAvailable();
-        if (n > numAvailable - 1) {
+        if (n > (numAvailable - 1)) {
             if (numAvailable == 0) {
                 log.warning("You asked for interface number " + n + " but no interfaces are available. Check the Windows Device Manager to see if the device has been recognized. You may need to install a driver.");
             } else {
@@ -211,7 +211,7 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
                 //    case CypressFX2.PID_TMPDIFF128_FX2_SMALL_BOARD:  // VID/PID replaced with the ones from thesycon
                 return new CypressFX2DVS128HardwareInterface(n);
             case CypressFX2.PID_TMPDIFF128_RETINA:
-              
+
                 if (did == CypressFX2.DID_STEREOBOARD) {
                     return new CypressFX2StereoBoard(n);
                     //System.out.println(did);
@@ -221,14 +221,6 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
                 return new CypressFX2MonitorSequencer(n);
             case SiLabsC8051F320_USBIO_AeSequencer.PID:
                 return new SiLabsC8051F320_USBIO_AeSequencer(n);
-            case SeeBetterHardwareInterface.PID:
-                if (did == SeeBetter30HardwareInterface.DID) {
-                    return new SeeBetter30HardwareInterface(n);
-                } else {
-                    log.warning("device ID "+did+" is not supported for PID "+SeeBetter30HardwareInterface.PID+", probably some older experimental device");
-                }
-            case ApsDvsHardwareInterface.PID:
-                return new ApsDvsHardwareInterface(n);
             case CochleaAMS1bHardwareInterface.PID:
                 return new CochleaAMS1bHardwareInterface(n);
             case CochleaAMS1cHardwareInterface.PID:
@@ -243,7 +235,8 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
 
     /** @return the number of compatible monitor/sequencer attached to the driver
      */
-    synchronized public int getNumInterfacesAvailable() {
+    @Override
+	synchronized public int getNumInterfacesAvailable() {
 
         maybeBuildUsbIoList();
         firstUse = true;
@@ -275,11 +268,11 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
                 dev.open();
                 /*VIDPID = dev.getVIDPID();
                 System.out.println(", VID: "+ VIDPID[0] +", PID: "+ VIDPID[1]);
-                
+
                 strings=dev.getStringDescriptors();
-                
+
                 System.out.println("Manufacturer: " + strings[0] + ", device type: " + strings[1]);
-                
+
                 if (dev.getNumberOfStringDescriptors()==3)
                 {
                 System.out.println("Device name: " + strings[2]);

@@ -20,22 +20,20 @@ abstract public class Davis346BaseCamera extends DavisBaseCamera {
 
 	public static final short WIDTH_PIXELS = 346;
 	public static final short HEIGHT_PIXELS = 260;
-	protected DavisTowerBaseConfig davisConfig;
 
 	/**
 	 * Creates a new instance.
 	 */
 	public Davis346BaseCamera() {
-		setName("DAVIS346BaseCamera");
+		setName("Davis346BaseCamera");
 		setSizeX(Davis346BaseCamera.WIDTH_PIXELS);
 		setSizeY(Davis346BaseCamera.HEIGHT_PIXELS);
 
 		setBiasgen(davisConfig = new DavisTowerBaseConfig(this));
 
-		apsDVSrenderer = new AEFrameChipRenderer(this); // must be called after configuration is constructed, because it
-														// needs to know if frames are enabled to reset pixmap
-		apsDVSrenderer.setMaxADC(DavisChip.MAX_ADC);
-		setRenderer(apsDVSrenderer);
+		davisRenderer = new AEFrameChipRenderer(this);
+		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
+		setRenderer(davisRenderer);
 	}
 
 	/**

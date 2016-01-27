@@ -8,16 +8,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
-import net.sf.jaer.hardwareinterface.usb.USBInterface;
-import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_LibUsb_PAER;
-
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
 import org.usb4java.DeviceHandle;
 import org.usb4java.DeviceList;
 import org.usb4java.LibUsb;
+
+import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
+import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_LibUsb_PAER;
 
 public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryInterface {
 	private final static Logger log = Logger.getLogger("LibUsbHardwareInterfaceFactory");
@@ -40,10 +40,6 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 		addDeviceToMap(CypressFX2.VID, CypressFX2.PID_DVS128_REV0, CypressFX2DVS128HardwareInterface.class);
 		addDeviceToMap(CypressFX2.VID, CypressFX2.PID_TMPDIFF128_RETINA, CypressFX2TmpdiffRetinaHardwareInterface.class);
 		addDeviceToMap(CypressFX2.VID, CypressFX2.PID_COCHLEAAMS, CochleaAMS1cHardwareInterface.class);
-                
-		// addDeviceToMap(CypressFX2.VID, CypressFX2.PID_USBAERmini2,
-		// CypressFX2MonitorSequencer.class);
-		addDeviceToMap(CypressFX2.VID, ApsDvsHardwareInterface.PID, ApsDvsHardwareInterface.class);
 
 		// Linux Drivers for PAER retina.
 		if (System.getProperty("os.name").startsWith("Linux")) {
@@ -100,11 +96,11 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 		final DeviceDescriptor devDesc = new DeviceDescriptor();
 
 		for (final Device dev : devList) {
-                    
+
 			LibUsb.getDeviceDescriptor(dev, devDesc);
 
 			final ImmutablePair<Short, Short> vidPid = new ImmutablePair<>(devDesc.idVendor(), devDesc.idProduct());
-                        
+
 
 			// Check that the device is not already bound to any other driver.
 			final DeviceHandle devHandle = new DeviceHandle();

@@ -33,10 +33,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	}
 
 	/** The USB product ID of this device */
-	static public final short PID = (short) 0x841A;
+	static public final short PID_FX3 = (short) 0x841A;
 	static public final short PID_FX2 = (short) 0x841B;
-	static public final int REQUIRED_FIRMWARE_VERSION = 2;
-	static public final int REQUIRED_LOGIC_REVISION = 7449;
+	static public final int REQUIRED_FIRMWARE_VERSION_FX3 = 2;
+	static public final int REQUIRED_FIRMWARE_VERSION_FX2 = 3;
+	static public final int REQUIRED_LOGIC_REVISION_FX3 = 7449;
+	static public final int REQUIRED_LOGIC_REVISION_FX2 = 7449;
 
 	/**
 	 * Starts reader buffer pool thread and enables in endpoints for AEs. This
@@ -48,8 +50,29 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		setAeReader(new RetinaAEReader(this));
 		allocateAEBuffers();
 
+		// Update global information.
+		adcClockFreq = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 4);
+
 		getAeReader().startThread(); // arg is number of errors before giving up
 		HardwareInterfaceException.clearException();
+	}
+
+	public int adcClockFreq = 30;
+
+	@Override
+	protected int adjustHWParam(final short moduleAddr, final short paramAddr, int param) {
+		if ((moduleAddr == FPGA_APS) && (paramAddr == 13)) {
+			// Exposure multiplied by clock.
+			return (param * adcClockFreq);
+		}
+
+		if ((moduleAddr == FPGA_APS) && (paramAddr == 14)) {
+			// FrameDelay multiplied by clock.
+			return (param * adcClockFreq);
+		}
+
+		// No change by default.
+		return (param);
 	}
 
 	public static final int CHIP_DAVIS240A = 0;
@@ -111,7 +134,15 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
 
-			checkFirmwareLogic(DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION, DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION);
+			if (getPID() == PID_FX2) {
+				// FX2 firmware now emulates the same interface as FX3 firmware, so we support it here too.
+				checkFirmwareLogic(DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION_FX2,
+					DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION_FX2);
+			}
+			else {
+				checkFirmwareLogic(DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION_FX3,
+					DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION_FX3);
+			}
 
 			apsCountX = new short[RetinaAEReader.APS_READOUT_TYPES_NUM];
 			apsCountY = new short[RetinaAEReader.APS_READOUT_TYPES_NUM];

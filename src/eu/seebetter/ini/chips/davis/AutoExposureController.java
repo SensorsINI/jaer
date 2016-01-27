@@ -94,7 +94,7 @@ public class AutoExposureController extends Observable implements HasPropertyToo
 			&& (davisChip.getAeViewer().getPlayMode() != AEViewer.PlayMode.LIVE)) {
 			return;
 		}
-		hist = davisChip.apsDVSrenderer.getAdcSampleValueHistogram();
+		hist = davisChip.davisRenderer.getAdcSampleValueHistogram();
 		if (hist == null) {
 			return;
 		}

@@ -2,11 +2,12 @@ package net.sf.jaer.hardwareinterface.usb.cypressfx3libusb;
 
 import javax.swing.JOptionPane;
 
+import org.usb4java.Device;
+
+import eu.seebetter.ini.chips.davis.DavisConfig;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-
-import org.usb4java.Device;
 
 /**
  * Adds biasgen functionality to base interface via Cypress FX2.
@@ -61,7 +62,9 @@ public class CypressFX3Biasgen extends CypressFX3 implements BiasgenHardwareInte
 	@Override
 	synchronized public void sendConfiguration(final net.sf.jaer.biasgen.Biasgen biasgen)
 		throws HardwareInterfaceException {
-		// DO NOTHING.
+		if ((biasgen != null) && (biasgen instanceof DavisConfig)) {
+			((DavisConfig) biasgen).sendConfiguration();
+		}
 	}
 
 

@@ -1,5 +1,7 @@
 package eu.seebetter.ini.chips.davis;
 
+import java.awt.Point;
+
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.Description;
@@ -12,6 +14,7 @@ import net.sf.jaer.event.ApsDvsEventRGBW;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
+import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 /**
@@ -25,7 +28,6 @@ public class Davis208PixelParade extends DavisBaseCamera {
 
 	public static final short WIDTH_PIXELS = 208;
 	public static final short HEIGHT_PIXELS = 192;
-	protected Davis208PixelParadeConfig davisConfig;
 
 	/**
 	 * Creates a new instance.
@@ -35,14 +37,20 @@ public class Davis208PixelParade extends DavisBaseCamera {
 		setDefaultPreferencesFile("biasgenSettings/Davis208PixelParade/Davis208PixelParade.xml");
 		setSizeX(Davis208PixelParade.WIDTH_PIXELS);
 		setSizeY(Davis208PixelParade.HEIGHT_PIXELS);
+
+		//setEventClass(ApsDvsEventRGBW.class);
+
+		//setEventExtractor(new Davis208PixelParadeEventExtractor(this));
+
 		setBiasgen(davisConfig = new Davis208PixelParadeConfig(this));
-		setEventExtractor(new Davis208PixelParadeEventExtractor(this));
-		apsDVSrenderer = new Davis208PixelParadeRenderer(this); // must be called after configuration is constructed,
-																// because it needs to know if frames are enabled to
-																// reset pixmap
-		apsDVSrenderer.setMaxADC(DavisChip.MAX_ADC);
-		setRenderer(apsDVSrenderer);
-		setEventClass(ApsDvsEventRGBW.class);
+
+		//davisRenderer = new Davis208PixelParadeRenderer(this);
+		davisRenderer = new AEFrameChipRenderer(this);
+		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
+		setRenderer(davisRenderer);
+
+		setApsFirstPixelReadOut(new Point(getSizeX() - 1, 0));
+		setApsLastPixelReadOut(new Point(0, getSizeY() - 1));
 	}
 
 	/**
@@ -70,10 +78,6 @@ public class Davis208PixelParade extends DavisBaseCamera {
 	 * <p>
 	 */
 	public class Davis208PixelParadeEventExtractor extends DavisBaseCamera.DavisEventExtractor {
-
-		/**
-		 *
-		 */
 		private static final long serialVersionUID = -4188273144095925364L;
 
 		public Davis208PixelParadeEventExtractor(final DavisBaseCamera chip) {
@@ -250,7 +254,7 @@ public class Davis208PixelParade extends DavisBaseCamera {
 					if (pixFirst && (readoutType == ApsDvsEventRGBW.ReadoutType.ResetRead)) {
 						createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.SOF, timestamp);
 
-						if (!getDavisConfig().getApsReadoutControl().isGlobalShutterMode()) {
+						if (!getDavisConfig().isGlobalShutter()) {
 							// rolling shutter start of exposureControlRegister (SOE)
 							createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.SOE, timestamp);
 							frameIntervalUs = timestamp - frameExposureStartTimestampUs;
@@ -258,8 +262,7 @@ public class Davis208PixelParade extends DavisBaseCamera {
 						}
 					}
 
-					if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)
-						&& getDavisConfig().getApsReadoutControl().isGlobalShutterMode()) {
+					if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.ResetRead) && getDavisConfig().isGlobalShutter()) {
 						// global shutter start of exposureControlRegister (SOE)
 						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamp);
 						frameIntervalUs = timestamp - frameExposureStartTimestampUs;
@@ -287,7 +290,8 @@ public class Davis208PixelParade extends DavisBaseCamera {
 					if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
 						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
 
-						setFrameCount(getFrameCount() + 1);
+						increaseFrameCount(1);
+						;
 					}
 				}
 			}

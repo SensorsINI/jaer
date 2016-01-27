@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.jaer.config.onchip;
+package ch.unizh.ini.jaer.config.mux;
 
 import java.util.Observable;
 import java.util.logging.Logger;
@@ -11,7 +11,6 @@ import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
-import ch.unizh.ini.jaer.config.OutputMap;
 
 /**
  *

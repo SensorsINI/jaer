@@ -32,9 +32,9 @@
                   <entry key="DVS128StereoPair.IPot.diff" value="30153"/>
                   <entry key="DVS128StereoPair.IPot.foll" value="51"/>
                   <entry key="DVS128StereoPair.IPot.Pr" value="3"/>
-                  <entry key="Masterbias.rx" value="8200.0"/>
-                  <entry key="Masterbias.rint" value="46000.0"/>
-                  <entry key="Masterbias.internalResistorUsed" value="false"/>
+                  <entry key="DVS128.Masterbias.rx" value="8200.0"/>
+                  <entry key="DVS128.Masterbias.rint" value="46000.0"/>
+                  <entry key="DVS128.Masterbias.internalResistorUsed" value="false"/>
                   <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAFdwQAAAAFdAA7bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5CYWNrZ3JvdW5kQWN0aXZpdHlGaWx0ZXJ0AD5jaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy5nZXN0dXJlLnN0ZXJlby5TdGVyZW9WZXJnZW5jZUZpbHRlcnQAPmNoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLmdlc3R1cmUuc3RlcmVvLkJsdXJyaW5nRmlsdGVyU3RlcmVvdABFY2gudW5pemguaW5pLmphZXIucHJvamVjdHMuZ2VzdHVyZS5zdGVyZW8uQmx1cnJpbmdGaWx0ZXJTdGVyZW9UcmFja2VydAA2Y2gudW5pemguaW5pLmphZXIucHJvamVjdHMuZ2VzdHVyZS5obW0uR2VzdHVyZUJGU3RlcmVveA=="/>
                   <entry key="RectangularClusterTracker.clusterLifetimeWithoutSupport" value="10000"/>
                   <entry key="RectangularClusterTracker.maxNumClusters" value="5"/>

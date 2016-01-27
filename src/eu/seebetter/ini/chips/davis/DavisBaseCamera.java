@@ -8,20 +8,13 @@ package eu.seebetter.ini.chips.davis;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Point;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
-import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
-import javax.swing.JFrame;
-import javax.swing.JMenu;
-import javax.swing.JMenuItem;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -60,55 +53,53 @@ import net.sf.jaer.util.histogram.AbstractHistogram;
  * @author tobi
  */
 abstract public class DavisBaseCamera extends DavisChip implements RemoteControlled {
+	public static final String HELP_URL_RETINA = "http://inilabs.com/support/hardware/";
+	public static final String USER_GUIDE_URL_FLASHY = "http://inilabs.com/support/software/reflashing/";
+	public static final String USER_GUIDE_URL_DAVIS240 = "http://inilabs.com/support/hardware/davis240/";
 
-	public static final String HELP_URL_RETINA = "http://inilabs.com/support/overview-of-dynamic-vision-sensors";
-	public static final String USER_GUIDE_URL_FLASHY = "https://docs.google.com/a/longi.li/document/d/1LuO-i8u-Y7Nf0zQ-N-Z2LRiKiQMO-EkD3Ln2bmnjhmQ/edit?usp=sharing";
-	public static final String USER_GUIDE_URL_DAVIS240 = "http://www.inilabs.com/support/davis240";
-	protected final int ADC_NUMBER_OF_TRAILING_ZEROS = Integer.numberOfTrailingZeros(DavisChip.ADC_READCYCLE_MASK);
-	protected final String CMD_EXPOSURE = "exposure";
-	// protected final String CMD_EXPOSURE_CC = "exposureCC";
-	// protected final String CMD_RS_SETTLE_CC = "resetSettleCC"; // can be added to sub cameras again if needed, or
-	// exposed in DavisDisplayConfigInterface by methods
-	protected AEFrameChipRenderer apsDVSrenderer;
-	protected final AutoExposureController autoExposureController;
-	protected int autoshotThresholdEvents = getPrefs().getInt("autoshotThresholdEvents", 0);
-	protected JMenu chipMenu = null;
-	JFrame controlFrame = null;
-	protected int exposureDurationUs; // internal measured variable, set during rendering. Duration of frame expsosure
-										// in
+	// Remote control support
+	private final String CMD_EXPOSURE = "exposure";
 
-	/**
-	 * holds measured variable in ms for GUI rendering
-	 */
-	protected float exposureMs;
-	/**
-	 * Holds count of frames obtained by end of frame events
-	 */
-	protected int frameCount = 0;
-	// reset released)
+	private final DavisDisplayMethod davisDisplayMethod;
+	protected DavisConfig davisConfig;
+	protected AEFrameChipRenderer davisRenderer;
+	private final AutoExposureController autoExposureController;
+
+	private int autoshotThresholdEvents = getPrefs().getInt("DavisBaseCamera.autoshotThresholdEvents", 0);
+	private boolean showImageHistogram = getPrefs().getBoolean("DavisBaseCamera.showImageHistogram", false);
+	private float exposureMs;
+	protected int exposureDurationUs;
 	protected int frameExposureEndTimestampUs; // end of exposureControlRegister (first events of signal read)
-	protected int frameExposureStartTimestampUs = 0; // timestamp of first sample from frame (first sample read after
-	// us.
+	protected int frameExposureStartTimestampUs; // timestamp of first sample from frame (first sample read after
 	protected int frameIntervalUs; // internal measured variable, set during rendering. Time between this frame and
-	// previous one.
-	/**
-	 * holds measured variable in Hz for GUI rendering of rate
-	 */
-	protected float frameRateHz;
-	// public static final String FIRMWARE_CHANGELOG =
-	// "https://sourceforge.net/p/jaer/code/HEAD/tree/devices/firmware/CypressFX2/firmware_FX2LP_DVS128/CHANGELOG.txt";
-	JComponent helpMenuItem1 = null;
-	JComponent helpMenuItem2 = null;
-	JComponent helpMenuItem3 = null;
+	private int frameCount;
+	private float frameRateHz;
+
 	protected IMUSample imuSample; // latest IMUSample from sensor
-	protected boolean isTimestampMaster = true;
-	protected boolean showImageHistogram = getPrefs().getBoolean("showImageHistogram", false);
-	protected JMenuItem syncEnabledMenuItem = null;
-	protected DavisDisplayMethod davisDisplayMethod = null;
+
+	private boolean isTimestampMaster = true; // TODO: fix this so it auto-updates.
+
+	private JComponent helpMenuItem1 = null;
+	private JComponent helpMenuItem2 = null;
+	private JComponent helpMenuItem3 = null;
+
+	/**
+	 * These points are the first and last pixel APS read out from the array.
+	 * Subclasses must set and use these values in the firstFrameAddress and
+	 * lastFrameAddress methods and event filters that transform the APS
+	 * addresses can modify these values to properly account for the order of
+	 * readout, e.g. in RotateFilter.
+	 *
+	 */
+	private Point apsFirstPixelReadOut;
+	private Point apsLastPixelReadOut;
 
 	public DavisBaseCamera() {
-		setName("DAVISBaseCamera");
+		super();
+
+		setName("DavisBaseCamera");
 		setEventClass(ApsDvsEvent.class);
+
 		setNumCellTypes(3); // two are polarity and last is intensity
 		setPixelHeightUm(18.5f);
 		setPixelWidthUm(18.5f);
@@ -119,70 +110,44 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		getCanvas().addDisplayMethod(davisDisplayMethod);
 		getCanvas().setDisplayMethod(davisDisplayMethod);
 
-		if (getRemoteControl() != null) {
-			getRemoteControl().addCommandListener(this, CMD_EXPOSURE, CMD_EXPOSURE + " val - sets exposure. val in ms.");
-			// getRemoteControl().addCommandListener(this, CMD_EXPOSURE_CC,
-			// CMD_EXPOSURE_CC + " val - sets exposureControlRegister. val in clock cycles");
-			// getRemoteControl().addCommandListener(this, CMD_RS_SETTLE_CC,
-			// CMD_RS_SETTLE_CC + " val - sets reset settling time. val in clock cycles");
-		}
+		davisConfig = null; // Biasgen is assigned in child classes. Needs X/Y sizes.
+		setBiasgen(davisConfig);
+
+		davisRenderer = null; // Renderer is assigned in child classes. Needs X/Y sizes.
+		setRenderer(davisRenderer);
+
 		autoExposureController = new AutoExposureController(this);
 
-		apsFirstPixelReadOut = new Point(getSizeX() - 1, getSizeY() - 1);
-		apsLastPixelReadOut = new Point(0, 0);
-	}
+		setApsFirstPixelReadOut(null); // FirstPixel Point assigned in child classes. Needs X/Y sizes.
+		setApsLastPixelReadOut(null); // LastPixel Point assigned in child classes. Needs X/Y sizes.
 
-	@Override
-	public void controlExposure() {
-		getAutoExposureController().controlExposure();
-	}
-
-	/**
-	 * Enables or disable DVS128 menu in AEViewer
-	 *
-	 * @param yes
-	 *            true to enable it
-	 */
-	protected void enableChipMenu(final boolean yes) {
-		if (yes) {
-			if (chipMenu == null) {
-				chipMenu = new JMenu(this.getClass().getSimpleName());
-				chipMenu.getPopupMenu().setLightWeightPopupEnabled(false); // to paint on GLCanvas
-				chipMenu.setToolTipText("Specialized menu for DAVIS chip");
-			}
-			if (syncEnabledMenuItem == null) {
-				syncEnabledMenuItem = new JCheckBoxMenuItem("Timestamp master");
-				syncEnabledMenuItem.setToolTipText("<html>Sets this device as timestamp master");
-				syncEnabledMenuItem.addActionListener(new ActionListener() {
-					@Override
-					public void actionPerformed(@SuppressWarnings("unused") final ActionEvent evt) {
-						Chip.log.info("setting sync/timestamp master to " + syncEnabledMenuItem.isSelected());
-						isTimestampMaster = syncEnabledMenuItem.isSelected();
-						updateTSMasterState();
-					}
-				});
-				syncEnabledMenuItem.setSelected(isTimestampMaster);
-				updateTSMasterState();
-				chipMenu.add(syncEnabledMenuItem);
-			}
-			if (getAeViewer() != null) {
-				getAeViewer().addMenu(chipMenu);
-			}
-		}
-		else {
-			// disable menu
-			if (chipMenu != null) {
-				getAeViewer().removeMenu(chipMenu);
-			}
+		if (getRemoteControl() != null) {
+			getRemoteControl().addCommandListener(this, CMD_EXPOSURE, CMD_EXPOSURE + " val - sets exposure. val in ms.");
 		}
 	}
 
-	/**
-	 * @return the autoExposureController
-	 */
 	@Override
-	public AutoExposureController getAutoExposureController() {
-		return autoExposureController;
+	public void onDeregistration() {
+		super.onDeregistration();
+		if (getAeViewer() == null) {
+			return;
+		}
+		getAeViewer().removeHelpItem(helpMenuItem1);
+		getAeViewer().removeHelpItem(helpMenuItem2);
+		getAeViewer().removeHelpItem(helpMenuItem3);
+	}
+
+	@Override
+	public void onRegistration() {
+		super.onRegistration();
+		if (getAeViewer() == null) {
+			return;
+		}
+		helpMenuItem1 = getAeViewer().addHelpURLItem(DavisBaseCamera.HELP_URL_RETINA, "Product overview", "Opens product overview guide");
+		helpMenuItem2 = getAeViewer().addHelpURLItem(DavisBaseCamera.USER_GUIDE_URL_DAVIS240, "DAVIS240 user guide",
+			"Opens DAVIS240 user guide");
+		helpMenuItem3 = getAeViewer().addHelpURLItem(DavisBaseCamera.USER_GUIDE_URL_FLASHY, "Flashy user guide",
+			"User guide for external tool flashy for firmware/logic updates to devices using the libusb driver");
 	}
 
 	/**
@@ -196,6 +161,38 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 	}
 
 	/**
+	 * Sets threshold for shooting a frame automatically
+	 *
+	 * @param thresholdEvents
+	 *            the number of events to trigger shot on. Less than
+	 *            or equal to zero disables auto-shot.
+	 */
+	@Override
+	public void setAutoshotThresholdEvents(int thresholdEvents) {
+		if (thresholdEvents < 0) {
+			thresholdEvents = 0;
+		}
+
+		autoshotThresholdEvents = thresholdEvents;
+		getPrefs().putInt("DavisBaseCamera.autoshotThresholdEvents", thresholdEvents);
+
+		if (autoshotThresholdEvents == 0) {
+			getDavisConfig().setCaptureFramesEnabled(true);
+		}
+	}
+
+	@Override
+	public boolean isShowImageHistogram() {
+		return showImageHistogram;
+	}
+
+	@Override
+	public void setShowImageHistogram(final boolean yes) {
+		showImageHistogram = yes;
+		getPrefs().putBoolean("DavisBaseCamera.showImageHistogram", yes);
+	}
+
+	/**
 	 * Returns measured exposure time.
 	 *
 	 * @return exposure time in ms
@@ -203,6 +200,19 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 	@Override
 	public float getMeasuredExposureMs() {
 		return exposureMs;
+	}
+
+	/**
+	 * Sets the measured exposureControlRegister. Does not change parameters,
+	 * only used for recording measured quantity.
+	 *
+	 * @param exposureMs
+	 *            the exposureMs to set
+	 */
+	protected void setMeasuredExposureMs(final float exposureMs) {
+		final float old = this.exposureMs;
+		this.exposureMs = exposureMs;
+		getSupport().firePropertyChange(DavisChip.PROPERTY_MEASURED_EXPOSURE_MS, old, this.exposureMs);
 	}
 
 	/**
@@ -233,6 +243,19 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 	}
 
 	/**
+	 * Sets the measured frame rate. Does not change parameters, only used for
+	 * recording measured quantity and informing GUI listeners.
+	 *
+	 * @param frameRateHz
+	 *            the frameRateHz to set
+	 */
+	protected void setFrameRateHz(final float frameRateHz) {
+		final float old = this.frameRateHz;
+		this.frameRateHz = frameRateHz;
+		getSupport().firePropertyChange(DavisChip.PROPERTY_FRAME_RATE_HZ, old, this.frameRateHz);
+	}
+
+	/**
 	 * Returns the current Inertial Measurement Unit sample.
 	 *
 	 * @return the imuSample, or null if there is no sample
@@ -259,138 +282,13 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 	}
 
 	@Override
-	public boolean isAutoExposureEnabled() {
-		return getAutoExposureController().isAutoExposureEnabled();
+	public void setPowerDown(final boolean powerDown) {
+		getDavisConfig().setCaptureEvents(!powerDown);
 	}
 
 	@Override
-	public boolean isShowImageHistogram() {
-		return showImageHistogram;
-	}
-
-	/**
-	 * These points are the first and last pixel APS read out from the array.
-	 * Subclasses must set and use these values in the firstFrameAddress and
-	 * lastFrameAddress methods and event filters that transform the APS
-	 * addresses can modify these values to properly account for the order of
-	 * readout, e.g. in RotateFilter.
-	 *
-	 */
-	protected Point apsFirstPixelReadOut = null, apsLastPixelReadOut = null;
-
-	/**
-	 * Subclasses should set the apsFirstPixelReadOut and apsLastPixelReadOut
-	 *
-	 * @param x
-	 *            the x location of APS readout
-	 * @param y
-	 *            the y location of APS readout
-	 * @see #apsFirstPixelReadOut
-	 */
-	public boolean firstFrameAddress(final short x, final short y) {
-		final boolean yes = (x == apsFirstPixelReadOut.x) && (y == apsFirstPixelReadOut.y);
-		return yes;
-	}
-
-	/**
-	 * Subclasses should set the apsFirstPixelReadOut and apsLastPixelReadOut
-	 *
-	 * @param x
-	 *            the x location of APS readout
-	 * @param y
-	 *            the y location of APS readout
-	 * @see #apsLastPixelReadOut
-	 */
-	public boolean lastFrameAddress(final short x, final short y) {
-		final boolean yes = (x == apsLastPixelReadOut.x) && (y == apsLastPixelReadOut.y);
-		return yes;
-	}
-
-	@Override
-	public void onDeregistration() {
-		super.onDeregistration();
-		if (getAeViewer() == null) {
-			return;
-		}
-		getAeViewer().removeHelpItem(helpMenuItem1);
-		getAeViewer().removeHelpItem(helpMenuItem2);
-		getAeViewer().removeHelpItem(helpMenuItem3);
-		enableChipMenu(false);
-	}
-
-	@Override
-	public void onRegistration() {
-		super.onRegistration();
-		if (getAeViewer() == null) {
-			return;
-		}
-		helpMenuItem1 = getAeViewer().addHelpURLItem(DavisBaseCamera.HELP_URL_RETINA, "Product overview", "Opens product overview guide");
-		helpMenuItem2 = getAeViewer().addHelpURLItem(DavisBaseCamera.USER_GUIDE_URL_DAVIS240, "DAVIS240 user guide",
-			"Opens DAVIS240 user guide");
-		helpMenuItem3 = getAeViewer().addHelpURLItem(DavisBaseCamera.USER_GUIDE_URL_FLASHY, "Flashy user guide",
-			"User guide for external tool flashy for firmware/logic updates to devices using the libusb driver");
-		enableChipMenu(true);
-	}
-
-	@Override
-	public String processRemoteControlCommand(final RemoteControlCommand command, final String input) {
-		Chip.log.log(Level.INFO, "processing RemoteControlCommand {0} with input={1}", new Object[] { command, input });
-		if (command == null) {
-			return null;
-		}
-		final String[] tokens = input.split(" ");
-		if (tokens.length < 2) {
-			return input + ": unknown command - did you forget the argument?";
-		}
-		if ((tokens[1] == null) || (tokens[1].length() == 0)) {
-			return input + ": argument too short - need a number";
-		}
-		float v = 0;
-		try {
-			v = Float.parseFloat(tokens[1]);
-		}
-		catch (final NumberFormatException e) {
-			return input + ": bad argument? Caught " + e.toString();
-		}
-		final String c = command.getCmdName();
-		if (c.equals(CMD_EXPOSURE)) {
-			getDavisConfig().setExposureDelayMs(v);
-		}
-		else {
-			return input + ": unknown command";
-		}
-		return "successfully processed command " + input;
-	}
-
-	@Override
-	public void setAutoExposureEnabled(final boolean yes) {
-		getAutoExposureController().setAutoExposureEnabled(yes);
-	}
-
-	/**
-	 * Sets the measured exposureControlRegister. Does not change parameters,
-	 * only used for recording measured quantity.
-	 *
-	 * @param exposureMs
-	 *            the exposureMs to set
-	 */
-	protected void setMeasuredExposureMs(final float exposureMs) {
-		final float old = this.exposureMs;
-		this.exposureMs = exposureMs;
-		getSupport().firePropertyChange(DavisChip.PROPERTY_MEASURED_EXPOSURE_MS, old, this.exposureMs);
-	}
-
-	/**
-	 * Sets the measured frame rate. Does not change parameters, only used for
-	 * recording measured quantity and informing GUI listeners.
-	 *
-	 * @param frameRateHz
-	 *            the frameRateHz to set
-	 */
-	protected void setFrameRateHz(final float frameRateHz) {
-		final float old = this.frameRateHz;
-		this.frameRateHz = frameRateHz;
-		getSupport().firePropertyChange(DavisChip.PROPERTY_FRAME_RATE_HZ, old, this.frameRateHz);
+	public void setADCEnabled(final boolean adcEnabled) {
+		getDavisConfig().setCaptureFramesEnabled(adcEnabled);
 	}
 
 	/**
@@ -409,14 +307,13 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		try {
 			if (getBiasgen() == null) {
 				setBiasgen(new DavisConfig(this));
-				// now we can addConfigValue the control panel
 			}
 			else {
 				getBiasgen().setHardwareInterface((BiasgenHardwareInterface) hardwareInterface);
 			}
 		}
 		catch (final ClassCastException e) {
-			Chip.log.warning(e.getMessage() + ": probably this chip object has a biasgen but the hardware interface doesn't, ignoring");
+			log.warning(e.getMessage() + ": probably this chip object has a biasgen but the hardware interface doesn't, ignoring");
 		}
 	}
 
@@ -425,21 +322,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		frameCount = 0;
 
 		return (super.constuctFileInputStream(file));
-	}
-
-        /** shows the histogram of image APS values
-         * 
-         * @param yes true to show
-         */
-	@Override
-	public void setShowImageHistogram(final boolean yes) {
-		showImageHistogram = yes;
-		getPrefs().putBoolean("showImageHistogram", yes);
-	}
-
-	protected void updateTSMasterState() {
-		// Check which logic we are and send the TS Master/Slave command if we are old logic.
-		// TODO: this needs to be done.
 	}
 
 	/**
@@ -455,22 +337,20 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 	 */
 	public class DavisEventExtractor extends RetinaExtractor {
 
-		/**
-		 *
-		 */
 		protected static final long serialVersionUID = 3890914720599660376L;
-		protected int autoshotEventsSinceLastShot = 0; // autoshot counter
-		protected int warningCount = 0;
 		protected static final int WARNING_COUNT_DIVIDER = 10000;
+		protected int warningCount = 0;
+
+		protected static final int IMU_WARNING_INTERVAL = 1000;
+		protected IMUSample.IncompleteIMUSampleException incompleteIMUSampleException = null;
+		protected int missedImuSampleCounter = 0;
+		protected int badImuDataCounter = 0;
+
+		protected int autoshotEventsSinceLastShot = 0; // autoshot counter
 
 		public DavisEventExtractor(final DavisBaseCamera chip) {
 			super(chip);
 		}
-
-		protected IMUSample.IncompleteIMUSampleException incompleteIMUSampleException = null;
-		protected static final int IMU_WARNING_INTERVAL = 1000;
-		protected int missedImuSampleCounter = 0;
-		protected int badImuDataCounter = 0;
 
 		/**
 		 * extracts the meaning of the raw events.
@@ -498,7 +378,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			final int n = in.getNumEvents(); // addresses.length;
 			final int sx1 = chip.getSizeX() - 1;
 			chip.getSizeY();
-			final boolean rollingShutter = !getDavisConfig().getApsReadoutControl().isGlobalShutterMode();
+			final boolean rollingShutter = !getDavisConfig().isGlobalShutter();
 
 			final int[] datas = in.getAddresses();
 			final int[] timestamps = in.getTimestamps();
@@ -650,7 +530,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 					if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
 						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
 
-						setFrameCount(getFrameCount() + 1);
+						increaseFrameCount(1);
 					}
 				}
 			}
@@ -692,7 +572,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			a.y = -1;
 			a.address = -1;
 			a.readoutType = flag;
-//                        a.special=true;  // not really special
 			return a;
 		}
 
@@ -757,8 +636,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			return address;
 		}
 
-		public void setFrameCount(final int i) {   //TODO when the jaer's uniform extractor finished, change it back to protected
-			frameCount = i;
+		public final void increaseFrameCount(final int i) {
+			frameCount += i;
 		}
 
 	} // extractor
@@ -802,7 +681,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			}
 
 			// draw sample histogram
-			if (showImageHistogram && getDavisConfig().isDisplayFrames() && (renderer instanceof AEFrameChipRenderer)) {
+			if (isShowImageHistogram() && getDavisConfig().isDisplayFrames() && (renderer instanceof AEFrameChipRenderer)) {
 				// System.out.println("drawing hist");
 				final int size = 100;
 				final AbstractHistogram hist = ((AEFrameChipRenderer) renderer).getAdcSampleValueHistogram();
@@ -927,7 +806,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 				setFrameRateHz((float) 1000000 / frameIntervalUs);
 			}
 			setMeasuredExposureMs((float) exposureDurationUs / 1000);
-			final String s = String.format("Frame: %d; Exposure %.2f ms; Frame rate: %.2f Hz", getFrameCount(), exposureMs, frameRateHz);
+			final String s = String.format("Frame: %d; Exposure %.2f ms; Frame rate: %.2f Hz", getFrameCount(), getMeasuredExposureMs(),
+				getFrameRateHz());
 			final float scale = TextRendererScale.draw3dScale(exposureRenderer, s, getChipCanvas().getScale(), getSizeX(), .75f);
 			// determine width of string in pixels and scale accordingly
 			exposureRenderer.draw3D(s, 0, getSizeY() + (DavisDisplayMethod.FONTSIZE / 2), 0, scale);
@@ -957,41 +837,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		return (DavisConfig) getBiasgen();
 	}
 
-	@Override
-	public void setPowerDown(final boolean powerDown) {
-		getDavisConfig().powerDown.set(powerDown);
-		try {
-			getDavisConfig().sendOnChipConfigChain();
-		}
-		catch (final HardwareInterfaceException ex) {
-			Logger.getLogger(DavisBaseCamera.class.getName()).log(Level.SEVERE, null, ex);
-		}
-	}
-
-	/**
-	 * Sets threshold for shooting a frame automatically
-	 *
-	 * @param thresholdEvents
-	 *            the number of events to trigger shot on. Less than
-	 *            or equal to zero disables auto-shot.
-	 */
-	@Override
-	public void setAutoshotThresholdEvents(int thresholdEvents) {
-		if (thresholdEvents < 0) {
-			thresholdEvents = 0;
-		}
-		autoshotThresholdEvents = thresholdEvents;
-		getPrefs().putInt("DAViS240.autoshotThresholdEvents", thresholdEvents);
-		if (autoshotThresholdEvents == 0) {
-			getDavisConfig().runAdc.set(true);
-		}
-	}
-
-	@Override
-	public void setADCEnabled(final boolean adcEnabled) {
-		getDavisConfig().getApsReadoutControl().setAdcEnabled(adcEnabled);
-	}
-
 	/**
 	 * Triggers shot of one APS frame
 	 */
@@ -1013,7 +858,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		}
 	}
 
-	public void configureROIRegion(final Point cornerLL, final Point cornerUR) {
+	public void configureROIRegion0(final Point cornerLL, final Point cornerUR) {
 		// First program the new sizes into logic.
 		final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
 		final SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
@@ -1031,8 +876,34 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		}
 
 		// Then update first/last pixel coordinates.
-		apsFirstPixelReadOut = new Point(0, (cornerUR.y - cornerLL.y));
-		apsLastPixelReadOut = new Point((cornerUR.x - cornerLL.x), 0);
+		setApsFirstPixelReadOut(new Point(0, (cornerUR.y - cornerLL.y)));
+		setApsLastPixelReadOut(new Point((cornerUR.x - cornerLL.x), 0));
+	}
+
+	/**
+	 * Subclasses should set the apsFirstPixelReadOut and apsLastPixelReadOut
+	 *
+	 * @param x
+	 *            the x location of APS readout
+	 * @param y
+	 *            the y location of APS readout
+	 * @see #apsFirstPixelReadOut
+	 */
+	public boolean firstFrameAddress(final short x, final short y) {
+		return (x == getApsFirstPixelReadOut().x) && (y == getApsFirstPixelReadOut().y);
+	}
+
+	/**
+	 * Subclasses should set the apsFirstPixelReadOut and apsLastPixelReadOut
+	 *
+	 * @param x
+	 *            the x location of APS readout
+	 * @param y
+	 *            the y location of APS readout
+	 * @see #apsLastPixelReadOut
+	 */
+	public boolean lastFrameAddress(final short x, final short y) {
+		return (x == getApsLastPixelReadOut().x) && (y == getApsLastPixelReadOut().y);
 	}
 
 	/**
@@ -1065,4 +936,58 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		this.apsLastPixelReadOut = apsLastPixelReadOut;
 	}
 
+	@Override
+	public String processRemoteControlCommand(final RemoteControlCommand command, final String input) {
+		log.log(Level.INFO, "processing RemoteControlCommand {0} with input={1}", new Object[] { command, input });
+
+		if (command == null) {
+			return null;
+		}
+
+		final String[] tokens = input.split(" ");
+		if (tokens.length < 2) {
+			return input + ": unknown command - did you forget the argument?";
+		}
+		if ((tokens[1] == null) || (tokens[1].length() == 0)) {
+			return input + ": argument too short - need a number";
+		}
+		float v = 0;
+		try {
+			v = Float.parseFloat(tokens[1]);
+		}
+		catch (final NumberFormatException e) {
+			return input + ": bad argument? Caught " + e.toString();
+		}
+		final String c = command.getCmdName();
+		if (c.equals(CMD_EXPOSURE)) {
+			getDavisConfig().setExposureDelayMs(v);
+		}
+		else {
+			return input + ": unknown command";
+		}
+		return "successfully processed command " + input;
+	}
+
+	/**
+	 * @return the autoExposureController
+	 */
+	@Override
+	public AutoExposureController getAutoExposureController() {
+		return autoExposureController;
+	}
+
+	@Override
+	public boolean isAutoExposureEnabled() {
+		return getAutoExposureController().isAutoExposureEnabled();
+	}
+
+	@Override
+	public void controlExposure() {
+		getAutoExposureController().controlExposure();
+	}
+
+	@Override
+	public void setAutoExposureEnabled(final boolean yes) {
+		getAutoExposureController().setAutoExposureEnabled(yes);
+	}
 }

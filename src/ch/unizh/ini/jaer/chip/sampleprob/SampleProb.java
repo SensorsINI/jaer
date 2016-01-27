@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.logging.Level;
 
 import javax.swing.JComponent;
 import javax.swing.JPanel;
@@ -15,10 +16,10 @@ import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cRollingCochleagramADCDisplayMe
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaChip;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaLP;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.AbstractConfigValue;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigBit;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigInt;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigValue;
+import ch.unizh.ini.jaer.config.AbstractConfigValue;
+import ch.unizh.ini.jaer.config.spi.SPIConfigBit;
+import ch.unizh.ini.jaer.config.spi.SPIConfigInt;
+import ch.unizh.ini.jaer.config.spi.SPIConfigValue;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -95,7 +96,7 @@ public class SampleProb extends CochleaChip implements Observer {
 			}
 		}
 		catch (final ClassCastException e) {
-			System.err.println(e.getMessage() + ": probably this chip object has a biasgen but the hardware interface doesn't, ignoring");
+			log.warning(e.getMessage() + ": probably this chip object has a biasgen but the hardware interface doesn't, ignoring");
 		}
 	}
 
@@ -208,29 +209,28 @@ public class SampleProb extends CochleaChip implements Observer {
 
 			// New logic SPI configuration values.
 			// DAC control
-			dacRun = new SPIConfigBit("DACRun", "Enable external DAC.", CypressFX3.FPGA_DAC, (short) 0, false, getPrefs());
+			dacRun = new SPIConfigBit("DACRun", "Enable external DAC.", CypressFX3.FPGA_DAC, (short) 0, false, this);
 			dacRun.addObserver(this);
 			allPreferencesList.add(dacRun);
 
 			// Multiplexer module
 			biasForceEnable = new SPIConfigBit("ForceBiasEnable", "Force the biases to be always ON.", CypressFX3.FPGA_MUX, (short) 3,
-				false, getPrefs());
+				false, this);
 			biasForceEnable.addObserver(this);
 			allPreferencesList.add(biasForceEnable);
 
 			// Generic AER from chip
+			aerControl.add(new SPIConfigBit("AERRun", "Run the main AER state machine.", CypressFX3.FPGA_DVS, (short) 3, false, this));
 			aerControl
-				.add(new SPIConfigBit("AERRun", "Run the main AER state machine.", CypressFX3.FPGA_DVS, (short) 3, false, getPrefs()));
+				.add(new SPIConfigInt("AERAckDelay", "Delay AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 4, 12, 0, this));
 			aerControl.add(
-				new SPIConfigInt("AERAckDelay", "Delay AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 4, 12, 0, getPrefs()));
-			aerControl.add(new SPIConfigInt("AERAckExtension", "Extend AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 6, 12, 0,
-				getPrefs()));
+				new SPIConfigInt("AERAckExtension", "Extend AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 6, 12, 0, this));
 			aerControl.add(new SPIConfigBit("AERWaitOnTransferStall",
 				"Whether the AER state machine should wait,<br> or continue servicing the AER bus when the FIFOs are full.",
-				CypressFX3.FPGA_DVS, (short) 8, false, getPrefs()));
+				CypressFX3.FPGA_DVS, (short) 8, false, this));
 			aerControl.add(new SPIConfigBit("AERExternalAERControl",
 				"Do not control/ACK the AER bus anymore, <br>but let it be done by an external device.", CypressFX3.FPGA_DVS, (short) 10,
-				false, getPrefs()));
+				false, this));
 
 			for (final SPIConfigValue cfgVal : aerControl) {
 				cfgVal.addObserver(this);
@@ -238,15 +238,15 @@ public class SampleProb extends CochleaChip implements Observer {
 			}
 
 			// Additional chip configuration
-			chipControl.add(new SPIConfigInt("MasterBias", "", CypressFX3.FPGA_CHIPBIAS, (short) 0, 8, 0, getPrefs()));
-			chipControl.add(new SPIConfigInt("SelSpikeExtend", "", CypressFX3.FPGA_CHIPBIAS, (short) 1, 3, 0, getPrefs()));
-			chipControl.add(new SPIConfigInt("SelHazardIV", "", CypressFX3.FPGA_CHIPBIAS, (short) 2, 8, 0, getPrefs()));
-			chipControl.add(new SPIConfigBit("SelCH", "", CypressFX3.FPGA_CHIPBIAS, (short) 3, false, getPrefs()));
-			chipControl.add(new SPIConfigBit("SelNS", "", CypressFX3.FPGA_CHIPBIAS, (short) 4, false, getPrefs()));
-			chipControl.add(new SPIConfigBit("ClockEnable", "Enable clock generation for RNG.", CypressFX3.FPGA_CHIPBIAS, (short) 40, false,
-				getPrefs()));
+			chipControl.add(new SPIConfigInt("MasterBias", "", CypressFX3.FPGA_CHIPBIAS, (short) 0, 8, 0, this));
+			chipControl.add(new SPIConfigInt("SelSpikeExtend", "", CypressFX3.FPGA_CHIPBIAS, (short) 1, 3, 0, this));
+			chipControl.add(new SPIConfigInt("SelHazardIV", "", CypressFX3.FPGA_CHIPBIAS, (short) 2, 8, 0, this));
+			chipControl.add(new SPIConfigBit("SelCH", "", CypressFX3.FPGA_CHIPBIAS, (short) 3, false, this));
+			chipControl.add(new SPIConfigBit("SelNS", "", CypressFX3.FPGA_CHIPBIAS, (short) 4, false, this));
+			chipControl.add(
+				new SPIConfigBit("ClockEnable", "Enable clock generation for RNG.", CypressFX3.FPGA_CHIPBIAS, (short) 40, false, this));
 			chipControl.add(new SPIConfigInt("ClockPeriod", "Period of RNG clock in cycles at 120MHz.", CypressFX3.FPGA_CHIPBIAS,
-				(short) 41, 20, 0, getPrefs()));
+				(short) 41, 20, 0, this));
 
 			for (final SPIConfigValue cfgVal : chipControl) {
 				cfgVal.addObserver(this);
@@ -256,6 +256,13 @@ public class SampleProb extends CochleaChip implements Observer {
 			setBatchEditOccurring(true);
 			loadPreferences();
 			setBatchEditOccurring(false);
+
+			try {
+				sendConfiguration(this);
+			}
+			catch (final HardwareInterfaceException ex) {
+				net.sf.jaer.biasgen.Biasgen.log.log(Level.SEVERE, null, ex);
+			}
 		}
 
 		@Override
@@ -327,12 +334,7 @@ public class SampleProb extends CochleaChip implements Observer {
 		 *            notifyChange used at present
 		 */
 		@Override
-		public void update(final Observable observable, final Object object) {
-			// while it is sending something
-			if (isBatchEditOccurring()) {
-				return;
-			}
-
+		public synchronized void update(final Observable observable, final Object object) {
 			if (getHardwareInterface() != null) {
 				final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
 
@@ -403,15 +405,18 @@ public class SampleProb extends CochleaChip implements Observer {
 			}
 
 			for (final Pot iPot : ipots.getPots()) {
-				update(iPot, null);
+				iPot.setChanged();
+				iPot.notifyObservers();
 			}
 
 			for (final Pot vPot : vpots.getPots()) {
-				update(vPot, null);
+				vPot.setChanged();
+				vPot.notifyObservers();
 			}
 
 			for (final AbstractConfigValue spiCfg : allPreferencesList) {
-				update(spiCfg, null);
+				spiCfg.setChanged();
+				spiCfg.notifyObservers();
 			}
 		}
 	}

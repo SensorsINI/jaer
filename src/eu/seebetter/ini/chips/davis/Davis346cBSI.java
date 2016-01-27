@@ -9,6 +9,7 @@ import java.awt.Point;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 /**
  * Davis346cBSI camera
@@ -22,7 +23,12 @@ public class Davis346cBSI extends Davis346BaseCamera {
 		setName("Davis346cBSI");
 		setDefaultPreferencesFile("biasgenSettings/Davis346cBSI/DAVIS346cBSI_Test.xml");
 
-		apsFirstPixelReadOut = new Point(getSizeX() - 1, 0);
-		apsLastPixelReadOut = new Point(0, getSizeY() - 1);
+		setApsFirstPixelReadOut(new Point(getSizeX() - 1, 0));
+		setApsLastPixelReadOut(new Point(0, getSizeY() - 1));
+	}
+
+	public Davis346cBSI(final HardwareInterface hardwareInterface) {
+		this();
+		setHardwareInterface(hardwareInterface);
 	}
 }

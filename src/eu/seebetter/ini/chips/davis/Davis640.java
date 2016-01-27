@@ -5,6 +5,8 @@
  */
 package eu.seebetter.ini.chips.davis;
 
+import java.awt.Point;
+
 import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -22,7 +24,6 @@ public class Davis640 extends DavisBaseCamera {
 
 	public static final short WIDTH_PIXELS = 640;
 	public static final short HEIGHT_PIXELS = 480;
-	protected DavisTowerBaseConfig davisConfig;
 
 	/**
 	 * Creates a new instance.
@@ -35,10 +36,12 @@ public class Davis640 extends DavisBaseCamera {
 
 		setBiasgen(davisConfig = new DavisTowerBaseConfig(this));
 
-		apsDVSrenderer = new AEFrameChipRenderer(this); // must be called after configuration is constructed, because it
-														// needs to know if frames are enabled to reset pixmap
-		apsDVSrenderer.setMaxADC(DavisChip.MAX_ADC);
-		setRenderer(apsDVSrenderer);
+		davisRenderer = new AEFrameChipRenderer(this);
+		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
+		setRenderer(davisRenderer);
+
+		setApsFirstPixelReadOut(new Point(getSizeX() - 1, getSizeY() - 1));
+		setApsLastPixelReadOut(new Point(0, 0));
 	}
 
 	/**

@@ -8,15 +8,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
-import net.sf.jaer.hardwareinterface.usb.USBInterface;
-
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
 import org.usb4java.DeviceHandle;
 import org.usb4java.DeviceList;
 import org.usb4java.LibUsb;
+
+import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
+import net.sf.jaer.hardwareinterface.usb.USBInterface;
 
 public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactoryInterface {
 	private final static Logger log = Logger.getLogger("LibUsb3HardwareInterfaceFactory");
@@ -34,11 +34,11 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
 	private LibUsb3HardwareInterfaceFactory() {
 		// Build a mapping of VID/PID pairs and corresponding
 		// HardwareInterfaces.
-		addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID, DAViSFX3HardwareInterface.class);
+		addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX3, DAViSFX3HardwareInterface.class);
 
 		addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX2, DAViSFX3HardwareInterface.class);
 
-		addDeviceToMap(CypressFX3.VID, CochleaFX3HardwareInterface.PID, CochleaFX3HardwareInterface.class);
+		addDeviceToMap(CypressFX3.VID, CochleaFX3HardwareInterface.PID_FX3, CochleaFX3HardwareInterface.class);
 
 		// Initialize LibUsb.
 		LibUsb.init(null);
@@ -102,8 +102,7 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
 
 			LibUsb.close(devHandle);
 
-			if (((status == LibUsb.ERROR_NOT_SUPPORTED) || (status == LibUsb.SUCCESS))
-				&& vidPidToClassMap.containsKey(vidPid)) {
+			if (((status == LibUsb.ERROR_NOT_SUPPORTED) || (status == LibUsb.SUCCESS)) && vidPidToClassMap.containsKey(vidPid)) {
 				// This is a VID/PID combination we support, so let's add the
 				// device to the compatible
 				// devices list and increase its reference count.
@@ -144,13 +143,13 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
 
 		if (n > (numAvailable - 1)) {
 			if (numAvailable == 0) {
-				LibUsb3HardwareInterfaceFactory.log.warning(String.format(
-					"You asked for interface number %d but no interfaces are available at all. Check your Device "
+				LibUsb3HardwareInterfaceFactory.log
+					.warning(String.format("You asked for interface number %d but no interfaces are available at all. Check your Device "
 						+ "Manager to see if the device has been recognized. You may need to install a driver.", n));
 			}
 			else {
-				LibUsb3HardwareInterfaceFactory.log.warning(String.format(
-					"Only %d interfaces are available, but you asked for number %d (0 based).", numAvailable, n));
+				LibUsb3HardwareInterfaceFactory.log
+					.warning(String.format("Only %d interfaces are available, but you asked for number %d (0 based).", numAvailable, n));
 			}
 
 			return null;

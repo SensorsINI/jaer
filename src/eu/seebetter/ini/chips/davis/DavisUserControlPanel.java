@@ -16,10 +16,10 @@ import java.util.logging.Logger;
 import javax.swing.JSpinner;
 
 import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
-import ch.unizh.ini.jaer.config.cpld.CPLDInt;
 import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.biasgen.PotTweaker;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.Chip;
 import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 
@@ -30,24 +30,20 @@ import net.sf.jaer.graphics.AEFrameChipRenderer;
  */
 public class DavisUserControlPanel extends javax.swing.JPanel implements PropertyChangeListener, Observer {
 
-	/**
-	 *
-	 */
 	private static final long serialVersionUID = 3894988983329773402L;
+
 	protected DavisChip chip = null;
 	protected DavisTweaks apsDvsTweaks;
 	DavisConfig.VideoControl videoControl;
-	DavisConfig.ApsReadoutControl apsReadoutControl;
 	DavisVideoContrastController contrastController;
 	AEChipRenderer renderer = null;
 
 	private static final Logger log = Logger.getLogger("DVSFunctionalControlPanel");
-	CPLDInt exposureCPLDInt, frameDelayCPLDInt;
 
 	/**
 	 * Creates new form ApsDVSUserControlPanel
 	 */
-	public DavisUserControlPanel(final AEChip chip) {
+	public DavisUserControlPanel(final Chip chip) {
 		this.chip = (DavisChip) chip; // will throw ClassCastException if not right kind of chip.
 		renderer = this.chip.getRenderer();
 		apsDvsTweaks = (DavisTweaks) chip.getBiasgen();
@@ -61,7 +57,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 		histCB.setSelected(this.chip.isShowImageHistogram());
 		fdSp.setValue(getConfig().getFrameDelayMs());
 		edSp.setValue(getConfig().getExposureDelayMs());
-		glShutterCB.setSelected(((DavisBaseCamera) chip).getDavisConfig().getApsReadoutControl().isGlobalShutterMode());
+		glShutterCB.setSelected(((DavisBaseCamera) chip).getDavisConfig().isGlobalShutter());
 		displayEventsCheckBox.setSelected(getConfig().isDisplayEvents());
 		displayFramesCheckBox.setSelected(getConfig().isDisplayFrames());
 		captureFramesCheckBox.setSelected(getConfig().isCaptureFramesEnabled());
@@ -81,12 +77,8 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 		if (getConfig() instanceof DavisConfig) {
 			// add us as observer for various property changes
 			final DavisConfig config = getConfig();
-			exposureCPLDInt = config.getExposureControlRegister();
-			frameDelayCPLDInt = config.getFrameDelayControlRegister();
 			videoControl = config.getVideoControl();
 			videoControl.addObserver(this); // display of various events/frames enabled comes here
-			apsReadoutControl = config.getApsReadoutControl();
-			apsReadoutControl.addObserver(this);
 			// config.exposureControlRegister.addObserver(this);
 			// config.frameDelayControlRegister.addObserver(this); // TODO generates loop that resets the spinner if the
 			// new spinner
@@ -94,7 +86,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 			imuVisibleCB.setSelected(config.isDisplayImu());
 			imuEnabledCB.setSelected(config.isImuEnabled());
 		}
-		contrastController = ((AEFrameChipRenderer) chip.getRenderer()).getContrastController();
+		contrastController = ((AEFrameChipRenderer) ((AEChip) chip).getRenderer()).getContrastController();
 		contrastController.addObserver(this); // get updates from contrast controller
 		contrastSp.setValue(contrastController.getContrast());
 		contrastSp.setEnabled(!contrastController.isUseAutoContrast());
@@ -338,11 +330,11 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 					contrastSp.setValue((float) evt.getNewValue());
 				}
 					break;
-				case DavisConfig.PROPERTY_EXPOSURE_DELAY_US: {
+				case DavisDisplayConfigInterface.PROPERTY_EXPOSURE_DELAY_US: {
 					edSp.setValue((Integer) evt.getNewValue() * .001f);
 				}
 					break;
-				case DavisConfig.PROPERTY_FRAME_DELAY_US: {
+				case DavisDisplayConfigInterface.PROPERTY_FRAME_DELAY_US: {
 					fdSp.setValue((Integer) evt.getNewValue() * .001f);
 				}
 					break;
@@ -869,7 +861,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 	}// </editor-fold>//GEN-END:initComponents
 
 	private void glShutterCBActionPerformed(final java.awt.event.ActionEvent evt) {// GEN-FIRST:event_glShutterCBActionPerformed
-		((DavisBaseCamera) chip).getDavisConfig().getApsReadoutControl().setGlobalShutterMode(glShutterCB.isSelected());
+		((DavisBaseCamera) chip).getDavisConfig().setGlobalShutter(glShutterCB.isSelected());
 	}// GEN-LAST:event_glShutterCBActionPerformed
 
 	private void contrastSpStateChanged(final javax.swing.event.ChangeEvent evt) {// GEN-FIRST:event_contrastSpStateChanged
@@ -1072,19 +1064,15 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 	@Override
 	public void update(final Observable o, final Object arg) {
 		// updates to user friendly controls come from low level properties here
-		if (o == exposureCPLDInt) {
+		if (o == ((DavisBaseCamera) chip).getDavisConfig().getExposureControlRegister()) {
 			edSp.setValue(getConfig().getExposureDelayMs());
 		}
-		else if (o == frameDelayCPLDInt) {
+		else if (o == ((DavisBaseCamera) chip).getDavisConfig().getFrameDelayControlRegister()) {
 			fdSp.setValue(getConfig().getFrameDelayMs());
 		}
 		else if (o == videoControl) {
 			displayFramesCheckBox.setSelected(getConfig().isDisplayFrames());
 			displayEventsCheckBox.setSelected(getConfig().isDisplayEvents());
-		}
-		else if (o == apsReadoutControl) {
-			edSp.setValue(getConfig().getExposureDelayMs());
-			fdSp.setValue(getConfig().getFrameDelayMs());
 		}
 		else if (o == contrastController) {
 			autoContrastCB.setSelected(contrastController.isUseAutoContrast());

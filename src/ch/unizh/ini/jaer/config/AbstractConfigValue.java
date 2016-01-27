@@ -4,61 +4,49 @@
  */
 package ch.unizh.ini.jaer.config;
 
-import java.util.ArrayList;
 import java.util.Observable;
 import java.util.prefs.PreferenceChangeListener;
-import java.util.prefs.Preferences;
 
 import net.sf.jaer.biasgen.Biasgen.HasPreference;
-import net.sf.jaer.chip.Chip;
+import net.sf.jaer.chip.AEChip;
 
-/**
- * Top level configuration value. This is an Observable so changes to the value will inform Observers listening to this.
- * 
- * @author tobi
- */
 public abstract class AbstractConfigValue extends Observable implements PreferenceChangeListener, HasPreference {
-    protected String name;
-    protected String tip;
-    protected String key = "AbstractConfigValue";
-    final protected Preferences prefs;
-    protected Chip chip;
 
-    /**
-     * Creates new abstract value.
-     * 
-     * @param chip from where we get Preferences
-     * @param name name of value
-     * @param tip tooltip
-     */
-    public AbstractConfigValue(Chip chip, String name, String tip) {
-        this.name = name;
-        this.tip = tip;
-        this.chip=chip;
-        this.prefs=chip.getPrefs();
-        this.key = chip.getClass().getSimpleName() + "." + name;
-    }
+	private final String configName, toolTip, prefKey;
+	private final AEChip chip;
 
-    @Override
-    public String toString() {
-        return String.format("AbstractConfigValue name=%s key=%s", name, key);
-    }
+	public AbstractConfigValue(final String configName, final String toolTip, final AEChip chip) {
+		this.configName = configName;
+		this.toolTip = toolTip;
+		prefKey = getClass().getSimpleName() + "." + configName;
+		this.chip = chip;
+	}
 
-    public String getName() {
-        return name;
-    }
+	public String getName() {
+		return configName;
+	}
 
-    @Override
-    public synchronized void setChanged() {
-        super.setChanged();
-    }
+	public String getDescription() {
+		return toolTip;
+	}
 
-    public String getDescription() {
-        return tip;
-    }
-    
-    public void addToPreferenceList(ArrayList<HasPreference> hasPreferencesList){
-        hasPreferencesList.add(this);
-    }
-    
+	public String getPreferencesKey() {
+		return prefKey;
+	}
+
+	@Override
+	public String toString() {
+		return String.format("AbstractConfigValue {configName=%s, prefKey=%s}", getName(), getPreferencesKey());
+	}
+
+	@Override
+	public synchronized void setChanged() {
+		super.setChanged();
+	}
+
+	public void setFileModified() {
+		if ((chip != null) && (chip.getAeViewer() != null) && (chip.getAeViewer().getBiasgenFrame() != null)) {
+			chip.getAeViewer().getBiasgenFrame().setFileModified(true);
+		}
+	}
 }

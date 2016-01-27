@@ -5,8 +5,11 @@
  */
 package eu.seebetter.ini.chips.davis;
 
+import java.awt.Point;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 /**
  * The DAVIS240A camera.
@@ -20,5 +23,13 @@ public class DAVIS240A extends DAVIS240BaseCamera {
 	public DAVIS240A() {
 		setName("DAVIS240A");
 		setDefaultPreferencesFile("biasgenSettings/Davis240a/David240aBasic.xml");
+
+		setApsFirstPixelReadOut(new Point(getSizeX() - 1, getSizeY() - 1));
+		setApsLastPixelReadOut(new Point(0, 0));
+	}
+
+	public DAVIS240A(final HardwareInterface hardwareInterface) {
+		this();
+		setHardwareInterface(hardwareInterface);
 	}
 }

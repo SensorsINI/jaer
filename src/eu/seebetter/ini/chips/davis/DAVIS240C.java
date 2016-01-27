@@ -9,6 +9,7 @@ import java.awt.Point;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 /**
  * The DAVIS240C camera.
@@ -23,7 +24,12 @@ public class DAVIS240C extends DAVIS240BaseCamera {
 		setName("DAVIS240C");
 		setDefaultPreferencesFile("biasgenSettings/Davis240b/Davis240bBasic_GlobalShutter_ImuOn_AutoExposure.xml");
 
-		apsFirstPixelReadOut = new Point(0, getSizeY() - 1);
-		apsLastPixelReadOut = new Point(getSizeX() - 1, 0);
+		setApsFirstPixelReadOut(new Point(0, getSizeY() - 1));
+		setApsLastPixelReadOut(new Point(getSizeX() - 1, 0));
+	}
+
+	public DAVIS240C(final HardwareInterface hardwareInterface) {
+		this();
+		setHardwareInterface(hardwareInterface);
 	}
 }

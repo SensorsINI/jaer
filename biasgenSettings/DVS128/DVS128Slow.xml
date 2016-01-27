@@ -27,8 +27,9 @@
                   <entry key="DVS128.IPot.diff" value="30153"/>
                   <entry key="DVS128.IPot.foll" value="51"/>
                   <entry key="DVS128.IPot.Pr" value="3"/>
-                <entry key="Masterbias.rx" value="8200.0"/>
-                <entry key="Masterbias.rint" value="46000.0"/>
+                  <entry key="DVS128.Masterbias.rx" value="8200.0"/>
+                  <entry key="DVS128.Masterbias.rint" value="46000.0"/>
+                  <entry key="DVS128.Masterbias.internalResistorUsed" value="false"/>
                 </map>
               </node>
             </node>

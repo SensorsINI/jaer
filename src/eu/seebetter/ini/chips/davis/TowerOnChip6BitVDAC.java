@@ -47,22 +47,6 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 
 	protected int vdacBitValue = 0, bufferBitValue = 0;
 
-	/**
-	 * The correction here to map from 3-bit buffer current code value here to
-	 * actual code bits that are messed up (The order of values is flipped and also the bits are mirrored left/right)
-	 * in the design of the VDAC is done in the SeeBetter logic, on the logic device. See
-	 * https://docs.google.com/presentation/d/1noZqRgHd17kX_U00rJvyhnoTRB_fgHmJe9KYT6DkPD0/edit#slide=id.p14
-	 * But new logic fixes this internally, and so user software has to send normal values, 0 is lowest, 7 is highest.
-	 */
-	private static final int[] COARSE_CODE_MAP = { 0, 1, 2, 3, 4, 5, 6, 7 };
-
-	private int getCoarseCodeFromBufferBitValue(final int bitValue) {
-		if ((bitValue < 0) || (bitValue > 7)) {
-			throw new IllegalArgumentException("bitValue outside of range 0-7");
-		}
-		return TowerOnChip6BitVDAC.COARSE_CODE_MAP[bitValue];
-	}
-
 	public TowerOnChip6BitVDAC(final Biasgen biasgen) {
 		super(biasgen);
 
@@ -192,9 +176,7 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 * config bits, voltage level code bits.
 	 */
 	protected int computeBinaryRepresentation() {
-		final int realBufferBitValue = getCoarseCodeFromBufferBitValue(bufferBitValue);
-
-		final int ret = ((bufferBitMask & (realBufferBitValue << Integer.numberOfTrailingZeros(bufferBitMask)))
+		final int ret = ((bufferBitMask & (bufferBitValue << Integer.numberOfTrailingZeros(bufferBitMask)))
 			| (vdacBitMask & (vdacBitValue << Integer.numberOfTrailingZeros(vdacBitMask)))) & 0xFFFF;
 
 		return ret;
@@ -235,7 +217,7 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 */
 	@Override
 	protected String prefsKey() {
-		return biasgen.getChip().getClass().getSimpleName() + ".ShiftedSourceBias." + name;
+		return biasgen.getChip().getClass().getSimpleName() + ".VDACBias." + name;
 	}
 
 	static String KEY_VDAC_VALUE = "VdacBitValue", KEY_BUFFER_VALUE = "BufBitValue";

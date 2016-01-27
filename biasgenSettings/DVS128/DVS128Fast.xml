@@ -15,9 +15,9 @@
               <map/>
               <node name="retina">
                 <map>
-                  <entry key="Masterbias.rx" value="8200.0"/>
-                  <entry key="Masterbias.rint" value="46000.0"/>
-                  <entry key="Masterbias.internalResistorUsed" value="false"/>
+                  <entry key="DVS128.Masterbias.rx" value="8200.0"/>
+                  <entry key="DVS128.Masterbias.rint" value="46000.0"/>
+                  <entry key="DVS128.Masterbias.internalResistorUsed" value="false"/>
                   <entry key="DVS128.IPot.cas" value="1992"/>
                   <entry key="DVS128.IPot.injGnd" value="1108364"/>
                   <entry key="DVS128.IPot.reqPd" value="16777215"/>

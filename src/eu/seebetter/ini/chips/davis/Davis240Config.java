@@ -4,8 +4,9 @@
  */
 package eu.seebetter.ini.chips.davis;
 
-import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
+import ch.unizh.ini.jaer.config.spi.SPIConfigBit;
 import net.sf.jaer.chip.Chip;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 
 /**
  * Bias generator, On-chip diagnostic readout, video acquisition and rendering
@@ -25,22 +26,11 @@ public class Davis240Config extends DavisConfig {
 		super(chip);
 		setName("Davis240Config");
 
-		// on-chip configuration chain, use new one.
-		chipConfigChain.deleteObservers();
-		chipConfigChain = new Davis240ChipConfigChain(chip);
-		chipConfigChain.addObserver(this);
-	}
-
-	public class Davis240ChipConfigChain extends DavisChipConfigChain {
-		OnchipConfigBit specialPixelControl = new OnchipConfigBit(chip, "SpecialPixelControl", 3,
-			"<html>DAVIS240a: enable hot pixel suppression circuit. <p>DAViS240b: enable experimental pixel stripes on right side of array. <p>DAViS240c: no effect.",
-			false);
-
-		public Davis240ChipConfigChain(final Chip chip) {
-			super(chip);
-
-			configBits[3] = specialPixelControl;
-			configBits[3].addObserver(this);
-		}
+		final SPIConfigBit specialPixelControl = new SPIConfigBit("Chip.SpecialPixelControl",
+			"<html>DAVIS240A: enable experimental hot pixel suppression circuit. <p>DAVIS240B: enable experimental pixel stripes on right side of array. <p>DAVIS240C: no effect.",
+			CypressFX3.FPGA_CHIPBIAS, (short) 139, false, this);
+		chipControl.add(specialPixelControl);
+		specialPixelControl.addObserver(this);
+		allPreferencesList.add(specialPixelControl);
 	}
 }
