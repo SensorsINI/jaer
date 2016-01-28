@@ -42,8 +42,9 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor implements PropertyChangeListener {
 
     private static final int LEFT = 0, CENTER = 1, RIGHT = 2, INVISIBLE = 3; // define output cell types
-    private boolean hideOutput = getBoolean("hideOutput", false);
-    private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
+    volatile private boolean hideOutput = getBoolean("hideOutput", false);
+    volatile private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
+    volatile private boolean showStatistics = getBoolean("showStatistics", true);
     private TargetLabeler targetLabeler = null;
     private Error error = new Error();
 //    /** This object used to publish the results to ROS */
@@ -51,8 +52,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 
     // UDP output to client, e.g. ROS
     volatile private boolean sendUDPSteeringMessages = getBoolean("sendUDPSteeringMessages", false);
-    private boolean forceNetworkOutpout = getBoolean("forceNetworkOutpout", false);
-    private int forcedNetworkOutputValue = getInt("forcedNetworkOutputValue", 3); // default is prey invisible output
+    volatile private boolean forceNetworkOutpout = getBoolean("forceNetworkOutpout", false);
+    volatile private int forcedNetworkOutputValue = getInt("forcedNetworkOutputValue", 3); // default is prey invisible output
     private String host = getString("host", "localhost");
     private int port = getInt("host", 5678);
     private DatagramSocket socket = null;
@@ -67,6 +68,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(s, "showAnalogDecisionOutput", "shows output units as analog shading rather than binary");
         setPropertyTooltip(s, "hideOutput", "hides output unit rendering as shading over sensor image");
         setPropertyTooltip(s, "pixelErrorAllowedForSteering", "If ground truth location is within this many pixels of closest border then the descision is still counted as corret");
+        setPropertyTooltip("1. Display", "showStatistics", "shows statistics of DVS frame rate and error rate (when ground truth TargetLabeler file is loaded)");
         String udp = "UDP messages";
         setPropertyTooltip(udp, "sendUDPSteeringMessages", "sends UDP packets with steering network output to host:port in hostAndPort");
         setPropertyTooltip(udp, "host", "hostname or IP address to send UDP messages to, e.g. localhost");
@@ -164,11 +166,14 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 //            drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
 //        }
 
-        if (dvsSubsampler != null) {
-            MultilineAnnotationTextRenderer.renderMultilineString(String.format("DVS subsampler, inst/avg interval %6.1f/%6.1f ms", dvsSubsampler.getLastSubsamplerFrameIntervalUs() * 1e-3f, dvsSubsampler.getFilteredSubsamplerIntervalUs() * 1e-3f));
+        if (showStatistics) {
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .5f);
+            MultilineAnnotationTextRenderer.setScale(.3f);
+            if (dvsSubsampler != null) {
+                MultilineAnnotationTextRenderer.renderMultilineString(String.format("DVS subsampler, inst/avg interval %6.1f/%6.1f ms", dvsSubsampler.getLastSubsamplerFrameIntervalUs() * 1e-3f, dvsSubsampler.getFilteredSubsamplerIntervalUs() * 1e-3f));
+            }
+            MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
         }
-        MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
-
 //        if (totalDecisions > 0) {
 //            float errorRate = (float) incorrect / totalDecisions;
 //            String s = String.format("Error rate %.2f%% (total=%d correct=%d incorrect=%d)\n", errorRate * 100, totalDecisions, correct, incorrect);
@@ -285,7 +290,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             } catch (IOException ex) {
                 log.warning("Caught exception when trying to open datagram channel to host:port - " + ex);
             }
-        }else{
+        } else {
             closeChannel();
         }
     }
@@ -546,6 +551,21 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         }
         this.forcedNetworkOutputValue = forcedNetworkOutputValue;
         putInt("forcedNetworkOutputValue", forcedNetworkOutputValue);
+    }
+
+    /**
+     * @return the showStatistics
+     */
+    public boolean isShowStatistics() {
+        return showStatistics;
+    }
+
+    /**
+     * @param showStatistics the showStatistics to set
+     */
+    public void setShowStatistics(boolean showStatistics) {
+        this.showStatistics = showStatistics;
+        putBoolean("showStatistics", showStatistics);
     }
 
 }
