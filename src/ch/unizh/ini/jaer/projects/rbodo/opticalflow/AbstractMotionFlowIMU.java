@@ -86,14 +86,17 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     // Global translation, rotation and expansion.
     boolean showGlobalEnabled = getBoolean("showGlobalEnabled", true);
 
-    // The output events, also used for rendering output events.
-    EventPacket dirPacket;
-    OutputEventIterator outItr;
-    PolarityEvent e;
-    ApsDvsMotionOrientationEvent eout;
+    /** The output events, also used for rendering output events. */
+    protected EventPacket dirPacket;
+    /** The output packet iterator */
+    protected OutputEventIterator outItr;
+    /** The current input event */
+    protected PolarityEvent e;
+    /** The current output event */
+    protected ApsDvsMotionOrientationEvent eout;
 
-    // Use IMU gyro values to estimate motion flow.
-    ImuFlowEstimator imuFlowEstimator;
+    /** Use IMU gyro values to estimate motion flow. */
+    protected ImuFlowEstimator imuFlowEstimator;
 
     // Focal length of camera lens in mm needed to convert rad/s to pixel/s.
     // Conversion factor is atan(pixelWidth/focalLength).
@@ -686,7 +689,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      * @param d equals the spatial search distance plus some extra spacing
      * needed for applying finite differences to calculate gradients.
      */
-    synchronized boolean isInvalidAddress(int d) {
+    protected synchronized boolean isInvalidAddress(int d) {
         if (x >= d && y >= d && x < subSizeX - d && y < subSizeY - d) {
             if (subSampleShift > 0 && !subsampledPixelIsSet[x][y]) {
                 subsampledPixelIsSet[x][y] = true;
@@ -697,7 +700,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
 
     // Returns true if the event lies outside certain spatial bounds.
-    synchronized boolean xyFilter() {
+    protected boolean xyFilter() {
         return x < xMin || x >= xMax || y < yMin || y >= yMax;
     }
 
@@ -706,7 +709,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      *
      * @return true if invalid timestamp, older than refractoryPeriodUs ago
      */
-    synchronized boolean isInvalidTimestamp() {
+    protected synchronized boolean isInvalidTimestamp() {
         lastTs = lastTimesMap[x][y][type];
         lastTimesMap[x][y][type] = ts;
         if (ts < lastTs) {
@@ -715,7 +718,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         return ts < lastTs + refractoryPeriodUs;
     }
 
-    synchronized void extractEventInfo(Object ein) {
+    protected synchronized void extractEventInfo(Object ein) {
         e = (PolarityEvent) ein;
         x = e.getX() >> subSampleShift;
         y = e.getY() >> subSampleShift;

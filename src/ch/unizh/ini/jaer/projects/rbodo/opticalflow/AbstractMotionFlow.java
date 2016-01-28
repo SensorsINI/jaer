@@ -21,10 +21,11 @@ import net.sf.jaer.util.jama.Matrix;
 @DevelopmentStatus(DevelopmentStatus.Status.Abstract)
 abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
 
-    int searchDistance = getInt("searchDistance", 3);
+    /** The search distance on each side of event in pixels */
+    protected int searchDistance = getInt("searchDistance", 3);
 
-    // Events must occur in this time interval to be considered.
-    int maxDtThreshold = getInt("maxDtThreshold", 100000);
+    /* Events must occur in this time interval before curernt event to be considered. */
+    protected int maxDtThreshold = getInt("maxDtThreshold", 100000);
 
     private boolean showTimestampMap = getBoolean("showTimestampMap", false);
 
