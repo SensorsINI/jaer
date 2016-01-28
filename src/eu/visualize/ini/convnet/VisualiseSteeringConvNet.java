@@ -49,7 +49,10 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 //    /** This object used to publish the results to ROS */
 //    public VisualiseSteeringNetRosNodePublisher visualiseSteeringNetRosNodePublisher=new VisualiseSteeringNetRosNodePublisher();
 
-    private boolean sendUDPSteeringMessages = getBoolean("sendUDPSteeringMessages", false);
+    // UDP output to client, e.g. ROS
+    volatile private boolean sendUDPSteeringMessages = getBoolean("sendUDPSteeringMessages", false);
+    private boolean forceNetworkOutpout = getBoolean("forceNetworkOutpout", false);
+    private int forcedNetworkOutputValue = getInt("forcedNetworkOutputValue", 3); // default is prey invisible output
     private String host = getString("host", "localhost");
     private int port = getInt("host", 5678);
     private DatagramSocket socket = null;
@@ -68,6 +71,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(udp, "sendUDPSteeringMessages", "sends UDP packets with steering network output to host:port in hostAndPort");
         setPropertyTooltip(udp, "host", "hostname or IP address to send UDP messages to, e.g. localhost");
         setPropertyTooltip(udp, "port", "destination UDP port address to send UDP messages to, e.g. 5678");
+        setPropertyTooltip(udp, "forcedNetworkOutputValue", "forced value of network output sent to client (0=left, 1=middle, 2=right, 3=invisible)");
+        setPropertyTooltip(udp, "forceNetworkOutpout", "force (override) network output classification to forcedNetworkOutputValue");
         FilterChain chain = new FilterChain(chip);
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
         chain.add(targetLabeler);
@@ -136,7 +141,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 log.warning("Caught exception when trying to open datagram channel to host:port - " + ex);
             }
         }
-        if(!yes){
+        if (!yes) {
             closeChannel();
         }
     }
@@ -230,13 +235,13 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     }
 
     @Override
-    public void propertyChange(PropertyChangeEvent evt) {
+    synchronized public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName() != DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
             super.propertyChange(evt);
 
         } else {
             DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
-            if(targetLabeler.hasLocations()){
+            if (targetLabeler.hasLocations()) {
                 error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit, net.isLastInputTypeProcessedWasApsFrame());
             }
             if (sendUDPSteeringMessages) {
@@ -247,12 +252,14 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                     if (seqNum > 255) {
                         seqNum = 0;
                     }
-                    buf.put((byte) net.outputLayer.maxActivatedUnit);
+                    byte msg = (byte) (forceNetworkOutpout ? forcedNetworkOutputValue : net.outputLayer.maxActivatedUnit);
+                    buf.put(msg);
                     try {
 //                        log.info("sending buf="+buf+" to client="+client);
+//                        log.info("sending seqNum=" + seqNum + " with msg=" + msg);
                         channel.send(buf, client);
                     } catch (IOException e) {
-                        log.warning("Exception trying to send UDP datagram to ROS: "+e);
+                        log.warning("Exception trying to send UDP datagram to ROS: " + e);
                     }
                 }
             }
@@ -269,13 +276,17 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     /**
      * @param sendUDPSteeringMessages the sendUDPSteeringMessages to set
      */
-    public void setSendUDPSteeringMessages(boolean sendUDPSteeringMessages) {
+    synchronized public void setSendUDPSteeringMessages(boolean sendUDPSteeringMessages) {
         this.sendUDPSteeringMessages = sendUDPSteeringMessages;
         putBoolean("sendUDPSteeringMessages", sendUDPSteeringMessages);
-        try {
-            openChannel();
-        } catch (IOException ex) {
-            log.warning("Caught exception when trying to open datagram channel to host:port - " + ex);
+        if (sendUDPSteeringMessages) {
+            try {
+                openChannel();
+            } catch (IOException ex) {
+                log.warning("Caught exception when trying to open datagram channel to host:port - " + ex);
+            }
+        }else{
+            closeChannel();
         }
     }
 
@@ -323,7 +334,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         protected int pixelErrorAllowedForSteering = getInt("pixelErrorAllowedForSteering", 10);
         int dvsTotalCount, dvsCorrect, dvsIncorrect;
         int apsTotalCount, apsCorrect, apsIncorrect;
-        char[] outputChars={'L','M','R','I'};
+        char[] outputChars = {'L', 'M', 'R', 'I'};
 
         public Error() {
             reset();
@@ -354,7 +365,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 
             int third = chip.getSizeX() / 3;
 
-            if (gtTargetLocation!=null && gtTargetLocation.location != null) {
+            if (gtTargetLocation != null && gtTargetLocation.location != null) {
                 // we have a location that is not null for the target
                 int x = (int) Math.floor(gtTargetLocation.location.x);
                 int gtDescision = x / third;
@@ -435,9 +446,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             sb.append(String.format(" Total=%.1f%% (%d/%d) \n(", (100f * totalIncorrect) / totalCount, totalIncorrect, totalCount));
             for (int i = 0; i < 4; i++) {
                 if (count[i] == 0) {
-                    sb.append(String.format("%c: 0/0 ",outputChars[i]));
+                    sb.append(String.format("%c: 0/0 ", outputChars[i]));
                 } else {
-                    sb.append(String.format("%c: %.1f%% (%d)  ", outputChars[i],(100f * incorrect[i]) / count[i], count[i]));
+                    sb.append(String.format("%c: %.1f%% (%d)  ", outputChars[i], (100f * incorrect[i]) / count[i], count[i]));
                 }
             }
             sb.append(String.format("\naps=%.1f%% (%d/%d) dvs=%.1f%% (%d/%d)",
@@ -498,7 +509,43 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         if (socket == null) {
             return;
         }
+        log.info("closing local socket " + socket + " to UDP client");
         socket.close();
+    }
+
+    /**
+     * @return the forceNetworkOutpout
+     */
+    public boolean isForceNetworkOutpout() {
+        return forceNetworkOutpout;
+    }
+
+    /**
+     * @param forceNetworkOutpout the forceNetworkOutpout to set
+     */
+    public void setForceNetworkOutpout(boolean forceNetworkOutpout) {
+        this.forceNetworkOutpout = forceNetworkOutpout;
+        putBoolean("forceNetworkOutpout", forceNetworkOutpout);
+    }
+
+    /**
+     * @return the forcedNetworkOutputValue
+     */
+    public int getForcedNetworkOutputValue() {
+        return forcedNetworkOutputValue;
+    }
+
+    /**
+     * @param forcedNetworkOutputValue the forcedNetworkOutputValue to set
+     */
+    public void setForcedNetworkOutputValue(int forcedNetworkOutputValue) {
+        if (forcedNetworkOutputValue < 0) {
+            forcedNetworkOutputValue = 0;
+        } else if (forcedNetworkOutputValue > 3) {
+            forcedNetworkOutputValue = 3;
+        }
+        this.forcedNetworkOutputValue = forcedNetworkOutputValue;
+        putInt("forcedNetworkOutputValue", forcedNetworkOutputValue);
     }
 
 }
