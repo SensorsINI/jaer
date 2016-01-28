@@ -236,7 +236,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 
         } else {
             DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
-            error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit, net.isLastInputTypeProcessedWasApsFrame());
+            if(targetLabeler.hasLocations()){
+                error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit, net.isLastInputTypeProcessedWasApsFrame());
+            }
             if (sendUDPSteeringMessages) {
                 if (checkClient()) { // if client not there, just continue - maybe it comes back
                     buf.clear();
@@ -321,6 +323,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         protected int pixelErrorAllowedForSteering = getInt("pixelErrorAllowedForSteering", 10);
         int dvsTotalCount, dvsCorrect, dvsIncorrect;
         int apsTotalCount, apsCorrect, apsIncorrect;
+        char[] outputChars={'L','M','R','I'};
 
         public Error() {
             reset();
@@ -343,9 +346,6 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 
         void addSample(TargetLabeler.TargetLocation gtTargetLocation, int descision, boolean apsType) {
             totalCount++;
-            if ((gtTargetLocation == null)) {
-                return;
-            }
             if (apsType) {
                 apsTotalCount++;
             } else {
@@ -354,7 +354,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 
             int third = chip.getSizeX() / 3;
 
-            if (gtTargetLocation.location != null) {
+            if (gtTargetLocation!=null && gtTargetLocation.location != null) {
+                // we have a location that is not null for the target
                 int x = (int) Math.floor(gtTargetLocation.location.x);
                 int gtDescision = x / third;
                 if (gtDescision < 0 || gtDescision > 3) {
@@ -400,7 +401,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                     }
                 }
 
-            } else {
+            } else { // no target in ground truth (prey out of view)
                 count[INVISIBLE]++;
                 if (descision == INVISIBLE) {
                     correct[INVISIBLE]++;
@@ -434,9 +435,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             sb.append(String.format(" Total=%.1f%% (%d/%d) \n(", (100f * totalIncorrect) / totalCount, totalIncorrect, totalCount));
             for (int i = 0; i < 4; i++) {
                 if (count[i] == 0) {
-                    sb.append(String.format(" 0/0 "));
+                    sb.append(String.format("%c: 0/0 ",outputChars[i]));
                 } else {
-                    sb.append(String.format(" %.1f%% (%d)", (100f * incorrect[i]) / count[i], count[i]));
+                    sb.append(String.format("%c: %.1f%% (%d)  ", outputChars[i],(100f * incorrect[i]) / count[i], count[i]));
                 }
             }
             sb.append(String.format("\naps=%.1f%% (%d/%d) dvs=%.1f%% (%d/%d)",
