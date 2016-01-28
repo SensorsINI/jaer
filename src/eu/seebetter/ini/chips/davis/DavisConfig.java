@@ -852,7 +852,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 	 */
 	@Override
 	public synchronized void update(final Observable observable, final Object object) {
-		if (getHardwareInterface() != null) {
+		if (getHardwareInterface() != null && getHardwareInterface() instanceof CypressFX3) {
 			final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
 
 			try {
