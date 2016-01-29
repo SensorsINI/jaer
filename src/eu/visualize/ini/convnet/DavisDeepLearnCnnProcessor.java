@@ -183,17 +183,16 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                     }
                     if (processDVSTimeSlices) {
                         apsDvsNet.processDvsTimeslice(dvsSubsampler); // generates PropertyChange EVENT_MADE_DECISION
+                        if (dvsSubsampler != null) {
+                            dvsSubsampler.clear();
+                        }
+                        if (measurePerformance) {
+                            long dt = System.nanoTime() - startTime;
+                            float ms = 1e-6f * dt;
+                            log.info(String.format("DVS slice processing time: %.1fms; %s", ms, apsDvsNet.getPerformanceString()));
+                        }
                     }
-                    if (dvsSubsampler != null) {
-                        dvsSubsampler.clear();
-                    }
-                    if (measurePerformance) {
-                        long dt = System.nanoTime() - startTime;
-                        float ms = 1e-6f * dt;
-                        float fps = 1e3f / ms;
-                        log.info(String.format("DVS slice processing time: %.1fms", ms));
-                        apsDvsNet.printPerformance();
-                    }
+
                 }
             }
 
@@ -248,8 +247,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                 long dt = System.nanoTime() - startTime;
                 float ms = 1e-6f * dt;
                 float fps = 1e3f / ms;
-                log.info(String.format("Frame processing time: %.1fms (%.1f FPS)", ms, fps));
-                apsDvsNet.printPerformance();
+                log.info(String.format("Frame processing time: %.1fms (%.1f FPS); %s", ms, fps, apsDvsNet.getPerformanceString()));
             }
         }
 

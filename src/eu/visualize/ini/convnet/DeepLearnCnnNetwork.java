@@ -215,8 +215,7 @@ public class DeepLearnCnnNetwork {
     
     public void printPerformance(){
           System.out.println("\n\n\n****************************************************\nActivations");
-          System.out.println(String.format("%d operations in %d ns: %s ops/sec",
-                  operationCounter,processingTimeNs,engFmt.format((float)operationCounter/(1e-9f*processingTimeNs))));
+          System.out.println(getPerformanceString());
     }
 
     public void printWeights() {
@@ -302,6 +301,15 @@ public class DeepLearnCnnNetwork {
      */
     public void setLastInputTypeProcessedWasApsFrame(boolean lastInputTypeProcessedWasApsFrame) {
         this.lastInputTypeProcessedWasApsFrame = lastInputTypeProcessedWasApsFrame;
+    }
+
+    /** Return a string representaiton of the cost of computing the network
+     * 
+     * @return %d operations in %d ns: %s ops/sec
+     */
+    public String getPerformanceString() {
+        return String.format("%d operations in %d ns: %s ops/sec",
+                  operationCounter,processingTimeNs,engFmt.format((float)operationCounter/(1e-9f*processingTimeNs)));
     }
 
     abstract public class Layer {
