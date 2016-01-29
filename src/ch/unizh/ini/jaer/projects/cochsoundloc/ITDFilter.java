@@ -466,6 +466,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 		int nleft = 0, nright = 0;
 		for (Object e : in) {
 			BinauralCochleaEvent i = (BinauralCochleaEvent) e;
+                        if(i.isSpecial() || i.isFilteredOut()) continue;
 			int ganglionCellThreshold;
 			if (hasMultipleGanglionCellTypes
 				&& ((amsProcessingMethod == AMSprocessingMethod.NeuronsIndividually)
