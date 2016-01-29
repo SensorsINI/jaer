@@ -25,6 +25,7 @@ import javax.swing.JPanel;
 
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
+import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * Simple convolutional neural network (CNN) data structure to hold CNN from
@@ -95,6 +96,9 @@ public class DeepLearnCnnNetwork {
     private boolean printActivations = false;
     private boolean printWeights = false;
     protected boolean lastInputTypeProcessedWasApsFrame = false;
+    private int operationCounter=0; // counter for ops during update
+    private long startProcessingTimeNs=0;
+    private long processingTimeNs;
 
     /**
      * This PropertyChange is emitted when either APS or DVS net outputs. The
@@ -155,7 +159,10 @@ public class DeepLearnCnnNetwork {
         return processLayers();
     }
 
+    // single point of entry for processing
     private float[] processLayers() {
+        operationCounter=0;
+        startProcessingTimeNs=System.nanoTime();
         for (int i = 1; i < nLayers; i++) { // skip input layer, whose activations are computed by reading in frame and downsampling it
             layers[i].compute(layers[i - 1]);
         }
@@ -167,6 +174,7 @@ public class DeepLearnCnnNetwork {
         if (isPrintWeights()) {
             printWeights();
         }
+        processingTimeNs=System.nanoTime()-startProcessingTimeNs;
         return outputLayer.activations;
     }
 
@@ -193,7 +201,7 @@ public class DeepLearnCnnNetwork {
 
     }
 
-    void printActivations() {
+    public void printActivations() {
         System.out.println("\n\n\n****************************************************\nActivations");
         for (Layer l : layers) {
             l.printActivations();
@@ -202,8 +210,16 @@ public class DeepLearnCnnNetwork {
             outputLayer.printActivations();
         }
     }
+    
+    EngineeringFormat engFmt=new EngineeringFormat();
+    
+    public void printPerformance(){
+          System.out.println("\n\n\n****************************************************\nActivations");
+          System.out.println(String.format("%d operations in %d ns: %s ops/sec",
+                  operationCounter,processingTimeNs,engFmt.format((float)operationCounter/(1e-9f*processingTimeNs))));
+    }
 
-    void printWeights() {
+    public void printWeights() {
         System.out.println("\n\n\n****************************************************\nWeights");
         for (Layer l : layers) {
             l.printWeights();
@@ -433,6 +449,7 @@ public class DeepLearnCnnNetwork {
                     }
                     activations[o(dimy - yo - 1, xo)] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
                     xo++;
+                    operationCounter+=4;
                 }
                 yo++;
             }
@@ -613,6 +630,7 @@ public class DeepLearnCnnNetwork {
             for (float f : activations) {
                 sum += f;
                 sum2 += (f * f);
+                operationCounter+=4;
             }
             float m = sum / n;
             float var = (sum2 / n) - (m * m);
@@ -622,6 +640,7 @@ public class DeepLearnCnnNetwork {
             float r = (float) (1 / Math.sqrt(var));
             for (int i = 0; i < n; i++) {
                 activations[i] = r * (activations[i] - m);
+                operationCounter+=2;
             }
         }
     }
@@ -824,6 +843,7 @@ public class DeepLearnCnnNetwork {
 //                    sum += 1;
 //                    sum += input.a(inputMap, inx, iny);
                     sum += kernels[k(inputMap, outputMap, kernelDim - xx - 1, kernelDim - yy - 1)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
+                    operationCounter+=2;
 //                    iny++;
 //                    nterms++;
                 }
@@ -842,6 +862,7 @@ public class DeepLearnCnnNetwork {
                     for (int y = 0; y < outputMapDim; y++) {
                         int idx = o(b, x, y);
                         activations[idx] = sigm(activations[idx] + biases[b]);
+                        operationCounter+=2;
                     }
                 }
             }
@@ -994,6 +1015,7 @@ public class DeepLearnCnnNetwork {
                         for (int xi = startx; xi < endx; xi++) { // iterate over input
                             for (int yi = starty; yi < endy; yi++) {
                                 s += convLayer.a(map, xi, yi); // add to sum to processDownsampledFrame average
+                                operationCounter++;
                             }
                         }
                         // debug
@@ -1101,6 +1123,7 @@ public class DeepLearnCnnNetwork {
                 for (int w = 0; w < input.activations.length; w++) {
                     activations[unit] += input.activations[aidx] * weight(unit, biases.length, w);
                     aidx++; // the input activations are stored in the feature maps of last layer, column, row, map order
+                    operationCounter+=2;
                 }
                 aidx = 0;
             }
@@ -1108,6 +1131,7 @@ public class DeepLearnCnnNetwork {
             maxActivation = Float.NEGATIVE_INFINITY;
             for (int unit = 0; unit < biases.length; unit++) {
                 activations[unit] = sigm(activations[unit] + biases[unit]);
+                operationCounter+=2;
                 if (activations[unit] > maxActivation) {
                     maxActivatedUnit = unit;
                     maxActivation = activations[unit];

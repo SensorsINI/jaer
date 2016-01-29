@@ -191,7 +191,8 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                         long dt = System.nanoTime() - startTime;
                         float ms = 1e-6f * dt;
                         float fps = 1e3f / ms;
-                        log.info(String.format("DVS slice processing time: %.1fms", ms, fps));
+                        log.info(String.format("DVS slice processing time: %.1fms", ms));
+                        apsDvsNet.printPerformance();
                     }
                 }
             }
@@ -248,7 +249,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                 float ms = 1e-6f * dt;
                 float fps = 1e3f / ms;
                 log.info(String.format("Frame processing time: %.1fms (%.1f FPS)", ms, fps));
-
+                apsDvsNet.printPerformance();
             }
         }
 
