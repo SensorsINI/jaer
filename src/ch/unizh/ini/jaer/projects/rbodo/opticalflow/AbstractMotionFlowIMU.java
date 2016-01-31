@@ -173,7 +173,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip("startLoggingMotionVectorEvents", "starts saving motion vector events to a human readable file");
         setPropertyTooltip("stopLoggingMotionVectorEvents", "stops logging motion vector events to a human readable file");
         setPropertyTooltip("printStatistics", "prints a single instance of collected statistics to console as log output");
-        setPropertyTooltip("measureAccuracy", "writes a txt file with various motion statistics");
+        setPropertyTooltip("measureAccuracy", "<html>Writes a txt file with various motion statistics, by comparing the ground truth <br>(either estimated online using an embedded IMUFlow or loaded from file) <br> with the measured optical flow events.  <br>This measurment function is called for every event to assign the local ground truth<br> (vxGT,vyGT) at location (x,y) a value from the imported ground truth field (vxGTframe,vyGTframe).");
         setPropertyTooltip("measureProcessingTime", "writes a txt file with the packet's mean processing time of an event");
         setPropertyTooltip("loggingFolder", "directory to store logged data files");
         setPropertyTooltip(disp, "ppsScale", "scale of pixels per second to draw local and global motion vectors");
@@ -195,6 +195,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(imu, "startIMUCalibration", "Starts estimating the IMU offsets based on next 800 samples. Should be used only with stationary recording to store these offsets in the preferences.");
         setPropertyTooltip(imu, "resetIMUCalibration", "Resets the IMU offsets to zero. Can be used to observe effect of these offsets on a stationary recording in the IMUFlow filter.");
         setPropertyTooltip(imu, "importGTfromMatlab", "Allows importing two 2D-arrays containing the x-/y- components of the motion flow field used as ground truth.");
+        setPropertyTooltip(imu, "resetGroundTruth", "Resets the ground truth optical flow that was imported from matlab. Used in the measureAccuracy option.");
+        setPropertyTooltip(imu, "selectLoggingFolder", "Allows selection of the folder to store the measured accuracies and optical flow events.");
         File lf = new File(loggingFolder);
         if (!lf.exists() || !lf.isDirectory()) {
             log.log(Level.WARNING, "loggingFolder {0} doesn't exist or isn't a directory, defaulting to {1}", new Object[]{lf, lf});
