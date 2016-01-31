@@ -29,13 +29,20 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
     private String key = "WarningDialogWithDontShowPreference";
     ImageIcon imageIcon;
 
-    /** Creates new form WarningDialogWithDontShowPreference */
+    /** Creates new form WarningDialogWithDontShowPreference
+     * 
+     * @param parent parent frame to center on, or null
+     * @param modal true to make dialog model, i.e. to stop other GUI interaction
+     */
     public WarningDialogWithDontShowPreference(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
     }
 
-    /** Creates new form WarningDialogWithDontShowPreference */
+    /** Creates new form WarningDialogWithDontShowPreference 
+       * @param parent parent frame to center on, or null
+     * @param modal true to make dialog model, i.e. to stop other GUI interaction
+     */
     public WarningDialogWithDontShowPreference(java.awt.Frame parent, boolean modal, String title, String text) {
         super(parent, modal);
         initComponents();
