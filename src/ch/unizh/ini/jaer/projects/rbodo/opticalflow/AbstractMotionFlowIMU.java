@@ -35,6 +35,7 @@ import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.TobiLogger;
+import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 
 /**
  * Abstract base class for motion flow filters. The filters that extend this
@@ -86,16 +87,26 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     // Global translation, rotation and expansion.
     boolean showGlobalEnabled = getBoolean("showGlobalEnabled", true);
 
-    /** The output events, also used for rendering output events. */
+    /**
+     * The output events, also used for rendering output events.
+     */
     protected EventPacket dirPacket;
-    /** The output packet iterator */
+    /**
+     * The output packet iterator
+     */
     protected OutputEventIterator outItr;
-    /** The current input event */
+    /**
+     * The current input event
+     */
     protected PolarityEvent e;
-    /** The current output event */
+    /**
+     * The current output event
+     */
     protected ApsDvsMotionOrientationEvent eout;
 
-    /** Use IMU gyro values to estimate motion flow. */
+    /**
+     * Use IMU gyro values to estimate motion flow.
+     */
     protected ImuFlowEstimator imuFlowEstimator;
 
     // Focal length of camera lens in mm needed to convert rad/s to pixel/s.
@@ -120,7 +131,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     boolean measureAccuracy = getBoolean("measureAccuracy", false);
     boolean measureProcessingTime = getBoolean("measureProcessingTime", false);
     int countIn, countOut;
-    MotionFlowStatistics motionFlowStatistics;
+    protected MotionFlowStatistics motionFlowStatistics;
 
     double[][] vxGTframe, vyGTframe, tsGTframe;
     float vxGT, vyGT, vGT;
@@ -146,7 +157,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     protected boolean outlierMotionFilteringEnabled = getBoolean("outlierMotionFilteringEnabled", false);
     protected float outlierMotionFilteringMaxAngleDifferenceDeg = getFloat("outlierMotionFilteringMaxAngleDifferenceDeg", 30f);
     protected int outlierMotionFilteringSubsampleShift = getInt("outlierMotionFilteringSubsampleShift", 1);
-    protected int outlierMotionFilteringMinSameAngleInNeighborhood=getInt("outlierMotionFilteringMinSameAngleInNeighborhood",2);
+    protected int outlierMotionFilteringMinSameAngleInNeighborhood = getInt("outlierMotionFilteringMinSameAngleInNeighborhood", 2);
     protected int[][] outlierMotionFilteringLastAngles = null;
 
     /**
@@ -174,7 +185,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip("stopLoggingMotionVectorEvents", "stops logging motion vector events to a human readable file");
         setPropertyTooltip("printStatistics", "prints a single instance of collected statistics to console as log output");
         setPropertyTooltip("measureAccuracy", "<html>Writes a txt file with various motion statistics, by comparing the ground truth <br>(either estimated online using an embedded IMUFlow or loaded from file) <br> with the measured optical flow events.  <br>This measurment function is called for every event to assign the local ground truth<br> (vxGT,vyGT) at location (x,y) a value from the imported ground truth field (vxGTframe,vyGTframe).");
-        setPropertyTooltip("measureProcessingTime", "writes a txt file with the packet's mean processing time of an event");
+        setPropertyTooltip("measureProcessingTime", "writes a text file with timestamp filename with the packet's mean processing time of an event. Processing time is also logged to console.");
         setPropertyTooltip("loggingFolder", "directory to store logged data files");
         setPropertyTooltip(disp, "ppsScale", "scale of pixels per second to draw local and global motion vectors");
         setPropertyTooltip(disp, "showVectorsEnabled", "shows local motion vectors");
@@ -192,7 +203,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 //        setPropertyTooltip(imu, "discardOutliersForStatisticaMeasurementEnabled", "discard measured local motion vector if it deviates from IMU estimate");
 //        setPropertyTooltip(imu, "discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg", "threshold angle in degree. Discard measured optical flow vector if it deviates from IMU-estimate by more than discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg");
         setPropertyTooltip(imu, "lensFocalLengthMm", "lens focal length in mm. Used for computing the IMU flow from pan and tilt camera rotations. 4.5mm is focal length for dataset data.");
-        setPropertyTooltip(imu, "startIMUCalibration", "Starts estimating the IMU offsets based on next 800 samples. Should be used only with stationary recording to store these offsets in the preferences.");
+        setPropertyTooltip(imu, "startIMUCalibration", "<html> Starts estimating the IMU offsets based on next 800 samples. Should be used only with stationary recording to store these offsets in the preferences. <p> <b>measureAccuracy</b> must be selected as well to actually do the calibration.");
         setPropertyTooltip(imu, "resetIMUCalibration", "Resets the IMU offsets to zero. Can be used to observe effect of these offsets on a stationary recording in the IMUFlow filter.");
         setPropertyTooltip(imu, "importGTfromMatlab", "Allows importing two 2D-arrays containing the x-/y- components of the motion flow field used as ground truth.");
         setPropertyTooltip(imu, "resetGroundTruth", "Resets the ground truth optical flow that was imported from matlab. Used in the measureAccuracy option.");
@@ -513,7 +524,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             }
         }
         motionFlowStatistics.globalMotion.reset(subSizeX, subSizeY);
-        log.info("Reset filter storage after parameter change or reset.");
+//        log.info("Reset filter storage after parameter change or reset.");
     }
 
     @Override
@@ -549,6 +560,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     resetFilter();
                     break;
                 case AEInputStream.EVENT_REWIND:
+                    if (measureAccuracy || measureProcessingTime) {
+                        doPrintStatistics();
+                    }
+                    resetFilter();
+                    break;
+                case AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP:
+                    log.info(evt.toString()+": resetting filter after printing collected statistics if measurement enabled");
                     if (measureAccuracy || measureProcessingTime) {
                         doPrintStatistics();
                     }
@@ -718,6 +736,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         lastTs = lastTimesMap[x][y][type];
         lastTimesMap[x][y][type] = ts;
         if (ts < lastTs) {
+            log.warning(String.format("invalid timestamp ts=%d < lastTs=%d, resetting filter",ts,lastTs));
             resetFilter(); // For NonMonotonicTimeException.
         }
         return ts < lastTs + refractoryPeriodUs;
@@ -776,7 +795,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         imuFlowEstimator.panCalibrator.reset();
         imuFlowEstimator.tiltCalibrator.reset();
         imuFlowEstimator.rollCalibrator.reset();
-        log.info("IMU calibration started");
+        if (measureAccuracy) {
+            log.info("IMU calibration started");
+        } else{
+            log.warning("IMU calibration flagged, but will not start until measureAccuracy is selected");
+        }
     }
 
     synchronized public void doResetIMUCalibration() {
@@ -789,10 +812,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // <editor-fold defaultstate="collapsed" desc="Logging trigger button">
     synchronized public void doPrintStatistics() {
+        log.info(this.getClass().getSimpleName()+"\n"+motionFlowStatistics.toString());
         if (!imuFlowEstimator.isCalibrationSet()) {
-            log.info("IMU has not been calibrated yet!");
+            log.warning("IMU has not been calibrated yet! Load a file with no camera motion and hit the StartIMUCalibration button");
+            WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null, false, "Uncalibrated IMU",
+                    "<html>IMU has not been calibrated yet! <p>Load a file with no camera motion and hit the StartIMUCalibration button");
+            d.setVisible(true);
         }
-        log.info(motionFlowStatistics.toString());
     }
     // </editor-fold>
 
@@ -1108,13 +1134,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         lensFocalLengthMm = aLensFocalLengthMm;
         radPerPixel = (float) Math.atan(chip.getPixelWidthUm() / (1000 * lensFocalLengthMm));
     }
-    
-    protected boolean outlierMotionFilteringKeepThisEvent(MotionOrientationEventInterface e){
-        if(outlierMotionFilteringLastAngles==null){
-            outlierMotionFilteringLastAngles=new int[chip.getSizeX()][chip.getSizeY()];
+
+    protected boolean outlierMotionFilteringKeepThisEvent(MotionOrientationEventInterface e) {
+        if (outlierMotionFilteringLastAngles == null) {
+            outlierMotionFilteringLastAngles = new int[chip.getSizeX()][chip.getSizeY()];
         }
-         return true;
-        
+        return true;
+
     }
 
     /**

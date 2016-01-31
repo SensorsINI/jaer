@@ -53,6 +53,8 @@ public class MotionFlowStatistics {
     private int warmupCounter;
     
     private final String filterClassName;
+    
+    private boolean measureProcessingTime=false;
 
     protected MotionFlowStatistics(String filterClassName, int sX, int sY) {
         DATE_FORMAT = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
@@ -70,6 +72,15 @@ public class MotionFlowStatistics {
         warmupCounter = 5;
     }
 
+    /** Updates the statistics given a measurement and ground truth
+     * 
+     * @param vx measured flow in x direction in pixels per second
+     * @param vy etc
+     * @param v speed in pixels per second
+     * @param vxGT
+     * @param vyGT
+     * @param vGT GT speed in pixels per second
+     */
     protected void update(float vx, float vy, float v, float vxGT, float vyGT, float vGT) {
         if (warmupCounter > 0) {
             warmupCounter--;
@@ -83,6 +94,7 @@ public class MotionFlowStatistics {
     protected void updatePacket(boolean measureProcessingTime, boolean showGlobalEnabled,
                                 int countIn, int countOut) {
         eventDensity.update(countIn,countOut);
+        this.measureProcessingTime=measureProcessingTime;
         if (measureProcessingTime) processingTime.update();
         if (showGlobalEnabled) globalMotion.bufferMean();
     }
@@ -94,14 +106,30 @@ public class MotionFlowStatistics {
                endpointErrorAbs.toString() + endpointErrorRel.toString();
     }
     
+    /** Records number of events in packet before and after filtering, i.e. what fraction of input events cause optical flow events.
+     Prepending a refractory filter to reduce input events will not be accounted for by this object
+     */
     public class EventDensity {
         // Number of events in packet before and after filtering.
         private int packetIn, packetOut, totalIn, totalOut, nPackets;
     
+        /** Returns density of last packet
+         * 
+         * @return 
+         */
         public float getPacketDensity() {return packetIn == 0 ? 0 : (float) 100*packetOut/packetIn;}
         
+        /** Returns overall density over all packets since reset
+         * 
+         * @return 
+         */
         public float getTotalDensity() {return totalIn == 0 ? 0 : (float) 100*totalOut/totalIn;}
         
+        /** Updates 
+         * 
+         * @param pIn input packet
+         * @param pOut output packet
+         */
         public void update(int pIn, int pOut) {
             packetIn = pIn;
             packetOut = pOut;
@@ -124,6 +152,9 @@ public class MotionFlowStatistics {
         }
     }
     
+    /** Tracks global motion
+     * 
+     */
     public class GlobalMotion {
         float meanGlobalVx, sdGlobalVx, meanGlobalVy, sdGlobalVy, meanGlobalRotation, 
               sdGlobalRotation, meanGlobalExpansion, sdGlobalExpansion;
@@ -131,6 +162,11 @@ public class MotionFlowStatistics {
         private int rx, ry;
         private int subSizeX, subSizeY;
     
+        /** New instance
+         * 
+         * @param sX x resolution, could be subsampled
+         * @param sY 
+         */
         GlobalMotion(int sX, int sY) {
             subSizeX = sX;
             subSizeY = sY;
@@ -335,6 +371,7 @@ public class MotionFlowStatistics {
         }
     }
     
+    /** Tracks processing time using System.nanoTime*/
     public class ProcessingTime extends Measurand {
         // Processing time in microseconds averaged over packet.
         private float meanProcessingTimePacket;
@@ -354,6 +391,7 @@ public class MotionFlowStatistics {
         protected ProcessingTime() {
             processingTimeEPS = new Measurand[kepsBins];
             for (i = 0; i < kepsBins; i++) processingTimeEPS[i] = new Measurand();
+            startTime=System.nanoTime();
         }
 
         @Override public void reset() {
@@ -367,7 +405,7 @@ public class MotionFlowStatistics {
                 warmupCounter--;
                 return;
             }
-            meanProcessingTimePacket = (System.nanoTime()-startTime)*1e-3f/eventDensity.packetIn;
+            meanProcessingTimePacket = (System.nanoTime()-startTime)*1e-3f/(eventDensity.packetIn>0?eventDensity.packetIn:1);
             update(meanProcessingTimePacket);
             for (i = 0; i < kepsBins; i++)
                 if (eventDensity.packetIn < (kepsIncr*i+kepsInit)*timeslice) {
@@ -435,7 +473,7 @@ public class MotionFlowStatistics {
         }
         
         @Override public String toString() {
-            return String.format(Locale.ENGLISH,"%1$s: %2$4.2f +/- %3$5.2f us/event %n",
+            return !measureProcessingTime? "ProcessingTime: not measured\n": String.format(Locale.ENGLISH,"%1$s: %2$4.2f +/- %3$5.2f us/event %n",
                 getClass().getSimpleName(), getMean(), getStdDev());
         }
     }
