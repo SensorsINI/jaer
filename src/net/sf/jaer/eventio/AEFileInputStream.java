@@ -34,6 +34,7 @@ import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.aemonitor.EventRaw.EventType;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.util.EngineeringFormat;
+import net.sf.jaer.util.ListPropertyChangeListeners;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 
 /**
@@ -750,6 +751,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //        System.out.println("AEInputStream.rewind(): set position="+byteBuffer.position()+" mostRecentTimestamp="+mostRecentTimestamp);
         getSupport().firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, position());
         getSupport().firePropertyChange(AEInputStream.EVENT_REWIND, oldPosition, position());
+//        String s=ListPropertyChangeListeners.listListeners(getSupport());
+//        log.info("Listeners for EVENT_REWIND of "+this+" are \n"+s);
     }
 
     /**
