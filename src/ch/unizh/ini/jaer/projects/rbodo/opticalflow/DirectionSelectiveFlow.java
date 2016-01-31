@@ -46,7 +46,7 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
             + "E.g. 100 us filter out speeds higher than 10 cm/s (for a pixelWidth of 10 um)");
     }
     
-    @Override synchronized void extractEventInfo(Object ein) {
+    @Override synchronized public void extractEventInfo(Object ein) {
         super.extractEventInfo(ein);
         polValue = e.getPolarity() == PolarityEvent.Polarity.On ? 0 : 4;
         ori = ((OrientationEventInterface) ein).getOrientation();
