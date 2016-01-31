@@ -192,6 +192,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 //        setPropertyTooltip(imu, "discardOutliersForStatisticaMeasurementEnabled", "discard measured local motion vector if it deviates from IMU estimate");
 //        setPropertyTooltip(imu, "discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg", "threshold angle in degree. Discard measured optical flow vector if it deviates from IMU-estimate by more than discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg");
         setPropertyTooltip(imu, "lensFocalLengthMm", "lens focal length in mm. Used for computing the IMU flow from pan and tilt camera rotations. 4.5mm is focal length for dataset data.");
+        setPropertyTooltip(imu, "startIMUCalibration", "Starts estimating the IMU offsets based on next 800 samples. Should be used only with stationary recording to store these offsets in the preferences.");
+        setPropertyTooltip(imu, "resetIMUCalibration", "Resets the IMU offsets to zero. Can be used to observe effect of these offsets on a stationary recording in the IMUFlow filter.");
+        setPropertyTooltip(imu, "importGTfromMatlab", "Allows importing two 2D-arrays containing the x-/y- components of the motion flow field used as ground truth.");
         File lf = new File(loggingFolder);
         if (!lf.exists() || !lf.isDirectory()) {
             log.log(Level.WARNING, "loggingFolder {0} doesn't exist or isn't a directory, defaulting to {1}", new Object[]{lf, lf});
