@@ -444,6 +444,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 		 */
 		@Override
 		public synchronized void update(final Observable observable, final Object object) {
+                    log.fine("update from observable="+observable.toString()+" with object="+object);
 			if (getHardwareInterface() != null) {
 				final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
 
@@ -827,6 +828,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 			checkValueLimits(fullValue, configValueLength);
 
 			if (configValue != fullValue) {
+                            log.fine("binary full value of "+this.toString()+" changed from "+configValue+" to "+ fullValue+", notifying observers");
 				setChanged();
 			}
 
@@ -859,7 +861,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 		private void checkValueLimits(final int value, final int maxLength) {
 			if ((value < 0) || (value >= (1 << maxLength))) {
 				throw new IllegalArgumentException("Attempted to store value=" + value
-					+ ", which is larger than the maximum permitted value of " + (1 << maxLength) + " or negative, in " + this);
+					+ ", which is larger than the maximum permitted value of " + ((1 << maxLength)-1) + " or is negative, in " + this);
 			}
 		}
 

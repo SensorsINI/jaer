@@ -265,7 +265,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
 					else {
 						chan.setComparatorSelfOscillationEnable(button.isSelected());
 					}
-					chan.setFileModified();
+					if(chan!=null) chan.setFileModified();
 				}
 			});
 			add(but);
@@ -537,7 +537,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
 							return;
 					}
 
-					channel.setFileModified();
+					if(channel!=null) channel.setFileModified();
 
 				}
 				catch (final Exception ex) {
@@ -630,7 +630,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
 							return;
 					}
 
-					channel.setFileModified();
+					if(channel!=null) channel.setFileModified();
 
 				}
 				catch (final Exception ex) {
