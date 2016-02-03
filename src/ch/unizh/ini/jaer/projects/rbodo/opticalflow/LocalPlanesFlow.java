@@ -62,6 +62,8 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     private String neighb;
 
     private float tmp;
+    
+    private int t1, t2;
 
     public LocalPlanesFlow(AEChip chip) {
         super(chip);
@@ -138,17 +140,19 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             jj = 0;
             for (sx = -searchDistance; sx <= searchDistance; sx++) {
                 for (sy = -searchDistance; sy <= searchDistance; sy++) {
-                    tmp = lastTimesMap[x + sx][y + sy][type];
-                    if (ts - tmp < maxDtThreshold) {
+                    t1 = lastTimesMap[x + sx][y + sy][type];
+                    if (t1 != Integer.MIN_VALUE && ts - t1 < maxDtThreshold) {
                         for (xx = sx + 1; xx <= searchDistance; xx++) {
-                            if (ts - lastTimesMap[x + xx][y + sy][type] < maxDtThreshold) {
-                                a[1][0] += (lastTimesMap[x + xx][y + sy][type] - tmp) / (xx - sx);
+                            t2 = lastTimesMap[x + xx][y + sy][type];
+                            if (t2 != Integer.MIN_VALUE && ts - t2 < maxDtThreshold) {
+                                a[1][0] += (float) (t2 - t1) / (xx - sx);
                                 ii++;
                             }
                         }
                         for (yy = sy + 1; yy <= searchDistance; yy++) {
-                            if (ts - lastTimesMap[x + sx][y + yy][type] < maxDtThreshold) {
-                                a[0][1] += (lastTimesMap[x + sx][y + yy][type] - tmp) / (yy - sy);
+                            t2 = lastTimesMap[x + sx][y + yy][type];
+                            if (ts - t2 < maxDtThreshold) {
+                                a[0][1] += (float) (t2 - t1) / (yy - sy);
                                 jj++;
                             }
                         }
@@ -194,7 +198,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         jj = 0;
         for (sy = -searchDistance; sy <= searchDistance; sy++) {
             for (sx = -searchDistance; sx <= searchDistance; sx++) {
-                lastTimesMap[ii][jj][type] = Integer.MIN_VALUE;  // TODO fill with Integer.MIN_VALUE
+                lastTimesMap[ii][jj][type] = Integer.MIN_VALUE; // I don't think this is the correct initialization here (Bodo)
                 for (j = 0; j <= fitOrder; j++) {
                     for (i = 0; i <= fitOrder - j; i++) {
                         lastTimesMap[ii][jj++][type] += a[i][j] * Math.pow(sx, i) * Math.pow(sy, j);
@@ -210,10 +214,10 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         neighborhood = new ArrayList<>();
         for (sx = -searchDistance; sx <= searchDistance; sx++) {
             for (sy = -searchDistance; sy <= searchDistance; sy++) {
-                int lts = lastTimesMap[x + sx][y + sy][type];
-                if (lts != Integer.MIN_VALUE && ts - lts < maxDtThreshold) {
+                t1 = lastTimesMap[x + sx][y + sy][type];
+                if (t1 != Integer.MIN_VALUE && ts - t1 < maxDtThreshold) {
                     neighborhood.add(new double[]{x + sx, y + sy,
-                        (lts - firstTs) * 1e-6f, 1});
+                        (t1 - firstTs) * 1e-6f, 1});
                 }
             }
         }
@@ -259,7 +263,6 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             if (neighborhood.size() < 3) {
                 vx = 0;
                 vy = 0;
-                v = 0;
                 return;
             }
             initializeDataMatrix();
@@ -267,7 +270,6 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             if (sx2 * sy2 * st2 + 2 * sxy * sxt * syt - sxt * sxt * sy2 - sx2 * syt * syt - sxy * sxy * st2 == 0) {
                 vx = 0;
                 vy = 0;
-                v = 0;
                 return;
             }
             planeParameters[0] = sxx * (syt * syt - sy2 * st2) + syy * (sxy * st2 - sxt * syt) + stt * (sxt * sy2 - sxy * syt);
@@ -305,7 +307,6 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             if (neighborhood.size() < 4) {
                 vx = 0;
                 vy = 0;
-                v = 0;
                 return;
             }
 
@@ -355,7 +356,6 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                 } else {
                     vx = 0;
                     vy = 0;
-                    v = 0;
                     return;
                 }
             }
