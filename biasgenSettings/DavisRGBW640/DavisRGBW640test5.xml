@@ -23,7 +23,7 @@
                 <entry key="VideoControl.brightness" value="0.0"/>
                 <entry key="VideoControl.gamma" value="1.0"/>
                 <entry key="agcTauMs" value="1000.0"/>
-                <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="2"/>
+                <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="0"/>
                 <entry key="AEChip.subSamplingEnabled" value="false"/>
                 <entry key="ATCFpgaConfig.BGAF_OTs_Enable" value="true"/>
                 <entry key="ATCFpgaConfig.OTsEnable" value="true"/>
@@ -165,7 +165,7 @@
                 <entry key="CPLDByte.imu_RUN" value="1"/>
                 <entry key="CPLDByte.miscControlBits" value="1"/>
                 <entry key="CPLDInt.colSettle" value="0"/>
-                <entry key="CPLDInt.exposure" value="160000"/>
+                <entry key="CPLDInt.exposure" value="40000"/>
                 <entry key="CPLDInt.exposureB" value="39"/>
                 <entry key="CPLDInt.exposureC" value="1887"/>
                 <entry key="CPLDInt.frameDelay" value="0"/>
@@ -820,9 +820,9 @@
                 <entry key="DavisRGBW640.ShiftedSourceBias.Gnd07.BufBitValue" value="4"/>
                 <entry key="DavisRGBW640.ShiftedSourceBias.VTestADC.VdacBitValue" value="21"/>
                 <entry key="DavisRGBW640.ShiftedSourceBias.VTestADC.BufBitValue" value="0"/>
-                <entry key="DavisRGBW640.ShiftedSourceBias.ADCRefHigh.VdacBitValue" value="46"/>
+                <entry key="DavisRGBW640.ShiftedSourceBias.ADCRefHigh.VdacBitValue" value="63"/>
                 <entry key="DavisRGBW640.ShiftedSourceBias.ADCRefHigh.BufBitValue" value="7"/>
-                <entry key="DavisRGBW640.ShiftedSourceBias.ADCRefLow.VdacBitValue" value="6"/>
+                <entry key="DavisRGBW640.ShiftedSourceBias.ADCRefLow.VdacBitValue" value="0"/>
                 <entry key="DavisRGBW640.ShiftedSourceBias.ADCRefLow.BufBitValue" value="7"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.IFRefrBn.BitValueCoarse" value="2"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.IFRefrBn.BitValueFine" value="255"/>
@@ -1034,7 +1034,7 @@
                 <entry key="DigitalOutputMux.DigMux1.selectedChannel" value="-1"/>
                 <entry key="DigitalOutputMux.DigMux2.selectedChannel" value="-1"/>
                 <entry key="DigitalOutputMux.DigMux3.selectedChannel" value="-1"/>
-                <entry key="VideoControl.separateAPSByColor" value="true"/>
+                <entry key="VideoControl.separateAPSByColor" value="false"/>
                 <entry key="showImageHistogram" value="false"/>
                 <entry key="DAVIS240C.bgTabbedPaneSelectedIndex" value="0"/>
                 <entry key="DAVIS240C.AddressedIPotCF.DiffBn.BitValueCoarse" value="3"/>
@@ -2099,6 +2099,210 @@
                 <entry key="Davis346cBSI.runCpld" value="true"/>
                 <entry key="Davis346cBSI.typeNCalib" value="false"/>
                 <entry key="Davis346cBSI.useAout" value="false"/>
+                <entry key="DavisRGBW640.VideoControl.displayFrames" value="true"/>
+                <entry key="DavisRGBW640.VideoControl.displayEvents" value="true"/>
+                <entry key="DavisRGBW640.VideoControl.separateAPSByColor" value="false"/>
+                <entry key="DavisRGBW640.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="DavisRGBW640.VideoControl.colorCorrection" value="true"/>
+                <entry key="Davis346B.VideoControl.displayFrames" value="true"/>
+                <entry key="Davis346B.VideoControl.displayEvents" value="false"/>
+                <entry key="Davis346B.VideoControl.separateAPSByColor" value="false"/>
+                <entry key="Davis346B.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="Davis346B.VideoControl.colorCorrection" value="true"/>
+                <entry key="Davis346B.APS.ColumnSettle" value="30"/>
+                <entry key="Davis346B.APS.Exposure" value="5000"/>
+                <entry key="Davis346B.APS.FrameDelay" value="1000"/>
+                <entry key="Davis346B.APS.GlobalShutter" value="true"/>
+                <entry key="Davis346B.APS.NullSettle" value="3"/>
+                <entry key="Davis346B.APS.RampReset" value="10"/>
+                <entry key="Davis346B.APS.RampShortReset" value="false"/>
+                <entry key="Davis346B.APS.ResetRead" value="true"/>
+                <entry key="Davis346B.APS.ResetSettle" value="10"/>
+                <entry key="Davis346B.APS.RowSettle" value="10"/>
+                <entry key="Davis346B.APS.Run" value="true"/>
+                <entry key="Davis346B.APS.SampleEnable" value="true"/>
+                <entry key="Davis346B.APS.SampleSettle" value="30"/>
+                <entry key="Davis346B.APS.UseInternalADC" value="true"/>
+                <entry key="Davis346B.APS.WaitOnTransferStall" value="true"/>
+                <entry key="Davis346B.Chip.AERnArow" value="false"/>
+                <entry key="Davis346B.Chip.AnalogMux0" value="0"/>
+                <entry key="Davis346B.Chip.AnalogMux1" value="0"/>
+                <entry key="Davis346B.Chip.AnalogMux2" value="0"/>
+                <entry key="Davis346B.Chip.BiasMux0" value="0"/>
+                <entry key="Davis346B.Chip.DigitalMux0" value="0"/>
+                <entry key="Davis346B.Chip.DigitalMux1" value="0"/>
+                <entry key="Davis346B.Chip.DigitalMux2" value="0"/>
+                <entry key="Davis346B.Chip.DigitalMux3" value="0"/>
+                <entry key="Davis346B.Chip.ResetCalibNeuron" value="true"/>
+                <entry key="Davis346B.Chip.ResetTestPixel" value="true"/>
+                <entry key="Davis346B.Chip.SelectGrayCounter" value="true"/>
+                <entry key="Davis346B.Chip.TestADC" value="false"/>
+                <entry key="Davis346B.Chip.TypeNCalibNeuron" value="false"/>
+                <entry key="Davis346B.Chip.UseAOut" value="false"/>
+                <entry key="Davis346B.DVS.AckDelayColumn" value="0"/>
+                <entry key="Davis346B.DVS.AckDelayRow" value="4"/>
+                <entry key="Davis346B.DVS.AckExtensionColumn" value="0"/>
+                <entry key="Davis346B.DVS.AckExtensionRow" value="1"/>
+                <entry key="Davis346B.DVS.ExternalAERControl" value="false"/>
+                <entry key="Davis346B.DVS.FilterBackgroundActivity" value="false"/>
+                <entry key="Davis346B.DVS.FilterBackgroundActivityDeltaTime" value="20000"/>
+                <entry key="Davis346B.DVS.FilterRowOnlyEvents" value="true"/>
+                <entry key="Davis346B.DVS.Run" value="true"/>
+                <entry key="Davis346B.DVS.WaitOnTransferStall" value="false"/>
+                <entry key="Davis346B.ExtInput.DetectFallingEdges" value="false"/>
+                <entry key="Davis346B.ExtInput.DetectPulseLength" value="120"/>
+                <entry key="Davis346B.ExtInput.DetectPulsePolarity" value="true"/>
+                <entry key="Davis346B.ExtInput.DetectPulses" value="true"/>
+                <entry key="Davis346B.ExtInput.DetectRisingEdges" value="false"/>
+                <entry key="Davis346B.ExtInput.GeneratePulseInterval" value="120"/>
+                <entry key="Davis346B.ExtInput.GeneratePulseLength" value="60"/>
+                <entry key="Davis346B.ExtInput.GeneratePulsePolarity" value="false"/>
+                <entry key="Davis346B.ExtInput.GenerateUseCustomSignal" value="false"/>
+                <entry key="Davis346B.ExtInput.RunDetector" value="false"/>
+                <entry key="Davis346B.ExtInput.RunGenerator" value="false"/>
+                <entry key="Davis346B.IMU.AccelFullScale" value="2"/>
+                <entry key="Davis346B.IMU.AccelScale" value="ImuAccelScaleG8"/>
+                <entry key="Davis346B.IMU.DigitalLowPassFilter" value="1"/>
+                <entry key="Davis346B.IMU.GyroFullScale" value="2"/>
+                <entry key="Davis346B.IMU.GyroScale" value="GyroFullScaleDegPerSec1000"/>
+                <entry key="Davis346B.IMU.LPCycle" value="false"/>
+                <entry key="Davis346B.IMU.LPWakeup" value="1"/>
+                <entry key="Davis346B.IMU.Run" value="false"/>
+                <entry key="Davis346B.IMU.SampleRateDivider" value="0"/>
+                <entry key="Davis346B.IMU.TempStandby" value="false"/>
+                <entry key="Davis346B.IMU.displayEnabled" value="true"/>
+                <entry key="Davis346B.Masterbias.internalResistorUsed" value="false"/>
+                <entry key="Davis346B.Masterbias.rint" value="46000.0"/>
+                <entry key="Davis346B.Masterbias.rx" value="8200.0"/>
+                <entry key="Davis346B.Mux.DropAPSOnTransferStall" value="false"/>
+                <entry key="Davis346B.Mux.DropDVSOnTransferStall" value="true"/>
+                <entry key="Davis346B.Mux.DropExtInputOnTransferStall" value="true"/>
+                <entry key="Davis346B.Mux.DropIMUOnTransferStall" value="false"/>
+                <entry key="Davis346B.Mux.ForceChipBiasEnable" value="false"/>
+                <entry key="Davis346B.USB.EarlyPacketDelay" value="8"/>
+                <entry key="Davis346B.VDACBias.ADC_RefHigh.BufBitValue" value="7"/>
+                <entry key="Davis346B.VDACBias.ADC_RefHigh.VdacBitValue" value="30"/>
+                <entry key="Davis346B.VDACBias.ADC_RefLow.BufBitValue" value="7"/>
+                <entry key="Davis346B.VDACBias.ADC_RefLow.VdacBitValue" value="1"/>
+                <entry key="Davis346B.VDACBias.AdcTestVoltage.BufBitValue" value="7"/>
+                <entry key="Davis346B.VDACBias.AdcTestVoltage.VdacBitValue" value="21"/>
+                <entry key="Davis346B.VDACBias.ApsCas.BufBitValue" value="6"/>
+                <entry key="Davis346B.VDACBias.ApsCas.VdacBitValue" value="21"/>
+                <entry key="Davis346B.VDACBias.apsOverflowLevel.BufBitValue" value="6"/>
+                <entry key="Davis346B.VDACBias.apsOverflowLevel.VdacBitValue" value="27"/>
+                <entry key="DavisRGBW640.VDAC.ApsCasBpc.VdacBitValue" value="21"/>
+                <entry key="DavisRGBW640.VDAC.ApsCasBpc.BufBitValue" value="4"/>
+                <entry key="DavisRGBW640.VDAC.OVG1Lo.VdacBitValue" value="63"/>
+                <entry key="DavisRGBW640.VDAC.OVG1Lo.BufBitValue" value="4"/>
+                <entry key="DavisRGBW640.VDAC.OVG2Lo.VdacBitValue" value="0"/>
+                <entry key="DavisRGBW640.VDAC.OVG2Lo.BufBitValue" value="0"/>
+                <entry key="DavisRGBW640.VDAC.TX2OVG2Hi.VdacBitValue" value="63"/>
+                <entry key="DavisRGBW640.VDAC.TX2OVG2Hi.BufBitValue" value="0"/>
+                <entry key="DavisRGBW640.VDAC.Gnd07.VdacBitValue" value="13"/>
+                <entry key="DavisRGBW640.VDAC.Gnd07.BufBitValue" value="4"/>
+                <entry key="DavisRGBW640.VDAC.VTestADC.VdacBitValue" value="21"/>
+                <entry key="DavisRGBW640.VDAC.VTestADC.BufBitValue" value="0"/>
+                <entry key="DavisRGBW640.VDAC.ADCRefHigh.VdacBitValue" value="46"/>
+                <entry key="DavisRGBW640.VDAC.ADCRefHigh.BufBitValue" value="7"/>
+                <entry key="DavisRGBW640.VDAC.ADCRefLow.VdacBitValue" value="6"/>
+                <entry key="DavisRGBW640.VDAC.ADCRefLow.BufBitValue" value="7"/>
+                <entry key="DavisRGBW640.Mux.ForceChipBiasEnable" value="false"/>
+                <entry key="DavisRGBW640.Mux.DropDVSOnTransferStall" value="true"/>
+                <entry key="DavisRGBW640.Mux.DropAPSOnTransferStall" value="false"/>
+                <entry key="DavisRGBW640.Mux.DropIMUOnTransferStall" value="false"/>
+                <entry key="DavisRGBW640.Mux.DropExtInputOnTransferStall" value="true"/>
+                <entry key="DavisRGBW640.USB.EarlyPacketDelay" value="8"/>
+                <entry key="DavisRGBW640.DVS.Run" value="true"/>
+                <entry key="DavisRGBW640.DVS.AckDelayRow" value="4"/>
+                <entry key="DavisRGBW640.DVS.AckDelayColumn" value="0"/>
+                <entry key="DavisRGBW640.DVS.AckExtensionRow" value="1"/>
+                <entry key="DavisRGBW640.DVS.AckExtensionColumn" value="0"/>
+                <entry key="DavisRGBW640.DVS.WaitOnTransferStall" value="false"/>
+                <entry key="DavisRGBW640.DVS.FilterRowOnlyEvents" value="true"/>
+                <entry key="DavisRGBW640.DVS.ExternalAERControl" value="false"/>
+                <entry key="DavisRGBW640.DVS.FilterBackgroundActivity" value="false"/>
+                <entry key="DavisRGBW640.DVS.FilterBackgroundActivityDeltaTime" value="20000"/>
+                <entry key="DavisRGBW640.APS.Run" value="true"/>
+                <entry key="DavisRGBW640.APS.ResetRead" value="true"/>
+                <entry key="DavisRGBW640.APS.WaitOnTransferStall" value="true"/>
+                <entry key="DavisRGBW640.APS.GlobalShutter" value="false"/>
+                <entry key="DavisRGBW640.APS.Exposure" value="40000"/>
+                <entry key="DavisRGBW640.APS.FrameDelay" value="1000"/>
+                <entry key="DavisRGBW640.APS.ResetSettle" value="10"/>
+                <entry key="DavisRGBW640.APS.ColumnSettle" value="30"/>
+                <entry key="DavisRGBW640.APS.RowSettle" value="10"/>
+                <entry key="DavisRGBW640.APS.NullSettle" value="3"/>
+                <entry key="DavisRGBW640.IMU.Run" value="false"/>
+                <entry key="DavisRGBW640.IMU.TempStandby" value="false"/>
+                <entry key="DavisRGBW640.IMU.LPCycle" value="false"/>
+                <entry key="DavisRGBW640.IMU.LPWakeup" value="1"/>
+                <entry key="DavisRGBW640.IMU.SampleRateDivider" value="0"/>
+                <entry key="DavisRGBW640.IMU.DigitalLowPassFilter" value="1"/>
+                <entry key="DavisRGBW640.IMU.AccelFullScale" value="2"/>
+                <entry key="DavisRGBW640.IMU.GyroFullScale" value="2"/>
+                <entry key="DavisRGBW640.ExtInput.RunDetector" value="false"/>
+                <entry key="DavisRGBW640.ExtInput.DetectRisingEdges" value="false"/>
+                <entry key="DavisRGBW640.ExtInput.DetectFallingEdges" value="false"/>
+                <entry key="DavisRGBW640.ExtInput.DetectPulses" value="true"/>
+                <entry key="DavisRGBW640.ExtInput.DetectPulsePolarity" value="true"/>
+                <entry key="DavisRGBW640.ExtInput.DetectPulseLength" value="120"/>
+                <entry key="DavisRGBW640.ExtInput.RunGenerator" value="false"/>
+                <entry key="DavisRGBW640.ExtInput.GenerateUseCustomSignal" value="false"/>
+                <entry key="DavisRGBW640.ExtInput.GeneratePulsePolarity" value="false"/>
+                <entry key="DavisRGBW640.ExtInput.GeneratePulseInterval" value="120"/>
+                <entry key="DavisRGBW640.ExtInput.GeneratePulseLength" value="60"/>
+                <entry key="DavisRGBW640.Chip.DigitalMux0" value="0"/>
+                <entry key="DavisRGBW640.Chip.DigitalMux1" value="0"/>
+                <entry key="DavisRGBW640.Chip.DigitalMux2" value="0"/>
+                <entry key="DavisRGBW640.Chip.DigitalMux3" value="0"/>
+                <entry key="DavisRGBW640.Chip.AnalogMux0" value="0"/>
+                <entry key="DavisRGBW640.Chip.AnalogMux1" value="0"/>
+                <entry key="DavisRGBW640.Chip.AnalogMux2" value="0"/>
+                <entry key="DavisRGBW640.Chip.BiasMux0" value="0"/>
+                <entry key="DavisRGBW640.Chip.ResetCalibNeuron" value="true"/>
+                <entry key="DavisRGBW640.Chip.TypeNCalibNeuron" value="false"/>
+                <entry key="DavisRGBW640.Chip.ResetTestPixel" value="true"/>
+                <entry key="DavisRGBW640.Chip.AERnArow" value="false"/>
+                <entry key="DavisRGBW640.Chip.UseAOut" value="false"/>
+                <entry key="DavisRGBW640.APS.UseInternalADC" value="true"/>
+                <entry key="DavisRGBW640.APS.SampleEnable" value="true"/>
+                <entry key="DavisRGBW640.APS.SampleSettle" value="30"/>
+                <entry key="DavisRGBW640.APS.RampReset" value="10"/>
+                <entry key="DavisRGBW640.APS.RampShortReset" value="false"/>
+                <entry key="DavisRGBW640.APS.ADCTestMode" value="false"/>
+                <entry key="DavisRGBW640.Chip.SelectGrayCounter" value="true"/>
+                <entry key="DavisRGBW640.Chip.TestADC" value="false"/>
+                <entry key="DavisRGBW640.APS.Transfer_D" value="1500"/>
+                <entry key="DavisRGBW640.APS.RSFDSettle_D" value="1000"/>
+                <entry key="DavisRGBW640.APS.GSPDReset_D" value="1000"/>
+                <entry key="DavisRGBW640.APS.GSResetFall_D" value="1000"/>
+                <entry key="DavisRGBW640.APS.GSTXFall_D" value="1000"/>
+                <entry key="DavisRGBW640.APS.GSFDReset_D" value="1000"/>
+                <entry key="DavisRGBW640.Chip.AdjustOVG1Lo" value="true"/>
+                <entry key="DavisRGBW640.Chip.AdjustOVG2Lo" value="false"/>
+                <entry key="DavisRGBW640.Chip.AdjustTX2OVG2Hi" value="false"/>
+                <entry key="DavisRGBW640.VDACBias.ApsCasBpc.VdacBitValue" value="21"/>
+                <entry key="DavisRGBW640.VDACBias.ApsCasBpc.BufBitValue" value="4"/>
+                <entry key="DavisRGBW640.VDACBias.OVG1Lo.VdacBitValue" value="63"/>
+                <entry key="DavisRGBW640.VDACBias.OVG1Lo.BufBitValue" value="4"/>
+                <entry key="DavisRGBW640.VDACBias.OVG2Lo.VdacBitValue" value="0"/>
+                <entry key="DavisRGBW640.VDACBias.OVG2Lo.BufBitValue" value="0"/>
+                <entry key="DavisRGBW640.VDACBias.TX2OVG2Hi.VdacBitValue" value="63"/>
+                <entry key="DavisRGBW640.VDACBias.TX2OVG2Hi.BufBitValue" value="0"/>
+                <entry key="DavisRGBW640.VDACBias.Gnd07.VdacBitValue" value="13"/>
+                <entry key="DavisRGBW640.VDACBias.Gnd07.BufBitValue" value="4"/>
+                <entry key="DavisRGBW640.VDACBias.VTestADC.VdacBitValue" value="21"/>
+                <entry key="DavisRGBW640.VDACBias.VTestADC.BufBitValue" value="0"/>
+                <entry key="DavisRGBW640.VDACBias.ADCRefHigh.VdacBitValue" value="46"/>
+                <entry key="DavisRGBW640.VDACBias.ADCRefHigh.BufBitValue" value="7"/>
+                <entry key="DavisRGBW640.VDACBias.ADCRefLow.VdacBitValue" value="6"/>
+                <entry key="DavisRGBW640.VDACBias.ADCRefLow.BufBitValue" value="7"/>
+                <entry key="DavisRGBW640.IMU.GyroScale" value="GyroFullScaleDegPerSec1000"/>
+                <entry key="DavisRGBW640.IMU.AccelScale" value="ImuAccelScaleG8"/>
+                <entry key="DavisRGBW640.IMU.displayEnabled" value="false"/>
+                <entry key="DavisRGBW640.Masterbias.rx" value="8200.0"/>
+                <entry key="DavisRGBW640.Masterbias.rint" value="46000.0"/>
+                <entry key="DavisRGBW640.Masterbias.internalResistorUsed" value="false"/>
               </map>
             </node>
           </node>
