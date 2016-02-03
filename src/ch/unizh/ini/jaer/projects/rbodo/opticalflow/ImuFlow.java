@@ -37,7 +37,7 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             vx = imuFlowEstimator.getVx();
             vy = imuFlowEstimator.getVy();
             v = imuFlowEstimator.getV();
-            if (measureAccuracy || discardOutliersForStatisticaMeasurementEnabled) setGroundTruth();
+            if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) setGroundTruth();
             if (accuracyTests()) continue;
             //exportFlowToMatlab(2500000,2600000); // for IMU_APS_translSin
             //exportFlowToMatlab(1360000,1430000); // for IMU_APS_rotDisk
@@ -45,8 +45,7 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             writeOutputEvent();
             if (measureAccuracy) motionFlowStatistics.update(vx,vy,v,vxGT,vyGT,vGT);
         }
-        motionFlowStatistics.updatePacket(measureProcessingTime,showGlobalEnabled,
-                                          countIn,countOut);
+        motionFlowStatistics.updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket;
     }
 }

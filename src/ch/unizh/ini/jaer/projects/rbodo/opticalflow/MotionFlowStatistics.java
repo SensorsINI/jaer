@@ -26,7 +26,7 @@ import static net.sf.jaer.eventprocessing.EventFilter.log;
  * However, an even better indicator would be the robust measure MAD
  * (Median Absolute Deviation), because the Standard Deviation is heavily
  * influenced by outliers.
- * The Standard Error (Standard Deviation devided by Sqrt(N)) indicates 
+ * The Standard Error (Standard Deviation divided by Sqrt(N)) indicates 
  * how far the sample estimate of the mean is away from the true population 
  * mean; it will converge to zero for large sample sizes. 
  * The SD is a measure of how much we can expect the sample individuals 
@@ -54,7 +54,11 @@ public class MotionFlowStatistics {
     
     private final String filterClassName;
     
-    private boolean measureProcessingTime=false;
+    private boolean measureProcessingTime = false;
+    
+    private boolean measureAccuracy = false;
+
+    private boolean measureGlobalMotion = false;
 
     protected MotionFlowStatistics(String filterClassName, int sX, int sY) {
         DATE_FORMAT = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
@@ -70,6 +74,18 @@ public class MotionFlowStatistics {
         processingTime = new ProcessingTime();
         eventDensity = new EventDensity();
         warmupCounter = 5;
+    }
+
+    protected final void setMeasureAccuracy(boolean measureAccuracy) {
+        this.measureAccuracy = measureAccuracy;
+    }
+
+    protected final void setMeasureProcessingTime(boolean measureProcessingTime) {
+        this.measureProcessingTime = measureProcessingTime;
+    }
+
+    protected final void setMeasureGlobalMotion(boolean measureGlobalMotion) {
+        this.measureGlobalMotion = measureGlobalMotion;
     }
 
     /** Updates the statistics given a measurement and ground truth
@@ -91,12 +107,10 @@ public class MotionFlowStatistics {
         endpointErrorRel.update(vx,vy,v,vxGT,vyGT,vGT);
     }
     
-    protected void updatePacket(boolean measureProcessingTime, boolean showGlobalEnabled,
-                                int countIn, int countOut) {
+    protected void updatePacket(int countIn, int countOut) {
         eventDensity.update(countIn,countOut);
-        this.measureProcessingTime=measureProcessingTime;
         if (measureProcessingTime) processingTime.update();
-        if (showGlobalEnabled) globalMotion.bufferMean();
+        if (measureGlobalMotion) globalMotion.bufferMean();
     }
     
     @Override public String toString() {
@@ -253,7 +267,8 @@ public class MotionFlowStatistics {
         }
         
         @Override public String toString() {
-            return String.format(Locale.ENGLISH,"Global velocity: " +
+            return !measureGlobalMotion? "Global flow not measured. Select measureGlobalMotion.\n":
+                String.format(Locale.ENGLISH,"Global velocity: " +
                 "[%1$4.2f, %2$4.2f] +/- [%3$4.2f, %4$4.2f] pixel/s, global rotation: " +
                 "%5$4.2f +/- %6$2.2f °/s %n", meanGlobalVx, meanGlobalVy, sdGlobalVx,
                 sdGlobalVy, meanGlobalRotation, sdGlobalRotation);
@@ -305,7 +320,8 @@ public class MotionFlowStatistics {
         }
         
         @Override public String toString() {
-            return String.format(Locale.ENGLISH,"%1$s: %2$4.2f +/- %3$5.2f °, %4$s, " +
+            return !measureAccuracy? "Angular error not measured. Select measureAccuracy.\n":
+                String.format(Locale.ENGLISH,"%1$s: %2$4.2f +/- %3$5.2f °, %4$s, " +
                 "percentage above %5$2f °: %6$4.2f%%, above %7$2f °: %8$4.2f%%, above %9$2f °: %10$4.2f%% %n", 
                 getClass().getSimpleName(), getMean(), getStdDev(), histogram.toString(), 
                 X1, histogram.getPercentageAboveX(X1),
@@ -336,7 +352,8 @@ public class MotionFlowStatistics {
         }
         
         @Override public String toString() {
-            return String.format(Locale.ENGLISH,"%1$s: %2$4.2f +/- %3$5.2f pixels/s, " +
+            return !measureAccuracy? "Endpoint error not measured. Select measureAccuracy.\n":
+                String.format(Locale.ENGLISH,"%1$s: %2$4.2f +/- %3$5.2f pixels/s, " +
                 "%4$s, percentage above %5$4.2f pixels/s: %6$4.2f%%, above %7$4.2f " +
                 "pixels/s: %8$4.2f%%, above %9$4.2f pixels/s: %10$4.2f%% %n",
                 getClass().getSimpleName(), 
@@ -366,7 +383,8 @@ public class MotionFlowStatistics {
         }
         
         @Override public String toString() {
-            return String.format(Locale.ENGLISH,"%1$s: %2$4.2f +/- %3$5.2f%%, %4$s %n",
+            return !measureAccuracy? "Relative endpoint error not measured. Select measureAccuracy.\n":
+                String.format(Locale.ENGLISH,"%1$s: %2$4.2f +/- %3$5.2f%%, %4$s %n",
                 getClass().getSimpleName(), getMean(), getStdDev(), histogram.toString());
         }
     }
@@ -473,7 +491,8 @@ public class MotionFlowStatistics {
         }
         
         @Override public String toString() {
-            return !measureProcessingTime? "ProcessingTime: not measured\n": String.format(Locale.ENGLISH,"%1$s: %2$4.2f +/- %3$5.2f us/event %n",
+            return !measureProcessingTime? "Processing time not measured. Select measureProcessingTime\n":
+                String.format(Locale.ENGLISH,"%1$s: %2$4.2f +/- %3$5.2f us/event %n",
                 getClass().getSimpleName(), getMean(), getStdDev());
         }
     }

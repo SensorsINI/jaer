@@ -85,7 +85,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     int refractoryPeriodUs = getInt("refractoryPeriodUs", 0);
 
     // Global translation, rotation and expansion.
-    boolean showGlobalEnabled = getBoolean("showGlobalEnabled", true);
+    boolean measureGlobalMotion = getBoolean("measureGlobalMotion", true);
 
     /**
      * The output events, also used for rendering output events.
@@ -147,10 +147,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     // optical flow and ground truth is greater than a certain threshold.
     // At the moment, this option is not included in the jAER filter settings
     // and defaults to false.
-    protected boolean discardOutliersForStatisticaMeasurementEnabled = false;
+    protected boolean discardOutliersForStatisticalMeasurementEnabled = false;
     // Threshold angle in degree. Discard measured optical flow vector if it 
-    // deviates from ground truth by more than discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg.
-    protected float discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg = 10f;
+    // deviates from ground truth by more than discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg.
+    protected float discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg = 10f;
 
     // outlier filtering that only allows through motion events that agree with at least N most-recent neigbor events 
     // in max angle difference
@@ -180,16 +180,18 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         dirPacket = new EventPacket(ApsDvsMotionOrientationEvent.class);
         filterClassName = getClass().getSimpleName();
         motionFlowStatistics = new MotionFlowStatistics(filterClassName, subSizeX, subSizeY);
-
+        setMeasureAccuracy(getBoolean("measureAccuracy", false));
+        setMeasureProcessingTime(getBoolean("measureProcessingTime", false));
+        setMeasureGlobalMotion(getBoolean("measureGlobalMotion", false));
         setPropertyTooltip("startLoggingMotionVectorEvents", "starts saving motion vector events to a human readable file");
         setPropertyTooltip("stopLoggingMotionVectorEvents", "stops logging motion vector events to a human readable file");
-        setPropertyTooltip("printStatistics", "prints a single instance of collected statistics to console as log output");
-        setPropertyTooltip("measureAccuracy", "<html>Writes a txt file with various motion statistics, by comparing the ground truth <br>(either estimated online using an embedded IMUFlow or loaded from file) <br> with the measured optical flow events.  <br>This measurment function is called for every event to assign the local ground truth<br> (vxGT,vyGT) at location (x,y) a value from the imported ground truth field (vxGTframe,vyGTframe).");
+        setPropertyTooltip("printStatistics", "<html> Prints to console as log output a single instance of statistics collected since <b>measureAccuracy</b> was selected. (These statistics are reset when the filter is reset, e.g. at rewind.)");
+        setPropertyTooltip("measureAccuracy", "<html> Writes a txt file with various motion statistics, by comparing the ground truth <br>(either estimated online using an embedded IMUFlow or loaded from file) <br> with the measured optical flow events.  <br>This measurment function is called for every event to assign the local ground truth<br> (vxGT,vyGT) at location (x,y) a value from the imported ground truth field (vxGTframe,vyGTframe).");
         setPropertyTooltip("measureProcessingTime", "writes a text file with timestamp filename with the packet's mean processing time of an event. Processing time is also logged to console.");
         setPropertyTooltip("loggingFolder", "directory to store logged data files");
         setPropertyTooltip(disp, "ppsScale", "scale of pixels per second to draw local and global motion vectors");
         setPropertyTooltip(disp, "showVectorsEnabled", "shows local motion vectors");
-        setPropertyTooltip(disp, "showGlobalEnabled", "shows global tranlational, rotational, and expansive motion");
+        setPropertyTooltip(disp, "measureGlobalMotion", "shows global tranlational, rotational, and expansive motion");
         setPropertyTooltip(disp, "showRawInputEnabled", "shows the input events, instead of the motion types");
         setPropertyTooltip(disp, "xMin", "events with x-coordinate below this are filtered out.");
         setPropertyTooltip(disp, "xMax", "events with x-coordinate above this are filtered out.");
@@ -200,8 +202,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(smoo, "speedControlEnabled", "enables filtering of excess speeds");
         setPropertyTooltip(smoo, "speedControl_ExcessSpeedRejectFactor", "local speeds this factor higher than average are rejected as non-physical");
         setPropertyTooltip(smoo, "speedControl_speedMixingFactor", "speeds computed are mixed with old values with this factor");
-//        setPropertyTooltip(imu, "discardOutliersForStatisticaMeasurementEnabled", "discard measured local motion vector if it deviates from IMU estimate");
-//        setPropertyTooltip(imu, "discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg", "threshold angle in degree. Discard measured optical flow vector if it deviates from IMU-estimate by more than discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg");
+//        setPropertyTooltip(imu, "discardOutliersForStatisticalMeasurementEnabled", "discard measured local motion vector if it deviates from IMU estimate");
+//        setPropertyTooltip(imu, "discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg", "threshold angle in degree. Discard measured optical flow vector if it deviates from IMU-estimate by more than discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg");
         setPropertyTooltip(imu, "lensFocalLengthMm", "lens focal length in mm. Used for computing the IMU flow from pan and tilt camera rotations. 4.5mm is focal length for dataset data.");
         setPropertyTooltip(imu, "startIMUCalibration", "<html> Starts estimating the IMU offsets based on next 800 samples. Should be used only with stationary recording to store these offsets in the preferences. <p> <b>measureAccuracy</b> must be selected as well to actually do the calibration.");
         setPropertyTooltip(imu, "resetIMUCalibration", "Resets the IMU offsets to zero. Can be used to observe effect of these offsets on a stationary recording in the IMUFlow filter.");
@@ -560,6 +562,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     resetFilter();
                     break;
                 case AEInputStream.EVENT_REWIND:
+                    log.info(evt.toString()+": resetting filter after printing collected statistics if measurement enabled");
                     if (measureAccuracy || measureProcessingTime) {
                         doPrintStatistics();
                     }
@@ -612,7 +615,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
         checkBlend(gl);
 
-        if (isShowGlobalEnabled()) {
+        if (isMeasureGlobalMotion()) {
             gl.glLineWidth(4f);
             gl.glColor3f(1, 1, 1);
 
@@ -763,7 +766,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         if (v != 0) {
             countOut++;
         }
-        if (showGlobalEnabled) {
+        if (measureGlobalMotion) {
             motionFlowStatistics.globalMotion.update(vx, vy, v, eout.x, eout.y);
         }
         if (motionVectorEventLogger != null && motionVectorEventLogger.isEnabled()) {
@@ -776,9 +779,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         // 1.) Filter out events with speed high above average.
         // 2.) Filter out events whose velocity deviates from IMU estimate by a 
         // certain degree.
-        return speedControlEnabled && isSpeeder() || discardOutliersForStatisticaMeasurementEnabled
+        return speedControlEnabled && isSpeeder() || discardOutliersForStatisticalMeasurementEnabled
                 && Math.abs(motionFlowStatistics.angularError.calculateError(vx, vy, v, vxGT, vyGT, vGT))
-                > discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg;
+                > discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg;
     }
 
     // <editor-fold defaultstate="collapsed" desc="Speed Control">
@@ -810,9 +813,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="Logging trigger button">
+    // <editor-fold defaultstate="collapsed" desc="Statistics logging trigger button">
     synchronized public void doPrintStatistics() {
-        log.info(this.getClass().getSimpleName()+"\n"+motionFlowStatistics.toString());
+        log.log(Level.INFO, "{0}\n{1}", new Object[]{this.getClass().getSimpleName(), motionFlowStatistics.toString()});
         if (!imuFlowEstimator.isCalibrationSet()) {
             log.warning("IMU has not been calibrated yet! Load a file with no camera motion and hit the StartIMUCalibration button");
             WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null, false, "Uncalibrated IMU",
@@ -903,30 +906,32 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg--">
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg--">
 //    public float getEpsilon() {
-//        return discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg;
+//        return discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg;
 //    }
 //
-//    synchronized public void setEpsilon(float discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg) {
-//        if (discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg > 180) {
-//            discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg = 180;
+//    synchronized public void setEpsilon(float discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg) {
+//        if (discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg > 180) {
+//            discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg = 180;
 //        }
-//        this.discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg = discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg;
-//        putFloat("discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg", discardOutliersForStatisticaMeasurementMaxAngleDifferenceDeg);
+//        this.discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg = discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg;
+//        putFloat("discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg", discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg);
 //    }
     // </editor-fold>
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --discardOutliersForStatisticaMeasurementEnabled--">
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --discardOutliersForStatisticalMeasurementEnabled--">
 //    public boolean getDiscardOutliersEnabled() {
-//        return this.discardOutliersForStatisticaMeasurementEnabled;
+//        return this.discardOutliersForStatisticalMeasurementEnabled;
 //    }
 //
-//    public void setDiscardOutliersEnabled(final boolean discardOutliersForStatisticaMeasurementEnabled) {
-//        support.firePropertyChange("discardOutliersForStatisticaMeasurementEnabled", this.discardOutliersForStatisticaMeasurementEnabled, discardOutliersForStatisticaMeasurementEnabled);
-//        this.discardOutliersForStatisticaMeasurementEnabled = discardOutliersForStatisticaMeasurementEnabled;
-//        putBoolean("discardOutliersForStatisticaMeasurementEnabled", discardOutliersForStatisticaMeasurementEnabled);
+//    public void setDiscardOutliersEnabled(final boolean discardOutliersForStatisticalMeasurementEnabled) {
+//        support.firePropertyChange("discardOutliersForStatisticalMeasurementEnabled", this.discardOutliersForStatisticalMeasurementEnabled, discardOutliersForStatisticalMeasurementEnabled);
+//        this.discardOutliersForStatisticalMeasurementEnabled = discardOutliersForStatisticalMeasurementEnabled;
+//        putBoolean("discardOutliersForStatisticalMeasurementEnabled", discardOutliersForStatisticalMeasurementEnabled);
 //    }
     // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --loggingFolder--">
     public String getLoggingFolder() {
         return loggingFolder;
@@ -948,6 +953,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         support.firePropertyChange("measureAccuracy", this.measureAccuracy, measureAccuracy);
         this.measureAccuracy = measureAccuracy;
         putBoolean("measureAccuracy", measureAccuracy);
+        motionFlowStatistics.setMeasureAccuracy(measureAccuracy);
         if (measureAccuracy) {
             //setMeasureProcessingTime(false);
             resetFilter();
@@ -961,6 +967,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
 
     public synchronized void setMeasureProcessingTime(boolean measureProcessingTime) {
+        motionFlowStatistics.setMeasureProcessingTime(measureProcessingTime);
         if (measureProcessingTime) {
             setRefractoryPeriodUs(1);
             //support.firePropertyChange("measureAccuracy",this.measureAccuracy,false);
@@ -975,14 +982,19 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --showGlobalEnabled--">
-    public boolean isShowGlobalEnabled() {
-        return showGlobalEnabled;
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --measureGlobalMotion--">
+    public boolean isMeasureGlobalMotion() {
+        return measureGlobalMotion;
     }
 
-    public void setShowGlobalEnabled(boolean showGlobalEnabled) {
-        this.showGlobalEnabled = showGlobalEnabled;
-        putBoolean("showGlobalEnabled", showGlobalEnabled);
+    public void setMeasureGlobalMotion(boolean measureGlobalMotion) {
+        motionFlowStatistics.setMeasureGlobalMotion(measureGlobalMotion);
+        support.firePropertyChange("measureGlobalMotion", this.measureGlobalMotion, measureGlobalMotion);
+        this.measureGlobalMotion = measureGlobalMotion;
+        putBoolean("measureGlobalMotion", measureGlobalMotion);
+        if (measureGlobalMotion) {
+            resetFilter();
+        }
     }
     // </editor-fold>
 

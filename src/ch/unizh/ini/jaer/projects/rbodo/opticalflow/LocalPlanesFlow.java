@@ -180,7 +180,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
 
     synchronized private void smoothTimesmap() {
         /**
-         * This function convolutes a patch of the timesmap with a
+         * This function convolves a patch of the timesmap with a
          * Savitzky-Golay smoothing kernel. In other words, it applies a
          * Least-Squares polynomial fit to the surface of most recent events to
          * decrease noise. Important assumption for calculating the fitting
@@ -426,7 +426,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
 
         for (Object ein : in) {
             extractEventInfo(ein);
-            if (measureAccuracy || discardOutliersForStatisticaMeasurementEnabled) {
+            if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                 imuFlowEstimator.calculateImuFlow((PolarityEvent) inItr.next());
                 setGroundTruth();
             }
@@ -450,8 +450,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                 motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);
             }
         }
-        motionFlowStatistics.updatePacket(measureProcessingTime, showGlobalEnabled,
-                countIn, countOut);
+        motionFlowStatistics.updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket;
     }
 

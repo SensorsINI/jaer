@@ -380,7 +380,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
 
         for (Object ein : in) {
             extractEventInfo(ein);
-            if (measureAccuracy || discardOutliersForStatisticaMeasurementEnabled) {
+            if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                 imuFlowEstimator.calculateImuFlow((PolarityEvent) inItr.next());
                 setGroundTruth();
             }
@@ -452,8 +452,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
                 motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);
             }
         }
-        motionFlowStatistics.updatePacket(measureProcessingTime, showGlobalEnabled,
-                countIn, countOut);
+        motionFlowStatistics.updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket;
     }
 

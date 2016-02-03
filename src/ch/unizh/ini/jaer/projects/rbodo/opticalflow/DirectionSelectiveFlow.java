@@ -87,7 +87,7 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
         // </editor-fold>
         for (Object ein : oriPacket) {
             extractEventInfo(ein);
-            if (measureAccuracy || discardOutliersForStatisticaMeasurementEnabled) {
+            if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                 imuFlowEstimator.calculateImuFlow((PolarityEvent) inItr.next());
                 setGroundTruth();
             }
@@ -195,8 +195,7 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
             writeOutputEvent(motionDir, ein);
             if (measureAccuracy) motionFlowStatistics.update(vx,vy,v,vxGT,vyGT,vGT);
         }
-        motionFlowStatistics.updatePacket(measureProcessingTime,showGlobalEnabled,
-                                          countIn,countOut);
+        motionFlowStatistics.updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket; 
     }
 
