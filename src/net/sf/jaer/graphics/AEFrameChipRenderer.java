@@ -651,11 +651,13 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     /**
-     * Returns index into pixmap
+     * Returns index into pixmap. To access RGB values, just add 0,1, or 2 to the returned index.
      *
      * @param x
      * @param y
      * @return the index
+     * @see #getPixmapArray() 
+     * @see #getPixmap() 
      */
     @Override
     public int getPixMapIndex(int x, int y) {
@@ -681,7 +683,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     /**
-     * Overridden to combine ON and OFF map values to a gray value by averaging
+     * Overridden to combine RGB values to a gray value by averaging
      * them. Note that this method returns rendering of frame image; it returns
      * the rendered APS samples and not the raw ADC values.
      *
