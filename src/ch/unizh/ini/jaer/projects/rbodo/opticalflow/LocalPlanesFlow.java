@@ -151,7 +151,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                         }
                         for (yy = sy + 1; yy <= searchDistance; yy++) {
                             t2 = lastTimesMap[x + sx][y + yy][type];
-                            if (ts - t2 < maxDtThreshold) {
+                            if (t2 != Integer.MIN_VALUE && ts - t2 < maxDtThreshold) {
                                 a[0][1] += (float) (t2 - t1) / (yy - sy);
                                 jj++;
                             }
