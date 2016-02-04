@@ -106,7 +106,7 @@ public class SimpleOrientationFilter extends AbstractOrientationFilter{
         for ( Object ein:in ){
             PolarityEvent e = (PolarityEvent)ein;
             
-            if(e.isFilteredOut() || e.isSpecial() || (e instanceof IMUSample && ((IMUSample)e).imuSampleEvent)){
+            if(e.isFilteredOut() || e.isSpecial() || (e instanceof ApsDvsEvent && ((ApsDvsEvent)e).isImuSample())){
                 continue;
             }
             

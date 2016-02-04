@@ -330,7 +330,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 continue;
             }
             int type = e.getType();
-            boolean isAdcSampleFlag = e.isSampleEvent();
+            boolean isAdcSampleFlag = e.isApsData();
             if (!isAdcSampleFlag) {
                 if (displayEvents) {
                     if ((xsel >= 0) && (ysel >= 0)) { // find correct mouse pixel interpretation to make sounds for large pixels

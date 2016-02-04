@@ -1,8 +1,12 @@
 package ch.unizh.ini.jaer.projects.rbodo.opticalflow;
 
+import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import java.util.Iterator;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 
@@ -27,9 +31,19 @@ public class ImuFlow extends AbstractMotionFlowIMU {
     @Override synchronized public EventPacket filterPacket(EventPacket in) {
         setupFilter(in);
         
-        for (Object ein : in) {
+        Iterator i=null;
+        if(in instanceof ApsDvsEventPacket){
+            i=((ApsDvsEventPacket)in).fullIterator();
+        }else{
+            i=((ApsDvsEventPacket)in).inputIterator();
+        }
+        while(i.hasNext()){
+            Object ein=i.next();
+            ApsDvsEvent apsDvsEvent=(ApsDvsEvent)ein;
+            if(apsDvsEvent.isApsData()) continue;
             extractEventInfo(ein);
-            imuFlowEstimator.calculateImuFlow((PolarityEvent) inItr.next());
+            imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
+            if(apsDvsEvent.isImuSample()) continue;
             if (isInvalidAddress(0)) continue;
             if (isInvalidTimestamp()) continue;
             if (xyFilter()) continue;

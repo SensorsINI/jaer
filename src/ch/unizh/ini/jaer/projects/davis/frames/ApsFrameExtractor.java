@@ -187,7 +187,7 @@ public class ApsFrameExtractor extends EventFilter2D
 		final Iterator apsItr = packet.fullIterator();
 		while (apsItr.hasNext()) {
 			final ApsDvsEvent e = (ApsDvsEvent) apsItr.next();
-			if (e.isSampleEvent()) {
+			if (e.isApsData()) {
 				putAPSevent(e);
 			}
 		}
@@ -206,7 +206,7 @@ public class ApsFrameExtractor extends EventFilter2D
 	}
 
 	public void putAPSevent(final ApsDvsEvent e) {
-		if (!e.isSampleEvent()) {
+		if (!e.isApsData()) {
 			return;
 		}
 		// if(e.isStartOfFrame())timestampFrameStart=e.timestampFrameStart;

@@ -132,13 +132,13 @@ public class Davis128 extends DavisBaseCamera {
 							final IMUSample possibleSample = IMUSample.constructFromAEPacketRaw(in, i, incompleteIMUSampleException);
 							i += IMUSample.SIZE_EVENTS - 1;
 							incompleteIMUSampleException = null;
-							imuSample = possibleSample; // asking for sample from AEChip now gives this value, but no
-							// Ensure IMUSamples are marked correctly as such: special, imuSampleEvent, and NOT ADC
-							imuSample.special = true;
-							imuSample.imuSampleEvent = true;
-							imuSample.adcSample = -1; // NOT an ADC sample
-							outItr.writeToNextOutput(imuSample); // also write the event out to the next output event
-							// slot
+							imuSample = possibleSample; // asking for sample from AEChip now gives this value
+                                                        ApsDvsEvent imuEvent=new ApsDvsEvent(); // this davis event holds the IMUSample
+                                                        imuEvent.setTimestamp(imuSample.getTimestampUs());
+                                                        imuEvent.setImuSample(imuSample);
+							outItr.writeToNextOutput(imuEvent); // also write the event out to the next output event
+//                                                        System.out.println("lastImu dt="+(imuSample.timestamp-lastImuTs));
+//                                                        lastImuTs=imuSample.timestamp;
 							continue;
 						}
 						catch (final IMUSample.IncompleteIMUSampleException ex) {

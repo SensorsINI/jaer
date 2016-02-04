@@ -460,20 +460,13 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             Iterator<ApsDvsEvent> i = apsPkt.fullIterator();
             while (i.hasNext()) {
                 ApsDvsEvent e = i.next();
-                if (e instanceof IMUSample) {
-                    IMUSample imu = (IMUSample) e;
-                    if (imu.imuSampleEvent) {
+                if (e.isImuSample()) {
                         accumulatedIMUSampleCount++;
-                    } else if (imu.isAPSSample()) {
+                    } else if (e.isApsData()) {
                         accumulatedAPSSampleCount++;
-                    } else if (imu.isDVSEvent()) {
+                    } else if (e.isDVSEvent()) {
                         accumulatedDVSEventCount++;
                     }
-                } else if (e.isAPSSample()) {
-                    accumulatedAPSSampleCount++;
-                } else if (e.isDVSEvent()) {
-                    accumulatedDVSEventCount++;
-                }
             }
         } else {
             accumulatedDVSEventCount += in.getSize();

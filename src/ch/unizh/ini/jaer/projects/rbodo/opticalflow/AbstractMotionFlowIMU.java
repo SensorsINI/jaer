@@ -21,6 +21,7 @@ import javax.swing.JFileChooser;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
@@ -370,7 +371,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         private float rollOffset;
 
         // Deal with leftover IMU data after timestamps reset
-        private static final int FLUSH_COUNT = 10;
+        private static final int FLUSH_COUNT = 1;
         private int flushCounter;
 
         private int nx, ny;
@@ -437,6 +438,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
             tsIMU = imuSample.getTimestampUs();
             dtS = (tsIMU - lastTsIMU) * 1e-6f;
+            System.out.println("dT of IMU is "+dtS);  // debug
             lastTsIMU = tsIMU;
 
             if (!initialized) {
@@ -477,12 +479,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
          *
          * @param pe PolarityEvent
          */
-        protected void calculateImuFlow(PolarityEvent pe) {
-            if (pe instanceof IMUSample) {
-                IMUSample s = (IMUSample) pe;
-                if (s.imuSampleEvent) {
-                    updateTransform(s);
-                }
+        protected void calculateImuFlow(ApsDvsEvent pe) {
+            if (pe.isImuSample()) {
+                    updateTransform(pe.getImuSample());
             }
             if (dtS == 0) {
                 dtS = 1;

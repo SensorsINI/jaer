@@ -163,8 +163,8 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
 				if (ev instanceof ApsDvsEvent) {
 					final ApsDvsEvent apsEv = (ApsDvsEvent) ev;
 
-					if ((!displayFrames && apsEv.isSampleEvent()) || (!displayEvents && apsEv.isDVSEvent())
-						|| ((apsEv instanceof IMUSample) && ((IMUSample) apsEv).imuSampleEvent)) {
+					if ((!displayFrames && apsEv.isApsData()) || (!displayEvents && apsEv.isDVSEvent())
+						|| apsEv.isImuSample()) {
 						continue;
 					}
 				}

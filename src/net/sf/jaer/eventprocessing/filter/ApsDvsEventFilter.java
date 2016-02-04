@@ -58,13 +58,13 @@ public class ApsDvsEventFilter extends EventFilter2D {
             if (filterFrameTransientEvents && lastFrameStartTimestamp != Integer.MIN_VALUE && event.getTimestamp() - lastFrameStartTimestamp < filterFrameTransientEventsTimeUs) {
                 continue;
             }
-            if (filterAPSEvents && event.isSampleEvent() /*&& !((event instanceof IMUSample) && !(((IMUSample) event).imuSampleEvent))*/)  {
+            if (filterAPSEvents && event.isApsData() /*&& !((event instanceof IMUSample) && !(((IMUSample) event).imuSampleEvent))*/)  {
                 continue;
             }
-            if (filterDVSEvents && !event.isSampleEvent()) {
+            if (filterDVSEvents && !event.isApsData()) {
                 continue;
             }
-            if (filterIMUSamples && (event instanceof IMUSample) && ((IMUSample) event).imuSampleEvent) {
+            if (filterIMUSamples && event.isImuSample()) {
                 continue; // TODO does not filter all IMU samples!!!
             }
             if (filterIMUSamples && event.isSpecial()) {

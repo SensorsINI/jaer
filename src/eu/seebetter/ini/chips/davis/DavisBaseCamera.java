@@ -31,6 +31,7 @@ import net.sf.jaer.chip.Chip;
 import net.sf.jaer.chip.RetinaExtractor;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
@@ -351,6 +352,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		public DavisEventExtractor(final DavisBaseCamera chip) {
 			super(chip);
 		}
+                
+                int lastImuTs=0; // DEBUG 
 
 		/**
 		 * extracts the meaning of the raw events.
@@ -402,13 +405,13 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 							final IMUSample possibleSample = IMUSample.constructFromAEPacketRaw(in, i, incompleteIMUSampleException);
 							i += IMUSample.SIZE_EVENTS - 1;
 							incompleteIMUSampleException = null;
-							imuSample = possibleSample; // asking for sample from AEChip now gives this value, but no
-							// Ensure IMUSamples are marked correctly as such: special, imuSampleEvent, and NOT ADC
-							imuSample.special = true;
-							imuSample.imuSampleEvent = true;
-							imuSample.adcSample = -1; // NOT an ADC sample
-							outItr.writeToNextOutput(imuSample); // also write the event out to the next output event
-							// slot
+							imuSample = possibleSample; // asking for sample from AEChip now gives this value
+                                                        ApsDvsEvent imuEvent=new ApsDvsEvent(); // this davis event holds the IMUSample
+                                                        imuEvent.setTimestamp(imuSample.getTimestampUs());
+                                                        imuEvent.setImuSample(imuSample);
+							outItr.writeToNextOutput(imuEvent); // also write the event out to the next output event
+//                                                        System.out.println("lastImu dt="+(imuSample.timestamp-lastImuTs));
+//                                                        lastImuTs=imuSample.timestamp;
 							continue;
 						}
 						catch (final IMUSample.IncompleteIMUSampleException ex) {
@@ -430,10 +433,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 						}
 					}
 
-				}
+				} // not part of IMU sample follows
 				else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_DVS) {
 					// DVS event
-					final ApsDvsEvent e = nextApsDvsEvent(outItr);
+					final ApsDvsEvent e = nextApsDvsEvent(outItr); // imu sample possibly contained here set to null by this method
 					if ((data & DavisChip.EVENT_TYPE_MASK) == DavisChip.EXTERNAL_INPUT_EVENT_ADDR) {
 						e.adcSample = -1; // TODO hack to mark as not an ADC sample
 						e.special = true; // TODO special is set here when capturing frames which will mess us up if
@@ -533,13 +536,25 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 						increaseFrameCount(1);
 					}
 				}
-			}
+			} // loop over raw packet
 
 			if ((getAutoshotThresholdEvents() > 0) && (autoshotEventsSinceLastShot > getAutoshotThresholdEvents())) {
 				takeSnapshot();
 				autoshotEventsSinceLastShot = 0;
 			}
 
+//                        // debug
+//                    Iterator i=((ApsDvsEventPacket)out).fullIterator();
+//                    while(i.hasNext()){
+//                        BasicEvent e=(BasicEvent)i.next();
+//                        if (e instanceof IMUSample) {
+//                            if (((IMUSample) e).imuSampleEvent) {
+//                                int t = ((IMUSample) e).timestamp;
+//                                System.out.println("dt IMU =" + (t - lastImuTs));
+//                                lastImuTs = t;
+//                            }
+//                        }
+//                    }
 			return out;
 		} // extractPacket
 
@@ -548,8 +563,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			final ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
 			e.special = false;
 			e.adcSample = -1;
-			if (e instanceof IMUSample) {
-				((IMUSample) e).imuSampleEvent = false;
+                        e.readoutType=ApsDvsEvent.ReadoutType.Null;
+			if (e.isImuSample()) {
+				e.setImuSample(null);
 			}
 			return e;
 		}

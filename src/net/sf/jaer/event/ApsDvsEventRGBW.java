@@ -13,7 +13,7 @@ import eu.seebetter.ini.chips.davis.imu.IMUSample;
  *
  * @author Christian
  */
-public class ApsDvsEventRGBW extends IMUSample {
+public class ApsDvsEventRGBW extends ApsDvsEvent {
 
     /** Tells for APS events whether they are under a red (R), green (G), blue (B) or white (W) colorfilter
      */

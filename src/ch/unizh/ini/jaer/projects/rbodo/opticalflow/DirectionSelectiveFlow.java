@@ -3,6 +3,7 @@ package ch.unizh.ini.jaer.projects.rbodo.opticalflow;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.orientation.ApsDvsMotionOrientationEvent;
 import net.sf.jaer.event.orientation.ApsDvsOrientationEvent;
 import net.sf.jaer.event.EventPacket;
@@ -88,7 +89,7 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
         for (Object ein : oriPacket) {
             extractEventInfo(ein);
             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
-                imuFlowEstimator.calculateImuFlow((PolarityEvent) inItr.next());
+                imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
                 setGroundTruth();
             }
             if (isInvalidAddress(searchDistance)) continue;

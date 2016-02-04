@@ -577,11 +577,11 @@ public final class NBFG256 extends AETemporalConstastRetina {
                     ApsDvsEvent e = (ApsDvsEvent) obj;
                     //eventData = "address:"+Integer.toBinaryString(e.address)+"( x: "+Integer.toString(e.x)+", y: "+Integer.toString(e.y)+"), data "+Integer.toBinaryString(e.adcSample)+" ("+Integer.toString(e.adcSample)+")";
                     //System.out.println("Event: "+eventData);
-                    if (putADCData && e.isSampleEvent()) { // hack to detect ADC sample events
+                    if (putADCData && e.isApsData()) { // hack to detect ADC sample events
                         // ADC 'event'
                         frameData.putEvent(e);
                         //log.info("put "+e.toString());
-                    } else if (!e.isSampleEvent()) {
+                    } else if (!e.isApsData()) {
                         // real AER event
                         int type = e.getType();
                         if(frameData.useDVSExtrapolation){
@@ -913,7 +913,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
         }
 
         private void putEvent(ApsDvsEvent e) {
-            if(!e.isSampleEvent()) {
+            if(!e.isApsData()) {
 				return;
 			}
             if(e.isStartOfFrame()) {

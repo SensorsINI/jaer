@@ -1,9 +1,13 @@
 package net.sf.jaer.event;
 
+import eu.seebetter.ini.chips.davis.imu.IMUSample;
+
 /**
- * This event class is used in the extractor to hold data from the sensor so
+ * This event class is used in the extractor to hold IMU data from DAVIS cameras so
  * that it can be logged to files and played back here. It adds the ADC sample
- * value. This event has the usual timestamp in us.
+ * value and IMU samples. This event has the usual timestamp in us but adds fields for the IMU sample value and IMU sample timestamp
+ * (if the event is an IMU sample) and the necessary
+ * methods to extract IMU data.
  */
 public class ApsDvsEvent extends PolarityEvent {
 
@@ -106,22 +110,35 @@ public class ApsDvsEvent extends PolarityEvent {
     public void setIsDVS(boolean isDVS) {
         if (isDVS) {
             readoutType = ReadoutType.DVS;
+        }else{
+            readoutType = ReadoutType.Null;
         }
     }
 
     /**
-     * Returns true if sample is non-negative.
+     * Returns true if this is an ADC sample from the APS stream
      *
-     * @return true if this is an ADC sample
+     * @return true if this is an ADC sample from the active pixel sensor imager output
      */
-    public boolean isSampleEvent() {
-        return (this.readoutType != ReadoutType.Null) && (this.readoutType != ReadoutType.DVS); // TODO needs check for IMU sample as well
+    public boolean isApsData() {
+        switch(this.readoutType){
+            case EOE:
+            case Null:
+            case ResetRead:
+            case SOE:
+            case SOF:
+            case EOF:
+            case SignalRead:
+                return true;
+            default:
+                return false;
+        }
     }
-
-    public boolean isAPSSample() {
-        return (readoutType == ReadoutType.SignalRead) || (readoutType == ReadoutType.SignalRead);
+    
+    public boolean isImuSample(){
+        return readoutType==ReadoutType.IMU;
     }
-
+    
     public boolean isDVSEvent() {
         return readoutType == ReadoutType.DVS;
     }
@@ -154,4 +171,25 @@ public class ApsDvsEvent extends PolarityEvent {
     public boolean isEndOfExposure() {
         return readoutType == ReadoutType.EOE;
     }
+
+    /**
+     * @return the imuSample
+     */
+    public IMUSample getImuSample() {
+        return imuSample;
+    }
+
+    /**
+     * Sets the associated IMUSample and ReadoutType.IMU. If imuSample==null, then ReadoutType is set to ReadoutType.Null
+     * @param imuSample the imuSample to set
+     */
+    public void setImuSample(IMUSample imuSample) {
+        this.imuSample = imuSample;
+        if(imuSample!=null) setReadoutType(ReadoutType.IMU); else setReadoutType(ReadoutType.Null);
+    }
+    
+    /** If this DAVIS camera event is an IMUSample then this object will be non null */
+    private IMUSample imuSample=null;
+    
+    
 }

@@ -9,8 +9,8 @@ import java.util.logging.Level;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.orientation.MotionOrientationEventInterface;
 
 /**
@@ -381,7 +381,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
         for (Object ein : in) {
             extractEventInfo(ein);
             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
-                imuFlowEstimator.calculateImuFlow((PolarityEvent) inItr.next());
+                imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
                 setGroundTruth();
             }
             if (isInvalidAddress(searchDistance + d)) continue;

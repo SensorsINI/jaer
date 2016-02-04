@@ -255,31 +255,29 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
                 ApsDvsEvent ev = (ApsDvsEvent) o;
                 switch (cameraRotationEstimator) {
                     case VORSensor:
-                        if (ev instanceof IMUSample) {
+                        if (ev.isImuSample()) {
                             // TODO hack, we mark IMUSamples in EventExtractor that are actually ApsDvsEvent as non-special so we can detect them here
 //                            System.outputPacket.println("at position "+i+" got "+ev);
-                            IMUSample s = (IMUSample) ev; // because of imuLagMs this IMU sample should actually be applied to samples from the past
+                            IMUSample s = ev.getImuSample(); // because of imuLagMs this IMU sample should actually be applied to samples from the past
                             // to achieve this backwards application of the IMU samples we hold the older events in a FIFO and pop events from the FIFO until 
                             // the event timestamp catches up to the current IMUSample timestamp - imuLagMs.
 
-                            if (s.imuSampleEvent) {
-                                lastTransform = updateTransform(s);
-                                if (transformImageEnabled && lastTransform != null && chip instanceof DavisChip && chip.getAeViewer() != null && chip.getCanvas() != null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA) {
-                                    DavisChip apsDvsChip = (DavisChip) chip;
-                                    int frameStartTimestamp = apsDvsChip.getFrameExposureStartTimestampUs();
-                                    int frameEndTimestamp = apsDvsChip.getFrameExposureEndTimestampUs();
-                                    int frameCounter = apsDvsChip.getFrameCount();
-                                    if (frameEndTimestamp >= frameStartTimestamp && lastTransform.timestamp >= frameEndTimestamp && frameCounter > lastFrameNumber) {
-                                        // if a frame has been read outputPacket, then save the last transform to apply to rendering this frame
-                                        imageTransform = lastTransform;
-                                        lastFrameNumber = frameCounter; // only set transfrom once per frame, as soon as we have a tranform for it.
-                                        ChipRendererDisplayMethodRGBA displayMethod = (ChipRendererDisplayMethodRGBA) chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
-                                        displayMethod.setImageTransform(lastTransform.translationPixels, lastTransform.rotationRad);
-                                        // immediately set this to be the transform, assuming that next rendering cycle will draw this new frame
-                                    }
+                            lastTransform = updateTransform(s);
+                            if (transformImageEnabled && lastTransform != null && chip instanceof DavisChip && chip.getAeViewer() != null && chip.getCanvas() != null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA) {
+                                DavisChip apsDvsChip = (DavisChip) chip;
+                                int frameStartTimestamp = apsDvsChip.getFrameExposureStartTimestampUs();
+                                int frameEndTimestamp = apsDvsChip.getFrameExposureEndTimestampUs();
+                                int frameCounter = apsDvsChip.getFrameCount();
+                                if (frameEndTimestamp >= frameStartTimestamp && lastTransform.timestamp >= frameEndTimestamp && frameCounter > lastFrameNumber) {
+                                    // if a frame has been read outputPacket, then save the last transform to apply to rendering this frame
+                                    imageTransform = lastTransform;
+                                    lastFrameNumber = frameCounter; // only set transfrom once per frame, as soon as we have a tranform for it.
+                                    ChipRendererDisplayMethodRGBA displayMethod = (ChipRendererDisplayMethodRGBA) chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
+                                    displayMethod.setImageTransform(lastTransform.translationPixels, lastTransform.rotationRad);
+                                    // immediately set this to be the transform, assuming that next rendering cycle will draw this new frame
                                 }
-                                continue; // next event
                             }
+                            continue; // next event
                         }
 
                         break;
@@ -293,7 +291,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
                 while ((be = peekEvent()) != null && (be.timestamp <= ev.timestamp - imuLagMs * 1000 || be.timestamp > ev.timestamp)) {
                     be = popEvent();
 //                    System.outputPacket.print("<");
-                    if (!(be instanceof IMUSample)) {
+                    if (!(be.isImuSample())) {
                         if (lastTransform != null) {
 
                             // apply transform Re+T. First center events from middle of array at 0,0, then transform, then move them back to their origin

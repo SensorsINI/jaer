@@ -98,7 +98,7 @@ public class ApsDvsOrientationFilter extends AbstractOrientationFilter{
         for ( Object ein:in ){
             PolarityEvent e = (PolarityEvent)ein;
             
-            if(e.isSpecial() || (e instanceof IMUSample && ((IMUSample)e).imuSampleEvent)){
+            if(e.isSpecial() || (e instanceof ApsDvsEvent && ((ApsDvsEvent)e).isImuSample())){
                 continue;
             }
             

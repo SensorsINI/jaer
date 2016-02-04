@@ -93,7 +93,7 @@ public class Davis128Renderer extends AEFrameChipRenderer {
 				continue;
 			}
 			final int type = e.getType();
-			final boolean isAdcSampleFlag = e.isSampleEvent();
+			final boolean isAdcSampleFlag = e.isApsData();
 			if (!isAdcSampleFlag) {
 				if (displayEvents) {
 					if ((xsel >= 0) && (ysel >= 0)) { // find correct mouse pixel interpretation to make sounds for
