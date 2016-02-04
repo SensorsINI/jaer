@@ -5,6 +5,7 @@
  */
 package net.sf.jaer.eventio;
 
+import ch.unizh.ini.jaer.chip.retina.DVS128;
 import java.awt.Point;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
@@ -23,6 +24,7 @@ import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
 
 /**
  * This class parses the buffer from the data files or network streams containing jAER 3.0
@@ -611,6 +613,20 @@ public class Jaer3BufferParser {
             final EventType[] etypes = in.getEventtypes();
             final int[] pixelDatas = in.getPixelDataArray();
             final OutputEventIterator outItr = out.outputIterator();
+            
+            // if both pixelDatas and etypes are null, it means this function is called by extractPacket in AEViewer.viewLoop, we should restore the default extractor 
+            if(pixelDatas == null && etypes == null) {
+                try {
+                    Class<?> c = chip.getClass();
+                    AEChip tmpChip = (AEChip)c.newInstance();                    
+                    this.chip.setEventExtractor(tmpChip.getEventExtractor());  // Restore the default extractor
+                    return chip.getEventExtractor().extractPacket(in);
+                } catch (InstantiationException ex) {
+                    Logger.getLogger(Jaer3BufferParser.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (IllegalAccessException ex) {
+                    Logger.getLogger(Jaer3BufferParser.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
             // NOTE we must make sure we write ApsDvsEvents when we want them, not reuse the IMUSamples
 
             // at this point the raw data from the USB IN packet has already been digested to extract timestamps,
@@ -628,6 +644,10 @@ public class Jaer3BufferParser {
                                 readDVS(outItr, addr, timestamps[i]);
                                 break;
                             case FrameEvent:
+                                if(chip instanceof DVS128) {     // DVS128 can't display frame event, we should ignore it.
+                                    // log.warning("DVS128 don't support 3.0 frame events output, please change to chips which support frame events.");
+                                    break;
+                                }
                                 readFrame(outItr, addr, data, timestamps[i]);
                                 break;
                             case SampleEvent:
@@ -665,11 +685,16 @@ public class Jaer3BufferParser {
                 return e;
         }
 
+        protected PolarityEvent nextPolEvent(final OutputEventIterator outItr) {
+                final PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+                e.special = false;
+                return e;
+        }
+        
         protected void readDVS(final OutputEventIterator outItr, final int data, final int timestamp) {
             final int sx1 = chip.getSizeX() - 1;
-            final ApsDvsEvent e = nextApsDvsEvent(outItr);
+            final PolarityEvent e = nextPolEvent(outItr);
 
-            e.adcSample = -1; // TODO hack to mark as not an ADC sample
             e.special = false;
             e.address = data;
             e.timestamp = timestamp;
@@ -677,8 +702,6 @@ public class Jaer3BufferParser {
             e.type = 0;
             e.x = (short) (sx1 - ((data & JAER3XMASK) >>> JAER3XSHIFT));
             e.y = (short) ((data & JAER3YMASK) >>> JAER3YSHIFT);
-
-            e.setIsDVS(true);
 
             // autoshot triggering
             autoshotEventsSinceLastShot++; // number DVS events captured here
