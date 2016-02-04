@@ -5,7 +5,6 @@
  */
 package net.sf.jaer.eventio;
 
-import ch.unizh.ini.jaer.chip.retina.DVS128;
 import java.awt.Point;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
@@ -595,7 +594,7 @@ public class Jaer3BufferParser {
         @Override
         synchronized public EventPacket extractPacket(final AEPacketRaw in) {
             if (out == null) {
-                out = new ApsDvsEventPacket(chip.getEventClass());
+                out = new ApsDvsEventPacket(ApsDvsEvent.class);
             }
             else {
                     out.clear();
@@ -643,11 +642,7 @@ public class Jaer3BufferParser {
                             case PolarityEvent:
                                 readDVS(outItr, addr, timestamps[i]);
                                 break;
-                            case FrameEvent:
-                                if(chip instanceof DVS128) {     // DVS128 can't display frame event, we should ignore it.
-                                    // log.warning("DVS128 don't support 3.0 frame events output, please change to chips which support frame events.");
-                                    break;
-                                }
+                            case FrameEvent:  
                                 readFrame(outItr, addr, data, timestamps[i]);
                                 break;
                             case SampleEvent:
@@ -685,16 +680,12 @@ public class Jaer3BufferParser {
                 return e;
         }
 
-        protected PolarityEvent nextPolEvent(final OutputEventIterator outItr) {
-                final PolarityEvent e = (PolarityEvent) outItr.nextOutput();
-                e.special = false;
-                return e;
-        }
         
         protected void readDVS(final OutputEventIterator outItr, final int data, final int timestamp) {
             final int sx1 = chip.getSizeX() - 1;
-            final PolarityEvent e = nextPolEvent(outItr);
+            final ApsDvsEvent e = nextApsDvsEvent(outItr);
 
+            e.adcSample = -1;
             e.special = false;
             e.address = data;
             e.timestamp = timestamp;
@@ -703,6 +694,7 @@ public class Jaer3BufferParser {
             e.x = (short) (sx1 - ((data & JAER3XMASK) >>> JAER3XSHIFT));
             e.y = (short) ((data & JAER3YMASK) >>> JAER3YSHIFT);
 
+            
             // autoshot triggering
             autoshotEventsSinceLastShot++; // number DVS events captured here
         }
