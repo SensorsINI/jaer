@@ -524,7 +524,7 @@ public class Jaer3BufferParser {
 
                 numEvents += xlength * ylength * (pkt.pktHeader.eventValid);
             }
-            pkt = getNextPkt(pkt.pktPosition + 1);
+            pkt = getNextPkt(pkt.pktPosition + (pkt.pktHeader.eventNumber) * (pkt.pktHeader.eventSize));
         }
         return numEvents;
     }
