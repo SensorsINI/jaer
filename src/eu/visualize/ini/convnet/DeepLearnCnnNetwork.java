@@ -18,6 +18,7 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GL2ES3;
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.Random;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
@@ -26,6 +27,7 @@ import javax.swing.JPanel;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.util.EngineeringFormat;
+import org.w3c.dom.DOMException;
 
 /**
  * Simple convolutional neural network (CNN) data structure to hold CNN from
@@ -96,8 +98,8 @@ public class DeepLearnCnnNetwork {
     private boolean printActivations = false;
     private boolean printWeights = false;
     protected boolean lastInputTypeProcessedWasApsFrame = false;
-    private int operationCounter=0; // counter for ops during update
-    private long startProcessingTimeNs=0;
+    private int operationCounter = 0; // counter for ops during update
+    private long startProcessingTimeNs = 0;
     private long processingTimeNs;
 
     /**
@@ -161,8 +163,8 @@ public class DeepLearnCnnNetwork {
 
     // single point of entry for processing
     private float[] processLayers() {
-        operationCounter=0;
-        startProcessingTimeNs=System.nanoTime();
+        operationCounter = 0;
+        startProcessingTimeNs = System.nanoTime();
         for (int i = 1; i < nLayers; i++) { // skip input layer, whose activations are computed by reading in frame and downsampling it
             layers[i].compute(layers[i - 1]);
         }
@@ -174,7 +176,7 @@ public class DeepLearnCnnNetwork {
         if (isPrintWeights()) {
             printWeights();
         }
-        processingTimeNs=System.nanoTime()-startProcessingTimeNs;
+        processingTimeNs = System.nanoTime() - startProcessingTimeNs;
         return outputLayer.activations;
     }
 
@@ -210,12 +212,12 @@ public class DeepLearnCnnNetwork {
             outputLayer.printActivations();
         }
     }
-    
-    EngineeringFormat engFmt=new EngineeringFormat();
-    
-    public void printPerformance(){
-          System.out.println("\n\n\n****************************************************\nActivations");
-          System.out.println(getPerformanceString());
+
+    EngineeringFormat engFmt = new EngineeringFormat();
+
+    public void printPerformance() {
+        System.out.println("\n\n\n****************************************************\nActivations");
+        System.out.println(getPerformanceString());
     }
 
     public void printWeights() {
@@ -303,13 +305,14 @@ public class DeepLearnCnnNetwork {
         this.lastInputTypeProcessedWasApsFrame = lastInputTypeProcessedWasApsFrame;
     }
 
-    /** Return a string representaiton of the cost of computing the network
-     * 
+    /**
+     * Return a string representaiton of the cost of computing the network
+     *
      * @return %d operations in %d ns: %s ops/sec
      */
     public String getPerformanceString() {
         return String.format("%d operations in %d ns: %s ops/sec",
-                  operationCounter,processingTimeNs,engFmt.format((float)operationCounter/(1e-9f*processingTimeNs)));
+                operationCounter, processingTimeNs, engFmt.format((float) operationCounter / (1e-9f * processingTimeNs)));
     }
 
     abstract public class Layer {
@@ -396,6 +399,14 @@ public class DeepLearnCnnNetwork {
         return (float) (1.0 / (1.0 + Math.exp(-v)));
     }
 
+    private float relu(float v) {
+        if (v <= 0) {
+            return 0;
+        } else {
+            return v;
+        }
+    }
+
     /**
      * Represents input to network; computes the sub/down sampled input from
      * image activationsFrame. Order of entries in activations is the same as in
@@ -457,7 +468,7 @@ public class DeepLearnCnnNetwork {
                     }
                     activations[o(dimy - yo - 1, xo)] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
                     xo++;
-                    operationCounter+=4;
+                    operationCounter += 4;
                 }
                 yo++;
             }
@@ -638,7 +649,7 @@ public class DeepLearnCnnNetwork {
             for (float f : activations) {
                 sum += f;
                 sum2 += (f * f);
-                operationCounter+=4;
+                operationCounter += 4;
             }
             float m = sum / n;
             float var = (sum2 / n) - (m * m);
@@ -648,10 +659,18 @@ public class DeepLearnCnnNetwork {
             float r = (float) (1 / Math.sqrt(var));
             for (int i = 0; i < n; i++) {
                 activations[i] = r * (activations[i] - m);
-                operationCounter+=2;
+                operationCounter += 2;
             }
         }
     }
+
+    /**
+     * The allowed activation functions for the CNN convolutional and final
+     * layers
+     */
+    public enum ActivationFunction {
+        Sigmoid, ReLu
+    };
 
     /**
      * A convolutional layer. Does this operation:
@@ -678,6 +697,8 @@ public class DeepLearnCnnNetwork {
      *
      * Note that for each of I input maps there are O kernels corresponding the the O output maps. Therefore there are I*O kernels.
      *
+     * The activation function is selectable to either Sigmoid or ReLu
+     *
      */
     public class ConvLayer extends Layer {
 
@@ -697,6 +718,8 @@ public class DeepLearnCnnNetwork {
         private int activationsLength;
         private ImageDisplay[] activationDisplays = null;
         private ImageDisplay[][] kernelDisplays = null;
+
+        private ActivationFunction activationFunction = ActivationFunction.Sigmoid;
 
         public ConvLayer(int index) {
             super(index);
@@ -851,7 +874,7 @@ public class DeepLearnCnnNetwork {
 //                    sum += 1;
 //                    sum += input.a(inputMap, inx, iny);
                     sum += kernels[k(inputMap, outputMap, kernelDim - xx - 1, kernelDim - yy - 1)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
-                    operationCounter+=2;
+                    operationCounter += 2;
 //                    iny++;
 //                    nterms++;
                 }
@@ -869,8 +892,14 @@ public class DeepLearnCnnNetwork {
                 for (int x = 0; x < outputMapDim; x++) {
                     for (int y = 0; y < outputMapDim; y++) {
                         int idx = o(b, x, y);
-                        activations[idx] = sigm(activations[idx] + biases[b]);
-                        operationCounter+=2;
+                        switch (activationFunction) {
+                            case Sigmoid:
+                                activations[idx] = sigm(activations[idx] + biases[b]);
+                                break;
+                            case ReLu:
+                                activations[idx] = relu(activations[idx] + biases[b]);
+                        }
+                        operationCounter += 2;
                     }
                 }
             }
@@ -976,6 +1005,20 @@ public class DeepLearnCnnNetwork {
         @Override
         public float a(int map, int x, int y) {
             return activations[o(map, x, y)];
+        }
+
+        /**
+         * @return the activationFunction
+         */
+        public ActivationFunction getActivationFunction() {
+            return activationFunction;
+        }
+
+        /**
+         * @param activationFunction the activationFunction to set
+         */
+        public void setActivationFunction(ActivationFunction activationFunction) {
+            this.activationFunction = activationFunction;
         }
 
     }
@@ -1131,7 +1174,7 @@ public class DeepLearnCnnNetwork {
                 for (int w = 0; w < input.activations.length; w++) {
                     activations[unit] += input.activations[aidx] * weight(unit, biases.length, w);
                     aidx++; // the input activations are stored in the feature maps of last layer, column, row, map order
-                    operationCounter+=2;
+                    operationCounter += 2;
                 }
                 aidx = 0;
             }
@@ -1139,7 +1182,7 @@ public class DeepLearnCnnNetwork {
             maxActivation = Float.NEGATIVE_INFINITY;
             for (int unit = 0; unit < biases.length; unit++) {
                 activations[unit] = sigm(activations[unit] + biases[unit]);
-                operationCounter+=2;
+                operationCounter += 2;
                 if (activations[unit] > maxActivation) {
                     maxActivatedUnit = unit;
                     maxActivation = activations[unit];
@@ -1305,6 +1348,18 @@ public class DeepLearnCnnNetwork {
                         l.kernelDim = layerReader.getInt("kernelSize");
                         l.biases = layerReader.getBase64FloatArr("biases");
                         l.kernels = layerReader.getBase64FloatArr("kernels");
+                        try{
+                            String af=layerReader.getRaw("activationFunction");
+                            if(af.equalsIgnoreCase("sigmoid")){
+                                l.activationFunction=ActivationFunction.Sigmoid;
+                            }else if(af.equalsIgnoreCase("relu")){
+                                l.activationFunction=ActivationFunction.ReLu;
+                            }else{
+                                log.warning("unknown conv layer activation function "+af+" in "+layerReader.toString());
+                            }
+                        }catch(DOMException e){
+                            log.warning("Caught "+e.toString()+" while parsing convolutional layer");
+                        }
                         l.initializeConstants();
                     }
                     break;
