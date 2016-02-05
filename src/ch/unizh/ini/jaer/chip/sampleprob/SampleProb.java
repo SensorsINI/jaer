@@ -404,6 +404,11 @@ public class SampleProb extends CochleaChip implements Observer {
 				open();
 			}
 
+			for (final AbstractConfigValue spiCfg : allPreferencesList) {
+				spiCfg.setChanged();
+				spiCfg.notifyObservers();
+			}
+
 			for (final Pot iPot : ipots.getPots()) {
 				iPot.setChanged();
 				iPot.notifyObservers();
@@ -412,11 +417,6 @@ public class SampleProb extends CochleaChip implements Observer {
 			for (final Pot vPot : vpots.getPots()) {
 				vPot.setChanged();
 				vPot.notifyObservers();
-			}
-
-			for (final AbstractConfigValue spiCfg : allPreferencesList) {
-				spiCfg.setChanged();
-				spiCfg.notifyObservers();
 			}
 		}
 	}

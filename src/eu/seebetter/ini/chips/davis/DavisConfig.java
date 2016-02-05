@@ -852,7 +852,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 	 */
 	@Override
 	public synchronized void update(final Observable observable, final Object object) {
-		if (getHardwareInterface() != null && getHardwareInterface() instanceof CypressFX3) {
+		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
 			final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
 
 			try {
@@ -899,6 +899,11 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 			open();
 		}
 
+		for (final SPIConfigValue spiCfg : allPreferencesList) {
+			spiCfg.setChanged();
+			spiCfg.notifyObservers();
+		}
+
 		for (final ShiftedSourceBiasCF sSrc : ssBiases) {
 			sSrc.setChanged();
 			sSrc.notifyObservers();
@@ -907,11 +912,6 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		for (final Pot iPot : ipots.getPots()) {
 			iPot.setChanged();
 			iPot.notifyObservers();
-		}
-
-		for (final SPIConfigValue spiCfg : allPreferencesList) {
-			spiCfg.setChanged();
-			spiCfg.notifyObservers();
 		}
 	}
 
