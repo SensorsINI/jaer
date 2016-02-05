@@ -694,7 +694,7 @@ public class Jaer3BufferParser {
             e.x = (short) (sx1 - ((data & JAER3XMASK) >>> JAER3XSHIFT));
             e.y = (short) ((data & JAER3YMASK) >>> JAER3YSHIFT);
 
-            
+            e.setIsDVS(true);      // This function must be set, or the DVS events will not be displayed.
             // autoshot triggering
             autoshotEventsSinceLastShot++; // number DVS events captured here
         }

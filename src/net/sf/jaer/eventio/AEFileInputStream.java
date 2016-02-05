@@ -411,7 +411,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //                log.info(e.toString());
 //                getSupport().firePropertyChange(AEInputStream.EVENT_WRAPPED_TIME,e.getPreviousTimestamp(),e.getCurrentTimestamp());
             }
-            if (enableTimeWrappingExceptionsChecking && (ts < mostRecentTimestamp)) {
+            if (enableTimeWrappingExceptionsChecking && (ts < mostRecentTimestamp) && (etype != EventType.FrameEvent)) {  // FrameEvent usually have the nonMonotonicTs, so we don't check them
                 if(jaer3EnableFlg) {
                     log.log(Level.INFO, "The current packet file position is {0} and current file position is {1}", new Object[]{jaer3BufferParser.getCurrentPktPos(), byteBuffer.position()});  
                 }
