@@ -669,7 +669,15 @@ public class DeepLearnCnnNetwork {
      * layers
      */
     public enum ActivationFunction {
-        Sigmoid, ReLu
+        Sigmoid, ReLu, Undefined;
+    };
+
+    /**
+     * The allowed activation functions for the CNN convolutional and final
+     * layers
+     */
+    public enum PoolingType {
+        Average, Max, Undefined
     };
 
     /**
@@ -719,7 +727,7 @@ public class DeepLearnCnnNetwork {
         private ImageDisplay[] activationDisplays = null;
         private ImageDisplay[][] kernelDisplays = null;
 
-        private ActivationFunction activationFunction = ActivationFunction.Sigmoid;
+        private ActivationFunction activationFunction = ActivationFunction.Sigmoid; // default is the sigmoid, the only choice in DeepLearnToolbox
 
         public ConvLayer(int index) {
             super(index);
@@ -727,8 +735,8 @@ public class DeepLearnCnnNetwork {
 
         @Override
         public String toString() {
-            return String.format("index=%d CNN   layer; nInputMaps=%d nOutputMaps=%d kernelSize=%d biases=float[%d] kernels=float[%d]",
-                    index, nInputMaps, nOutputMaps, kernelDim, biases == null ? 0 : biases.length, kernels == null ? 0 : kernels.length);
+            return String.format("index=%d CNN   layer; nInputMaps=%d nOutputMaps=%d kernelSize=%d biases=float[%d] kernels=float[%d] activationFunction=%s",
+                    index, nInputMaps, nOutputMaps, kernelDim, biases == null ? 0 : biases.length, kernels == null ? 0 : kernels.length, activationFunction.toString());
         }
 
         @Override
@@ -898,6 +906,9 @@ public class DeepLearnCnnNetwork {
                                 break;
                             case ReLu:
                                 activations[idx] = relu(activations[idx] + biases[b]);
+                                break;
+                            default:
+                                log.warning("activation type undefined; please set actvation type for all convolutional layers");
                         }
                         operationCounter += 2;
                     }
@@ -1032,6 +1043,7 @@ public class DeepLearnCnnNetwork {
         int nOutputMaps;
         private int activationsLength;
         ImageDisplay[] activationDisplays = null;
+        private PoolingType poolingType = PoolingType.Undefined;
 
         public SubsamplingLayer(int index) {
             super(index);
@@ -1072,7 +1084,7 @@ public class DeepLearnCnnNetwork {
                         // debug
                         int idx = o(map, xo, yo);
                         if (idx >= activations.length) {
-                            log.warning("overrun output activations");
+                            log.warning("overran this pooling layer's output activations");
                         }
                         activations[o(map, xo, yo)] = s * averageOverMultiplier;  //average
                     }
@@ -1118,13 +1130,27 @@ public class DeepLearnCnnNetwork {
 
         @Override
         public String toString() {
-            return String.format("index=%d Subsamp layer; averageOver=%d biases=float[%d]",
-                    index, averageOverDim, biases == null ? 0 : biases.length);
+            return String.format("index=%d Subsamp layer; averageOver=%d biases=float[%d] poolingType=%s",
+                    index, averageOverDim, biases == null ? 0 : biases.length, poolingType.toString());
         }
 
         @Override
         public float a(int map, int x, int y) {
             return activations[o(map, x, y)];
+        }
+
+        /**
+         * @return the poolingType
+         */
+        public PoolingType getPoolingType() {
+            return poolingType;
+        }
+
+        /**
+         * @param poolingType the poolingType to set
+         */
+        public void setPoolingType(PoolingType poolingType) {
+            this.poolingType = poolingType;
         }
     }
 
@@ -1348,17 +1374,17 @@ public class DeepLearnCnnNetwork {
                         l.kernelDim = layerReader.getInt("kernelSize");
                         l.biases = layerReader.getBase64FloatArr("biases");
                         l.kernels = layerReader.getBase64FloatArr("kernels");
-                        try{
-                            String af=layerReader.getRaw("activationFunction");
-                            if(af.equalsIgnoreCase("sigmoid")){
-                                l.activationFunction=ActivationFunction.Sigmoid;
-                            }else if(af.equalsIgnoreCase("relu")){
-                                l.activationFunction=ActivationFunction.ReLu;
-                            }else{
-                                log.warning("unknown conv layer activation function "+af+" in "+layerReader.toString());
+                        try {
+                            String af = layerReader.getRaw("activationFunction");
+                            if (af.equalsIgnoreCase("sigmoid")) {
+                                l.activationFunction = ActivationFunction.Sigmoid;
+                            } else if (af.equalsIgnoreCase("relu")) {
+                                l.activationFunction = ActivationFunction.ReLu;
+                            } else {
+                                log.warning("unknown conv layer activation function " + af + " in " + layerReader.toString());
                             }
-                        }catch(DOMException e){
-                            log.warning("Caught "+e.toString()+" while parsing convolutional layer");
+                        } catch (NullPointerException e) {
+                            log.warning("Caught " + e.toString() + " while parsing for activationFunction in convolutional layer; probably none defined and so using default sigmoid activation function");
                         }
                         l.initializeConstants();
                     }
@@ -1368,7 +1394,18 @@ public class DeepLearnCnnNetwork {
                         layers[index] = l;
                         l.averageOverDim = layerReader.getInt("averageOver");
                         l.biases = layerReader.getBase64FloatArr("biases");
-
+                        try {
+                            String af = layerReader.getRaw("poolingtype");
+                            if (af.equalsIgnoreCase("average")) {
+                                l.setPoolingType(PoolingType.Average);
+                            } else if (af.equalsIgnoreCase("max")) {
+                                l.setPoolingType(PoolingType.Max);
+                            } else {
+                                log.warning("unknown pooling layer pooling type (max or average) " + af + " in " + layerReader.toString());
+                            }
+                        } catch (NullPointerException e) {
+                            log.warning("Caught " + e.toString() + " while parsing pooling layer for poolingtype; probably none defined and so using default of averaging pooling");
+                        }
                     }
                     break;
                 }
