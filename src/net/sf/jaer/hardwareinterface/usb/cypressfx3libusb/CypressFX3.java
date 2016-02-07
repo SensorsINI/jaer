@@ -1362,7 +1362,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			LibUsb.getDeviceDescriptor(device, deviceDescriptor);
 		}
 
-		if (isBlankDevice()) {
+		if (isBlankDevice()) {  // TODO throws null pointer exception if deviceDescriptor is not obtained above, which tobi has seen occur
 			CypressFX3.log.warning("open(): blank device detected, downloading preferred firmware");
 
 			isOpened = true;
