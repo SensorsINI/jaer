@@ -227,6 +227,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             log.warning("null packet to render");
             return;
         }
+
+        if (packet.isEmpty()) {
+            return;
+        }
         boolean dirty = false;
         if (packet.getLastTimestamp() != previousLasttimestamp) {
             dirty = true;
@@ -250,6 +254,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 newTimeWindowUs = chip.getAeViewer().getAePlayer().getTimesliceUs() * (1 << colorScale);
             } else {
                 newTimeWindowUs = 100000;
+            }
+            if (newTimeWindowUs < 100) {
+                newTimeWindowUs = 100; // tobi - don't let time get too short for window
             }
             if (newTimeWindowUs != timeWindowUs) {
                 regenerateAxesDisplayList = true;
@@ -278,7 +285,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             eventVertexBuffer.flip();
             checkGLError(gl, "set uniform t0 and t1");
         }
-        renderEvents(gl, drawable, eventVertexBuffer, eventList.size(), 1e-6f * timeWindowUs, smax * aspectRatio);
+        renderEvents(gl, drawable, eventVertexBuffer, eventVertexBuffer.limit(), 1e-6f * timeWindowUs, smax * aspectRatio);
     }
 
     private void addEventsToEventList(final EventPacket<BasicEvent> packet) {
@@ -315,7 +322,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             glu = new GLU();
         }
 
-        final float modelScale = 1f / 2; // evertthing is drawn at this scale
+        final float modelScale = 1f / 2; // everything is drawn at this scale
         if (regenerateAxesDisplayList) {
             regenerateAxesDisplayList = false;
             if (axesDisplayListId > 0) {
