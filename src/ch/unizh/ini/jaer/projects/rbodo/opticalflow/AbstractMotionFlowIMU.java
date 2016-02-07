@@ -161,6 +161,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     protected int outlierMotionFilteringMinSameAngleInNeighborhood = getInt("outlierMotionFilteringMinSameAngleInNeighborhood", 2);
     protected int[][] outlierMotionFilteringLastAngles = null;
 
+    private static final float GLOBAL_MOTION_DRAWING_SCALE = 5;
+
     /**
      * Used for logging motion vector events to a text log file
      */
@@ -190,9 +192,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip("measureAccuracy", "<html> Writes a txt file with various motion statistics, by comparing the ground truth <br>(either estimated online using an embedded IMUFlow or loaded from file) <br> with the measured optical flow events.  <br>This measurment function is called for every event to assign the local ground truth<br> (vxGT,vyGT) at location (x,y) a value from the imported ground truth field (vxGTframe,vyGTframe).");
         setPropertyTooltip("measureProcessingTime", "writes a text file with timestamp filename with the packet's mean processing time of an event. Processing time is also logged to console.");
         setPropertyTooltip("loggingFolder", "directory to store logged data files");
-        setPropertyTooltip(disp, "ppsScale", "scale of pixels per second to draw local and global motion vectors");
+        setPropertyTooltip(disp, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of "+GLOBAL_MOTION_DRAWING_SCALE);
         setPropertyTooltip(disp, "showVectorsEnabled", "shows local motion vectors");
-        setPropertyTooltip(disp, "measureGlobalMotion", "shows global tranlational, rotational, and expansive motion");
+        setPropertyTooltip(disp, "measureGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * "+GLOBAL_MOTION_DRAWING_SCALE+" pixels/second per chip pixel");
         setPropertyTooltip(disp, "showRawInputEnabled", "shows the input events, instead of the motion types");
         setPropertyTooltip(disp, "xMin", "events with x-coordinate below this are filtered out.");
         setPropertyTooltip(disp, "xMax", "events with x-coordinate above this are filtered out.");
@@ -481,7 +483,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
          */
         protected void calculateImuFlow(ApsDvsEvent pe) {
             if (pe.isImuSample()) {
-                    updateTransform(pe.getImuSample());
+                updateTransform(pe.getImuSample());
             }
             if (dtS == 0) {
                 dtS = 1;
@@ -538,7 +540,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         imuFlowEstimator.reset();
         exportedFlowToMatlab = false;
         allocateMap();
-        if ("DirectionSelectiveFlow".equals(filterClassName)) {
+        if ("DirectionSelectiveFlow".equals(filterClassName) && getEnclosedFilter()!=null) {
             getEnclosedFilter().resetFilter();
         }
     }
@@ -561,14 +563,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     resetFilter();
                     break;
                 case AEInputStream.EVENT_REWIND:
-                    log.info(evt.toString()+": resetting filter after printing collected statistics if measurement enabled");
+                    log.info(evt.toString() + ": resetting filter after printing collected statistics if measurement enabled");
                     if (measureAccuracy || measureProcessingTime) {
                         doPrintStatistics();
                     }
                     resetFilter();
                     break;
                 case AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP:
-                    log.info(evt.toString()+": resetting filter after printing collected statistics if measurement enabled");
+                    log.info(evt.toString() + ": resetting filter after printing collected statistics if measurement enabled");
                     if (measureAccuracy || measureProcessingTime) {
                         doPrintStatistics();
                     }
@@ -623,10 +625,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             DrawGL.drawVector(gl, sizex / 2, sizey / 2,
                     motionFlowStatistics.globalMotion.meanGlobalVx,
                     motionFlowStatistics.globalMotion.meanGlobalVy,
-                    4, ppsScale);
+                    4, ppsScale * GLOBAL_MOTION_DRAWING_SCALE);
             gl.glRasterPos2i(2, 10);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("glob. speed=%.2f ", Math.sqrt(
+                    String.format("glob. speed=%.2f pps ", Math.sqrt(
                             Math.pow(motionFlowStatistics.globalMotion.meanGlobalVx, 2)
                             + Math.pow(motionFlowStatistics.globalMotion.meanGlobalVy, 2))));
             gl.glPopMatrix();
@@ -634,14 +636,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             // Draw global rotation vector as line left/right
             gl.glPushMatrix();
             DrawGL.drawLine(gl, sizex / 2, sizey * 3 / 4, -motionFlowStatistics.globalMotion.meanGlobalRotation,
-                    0, ppsScale * chip.getMaxSize());
+                    0, ppsScale * GLOBAL_MOTION_DRAWING_SCALE);
             gl.glPopMatrix();
 
             // Draw global expansion as circle with radius proportional to 
             // expansion metric, smaller for contraction, larger for expansion
             gl.glPushMatrix();
-            DrawGL.drawCircle(gl, sizex / 2, sizey / 2, ppsScale * chip.getMaxSize()
-                    * (1 + motionFlowStatistics.globalMotion.meanGlobalExpansion) / 4, 15);
+            DrawGL.drawCircle(gl, sizex / 2, sizey / 2, ppsScale * GLOBAL_MOTION_DRAWING_SCALE
+                    * (1 + motionFlowStatistics.globalMotion.meanGlobalExpansion), 15);
             gl.glPopMatrix();
         }
 
@@ -738,7 +740,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         lastTs = lastTimesMap[x][y][type];
         lastTimesMap[x][y][type] = ts;
         if (ts < lastTs) {
-            log.warning(String.format("invalid timestamp ts=%d < lastTs=%d, resetting filter",ts,lastTs));
+            log.warning(String.format("invalid timestamp ts=%d < lastTs=%d, resetting filter", ts, lastTs));
             resetFilter(); // For NonMonotonicTimeException.
         }
         return ts < lastTs + refractoryPeriodUs;
@@ -799,7 +801,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         imuFlowEstimator.rollCalibrator.reset();
         if (measureAccuracy) {
             log.info("IMU calibration started");
-        } else{
+        } else {
             log.warning("IMU calibration flagged, but will not start until measureAccuracy is selected");
         }
     }
@@ -918,7 +920,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 //        putFloat("discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg", discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg);
 //    }
     // </editor-fold>
-    
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --discardOutliersForStatisticalMeasurementEnabled--">
 //    public boolean getDiscardOutliersEnabled() {
 //        return this.discardOutliersForStatisticalMeasurementEnabled;
@@ -930,7 +931,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 //        putBoolean("discardOutliersForStatisticalMeasurementEnabled", discardOutliersForStatisticalMeasurementEnabled);
 //    }
     // </editor-fold>
-
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --loggingFolder--">
     public String getLoggingFolder() {
         return loggingFolder;
