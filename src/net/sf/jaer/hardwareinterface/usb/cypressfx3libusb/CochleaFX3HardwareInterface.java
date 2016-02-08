@@ -13,6 +13,7 @@ import java.nio.ShortBuffer;
 
 import org.usb4java.Device;
 
+import ch.unizh.ini.jaer.chip.cochlea.CochleaLP;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -28,6 +29,13 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 
 	protected CochleaFX3HardwareInterface(final Device device) {
 		super(device);
+	}
+
+	@Override
+	synchronized public void sendConfiguration(final net.sf.jaer.biasgen.Biasgen biasgen) throws HardwareInterfaceException {
+		if ((biasgen != null) && (biasgen instanceof CochleaLP.Biasgen)) {
+			((CochleaLP.Biasgen) biasgen).sendConfiguration();
+		}
 	}
 
 	/**

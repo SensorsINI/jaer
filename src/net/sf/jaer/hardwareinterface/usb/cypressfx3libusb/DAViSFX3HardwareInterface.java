@@ -15,6 +15,7 @@ import java.util.Arrays;
 import org.usb4java.Device;
 
 import eu.seebetter.ini.chips.DavisChip;
+import eu.seebetter.ini.chips.davis.DavisConfig;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -30,6 +31,13 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 	protected DAViSFX3HardwareInterface(final Device device) {
 		super(device);
+	}
+
+	@Override
+	synchronized public void sendConfiguration(final net.sf.jaer.biasgen.Biasgen biasgen) throws HardwareInterfaceException {
+		if ((biasgen != null) && (biasgen instanceof DavisConfig)) {
+			((DavisConfig) biasgen).sendConfiguration();
+		}
 	}
 
 	/** The USB product ID of this device */
