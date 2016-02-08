@@ -4,6 +4,7 @@ import javax.swing.JOptionPane;
 
 import org.usb4java.Device;
 
+import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisConfig;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
@@ -60,13 +61,22 @@ public class CypressFX3Biasgen extends CypressFX3 implements BiasgenHardwareInte
 	 *            the biasgen which has the values to send
 	 */
 	@Override
-	synchronized public void sendConfiguration(final net.sf.jaer.biasgen.Biasgen biasgen)
-		throws HardwareInterfaceException {
+	synchronized public void sendConfiguration(final net.sf.jaer.biasgen.Biasgen biasgen) throws HardwareInterfaceException {
 		if ((biasgen != null) && (biasgen instanceof DavisConfig)) {
 			((DavisConfig) biasgen).sendConfiguration();
 		}
 	}
 
+	@Override
+	synchronized public void open() throws HardwareInterfaceException {
+		super.open();
+
+		// And now send the current bias values to the device to enable it.
+		if ((getChip() != null) && (getChip() instanceof DavisChip) && (getChip().getBiasgen() != null)
+			&& (getChip().getBiasgen() instanceof DavisConfig)) {
+			((DavisConfig) getChip().getBiasgen()).sendConfiguration();
+		}
+	}
 
 	@Override
 	synchronized public void flashConfiguration(final Biasgen biasgen) throws HardwareInterfaceException {
