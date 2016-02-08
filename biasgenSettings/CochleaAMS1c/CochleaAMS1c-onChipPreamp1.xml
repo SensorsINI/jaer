@@ -904,7 +904,6 @@ false"/>
                   <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.name2" value=""/>
                   <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.name1" value="MicRight"/>
                   <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.name0" value="MicLeft"/>
-                  <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="..\..\devices\firmware\CypressFX2\firmware_FX2LP_Cochleaams1c\firmwareFX2_Cochleaams1c.bix"/>
                   <entry key="OnsetFilter.filterEnabled" value="false"/>
                   <entry key="Info.eventRateScaleMax" value="25509.395"/>
                   <entry key="BoredomFilter.filterEnabled" value="false"/>

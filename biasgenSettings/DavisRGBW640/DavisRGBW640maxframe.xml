@@ -214,7 +214,6 @@
                 <entry key="ClusterBasedOpticalFlow.mixingFactor" value="0.0034"/>
                 <entry key="ClusterBasedOpticalFlow.pixelsPerBin" value="8"/>
                 <entry key="ClusterBasedOpticalFlow.vectorScalingPixelsPerPPS" value="0.061391346"/>
-                <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="..\..\devices\firmware\CypressFX2\firmware_FX2LP_DAViS_FX2V4\SBret10.bix"/>
                 <entry key="DAVIS240B.AddressedIPotCF.AEPdBn.BitValueCoarse" value="1"/>
                 <entry key="DAVIS240B.AddressedIPotCF.AEPdBn.BitValueFine" value="91"/>
                 <entry key="DAVIS240B.AddressedIPotCF.AEPdBn.Enabled" value="true"/>

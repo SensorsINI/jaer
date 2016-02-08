@@ -17,7 +17,6 @@
                 <map>
                   <entry key="FilterChain.timeLimitEnabled" value="false"/>
                   <entry key="FilterChain.timeLimitMs" value="0"/>
-                  <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="..\..\devices\firmware\CypressFX2\firmware_FX2LP_Cochleaams1c\firmwareFX2_Cochleaams1c.bix"/>
                   <entry key="CochleaAMS1b.Biasgen.DAC.powered" value="true"/>
                   <entry key="CochleaAMS1bControlPanel.selectedPaneIndex" value="0"/>
                   <entry key="XYTypeFilter.filterEnabled" value="false"/>

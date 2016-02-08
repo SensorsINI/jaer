@@ -166,7 +166,6 @@
                   <entry key="ScannerHardwareInterface.scanX" value="0"/>
                   <entry key="ScannerHardwareInterface.scanContinuouslyEnabled" value="false"/>
                   <entry key="CochleaAMS1c.Biasgen.DAC.powered" value="true"/>
-                  <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="..\..\devices\firmware\CypressFX2\firmware_FX2LP_Cochleaams1c\firmwareFX2_Cochleaams1c.bix"/>
                   <entry key="CochleaAMS1c.selectedBiasgenControlTab" value="1"/>
                   <entry key="XYTypeFilter.filterEnabled" value="false"/>
                   <entry key="RotateFilter.filterEnabled" value="false"/>

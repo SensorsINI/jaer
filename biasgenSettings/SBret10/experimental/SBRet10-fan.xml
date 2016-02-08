@@ -19,7 +19,6 @@
                 <entry key="DAViS240.bgTabbedPaneSelectedIndex" value="0"/>
                 <entry key="displayLogIntensityChangeEvents" value="true"/>
                 <entry key="displayIntensity" value="true"/>
-                <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="C:\PROJ\jAER\deviceFirmwarePCBLayout\CypressFX2\firmware_FX2LP_SBret10\SBret10.bix"/>
                 <entry key="DAViS240.AddressedIPotCF.DiffBn.BitValueCoarse" value="4"/>
                 <entry key="DAViS240.AddressedIPotCF.DiffBn.BitValueFine" value="47"/>
                 <entry key="DAViS240.AddressedIPotCF.DiffBn.Enabled" value="true"/>

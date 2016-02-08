@@ -809,7 +809,6 @@
                   <entry key="ITDFilter.sendITDsToOtherThread" value="false"/>
                   <entry key="ITDFilter.invert" value="true"/>
                   <entry key="ITDFilter.sendITD_UDP_port" value="localhost:9999"/>
-                  <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="..\..\devices\firmware\CypressFX2\firmware_FX2LP_Cochleaams1b\firmwareFX2_Cochleaams1b.bix"/>
                   <entry key="FilterFrame.lastFilterSelected" value="class ch.unizh.ini.jaer.projects.cochsoundloc.ITDFilter"/>
                   <entry key="ITDFilter.beamFormingITDUs" value="NaN"/>
                 </map>

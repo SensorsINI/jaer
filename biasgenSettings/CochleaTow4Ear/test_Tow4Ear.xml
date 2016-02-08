@@ -18,7 +18,6 @@
                   <entry key="FilterChain.timeLimitEnabled" value="false"/>
                   <entry key="FilterChain.timeLimitMs" value="10"/>
                   <entry key="Info.useLocalTimeZone" value="true"/>
-                  <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="..\..\devices\firmware\CypressFX2\firmware_FX2LP_Cochleaams1c\firmwareFX2_Cochleaams1c.bix"/>
                   <entry key="CochleaAMS1bControlPanel.selectedPaneIndex" value="1"/>
                   <entry key="XYTypeFilter.filterEnabled" value="false"/>
                   <entry key="RotateFilter.filterEnabled" value="false"/>
