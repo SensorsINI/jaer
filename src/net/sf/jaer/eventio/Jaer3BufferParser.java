@@ -144,7 +144,14 @@ public class Jaer3BufferParser {
 
 
     // private EventRaw tmpEventRaw = new EventRaw();
-
+    
+    /**
+     * This method returns is used to find the packet header.
+     * @param startPosition: The position 
+     * @param direction: The search direction, 1 is forward and 0 is backward.
+     * @return: The packet header which the startPosition nearest to according to the search direction.
+     * @throws IOException 
+     */
     private PacketDescriptor searchPacketHeader(int startPosition, int direction) throws IOException {
         PacketDescriptor pkt = new PacketDescriptor();
         PacketHeader d = pkt.GetPktHeader();
@@ -236,6 +243,12 @@ public class Jaer3BufferParser {
         return pkt;
     } // searchPacketHeader
 
+    /**
+     * The method is to find the current packet header which the target position belongs to.
+     * @param targetPosition: the target position
+     * @return current packet header.
+     * @throws IOException 
+     */
     private PacketDescriptor getCurrentPkt(int targetPosition) throws IOException {
 
         PacketDescriptor pkt = searchPacketHeader(targetPosition, -1);
@@ -247,12 +260,24 @@ public class Jaer3BufferParser {
         else {
             return pkt;
         }
-    }
+    } // getCurrentPkt
 
+    /**
+     * Get the next packet header of the target position
+     * @param targetPosition: target position, which means the position you want to use
+     * @return the next packet header of the target position.
+     * @throws IOException 
+     */
     private PacketDescriptor getNextPkt(int targetPosition) throws IOException {
         return searchPacketHeader(targetPosition, 1);
     }
 
+    /**
+     * Constructor of the jaer3BufferParser
+     * @param byteBuffer
+     * @param chip
+     * @throws IOException 
+     */
     public Jaer3BufferParser(MappedByteBuffer byteBuffer, AEChip chip) throws IOException {
         in = byteBuffer;
         in.order(ByteOrder.LITTLE_ENDIAN);    //AER3.0 spec is little endian
@@ -268,7 +293,7 @@ public class Jaer3BufferParser {
                 log.warning(ex.toString());
                 Logger.getLogger(AEFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
         }
-    }
+    } //Jaer3BufferParser
 
     /**
      * gets the size of the stream in events
@@ -314,6 +339,11 @@ public class Jaer3BufferParser {
         return currentPosition - ((currentPosition - (currentPktPos + PKT_HEADER_SIZE))%eventSize);
     }
 
+    /**
+     * Get the next event offset of the current position
+     * @return the next event offset of the current position
+     * @throws IOException 
+     */
     public int getNextEventOffset() throws IOException {
         int currentEventOffset = getCurrentEventOffset();
         int currentPosition = in.position();
@@ -355,8 +385,13 @@ public class Jaer3BufferParser {
         }
 
         return currentEventOffset + eventSize;
-    } //GetNumEventOffset
+    } //getNextEventOffset
 
+    /**
+     * This function is used to get the last time stamp of the buffer
+     * @return the last time stamp of the buffer.
+     * @throws IOException 
+     */
     public int getLastTimeStamp() throws IOException {
         int currentPosition = in.position();
         PacketDescriptor pkt = getCurrentPkt(in.limit() - PKT_HEADER_SIZE);
@@ -378,8 +413,13 @@ public class Jaer3BufferParser {
 
         in.position(currentPosition);   //Restore last position
         return lastTs;
-    }
+    } // getLastTimeStamp
 
+    /**
+     * This function is used to find the next valid event offset, because not all the events are valid, we should skip the invalid events.
+     * @return the next valid event offset.
+     * @throws IOException 
+     */
     public int getNextValidEventOffset() throws IOException {
         int nextEventOffset = getNextEventOffset();
 
@@ -413,13 +453,25 @@ public class Jaer3BufferParser {
             eventFirstInt = in.getInt();
         }
         return nextEventOffset;
-    }
+    } //getNextValidEventOffset
 
+    /**
+     * Set the inFrameEvent, inFrameEvent is a flag used to represent the current event is in the frame or not.
+     * The reason why we use this flag is that a whole frame events is divided into several pixels data, and every
+     * pixel data is faked as one single event.
+     * @param frameEventFlg: true: current event is in a frame, false: current event is not in a frame  
+     */
     public void setInFrameEvent(boolean frameEventFlg) {
         this.inFrameEvent = frameEventFlg;
     }
 
 
+    /**
+     * This function is a very important function. It returns the 16-byte events (eventtype, addr, ts and pixeldata) like it's a jaer2 event.
+     * Pixeldata is only used by frame event, in other case it's 0. 
+     * @return one buffer that contains the standard 16-byte event.
+     * @throws IOException 
+     */
     public ByteBuffer getJaer2EventBuf() throws IOException {
         ByteBuffer jaer2Buffer = ByteBuffer.allocate(16);
 
@@ -509,8 +561,13 @@ public class Jaer3BufferParser {
         jaer2Buffer.putInt(0);  // pixelData just for frame event, other events don't use it;
         jaer2Buffer.flip();
         return jaer2Buffer;
-    }
+    } // getJaer2EventBuf
 
+    /**
+     * This function gets the total events number of the buffer
+     * @return the total events number of the buffer
+     * @throws IOException 
+     */
     public long bufferNumEvents() throws IOException {
         PacketDescriptor pkt = getNextPkt(0);
         long numEvents = 0;
@@ -531,6 +588,12 @@ public class Jaer3BufferParser {
 
 
 
+    /**
+     * Returns the data offset of different events.
+     * @param packetHeader the current packet header.
+     * @return Returns the data offset of different events.
+     * @throws IOException 
+     */
     private int GetDataOffset(PacketHeader packetHeader) throws IOException {
         int eventDataOffset = 0;
 
@@ -559,23 +622,42 @@ public class Jaer3BufferParser {
         return eventDataOffset;
     }
 
+    /**
+     * Gets the current packet header position
+     * @return the current packet header position
+     */
     public int getCurrentPktPos() {
         return currentPkt.pktPosition;
     }
 
+    /**
+     * Get the current packet
+     * @return the current packet header
+     */
     public PacketHeader getPacketHeader() {
         return currentPkt.pktHeader;
     }
 
+    /**
+     * Sets the parser's buffer
+     * @param BufferToBeProcessed the parser to be processed
+     */
     public void setInBuffer(ByteBuffer BufferToBeProcessed) {
         in = BufferToBeProcessed; //To change body of generated methods, choose Tools | Templates.
     }
 
+    /**
+     * Sets the buffer's order
+     * @param order two orders, Big endian and little endian.
+     */
     public void setInBufferOrder(ByteOrder order) {
         in.order(order);
     }
 
 
+    /**
+     * This extractor is an uniform extractor for all the jaer 3.0 data. It only works for 3.0 and not cannot be used on 2.0.
+     */
     public class jaer3EventExtractor extends RetinaExtractor {
 
         protected int autoshotEventsSinceLastShot = 0; // autoshot counter
@@ -594,7 +676,7 @@ public class Jaer3BufferParser {
         @Override
         synchronized public EventPacket extractPacket(final AEPacketRaw in) {
             if (out == null) {
-                out = new ApsDvsEventPacket(ApsDvsEvent.class);
+                out = new ApsDvsEventPacket(ApsDvsEvent.class);  // In order to be general, we make the packet's event ApsDvsEvent.
             }
             else {
                     out.clear();
@@ -669,7 +751,11 @@ public class Jaer3BufferParser {
             return out;
         }// extractPacket
 
-        // TODO hack to reuse IMUSample events as ApsDvsEvents holding only APS or DVS data by using the special flags
+        /**
+         * Gets the next ApsDvsEvent in the stream
+         * @param outItr the iterator of the output stream.
+         * @return 
+         */
         protected ApsDvsEvent nextApsDvsEvent(final OutputEventIterator outItr) {
                 final ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
                 e.special = false;
@@ -680,7 +766,13 @@ public class Jaer3BufferParser {
                 return e;
         }
 
-        
+
+        /**
+         * Extractor the DVS events.
+         * @param outItr the iterator of the output stream
+         * @param data data, for DVS, it's the address
+         * @param timestamp timestamp of the event
+         */
         protected void readDVS(final OutputEventIterator outItr, final int data, final int timestamp) {
             final int sx1 = chip.getSizeX() - 1;
             final ApsDvsEvent e = nextApsDvsEvent(outItr);
@@ -699,6 +791,13 @@ public class Jaer3BufferParser {
             autoshotEventsSinceLastShot++; // number DVS events captured here
         }
 
+        /**
+         * Extractor the APS Events.
+         * @param outItr the iterator of the output stream
+         * @param addr address of the event
+         * @param data pixel data of the frame event
+         * @param timestamp time stamp of the event
+         */
         protected void readFrame(final OutputEventIterator outItr, final int addr, final int data, final int timestamp) {
             final int sx1 = chip.getSizeX() - 1;
             final ApsDvsEvent e = nextApsDvsEvent(outItr);
