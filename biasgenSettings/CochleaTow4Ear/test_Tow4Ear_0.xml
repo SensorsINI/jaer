@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="ch">
+      <map/>
+      <node name="unizh">
+        <map/>
+        <node name="ini">
+          <map/>
+          <node name="jaer">
+            <map/>
+            <node name="chip">
+              <map/>
+              <node name="cochlea">
+                <map>
+                  <entry key="FilterChain.timeLimitEnabled" value="false"/>
+                  <entry key="FilterChain.timeLimitMs" value="10"/>
+                  <entry key="Info.useLocalTimeZone" value="true"/>
+                  <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.gain0" value="1"/>
+                  <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.gain1" value="1"/>
+                  <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.gain2" value="1"/>
+                  <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.gain3" value="1"/>
+                  <entry key="CochleaTow4Ear.ScannerEnable" value="true"/>
+                  <entry key="CochleaTow4Ear.ScannerEar" value="false"/>
+                  <entry key="CochleaTow4Ear.ScannerChannel" value="0"/>
+                  <entry key="CochleaTow4Ear.DACRun" value="true"/>
+                  <entry key="CochleaTow4Ear.MultiplexerRun" value="true"/>
+                  <entry key="CochleaTow4Ear.AERRun" value="true"/>
+                  <entry key="CochleaTow4Ear.AERAckDelay" value="0"/>
+                  <entry key="CochleaTow4Ear.AERAckExtension" value="0"/>
+                  <entry key="CochleaTow4Ear.AERWaitOnTransferStall" value="false"/>
+                  <entry key="CochleaTow4Ear.AERExternalAERControl" value="false"/>
+                  <entry key="CochleaTow4Ear.ChipResetCapConfigADM" value="0"/>
+                  <entry key="CochleaTow4Ear.ChipDelayCapConfigADM" value="0"/>
+                  <entry key="CochleaTow4Ear.ChipComparatorSelfOsc" value="false"/>
+                  <entry key="CochleaTow4Ear.ChipLNAGainConfig" value="0"/>
+                  <entry key="CochleaTow4Ear.ChipLNADoubleInputSelect" value="false"/>
+                  <entry key="CochleaTow4Ear.ChipTestScannerBias" value="false"/>
+                  <entry key="CochleaTow4Ear.Channel 0" value="804040"/>
+                  <entry key="CochleaTow4Ear.Channel 1" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 2" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 3" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 4" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 5" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 6" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 7" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 8" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 9" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 10" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 11" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 12" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 13" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 14" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 15" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 16" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 17" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 18" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 19" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 20" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 21" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 22" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 23" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 24" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 25" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 26" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 27" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 28" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 29" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 30" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 31" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 32" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 33" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 34" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 35" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 36" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 37" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 38" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 39" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 40" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 41" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 42" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 43" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 44" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 45" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 46" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 47" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 48" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 49" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 50" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 51" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 52" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 53" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 54" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 55" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 56" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 57" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 58" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 59" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 60" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 61" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 62" value="0"/>
+                  <entry key="CochleaTow4Ear.Channel 63" value="0"/>
+                  <entry key="CochleaTow4Ear.ShiftedSourceBias.SSP.RefValue" value="0"/>
+                  <entry key="CochleaTow4Ear.ShiftedSourceBias.SSP.RegBitValue" value="63"/>
+                  <entry key="CochleaTow4Ear.ShiftedSourceBias.SSP.OperatingMode" value="ShiftedSource"/>
+                  <entry key="CochleaTow4Ear.ShiftedSourceBias.SSP.VoltageLevel" value="SplitGate"/>
+                  <entry key="CochleaTow4Ear.ShiftedSourceBias.SSN.RefValue" value="0"/>
+                  <entry key="CochleaTow4Ear.ShiftedSourceBias.SSN.RegBitValue" value="63"/>
+                  <entry key="CochleaTow4Ear.ShiftedSourceBias.SSN.OperatingMode" value="ShiftedSource"/>
+                  <entry key="CochleaTow4Ear.ShiftedSourceBias.SSN.VoltageLevel" value="SplitGate"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBNIBias.BitValueCoarse" value="2"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBNIBias.BitValueFine" value="33"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBNIBias.Enabled" value="true"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBNIBias.LowCurrent" value="false"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBNIBias.Sex" value="N"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBNIBias.Type" value="NORMAL"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBNTest.BitValueCoarse" value="2"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBNTest.BitValueFine" value="33"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBNTest.Enabled" value="true"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBNTest.LowCurrent" value="false"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBNTest.Sex" value="N"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBNTest.Type" value="NORMAL"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBPScan.BitValueCoarse" value="0"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBPScan.BitValueFine" value="103"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBPScan.Enabled" value="true"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBPScan.LowCurrent" value="false"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBPScan.Sex" value="P"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.VBPScan.Type" value="NORMAL"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.AEPdBn.BitValueCoarse" value="1"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.AEPdBn.BitValueFine" value="84"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.AEPdBn.Enabled" value="true"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.AEPdBn.LowCurrent" value="false"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.AEPdBn.Sex" value="N"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.AEPdBn.Type" value="NORMAL"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.AEPuYBp.BitValueCoarse" value="2"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.AEPuYBp.BitValueFine" value="66"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.AEPuYBp.Enabled" value="true"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.AEPuYBp.LowCurrent" value="false"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.AEPuYBp.Sex" value="P"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.AEPuYBp.Type" value="NORMAL"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.BiasBuffer.BitValueCoarse" value="2"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.BiasBuffer.BitValueFine" value="66"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.BiasBuffer.Enabled" value="true"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.BiasBuffer.LowCurrent" value="false"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.BiasBuffer.Sex" value="N"/>
+                  <entry key="CochleaTow4Ear.AddressedIPotCF.BiasBuffer.Type" value="NORMAL"/>
+                  <entry key="CochleaTow4Ear.VPot.MICBIAS1L" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.Vrefdiff" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.Vrefdiff2" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.PreampGain1L" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.PreampGain1R" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.Vcom2" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.VQBn" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.DCOutputLowLevel" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.DACVout10" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.DACVout11" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.DACVout12" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.RefADAMux0-" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.RefADAMux1-" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.Vth1x" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.Vth4x" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.Vbias1Bn" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.Vbias2Bn" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.VbiasLF1Bn" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.VbiasHF1Bn" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.VtauBn" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.PreampGain2L" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.MICBIAS2L" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.MICBIAS2R" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.VrefpreampBpx" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.VbMicCasBpcx" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.RefADAMux3-" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.RefADAMux2-" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.PreampGain2R" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.DCOutputHighLevel" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.TH" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.PreampA/R" value="0"/>
+                  <entry key="Masterbias.rx" value="8200.0"/>
+                  <entry key="Masterbias.rint" value="46000.0"/>
+                  <entry key="Masterbias.internalResistorUsed" value="false"/>
+                  <entry key="CochleaTow4Ear.ForceBiasEnable" value="true"/>
+                </map>
+              </node>
+            </node>
+          </node>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>
