@@ -449,6 +449,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             if (measureAccuracy) {
                 motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);
             }
+            motionField.update(ts, x, y, vx, vy,v);
         }
         motionFlowStatistics.updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket;

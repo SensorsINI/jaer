@@ -121,11 +121,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     private boolean addedViewerPropertyChangeListener = false; // TODO promote these to base EventFilter class
     private boolean addTimeStampsResetPropertyChangeListener = false;
 
-    // Labels for setPropertyTooltip.
-    final String disp = "Display";
-    final String imu = "IMU";
-    final String smoo = "Smoothing";
-
     // Performing statistics and logging results. lastLoggingFolder starts off 
     // at user.dir which is startup folder "host/java" where .exe launcher lives
     private String loggingFolder = getPrefs().get("DataLogger.loggingFolder", System.getProperty("user.dir"));
@@ -161,6 +156,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     protected int outlierMotionFilteringMinSameAngleInNeighborhood = getInt("outlierMotionFilteringMinSameAngleInNeighborhood", 2);
     protected int[][] outlierMotionFilteringLastAngles = null;
 
+    // MotionField that aggregates motion
+    protected MotionField motionField = new MotionField();
+
     private static final float GLOBAL_MOTION_DRAWING_SCALE = 5;
 
     /**
@@ -176,6 +174,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     Iterator inItr;
 
+    protected static String dispTT = "Display";
+    protected static String imuTT = "IMU";
+    protected static String smoothingTT = "Smoothing";
+    protected static String motionFieldTT = "Motion field";
+
     public AbstractMotionFlowIMU(AEChip chip) {
         super(chip);
         addObservers(chip);
@@ -186,33 +189,38 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setMeasureAccuracy(getBoolean("measureAccuracy", false));
         setMeasureProcessingTime(getBoolean("measureProcessingTime", false));
         setMeasureGlobalMotion(getBoolean("measureGlobalMotion", false));
+        // Labels for setPropertyTooltip.
+
         setPropertyTooltip("startLoggingMotionVectorEvents", "starts saving motion vector events to a human readable file");
         setPropertyTooltip("stopLoggingMotionVectorEvents", "stops logging motion vector events to a human readable file");
         setPropertyTooltip("printStatistics", "<html> Prints to console as log output a single instance of statistics collected since <b>measureAccuracy</b> was selected. (These statistics are reset when the filter is reset, e.g. at rewind.)");
         setPropertyTooltip("measureAccuracy", "<html> Writes a txt file with various motion statistics, by comparing the ground truth <br>(either estimated online using an embedded IMUFlow or loaded from file) <br> with the measured optical flow events.  <br>This measurment function is called for every event to assign the local ground truth<br> (vxGT,vyGT) at location (x,y) a value from the imported ground truth field (vxGTframe,vyGTframe).");
         setPropertyTooltip("measureProcessingTime", "writes a text file with timestamp filename with the packet's mean processing time of an event. Processing time is also logged to console.");
         setPropertyTooltip("loggingFolder", "directory to store logged data files");
-        setPropertyTooltip(disp, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of "+GLOBAL_MOTION_DRAWING_SCALE);
-        setPropertyTooltip(disp, "showVectorsEnabled", "shows local motion vectors");
-        setPropertyTooltip(disp, "measureGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * "+GLOBAL_MOTION_DRAWING_SCALE+" pixels/second per chip pixel");
-        setPropertyTooltip(disp, "showRawInputEnabled", "shows the input events, instead of the motion types");
-        setPropertyTooltip(disp, "xMin", "events with x-coordinate below this are filtered out.");
-        setPropertyTooltip(disp, "xMax", "events with x-coordinate above this are filtered out.");
-        setPropertyTooltip(disp, "yMin", "events with y-coordinate below this are filtered out.");
-        setPropertyTooltip(disp, "yMax", "events with y-coordinate above this are filtered out.");
-        setPropertyTooltip(smoo, "subSampleShift", "shift subsampled timestamp map stores by this many bits");
-        setPropertyTooltip(smoo, "refractoryPeriodUs", "compute no flow vector if a flow vector has already been computed within this period at the same location.");
-        setPropertyTooltip(smoo, "speedControlEnabled", "enables filtering of excess speeds");
-        setPropertyTooltip(smoo, "speedControl_ExcessSpeedRejectFactor", "local speeds this factor higher than average are rejected as non-physical");
-        setPropertyTooltip(smoo, "speedControl_speedMixingFactor", "speeds computed are mixed with old values with this factor");
-//        setPropertyTooltip(imu, "discardOutliersForStatisticalMeasurementEnabled", "discard measured local motion vector if it deviates from IMU estimate");
-//        setPropertyTooltip(imu, "discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg", "threshold angle in degree. Discard measured optical flow vector if it deviates from IMU-estimate by more than discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg");
-        setPropertyTooltip(imu, "lensFocalLengthMm", "lens focal length in mm. Used for computing the IMU flow from pan and tilt camera rotations. 4.5mm is focal length for dataset data.");
-        setPropertyTooltip(imu, "startIMUCalibration", "<html> Starts estimating the IMU offsets based on next 800 samples. Should be used only with stationary recording to store these offsets in the preferences. <p> <b>measureAccuracy</b> must be selected as well to actually do the calibration.");
-        setPropertyTooltip(imu, "resetIMUCalibration", "Resets the IMU offsets to zero. Can be used to observe effect of these offsets on a stationary recording in the IMUFlow filter.");
-        setPropertyTooltip(imu, "importGTfromMatlab", "Allows importing two 2D-arrays containing the x-/y- components of the motion flow field used as ground truth.");
-        setPropertyTooltip(imu, "resetGroundTruth", "Resets the ground truth optical flow that was imported from matlab. Used in the measureAccuracy option.");
-        setPropertyTooltip(imu, "selectLoggingFolder", "Allows selection of the folder to store the measured accuracies and optical flow events.");
+        setPropertyTooltip(dispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
+        setPropertyTooltip(dispTT, "showVectorsEnabled", "shows local motion vectors");
+        setPropertyTooltip(dispTT, "measureGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
+        setPropertyTooltip(dispTT, "showRawInputEnabled", "shows the input events, instead of the motion types");
+        setPropertyTooltip(dispTT, "xMin", "events with x-coordinate below this are filtered out.");
+        setPropertyTooltip(dispTT, "xMax", "events with x-coordinate above this are filtered out.");
+        setPropertyTooltip(dispTT, "yMin", "events with y-coordinate below this are filtered out.");
+        setPropertyTooltip(dispTT, "yMax", "events with y-coordinate above this are filtered out.");
+        setPropertyTooltip(smoothingTT, "subSampleShift", "shift subsampled timestamp map stores by this many bits");
+        setPropertyTooltip(smoothingTT, "refractoryPeriodUs", "compute no flow vector if a flow vector has already been computed within this period at the same location.");
+        setPropertyTooltip(smoothingTT, "speedControlEnabled", "enables filtering of excess speeds");
+        setPropertyTooltip(smoothingTT, "speedControl_ExcessSpeedRejectFactor", "local speeds this factor higher than average are rejected as non-physical");
+        setPropertyTooltip(smoothingTT, "speedControl_speedMixingFactor", "speeds computed are mixed with old values with this factor");
+//        setPropertyTooltip(imuTT, "discardOutliersForStatisticalMeasurementEnabled", "discard measured local motion vector if it deviates from IMU estimate");
+//        setPropertyTooltip(imuTT, "discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg", "threshold angle in degree. Discard measured optical flow vector if it deviates from IMU-estimate by more than discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg");
+        setPropertyTooltip(imuTT, "lensFocalLengthMm", "lens focal length in mm. Used for computing the IMU flow from pan and tilt camera rotations. 4.5mm is focal length for dataset data.");
+        setPropertyTooltip(imuTT, "startIMUCalibration", "<html> Starts estimating the IMU offsets based on next 800 samples. Should be used only with stationary recording to store these offsets in the preferences. <p> <b>measureAccuracy</b> must be selected as well to actually do the calibration.");
+        setPropertyTooltip(imuTT, "resetIMUCalibration", "Resets the IMU offsets to zero. Can be used to observe effect of these offsets on a stationary recording in the IMUFlow filter.");
+        setPropertyTooltip(imuTT, "importGTfromMatlab", "Allows importing two 2D-arrays containing the x-/y- components of the motion flow field used as ground truth.");
+        setPropertyTooltip(imuTT, "resetGroundTruth", "Resets the ground truth optical flow that was imported from matlab. Used in the measureAccuracy option.");
+        setPropertyTooltip(imuTT, "selectLoggingFolder", "Allows selection of the folder to store the measured accuracies and optical flow events.");
+        setPropertyTooltip(motionFieldTT, "motionFieldMixingFactor", "Flow events are mixed with the motion field with this factor. Use 1 to replace field content with each event, or e.g. 0.01 to update only by 1%.");
+        setPropertyTooltip(motionFieldTT, "motionFieldSubsamplingShift", "The motion field is computed at this subsampled resolution, e.g. 1 means 1 motion field vector for each 2x2 pixel area.");
+        setPropertyTooltip(motionFieldTT, "showMotionField", "Computes and shows a motion field");
         File lf = new File(loggingFolder);
         if (!lf.exists() || !lf.isDirectory()) {
             log.log(Level.WARNING, "loggingFolder {0} doesn't exist or isn't a directory, defaulting to {1}", new Object[]{lf, lf});
@@ -539,8 +547,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         motionFlowStatistics.reset(subSizeX, subSizeY);
         imuFlowEstimator.reset();
         exportedFlowToMatlab = false;
+        motionField.reset();
         allocateMap();
-        if ("DirectionSelectiveFlow".equals(filterClassName) && getEnclosedFilter()!=null) {
+        if ("DirectionSelectiveFlow".equals(filterClassName) && getEnclosedFilter() != null) {
             getEnclosedFilter().resetFilter();
         }
     }
@@ -690,6 +699,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 motionFlowStatistics.angularError.getStdDev()}));
             gl.glPopMatrix();
         }
+
+        motionField.draw(gl);
 
     }
 
@@ -1165,6 +1176,205 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         int d = Math.abs(a - b) % 360;
         int r = d > 180 ? 360 - d : d;
         return r;
+    }
+
+    /**
+     * Encapsulates the computed motion field that is estimated from the flow
+     * events, with outlier rejection etc.
+     *
+     */
+    protected class MotionField {
+
+        private boolean showMotionField = getBoolean("motionFieldShowMotionField", false);
+        private float[][] vxs, vys, speeds;
+        private int[][] lastTs;
+        private int motionFieldSubsamplingShift = getInt("motionFieldSubsamplingShift", 0);
+        private float motionFieldMixingFactor = getFloat("motionFieldMixingFactor", 1e-2f);
+
+        public MotionField() {
+        }
+
+        public void checkArrays() {
+            if (chip.getNumPixels() == 0) {
+                return;
+            }
+
+            if (lastTs == null || lastTs.length != chip.getSizeX() >> subSampleShift
+                    || vxs == null || vxs.length != chip.getSizeX() >> subSampleShift
+                    || vys == null || vys.length != chip.getSizeX() >> subSampleShift
+                    || speeds == null || speeds.length != chip.getSizeX() >> subSampleShift) {
+                reset();
+            }
+
+        }
+
+        public void reset() {
+            if (chip.getNumPixels() == 0) {
+                return;
+            }
+            if (lastTs == null || lastTs.length != chip.getSizeX() >> subSampleShift) {
+                lastTs = new int[chip.getSizeX() >> motionFieldSubsamplingShift][chip.getSizeY() >> motionFieldSubsamplingShift];
+            }
+            if (vxs == null || vxs.length != chip.getSizeX() >> subSampleShift) {
+                vxs = new float[chip.getSizeX() >> motionFieldSubsamplingShift][chip.getSizeY() >> motionFieldSubsamplingShift];
+            }
+            if (vys == null || vys.length != chip.getSizeX() >> subSampleShift) {
+                vys = new float[chip.getSizeX() >> motionFieldSubsamplingShift][chip.getSizeY() >> motionFieldSubsamplingShift];
+            }
+            if (speeds == null || speeds.length != chip.getSizeX() >> subSampleShift) {
+                speeds = new float[chip.getSizeX() >> motionFieldSubsamplingShift][chip.getSizeY() >> motionFieldSubsamplingShift];
+            }
+            for (int[] a : lastTs) {
+                Arrays.fill(a, Integer.MIN_VALUE);
+            }
+            for (float[] a : vxs) {
+                Arrays.fill(a, 0);
+            }
+            for (float[] a : vys) {
+                Arrays.fill(a, 0);
+            }
+            for (float[] a : speeds) {
+                Arrays.fill(a, 0);
+            }
+        }
+
+        /**
+         * updates motion field
+         *
+         * @param timestamp in us
+         * @param x1 location pixel x before subsampling
+         * @param y1
+         * @param vx flow vx, pps
+         * @param vy
+         */
+        public void update(int timestamp, int x, int y, float vx, float vy, float speed) {
+            if (!showMotionField) {
+                return;
+            }
+            int x1 = x >> motionFieldSubsamplingShift, y1 = y >> motionFieldSubsamplingShift;
+            if (checkConsistent(timestamp, x1, y1, vx, vy)) {
+                lastTs[x1][y1] = ts;
+                speeds[x1][y1] = speed;
+                float oldv = vxs[x1][y1];
+                float newv = (1 - motionFieldMixingFactor) * oldv + motionFieldMixingFactor * vx;
+                vxs[x1][y1] = newv;
+                oldv = vys[x1][y1];
+                newv = (1 - motionFieldMixingFactor) * oldv + motionFieldMixingFactor * vy;
+                vys[x1][y1] = newv;
+            }
+        }
+
+        /**
+         * Checks if new flow event is consistent sufficiently with motion field
+         *
+         * @param timestamp in us
+         * @param x1 location pixel x before subsampling
+         * @param y1
+         * @param vx flow vx, pps
+         * @param vy
+         * @return true if sufficiently consistent
+         */
+        private boolean checkConsistent(int timestamp, int x1, int y1, float vx, float vy) {
+            float dot = vx * vxs[x1][y1] + vy * vys[x1][y1];
+            return (dot >= 0);   // TODO for now consistent means positive dot product...
+        }
+
+        public void draw(GL2 gl) {
+            if (!showMotionField || vxs == null || vys == null) {
+                return;
+            }
+            int nx = vxs.length, ny = vxs[0].length;
+            float shift = ((1 << motionFieldSubsamplingShift) * .5f);
+            for (int ix = 0; ix < nx; ix++) {
+                float x = (ix << motionFieldSubsamplingShift) + shift;
+                for (int iy = 0; iy < ny; iy++) {
+                    float y = (iy << motionFieldSubsamplingShift) + shift;
+                    float vx = vxs[ix][iy], vy = vys[ix][iy];
+                    float angle = (float) (Math.atan2(vy, vx));
+                    gl.glColor3f(angle, 1 - angle, 1 / (1 + 10 * angle));
+                    gl.glPushMatrix();
+                    DrawGL.drawVector(gl, x, y, vx, vy, 1, ppsScale);
+                    gl.glPopMatrix();
+
+                }
+            }
+
+        }
+
+        private boolean isShowMotionField() {
+            return showMotionField;
+        }
+
+        private void setShowMotionField(boolean yes) {
+            showMotionField = yes;
+            putBoolean("motionFieldShowMotionField", yes);
+        }
+
+        /**
+         * @return the motionFieldSubsamplingShift
+         */
+        public int getMotionFieldSubsamplingShift() {
+            return motionFieldSubsamplingShift;
+        }
+
+        /**
+         * @param motionFieldSubsamplingShift the motionFieldSubsamplingShift to
+         * set
+         */
+        synchronized public void setMotionFieldSubsamplingShift(int motionFieldSubsamplingShift) {
+            if (motionFieldSubsamplingShift < 0) {
+                motionFieldSubsamplingShift = 0;
+            } else if (motionFieldSubsamplingShift > 5) {
+                motionFieldSubsamplingShift = 5;
+            }
+            this.motionFieldSubsamplingShift = motionFieldSubsamplingShift;
+            putInt("motionFieldSubsamplingShift", motionFieldSubsamplingShift);
+            reset();
+        }
+
+        /**
+         * @return the motionFieldMixingFactor
+         */
+        public float getMotionFieldMixingFactor() {
+            return motionFieldMixingFactor;
+        }
+
+        /**
+         * @param motionFieldMixingFactor the motionFieldMixingFactor to set
+         */
+        public void setMotionFieldMixingFactor(float motionFieldMixingFactor) {
+            if (motionFieldMixingFactor < 1e-6f) {
+                motionFieldMixingFactor = 1e-6f;
+            } else if (motionFieldMixingFactor > 1) {
+                motionFieldMixingFactor = 1;
+            }
+            this.motionFieldMixingFactor = motionFieldMixingFactor;
+            putFloat("motionFieldMixingFactor", motionFieldMixingFactor);
+        }
+    } // MotionField
+
+    public boolean isShowMotionField() {
+        return motionField.isShowMotionField();
+    }
+
+    public void setShowMotionField(boolean yes) {
+        motionField.setShowMotionField(yes);
+    }
+
+    public int getMotionFieldSubsamplingShift() {
+        return motionField.getMotionFieldSubsamplingShift();
+    }
+
+    public void setMotionFieldSubsamplingShift(int motionFieldSubsamplingShift) {
+        motionField.setMotionFieldSubsamplingShift(motionFieldSubsamplingShift);
+    }
+
+    public float getMotionFieldMixingFactor() {
+        return motionField.getMotionFieldMixingFactor();
+    }
+
+    public void setMotionFieldMixingFactor(float motionFieldMixingFactor) {
+        motionField.setMotionFieldMixingFactor(motionFieldMixingFactor);
     }
 
 }

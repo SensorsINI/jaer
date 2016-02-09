@@ -48,10 +48,10 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
         super(chip);
         computeSavitzkyGolayCoefficients();
         setPropertyTooltip("searchDistance", "search distance to each side");
-        setPropertyTooltip(smoo, "maxDtThreshold", "max delta time (us) of timestamps from current event time that are considered. Also sets grayscale scaling of showTimestampMap display.");
-        setPropertyTooltip(disp, "showTimestampMap", "Superimposes a color-coded timestamp map on the display. This map shows the lastTimesMap[][][] of the latest event as a color code. The type of events shown is set by showTimestampMapMask.");
-        setPropertyTooltip(disp, "showTimestampMapMask", "The timestamps shown from the map are set by this mask value. ");
-        setPropertyTooltip(disp, "showTimestampMapAlpha", "The alpha (brightness) of the overlaid timestamp map when showTimestampMap is enabled. ");
+        setPropertyTooltip(smoothingTT, "maxDtThreshold", "max delta time (us) of timestamps from current event time that are considered. Also sets grayscale scaling of showTimestampMap display.");
+        setPropertyTooltip(dispTT, "showTimestampMap", "Superimposes a color-coded timestamp map on the display. This map shows the lastTimesMap[][][] of the latest event as a color code. The type of events shown is set by showTimestampMapMask.");
+        setPropertyTooltip(dispTT, "showTimestampMapMask", "The timestamps shown from the map are set by this mask value. ");
+        setPropertyTooltip(dispTT, "showTimestampMapAlpha", "The alpha (brightness) of the overlaid timestamp map when showTimestampMap is enabled. ");
         // check lastLoggingFolder to see if it really exists, if not, default to user.dir
     }
 
