@@ -18,6 +18,7 @@ import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw.EventType;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.chip.RetinaExtractor;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
@@ -581,7 +582,12 @@ public class Jaer3BufferParser {
 
                 numEvents += xlength * ylength * (pkt.pktHeader.eventValid);
             }
-            pkt = getNextPkt(pkt.pktPosition + (pkt.pktHeader.eventNumber) * (pkt.pktHeader.eventSize));
+            try {
+                pkt = getNextPkt(pkt.pktPosition + (pkt.pktHeader.eventNumber) * (pkt.pktHeader.eventSize));                
+            } catch(IllegalArgumentException e) { // It means it reaches the buffer end
+                // log.warning("Reaches the end of the buffer!");
+                pkt = null;
+            }
         }
         return numEvents;
     }
@@ -697,16 +703,8 @@ public class Jaer3BufferParser {
             
             // if both pixelDatas and etypes are null, it means this function is called by extractPacket in AEViewer.viewLoop, we should restore the default extractor 
             if(pixelDatas == null && etypes == null) {
-                try {
-                    Class<?> c = chip.getClass();
-                    AEChip tmpChip = (AEChip)c.newInstance();                    
-                    this.chip.setEventExtractor(tmpChip.getEventExtractor());  // Restore the default extractor
-                    return chip.getEventExtractor().extractPacket(in);
-                } catch (InstantiationException ex) {
-                    Logger.getLogger(Jaer3BufferParser.class.getName()).log(Level.SEVERE, null, ex);
-                } catch (IllegalAccessException ex) {
-                    Logger.getLogger(Jaer3BufferParser.class.getName()).log(Level.SEVERE, null, ex);
-                }
+                Jaer3BufferParser.this.chip.restoreChipDefaultExtractor();   // Restore the default extractor
+                return Jaer3BufferParser.this.chip.getEventExtractor().extractPacket(in);
             }
             // NOTE we must make sure we write ApsDvsEvents when we want them, not reuse the IMUSamples
 

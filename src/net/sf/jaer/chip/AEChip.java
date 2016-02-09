@@ -18,6 +18,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
 
 import net.sf.jaer.Description;
@@ -159,10 +161,16 @@ public class AEChip extends Chip2D {
         }
     }
 
+    /**
+     * Gets the current extractor of the chip.
+     * @return the extractor
+     */
     public EventExtractor2D getEventExtractor() {
         return eventExtractor;
     }
 
+
+    
     /**
      * Sets the EventExtractor2D and notifies Observers with the new extractor.
      *
@@ -174,6 +182,23 @@ public class AEChip extends Chip2D {
         notifyObservers(eventExtractor);
     }
 
+    /**
+     * This method is used to restore the default extractor of the chip class, sometimes the extractor of the chip
+     * might be changed, then use this function can restore it.
+     */
+    public void restoreChipDefaultExtractor() {
+        Class<?> c = this.getClass();
+        AEChip tmpChip;                    
+        try {
+            tmpChip = (AEChip)c.newInstance();
+            setEventExtractor(tmpChip.getEventExtractor());
+        } catch (InstantiationException ex) {
+            Logger.getLogger(AEChip.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            Logger.getLogger(AEChip.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
     public int getNumCellTypes() {
         return numCellTypes;
     }
