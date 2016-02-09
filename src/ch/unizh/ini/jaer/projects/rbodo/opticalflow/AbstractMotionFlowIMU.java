@@ -714,6 +714,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         if (measureProcessingTime) {
             motionFlowStatistics.processingTime.startTime = System.nanoTime();
         }
+        motionField.checkArrays();
+
     }
 
     /**
@@ -785,6 +787,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             String s = String.format("%d %d %d %d %.3g %.3g %.3g %d", eout.timestamp, eout.x, eout.y, eout.type, eout.velocity.x, eout.velocity.y, eout.speed, eout.hasDirection ? 1 : 0);
             motionVectorEventLogger.log(s);
         }
+        motionField.update(ts, x, y, vx, vy, v);
     }
 
     synchronized boolean accuracyTests() {
@@ -1288,9 +1291,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             for (int ix = 0; ix < nx; ix++) {
                 float x = (ix << motionFieldSubsamplingShift) + shift;
                 for (int iy = 0; iy < ny; iy++) {
+                    if(speeds[ix][iy]<1f) continue;
                     float y = (iy << motionFieldSubsamplingShift) + shift;
                     float vx = vxs[ix][iy], vy = vys[ix][iy];
-                    float angle = (float) (Math.atan2(vy, vx));
+                    float angle = (float) (Math.atan2(vy, vx)/ (2 * Math.PI) + 0.5);
                     gl.glColor3f(angle, 1 - angle, 1 / (1 + 10 * angle));
                     gl.glPushMatrix();
                     DrawGL.drawVector(gl, x, y, vx, vy, 1, ppsScale);

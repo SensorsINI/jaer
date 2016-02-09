@@ -423,7 +423,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     synchronized public EventPacket filterPacket(EventPacket in) {
         setupFilter(in);
         firstTs = in.getFirstTimestamp();
-
+        
         for (Object ein : in) {
             extractEventInfo(ein);
             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
@@ -449,8 +449,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             if (measureAccuracy) {
                 motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);
             }
-            motionField.update(ts, x, y, vx, vy,v);
-        }
+         }
         motionFlowStatistics.updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket;
     }

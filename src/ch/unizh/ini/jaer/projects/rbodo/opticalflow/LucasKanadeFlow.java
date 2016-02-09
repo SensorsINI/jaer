@@ -377,6 +377,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
     synchronized public EventPacket filterPacket(EventPacket in) {
         float p, q, tmp, tmp2, sx2, sy2, sxy, sxt, syt;
         setupFilter(in);
+       motionField.checkArrays();
 
         for (Object ein : in) {
             extractEventInfo(ein);
