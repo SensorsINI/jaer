@@ -176,6 +176,9 @@ public class EasyXMLReader {
 //        binArray = bbuf.order(ByteOrder.LITTLE_ENDIAN).array();
 ////        FloatBuffer ff=bbuf.asFloatBuffer();
 
+        if(binArray.length%4!=0){
+            throw new RuntimeException("When parsing tag \""+name+"\", the length "+binArray.length+" of the resulting byte array is not a factor of 4 as it should be for a float[] array.");
+        }
         // Cast to float array
         float[] floatValues = new float[binArray.length / 4];
         // Iterate until parse each float int 
