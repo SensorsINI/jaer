@@ -1072,12 +1072,19 @@ public class DeepLearnCnnNetwork {
             for (int map = 0; map < nOutputMaps; map++) {
                 for (int xo = 0; xo < outputMapDim; xo++) { // output map index
                     for (int yo = 0; yo < outputMapDim; yo++) { // output map
-                        float s = 0; // sum
+                        float sumOrMax = 0; // sum
                         // input indices
                         int startx = xo * averageOverDim, endx = startx + averageOverDim, starty = yo * averageOverDim, endy = starty + averageOverDim;
                         for (int xi = startx; xi < endx; xi++) { // iterate over input
                             for (int yi = starty; yi < endy; yi++) {
-                                s += convLayer.a(map, xi, yi); // add to sum to processDownsampledFrame average
+                                switch (poolingType) {
+                                    case Average:
+                                        sumOrMax += convLayer.a(map, xi, yi); // add to sum to processDownsampledFrame average
+                                        break;
+                                    case Max:
+                                        float f = convLayer.a(map, xi, yi);
+                                        sumOrMax = f > sumOrMax ? f : sumOrMax;
+                                }
                                 operationCounter++;
                             }
                         }
@@ -1086,7 +1093,11 @@ public class DeepLearnCnnNetwork {
                         if (idx >= activations.length) {
                             log.warning("overran this pooling layer's output activations");
                         }
-                        activations[o(map, xo, yo)] = s * averageOverMultiplier;  //average
+                        if (poolingType == PoolingType.Average) {
+                            activations[o(map, xo, yo)] = sumOrMax * averageOverMultiplier;  //average
+                        }else{
+                            activations[o(map, xo, yo)] = sumOrMax;
+                        }
                     }
                 }
             }
@@ -1343,10 +1354,10 @@ public class DeepLearnCnnNetwork {
             dob = networkReader.getRaw("dob");
             nettype = networkReader.getRaw("type");
             if (!nettype.equals("cnn")) {
-                log.warning("network type is "+nettype+" which is not defined type \"cnn\"");
+                log.warning("network type is " + nettype + " which is not defined type \"cnn\"");
             }
             nLayers = networkReader.getNodeCount("Layer");
-            log.info("network has "+nLayers+" layers");
+            log.info("network has " + nLayers + " layers");
             if (layers != null) {
                 for (int i = 0; i < layers.length; i++) {
                     layers[i] = null;
@@ -1355,13 +1366,13 @@ public class DeepLearnCnnNetwork {
             layers = new Layer[nLayers];
 
             for (int i = 0; i < nLayers; i++) {
-                log.info("loading layer "+i);
+                log.info("loading layer " + i);
                 EasyXMLReader layerReader = networkReader.getNode("Layer", i);
                 int index = layerReader.getInt("index");
                 String type = layerReader.getRaw("type");
                 switch (type) {
                     case "i": {
-                        log.info("loading input layer "+index);
+                        log.info("loading input layer " + index);
                         inputLayer = new InputLayer(index);
                         layers[index] = inputLayer;
                         inputLayer.dimx = layerReader.getInt("dimx");
@@ -1370,7 +1381,7 @@ public class DeepLearnCnnNetwork {
                     }
                     break;
                     case "c": {
-                        log.info("loading conv layer "+index);
+                        log.info("loading conv layer " + index);
                         ConvLayer l = new ConvLayer(index);
                         layers[index] = l;
                         l.nInputMaps = layerReader.getInt("inputMaps");
@@ -1394,7 +1405,7 @@ public class DeepLearnCnnNetwork {
                     }
                     break;
                     case "s": {
-                        log.info("loading subsampling layer "+index);
+                        log.info("loading subsampling layer " + index);
                         SubsamplingLayer l = new SubsamplingLayer(index);
                         layers[index] = l;
                         l.averageOverDim = layerReader.getInt("averageOver");
@@ -1417,7 +1428,7 @@ public class DeepLearnCnnNetwork {
             }
             log.info("loading output layer");
             outputLayer = new OutputLayer(nLayers);
-            
+
             outputLayer.weights = networkReader.getBase64FloatArr("outputWeights"); // stored in many cols and few rows: one row per output unit
             outputLayer.biases = networkReader.getBase64FloatArr("outputBias");
             setXmlFilename(f.toString());
