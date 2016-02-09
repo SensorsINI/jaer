@@ -100,6 +100,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         JFileChooser c = new JFileChooser(lastApsDvsNetXMLFilename);
         FileFilter filt = new FileNameExtensionFilter("XML File", "xml");
         c.addChoosableFileFilter(filt);
+        c.setFileFilter(filt);
         c.setSelectedFile(new File(lastApsDvsNetXMLFilename));
         int ret = c.showOpenDialog(chip.getAeViewer());
         if (ret != JFileChooser.APPROVE_OPTION) {
@@ -112,7 +113,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             dvsSubsampler = new DvsSubsamplerToFrame(apsDvsNet.inputLayer.dimx, apsDvsNet.inputLayer.dimy, getDvsColorScale());
         } catch (IOException ex) {
             Logger.getLogger(DavisDeepLearnCnnProcessor.class.getName()).log(Level.SEVERE, null, ex);
-            JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file", "Bad network file", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file, caught exception "+ex+". See console for logging.", "Bad network file", JOptionPane.WARNING_MESSAGE);
         }
 
     }
