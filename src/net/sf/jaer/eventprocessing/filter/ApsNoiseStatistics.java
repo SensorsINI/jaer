@@ -383,7 +383,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (resetOnBiasChange && evt.getSource() instanceof AEChip && evt.getPropertyName() != DavisChip.PROPERTY_FRAME_RATE_HZ && evt.getPropertyName() != DavisChip.PROPERTY_MEASURED_EXPOSURE_MS) {
+        if (isFilterEnabled()&&  resetOnBiasChange && evt.getSource() instanceof AEChip && evt.getPropertyName() != DavisChip.PROPERTY_FRAME_RATE_HZ && evt.getPropertyName() != DavisChip.PROPERTY_MEASURED_EXPOSURE_MS) {
             resetFilter();
             log.info("statistics reset because of event " + evt.getPropertyName());
         }
