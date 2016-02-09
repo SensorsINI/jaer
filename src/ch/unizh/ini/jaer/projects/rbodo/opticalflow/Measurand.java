@@ -1,7 +1,8 @@
 package ch.unizh.ini.jaer.projects.rbodo.opticalflow;
 
 /**
- *
+ * Tracks mean and variance statistics for optical flow methods.
+ * 
  * @author rbodo
  */
 public class Measurand {
