@@ -221,6 +221,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(motionFieldTT, "motionFieldMixingFactor", "Flow events are mixed with the motion field with this factor. Use 1 to replace field content with each event, or e.g. 0.01 to update only by 1%.");
         setPropertyTooltip(motionFieldTT, "motionFieldSubsamplingShift", "The motion field is computed at this subsampled resolution, e.g. 1 means 1 motion field vector for each 2x2 pixel area.");
         setPropertyTooltip(motionFieldTT, "showMotionField", "Computes and shows a motion field");
+        setPropertyTooltip(motionFieldTT, "maxAgeUs", "Maximum age of motion field value for display and for unconditionally replacing with latest flow event");
+        setPropertyTooltip(motionFieldTT, "consistentWithNeighbors", "Motion field value must be consistent with several neighbors if this option is selected.");
         File lf = new File(loggingFolder);
         if (!lf.exists() || !lf.isDirectory()) {
             log.log(Level.WARNING, "loggingFolder {0} doesn't exist or isn't a directory, defaulting to {1}", new Object[]{lf, lf});
@@ -1189,10 +1191,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     protected class MotionField {
 
         private boolean showMotionField = getBoolean("motionFieldShowMotionField", false);
+        int sx, sy; // size of arrays
         private float[][] vxs, vys, speeds;
         private int[][] lastTs;
-        private int motionFieldSubsamplingShift = getInt("motionFieldSubsamplingShift", 0);
-        private float motionFieldMixingFactor = getFloat("motionFieldMixingFactor", 1e-2f);
+        private int motionFieldSubsamplingShift = getInt("motionFieldSubsamplingShift", 3);
+        private float motionFieldMixingFactor = getFloat("motionFieldMixingFactor", 1e-1f);
+        private int maxAgeUs = getInt("motionFieldMaxAgeUs", 100000);
+        private boolean consistentWithNeighbors = getBoolean("motionFieldConsistentWithNeighbors", false);
 
         public MotionField() {
         }
@@ -1202,31 +1207,26 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 return;
             }
 
-            if (lastTs == null || lastTs.length != chip.getSizeX() >> subSampleShift
-                    || vxs == null || vxs.length != chip.getSizeX() >> subSampleShift
-                    || vys == null || vys.length != chip.getSizeX() >> subSampleShift
-                    || speeds == null || speeds.length != chip.getSizeX() >> subSampleShift) {
-                reset();
-            }
+            sx = (chip.getSizeX() >> motionFieldSubsamplingShift)+1;
+            sy = (chip.getSizeY() >> motionFieldSubsamplingShift)+1;
 
+            if (lastTs == null || lastTs.length != sx
+                    || vxs == null || vxs.length != sx
+                    || vys == null || vys.length != sx
+                    || speeds == null || speeds.length != sx) { // TODO should really check both x and y dimensions here
+                lastTs = new int[sx][sy];
+                vxs = new float[sx][sy];
+                vys = new float[sx][sy];
+                speeds = new float[sx][sy];
+            }
         }
 
         public void reset() {
             if (chip.getNumPixels() == 0) {
                 return;
             }
-            if (lastTs == null || lastTs.length != chip.getSizeX() >> subSampleShift) {
-                lastTs = new int[chip.getSizeX() >> motionFieldSubsamplingShift][chip.getSizeY() >> motionFieldSubsamplingShift];
-            }
-            if (vxs == null || vxs.length != chip.getSizeX() >> subSampleShift) {
-                vxs = new float[chip.getSizeX() >> motionFieldSubsamplingShift][chip.getSizeY() >> motionFieldSubsamplingShift];
-            }
-            if (vys == null || vys.length != chip.getSizeX() >> subSampleShift) {
-                vys = new float[chip.getSizeX() >> motionFieldSubsamplingShift][chip.getSizeY() >> motionFieldSubsamplingShift];
-            }
-            if (speeds == null || speeds.length != chip.getSizeX() >> subSampleShift) {
-                speeds = new float[chip.getSizeX() >> motionFieldSubsamplingShift][chip.getSizeY() >> motionFieldSubsamplingShift];
-            }
+
+            checkArrays();
             for (int[] a : lastTs) {
                 Arrays.fill(a, Integer.MIN_VALUE);
             }
@@ -1255,8 +1255,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 return;
             }
             int x1 = x >> motionFieldSubsamplingShift, y1 = y >> motionFieldSubsamplingShift;
+            if (x1 < 0 || x1 >= vxs.length || y1 < 0 || y1 >= vxs[0].length) {
+                return;
+            }
             if (checkConsistent(timestamp, x1, y1, vx, vy)) {
-                lastTs[x1][y1] = ts;
                 speeds[x1][y1] = speed;
                 float oldv = vxs[x1][y1];
                 float newv = (1 - motionFieldMixingFactor) * oldv + motionFieldMixingFactor * vx;
@@ -1265,36 +1267,65 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 newv = (1 - motionFieldMixingFactor) * oldv + motionFieldMixingFactor * vy;
                 vys[x1][y1] = newv;
             }
+            lastTs[x1][y1] = ts;
         }
 
         /**
          * Checks if new flow event is consistent sufficiently with motion field
          *
          * @param timestamp in us
-         * @param x1 location pixel x before subsampling
+         * @param x1 location pixel x after subsampling
          * @param y1
          * @param vx flow vx, pps
          * @param vy
          * @return true if sufficiently consistent
          */
         private boolean checkConsistent(int timestamp, int x1, int y1, float vx, float vy) {
+            int dt = timestamp - lastTs[x1][y1];
+            if (dt > maxAgeUs || dt < 0) {
+                return false;
+            }
             float dot = vx * vxs[x1][y1] + vy * vys[x1][y1];
-            return (dot >= 0);   // TODO for now consistent means positive dot product...
+            if (!consistentWithNeighbors) {
+                return (dot >= 0);   // TODO for now consistent means positive dot product...
+            }
+            int countConsistent = 0, count = 0;
+            final int[] xs = {-1, 0, 1, 0}, ys = {0, 1, 0, -1}; // 4 neigbors
+            int nNeighbors = xs.length;
+            for (int i = 0; i < nNeighbors; i++) {
+                int x = xs[i], y = ys[i];
+                int x2 = x1 + x, y2 = y1 + y;
+                if (x2 < 0 || x2 >= vxs.length || y2 < 0 || y2 >= vxs[0].length) {
+                    continue;
+                }
+                count++;
+                float dot2 = vx * vxs[x2][y2] + vy * vys[x2][y2];
+                if (dot2 >= 0) {
+                    countConsistent++;
+                }
+            }
+            if (countConsistent > count / 2) {
+                return true;
+            } else {
+                return false;
+            }
         }
 
         public void draw(GL2 gl) {
             if (!showMotionField || vxs == null || vys == null) {
                 return;
             }
-            int nx = vxs.length, ny = vxs[0].length;
+            int nx = sx, ny = sy;
             float shift = ((1 << motionFieldSubsamplingShift) * .5f);
             for (int ix = 0; ix < nx; ix++) {
                 float x = (ix << motionFieldSubsamplingShift) + shift;
                 for (int iy = 0; iy < ny; iy++) {
-                    if(speeds[ix][iy]<1f) continue;
+                    if (speeds[ix][iy] < 1f) {
+                        continue;
+                    }
                     float y = (iy << motionFieldSubsamplingShift) + shift;
                     float vx = vxs[ix][iy], vy = vys[ix][iy];
-                    float angle = (float) (Math.atan2(vy, vx)/ (2 * Math.PI) + 0.5);
+                    float angle = (float) (Math.atan2(vy, vx) / (2 * Math.PI) + 0.5);
                     gl.glColor3f(angle, 1 - angle, 1 / (1 + 10 * angle));
                     gl.glPushMatrix();
                     DrawGL.drawVector(gl, x, y, vx, vy, 1, ppsScale);
@@ -1355,6 +1386,36 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             this.motionFieldMixingFactor = motionFieldMixingFactor;
             putFloat("motionFieldMixingFactor", motionFieldMixingFactor);
         }
+
+        /**
+         * @return the maxAgeUs
+         */
+        public int getMaxAgeUs() {
+            return maxAgeUs;
+        }
+
+        /**
+         * @param maxAgeUs the maxAgeUs to set
+         */
+        public void setMaxAgeUs(int maxAgeUs) {
+            this.maxAgeUs = maxAgeUs;
+            putInt("motionFieldMaxAgeUs", maxAgeUs);
+        }
+
+        /**
+         * @return the consistentWithNeighbors
+         */
+        public boolean isConsistentWithNeighbors() {
+            return consistentWithNeighbors;
+        }
+
+        /**
+         * @param consistentWithNeighbors the consistentWithNeighbors to set
+         */
+        public void setConsistentWithNeighbors(boolean consistentWithNeighbors) {
+            this.consistentWithNeighbors = consistentWithNeighbors;
+            putBoolean("motionFieldConsistentWithNeighbors", consistentWithNeighbors);
+        }
     } // MotionField
 
     public boolean isShowMotionField() {
@@ -1379,6 +1440,22 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     public void setMotionFieldMixingFactor(float motionFieldMixingFactor) {
         motionField.setMotionFieldMixingFactor(motionFieldMixingFactor);
+    }
+
+    public int getMaxAgeUs() {
+        return motionField.getMaxAgeUs();
+    }
+
+    public void setMaxAgeUs(int maxAgeUs) {
+        motionField.setMaxAgeUs(maxAgeUs);
+    }
+
+    public boolean isConsistentWithNeighbors() {
+        return motionField.isConsistentWithNeighbors();
+    }
+
+    public void setConsistentWithNeighbors(boolean consistentWithNeighbors) {
+        motionField.setConsistentWithNeighbors(consistentWithNeighbors);
     }
 
 }
