@@ -223,6 +223,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(motionFieldTT, "showMotionField", "Computes and shows a motion field");
         setPropertyTooltip(motionFieldTT, "maxAgeUs", "Maximum age of motion field value for display and for unconditionally replacing with latest flow event");
         setPropertyTooltip(motionFieldTT, "consistentWithNeighbors", "Motion field value must be consistent with several neighbors if this option is selected.");
+        setPropertyTooltip(motionFieldTT, "consistentWithCurrentAngle", "Motion field value is only updated if flow event angle is in same half plane as current estimate, i.e. has non-negative dot product.");
         File lf = new File(loggingFolder);
         if (!lf.exists() || !lf.isDirectory()) {
             log.log(Level.WARNING, "loggingFolder {0} doesn't exist or isn't a directory, defaulting to {1}", new Object[]{lf, lf});
@@ -640,8 +641,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             gl.glRasterPos2i(2, 10);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("glob. speed=%.2f pps ", Math.sqrt(
-                            Math.pow(motionFlowStatistics.globalMotion.meanGlobalVx, 2)
-                            + Math.pow(motionFlowStatistics.globalMotion.meanGlobalVy, 2))));
+                                    Math.pow(motionFlowStatistics.globalMotion.meanGlobalVx, 2)
+                                    + Math.pow(motionFlowStatistics.globalMotion.meanGlobalVy, 2))));
             gl.glPopMatrix();
 
             // Draw global rotation vector as line left/right
@@ -680,8 +681,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             gl.glRasterPos2i(240, 0);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("%4.2f +/- %5.2f us", new Object[]{
-                motionFlowStatistics.processingTime.getMean(),
-                motionFlowStatistics.processingTime.getStdDev()}));
+                        motionFlowStatistics.processingTime.getMean(),
+                        motionFlowStatistics.processingTime.getStdDev()}));
             gl.glPopMatrix();
         }
 
@@ -690,15 +691,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             gl.glRasterPos2i(240, 10);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("%4.2f +/- %5.2f pixel/s", new Object[]{
-                motionFlowStatistics.endpointErrorAbs.getMean(),
-                motionFlowStatistics.endpointErrorAbs.getStdDev()}));
+                        motionFlowStatistics.endpointErrorAbs.getMean(),
+                        motionFlowStatistics.endpointErrorAbs.getStdDev()}));
             gl.glPopMatrix();
             gl.glPushMatrix();
             gl.glRasterPos2i(240, 20);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("%4.2f +/- %5.2f °", new Object[]{
-                motionFlowStatistics.angularError.getMean(),
-                motionFlowStatistics.angularError.getStdDev()}));
+                        motionFlowStatistics.angularError.getMean(),
+                        motionFlowStatistics.angularError.getStdDev()}));
             gl.glPopMatrix();
         }
 
@@ -1194,10 +1195,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         int sx, sy; // size of arrays
         private float[][] vxs, vys, speeds;
         private int[][] lastTs;
+        private int lastUpdateTimestamp = Integer.MAX_VALUE;
         private int motionFieldSubsamplingShift = getInt("motionFieldSubsamplingShift", 3);
         private float motionFieldMixingFactor = getFloat("motionFieldMixingFactor", 1e-1f);
         private int maxAgeUs = getInt("motionFieldMaxAgeUs", 100000);
         private boolean consistentWithNeighbors = getBoolean("motionFieldConsistentWithNeighbors", false);
+        private boolean consistentWithCurrentAngle = getBoolean("motionFieldConsistentWithCurrentAngle", false);
 
         public MotionField() {
         }
@@ -1207,8 +1210,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 return;
             }
 
-            sx = (chip.getSizeX() >> motionFieldSubsamplingShift)+1;
-            sy = (chip.getSizeY() >> motionFieldSubsamplingShift)+1;
+            sx = (chip.getSizeX() >> motionFieldSubsamplingShift) + 1;
+            sy = (chip.getSizeY() >> motionFieldSubsamplingShift) + 1;
 
             if (lastTs == null || lastTs.length != sx
                     || vxs == null || vxs.length != sx
@@ -1225,6 +1228,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             if (chip.getNumPixels() == 0) {
                 return;
             }
+            lastUpdateTimestamp = Integer.MAX_VALUE;
 
             checkArrays();
             for (int[] a : lastTs) {
@@ -1254,6 +1258,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             if (!showMotionField) {
                 return;
             }
+            lastUpdateTimestamp = timestamp;
             int x1 = x >> motionFieldSubsamplingShift, y1 = y >> motionFieldSubsamplingShift;
             if (x1 < 0 || x1 >= vxs.length || y1 < 0 || y1 >= vxs[0].length) {
                 return;
@@ -1285,30 +1290,35 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             if (dt > maxAgeUs || dt < 0) {
                 return false;
             }
-            float dot = vx * vxs[x1][y1] + vy * vys[x1][y1];
-            if (!consistentWithNeighbors) {
-                return (dot >= 0);   // TODO for now consistent means positive dot product...
+            boolean thisAngleConsistentWithCurrentAngle = true;
+            if (consistentWithCurrentAngle) {
+                float dot = vx * vxs[x1][y1] + vy * vys[x1][y1];
+                thisAngleConsistentWithCurrentAngle = (dot >= 0);
             }
-            int countConsistent = 0, count = 0;
-            final int[] xs = {-1, 0, 1, 0}, ys = {0, 1, 0, -1}; // 4 neigbors
-            int nNeighbors = xs.length;
-            for (int i = 0; i < nNeighbors; i++) {
-                int x = xs[i], y = ys[i];
-                int x2 = x1 + x, y2 = y1 + y;
-                if (x2 < 0 || x2 >= vxs.length || y2 < 0 || y2 >= vxs[0].length) {
-                    continue;
+            boolean thisAngleConsistentWithNeighbors = true;
+            if (consistentWithNeighbors) {
+                int countConsistent = 0, count = 0;
+                final int[] xs = {-1, 0, 1, 0}, ys = {0, 1, 0, -1}; // 4 neigbors
+                int nNeighbors = xs.length;
+                for (int i = 0; i < nNeighbors; i++) {
+                    int x = xs[i], y = ys[i];
+                    int x2 = x1 + x, y2 = y1 + y;
+                    if (x2 < 0 || x2 >= vxs.length || y2 < 0 || y2 >= vxs[0].length) {
+                        continue;
+                    }
+                    count++;
+                    float dot2 = vx * vxs[x2][y2] + vy * vys[x2][y2];
+                    if (dot2 >= 0) {
+                        countConsistent++;
+                    }
                 }
-                count++;
-                float dot2 = vx * vxs[x2][y2] + vy * vys[x2][y2];
-                if (dot2 >= 0) {
-                    countConsistent++;
+                if (countConsistent > count / 2) {
+                    thisAngleConsistentWithNeighbors = true;
+                } else {
+                    thisAngleConsistentWithNeighbors = false;
                 }
             }
-            if (countConsistent > count / 2) {
-                return true;
-            } else {
-                return false;
-            }
+            return thisAngleConsistentWithCurrentAngle && thisAngleConsistentWithNeighbors;
         }
 
         public void draw(GL2 gl) {
@@ -1319,6 +1329,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             for (int ix = 0; ix < sx; ix++) {
                 float x = (ix << motionFieldSubsamplingShift) + shift;
                 for (int iy = 0; iy < sy; iy++) {
+                    int dt = lastUpdateTimestamp - lastTs[ix][iy];
+                    if (dt > maxAgeUs || dt < 0) {
+                        continue;
+                    }
                     if (speeds[ix][iy] < 1f) {
                         continue;
                     }
@@ -1415,6 +1429,22 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             this.consistentWithNeighbors = consistentWithNeighbors;
             putBoolean("motionFieldConsistentWithNeighbors", consistentWithNeighbors);
         }
+
+        /**
+         * @return the consistentWithCurrentAngle
+         */
+        public boolean isConsistentWithCurrentAngle() {
+            return consistentWithCurrentAngle;
+        }
+
+        /**
+         * @param consistentWithCurrentAngle the consistentWithCurrentAngle to
+         * set
+         */
+        public void setConsistentWithCurrentAngle(boolean consistentWithCurrentAngle) {
+            this.consistentWithCurrentAngle = consistentWithCurrentAngle;
+            putBoolean("motionFieldConsistentWithCurrentAngle", consistentWithCurrentAngle);
+        }
     } // MotionField
 
     public boolean isShowMotionField() {
@@ -1456,5 +1486,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     public void setConsistentWithNeighbors(boolean consistentWithNeighbors) {
         motionField.setConsistentWithNeighbors(consistentWithNeighbors);
     }
+
+    public boolean isConsistentWithCurrentAngle() {
+        return motionField.isConsistentWithCurrentAngle();
+    }
+
+    public void setConsistentWithCurrentAngle(boolean consistentWithCurrentAngle) {
+        motionField.setConsistentWithCurrentAngle(consistentWithCurrentAngle);
+    }
+    
+    
 
 }
