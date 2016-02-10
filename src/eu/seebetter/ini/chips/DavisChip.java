@@ -10,7 +10,6 @@ import ch.unizh.ini.jaer.projects.davis.frames.DavisFrameAviWriter;
 import eu.seebetter.ini.chips.davis.AutoExposureController;
 import eu.seebetter.ini.chips.davis.DavisAutoShooter;
 import net.sf.jaer.eventprocessing.filter.ApsDvsEventFilter;
-import net.sf.jaer.eventprocessing.label.ApsDvsDirectionSelectiveFilter;
 import net.sf.jaer.eventprocessing.label.SimpleOrientationFilter;
 
 /**
@@ -67,7 +66,6 @@ abstract public class DavisChip extends AETemporalConstastRetina {
 		addDefaultEventFilter(ApsFrameExtractor.class);
 		addDefaultEventFilter(DavisAutoShooter.class);
 		addDefaultEventFilter(SimpleOrientationFilter.class);
-		addDefaultEventFilter(ApsDvsDirectionSelectiveFilter.class);
 		addDefaultEventFilter(DavisFrameAviWriter.class);
 	}
 

@@ -194,9 +194,9 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
  
             if (accuracyTests()) continue;   
             writeOutputEvent(motionDir, ein);
-            if (measureAccuracy) motionFlowStatistics.update(vx,vy,v,vxGT,vyGT,vGT);
+            if (measureAccuracy) getMotionFlowStatistics().update(vx,vy,v,vxGT,vyGT,vGT);
         }
-        motionFlowStatistics.updatePacket(countIn, countOut);
+        getMotionFlowStatistics().updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket; 
     }
 

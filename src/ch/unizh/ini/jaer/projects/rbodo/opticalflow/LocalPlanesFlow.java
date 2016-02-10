@@ -447,10 +447,10 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
 //            printNeighborhood();
             writeOutputEvent();
             if (measureAccuracy) {
-                motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);
+                getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
             }
          }
-        motionFlowStatistics.updatePacket(countIn, countOut);
+        getMotionFlowStatistics().updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket;
     }
 

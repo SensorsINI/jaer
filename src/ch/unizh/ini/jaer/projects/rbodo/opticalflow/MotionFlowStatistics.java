@@ -35,7 +35,7 @@ import static net.sf.jaer.eventprocessing.EventFilter.log;
  * @author rbodo
  */
 public class MotionFlowStatistics {
-    GlobalMotion globalMotion;
+    private GlobalMotion globalMotion;
     AngularError angularError;
     EndpointErrorAbs endpointErrorAbs;
     EndpointErrorRel endpointErrorRel;
@@ -118,6 +118,14 @@ public class MotionFlowStatistics {
                eventDensity.toString() + globalMotion.toString() +
                processingTime.toString() + angularError.toString() + 
                endpointErrorAbs.toString() + endpointErrorRel.toString();
+    }
+
+    /**
+     * Returns object that reports global motion statistics
+     * @return the globalMotion
+     */
+    public GlobalMotion getGlobalMotion() {
+        return globalMotion;
     }
     
     /** Records number of events in packet before and after filtering, i.e. what fraction of input events cause optical flow events.
@@ -272,6 +280,34 @@ public class MotionFlowStatistics {
                 "[%1$4.2f, %2$4.2f] +/- [%3$4.2f, %4$4.2f] pixel/s, global rotation: " +
                 "%5$4.2f +/- %6$2.2f °/s %n", meanGlobalVx, meanGlobalVy, sdGlobalVx,
                 sdGlobalVy, meanGlobalRotation, sdGlobalRotation);
+        }
+
+        /**
+         * @return the globalVx in pixels/second
+         */
+        public Measurand getGlobalVx() {
+            return globalVx;
+        }
+
+        /**
+         * @return the globalVy in pixels/second
+         */
+        public Measurand getGlobalVy() {
+            return globalVy;
+        }
+
+        /**
+         * @return the globalRotation, TODO in rad/sec?
+         */
+        public Measurand getGlobalRotation() {
+            return globalRotation;
+        }
+
+        /**
+         * @return the globalExpansion, TODO units ????
+         */
+        public Measurand getGlobalExpansion() {
+            return globalExpansion;
         }
     }
     

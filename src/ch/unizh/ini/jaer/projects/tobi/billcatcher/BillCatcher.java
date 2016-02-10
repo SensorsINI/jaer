@@ -9,9 +9,10 @@
  *
  *Copyright September 17, 2007 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
-
 package ch.unizh.ini.jaer.projects.tobi.billcatcher;
 
+import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
+import ch.unizh.ini.jaer.projects.rbodo.opticalflow.DirectionSelectiveFlow;
 import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import java.util.logging.Logger;
@@ -25,7 +26,6 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.label.AbstractDirectionSelectiveFilter;
-import net.sf.jaer.eventprocessing.label.DvsDirectionSelectiveFilter;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -36,77 +36,98 @@ import com.jogamp.opengl.util.gl2.GLUT;
 import net.sf.jaer.DevelopmentStatus;
 
 /**
- * Catches ppper money dropped between fingers. The game is that a person holds a bill and then releases it at a random moment.
- The catcher has his/her/its fingers ready to close on the bill. It is impossible for humans to do this task. This classes uses
- the silicon retina, cluster tracking, and the usb servo interface to build a robot to catch the bill.
-
+ * Catches ppper money dropped between fingers. The game is that a person holds
+ * a bill and then releases it at a random moment. The catcher has his/her/its
+ * fingers ready to close on the bill. It is impossible for humans to do this
+ * task. This classes uses the silicon retina, cluster tracking, and the usb
+ * servo interface to build a robot to catch the bill.
+ *
  * @author tobi
  */
 @Description("Catches a bill (money) when sufficient motion is detected")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class BillCatcher extends EventFilter2D implements FrameAnnotater {
 
-    ServoInterface servo=null;
-    Logger log=Logger.getLogger("BillCatcher");
-    FilterChain chain=null;
-    RectangularClusterTracker tracker=null;
-    AbstractDirectionSelectiveFilter motionFilter=null;
+    ServoInterface servo = null;
+    Logger log = Logger.getLogger("BillCatcher");
+    FilterChain chain = null;
+    RectangularClusterTracker tracker = null;
+    AbstractMotionFlow motionFilter = null;
 
-    private float motionThresholdPixelsPerSec=getPrefs().getFloat("BillCatcher.motionThresholdPixelsPerSec",20f);
-    {setPropertyTooltip("motionThresholdPixelsPerSec","threshold in pixels/sec to initiate grab");}
+    private float motionThresholdPixelsPerSec = getPrefs().getFloat("BillCatcher.motionThresholdPixelsPerSec", 20f);
 
-    private float servoOpenValue=getPrefs().getFloat("BillCatcher.servoOpenValue",.3f);
-    {setPropertyTooltip("servoOpenValue","value of servo position while waiting, 0-1 range");}
+    {
+        setPropertyTooltip("motionThresholdPixelsPerSec", "threshold in pixels/sec to initiate grab");
+    }
 
-    private float servoClosedValue=getPrefs().getFloat("BillCatcher.servoClosedValue",0);
-    {setPropertyTooltip("servoClosedValue","value of servo position while grabbing, 0-1 range");}
+    private float servoOpenValue = getPrefs().getFloat("BillCatcher.servoOpenValue", .3f);
 
-    private int grabLengthMs=getPrefs().getInt("BillCatcher.grabLengthMs",500);
-    {setPropertyTooltip("grabLengthMs","how long bill is grabbed in ms before dropping it again");}
+    {
+        setPropertyTooltip("servoOpenValue", "value of servo position while waiting, 0-1 range");
+    }
 
-    private float minkEPSToGrab=getPrefs().getFloat("BillCatcher.minkEPSToGrab",10);
-    {setPropertyTooltip("minkEPSToGrab","minimum kEPS (kilo events per second)) to initiate grab - filters out motion sensing outliers");}
+    private float servoClosedValue = getPrefs().getFloat("BillCatcher.servoClosedValue", 0);
 
-    enum State {WAITING,GRABBING};
-    State state=State.WAITING;
+    {
+        setPropertyTooltip("servoClosedValue", "value of servo position while grabbing, 0-1 range");
+    }
 
-    /** Creates a new instance of BillCatcher */
+    private int grabLengthMs = getPrefs().getInt("BillCatcher.grabLengthMs", 500);
+
+    {
+        setPropertyTooltip("grabLengthMs", "how long bill is grabbed in ms before dropping it again");
+    }
+
+    private float minkEPSToGrab = getPrefs().getFloat("BillCatcher.minkEPSToGrab", 10);
+
+    {
+        setPropertyTooltip("minkEPSToGrab", "minimum kEPS (kilo events per second)) to initiate grab - filters out motion sensing outliers");
+    }
+
+    enum State {
+        WAITING, GRABBING
+    };
+    State state = State.WAITING;
+
+    /**
+     * Creates a new instance of BillCatcher
+     */
     public BillCatcher(AEChip chip) {
         super(chip);
-        chain=new FilterChain(chip);
+        chain = new FilterChain(chip);
 //        tracker=new RectangularClusterTracker(chip);
-        motionFilter=new DvsDirectionSelectiveFilter(chip);
+        motionFilter = new DirectionSelectiveFlow(chip);
 //        chain.add(tracker);
         chain.add(motionFilter);
         setEnclosedFilterChain(chain);
     }
 
-    long lastGrabStartTime=0, lastGrabStopTime=0; // 1970...
-    private Point2D.Float translationalMotion=null;
+    long lastGrabStartTime = 0, lastGrabStopTime = 0; // 1970...
+    private float translationalMotion = 0;
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if(!isFilterEnabled()) {
-			return in;
-		}
-        if((in==null) || (in.getSize()==0)) {
-			return in;
-		}
+        if (!isFilterEnabled()) {
+            return in;
+        }
+        if ((in == null) || (in.getSize() == 0)) {
+            return in;
+        }
         chain.filterPacket(in);
 
         checkServo();
 
-        boolean isFalling=isBillFalling(in);
+        boolean isFalling = isBillFalling(in);
 
-        switch(state){
+        switch (state) {
             case WAITING:
-                if(isFalling && ((System.currentTimeMillis()-lastGrabStopTime)>getGrabLengthMs())){
+                if (isFalling && ((System.currentTimeMillis() - lastGrabStopTime) > getGrabLengthMs())) {
                     // only start grab if waiting and if it has been long enough since last grab
                     grab();
                 }
                 break;
             case GRABBING:
-                if(!isFalling && ((System.currentTimeMillis()-lastGrabStartTime)>getGrabLengthMs())){
+                if (!isFalling && ((System.currentTimeMillis() - lastGrabStartTime) > getGrabLengthMs())) {
                     // only end grab if bill has stopped falling and we have grabbed for long enough
                     endGrab();
                 }
@@ -115,23 +136,23 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
         return in;
     }
 
-    boolean isBillFalling(EventPacket<?> in){
-        translationalMotion=motionFilter.getTranslationVector();
-        boolean moving=(translationalMotion.y<-motionThresholdPixelsPerSec);
-        float rate=in.getEventRateHz();
-        return moving && (rate>(minkEPSToGrab*1e3f));
+    boolean isBillFalling(EventPacket<?> in) {
+        translationalMotion = motionFilter.getMotionFlowStatistics().getGlobalMotion().getGlobalVy().getMean();
+        boolean moving = (translationalMotion < -motionThresholdPixelsPerSec);
+        float rate = in.getEventRateHz();
+        return moving && (rate > (minkEPSToGrab * 1e3f));
     }
 
-    private void grab(){
-        if(state==State.GRABBING) {
-			return;
-		}
+    private void grab() {
+        if (state == State.GRABBING) {
+            return;
+        }
         log.info("grab");
-        lastGrabStartTime=System.currentTimeMillis();
-        state=State.GRABBING;
-        if(servo==null) {
-			return;
-		}
+        lastGrabStartTime = System.currentTimeMillis();
+        state = State.GRABBING;
+        if (servo == null) {
+            return;
+        }
         try {
             servo.setServoValue(0, getServoClosedValue());
         } catch (HardwareInterfaceException ex) {
@@ -139,13 +160,13 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
         }
     }
 
-    private void endGrab(){
+    private void endGrab() {
         log.info("endGrab");
-        state=State.WAITING;
-        lastGrabStopTime=System.currentTimeMillis();
-        if(servo==null) {
-			return;
-		}
+        state = State.WAITING;
+        lastGrabStopTime = System.currentTimeMillis();
+        if (servo == null) {
+            return;
+        }
         try {
             servo.setServoValue(0, getServoOpenValue());
         } catch (HardwareInterfaceException ex) {
@@ -153,25 +174,25 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
         }
     }
 
-    int servoMissingWarningNumber=0;
+    int servoMissingWarningNumber = 0;
 
-    private void checkServo(){
-        if((servo==null) || !servo.isOpen()){
-            if(ServoInterfaceFactory.instance().getNumInterfacesAvailable()==0){
-                if((servoMissingWarningNumber++%1000)==0){
+    private void checkServo() {
+        if ((servo == null) || !servo.isOpen()) {
+            if (ServoInterfaceFactory.instance().getNumInterfacesAvailable() == 0) {
+                if ((servoMissingWarningNumber++ % 1000) == 0) {
                     log.warning("No servo found");
                 }
                 return;
             }
-            try{
-                servo=(ServoInterface)(ServoInterfaceFactory.instance().getInterface(0));
-                if(servo==null) {
-					return;
-				}
+            try {
+                servo = (ServoInterface) (ServoInterfaceFactory.instance().getInterface(0));
+                if (servo == null) {
+                    return;
+                }
                 servo.open();
-            }catch(HardwareInterfaceException e){
-                servo=null;
-                if((servoMissingWarningNumber++%1000)==0){
+            } catch (HardwareInterfaceException e) {
+                servo = null;
+                if ((servoMissingWarningNumber++ % 1000) == 0) {
                     log.warning(e.toString());
                 }
             }
@@ -179,28 +200,27 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
     }
 
     @Override
-	synchronized public void resetFilter() {
-        if(chain!=null) {
-			chain.reset();
-		}
+    synchronized public void resetFilter() {
+        if (chain != null) {
+            chain.reset();
+        }
     }
 
     @Override
-	public void initFilter() {
+    public void initFilter() {
     }
 
 //    @Override
 //    synchronized public void setFilterEnabled(boolean yes){
 //        super.setFilterEnabled(yes);
 //    }
-
     public float getMotionThresholdPixelsPerSec() {
         return motionThresholdPixelsPerSec;
     }
 
     public void setMotionThresholdPixelsPerSec(float motionThresholdPixelsPerSec) {
         this.motionThresholdPixelsPerSec = motionThresholdPixelsPerSec;
-        getPrefs().putFloat("BillCatcher.motionThresholdPixelsPerSec",motionThresholdPixelsPerSec);
+        getPrefs().putFloat("BillCatcher.motionThresholdPixelsPerSec", motionThresholdPixelsPerSec);
     }
 
     public void annotate(float[][][] frame) {
@@ -210,15 +230,13 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
     }
 
     @Override
-	public void annotate(GLAutoDrawable drawable) {
-        GL2 gl=drawable.getGL().getGL2();
-        gl.glColor3f(1,1,1);
-        if(translationalMotion!=null){
-            gl.glRasterPos3f(0,chip.getSizeY()-2,0);
-            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("Yvel=%.1f",translationalMotion.y));
-        }
-        if(state==State.GRABBING){
-            gl.glRasterPos3f(0,0,0);
+    public void annotate(GLAutoDrawable drawable) {
+        GL2 gl = drawable.getGL().getGL2();
+        gl.glColor3f(1, 1, 1);
+        gl.glRasterPos3f(0, chip.getSizeY() - 2, 0);
+        chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("Yvel=%.1f pps", translationalMotion));
+        if (state == State.GRABBING) {
+            gl.glRasterPos3f(0, 0, 0);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("GRAB!!!"));
         }
     }
@@ -228,14 +246,13 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
     }
 
     public void setGrabLengthMs(int grabLengthMs) {
-        if(grabLengthMs<100) {
-			grabLengthMs=100;
-		}
-		else if(grabLengthMs>3000) {
-			grabLengthMs=3000;
-		}
+        if (grabLengthMs < 100) {
+            grabLengthMs = 100;
+        } else if (grabLengthMs > 3000) {
+            grabLengthMs = 3000;
+        }
         this.grabLengthMs = grabLengthMs;
-        getPrefs().putInt("BillCatcher.grabLengthMs",grabLengthMs);
+        getPrefs().putInt("BillCatcher.grabLengthMs", grabLengthMs);
     }
 
     public float getServoOpenValue() {
@@ -243,14 +260,13 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
     }
 
     public void setServoOpenValue(float servoOpenValue) {
-        if(servoOpenValue<0) {
-			servoOpenValue=0;
-		}
-		else if(servoOpenValue>1) {
-			servoOpenValue=1;
-		}
+        if (servoOpenValue < 0) {
+            servoOpenValue = 0;
+        } else if (servoOpenValue > 1) {
+            servoOpenValue = 1;
+        }
         this.servoOpenValue = servoOpenValue;
-        getPrefs().putFloat("BillCatcher.servoOpenValue",servoOpenValue);
+        getPrefs().putFloat("BillCatcher.servoOpenValue", servoOpenValue);
     }
 
     public float getServoClosedValue() {
@@ -258,14 +274,13 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
     }
 
     public void setServoClosedValue(float servoClosedValue) {
-        if(servoClosedValue<0) {
-			servoClosedValue=0;
-		}
-		else if(servoClosedValue>1) {
-			servoClosedValue=1;
-		}
+        if (servoClosedValue < 0) {
+            servoClosedValue = 0;
+        } else if (servoClosedValue > 1) {
+            servoClosedValue = 1;
+        }
         this.servoClosedValue = servoClosedValue;
-        getPrefs().putFloat("BillCatcher.servoClosedValue",servoClosedValue);
+        getPrefs().putFloat("BillCatcher.servoClosedValue", servoClosedValue);
     }
 
     public float getMinkEPSToGrab() {
@@ -274,7 +289,7 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
 
     public void setMinkEPSToGrab(float minkEPSToGrab) {
         this.minkEPSToGrab = minkEPSToGrab;
-        getPrefs().putFloat("BillCatcher.minkEPSToGrab",minkEPSToGrab);
+        getPrefs().putFloat("BillCatcher.minkEPSToGrab", minkEPSToGrab);
     }
 
 }

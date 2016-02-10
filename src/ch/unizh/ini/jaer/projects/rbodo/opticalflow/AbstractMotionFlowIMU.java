@@ -537,7 +537,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 Arrays.fill(b, Integer.MIN_VALUE);
             }
         }
-        motionFlowStatistics.globalMotion.reset(subSizeX, subSizeY);
+        motionFlowStatistics.getGlobalMotion().reset(subSizeX, subSizeY);
 //        log.info("Reset filter storage after parameter change or reset.");
     }
 
@@ -635,19 +635,19 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             // Draw global translation vector
             gl.glPushMatrix();
             DrawGL.drawVector(gl, sizex / 2, sizey / 2,
-                    motionFlowStatistics.globalMotion.meanGlobalVx,
-                    motionFlowStatistics.globalMotion.meanGlobalVy,
+                    motionFlowStatistics.getGlobalMotion().meanGlobalVx,
+                    motionFlowStatistics.getGlobalMotion().meanGlobalVy,
                     4, ppsScale * GLOBAL_MOTION_DRAWING_SCALE);
             gl.glRasterPos2i(2, 10);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("glob. speed=%.2f pps ", Math.sqrt(
-                                    Math.pow(motionFlowStatistics.globalMotion.meanGlobalVx, 2)
-                                    + Math.pow(motionFlowStatistics.globalMotion.meanGlobalVy, 2))));
+                                    Math.pow(motionFlowStatistics.getGlobalMotion().meanGlobalVx, 2)
+                                    + Math.pow(motionFlowStatistics.getGlobalMotion().meanGlobalVy, 2))));
             gl.glPopMatrix();
 
             // Draw global rotation vector as line left/right
             gl.glPushMatrix();
-            DrawGL.drawLine(gl, sizex / 2, sizey * 3 / 4, -motionFlowStatistics.globalMotion.meanGlobalRotation,
+            DrawGL.drawLine(gl, sizex / 2, sizey * 3 / 4, -motionFlowStatistics.getGlobalMotion().getGlobalRotation().getMean(),
                     0, ppsScale * GLOBAL_MOTION_DRAWING_SCALE);
             gl.glPopMatrix();
 
@@ -655,7 +655,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             // expansion metric, smaller for contraction, larger for expansion
             gl.glPushMatrix();
             DrawGL.drawCircle(gl, sizex / 2, sizey / 2, ppsScale * GLOBAL_MOTION_DRAWING_SCALE
-                    * (1 + motionFlowStatistics.globalMotion.meanGlobalExpansion), 15);
+                    * (1 + motionFlowStatistics.getGlobalMotion().meanGlobalExpansion), 15);
             gl.glPopMatrix();
         }
 
@@ -784,7 +784,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             countOut++;
         }
         if (measureGlobalMotion) {
-            motionFlowStatistics.globalMotion.update(vx, vy, v, eout.x, eout.y);
+            motionFlowStatistics.getGlobalMotion().update(vx, vy, v, eout.x, eout.y);
         }
         if (motionVectorEventLogger != null && motionVectorEventLogger.isEnabled()) {
             String s = String.format("%d %d %d %d %.3g %.3g %.3g %d", eout.timestamp, eout.x, eout.y, eout.type, eout.velocity.x, eout.velocity.y, eout.speed, eout.hasDirection ? 1 : 0);
@@ -1493,6 +1493,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     public void setConsistentWithCurrentAngle(boolean consistentWithCurrentAngle) {
         motionField.setConsistentWithCurrentAngle(consistentWithCurrentAngle);
+    }
+
+    /**
+     * Returns the object holding flow statistics.
+     * 
+     * @return the motionFlowStatistics
+     */
+    public MotionFlowStatistics getMotionFlowStatistics() {
+        return motionFlowStatistics;
     }
     
     
