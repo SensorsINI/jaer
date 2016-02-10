@@ -26,55 +26,53 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 /**
- * Get and parse an XML file.  Provides a wrapper around the default XML parsing
+ * Get and parse an XML file. Provides a wrapper around the default XML parsing
  * utility which is easier to use.
- * 
+ *
  * EasyXMLReader reader=new EasyXMLReader();
- * 
+ *
  * @author oconnorp, adapted by tobi 22.1.15
  */
 public class EasyXMLReader {
 
-    private static final Logger log=Logger.getLogger("EasyXMLReader");
+    private static final Logger log = Logger.getLogger("EasyXMLReader");
     Node doc;
     File file;
     //BASE64Decoder decoder = new BASE64Decoder();
 
-    public static File grabFile(String startPath)
-    {
+    public static File grabFile(String startPath) {
         try {
-            if (startPath==null)
+            if (startPath == null) {
                 return getfile(null);
-            else
+            } else {
                 return getfile(new File(startPath));
+            }
         } catch (FileNotFoundException ex) {
             Logger.getLogger(EasyXMLReader.class.getName()).log(Level.SEVERE, null, ex);
             return null;
         }
     }
-    
-    public EasyXMLReader() throws Exception
-    {   this(grabFile(null));
+
+    public EasyXMLReader() throws Exception {
+        this(grabFile(null));
     }
-    
-    public EasyXMLReader(File infile){
-        
-        
-        if (infile!=null && infile.isDirectory())
-            file=grabFile(infile.toString());
-        else if (infile!=null && infile.isFile())
-//        else if (infile!=null && !infile.isFile())
-            file=infile;
-        else{
+
+    public EasyXMLReader(File infile) {
+
+        if (infile != null && infile.isDirectory()) {
+            file = grabFile(infile.toString());
+        } else if (infile != null && infile.isFile()) //        else if (infile!=null && !infile.isFile())
+        {
+            file = infile;
+        } else {
             log.warning("The file you gave s neither a file not a directory");
-            file=grabFile(null);
+            file = grabFile(null);
         }
-        
-        if (file==null)
-        {   return;            
+
+        if (file == null) {
+            return;
         }
-        
-        
+
         try {
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder dBuilder;
@@ -88,27 +86,28 @@ public class EasyXMLReader {
 
             doc = dc;
 
-
         } catch (SAXException ex) {
             Logger.getLogger(EasyXMLReader.class.getName()).log(Level.SEVERE, null, ex);
-            file=null;
+            file = null;
         } catch (IOException ex) {
             Logger.getLogger(EasyXMLReader.class.getName()).log(Level.SEVERE, null, ex);
-            file=null;
+            file = null;
         } catch (ParserConfigurationException ex) {
             Logger.getLogger(EasyXMLReader.class.getName()).log(Level.SEVERE, null, ex);
-            file=null;
+            file = null;
         }
     }
-    
-    /** Return whether the system has a file */
-    public boolean hasFile()
-    {   return file!=null;
-        
+
+    /**
+     * Return whether the system has a file
+     */
+    public boolean hasFile() {
+        return file != null;
+
     }
-    
-    public File getFile()
-    {   return file;        
+
+    public File getFile() {
+        return file;
     }
 
     public EasyXMLReader(Node db) {
@@ -123,10 +122,10 @@ public class EasyXMLReader {
         return new EasyXMLReader(get(name).item(index));
     }
 
-    public int getNodeCount(String name)
-    {   return get(name).getLength();        
+    public int getNodeCount(String name) {
+        return get(name).getLength();
     }
-    
+
     public NodeList get(String name) {
         if (doc instanceof Element) {
             return ((Element) doc).getElementsByTagName(name);
@@ -136,6 +135,11 @@ public class EasyXMLReader {
             throw new UnsupportedOperationException("Thank poor implementation for this error");
         }
 
+    }
+
+    // TODO javadoc
+    public String getAttrValue(String name, String attrName) {
+        return get(name).item(0).getAttributes().getNamedItem(attrName).getNodeValue();
     }
 
     public String getRaw(String name) {
@@ -164,7 +168,19 @@ public class EasyXMLReader {
         return DatatypeConverter.parseBase64Binary(getRaw(name));
     }
 
-    public float[] getBase64FloatArr(String name) {   /*
+    public float[] getAsciiFloatArr(String name) {
+
+        String s = getRaw(name);
+        String[] s2 = s.split(" ");
+        float[] f = new float[s2.length];
+        for (int i = 0; i < f.length; i++) {
+            f[i] = Float.parseFloat(s2[i]);
+        }
+        return f;
+    }
+
+    public float[] getBase64FloatArr(String name) {
+        /*
          * Thank you Brian Smith, whoever you are
          */
 
@@ -175,9 +191,8 @@ public class EasyXMLReader {
 //        bbuf.put(binArray);
 //        binArray = bbuf.order(ByteOrder.LITTLE_ENDIAN).array();
 ////        FloatBuffer ff=bbuf.asFloatBuffer();
-
-        if(binArray.length%4!=0){
-            throw new RuntimeException("When parsing tag \""+name+"\", the length "+binArray.length+" of the resulting byte array is not a factor of 4 as it should be for a float[] array.");
+        if (binArray.length % 4 != 0) {
+            throw new RuntimeException("When parsing tag \"" + name + "\", the length " + binArray.length + " of the resulting byte array is not a factor of 4 as it should be for a float[] array.");
         }
         // Cast to float array
         float[] floatValues = new float[binArray.length / 4];
@@ -202,7 +217,7 @@ public class EasyXMLReader {
 
         return floatValues;
     }
-    
+
     // ===== File IO Functions =====    
     static class FileChoice implements Runnable {
 
@@ -213,25 +228,26 @@ public class EasyXMLReader {
         public void run() {
             JFileChooser fc;
             fc = new JFileChooser(startDir);
-            FileFilter filt=new FileNameExtensionFilter("XML File","xml");
+            FileFilter filt = new FileNameExtensionFilter("XML File", "xml");
             fc.addChoosableFileFilter(filt);
             //fc.setFileFilter(filt);
             //fc = new JFileChooser("dfsfds");
             fc.setDialogTitle("Choose network weight XML file");
 
             fc.showOpenDialog(null);
-            file = fc.getSelectedFile();            
+            file = fc.getSelectedFile();
         }
     }
 
     static public File getfile(File startDir) throws FileNotFoundException {
 
         FileChoice fc = new FileChoice();
-        if (startDir!=null && startDir.isDirectory())
-            fc.startDir=startDir;
-        
+        if (startDir != null && startDir.isDirectory()) {
+            fc.startDir = startDir;
+        }
+
         if (SwingUtilities.isEventDispatchThread()) {
-            fc.run();            
+            fc.run();
         } else {
             try {
                 SwingUtilities.invokeAndWait(fc);
@@ -242,5 +258,5 @@ public class EasyXMLReader {
         }
         return fc.file;
     }
-    
+
 }

@@ -315,6 +315,22 @@ public class DeepLearnCnnNetwork {
                 operationCounter, processingTimeNs, engFmt.format((float) operationCounter / (1e-9f * processingTimeNs)));
     }
 
+    private float[] readFloatArray(EasyXMLReader layerReader, String name) {
+        String dt = layerReader.getAttrValue(name, "dt");
+        float[] f=null;
+        switch (dt) {
+            case "base64-single":
+                f = layerReader.getBase64FloatArr(name);
+                break;
+            case "ASCII-float32":
+                f = layerReader.getAsciiFloatArr(name);
+                break;
+            default:
+                throw new RuntimeException("bad datatype dt=" + dt + "; should be base64-single or ASCII-float32");
+        }
+        return f;
+    }
+
     abstract public class Layer {
 
         public Layer(int index) {
@@ -669,7 +685,7 @@ public class DeepLearnCnnNetwork {
      * layers
      */
     public enum ActivationFunction {
-        Sigmoid, ReLu, Undefined;
+        Sigmoid, ReLu, None,Undefined;
     };
 
     /**
@@ -1095,7 +1111,7 @@ public class DeepLearnCnnNetwork {
                         }
                         if (poolingType == PoolingType.Average) {
                             activations[o(map, xo, yo)] = sumOrMax * averageOverMultiplier;  //average
-                        }else{
+                        } else {
                             activations[o(map, xo, yo)] = sumOrMax;
                         }
                     }
@@ -1168,6 +1184,7 @@ public class DeepLearnCnnNetwork {
     public class OutputLayer extends Layer {
 
         private ImageDisplay imageDisplay;
+        ActivationFunction activationFunction=ActivationFunction.None;
 
         public OutputLayer(int index) {
             super(index);
@@ -1353,6 +1370,7 @@ public class DeepLearnCnnNetwork {
             notes = networkReader.getRaw("notes");
             dob = networkReader.getRaw("dob");
             nettype = networkReader.getRaw("type");
+            log.info(String.format("reading network with name=%s, notes=%s, dob=%s nettype=%s", netname, notes, dob, nettype));
             if (!nettype.equals("cnn")) {
                 log.warning("network type is " + nettype + " which is not defined type \"cnn\"");
             }
@@ -1387,8 +1405,8 @@ public class DeepLearnCnnNetwork {
                         l.nInputMaps = layerReader.getInt("inputMaps");
                         l.nOutputMaps = layerReader.getInt("outputMaps");
                         l.kernelDim = layerReader.getInt("kernelSize");
-                        l.biases = layerReader.getBase64FloatArr("biases");
-                        l.kernels = layerReader.getBase64FloatArr("kernels");
+                        l.biases = readFloatArray(layerReader, "biases");
+                        l.kernels = readFloatArray(layerReader,"kernels");
                         try {
                             String af = layerReader.getRaw("activationFunction");
                             if (af.equalsIgnoreCase("sigmoid")) {
@@ -1429,8 +1447,8 @@ public class DeepLearnCnnNetwork {
             log.info("loading output layer");
             outputLayer = new OutputLayer(nLayers);
 
-            outputLayer.weights = networkReader.getBase64FloatArr("outputWeights"); // stored in many cols and few rows: one row per output unit
-            outputLayer.biases = networkReader.getBase64FloatArr("outputBias");
+            outputLayer.weights = readFloatArray(networkReader,"outputWeights"); // stored in many cols and few rows: one row per output unit
+            outputLayer.biases = readFloatArray(networkReader,"outputBias");
             setXmlFilename(f.toString());
             log.info(toString());
         } catch (RuntimeException e) {
