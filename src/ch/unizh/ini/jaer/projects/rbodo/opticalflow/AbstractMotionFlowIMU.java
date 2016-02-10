@@ -1232,7 +1232,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
             checkArrays();
             for (int[] a : lastTs) {
-                Arrays.fill(a, Integer.MIN_VALUE);
+                Arrays.fill(a, Integer.MAX_VALUE);
             }
             for (float[] a : vxs) {
                 Arrays.fill(a, 0);
@@ -1287,7 +1287,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
          */
         private boolean checkConsistent(int timestamp, int x1, int y1, float vx, float vy) {
             int dt = timestamp - lastTs[x1][y1];
-            if (dt > maxAgeUs || dt < 0) {
+            if (dt > maxAgeUs ) {
                 return false;
             }
             boolean thisAngleConsistentWithCurrentAngle = true;
