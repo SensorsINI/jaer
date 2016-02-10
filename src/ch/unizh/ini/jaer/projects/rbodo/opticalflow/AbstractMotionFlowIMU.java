@@ -1315,11 +1315,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             if (!showMotionField || vxs == null || vys == null) {
                 return;
             }
-            int nx = sx, ny = sy;
             float shift = ((1 << motionFieldSubsamplingShift) * .5f);
-            for (int ix = 0; ix < nx; ix++) {
+            for (int ix = 0; ix < sx; ix++) {
                 float x = (ix << motionFieldSubsamplingShift) + shift;
-                for (int iy = 0; iy < ny; iy++) {
+                for (int iy = 0; iy < sy; iy++) {
                     if (speeds[ix][iy] < 1f) {
                         continue;
                     }
