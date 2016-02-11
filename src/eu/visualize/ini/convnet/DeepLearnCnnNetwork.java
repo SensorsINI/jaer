@@ -1206,7 +1206,7 @@ public class DeepLearnCnnNetwork {
 
         @Override
         public String toString() {
-            return String.format("Output: bias=float[%d] outputWeights=float[%d]", biases.length, weights.length);
+            return String.format("Output: bias=float[%d] outputWeights=float[%d] outputActivationFunction=%s", biases.length, weights.length, activationFunction);
         }
 
         /**
