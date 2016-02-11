@@ -95,9 +95,10 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 		sprefs.putInt(getPreferencesKey(), get());
 	}
 
-	private static final int TF_MAX_HEIGHT = 15;
-	private static final int TF_HEIGHT = 6;
-	private static final int TF_PREF_W = 20, TF_MAX_W = 40;
+	private static final int TF_MAX_HEIGHT = 16;
+	private static final int TF_PREF_HEIGHT = 8;
+	private static final int TF_MAX_WIDTH = 80;
+	private static final int TF_PREF_WIDTH = 40;
 
 	public static void makeSPIIntConfig(final SPIConfigInt intVal, final JPanel panel, final Map<SPIConfigValue, JComponent> configValueMap,
 		final Biasgen biasgen) {
@@ -112,8 +113,8 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 
 		final JTextField tf = new JTextField();
 		tf.setText(Integer.toString(intVal.get()));
-		tf.setPreferredSize(new Dimension(SPIConfigInt.TF_PREF_W, SPIConfigInt.TF_HEIGHT));
-		tf.setMaximumSize(new Dimension(SPIConfigInt.TF_MAX_W, SPIConfigInt.TF_MAX_HEIGHT));
+		tf.setPreferredSize(new Dimension(SPIConfigInt.TF_PREF_WIDTH, SPIConfigInt.TF_PREF_HEIGHT));
+		tf.setMaximumSize(new Dimension(SPIConfigInt.TF_MAX_WIDTH, SPIConfigInt.TF_MAX_HEIGHT));
 		tf.addActionListener(new SPIConfigIntAction(intVal));
 		tf.addKeyListener(new SPIConfigIntKeyAction(intVal));
 		tf.addMouseWheelListener(new SPIConfigIntMouseWheelAction(intVal));
