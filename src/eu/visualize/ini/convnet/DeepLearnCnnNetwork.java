@@ -88,7 +88,7 @@ public class DeepLearnCnnNetwork {
     String nettype;
     Layer[] layers;
     InputLayer inputLayer;
-    OutputLayer outputLayer;
+    OutputOrInnerProductFullyConnectedLayer outputLayer;
     JFrame activationsFrame = null, kernelsFrame = null;
     private boolean hideSubsamplingLayers = true;
     private boolean normalizeKernelDisplayWeightsGlobally = true;
@@ -1187,11 +1187,11 @@ public class DeepLearnCnnNetwork {
         }
     }
 
-    public class OutputLayer extends Layer {
+    public class OutputOrInnerProductFullyConnectedLayer extends Layer {
 
         private ImageDisplay imageDisplay;
 
-        public OutputLayer(int index) {
+        public OutputOrInnerProductFullyConnectedLayer(int index) {
             super(index);
         }
 
@@ -1206,7 +1206,7 @@ public class DeepLearnCnnNetwork {
 
         @Override
         public String toString() {
-            return String.format("Output: bias=float[%d] outputWeights=float[%d] outputActivationFunction=%s", biases.length, weights.length, activationFunction);
+            return String.format("OutputOrInnerProductFullyConnectedLayer: bias=float[%d] outputWeights=float[%d]", biases.length, weights.length);
         }
 
         /**
@@ -1303,7 +1303,7 @@ public class DeepLearnCnnNetwork {
             gl.glLineWidth(lineWidth);
             float[] ca = color.getColorComponents(null);
             gl.glColor4fv(ca, 0);
-            OutputLayer.this.annotateHistogram(gl, width, height);
+            OutputOrInnerProductFullyConnectedLayer.this.annotateHistogram(gl, width, height);
             gl.glPopAttrib();
         }
 
@@ -1355,8 +1355,8 @@ public class DeepLearnCnnNetwork {
                     Arrays.fill(c.biases, bias);
                 }
 
-            } else if (l instanceof OutputLayer) {
-                OutputLayer o = (OutputLayer) l;
+            } else if (l instanceof OutputOrInnerProductFullyConnectedLayer) {
+                OutputOrInnerProductFullyConnectedLayer o = (OutputOrInnerProductFullyConnectedLayer) l;
                 if (o.biases != null) {
                     Arrays.fill(o.biases, bias);
                 }
@@ -1376,112 +1376,137 @@ public class DeepLearnCnnNetwork {
             throw new IOException("Exception thrown in EasyXMLReader for file " + f);
         }
 
-            if (activationsFrame != null) {
-                activationsFrame.dispose();
-                activationsFrame = null;
-            }
+        if (activationsFrame != null) {
+            activationsFrame.dispose();
+            activationsFrame = null;
+        }
 
-            netname = networkReader.getRaw("name");
-            notes = networkReader.getRaw("notes");
-            dob = networkReader.getRaw("dob");
-            nettype = networkReader.getRaw("type");
-            log.info(String.format("reading network with name=%s, notes=%s, dob=%s nettype=%s", netname, notes, dob, nettype));
-            if (!nettype.equals("cnn")) {
-                log.warning("network type is " + nettype + " which is not defined type \"cnn\"");
+        netname = networkReader.getRaw("name");
+        notes = networkReader.getRaw("notes");
+        dob = networkReader.getRaw("dob");
+        nettype = networkReader.getRaw("type");
+        log.info(String.format("reading network with name=%s, notes=%s, dob=%s nettype=%s", netname, notes, dob, nettype));
+        if (!nettype.equals("cnn")) {
+            log.warning("network type is " + nettype + " which is not defined type \"cnn\"");
+        }
+        nLayers = networkReader.getNodeCount("Layer");
+        log.info("network has " + nLayers + " layers");
+        if (layers != null) {
+            for (int i = 0; i < layers.length; i++) {
+                layers[i] = null;
             }
-            nLayers = networkReader.getNodeCount("Layer");
-            log.info("network has " + nLayers + " layers");
-            if (layers != null) {
-                for (int i = 0; i < layers.length; i++) {
-                    layers[i] = null;
+        }
+        layers = new Layer[nLayers];
+
+        for (int i = 0; i < nLayers; i++) {
+            log.info("loading layer " + i);
+            EasyXMLReader layerReader = networkReader.getNode("Layer", i);
+            int index = layerReader.getInt("index");
+            String type = layerReader.getRaw("type");
+            switch (type) {
+                case "i": {
+                    log.info("loading input layer " + index);
+                    inputLayer = new InputLayer(index);
+                    layers[index] = inputLayer;
+                    inputLayer.dimx = layerReader.getInt("dimx");
+                    inputLayer.dimy = layerReader.getInt("dimy");
+                    inputLayer.nUnits = layerReader.getInt("nUnits");
                 }
-            }
-            layers = new Layer[nLayers];
-
-            for (int i = 0; i < nLayers; i++) {
-                log.info("loading layer " + i);
-                EasyXMLReader layerReader = networkReader.getNode("Layer", i);
-                int index = layerReader.getInt("index");
-                String type = layerReader.getRaw("type");
-                switch (type) {
-                    case "i": {
-                        log.info("loading input layer " + index);
-                        inputLayer = new InputLayer(index);
-                        layers[index] = inputLayer;
-                        inputLayer.dimx = layerReader.getInt("dimx");
-                        inputLayer.dimy = layerReader.getInt("dimy");
-                        inputLayer.nUnits = layerReader.getInt("nUnits");
-                    }
-                    break;
-                    case "c": {
-                        log.info("loading conv layer " + index);
-                        ConvLayer l = new ConvLayer(index);
-                        layers[index] = l;
-                        l.nInputMaps = layerReader.getInt("inputMaps");
-                        l.nOutputMaps = layerReader.getInt("outputMaps");
-                        l.kernelDim = layerReader.getInt("kernelSize");
-                        l.biases = readFloatArray(layerReader, "biases");
-                        l.kernels = readFloatArray(layerReader, "kernels");
-                        try {
-                            String af = layerReader.getRaw("activationFunction");
-                            if (af.equalsIgnoreCase("sigmoid")) {
-                                l.activationFunction = ActivationFunction.Sigmoid;
-                            } else if (af.equalsIgnoreCase("relu")) {
-                                l.activationFunction = ActivationFunction.ReLu;
-                            } else if (af.equalsIgnoreCase("none")) {
-                                l.activationFunction = ActivationFunction.None;
-                            } else {
-                                log.warning("unknown conv layer activation function " + af + " in " + layerReader.toString());
-                            }
-                        } catch (NullPointerException e) {
-                            throw new IOException("Caught " + e.toString() + " while parsing for activationFunction in convolutional layer; probably none defined; please define none, sigmoid, or relu.");
+                break;
+                case "c": {
+                    log.info("loading conv layer " + index);
+                    ConvLayer l = new ConvLayer(index);
+                    layers[index] = l;
+                    l.nInputMaps = layerReader.getInt("inputMaps");
+                    l.nOutputMaps = layerReader.getInt("outputMaps");
+                    l.kernelDim = layerReader.getInt("kernelSize");
+                    l.biases = readFloatArray(layerReader, "biases");
+                    l.kernels = readFloatArray(layerReader, "kernels");
+                    try {
+                        String af = layerReader.getRaw("activationFunction");
+                        if (af.equalsIgnoreCase("sigmoid")) {
+                            l.activationFunction = ActivationFunction.Sigmoid;
+                        } else if (af.equalsIgnoreCase("relu")) {
+                            l.activationFunction = ActivationFunction.ReLu;
+                        } else if (af.equalsIgnoreCase("none")) {
+                            l.activationFunction = ActivationFunction.None;
+                        } else {
+                            log.warning("unknown conv layer activation function " + af + " in " + layerReader.toString());
                         }
-                        l.initializeConstants();
+                    } catch (NullPointerException e) {
+                        throw new IOException("Caught " + e.toString() + " while parsing for activationFunction in convolutional layer; probably none defined; please define none, sigmoid, or relu.");
                     }
-                    break;
-                    case "s": {
-                        log.info("loading subsampling layer " + index);
-                        SubsamplingLayer l = new SubsamplingLayer(index);
-                        layers[index] = l;
-                        l.averageOverDim = layerReader.getInt("averageOver");
-                        l.biases = layerReader.getBase64FloatArr("biases");
-                        try {
-                            String af = layerReader.getRaw("poolingType");
-                            if (af.equalsIgnoreCase("average")) {
-                                l.setPoolingType(PoolingType.Average);
-                            } else if (af.equalsIgnoreCase("max")) {
-                                l.setPoolingType(PoolingType.Max);
-                            } else {
-                                throw new RuntimeException("unknown pooling layer pooling type (max or average) " + af + " in " + layerReader.toString());
-                            }
-                        } catch (NullPointerException e) {
-                            throw new IOException("Caught " + e.toString() + " while parsing pooling layer for poolingType; please define poolingType as average or max.");
+                    l.initializeConstants();
+                }
+                break;
+                case "s":
+                case "p": {
+                    log.info("loading subsampling layer " + index);
+                    SubsamplingLayer l = new SubsamplingLayer(index);
+                    layers[index] = l;
+                    l.averageOverDim = layerReader.getInt("averageOver");
+                    l.biases = layerReader.getBase64FloatArr("biases");
+                    try {
+                        String af = layerReader.getRaw("poolingType");
+                        if (af.equalsIgnoreCase("average")) {
+                            l.setPoolingType(PoolingType.Average);
+                        } else if (af.equalsIgnoreCase("max")) {
+                            l.setPoolingType(PoolingType.Max);
+                        } else {
+                            throw new RuntimeException("unknown pooling layer pooling type (max or average) " + af + " in " + layerReader.toString());
                         }
+                    } catch (NullPointerException e) {
+                        throw new IOException("Caught " + e.toString() + " while parsing pooling layer for poolingType; please define poolingType as average or max.");
                     }
-                    break;
                 }
+                break;
+                case "ip": {
+                    log.info("loading inner product layer " + index);
+                    OutputOrInnerProductFullyConnectedLayer l = new OutputOrInnerProductFullyConnectedLayer(index);
+                    l.weights = readFloatArray(layerReader, "outputWeights"); // stored in many cols and few rows: one row per output unit
+                    l.biases = readFloatArray(layerReader, "outputBias");
+                    try {
+                        String af = layerReader.getRaw("activationFunction");
+                        if (af.equalsIgnoreCase("sigmoid")) {
+                            l.activationFunction = ActivationFunction.Sigmoid;
+                        } else if (af.equalsIgnoreCase("relu")) {
+                            l.activationFunction = ActivationFunction.ReLu;
+                        } else if (af.equalsIgnoreCase("none")) {
+                            l.activationFunction = ActivationFunction.None;
+                        } else {
+                            log.warning("unknown inner product/output/fullyconnected layer activation function " + af + " in " + layerReader.toString());
+                        }
+                    } catch (NullPointerException e) {
+                        throw new IOException("Caught " + e.toString() + " while parsing for activationFunction in inner product layer; probably none defined; please define none, sigmoid, or relu.");
+                    }
+                    layers[index] = l;
+                }
+                break;
+                default:
+                    throw new IOException("unknown layer type \"" + type + "\"");
             }
-            log.info("loading output layer");
-            outputLayer = new OutputLayer(nLayers);
+        }
+        log.info("loading output layer");
+        outputLayer = new OutputOrInnerProductFullyConnectedLayer(nLayers);
 
-            outputLayer.weights = readFloatArray(networkReader, "outputWeights"); // stored in many cols and few rows: one row per output unit
-            outputLayer.biases = readFloatArray(networkReader, "outputBias");
-            try {
-                String af = networkReader.getRaw("outputActivationFunction");
-                if (af.equalsIgnoreCase("sigmoid")) {
-                    outputLayer.activationFunction = ActivationFunction.Sigmoid;
-                } else if (af.equalsIgnoreCase("relu")) {
-                    outputLayer.activationFunction = ActivationFunction.ReLu;
-                } else if (af.equalsIgnoreCase("none")) {
-                    outputLayer.activationFunction = ActivationFunction.None;
-                } else {
-                    log.warning("unknown conv layer activation function " + af + " in " + networkReader.toString());
-                }
-            } catch (NullPointerException e) {
-                throw new IOException("Caught " + e.toString() + " while parsing for outputActivationFunction in output layer; probably none defined and so using default sigmoid activation function");
+        outputLayer.weights = readFloatArray(networkReader, "outputWeights"); // stored in many cols and few rows: one row per output unit
+        outputLayer.biases = readFloatArray(networkReader, "outputBias");
+        try {
+            String af = networkReader.getRaw("outputActivationFunction");
+            if (af.equalsIgnoreCase("sigmoid")) {
+                outputLayer.activationFunction = ActivationFunction.Sigmoid;
+            } else if (af.equalsIgnoreCase("relu")) {
+                outputLayer.activationFunction = ActivationFunction.ReLu;
+            } else if (af.equalsIgnoreCase("none")) {
+                outputLayer.activationFunction = ActivationFunction.None;
+            } else {
+                log.warning("unknown conv layer activation function " + af + " in " + networkReader.toString());
             }
-            setXmlFilename(f.toString());
-            log.info(toString());
+        } catch (NullPointerException e) {
+            throw new IOException("Caught " + e.toString() + " while parsing for outputActivationFunction in output layer; probably none defined and so using default sigmoid activation function");
+        }
+        setXmlFilename(f.toString());
+        log.info(toString());
     }
 
     @Override
