@@ -220,7 +220,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		globalShutter.addObserver(new Observer() {
 			@Override
 			public void update(final Observable gsObs, final Object arg) {
-				if (getHardwareInterface() != null) {
+				if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
 					final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
 
 					try {

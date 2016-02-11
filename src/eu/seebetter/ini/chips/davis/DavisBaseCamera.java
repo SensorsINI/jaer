@@ -31,7 +31,6 @@ import net.sf.jaer.chip.Chip;
 import net.sf.jaer.chip.RetinaExtractor;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
@@ -352,8 +351,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		public DavisEventExtractor(final DavisBaseCamera chip) {
 			super(chip);
 		}
-                
-                int lastImuTs=0; // DEBUG 
+
+		int lastImuTs = 0; // DEBUG
 
 		/**
 		 * extracts the meaning of the raw events.
@@ -406,12 +405,12 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 							i += IMUSample.SIZE_EVENTS - 1;
 							incompleteIMUSampleException = null;
 							imuSample = possibleSample; // asking for sample from AEChip now gives this value
-                                                        ApsDvsEvent imuEvent=new ApsDvsEvent(); // this davis event holds the IMUSample
-                                                        imuEvent.setTimestamp(imuSample.getTimestampUs());
-                                                        imuEvent.setImuSample(imuSample);
+							ApsDvsEvent imuEvent = new ApsDvsEvent(); // this davis event holds the IMUSample
+							imuEvent.setTimestamp(imuSample.getTimestampUs());
+							imuEvent.setImuSample(imuSample);
 							outItr.writeToNextOutput(imuEvent); // also write the event out to the next output event
-//                                                        System.out.println("lastImu dt="+(imuSample.timestamp-lastImuTs));
-//                                                        lastImuTs=imuSample.timestamp;
+							// System.out.println("lastImu dt="+(imuSample.timestamp-lastImuTs));
+							// lastImuTs=imuSample.timestamp;
 							continue;
 						}
 						catch (final IMUSample.IncompleteIMUSampleException ex) {
@@ -436,7 +435,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 				} // not part of IMU sample follows
 				else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_DVS) {
 					// DVS event
-					final ApsDvsEvent e = nextApsDvsEvent(outItr); // imu sample possibly contained here set to null by this method
+					final ApsDvsEvent e = nextApsDvsEvent(outItr); // imu sample possibly contained here set to null by
+																	// this method
 					if ((data & DavisChip.EVENT_TYPE_MASK) == DavisChip.EXTERNAL_INPUT_EVENT_ADDR) {
 						e.adcSample = -1; // TODO hack to mark as not an ADC sample
 						e.special = true; // TODO special is set here when capturing frames which will mess us up if
@@ -543,18 +543,18 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 				autoshotEventsSinceLastShot = 0;
 			}
 
-//                        // debug
-//                    Iterator i=((ApsDvsEventPacket)out).fullIterator();
-//                    while(i.hasNext()){
-//                        BasicEvent e=(BasicEvent)i.next();
-//                        if (e instanceof IMUSample) {
-//                            if (((IMUSample) e).imuSampleEvent) {
-//                                int t = ((IMUSample) e).timestamp;
-//                                System.out.println("dt IMU =" + (t - lastImuTs));
-//                                lastImuTs = t;
-//                            }
-//                        }
-//                    }
+			// // debug
+			// Iterator i=((ApsDvsEventPacket)out).fullIterator();
+			// while(i.hasNext()){
+			// BasicEvent e=(BasicEvent)i.next();
+			// if (e instanceof IMUSample) {
+			// if (((IMUSample) e).imuSampleEvent) {
+			// int t = ((IMUSample) e).timestamp;
+			// System.out.println("dt IMU =" + (t - lastImuTs));
+			// lastImuTs = t;
+			// }
+			// }
+			// }
 			return out;
 		} // extractPacket
 
@@ -563,7 +563,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			final ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
 			e.special = false;
 			e.adcSample = -1;
-                        e.readoutType=ApsDvsEvent.ReadoutType.Null;
+			e.readoutType = ApsDvsEvent.ReadoutType.Null;
 			if (e.isImuSample()) {
 				e.setImuSample(null);
 			}
@@ -860,40 +860,44 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 	public void takeSnapshot() {
 		// Use a multi-command to send enable and then disable in quickest possible
 		// succession to the APS state machine.
-		final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
-		final SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
+		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
+			final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
+			final SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
 
-		try {
-			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 4, 1);
-			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 4, 0);
+			try {
+				configSequence.addConfig(CypressFX3.FPGA_APS, (short) 4, 1);
+				configSequence.addConfig(CypressFX3.FPGA_APS, (short) 4, 0);
 
-			configSequence.sendConfigSequence();
-		}
-		catch (final HardwareInterfaceException e) {
-			// Ignore.
+				configSequence.sendConfigSequence();
+			}
+			catch (final HardwareInterfaceException e) {
+				// Ignore.
+			}
 		}
 	}
 
 	public void configureROIRegion0(final Point cornerLL, final Point cornerUR) {
 		// First program the new sizes into logic.
-		final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
-		final SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
+		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
+			final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
+			final SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
 
-		try {
-			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 9, cornerLL.x);
-			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 10, cornerLL.y);
-			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 11, cornerUR.x);
-			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 12, cornerUR.y);
+			try {
+				configSequence.addConfig(CypressFX3.FPGA_APS, (short) 9, cornerLL.x);
+				configSequence.addConfig(CypressFX3.FPGA_APS, (short) 10, cornerLL.y);
+				configSequence.addConfig(CypressFX3.FPGA_APS, (short) 11, cornerUR.x);
+				configSequence.addConfig(CypressFX3.FPGA_APS, (short) 12, cornerUR.y);
 
-			configSequence.sendConfigSequence();
+				configSequence.sendConfigSequence();
+			}
+			catch (final HardwareInterfaceException e) {
+				// Ignore.
+			}
+
+			// Then update first/last pixel coordinates.
+			setApsFirstPixelReadOut(new Point(0, (cornerUR.y - cornerLL.y)));
+			setApsLastPixelReadOut(new Point((cornerUR.x - cornerLL.x), 0));
 		}
-		catch (final HardwareInterfaceException e) {
-			// Ignore.
-		}
-
-		// Then update first/last pixel coordinates.
-		setApsFirstPixelReadOut(new Point(0, (cornerUR.y - cornerLL.y)));
-		setApsLastPixelReadOut(new Point((cornerUR.x - cornerLL.x), 0));
 	}
 
 	/**
