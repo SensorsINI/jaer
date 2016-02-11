@@ -12,22 +12,21 @@ import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
-import java.util.Arrays;
-
-import com.jogamp.opengl.GL;
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GL2ES3;
 import java.io.IOException;
-import java.text.ParseException;
+import java.util.Arrays;
 import java.util.Random;
+
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GL2ES3;
+
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.util.EngineeringFormat;
-import org.w3c.dom.DOMException;
 
 /**
  * Simple convolutional neural network (CNN) data structure to hold CNN from
@@ -312,7 +311,7 @@ public class DeepLearnCnnNetwork {
      */
     public String getPerformanceString() {
         return String.format("%d operations in %d ns: %s ops/sec",
-                operationCounter, processingTimeNs, engFmt.format((float) operationCounter / (1e-9f * processingTimeNs)));
+                operationCounter, processingTimeNs, engFmt.format(operationCounter / (1e-9f * processingTimeNs)));
     }
 
     private float[] readFloatArray(EasyXMLReader layerReader, String name) {
@@ -477,7 +476,7 @@ public class DeepLearnCnnNetwork {
                     if (inputClampedToIncreasingIntegers) {
 //                        v = r.nextInt(16); // make image that is x+y, for debugging
 //                        v = (float) (xo + yo); // make image that is x+y, for debugging
-                        v = (float) (xo * dimy + yo); // make image that is x+y, for debugging
+                        v = (xo * dimy) + yo; // make image that is x+y, for debugging
 //                        v = (float) (yo) / (dimy);
                     } else if (inputClampedTo1) {
                         v = .5f;
@@ -511,12 +510,12 @@ public class DeepLearnCnnNetwork {
             int frameWidth = renderer.getChip().getSizeX();
             int dimx2 = dimx / 2;
             int dimy2 = dimy / 2;
-            if (xOffset < dimx2 || xOffset > frameWidth - dimx2 || yOffset < dimy2 || xOffset > frameWidth - dimy2) {
+            if ((xOffset < dimx2) || (xOffset > (frameWidth - dimx2)) || (yOffset < dimy2) || (xOffset > (frameWidth - dimy2))) {
                 log.warning("Cannot process input frame patch with x offset: " + xOffset + " and y Offset: " + yOffset + " because frame measures only " + frameWidth + " x " + frameHeight);
                 return null;
             }
-            for (int y = yOffset - dimy2; y < yOffset + dimy2; y++) {
-                for (int x = xOffset - dimx2; x < xOffset + dimx2; x++) {  // take every xstride, ystride pixels as output
+            for (int y = yOffset - dimy2; y < (yOffset + dimy2); y++) {
+                for (int x = xOffset - dimx2; x < (xOffset + dimx2); x++) {  // take every xstride, ystride pixels as output
                     float v = 0;
                     v = renderer.getApsGrayValueAtPixel((int) Math.floor(x), (int) Math.floor(y));
                     // TODO remove only for debug
@@ -614,7 +613,7 @@ public class DeepLearnCnnNetwork {
             }
             for (int x = 0; x < dimx; x++) {
                 for (int y = 0; y < dimy; y++) {
-                    imageDisplay.setPixmapGray(y, dimx - x - 1, .5f + a(0, x, y) / 4); // try to fit mean 0 std 1 into 0-1 range nicely by offset and gain of .5
+                    imageDisplay.setPixmapGray(y, dimx - x - 1, .5f + (a(0, x, y) / 4)); // try to fit mean 0 std 1 into 0-1 range nicely by offset and gain of .5
                 }
             }
             imageDisplay.repaint();
@@ -775,8 +774,8 @@ public class DeepLearnCnnNetwork {
         public void printWeights() {
             super.printWeights();
             System.out.println("Biases:");
-            for (int b = 0; b < biases.length; b++) {
-                System.out.print(String.format("%+6.3g ", biases[b]));
+            for (float biase : biases) {
+                System.out.print(String.format("%+6.3g ", biase));
             }
             System.out.println("");
             System.out.println("Weights:");
@@ -1463,8 +1462,8 @@ public class DeepLearnCnnNetwork {
                 case "ip": {
                     log.info("loading inner product layer " + index);
                     OutputOrInnerProductFullyConnectedLayer l = new OutputOrInnerProductFullyConnectedLayer(index);
-                    l.weights = readFloatArray(layerReader, "outputWeights"); // stored in many cols and few rows: one row per output unit
-                    l.biases = readFloatArray(layerReader, "outputBias");
+                    l.weights = readFloatArray(layerReader, "weights"); // stored in many cols and few rows: one row per output unit
+                    l.biases = readFloatArray(layerReader, "biases");
                     try {
                         String af = layerReader.getRaw("activationFunction");
                         if (af.equalsIgnoreCase("sigmoid")) {
@@ -1488,11 +1487,10 @@ public class DeepLearnCnnNetwork {
         }
         log.info("loading output layer");
         outputLayer = new OutputOrInnerProductFullyConnectedLayer(nLayers);
-
-        outputLayer.weights = readFloatArray(networkReader, "outputWeights"); // stored in many cols and few rows: one row per output unit
-        outputLayer.biases = readFloatArray(networkReader, "outputBias");
+        outputLayer.weights = readFloatArray(networkReader, "weights"); // stored in many cols and few rows: one row per output unit
+        outputLayer.biases = readFloatArray(networkReader, "biases");
         try {
-            String af = networkReader.getRaw("outputActivationFunction");
+            String af = networkReader.getRaw("activationFunction");
             if (af.equalsIgnoreCase("sigmoid")) {
                 outputLayer.activationFunction = ActivationFunction.Sigmoid;
             } else if (af.equalsIgnoreCase("relu")) {
