@@ -199,7 +199,7 @@ public class AEPacketRaw extends AEPacket {
         }
     }
 
-    /**Appends event, enlarging packet if neccessary. Not thread safe.
+    /**Appends event, enlarging packet if necessary. Not thread safe.
      *
      * @param e an Event to add to the ones already present. Capacity is enlarged if necessary.
      */
