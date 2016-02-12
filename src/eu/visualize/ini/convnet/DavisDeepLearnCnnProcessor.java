@@ -18,6 +18,7 @@ import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import net.sf.jaer.Description;
@@ -27,7 +28,6 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -145,27 +145,32 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 //        }
 //    }
     public void doShowKernels() {
-        try {
-            if (apsDvsNet != null) {
-                if (!apsDvsNet.networkRanOnce) {
-                    JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Network must run at least once to correctly plot kernels (internal variables for indexing are computed at runtime)");
-                    return;
-                }
-                chip.getAeViewer().getFilterFrame().getGlassPane().setCursor(new Cursor(Cursor.WAIT_CURSOR));
-                JFrame frame = apsDvsNet.drawKernels();
-                frame.setTitle("APS net kernel weights");
+        if (apsDvsNet != null) {
+            if (!apsDvsNet.networkRanOnce) {
+                JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Network must run at least once to correctly plot kernels (internal variables for indexing are computed at runtime)");
+                return;
             }
-//            if (dvsNet != null) {
-//                JFrame frame = dvsNet.drawKernels();
-//                frame.setTitle("DVS net kernel weights");
-//            }
-        } finally {
-            chip.getAeViewer().getFilterFrame().getGlassPane().setCursor(Cursor.getDefaultCursor());
+            final DeepLearnCnnNetwork ref = apsDvsNet;
+            Runnable runnable = new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        setCursor(new Cursor(Cursor.WAIT_CURSOR));
+                        JFrame frame = apsDvsNet.drawKernels();
+                        frame.setTitle("APS net kernel weights");
+                    } finally {
+                        setCursor(Cursor.getDefaultCursor());
+                    }
+                }
+
+            };
+            SwingUtilities.invokeLater(runnable);
         }
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<?> filterPacket(EventPacket<?> in
+    ) {
         if (!addedPropertyChangeListener) {
             ((AEFrameChipRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
             addedPropertyChangeListener = true;
@@ -235,7 +240,8 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     }
 
     @Override
-    public void propertyChange(PropertyChangeEvent evt) {
+    public void propertyChange(PropertyChangeEvent evt
+    ) {
         // new activationsFrame is available, process it
         if (isFilterEnabled() && (apsDvsNet != null) && (processAPSFrames)) {
 //            float[] frame = frameExtractor.getNewFrame();
@@ -259,7 +265,8 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     }
 
     @Override
-    public void annotate(GLAutoDrawable drawable) {
+    public void annotate(GLAutoDrawable drawable
+    ) {
         GL2 gl = drawable.getGL().getGL2();
         if (showActivations) {
             if (apsDvsNet != null) {
