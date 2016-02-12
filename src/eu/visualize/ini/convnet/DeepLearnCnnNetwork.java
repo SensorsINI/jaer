@@ -1459,8 +1459,10 @@ public class DeepLearnCnnNetwork {
                     }
                 }
                 break;
-                case "ip": {
-                    log.info("loading inner product layer " + index);
+                case "ip":
+                case "o": // for output layer defined here, we simply assign it to outputLayer field at the end
+                {
+                    log.info("loading inner product or output fully connected layer " + index);
                     OutputOrInnerProductFullyConnectedLayer l = new OutputOrInnerProductFullyConnectedLayer(index);
                     l.weights = readFloatArray(layerReader, "weights"); // stored in many cols and few rows: one row per output unit
                     l.biases = readFloatArray(layerReader, "biases");
@@ -1478,19 +1480,26 @@ public class DeepLearnCnnNetwork {
                     } catch (NullPointerException e) {
                         throw new IOException("Caught " + e.toString() + " while parsing for activationFunction in inner product layer; probably none defined; please define none, sigmoid, or relu.");
                     }
-                    layers[index] = l;
+                    switch (type) {
+                        case "ip":
+                            layers[index] = l;
+                            break;
+                        case "o":
+                            log.info("assiging this layer to be network output layer");
+                            outputLayer = l;
+                    }
                 }
                 break;
                 default:
                     throw new IOException("unknown layer type \"" + type + "\"");
             }
         }
-        log.info("loading output layer");
+        log.info("loading seperate output layer with special output tags that is written at top level of xml Network element");
         outputLayer = new OutputOrInnerProductFullyConnectedLayer(nLayers);
-        outputLayer.weights = readFloatArray(networkReader, "weights"); // stored in many cols and few rows: one row per output unit
-        outputLayer.biases = readFloatArray(networkReader, "biases");
+        outputLayer.weights = readFloatArray(networkReader, "outputWeights"); // stored in many cols and few rows: one row per output unit
+        outputLayer.biases = readFloatArray(networkReader, "outputBias");
         try {
-            String af = networkReader.getRaw("activationFunction");
+            String af = networkReader.getRaw("outputActivationFunction");
             if (af.equalsIgnoreCase("sigmoid")) {
                 outputLayer.activationFunction = ActivationFunction.Sigmoid;
             } else if (af.equalsIgnoreCase("relu")) {
