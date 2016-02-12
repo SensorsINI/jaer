@@ -829,6 +829,25 @@ public class Jaer3BufferParser {
 
                             break;
             }
+            
+//            if (pixFirst && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) {
+//                    createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamp);
+//
+//                    if (rollingShutter) {
+//                            // rolling shutter start of exposure (SOE)
+//                            createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamp);
+//                            frameIntervalUs = timestamp - frameExposureStartTimestampUs;
+//                            frameExposureStartTimestampUs = timestamp;
+//                    }
+//            }
+//
+//            if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.ResetRead) && !rollingShutter) {
+//                    // global shutter start of exposure (SOE)
+//                    createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamp);
+//                    frameIntervalUs = timestamp - frameExposureStartTimestampUs;
+//                    frameExposureStartTimestampUs = timestamp;
+//            }            
+            
             e.adcSample = data;
             e.readoutType = readoutType;
             e.special = false;

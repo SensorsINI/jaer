@@ -177,6 +177,10 @@ public class AEChip extends Chip2D {
      */
     public void setEventExtractor(EventExtractor2D eventExtractor) {
         this.eventExtractor = eventExtractor;
+        if (originalEventExtractor == null) {
+            originalEventExtractor = eventExtractor;    // OriginalEventExtractor will be set when setEventExtractor is called the first time, or we can call it the first
+                                                        // extractor of the chip.
+        }
         setChanged();
         notifyObservers(eventExtractor);
     }
@@ -187,22 +191,7 @@ public class AEChip extends Chip2D {
      * function can restore it.
      */
     public void restoreChipDefaultExtractor() {
-        if (originalEventExtractor != null) {
-            setEventExtractor(originalEventExtractor);
-        } else {
-            originalEventExtractor = eventExtractor;
-            Class<?> c = this.getClass();
-            AEChip tmpChip;
-            try {
-                tmpChip = (AEChip) c.newInstance();
-                tmpChip.getEventExtractor().setChip(this);
-                setEventExtractor(tmpChip.getEventExtractor());
-            } catch (InstantiationException ex) {
-                Logger.getLogger(AEChip.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (IllegalAccessException ex) {
-                Logger.getLogger(AEChip.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
+        setEventExtractor(originalEventExtractor);
     }
 
     public int getNumCellTypes() {
