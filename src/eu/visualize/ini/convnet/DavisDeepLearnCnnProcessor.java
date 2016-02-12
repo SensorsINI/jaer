@@ -113,7 +113,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             dvsSubsampler = new DvsSubsamplerToFrame(apsDvsNet.inputLayer.dimx, apsDvsNet.inputLayer.dimy, getDvsColorScale());
         } catch (IOException ex) {
             Logger.getLogger(DavisDeepLearnCnnProcessor.class.getName()).log(Level.SEVERE, null, ex);
-            JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file, caught exception "+ex+". See console for logging.", "Bad network file", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file, caught exception " + ex + ". See console for logging.", "Bad network file", JOptionPane.WARNING_MESSAGE);
         }
 
     }
@@ -145,13 +145,13 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 //        }
 //    }
     public void doShowKernels() {
-        setCursor(new Cursor(Cursor.WAIT_CURSOR));
         try {
             if (apsDvsNet != null) {
-                if(!apsDvsNet.networkRanOnce){
+                if (!apsDvsNet.networkRanOnce) {
                     JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Network must run at least once to correctly plot kernels (internal variables for indexing are computed at runtime)");
                     return;
                 }
+                chip.getAeViewer().getFilterFrame().getGlassPane().setCursor(new Cursor(Cursor.WAIT_CURSOR));
                 JFrame frame = apsDvsNet.drawKernels();
                 frame.setTitle("APS net kernel weights");
             }
@@ -160,7 +160,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 //                frame.setTitle("DVS net kernel weights");
 //            }
         } finally {
-            setCursor(Cursor.getDefaultCursor());
+            chip.getAeViewer().getFilterFrame().getGlassPane().setCursor(Cursor.getDefaultCursor());
         }
     }
 
