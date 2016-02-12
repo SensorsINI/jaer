@@ -1,3 +1,5 @@
+
+
 /*
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
@@ -1487,6 +1489,22 @@ public class DeepLearnCnnNetwork {
                         case "o":
                             log.info("assiging this layer to be network output layer");
                             outputLayer = l;
+                            outputLayer.weights = readFloatArray(networkReader, "weights");
+                            outputLayer.biases = readFloatArray(networkReader, "biases");
+                            try {
+                                String af = networkReader.getRaw("activationFunction");
+                                if (af.equalsIgnoreCase("sigmoid")) {
+                                    outputLayer.activationFunction = ActivationFunction.Sigmoid;
+                                } else if (af.equalsIgnoreCase("relu")) {
+                                    outputLayer.activationFunction = ActivationFunction.ReLu;
+                                } else if (af.equalsIgnoreCase("none")) {
+                                    outputLayer.activationFunction = ActivationFunction.None;
+                                } else {
+                                    log.warning("unknown conv layer activation function " + af + " in " + networkReader.toString());
+                                }
+                            } catch (NullPointerException e) {
+                                throw new IOException("Caught " + e.toString() + " while parsing for outputActivationFunction in output layer; probably none defined and so using default sigmoid activation function");
+                            }
                     }
                 }
                 break;
@@ -1502,20 +1520,6 @@ public class DeepLearnCnnNetwork {
         //} catch (NullPointerException e) {
         //	throw new IOException("Caught " + e.toString() + " OUTPUT LAYER NOT FOUND");
         //}
-        try {
-            String af = networkReader.getRaw("outputActivationFunction");
-            if (af.equalsIgnoreCase("sigmoid")) {
-                outputLayer.activationFunction = ActivationFunction.Sigmoid;
-            } else if (af.equalsIgnoreCase("relu")) {
-                outputLayer.activationFunction = ActivationFunction.ReLu;
-            } else if (af.equalsIgnoreCase("none")) {
-                outputLayer.activationFunction = ActivationFunction.None;
-            } else {
-                log.warning("unknown conv layer activation function " + af + " in " + networkReader.toString());
-            }
-        } catch (NullPointerException e) {
-            throw new IOException("Caught " + e.toString() + " while parsing for outputActivationFunction in output layer; probably none defined and so using default sigmoid activation function");
-        }
         setXmlFilename(f.toString());
         log.info(toString());
     }
@@ -1652,3 +1656,4 @@ public class DeepLearnCnnNetwork {
     }
 
 }
+
