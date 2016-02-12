@@ -1494,10 +1494,14 @@ public class DeepLearnCnnNetwork {
                     throw new IOException("unknown layer type \"" + type + "\"");
             }
         }
-        log.info("loading seperate output layer with special output tags that is written at top level of xml Network element");
-        outputLayer = new OutputOrInnerProductFullyConnectedLayer(nLayers);
-        outputLayer.weights = readFloatArray(networkReader, "outputWeights"); // stored in many cols and few rows: one row per output unit
-        outputLayer.biases = readFloatArray(networkReader, "outputBias");
+        //try {
+        //	log.info("loading seperate output layer with special output tags that is written at top level of xml Network element");
+        //    outputLayer = new OutputOrInnerProductFullyConnectedLayer(nLayers);
+        //    outputLayer.weights = readFloatArray(networkReader, "outputWeights"); // stored in many cols and few rows: one row per output unit
+        //    outputLayer.biases = readFloatArray(networkReader, "outputBias");
+        //} catch (NullPointerException e) {
+        //	throw new IOException("Caught " + e.toString() + " OUTPUT LAYER NOT FOUND");
+        //}
         try {
             String af = networkReader.getRaw("outputActivationFunction");
             if (af.equalsIgnoreCase("sigmoid")) {
