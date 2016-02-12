@@ -60,7 +60,7 @@ import net.sf.jaer.util.avioutput.JaerAviWriter;
 @Description("Address-Event Chip")
 public class AEChip extends Chip2D {
 
-    protected EventExtractor2D eventExtractor = null;
+    protected EventExtractor2D eventExtractor = null, originalEventExtractor = null;
     protected AEChipRenderer renderer = null;
     protected AEFileInputStream aeInputStream = null;
     protected AEFileOutputStream aeOutputStream = null;
@@ -163,14 +163,13 @@ public class AEChip extends Chip2D {
 
     /**
      * Gets the current extractor of the chip.
+     *
      * @return the extractor
      */
     public EventExtractor2D getEventExtractor() {
         return eventExtractor;
     }
 
-
-    
     /**
      * Sets the EventExtractor2D and notifies Observers with the new extractor.
      *
@@ -183,22 +182,29 @@ public class AEChip extends Chip2D {
     }
 
     /**
-     * This method is used to restore the default extractor of the chip class, sometimes the extractor of the chip
-     * might be changed, then use this function can restore it.
+     * This method is used to restore the default extractor of the chip class,
+     * sometimes the extractor of the chip might be changed, then use this
+     * function can restore it.
      */
     public void restoreChipDefaultExtractor() {
-        Class<?> c = this.getClass();
-        AEChip tmpChip;                    
-        try {
-            tmpChip = (AEChip)c.newInstance();
-            setEventExtractor(tmpChip.getEventExtractor());
-        } catch (InstantiationException ex) {
-            Logger.getLogger(AEChip.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            Logger.getLogger(AEChip.class.getName()).log(Level.SEVERE, null, ex);
+        if (originalEventExtractor != null) {
+            setEventExtractor(originalEventExtractor);
+        } else {
+            originalEventExtractor = eventExtractor;
+            Class<?> c = this.getClass();
+            AEChip tmpChip;
+            try {
+                tmpChip = (AEChip) c.newInstance();
+                tmpChip.getEventExtractor().setChip(this);
+                setEventExtractor(tmpChip.getEventExtractor());
+            } catch (InstantiationException ex) {
+                Logger.getLogger(AEChip.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IllegalAccessException ex) {
+                Logger.getLogger(AEChip.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
     }
-    
+
     public int getNumCellTypes() {
         return numCellTypes;
     }
@@ -430,7 +436,7 @@ public class AEChip extends Chip2D {
      * @throws IOException on any IO exception
      */
     public AEFileInputStream constuctFileInputStream(File file) throws IOException {
-        AEFileInputStream stream = new AEFileInputStream(file,this);
+        AEFileInputStream stream = new AEFileInputStream(file, this);
         aeInputStream = stream;
         return stream;
     }
@@ -470,15 +476,17 @@ public class AEChip extends Chip2D {
         log.info("done writing preferences to " + os);
 
     }
-    
-    /** Default implementation of a method to translate the bit locations 
-     * of data from jAER3.0 source like cAER to jAER internal address format, as specified in
-     *  http://inilabs.com/support/software/fileformat/ .
-     * 
+
+    /**
+     * Default implementation of a method to translate the bit locations of data
+     * from jAER3.0 source like cAER to jAER internal address format, as
+     * specified in http://inilabs.com/support/software/fileformat/ .
+     *
      * @param address the address from cAER 3.0 format sources.
-     * @return the transformed address. The default implementation returns the same address.
+     * @return the transformed address. The default implementation returns the
+     * same address.
      */
-    public int translateJaer3AddressToJaerAddress(int address){
+    public int translateJaer3AddressToJaerAddress(int address) {
         return address;
     }
 }

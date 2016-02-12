@@ -193,8 +193,8 @@ public class CochleaAMSNoBiasgen extends CochleaChip {
 			int[] a = in.getAddresses();
 			int[] timestamps = in.getTimestamps();
 			boolean hasTypes = false;
-			if (chip != null) {
-				hasTypes = chip.getNumCellTypes() > 1;
+			if (getChip() != null) {
+				hasTypes = getChip().getNumCellTypes() > 1;
 			}
 			OutputEventIterator<?> outItr = out.outputIterator();
 			for (int i = 0; i < n; i += skipBy) {

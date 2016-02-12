@@ -38,7 +38,7 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
     protected byte xshift, yshift;
     protected int typemask;
     protected byte typeshift;
-    protected AEChip chip = null;
+    private AEChip chip = null;
     protected boolean flipx = false, flipy = false, rotate = false;
     protected boolean fliptype = false;
     protected boolean hexArrangement = false;
@@ -539,5 +539,23 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
 //            raw.addEvent(r);
 //        }
         return raw;
+    }
+
+    /**
+     * Returns the AEChip that this extractor is used for.
+     * @return the chip
+     */
+    public AEChip getChip() {
+        return chip;
+    }
+
+    /**
+     * Sets the AEChip that this extractor is used for. This method can be used to set the AEChip if the extractor for an AEChip is replaced with
+     * a different one, for instance.
+     * 
+     * @param chip the chip to set
+     */
+    public void setChip(AEChip chip) {
+        this.chip = chip;
     }
 }

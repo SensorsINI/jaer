@@ -198,7 +198,7 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
         @Override
         public synchronized EventPacket extractPacket(AEPacketRaw in) {
             if (out == null) {
-                out = new EventPacket<PolarityEvent>(chip.getEventClass());
+                out = new EventPacket<PolarityEvent>(getChip().getEventClass());
             } else {
                 out.clear();
             }

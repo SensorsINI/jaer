@@ -219,7 +219,7 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
         @Override
         synchronized public EventPacket extractPacket(AEPacketRaw in) {
             if (out == null) {
-                out = new EventPacket<PolarityEvent>(chip.getEventClass());
+                out = new EventPacket<PolarityEvent>(getChip().getEventClass());
             } else {
                 out.clear();
             }

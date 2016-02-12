@@ -692,8 +692,8 @@ public class Jaer3BufferParser {
                     return out;
             }
             final int n = in.getNumEvents(); // addresses.length;
-            final int sx1 = chip.getSizeX() - 1;
-            chip.getSizeY();
+            final int sx1 = getChip().getSizeX() - 1;
+            getChip().getSizeY();
 
             final int[] addrs = in.getAddresses();
             final int[] timestamps = in.getTimestamps();
@@ -772,7 +772,7 @@ public class Jaer3BufferParser {
          * @param timestamp timestamp of the event
          */
         protected void readDVS(final OutputEventIterator outItr, final int data, final int timestamp) {
-            final int sx1 = chip.getSizeX() - 1;
+            final int sx1 = getChip().getSizeX() - 1;
             final ApsDvsEvent e = nextApsDvsEvent(outItr);
 
             e.adcSample = -1;
@@ -797,7 +797,7 @@ public class Jaer3BufferParser {
          * @param timestamp time stamp of the event
          */
         protected void readFrame(final OutputEventIterator outItr, final int addr, final int data, final int timestamp) {
-            final int sx1 = chip.getSizeX() - 1;
+            final int sx1 = getChip().getSizeX() - 1;
             final ApsDvsEvent e = nextApsDvsEvent(outItr);
             // APS event
             // We first calculate the positions, so we can put events such as StartOfFrame at their

@@ -94,11 +94,11 @@ public class Davis208PixelParade extends DavisBaseCamera {
 		 */
 		@Override
 		synchronized public EventPacket extractPacket(final AEPacketRaw in) {
-			if (!(chip instanceof DavisChip)) {
+			if (!(getChip() instanceof DavisChip)) {
 				return null;
 			}
 			if (out == null) {
-				out = new ApsDvsEventPacket(chip.getEventClass());
+				out = new ApsDvsEventPacket(getChip().getEventClass());
 			}
 			else {
 				out.clear();
@@ -108,8 +108,8 @@ public class Davis208PixelParade extends DavisBaseCamera {
 				return out;
 			}
 			final int n = in.getNumEvents(); // addresses.length;
-			final int sx1 = chip.getSizeX() - 1;
-			chip.getSizeY();
+			final int sx1 = getChip().getSizeX() - 1;
+			getChip().getSizeY();
 
 			final int[] datas = in.getAddresses();
 			final int[] timestamps = in.getTimestamps();

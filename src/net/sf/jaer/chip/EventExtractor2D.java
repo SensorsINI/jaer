@@ -87,5 +87,19 @@ public interface EventExtractor2D<E extends BasicEvent> {
     public int getSubsampleThresholdEventCount();
 
     public void setSubsampleThresholdEventCount(int subsampleThresholdEventCount);
+    
+       /**
+     * Returns the AEChip that this extractor is used for.
+     * @return the chip
+     */
+    public AEChip getChip();
+
+    /**
+     * Sets the AEChip that this extractor is used for. This method can be used to set the AEChip if the extractor for an AEChip is replaced with
+     * a different one, for instance.
+     * 
+     * @param chip the chip to set
+     */
+    public void setChip(AEChip chip);
 
 }

@@ -88,11 +88,11 @@ public class DavisRGBW640 extends DavisBaseCamera {
 		 */
 		@Override
 		synchronized public EventPacket extractPacket(final AEPacketRaw in) {
-			if (!(chip instanceof DavisChip)) {
+			if (!(getChip() instanceof DavisChip)) {
 				return null;
 			}
 			if (out == null) {
-				out = new ApsDvsEventPacket(chip.getEventClass());
+				out = new ApsDvsEventPacket(getChip().getEventClass());
 			}
 			else {
 				out.clear();
@@ -102,8 +102,8 @@ public class DavisRGBW640 extends DavisBaseCamera {
 				return out;
 			}
 			final int n = in.getNumEvents(); // addresses.length;
-			chip.getSizeX();
-			chip.getSizeY();
+			getChip().getSizeX();
+			getChip().getSizeY();
 
 			final int[] datas = in.getAddresses();
 			final int[] timestamps = in.getTimestamps();

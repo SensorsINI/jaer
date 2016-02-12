@@ -94,7 +94,7 @@ public class Tmpdiff128 extends AETemporalConstastRetina implements Serializable
 		@Override
 		synchronized public EventPacket extractPacket(AEPacketRaw in) {
 			if (out == null) {
-				out = new EventPacket<PolarityEvent>(chip.getEventClass());
+				out = new EventPacket<PolarityEvent>(getChip().getEventClass());
 			} else {
 				out.clear();
 			}

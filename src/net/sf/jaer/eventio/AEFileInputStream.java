@@ -1337,12 +1337,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 addressType = Short.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Short.SIZE / 8);
                 jaer3EnableFlg = false;
-                // chip.restoreChipDefaultExtractor();          // Restore the default extractor, because it may be changed by jaer3BufferParser   
+                chip.restoreChipDefaultExtractor();          // Restore the default extractor, because it may be changed by jaer3BufferParser   
             } else if (Math.floor(version) == 2) { //  #!AEDAT-2.0
                 addressType = Integer.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Integer.SIZE / 8);
                 jaer3EnableFlg = false;                
-                // chip.restoreChipDefaultExtractor();          // Restore the default extractor, because it may be changed by jaer3BufferParser    
+                chip.restoreChipDefaultExtractor();          // Restore the default extractor, because it may be changed by jaer3BufferParser    
             } else if (Math.floor(version) == 3) { //  #!AEDAT-3.x
                 addressType = Integer.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Integer.SIZE / 8);

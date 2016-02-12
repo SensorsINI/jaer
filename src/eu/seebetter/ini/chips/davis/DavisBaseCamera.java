@@ -364,11 +364,11 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		 */
 		@Override
 		synchronized public EventPacket extractPacket(final AEPacketRaw in) {
-			if (!(chip instanceof DavisChip)) {
+			if (!(getChip() instanceof DavisChip)) {
 				return null;
 			}
 			if (out == null) {
-				out = new ApsDvsEventPacket(chip.getEventClass());
+				out = new ApsDvsEventPacket(getChip().getEventClass());
 			}
 			else {
 				out.clear();
@@ -378,8 +378,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 				return out;
 			}
 			final int n = in.getNumEvents(); // addresses.length;
-			final int sx1 = chip.getSizeX() - 1;
-			chip.getSizeY();
+			final int sx1 = getChip().getSizeX() - 1;
+			getChip().getSizeY();
 			final boolean rollingShutter = !getDavisConfig().isGlobalShutter();
 
 			final int[] datas = in.getAddresses();

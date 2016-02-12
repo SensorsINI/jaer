@@ -208,7 +208,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
         @Override
         synchronized public EventPacket extractPacket(AEPacketRaw in) {
             if (out == null) {
-                out = new FrameEventPacket(chip.getEventClass());
+                out = new FrameEventPacket(getChip().getEventClass());
             } else {
                 out.clear();
             }
