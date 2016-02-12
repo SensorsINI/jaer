@@ -26,6 +26,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.chip.RetinaExtractor;
@@ -558,7 +559,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			return out;
 		} // extractPacket
 
-		// TODO hack to reuse IMUSample events as ApsDvsEvents holding only APS or DVS data by using the special flags
 		protected ApsDvsEvent nextApsDvsEvent(final OutputEventIterator outItr) {
 			final ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
 			e.special = false;
@@ -591,35 +591,43 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			return a;
 		}
 
-		@Override
-		public AEPacketRaw reconstructRawPacket(final EventPacket packet) {
-			if (raw == null) {
-				raw = new AEPacketRaw();
-			}
-			if (!(packet instanceof ApsDvsEventPacket)) {
-				return null;
-			}
-			final ApsDvsEventPacket apsDVSpacket = (ApsDvsEventPacket) packet;
-			raw.ensureCapacity(packet.getSize());
-			raw.setNumEvents(0);
-			final int[] a = raw.addresses;
-			final int[] ts = raw.timestamps;
-			apsDVSpacket.getSize();
-			final Iterator evItr = apsDVSpacket.fullIterator();
-			int k = 0;
-			while (evItr.hasNext()) {
-				final ApsDvsEvent e = (ApsDvsEvent) evItr.next();
-				// not writing out these EOF events (which were synthesized on extraction) results in reconstructed
-				// packets with giant time gaps, reason unknown
-				if (e.isFilteredOut() || e.isEndOfFrame() || e.isStartOfFrame() || e.isStartOfExposure() || e.isEndOfExposure()) {
-					continue; // these flag events were synthesized from data in first place
-				}
-				ts[k] = e.timestamp;
-				a[k++] = reconstructRawAddressFromEvent(e);
-			}
-			raw.setNumEvents(k);
-			return raw;
-		}
+            @Override
+            public AEPacketRaw reconstructRawPacket(final EventPacket packet) {
+                if (raw == null) {
+                    raw = new AEPacketRaw();
+                }
+                if (!(packet instanceof ApsDvsEventPacket)) {
+                    return null;
+                }
+                final ApsDvsEventPacket apsDVSpacket = (ApsDvsEventPacket) packet;
+                raw.ensureCapacity(packet.getSize()); // TODO must handle extra capacity needed for inserting multiple raw events for each IMU sample below
+                raw.setNumEvents(0);
+                apsDVSpacket.getSize();
+                final Iterator evItr = apsDVSpacket.fullIterator();
+                int k = 0;
+                EventRaw tmpRawEvent=new EventRaw();
+                while (evItr.hasNext()) {
+                    final ApsDvsEvent e = (ApsDvsEvent) evItr.next();
+                    // not writing out these EOF events (which were synthesized on extraction) results in reconstructed
+                    // packets with giant time gaps, reason unknown
+                    if (e.isFilteredOut() || e.isEndOfFrame() || e.isStartOfFrame() || e.isStartOfExposure() || e.isEndOfExposure()) {
+                        continue; // these flag events were synthesized from data in first place
+                    }
+                    if (e.isImuSample()) {
+                        // TODO insert special handling to split up the IMU sample back to multiple raw events to hold the samples
+                        final IMUSample imuSample = e.getImuSample();
+                        k += imuSample.writeToPacket(raw, k);
+                    } else {
+                        // TODO must reset the ts and a references after ensure capacity increases backing arrays to new ones
+                        tmpRawEvent.timestamp=e.timestamp;
+                        tmpRawEvent.address=reconstructRawAddressFromEvent(e);
+                        raw.addEvent(tmpRawEvent);
+                        k++;
+                    }
+                }
+                raw.setNumEvents(k);
+                return raw;
+            }
 
 		/**
 		 * To handle filtered ApsDvsEvents, this method rewrites the fields of
