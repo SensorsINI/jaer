@@ -617,7 +617,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
             }
             System.gc();
             if (n > 0) {
-                log.info("allocating " + n + " floats for pixmap");
+//                log.info("allocating " + n + " floats for pixmap");
                 pixmap = FloatBuffer.allocate(n); // Buffers.newDirectFloatBuffer(n);
                 pixmap.rewind();
                 pixmap.limit(n);
@@ -679,10 +679,10 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
                 fillsHorizontally = false;
             }
         }
-        log.info("height=" + height + " width=" + width + " fillsHorizontally=" + fillsHorizontally + " fillsVertically=" + fillsVertically + " newscale=" + newscale);
+//        log.info("height=" + height + " width=" + width + " fillsHorizontally=" + fillsHorizontally + " fillsVertically=" + fillsVertically + " newscale=" + newscale);
         setDefaultProjection(gl, drawable); // this sets orthographic projection so that chip pixels are scaled to the drawable area
         gl.glViewport(0, 0, width, height);
-        repaint();
+        repaint(300);
     }
 
     /**
