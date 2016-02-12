@@ -212,6 +212,7 @@
                 <entry key="ClusterBasedOpticalFlow.mixingFactor" value="0.0034"/>
                 <entry key="ClusterBasedOpticalFlow.pixelsPerBin" value="8"/>
                 <entry key="ClusterBasedOpticalFlow.vectorScalingPixelsPerPPS" value="0.061391346"/>
+                <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="..\..\devices\firmware\CypressFX2\firmware_FX2LP_DAViS_FX2V4\SBret10.bix"/>
                 <entry key="DAVIS240B.AddressedIPotCF.AEPdBn.BitValueCoarse" value="1"/>
                 <entry key="DAVIS240B.AddressedIPotCF.AEPdBn.BitValueFine" value="91"/>
                 <entry key="DAVIS240B.AddressedIPotCF.AEPdBn.Enabled" value="true"/>
@@ -932,7 +933,7 @@
                 <entry key="DavisRGBW640.AddressedIPotCF.ReadoutBufBp.Sex" value="P"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.ReadoutBufBp.Type" value="NORMAL"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.ApsROSFBn.BitValueCoarse" value="0"/>
-                <entry key="DavisRGBW640.AddressedIPotCF.ApsROSFBn.BitValueFine" value="49"/>
+                <entry key="DavisRGBW640.AddressedIPotCF.ApsROSFBn.BitValueFine" value="82"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.ApsROSFBn.Enabled" value="true"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.ApsROSFBn.LowCurrent" value="false"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.ApsROSFBn.Sex" value="N"/>
@@ -2221,7 +2222,7 @@
                 <entry key="DavisRGBW640.DVS.ExternalAERControl" value="false"/>
                 <entry key="DavisRGBW640.DVS.FilterBackgroundActivity" value="false"/>
                 <entry key="DavisRGBW640.DVS.FilterBackgroundActivityDeltaTime" value="20000"/>
-                <entry key="DavisRGBW640.APS.Run" value="true"/>
+                <entry key="DavisRGBW640.APS.Run" value="false"/>
                 <entry key="DavisRGBW640.APS.ResetRead" value="true"/>
                 <entry key="DavisRGBW640.APS.WaitOnTransferStall" value="true"/>
                 <entry key="DavisRGBW640.APS.GlobalShutter" value="false"/>
@@ -2294,7 +2295,7 @@
                 <entry key="DavisRGBW640.VDACBias.VTestADC.BufBitValue" value="0"/>
                 <entry key="DavisRGBW640.VDACBias.ADCRefHigh.VdacBitValue" value="46"/>
                 <entry key="DavisRGBW640.VDACBias.ADCRefHigh.BufBitValue" value="7"/>
-                <entry key="DavisRGBW640.VDACBias.ADCRefLow.VdacBitValue" value="6"/>
+                <entry key="DavisRGBW640.VDACBias.ADCRefLow.VdacBitValue" value="3"/>
                 <entry key="DavisRGBW640.VDACBias.ADCRefLow.BufBitValue" value="7"/>
                 <entry key="DavisRGBW640.IMU.GyroScale" value="GyroFullScaleDegPerSec1000"/>
                 <entry key="DavisRGBW640.IMU.AccelScale" value="ImuAccelScaleG8"/>
@@ -2302,6 +2303,7 @@
                 <entry key="DavisRGBW640.Masterbias.rx" value="8200.0"/>
                 <entry key="DavisRGBW640.Masterbias.rint" value="46000.0"/>
                 <entry key="DavisRGBW640.Masterbias.internalResistorUsed" value="false"/>
+                <entry key="DavisBaseCamera.autoshotThresholdEvents" value="102400"/>
               </map>
             </node>
           </node>

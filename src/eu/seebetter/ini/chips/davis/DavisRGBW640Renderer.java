@@ -669,10 +669,9 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 					final float G_original = image[getIndex(x, y) + 1];
 					final float B_original = image[getIndex(x, y) + 2];
 
-					image[getIndex(x, y)] = ((((423.0f * R_original) + (28.0f * G_original)) - (137.0f * B_original)) + 29.0f) / 255.0f;
-					image[getIndex(x, y) + 1] = ((-254.0f * R_original) + (545.0f * G_original) + (10.0f * B_original) + 37.0f) / 255.0f;
-					image[getIndex(x, y) + 2] = (((-278.0f * R_original) - (533.0f * G_original)) + (1100.0f * B_original) + 37.0f)
-						/ 255.0f;
+					image[getIndex(x, y)] = (((1.75f * R_original) + (-0.19f * G_original)) + (-0.56f * B_original)) + 0.15f;
+					image[getIndex(x, y) + 1] = (-0.61f * R_original) + (1.39f * G_original) + (0.07f * B_original) + 0.21f;
+					image[getIndex(x, y) + 2] = ((-0.42f * R_original) + (-1.13f * G_original)) + (2.87f * B_original) + 0.18f;
 					// if (image[getIndex(x, y)] < 0) {
 					// image[getIndex(x, y)] = 0;
 					// }
