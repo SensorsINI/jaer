@@ -87,9 +87,9 @@ public class DeepLearnCnnNetwork {
     String notes;
     String dob;
     String nettype;
-    Layer[] layers;
-    InputLayer inputLayer;
-    OutputOrInnerProductFullyConnectedLayer outputLayer;
+    Layer[] layers; // all the layers in the middle
+    InputLayer inputLayer; // part of layers
+    OutputOrInnerProductFullyConnectedLayer outputLayer; // the final layer, not part of layers
     JFrame activationsFrame = null, kernelsFrame = null;
     private boolean hideSubsamplingLayers = true;
     private boolean normalizeKernelDisplayWeightsGlobally = true;
@@ -1390,7 +1390,7 @@ public class DeepLearnCnnNetwork {
         if (!nettype.equals("cnn")) {
             log.warning("network type is " + nettype + " which is not defined type \"cnn\"");
         }
-        nLayers = networkReader.getNodeCount("Layer");
+        nLayers = networkReader.getNodeCount("Layer")-1; // the output layer is a special layer not counted here
         log.info("network has " + nLayers + " layers");
         if (layers != null) {
             for (int i = 0; i < layers.length; i++) {
@@ -1399,7 +1399,7 @@ public class DeepLearnCnnNetwork {
         }
         layers = new Layer[nLayers];
 
-        for (int i = 0; i < nLayers; i++) {
+        for (int i = 0; i <= nLayers; i++) { // we need one more layer here (<=) to get the output layer
             log.info("loading layer " + i);
             EasyXMLReader layerReader = networkReader.getNode("Layer", i);
             int index = layerReader.getInt("index");
@@ -1512,14 +1512,36 @@ public class DeepLearnCnnNetwork {
                     throw new IOException("unknown layer type \"" + type + "\"");
             }
         }
-        //try {
-        //	log.info("loading seperate output layer with special output tags that is written at top level of xml Network element");
-        //    outputLayer = new OutputOrInnerProductFullyConnectedLayer(nLayers);
-        //    outputLayer.weights = readFloatArray(networkReader, "outputWeights"); // stored in many cols and few rows: one row per output unit
-        //    outputLayer.biases = readFloatArray(networkReader, "outputBias");
-        //} catch (NullPointerException e) {
-        //	throw new IOException("Caught " + e.toString() + " OUTPUT LAYER NOT FOUND");
-        //}
+//        try {
+//            log.info("trying to load seperate output layer with special output tags that is written at top level of xml Network element");
+//            OutputOrInnerProductFullyConnectedLayer ol = new OutputOrInnerProductFullyConnectedLayer(nLayers);
+//            ol.weights = readFloatArray(networkReader, "outputWeights"); // stored in many cols and few rows: one row per output unit
+//            ol.biases = readFloatArray(networkReader, "outputBias");
+//
+//            try {
+//                String af = networkReader.getRaw("outputActivationFunction");
+//                if (af.equalsIgnoreCase("sigmoid")) {
+//                    outputLayer.activationFunction = ActivationFunction.Sigmoid;
+//                } else if (af.equalsIgnoreCase("relu")) {
+//                    outputLayer.activationFunction = ActivationFunction.ReLu;
+//                } else if (af.equalsIgnoreCase("none")) {
+//                    outputLayer.activationFunction = ActivationFunction.None;
+//                } else {
+//                    log.warning("unknown conv layer activation function " + af + " in " + networkReader.toString());
+//                }
+//            } catch (NullPointerException e) {
+//                throw new NullPointerException("Caught " + e.toString() + " while parsing for outputActivationFunction in output layer; probably none defined and so using default sigmoid activation function");
+//            }
+//            if(outputLayer!=null){
+//                throw new IOException("outputLayer "+outputLayer+" already exists; there should only be one defined");
+//            }
+//            outputLayer=ol;
+//        } catch (NullPointerException e) {
+//            log.warning("Caught " + e.toString() + " seaparate output layer not found");
+//            if (outputLayer == null) {
+//                throw new IOException(this.toString() + "\n     network has no output layer defined");
+//            }
+//        }
         setXmlFilename(f.toString());
         log.info(toString());
     }
