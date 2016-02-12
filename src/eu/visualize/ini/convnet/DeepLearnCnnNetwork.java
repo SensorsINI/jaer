@@ -181,6 +181,7 @@ public class DeepLearnCnnNetwork {
             printWeights();
         }
         processingTimeNs = System.nanoTime() - startProcessingTimeNs;
+        networkRanOnce=true;
         return outputLayer.activations;
     }
 
@@ -1389,11 +1390,7 @@ public class DeepLearnCnnNetwork {
             throw new IOException("Exception thrown in EasyXMLReader for file " + f);
         }
 
-        if (activationsFrame != null) {
-            activationsFrame.dispose();
-            activationsFrame = null;
-        }
-
+      
         netname = networkReader.getRaw("name");
         notes = networkReader.getRaw("notes");
         dob = networkReader.getRaw("dob");
@@ -1555,6 +1552,17 @@ public class DeepLearnCnnNetwork {
 //            }
 //        }
         setXmlFilename(f.toString());
+        
+          if (activationsFrame != null) {
+            activationsFrame.dispose();
+            activationsFrame = null;
+        }
+        if(kernelsFrame!=null){
+            kernelsFrame.dispose();
+            kernelsFrame=null;
+        }
+        networkRanOnce=false;
+
         log.info(toString());
     }
 
