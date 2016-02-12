@@ -429,7 +429,7 @@ public class IMUSample {
     }
 
     /**
-     * Writes the IMUSample to the packet starting at start location. The number
+     * Writes the IMUSample to the AEPacketRaw raw event packet starting at start location. The number
      * of events written to packet is returned and can be used to update the
      * eventCouner in the translateEvents method.
      *
