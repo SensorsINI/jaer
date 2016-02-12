@@ -148,6 +148,10 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setCursor(new Cursor(Cursor.WAIT_CURSOR));
         try {
             if (apsDvsNet != null) {
+                if(!apsDvsNet.networkRanOnce){
+                    JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Network must run at least once to correctly plot kernels (internal variables for indexing are computed at runtime)");
+                    return;
+                }
                 JFrame frame = apsDvsNet.drawKernels();
                 frame.setTitle("APS net kernel weights");
             }

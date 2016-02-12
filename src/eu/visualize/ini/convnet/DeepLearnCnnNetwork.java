@@ -1,5 +1,3 @@
-
-
 /*
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
@@ -102,6 +100,11 @@ public class DeepLearnCnnNetwork {
     private int operationCounter = 0; // counter for ops during update
     private long startProcessingTimeNs = 0;
     private long processingTimeNs;
+    /**
+     * This flag is set true once the network has run once. Some constants are
+     * not set until then
+     */
+    public boolean networkRanOnce = false; // since some constants are not set until network has run
 
     /**
      * This PropertyChange is emitted when either APS or DVS net outputs. The
@@ -1337,6 +1340,15 @@ public class DeepLearnCnnNetwork {
             return activations[x];
         }
 
+        @Override
+        public void printActivations() {
+            super.printActivations();
+            System.out.println("Activations:");
+            for (int i = 0; i < activations.length; i++) {
+                System.out.print(String.format("%6.2g ", activations[i]));
+            }
+        }
+
     }
 
     public void setNetworkToUniformValues(float weight, float bias) {
@@ -1390,7 +1402,7 @@ public class DeepLearnCnnNetwork {
         if (!nettype.equals("cnn")) {
             log.warning("network type is " + nettype + " which is not defined type \"cnn\"");
         }
-        nLayers = networkReader.getNodeCount("Layer")-1; // the output layer is a special layer not counted here
+        nLayers = networkReader.getNodeCount("Layer") - 1; // the output layer is a special layer not counted here
         log.info("network has " + nLayers + " layers");
         if (layers != null) {
             for (int i = 0; i < layers.length; i++) {
@@ -1489,10 +1501,10 @@ public class DeepLearnCnnNetwork {
                         case "o":
                             log.info("assiging this layer to be network output layer");
                             outputLayer = l;
-                            outputLayer.weights = readFloatArray(networkReader, "weights");
-                            outputLayer.biases = readFloatArray(networkReader, "biases");
+                            outputLayer.weights = readFloatArray(layerReader, "weights");
+                            outputLayer.biases = readFloatArray(layerReader, "biases");
                             try {
-                                String af = networkReader.getRaw("activationFunction");
+                                String af = layerReader.getRaw("activationFunction");
                                 if (af.equalsIgnoreCase("sigmoid")) {
                                     outputLayer.activationFunction = ActivationFunction.Sigmoid;
                                 } else if (af.equalsIgnoreCase("relu")) {
@@ -1678,4 +1690,3 @@ public class DeepLearnCnnNetwork {
     }
 
 }
-
