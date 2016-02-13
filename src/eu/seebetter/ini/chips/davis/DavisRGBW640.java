@@ -43,7 +43,8 @@ public class DavisRGBW640 extends DavisBaseCamera {
 
 		setEventClass(ApsDvsEventRGBW.class);
 
-		setEventExtractor(new DavisRGBWEventExtractor(this));
+		eventExtractor=new DavisRGBWEventExtractor(this);
+                originalEventExtractor=eventExtractor; // make sure we can get back to this one even if jaer3 parser changes it.  TODO this is too cryptic
 
 		setBiasgen(davisConfig = new DavisRGBW640Config(this));
 
