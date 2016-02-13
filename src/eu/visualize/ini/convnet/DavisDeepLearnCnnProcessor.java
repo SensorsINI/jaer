@@ -111,7 +111,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         try {
             apsDvsNet.loadFromXMLFile(c.getSelectedFile());
             dvsSubsampler = new DvsSubsamplerToFrame(apsDvsNet.inputLayer.dimx, apsDvsNet.inputLayer.dimy, getDvsColorScale());
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             Logger.getLogger(DavisDeepLearnCnnProcessor.class.getName()).log(Level.SEVERE, null, ex);
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file, caught exception " + ex + ". See console for logging.", "Bad network file", JOptionPane.WARNING_MESSAGE);
         }
