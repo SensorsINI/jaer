@@ -28,7 +28,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
  *
  * @author Chenghan Li, Luca Longinotti, Tobi Delbruck
  */
-@Description("DAVIS APS-DVS camera with RGBW CFA color filter array and 640x480 APS pixels and 320x240 DAVIS pixels")
+@Description("CDAVIS APS-DVS camera with RGBW CFA color filter array and 640x480 APS pixels and 320x240 DAVIS pixels")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DavisRGBW640 extends DavisBaseCamera {
 
