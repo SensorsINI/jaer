@@ -1396,8 +1396,8 @@ public class DeepLearnCnnNetwork {
         dob = networkReader.getRaw("dob");
         nettype = networkReader.getRaw("type");
         log.info(String.format("reading network with name=%s, notes=%s, dob=%s nettype=%s", netname, notes, dob, nettype));
-        if (!nettype.equals("cnn")) {
-            log.warning("network type is " + nettype + " which is not defined type \"cnn\"");
+        if (!nettype.equals("cnn") && !nettype.equals("caffe_net")) {
+            log.warning("network type is " + nettype + " which is not defined type \"cnn\" or \"caffe_net\"");
         }
         nLayers = networkReader.getNodeCount("Layer") - 1; // the output layer is a special layer not counted here
         log.info("network has " + nLayers + " layers");
