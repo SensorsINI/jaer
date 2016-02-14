@@ -42,11 +42,11 @@ public class DavisFrameAviWriter extends AbstractAviWriter {
 
     public DavisFrameAviWriter(AEChip chip) {
         super(chip);
-        FilterChain filterChain = new FilterChain(chip);
-//        apsFrameExtractor = new ApsFrameExtractor(chip);
-//        apsFrameExtractor.getSupport().addPropertyChangeListener(this);
-//        filterChain.add(apsFrameExtractor);
-        setEnclosedFilterChain(filterChain);
+//        FilterChain filterChain = new FilterChain(chip);
+////        apsFrameExtractor = new ApsFrameExtractor(chip);
+////        apsFrameExtractor.getSupport().addPropertyChangeListener(this);
+////        filterChain.add(apsFrameExtractor);
+//        setEnclosedFilterChain(filterChain);
         setPropertyTooltip("saveAVIFileAs", "Opens the output file. The AVI file is in RAW format with pixel values 0-255 coming from ApsFrameExtractor displayed frames, which are offset and scaled by it.");
         setPropertyTooltip("closeFile", "Closes the output file if it is open.");
         setPropertyTooltip("writeTimecodeFile", "writes a file alongside AVI file (with suffix " + TIMECODE_SUFFIX + ") that maps from AVI frame to AER timestamp for that frame (the frame end timestamp)");
