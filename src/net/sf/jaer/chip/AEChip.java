@@ -60,7 +60,8 @@ import net.sf.jaer.util.avioutput.JaerAviWriter;
 @Description("Address-Event Chip")
 public class AEChip extends Chip2D {
 
-    protected EventExtractor2D eventExtractor = null, originalEventExtractor = null;
+    /** The current and previous event extractors. The previous extractor is set whenever #setEventExtractor is called. */
+    protected EventExtractor2D eventExtractor = null, previousEventExtractor = null;
     protected AEChipRenderer renderer = null;
     protected AEFileInputStream aeInputStream = null;
     protected AEFileOutputStream aeOutputStream = null;
@@ -172,26 +173,30 @@ public class AEChip extends Chip2D {
 
     /**
      * Sets the EventExtractor2D and notifies Observers with the new extractor.
+     * The previousEventExtractor is set to the prior value unless the prior value is null; then it is set to the supplied eventExtractor.
+     * This way, the previousEventExtractor is never set to a null.
      *
      * @param eventExtractor the extractor; notifies Observers.
+     * @see #previousEventExtractor
      */
     public void setEventExtractor(EventExtractor2D eventExtractor) {
-        this.eventExtractor = eventExtractor;
-        if (originalEventExtractor == null) {
-            originalEventExtractor = eventExtractor;    // OriginalEventExtractor will be set when setEventExtractor is called the first time, or we can call it the first
-                                                        // extractor of the chip.
+        if(this.eventExtractor!=null) {
+            previousEventExtractor = this.eventExtractor;
+        } else{
+            previousEventExtractor=eventExtractor;
         }
+        this.eventExtractor = eventExtractor;
         setChanged();
         notifyObservers(eventExtractor);
     }
 
     /**
-     * This method is used to restore the default extractor of the chip class,
-     * sometimes the extractor of the chip might be changed, then use this
-     * function can restore it.
+     * This method is used to restore the previous extractor of the chip class,
+     * sometimes the extractor of the chip might be changed, then using this
+     * method can restore it.
      */
     public void restoreChipDefaultExtractor() {
-        setEventExtractor(originalEventExtractor);
+        setEventExtractor(previousEventExtractor);
     }
 
     public int getNumCellTypes() {
