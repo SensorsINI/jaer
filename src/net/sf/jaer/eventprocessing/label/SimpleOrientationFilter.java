@@ -69,7 +69,7 @@ public class SimpleOrientationFilter extends AbstractOrientationFilter{
      * @return the processed events, may be fewer in number. */
     @Override
     synchronized public EventPacket<?> filterPacket (EventPacket<?> in){
-        if ( enclosedFilter != null ) in = enclosedFilter.filterPacket(in);
+        if ( enclosedFilter != null ) in = enclosedFilter.filterPacket(in); // TODO filters out the IMU samples sometimes because the iterator is not the fullIterator
         if ( in.getSize() == 0 ) return in;
 
         Class inputClass = in.getEventClass();
