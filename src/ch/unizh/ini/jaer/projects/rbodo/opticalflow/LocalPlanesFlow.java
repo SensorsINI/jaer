@@ -1,13 +1,16 @@
 package ch.unizh.ini.jaer.projects.rbodo.opticalflow;
 
+import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.logging.Level;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.util.jama.Matrix;
@@ -62,7 +65,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     private String neighb;
 
     private float tmp;
-    
+
     private int t1, t2;
 
     public LocalPlanesFlow(AEChip chip) {
@@ -184,14 +187,14 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
 
     synchronized private void smoothTimesmap() {
         /**
-         * This function convolves a patch of the timesmap with a
-         * Savitzky-Golay smoothing kernel. In other words, it applies a
-         * Least-Squares polynomial fit to the surface of most recent events to
-         * decrease noise. Important assumption for calculating the fitting
-         * parameters: All points in the neighborhood must exist and be valid.
-         * This function is at present not used in the Local Plane method,
-         * because a direct computation of the plane fit using the first order
-         * Savitzky- Golay filter is faster.
+         * This function convolves a patch of the timesmap with a Savitzky-Golay
+         * smoothing kernel. In other words, it applies a Least-Squares
+         * polynomial fit to the surface of most recent events to decrease
+         * noise. Important assumption for calculating the fitting parameters:
+         * All points in the neighborhood must exist and be valid. This function
+         * is at present not used in the Local Plane method, because a direct
+         * computation of the plane fit using the first order Savitzky- Golay
+         * filter is faster.
          */
         computeFittingParameters();
         ii = 0;
@@ -419,37 +422,53 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         }
     }
 
+//    private int lastImuSampleTs = 0; // debug
+
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
         setupFilter(in);
         firstTs = in.getFirstTimestamp();
-        
-        for (Object ein : in) {
+
+        if (!(in instanceof ApsDvsEventPacket)) {
+            throw new RuntimeException("in packet is not an ApsDvsEventPacket; cannot extract ImuSamples from it");
+        }
+        ApsDvsEventPacket packet = (ApsDvsEventPacket) in;
+        Iterator itr = packet.fullIterator();
+        while (itr.hasNext()) {
+            ApsDvsEvent ein = (ApsDvsEvent) itr.next();
             extractEventInfo(ein);
-            if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
-                imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
-                setGroundTruth();
-            }
-            if (isInvalidAddress(searchDistance)) {
-                continue;
-            }
-            if (isInvalidTimestamp()) {
-                continue;
-            }
-            if (xyFilter()) {
-                continue;
-            }
-            countIn++;
-            computePlaneEstimate();
-            if (accuracyTests()) {
-                continue;
+            if (!ein.isApsData()) {
+//                if (ein instanceof ApsDvsEvent && ((ApsDvsEvent) ein).isImuSample()) {
+//                    IMUSample imu = ((ApsDvsEvent) ein).getImuSample();
+//                    int dtImu = imu.getTimestampUs() - lastImuSampleTs;
+//                    lastImuSampleTs = imu.getTimestampUs();
+//
+//                }
+                if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
+                    imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
+                    setGroundTruth();
+                }
+                if (isInvalidAddress(searchDistance)) {
+                    continue;
+                }
+                if (isInvalidTimestamp()) {
+                    continue;
+                }
+                if (xyFilter()) {
+                    continue;
+                }
+                countIn++;
+                computePlaneEstimate();
+                if (accuracyTests()) {
+                    continue;
+                }
             }
 //            printNeighborhood();
             writeOutputEvent();
             if (measureAccuracy) {
                 getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
             }
-         }
+        }
         getMotionFlowStatistics().updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket;
     }
