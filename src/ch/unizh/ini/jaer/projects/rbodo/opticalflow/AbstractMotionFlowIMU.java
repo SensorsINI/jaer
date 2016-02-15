@@ -452,7 +452,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
             tsIMU = imuSample.getTimestampUs();
             dtS = (tsIMU - lastTsIMU) * 1e-6f;
-//            System.out.println("dT of IMU is "+dtS);  // debug
+//            log.info("dT of IMU is "+dtS);  // debug
             lastTsIMU = tsIMU;
 
             if (!initialized) {
