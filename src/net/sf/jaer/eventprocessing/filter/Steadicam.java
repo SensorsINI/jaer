@@ -202,6 +202,8 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
         setEnclosedFilterChain(filterChain);
 
     }
+    
+//    int lastImuTs=0; // debug
 
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
@@ -256,11 +258,12 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
                 switch (cameraRotationEstimator) {
                     case VORSensor:
                         if (ev.isImuSample()) {
-                            // TODO hack, we mark IMUSamples in EventExtractor that are actually ApsDvsEvent as non-special so we can detect them here
-//                            System.outputPacket.println("at position "+i+" got "+ev);
                             IMUSample s = ev.getImuSample(); // because of imuLagMs this IMU sample should actually be applied to samples from the past
                             // to achieve this backwards application of the IMU samples we hold the older events in a FIFO and pop events from the FIFO until 
                             // the event timestamp catches up to the current IMUSample timestamp - imuLagMs.
+                            
+//                            System.out.println("steadicam dt IMU="+(s.getTimestampUs()-lastImuTs));
+//                            lastImuTs=s.getTimestampUs();
 
                             lastTransform = updateTransform(s);
                             if (transformImageEnabled && lastTransform != null && chip instanceof DavisChip && chip.getAeViewer() != null && chip.getCanvas() != null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA) {
