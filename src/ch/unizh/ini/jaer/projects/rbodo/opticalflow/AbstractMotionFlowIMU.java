@@ -213,7 +213,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 //        setPropertyTooltip(imuTT, "discardOutliersForStatisticalMeasurementEnabled", "discard measured local motion vector if it deviates from IMU estimate");
 //        setPropertyTooltip(imuTT, "discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg", "threshold angle in degree. Discard measured optical flow vector if it deviates from IMU-estimate by more than discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg");
         setPropertyTooltip(imuTT, "lensFocalLengthMm", "lens focal length in mm. Used for computing the IMU flow from pan and tilt camera rotations. 4.5mm is focal length for dataset data.");
-        setPropertyTooltip(imuTT, "startIMUCalibration", "<html> Starts estimating the IMU offsets based on next 800 samples. Should be used only with stationary recording to store these offsets in the preferences. <p> <b>measureAccuracy</b> must be selected as well to actually do the calibration.");
+        setPropertyTooltip(imuTT, "calibrationSamples", "number of IMU samples to average over for measuring IMU offset.");
+        setPropertyTooltip(imuTT, "startIMUCalibration", "<html> Starts estimating the IMU offsets based on next calibrationSamples samples. Should be used only with stationary recording to store these offsets in the preferences. <p> <b>measureAccuracy</b> must be selected as well to actually do the calibration.");
         setPropertyTooltip(imuTT, "resetIMUCalibration", "Resets the IMU offsets to zero. Can be used to observe effect of these offsets on a stationary recording in the IMUFlow filter.");
         setPropertyTooltip(imuTT, "importGTfromMatlab", "Allows importing two 2D-arrays containing the x-/y- components of the motion flow field used as ground truth.");
         setPropertyTooltip(imuTT, "resetGroundTruth", "Resets the ground truth optical flow that was imported from matlab. Used in the measureAccuracy option.");
@@ -377,7 +378,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
         // Calibration
         private boolean calibrating = false; // used to flag calibration state
-        private final int CALIBRATION_SAMPLES = 800; // Samples/s
+        private int calibrationSamples = getInt("calibrationSamples",100); // number of samples, typically they come at 1kHz
         private final Measurand panCalibrator, tiltCalibrator, rollCalibrator;
         private float panOffset;
         private float tiltOffset;
@@ -464,14 +465,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             rollRate = imuSample.getGyroRollZ();
 
             if (calibrating) {
-                if (panCalibrator.n > CALIBRATION_SAMPLES) {
+                if (panCalibrator.n > getCalibrationSamples()) {
                     calibrating = false;
                     panOffset = panCalibrator.getMean();
                     tiltOffset = tiltCalibrator.getMean();
                     rollOffset = rollCalibrator.getMean();
                     log.info(String.format("calibration finished. %d samples averaged"
-                            + " to (pan,tilt,roll)=(%.3f,%.3f,%.3f)",
-                            CALIBRATION_SAMPLES, panOffset, tiltOffset, rollOffset));
+                            + " to (pan,tilt,roll)=(%.3f,%.3f,%.3f)", getCalibrationSamples(), panOffset, tiltOffset, rollOffset));
                 } else {
                     panCalibrator.update(panRate);
                     tiltCalibrator.update(tiltRate);
@@ -509,6 +509,20 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             vx = (nx - newx) / dtS;
             vy = (ny - newy) / dtS;
             v = (float) Math.sqrt(vx * vx + vy * vy);
+        }
+
+        /**
+         * @return the calibrationSamples
+         */
+        public int getCalibrationSamples() {
+            return calibrationSamples;
+        }
+
+        /**
+         * @param calibrationSamples the calibrationSamples to set
+         */
+        public void setCalibrationSamples(int calibrationSamples) {
+            this.calibrationSamples = calibrationSamples;
         }
     }
     // </editor-fold>
@@ -1503,6 +1517,16 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     public MotionFlowStatistics getMotionFlowStatistics() {
         return motionFlowStatistics;
     }
+
+    public int getCalibrationSamples() {
+        return imuFlowEstimator.getCalibrationSamples();
+    }
+
+    public void setCalibrationSamples(int calibrationSamples) {
+        imuFlowEstimator.setCalibrationSamples(calibrationSamples);
+    }
+    
+    
     
     
 
