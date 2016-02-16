@@ -676,7 +676,7 @@ public class DeepLearnCnnNetwork {
             // net trained gets 0-1 range inputs, so make our input so
             int n = activations.length;
             float sum = 0, sum2 = 0;
-            final float center = .5f;
+            final float mid = .5f;
             float min = Float.POSITIVE_INFINITY, max = Float.NEGATIVE_INFINITY;
             for (float f : activations) {
                 sum += f;
@@ -705,12 +705,12 @@ public class DeepLearnCnnNetwork {
                     operationCounter += 4;
                 }
             } else {
-//                for (int i = 0; i < n; i++) {
-//                    float d=activations[i]-m;
+                for (int i = 0; i < n; i++) {
+                    float d=activations[i];
 //                    if(d >sig3) d=sig3; else if(d<-sig3)d=-sig3;
-//                    activations[i] = (d-min) * range1;
-//                    operationCounter += 4;
-//                }
+                    activations[i] = ((d-mid) * range1)+mid;
+                    operationCounter += 4;
+                }
 
             }
         }

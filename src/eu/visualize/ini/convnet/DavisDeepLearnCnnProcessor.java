@@ -214,7 +214,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     @Override
     public void resetFilter() {
-
+        if(dvsSubsampler!=null) dvsSubsampler.clear();
     }
 
     @Override

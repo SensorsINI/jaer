@@ -33,7 +33,7 @@ public class DvsSubsamplerToFrame {
     LowpassFilter frameIntervalFilter = new LowpassFilter(1000);
     private int startTimestamp = 0;
     private boolean cleared = true;
-    private int lastIntervalUs=0;
+    private int lastIntervalUs = 0;
 
     /**
      * Makes a new DvsSubsamplingTimesliceConvNetInput
@@ -60,6 +60,11 @@ public class DvsSubsamplerToFrame {
         accumulatedEventCount = 0;
         mostOffCount = Integer.MAX_VALUE;
         mostOnCount = Integer.MIN_VALUE;
+        frameIntervalFilter.reset();
+        lastIntervalUs = 0;
+        accumulatedEventCount = 0;
+        lastTimestamp = Integer.MIN_VALUE;
+
         cleared = true;
     }
 
@@ -228,12 +233,12 @@ public class DvsSubsamplerToFrame {
         }
     }
 
-    public float getFilteredSubsamplerIntervalUs()
-    {
+    public float getFilteredSubsamplerIntervalUs() {
         return frameIntervalFilter.getValue();
     }
-    
-    public int getLastSubsamplerFrameIntervalUs(){
+
+    public int getLastSubsamplerFrameIntervalUs() {
         return lastIntervalUs;
     }
+
 }
