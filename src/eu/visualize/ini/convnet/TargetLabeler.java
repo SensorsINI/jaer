@@ -427,12 +427,10 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         for (TargetLocation t : mostRecentTargetsBeforeThisEvent.getValue()) {
                             if ((t == null) || ((t != null) && ((e.timestamp - t.timestamp) > maxTimeLastTargetLocationValidUs))) {
                                 targetLocation = null;
-                            } else {
-                                if (targetLocation != t) {
-                                    targetLocation = t;
-                                    currentTargets.add(targetLocation);
-                                    markDataHasTarget(targetLocation.timestamp);
-                                }
+                            } else if (targetLocation != t) {
+                                targetLocation = t;
+                                currentTargets.add(targetLocation);
+                                markDataHasTarget(targetLocation.timestamp);
                             }
                         }
                     }
@@ -599,6 +597,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     /**
+     * Returns the last target location
+     *
      * @return the targetLocation
      */
     public TargetLocation getTargetLocation() {
@@ -675,8 +675,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             }
             glu.gluQuadricDrawStyle(mouseQuad, GLU.GLU_LINE);
             //glu.gluDisk(mouseQuad, getTargetRadius(), getTargetRadius(), 32, 1);
-            int maxDim = Math.max(dimx,dimy);
-            glu.gluDisk(mouseQuad, maxDim/2, (maxDim/2)+0.1, 32, 1);
+            int maxDim = Math.max(dimx, dimy);
+            glu.gluDisk(mouseQuad, maxDim / 2, (maxDim / 2) + 0.1, 32, 1);
             //getTargetRadius(), getTargetRadius() + 1, 32, 1);
             gl.glPopMatrix();
         }
@@ -746,6 +746,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     synchronized private void loadLocations(File f) {
         long startMs = System.currentTimeMillis();
         log.info("loading " + f);
+        TargetLocation tmpTargetLocation = null;
         try {
             setCursor(new Cursor(Cursor.WAIT_CURSOR));
             targetLocations.clear();
@@ -784,7 +785,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                             targetdimy = Integer.parseInt(scanner.match().group());
                         }
 
-                        targetLocation = new TargetLocation(frame, ts,
+                        tmpTargetLocation = new TargetLocation(frame, ts,
                                 new Point(x, y),
                                 targetTypeID,
                                 targetdimx,
@@ -792,17 +793,17 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     } catch (NoSuchElementException ex2) {
                         throw new IOException(("couldn't parse file " + f) == null ? "null" : f.toString() + ", got InputMismatchException on line: " + s);
                     }
-                    if ((targetLocation.location.x == -1) && (targetLocation.location.y == -1)) {
-                        targetLocation.location = null;
+                    if ((tmpTargetLocation.location.x == -1) && (tmpTargetLocation.location.y == -1)) {
+                        tmpTargetLocation.location = null;
                     }
-                    addSample(targetLocation.timestamp, targetLocation);
-                    markDataHasTarget(targetLocation.timestamp);
-                    if (targetLocation != null) {
-                        if (targetLocation.timestamp > maxSampleTimestamp) {
-                            maxSampleTimestamp = targetLocation.timestamp;
+                    addSample(tmpTargetLocation.timestamp, tmpTargetLocation);
+                    markDataHasTarget(tmpTargetLocation.timestamp);
+                    if (tmpTargetLocation != null) {
+                        if (tmpTargetLocation.timestamp > maxSampleTimestamp) {
+                            maxSampleTimestamp = tmpTargetLocation.timestamp;
                         }
-                        if (targetLocation.timestamp < minSampleTimestamp) {
-                            minSampleTimestamp = targetLocation.timestamp;
+                        if (tmpTargetLocation.timestamp < minSampleTimestamp) {
+                            minSampleTimestamp = tmpTargetLocation.timestamp;
                         }
                     }
                 }
@@ -811,6 +812,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 if (lastDataFilename != null) {
                     mapDataFilenameToTargetFilename.put(lastDataFilename, f.getPath());
                 }
+                this.targetLocation=null;  // null out current location
             } catch (FileNotFoundException ex) {
                 JOptionPane.showMessageDialog(glCanvas, ("couldn't find file " + f) == null ? "null" : f.toString() + ": got exception " + ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
             } catch (IOException ex) {
