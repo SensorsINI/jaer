@@ -145,9 +145,9 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
             n2 = 0; // counts of passing matches, each direction
 
             /** 
-             * Use average time to previous ori events. Iterate over search distance 
+             * Use average time to previous orientation- events. Iterate over search distance 
              * to find average delay between this input orientation event and 
-             * previous orientiation input events in offset direction. Only count 
+             * previous orientation input events in offset direction. Only count 
              * event if it falls in acceptable delay bounds.
              */
             for (s = 1; s <= searchDistance; s++) {
