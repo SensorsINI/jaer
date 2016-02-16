@@ -246,9 +246,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 
         } else {
             DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
-            if (targetLabeler.hasLocations()) {
+//            if (targetLabeler.hasLocations()) {
                 error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit, net.isLastInputTypeProcessedWasApsFrame());
-            }
+//            }
             if (sendUDPSteeringMessages) {
                 if (checkClient()) { // if client not there, just continue - maybe it comes back
                     buf.clear();
@@ -441,9 +441,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 
         @Override
         public String toString() {
-            if (targetLabeler.hasLocations() == false) {
-                return "Error: No ground truth target locations loaded";
-            }
+//            if (targetLabeler.hasLocations() == false) {
+//                return "Error: No ground truth target locations loaded";
+//            }
             if (totalCount == 0) {
                 return "Error: no samples yet";
             }
