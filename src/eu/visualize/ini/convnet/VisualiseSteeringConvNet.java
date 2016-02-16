@@ -42,7 +42,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor implements PropertyChangeListener {
 
     private static final int LEFT = 0, CENTER = 1, RIGHT = 2, INVISIBLE = 3; // define output cell types
-    volatile private boolean hideOutput = getBoolean("hideOutput", false);
+    volatile private boolean hideSteeringOutput = getBoolean("hideOutput", false);
     volatile private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
     volatile private boolean showStatistics = getBoolean("showStatistics", true);
     private TargetLabeler targetLabeler = null;
@@ -64,12 +64,12 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 
     public VisualiseSteeringConvNet(AEChip chip) {
         super(chip);
-        String s = "Steering Output";
-        setPropertyTooltip(s, "showAnalogDecisionOutput", "shows output units as analog shading rather than binary");
-        setPropertyTooltip(s, "hideOutput", "hides output unit rendering as shading over sensor image");
-        setPropertyTooltip(s, "pixelErrorAllowedForSteering", "If ground truth location is within this many pixels of closest border then the descision is still counted as corret");
-        setPropertyTooltip("1. Display", "showStatistics", "shows statistics of DVS frame rate and error rate (when ground truth TargetLabeler file is loaded)");
+        String deb = "3. Debug", disp = "1. Display", anal = "2. Analysis";
         String udp = "UDP messages";
+        setPropertyTooltip(disp, "showAnalogDecisionOutput", "shows output units as analog shading rather than binary");
+        setPropertyTooltip(disp, "hideSteeringOutput", "hides steering output unit rendering as shading over sensor image. If the prey is invisible no rectangle is rendered when showAnalogDecisionOutput is deselected.");
+        setPropertyTooltip(anal, "pixelErrorAllowedForSteering", "If ground truth location is within this many pixels of closest border then the descision is still counted as corret");
+        setPropertyTooltip(disp, "showStatistics", "shows statistics of DVS frame rate and error rate (when ground truth TargetLabeler file is loaded)");
         setPropertyTooltip(udp, "sendUDPSteeringMessages", "sends UDP packets with steering network output to host:port in hostAndPort");
         setPropertyTooltip(udp, "host", "hostname or IP address to send UDP messages to, e.g. localhost");
         setPropertyTooltip(udp, "port", "destination UDP port address to send UDP messages to, e.g. 5678");
@@ -152,7 +152,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
         targetLabeler.annotate(drawable);
-        if (hideOutput) {
+        if (hideSteeringOutput) {
             return;
         }
         GL2 gl = drawable.getGL().getGL2();
@@ -210,18 +210,18 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     }
 
     /**
-     * @return the hideOutput
+     * @return the hideSteeringOutput
      */
-    public boolean isHideOutput() {
-        return hideOutput;
+    public boolean isHideSteeringOutput() {
+        return hideSteeringOutput;
     }
 
     /**
-     * @param hideOutput the hideOutput to set
+     * @param hideSteeringOutput the hideSteeringOutput to set
      */
-    public void setHideOutput(boolean hideOutput) {
-        this.hideOutput = hideOutput;
-        putBoolean("hideOutput", hideOutput);
+    public void setHideSteeringOutput(boolean hideSteeringOutput) {
+        this.hideSteeringOutput = hideSteeringOutput;
+        putBoolean("hideSteeringOutput", hideSteeringOutput);
     }
 
     /**

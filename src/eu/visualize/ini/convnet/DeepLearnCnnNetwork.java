@@ -100,6 +100,8 @@ public class DeepLearnCnnNetwork {
     private int operationCounter = 0; // counter for ops during update
     private long startProcessingTimeNs = 0;
     private long processingTimeNs;
+    private boolean softMaxOutput = false;
+
     /**
      * This flag is set true once the network has run once. Some constants are
      * not set until then
@@ -173,6 +175,10 @@ public class DeepLearnCnnNetwork {
             layers[i].compute(layers[i - 1]);
         }
         outputLayer.compute(layers[nLayers - 1]);
+        if (softMaxOutput) {
+            outputLayer.computeSoftMax();
+        }
+
         getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
         if (isPrintActivations()) {
             printActivations();
@@ -181,7 +187,7 @@ public class DeepLearnCnnNetwork {
             printWeights();
         }
         processingTimeNs = System.nanoTime() - startProcessingTimeNs;
-        networkRanOnce=true;
+        networkRanOnce = true;
         return outputLayer.activations;
     }
 
@@ -1285,7 +1291,7 @@ public class DeepLearnCnnNetwork {
                 return;
             }
             float dx = (float) (width) / (activations.length);
-            float sy = (float) (height) / 1;
+            float sy = (float) 0.9f* (height) ;
 
 //            gl.glBegin(GL.GL_LINES);
 //            gl.glVertex2f(1, 1);
@@ -1293,7 +1299,7 @@ public class DeepLearnCnnNetwork {
 //            gl.glEnd();
             gl.glBegin(GL.GL_LINE_STRIP);
             for (int i = 0; i < activations.length; i++) {
-                float y = 1 + (sy * activations[i]);
+                float y = 1 + (sy * activations[i]);  // TODO debug hack
                 float x1 = 1 + (dx * i), x2 = x1 + dx;
                 gl.glVertex2f(x1, 1);
                 gl.glVertex2f(x1, y);
@@ -1350,8 +1356,179 @@ public class DeepLearnCnnNetwork {
             }
         }
 
+        /**
+         * computes the softmax on the existing activations. * Computes softmax
+         * on its input activations, by o_i= exp(a_i)/sum_k(exp(a_k)) where o_i
+         * is the i'th output and a_k is the k'th input.
+         */
+        private void computeSoftMax() {
+            if (activations == null || activations.length == 0) {
+                return;
+            }
+            float sum = 0;
+            for (int k = 0; k < activations.length; k++) { // simply MAC the weight times the input activation
+                float f = (float) Math.exp(activations[k]);
+                sum += f;
+                activations[k] = f;
+                operationCounter += 2;
+            }
+            maxActivation = Float.NEGATIVE_INFINITY;
+            float r = 1 / sum;
+            for (int k = 0; k < activations.length; k++) { // simply MAC the weight times the input activation
+                activations[k] *= r;
+                if (activations[k] > maxActivation) {
+                    maxActivatedUnit = k;
+                    maxActivation = activations[k];
+                }
+                operationCounter += 2;
+            }
+        }
+
     }
 
+//    /**
+//     * This layer is sometimes added after the final layer's ReLu to normalize
+//     * final outputs to max value of 1. If all units inputs are zero, then the
+//     * softmax output will be 1/n, where n is the number of units. Otherwise if
+//     * one unit is significantly larger than others then the softmax will make
+//     * it one and all others almost zero, because of the exponential.
+//     */
+//    public class SoftMaxLayer extends Layer {
+//
+//        private ImageDisplay imageDisplay;
+//
+//        public SoftMaxLayer(int index) {
+//            super(index);
+//        }
+//
+//        ActivationFunction activationFunction = ActivationFunction.None;
+//        public float maxActivation;
+//        public int maxActivatedUnit;
+//
+//        @Override
+//        public String toString() {
+//            return String.format("SoftMaxLayer");
+//        }
+//
+//        /**
+//         * Computes softmax on it's input activations, by o_i=
+//         * exp(a_i)/sum_k(exp(a_k)) where o_i is the i'th output and a_k is the
+//         * k'th input.
+//         */
+//        @Override
+//        public void compute(Layer input) {
+//            if (input == null || input.activations == null || input.activations.length == 0) {
+//                return;
+//            }
+//            if ((activations == null)) {
+//                activations = new float[input.activations.length];
+//            } else {
+//                Arrays.fill(activations, 0);
+//            }
+//            float sum = 0;
+//            for (int k = 0; k < input.activations.length; k++) { // simply MAC the weight times the input activation
+//                float f = (float) Math.exp(input.activations[k]);
+//                sum += f;
+//                activations[k] = f;
+//                operationCounter += 2;
+//            }
+//            maxActivation = Float.NEGATIVE_INFINITY;
+//            float r = 1 / sum;
+//            for (int k = 0; k < input.activations.length; k++) { // simply MAC the weight times the input activation
+//                activations[k] *= r;
+//                if (activations[k] > maxActivation) {
+//                    maxActivatedUnit = k;
+//                    maxActivation = activations[k];
+//                }
+//                operationCounter += 2;
+//            }
+//        }
+//
+//        private float weight(int unit, int nUnits, int weight) {
+//            // ffW in matlab DeepLearnToolbox, a many by few array in XML where there are a few rows each with many columsn to dot with previous layer
+//            // weight array here is stored by columns; first 4-column has first weight for each of 4 outputs, 2nd column (entries 4-7) has 2nd weights for 4 output units.
+//            return weights[unit + (nUnits * weight)]; // e.g 2nd weight for unit 0 is at position 4=0+4*1
+//        }
+//
+//        /**
+//         * Draw with default width and color
+//         *
+//         * @param gl
+//         * @param width width of annotateHistogram (chip) area in gl pixels
+//         * @param height of annotateHistogram (chip) area in gl pixels
+//         */
+//        private void annotateHistogram(GL2 gl, int width, int height) { // width and height are of AEchip annotateHistogram size in pixels of chip (not screen pixels)
+//
+//            if (activations == null || activations.length == 0) {
+//                return;
+//            }
+//            float dx = (float) (width) / (activations.length);
+//            float sy = (float) (height) / 1;
+//
+////            gl.glBegin(GL.GL_LINES);
+////            gl.glVertex2f(1, 1);
+////            gl.glVertex2f(width - 1, 1);
+////            gl.glEnd();
+//            gl.glBegin(GL.GL_LINE_STRIP);
+//            for (int i = 0; i < activations.length; i++) {
+//                float y = 1 + (sy * activations[i] / 50f);  // TODO debug hack
+//                float x1 = 1 + (dx * i), x2 = x1 + dx;
+//                gl.glVertex2f(x1, 1);
+//                gl.glVertex2f(x1, y);
+//                gl.glVertex2f(x2, y);
+//                gl.glVertex2f(x2, 1);
+//            }
+//            gl.glEnd();
+//        }
+//
+//        public void annotateHistogram(GL2 gl, int width, int height, float lineWidth, Color color) {
+//            gl.glPushAttrib(GL2ES3.GL_COLOR | GL.GL_LINE_WIDTH);
+//            gl.glLineWidth(lineWidth);
+//            float[] ca = color.getColorComponents(null);
+//            gl.glColor4fv(ca, 0);
+//            SoftMaxLayer.this.annotateHistogram(gl, width, height);
+//            gl.glPopAttrib();
+//        }
+//
+//        @Override
+//        public void drawActivations() {
+//            if (!isVisible() || (activations == null) || activations.length == 0) {
+//                return;
+//            }
+//            checkActivationsFrame();
+//            if (imageDisplay == null) {
+//                JPanel panel = new JPanel();
+//                panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+//                imageDisplay = ImageDisplay.createOpenGLCanvas();
+//                imageDisplay.setBorderSpacePixels(0);
+//                imageDisplay.setImageSize(activations.length, 1);
+//                imageDisplay.setSize(200, 200);
+//                panel.add(imageDisplay);
+//
+//                activationsFrame.getContentPane().add(panel);
+//                activationsFrame.pack();
+//            }
+//            for (int x = 0; x < activations.length; x++) {
+//                imageDisplay.setPixmapGray(x, 0, activations[x]);
+//            }
+//            imageDisplay.display();
+//        }
+//
+//        @Override
+//        public float a(int map, int x, int y) { // map and y are ignored
+//            return activations[x];
+//        }
+//
+//        @Override
+//        public void printActivations() {
+//            super.printActivations();
+//            System.out.println("Activations:");
+//            for (int i = 0; i < activations.length; i++) {
+//                System.out.print(String.format("%6.2g ", activations[i]));
+//            }
+//        }
+//
+//    }
     public void setNetworkToUniformValues(float weight, float bias) {
         if (layers == null) {
             return;
@@ -1390,7 +1567,6 @@ public class DeepLearnCnnNetwork {
             throw new IOException("Exception thrown in EasyXMLReader for file " + f);
         }
 
-      
         netname = networkReader.getRaw("name");
         notes = networkReader.getRaw("notes");
         dob = networkReader.getRaw("dob");
@@ -1516,6 +1692,13 @@ public class DeepLearnCnnNetwork {
                             }
                     }
                 }
+//                case "sm": // this is a softmax layer, which is automatically assigned as the output layer of the entire network
+//                {
+//                    log.info("loading softmax layer " + index);
+//                    SoftMaxLayer l = new SoftMaxLayer(index);
+//                    log.info("assiging this layer to be network output layer");
+//                    outputLayer = l; // TODO must solve problem that output layer needs an interface for it to allow softmax to be one as well as FCN
+//                }
                 break;
                 default:
                     throw new IOException("unknown layer type \"" + type + "\"");
@@ -1552,16 +1735,16 @@ public class DeepLearnCnnNetwork {
 //            }
 //        }
         setXmlFilename(f.toString());
-        
-          if (activationsFrame != null) {
+
+        if (activationsFrame != null) {
             activationsFrame.dispose();
             activationsFrame = null;
         }
-        if(kernelsFrame!=null){
+        if (kernelsFrame != null) {
             kernelsFrame.dispose();
-            kernelsFrame=null;
+            kernelsFrame = null;
         }
-        networkRanOnce=false;
+        networkRanOnce = false;
 
         log.info(toString());
     }
@@ -1695,6 +1878,20 @@ public class DeepLearnCnnNetwork {
      */
     public void setPrintWeights(boolean printWeights) {
         this.printWeights = printWeights;
+    }
+
+    /**
+     * @return the softMaxOutput
+     */
+    public boolean isSoftMaxOutput() {
+        return softMaxOutput;
+    }
+
+    /**
+     * @param softMaxOutput the softMaxOutput to set
+     */
+    public void setSoftMaxOutput(boolean softMaxOutput) {
+        this.softMaxOutput = softMaxOutput;
     }
 
 }

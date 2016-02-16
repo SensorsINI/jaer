@@ -61,6 +61,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     protected DvsSubsamplerToFrame dvsSubsampler = null;
     private int dvsColorScale = getInt("dvsColorScale", 200); // 1/dvsColorScale is amount each event color the timeslice in subsampled timeslice input
+    private boolean softMaxOutput = getBoolean("softMaxOutput", false);
 
     public DavisDeepLearnCnnProcessor(AEChip chip) {
         super(chip);
@@ -75,6 +76,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setPropertyTooltip(disp, "hideConvLayers", "hides conv layers");
         setPropertyTooltip(disp, "normalizeActivationDisplayGlobally", "normalizes the activations of layers globally across features");
         setPropertyTooltip(disp, "normalizeKernelDisplayWeightsGlobally", "normalizes the weights globally across layer");
+        setPropertyTooltip(disp, "softMaxOutput", "normalizes the final outputs using softmax; use for ReLu final layer to display output in 0-1 range");
         setPropertyTooltip(deb, "inputClampedTo1", "clamps network input image to fixed value (1) for debugging");
         setPropertyTooltip(deb, "inputClampedToIncreasingIntegers", "clamps network input image to idx of matrix, increasing integers, for debugging");
         setPropertyTooltip(deb, "printActivations", "prints out activations of APS net layers for debugging");
@@ -555,4 +557,19 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 //            setProcessDVSTimeSlices(false);
 //        }
 //    }
+    public boolean isSoftMaxOutput() {
+        if (apsDvsNet == null) {
+            return softMaxOutput;
+        }
+        return apsDvsNet.isSoftMaxOutput();
+    }
+
+    public void setSoftMaxOutput(boolean softMaxOutput) {
+        this.softMaxOutput=softMaxOutput;
+        putBoolean("softMaxOutput", softMaxOutput);
+        if (apsDvsNet == null) {
+            return;
+        }
+        apsDvsNet.setSoftMaxOutput(softMaxOutput);
+    }
 }
