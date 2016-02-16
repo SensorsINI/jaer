@@ -194,8 +194,8 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         setPropertyTooltip(display, "showGrid", "Enabled to show a grid to allow judging the degree of stabilization");
         setPropertyTooltip(transform, "disableRotation", "Disables rotational part of transform");
         setPropertyTooltip(transform, "disableTranslation", "Disables translations part of transform");
-        setPropertyTooltip(transform, "selectCenterOfRotation", "Select with next mouse click on the image the actual center of rotation (COR)");
-        setPropertyTooltip(transform, "clearCenterOfRotationSelection", "Clear center of rotation to reset it back to center of image");
+        setPropertyTooltip(transform, "selectCenterOfRotation", "Select during mouse movement the center of rotation (to try out stabilization), then confirm with mouse click on the image the actual center of rotation (COR)");
+        setPropertyTooltip(transform, "eraseCenterOfRotationSelection", "Clear center of rotation to reset it back to center of image");
         setPropertyTooltip(imu, "imuLagMs", "absolute delay/lag of IMU in ms; from Invense datasheet this delay is specified as 1.8ms");
 
         rollFilter.setTauMs(highpassTauMsRotation);
@@ -538,7 +538,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         log.info("select a center point by a mouse click");
     }
 
-    public void doClearCenterOfRotationSelection() {
+    public void doEraseCenterOfRotationSelection() {
         centerOfRotation = null;
         putInt("centerOfRotationX", -1);
         putInt("centerOfRotationY", -1);
@@ -1167,5 +1167,17 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         log.info("selected center of rotation as " + centerOfRotation);
         putInt("centerOfRotationX", p.x);
         putInt("centerOfRotationY", p.y);
+        centerOfRotationSelectionPending=false;
     }
+
+    @Override
+    public void mouseMoved(MouseEvent e) {
+        if (!centerOfRotationSelectionPending) {
+            return;
+        }
+        Point p = getMousePixel(e);
+        centerOfRotation = p;
+    }
+    
+    
 }
