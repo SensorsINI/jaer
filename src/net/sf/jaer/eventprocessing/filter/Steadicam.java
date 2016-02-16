@@ -41,6 +41,8 @@ import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import java.awt.Point;
+import java.awt.event.MouseEvent;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import net.sf.jaer.DevelopmentStatus;
@@ -50,6 +52,7 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 
@@ -66,7 +69,7 @@ import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
  */
 @Description("Compenstates global scene translation and rotation to stabilize scene like a SteadiCam, using built-in IMU or other methods of estimation of camera rotation.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer, PropertyChangeListener {
+public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotater, Observer, PropertyChangeListener {
 
     /**
      * Classes that compute camera rotationRad estimate based on scene shift and
@@ -120,7 +123,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
     private boolean calibrating = false; // used to flag calibration state
     private int calibrationSampleCount = 0;
     private int NUM_CALIBRATION_SAMPLES_DEFAULT = 800; // 400 samples /sec
-    protected int numCalibrationSamples=getInt("numCalibrationSamples",NUM_CALIBRATION_SAMPLES_DEFAULT);
+    protected int numCalibrationSamples = getInt("numCalibrationSamples", NUM_CALIBRATION_SAMPLES_DEFAULT);
     private CalibrationFilter panCalibrator, tiltCalibrator, rollCalibrator;
     TextRenderer imuTextRenderer = null;
     private boolean showTransformRectangle = getBoolean("showTransformRectangle", true);
@@ -137,7 +140,9 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
     protected float imuLagMs = getFloat("imuLagMs", 1.8f);
 
     private boolean addedViewerPropertyChangeListener = false;
-    ApsDvsEventPacket outputPacket=null;
+    ApsDvsEventPacket outputPacket = null;
+    private Point centerOfRotation = null;
+    private boolean centerOfRotationSelectionPending = false;
 
     /**
      * Creates a new instance of SceneStabilizer
@@ -145,7 +150,6 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
     public Steadicam(AEChip chip) {
         super(chip);
         filterChain = new FilterChain(chip);
-
         chip.addObserver(this); // to get pixel array size updates
         addObserver(this); // we add ourselves as observer so that our update() can be called during packet iteration periodically according to global FilterFrame update interval settting
 
@@ -190,7 +194,9 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
         setPropertyTooltip(display, "showGrid", "Enabled to show a grid to allow judging the degree of stabilization");
         setPropertyTooltip(transform, "disableRotation", "Disables rotational part of transform");
         setPropertyTooltip(transform, "disableTranslation", "Disables translations part of transform");
-        setPropertyTooltip(imu, "imuLagMs", "absolute delay/lag of IMU in ms");
+        setPropertyTooltip(transform, "selectCenterOfRotation", "Select with next mouse click on the image the actual center of rotation (COR)");
+        setPropertyTooltip(transform, "clearCenterOfRotationSelection", "Clear center of rotation to reset it back to center of image");
+        setPropertyTooltip(imu, "imuLagMs", "absolute delay/lag of IMU in ms; from Invense datasheet this delay is specified as 1.8ms");
 
         rollFilter.setTauMs(highpassTauMsRotation);
         panTranslationFilter.setTauMs(highpassTauMsTranslation);
@@ -199,12 +205,17 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
         tiltCalibrator = new CalibrationFilter();
         rollCalibrator = new CalibrationFilter();
 
+        int corx = getInt("centerOfRotationX", -1);
+        int cory = getInt("centerOfRotationY", -1);
+        if (corx != -1 && cory != -1) {
+            centerOfRotation = new Point(corx, cory);
+            log.info("loaded from preferences centerOfRotation=" + centerOfRotation);
+        }
         setEnclosedFilterChain(filterChain);
 
     }
-    
-//    int lastImuTs=0; // debug
 
+//    int lastImuTs=0; // debug
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
         if (!addedViewerPropertyChangeListener) {
@@ -218,8 +229,8 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
             chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
             addTimeStampsResetPropertyChangeListener = true;
         }
-        if(outputPacket==null){
-            outputPacket=new ApsDvsEventPacket(in.getEventClass());
+        if (outputPacket == null) {
+            outputPacket = new ApsDvsEventPacket(in.getEventClass());
         }
         transformList.clear(); // empty list of transforms to be applied
         // The call to enclosed filters issues callbacks to us periodically via updates that fills transform list, in case of enclosed filters.
@@ -235,25 +246,27 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
 //            int i=-1;
             sx2 = chip.getSizeX() / 2;
             sy2 = chip.getSizeY() / 2;
+            int corx = centerOfRotation == null ? this.sx2 : centerOfRotation.x;
+            int cory = centerOfRotation == null ? this.sy2 : centerOfRotation.y;
             sxm1 = chip.getSizeX() - 1;
             sym1 = chip.getSizeY() - 1;
 
             OutputEventIterator outItr = outputPacket.outputIterator();
-            if(!(in instanceof ApsDvsEventPacket)){
+            if (!(in instanceof ApsDvsEventPacket)) {
                 log.warning("input packet is not an ApsDvsEventPacket, disabling filter");
                 setFilterEnabled(false);
                 return in;
             }
-            ApsDvsEventPacket in2=(ApsDvsEventPacket)in;
-            Iterator itr=in2.fullIterator();
-            while(itr.hasNext()) {
-                Object o=itr.next();
+            ApsDvsEventPacket in2 = (ApsDvsEventPacket) in;
+            Iterator itr = in2.fullIterator();
+            while (itr.hasNext()) {
+                Object o = itr.next();
                 if (o == null) {
                     log.warning("null event passed in, returning input packet");
                     return in;
                 }
 //                i++;
-                
+
                 ApsDvsEvent ev = (ApsDvsEvent) o;
                 switch (cameraRotationEstimator) {
                     case VORSensor:
@@ -261,10 +274,9 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
                             IMUSample s = ev.getImuSample(); // because of imuLagMs this IMU sample should actually be applied to samples from the past
                             // to achieve this backwards application of the IMU samples we hold the older events in a FIFO and pop events from the FIFO until 
                             // the event timestamp catches up to the current IMUSample timestamp - imuLagMs.
-                            
+
 //                            System.out.println("steadicam dt IMU="+(s.getTimestampUs()-lastImuTs));
 //                            lastImuTs=s.getTimestampUs();
-
                             lastTransform = updateTransform(s);
                             if (transformImageEnabled && lastTransform != null && chip instanceof DavisChip && chip.getAeViewer() != null && chip.getCanvas() != null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA) {
                                 DavisChip apsDvsChip = (DavisChip) chip;
@@ -298,9 +310,9 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
                         if (lastTransform != null) {
 
                             // apply transform Re+T. First center events from middle of array at 0,0, then transform, then move them back to their origin
-                            int nx = be.x - sx2, ny = be.y - sy2;
-                            be.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + sx2);
-                            be.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + sy2);
+                            int nx = be.x - corx, ny = be.y - cory;
+                            be.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + corx);
+                            be.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + cory);
                             be.address = chip.getEventExtractor().getAddressFromCell(be.x, be.y, be.getType()); // so event is logged properly to disk
                         }
 
@@ -485,16 +497,19 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
         return tr;
     }
 
-    private final void transformEvent(BasicEvent e, TransformAtTime transform) {
-        e.x -= sx2;
-        e.y -= sy2;
-        short newx = (short) Math.round((((transform.cosAngle * e.x) - (transform.sinAngle * e.y)) + transform.translationPixels.x));
-        short newy = (short) Math.round(((transform.sinAngle * e.x) + (transform.cosAngle * e.y) + transform.translationPixels.y));
-        e.x = (short) (newx + sx2);
-        e.y = (short) (newy + sy2);
-        e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
-    }
-
+    // done inline in filterPacket method
+//    private final void transformEvent(BasicEvent e, TransformAtTime transform) {
+//        int sx2=centerOfRotation==null?this.sx2:centerOfRotation.x;
+//        int sy2=centerOfRotation==null?this.sy2:centerOfRotation.y;
+//        
+//        e.x -= sx2;
+//        e.y -= sy2;
+//        short newx = (short) Math.round((((transform.cosAngle * e.x) - (transform.sinAngle * e.y)) + transform.translationPixels.x));
+//        short newy = (short) Math.round(((transform.sinAngle * e.x) + (transform.cosAngle * e.y) + transform.translationPixels.y));
+//        e.x = (short) (newx + sx2);
+//        e.y = (short) (newy + sy2);
+//        e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
+//    }
     synchronized public void doEraseGyroZero() {
         panOffset = 0;
         tiltOffset = 0;
@@ -516,6 +531,17 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
 //        panOffset = panRate; // TODO offsets should really be some average over some samples
 //        tiltOffset = tiltRate;
 //        rollOffset = rollRate;
+    }
+
+    public void doSelectCenterOfRotation() {
+        centerOfRotationSelectionPending = true;
+        log.info("select a center point by a mouse click");
+    }
+
+    public void doClearCenterOfRotationSelection() {
+        centerOfRotation = null;
+        putInt("centerOfRotationX", -1);
+        putInt("centerOfRotationY", -1);
     }
 
     /**
@@ -636,6 +662,20 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
                 gl.glVertex2i(0, y);
                 gl.glVertex2i(sx2 * 2, y);
             }
+            gl.glEnd();
+        }
+        
+        if(centerOfRotation!=null){
+            gl.glLineWidth(4f);
+            gl.glColor3f(1, 0, 0);
+            final int L=4;
+
+            // draw xhairs on frame to help show locations of objects and if they have moved.
+            gl.glBegin(GL.GL_LINES); // sequence of individual segments, in pairs of vertices
+            gl.glVertex2f(centerOfRotation.x-L, centerOfRotation.y);
+            gl.glVertex2f(centerOfRotation.x+L, centerOfRotation.y);
+            gl.glVertex2f(centerOfRotation.x, centerOfRotation.y-L);
+            gl.glVertex2f(centerOfRotation.x, centerOfRotation.y+L);
             gl.glEnd();
         }
 
@@ -1109,6 +1149,23 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
      */
     public void setNumCalibrationSamples(int numCalibrationSamples) {
         this.numCalibrationSamples = numCalibrationSamples;
-        putInt("numCalibrationSamples",numCalibrationSamples);
+        putInt("numCalibrationSamples", numCalibrationSamples);
+    }
+
+    /**
+     * Sets the clickedPoint field
+     *
+     * @param e
+     */
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        if (!centerOfRotationSelectionPending) {
+            return;
+        }
+        Point p = getMousePixel(e);
+        centerOfRotation = p;
+        log.info("selected center of rotation as " + centerOfRotation);
+        putInt("centerOfRotationX", p.x);
+        putInt("centerOfRotationY", p.y);
     }
 }
