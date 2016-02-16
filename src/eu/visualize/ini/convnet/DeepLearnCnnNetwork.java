@@ -499,7 +499,7 @@ public class DeepLearnCnnNetwork {
                 }
                 yo++;
             }
-            normalizeInputFrame(activations);
+            normalizeInputFrame(activations, true);
             return activations;
         }
 
@@ -541,7 +541,7 @@ public class DeepLearnCnnNetwork {
                     // activations[o(dimy - y % dimy- 1, x % dimx )] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
                 }
             }
-            normalizeInputFrame(activations);
+            normalizeInputFrame(activations, true);
             return activations;
         }
 
@@ -570,7 +570,7 @@ public class DeepLearnCnnNetwork {
                     activations[o(dimy - y - 1, x)] = subsampler.getValueAtPixel(x, y); // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
                 }
             }
-            normalizeInputFrame(activations);
+            normalizeInputFrame(activations, false);
             return activations;
         }
 
@@ -625,7 +625,7 @@ public class DeepLearnCnnNetwork {
             }
             for (int x = 0; x < dimx; x++) {
                 for (int y = 0; y < dimy; y++) {
-                    imageDisplay.setPixmapGray(y, dimx - x - 1, .5f + (a(0, x, y) / 4)); // try to fit mean 0 std 1 into 0-1 range nicely by offset and gain of .5
+                    imageDisplay.setPixmapGray(y, dimx - x - 1, (a(0, x, y))); // try to fit mean 0 std 1 into 0-1 range nicely by offset and gain of .5
                 }
             }
             imageDisplay.repaint();
@@ -669,13 +669,24 @@ public class DeepLearnCnnNetwork {
          * Normalizes frames to have zero mean and variance=1
          *
          * @param activations
+         * @param aps set true to normalize image, false to normalize DVS (don't
+         * subtract mean)
          */
-        private void normalizeInputFrame(float[] activations) {
+        private void normalizeInputFrame(float[] activations, boolean aps) {
+            // net trained gets 0-1 range inputs, so make our input so
             int n = activations.length;
             float sum = 0, sum2 = 0;
+            final float center = .5f;
+            float min = Float.POSITIVE_INFINITY, max = Float.NEGATIVE_INFINITY;
             for (float f : activations) {
                 sum += f;
                 sum2 += (f * f);
+                if (f < min) {
+                    min = f;
+                }
+                if (f > max) {
+                    max=f;
+                }
                 operationCounter += 4;
             }
             float m = sum / n;
@@ -683,10 +694,24 @@ public class DeepLearnCnnNetwork {
             if (n == 0) {
                 var = 1;
             }
-            float r = (float) (1 / Math.sqrt(var));
-            for (int i = 0; i < n; i++) {
-                activations[i] = r * (activations[i] - m);
-                operationCounter += 2;
+            float sig=(float)Math.sqrt(var);
+            float sig3=3*sig;
+            
+
+            float range1 = 1 / (max - min);
+            if (aps) {
+                for (int i = 0; i < n; i++) {
+                    activations[i] = (((activations[i])) - min) * range1;
+                    operationCounter += 4;
+                }
+            } else {
+//                for (int i = 0; i < n; i++) {
+//                    float d=activations[i]-m;
+//                    if(d >sig3) d=sig3; else if(d<-sig3)d=-sig3;
+//                    activations[i] = (d-min) * range1;
+//                    operationCounter += 4;
+//                }
+
             }
         }
     }
@@ -1291,7 +1316,7 @@ public class DeepLearnCnnNetwork {
                 return;
             }
             float dx = (float) (width) / (activations.length);
-            float sy = (float) 0.9f* (height) ;
+            float sy = (float) 0.9f * (height);
 
 //            gl.glBegin(GL.GL_LINES);
 //            gl.glVertex2f(1, 1);
