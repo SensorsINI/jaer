@@ -225,6 +225,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             if (f.exists() && f.isFile()) {
                 try {
                     apsDvsNet.loadFromXMLFile(f);
+                    apsDvsNet.setSoftMaxOutput(softMaxOutput); // must set manually since net doesn't know option kept here.
                     dvsSubsampler = new DvsSubsamplerToFrame(apsDvsNet.inputLayer.dimx, apsDvsNet.inputLayer.dimy, getDvsColorScale());
                 } catch (IOException ex) {
                     Logger.getLogger(DavisDeepLearnCnnProcessor.class.getName()).log(Level.SEVERE, null, ex);
