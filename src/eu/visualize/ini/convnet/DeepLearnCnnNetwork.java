@@ -1235,8 +1235,8 @@ public class DeepLearnCnnNetwork {
                 Arrays.fill(activations, 0);
             }
             int aidx = 0;
-            for (int unit = 0; unit < biases.length; unit++) {
-                for (int w = 0; w < input.activations.length; w++) {
+            for (int unit = 0; unit < biases.length; unit++) {  // for each output unit
+                for (int w = 0; w < input.activations.length; w++) { // simply MAC the weight times the input activation
                     activations[unit] += input.activations[aidx] * weight(unit, biases.length, w);
                     aidx++; // the input activations are stored in the feature maps of last layer, column, row, map order
                     operationCounter += 2;
