@@ -1,6 +1,5 @@
 package ch.unizh.ini.jaer.projects.rbodo.opticalflow;
 
-import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -11,6 +10,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.util.jama.Matrix;
@@ -423,21 +423,23 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     }
 
 //    private int lastImuSampleTs = 0; // debug
-
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
         setupFilter(in);
         firstTs = in.getFirstTimestamp();
 
-        if (!(in instanceof ApsDvsEventPacket)) {
-            throw new RuntimeException("in packet is not an ApsDvsEventPacket; cannot extract ImuSamples from it");
-        }
-        ApsDvsEventPacket packet = (ApsDvsEventPacket) in;
-        Iterator itr = packet.fullIterator();
-        while (itr.hasNext()) {
-            ApsDvsEvent ein = (ApsDvsEvent) itr.next();
+//        if (!(in instanceof ApsDvsEventPacket)) {
+//            throw new RuntimeException("in packet is not an ApsDvsEventPacket; cannot extract ImuSamples from it");
+//        }
+//        ApsDvsEventPacket packet = (ApsDvsEventPacket) in;
+//        Iterator itr = packet.fullIterator(); // the full iterator definitely passes us all the data, but also the APS samples
+//        while (itr.hasNext()) {
+        for(Object o:in){
+            
+//            ApsDvsEvent ein = (ApsDvsEvent) itr.next();
+            ApsDvsEvent ein = (ApsDvsEvent)o;
             extractEventInfo(ein);
-            if (!ein.isApsData()) {
+            if (!ein.isApsData()) { // should pass on IMU samples
 //                if (ein instanceof ApsDvsEvent && ((ApsDvsEvent) ein).isImuSample()) {
 //                    IMUSample imu = ((ApsDvsEvent) ein).getImuSample();
 //                    int dtImu = imu.getTimestampUs() - lastImuSampleTs;
@@ -464,7 +466,9 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                 }
             }
 //            printNeighborhood();
-            writeOutputEvent();
+            if (!(ein.isApsData())) {
+                writeOutputEvent();
+            }
             if (measureAccuracy) {
                 getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
             }
