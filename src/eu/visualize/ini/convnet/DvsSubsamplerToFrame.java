@@ -14,6 +14,8 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * Subsamples DVS input ON and OFF events to a desired "frame" resolution. By
  * subsampling (accumulation) of events it performs much better than
  * downsampling the sparse DVS output.
+ * The output of the subsampler is available as a float array that
+ * is scaled by the color scale for each event (with sign for ON and OFF events) and clipped to 0-1 range.
  *
  * @author tobi
  */
@@ -149,10 +151,22 @@ public class DvsSubsamplerToFrame {
 
     }
 
+    /** Returns the float value of the histogram clipped to 0-1 range and scaled by colorScale
+     * 
+     * @param x
+     * @param y
+     * @return the value of the subsampled map
+     */
     public float getValueAtPixel(int x, int y) {
         return pixmap[getIndex(x, y)];
     }
 
+    /** Gets the index into the maps
+     * 
+     * @param x
+     * @param y
+     * @return the index into the 1d arrays
+     */
     public int getIndex(int x, int y) {
         return y + (height * x);
     }
@@ -179,6 +193,7 @@ public class DvsSubsamplerToFrame {
     }
 
     /**
+     * Returns the float[] 0-1 clipped map.
      * @return the pixmap
      */
     public float[] getPixmap() {
@@ -193,6 +208,8 @@ public class DvsSubsamplerToFrame {
     }
 
     /**
+     * Sets the amount by which the pixmap is updated by each ON/OFF event.
+     * 
      * @param colorScale the colorScale to set
      */
     public void setColorScale(int colorScale) {
@@ -201,6 +218,7 @@ public class DvsSubsamplerToFrame {
     }
 
     /**
+     * Returns total event count accumulated since clear
      * @return the accumulatedEventCount
      */
     public int getAccumulatedEventCount() {
@@ -208,6 +226,7 @@ public class DvsSubsamplerToFrame {
     }
 
     /**
+     * Returns index of pixel with most OFF count
      * @return the mostOffCount
      */
     public int getMostOffCount() {
@@ -215,6 +234,7 @@ public class DvsSubsamplerToFrame {
     }
 
     /**
+     * Returns index of pixel with most ON count
      * @return the mostOnCount
      */
     public int getMostOnCount() {
