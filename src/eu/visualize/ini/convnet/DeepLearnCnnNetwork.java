@@ -483,16 +483,10 @@ public class DeepLearnCnnNetwork {
                 xo = 0;
                 for (float x = 0; x < frameWidth; x += xstride) {  // take every xstride, ystride pixels as output
                     float v = 0;
-                    v = renderer.getApsGrayValueAtPixel((int) Math.floor(x), (int) Math.floor(y));
-                    // TODO remove only for debug
-                    if (inputClampedToIncreasingIntegers) {
-//                        v = r.nextInt(16); // make image that is x+y, for debugging
-//                        v = (float) (xo + yo); // make image that is x+y, for debugging
-                        v = (xo * dimy) + yo; // make image that is x+y, for debugging
-//                        v = (float) (yo) / (dimy);
-                    } else if (inputClampedTo1) {
-                        v = .5f;
-                    }
+                    final int xfloor = (int) Math.floor(x);
+                    final int yfloor = (int) Math.floor(y);
+                    v = renderer.getApsGrayValueAtPixel(xfloor, yfloor);
+                    v = debugNet(v, xfloor, yfloor);  // TODO remove only for debug
                     activations[o(dimy - yo - 1, xo)] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
                     xo++;
                     operationCounter += 4;
@@ -530,13 +524,7 @@ public class DeepLearnCnnNetwork {
                 for (int x = xOffset - dimx2; x < (xOffset + dimx2); x++) {  // take every xstride, ystride pixels as output
                     float v = 0;
                     v = renderer.getApsGrayValueAtPixel((int) Math.floor(x), (int) Math.floor(y));
-                    // TODO remove only for debug
-                    if (inputClampedToIncreasingIntegers) {
-                        v = (float) (x + y) / (dimx + dimy); // make image that is x+y, for debugging
-//                        v = (float) (yo) / (dimy);
-                    } else if (inputClampedTo1) {
-                        v = .5f;
-                    }
+                    v = debugNet(v, x, y);  // TODO remove only for debug
                     activations[o(dimy - (y - (yOffset - dimy2)) - 1, x - (xOffset - dimx2))] = v;
                     // activations[o(dimy - y % dimy- 1, x % dimx )] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
                 }
@@ -565,9 +553,12 @@ public class DeepLearnCnnNetwork {
             if (subsampler == null) {
                 return activations;
             }
+
             for (int y = 0; y < dimy; y++) {
                 for (int x = 0; x < dimy; x++) {  // take every xstride, ystride pixels as output
-                    activations[o(dimy - y - 1, x)] = subsampler.getValueAtPixel(x, y); // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
+                    float v = subsampler.getValueAtPixel(x, y);
+                    v = debugNet(v, x, y);
+                    activations[o(dimy - y - 1, x)] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
                 }
             }
             normalizeInputFrame(activations, false);
@@ -685,7 +676,7 @@ public class DeepLearnCnnNetwork {
                     min = f;
                 }
                 if (f > max) {
-                    max=f;
+                    max = f;
                 }
                 operationCounter += 4;
             }
@@ -694,9 +685,8 @@ public class DeepLearnCnnNetwork {
             if (n == 0) {
                 var = 1;
             }
-            float sig=(float)Math.sqrt(var);
-            float sig3=3*sig;
-            
+            float sig = (float) Math.sqrt(var);
+            float sig3 = 3 * sig;
 
             float range1 = 1 / (max - min);
             if (aps) {
@@ -706,13 +696,22 @@ public class DeepLearnCnnNetwork {
                 }
             } else {
                 for (int i = 0; i < n; i++) {
-                    float d=activations[i];
+                    float d = activations[i];
 //                    if(d >sig3) d=sig3; else if(d<-sig3)d=-sig3;
-                    activations[i] = ((d-mid) * range1)+mid;
+                    activations[i] = ((d - mid) * range1) + mid;
                     operationCounter += 4;
                 }
 
             }
+        }
+
+        private float debugNet(float v, int x, int y) {
+            if (inputClampedToIncreasingIntegers) {
+                v = (float) (x + y) / (dimx + dimy);
+            } else if (inputClampedTo1) {
+                v = .5f;
+            }
+            return v;
         }
     }
 
