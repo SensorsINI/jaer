@@ -709,7 +709,7 @@ public class DeepLearnCnnNetwork {
             if (inputClampedToIncreasingIntegers) {
                 v = (float) (x + y) / (dimx + dimy);
             } else if (inputClampedTo1) {
-                v = .5f;
+                v = 1.0f;
             }
             return v;
         }
@@ -720,6 +720,7 @@ public class DeepLearnCnnNetwork {
      * layers
      */
     public enum ActivationFunction {
+
         Sigmoid, ReLu, None, Undefined;
     };
 
@@ -728,6 +729,7 @@ public class DeepLearnCnnNetwork {
      * layers
      */
     public enum PoolingType {
+
         Average, Max, Undefined
     };
 
@@ -926,18 +928,34 @@ public class DeepLearnCnnNetwork {
             float sum = 0;
 //            int nterms=0;
             // march over kernel y and x
-            for (int xx = 0; xx < kernelDim; xx++) { // kernel coordinate
-                int inx = (xincenter + xx) - halfKernelDim; // input coordinate
-                for (int yy = 0; yy < kernelDim; yy++) { //yy is kernel coordinate
-                    int iny = (yincenter + yy) - halfKernelDim; // iny is input coordinate
+            if (nettype.equals("caffe_net")) {
+                for (int xx = 0; xx < kernelDim; xx++) { // kernel coordinate
+                    int inx = (xincenter + xx) - halfKernelDim; // input coordinate
+                    for (int yy = 0; yy < kernelDim; yy++) { //yy is kernel coordinate
+                        int iny = (yincenter + yy) - halfKernelDim; // iny is input coordinate
 //                    sum += 1;
 //                    sum += input.a(inputMap, inx, iny);
-                    sum += kernels[k(inputMap, outputMap, kernelDim - xx - 1, kernelDim - yy - 1)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
-                    operationCounter += 2;
+                        sum += kernels[k(inputMap, outputMap, xx, kernelDim - yy - 1)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
+                        operationCounter += 2;
 //                    iny++;
 //                    nterms++;
-                }
+                    }
 //                inx++;
+                }
+            } else {
+                for (int xx = 0; xx < kernelDim; xx++) { // kernel coordinate
+                    int inx = (xincenter + xx) - halfKernelDim; // input coordinate
+                    for (int yy = 0; yy < kernelDim; yy++) { //yy is kernel coordinate
+                        int iny = (yincenter + yy) - halfKernelDim; // iny is input coordinate
+//                    sum += 1;
+//                    sum += input.a(inputMap, inx, iny);
+                        sum += kernels[k(inputMap, outputMap, kernelDim - xx - 1, kernelDim - yy - 1)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
+                        operationCounter += 2;
+//                    iny++;
+//                    nterms++;
+                    }
+//                inx++;
+                }
             }
 //            return 1; //1; // debug
             return sum; //1; // debug
@@ -1655,7 +1673,6 @@ public class DeepLearnCnnNetwork {
                     SubsamplingLayer l = new SubsamplingLayer(index);
                     layers[index] = l;
                     l.averageOverDim = layerReader.getInt("averageOver");
-                    l.biases = layerReader.getBase64FloatArr("biases");
                     try {
                         String af = layerReader.getRaw("poolingType");
                         if (af.equalsIgnoreCase("average")) {
@@ -1840,9 +1857,9 @@ public class DeepLearnCnnNetwork {
     /**
      * For debug, clamps input image to fixed value
      */
-    public void setInputClampedToIncreasingIntegers(boolean inputClampedTo1) {
+    public void setInputClampedToIncreasingIntegers(boolean inputClampedToIncreasingIntegers) {
         if (inputLayer != null) {
-            inputLayer.setInputClampedToIncreasingIntegers(inputClampedTo1);
+            inputLayer.setInputClampedToIncreasingIntegers(inputClampedToIncreasingIntegers);
         }
     }
 
