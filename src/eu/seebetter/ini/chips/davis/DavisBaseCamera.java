@@ -737,15 +737,15 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
 			gl.glLineWidth(3);
 
-			final float vectorScale = 1.5f;
+			final float vectorScale = 1f;
 			final float textScale = TextRendererScale.draw3dScale(imuTextRenderer, "XXX.XXf,%XXX.XXf dps", getChipCanvas().getScale(),
 				getSizeX(), .3f);
 			final float trans = .7f;
 			float x, y;
 
 			// acceleration x,y
-			x = (vectorScale * imuSampleRender.getAccelX() * getSizeX()) / IMUSample.getFullScaleAccelG();
-			y = (vectorScale * imuSampleRender.getAccelY() * getSizeY()) / IMUSample.getFullScaleAccelG();
+			x = (vectorScale * imuSampleRender.getAccelX() * getSizeY()/2) / IMUSample.getFullScaleAccelG();
+			y = (vectorScale * imuSampleRender.getAccelY() * getSizeY()/2) / IMUSample.getFullScaleAccelG();
 			gl.glColor3f(0, 1, 0);
 			gl.glBegin(GL.GL_LINES);
 			gl.glVertex2f(0, 0);
@@ -783,8 +783,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			gl.glColor3f(1f, 0, 1);
 			gl.glBegin(GL.GL_LINES);
 			gl.glVertex2f(0, 0);
-			x = (vectorScale * imuSampleRender.getGyroYawY() * getSizeY()) / IMUSample.getFullScaleGyroDegPerSec();
-			y = (vectorScale * imuSampleRender.getGyroTiltX() * getSizeX()) / IMUSample.getFullScaleGyroDegPerSec();
+			x = (vectorScale * imuSampleRender.getGyroYawY() * getMinSize()/2) / IMUSample.getFullScaleGyroDegPerSec();
+			y = (vectorScale * imuSampleRender.getGyroTiltX() * getMinSize()/2) / IMUSample.getFullScaleGyroDegPerSec();
 			gl.glVertex2f(x, y);
 			gl.glEnd();
 
@@ -795,7 +795,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			imuTextRenderer.end3DRendering();
 
 			// gyro roll
-			x = (vectorScale * imuSampleRender.getGyroRollZ() * getSizeY()) / IMUSample.getFullScaleGyroDegPerSec();
+			x = (vectorScale * imuSampleRender.getGyroRollZ() * getMinSize()/2) / IMUSample.getFullScaleGyroDegPerSec();
 			y = chip.getSizeY() * .25f;
 			gl.glBegin(GL.GL_LINES);
 			gl.glVertex2f(0, y);
