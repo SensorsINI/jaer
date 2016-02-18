@@ -142,7 +142,7 @@ public class DavisVideoContrastController extends Observable {
 		if (!useAutoContrast) {
 			return;
 		}
-		if ((minValue >= 0) && (maxValue > 0)) { // don't adapt to first frame which is all zeros TODO does not work if
+		if ((maxValue-minValue > 0)) { // don't adapt to first frame which is all zeros TODO does not work if
 													// minValue<0
 			final java.awt.geom.Point2D.Float filter2d = autoContrast2DLowpassRangeFilter.filter2d(minValue, maxValue, timestamp);
 			autoBrightness = -filter2d.x;
