@@ -79,11 +79,9 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setPropertyTooltip(disp, "softMaxOutput", "normalizes the final outputs using softmax; use for ReLu final layer to display output in 0-1 range");
         setPropertyTooltip(deb, "inputClampedTo1", "clamps network input image to fixed value (1) for debugging");
         setPropertyTooltip(deb, "inputClampedToIncreasingIntegers", "clamps network input image to idx of matrix, increasing integers, for debugging");
-        setPropertyTooltip(deb, "printActivations", "prints out activations of APS net layers for debugging");
+        setPropertyTooltip(deb, "printActivations", "prints out activations of CNN layers for debugging; by default shows input and output; combine with hideConvLayers and hideSubsamplingLayers to show more layers");
         setPropertyTooltip(deb, "printWeights", "prints out weights of APS net layers for debugging");
-        setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame");
-        setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame");
-        setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame");
+        setPropertyTooltip(anal, "measurePerformance", "Measures and logs time in ms to process each frame along with estimated operations count (MAC=2OPS)");
         setPropertyTooltip(anal, "processAPSFrames", "sends APS frames to convnet");
         setPropertyTooltip(anal, "processDVSTimeSlices", "sends DVS time slices to convnet");
         setPropertyTooltip(anal, "processAPSDVSTogetherInAPSNet", "sends APS frames and DVS time slices to single convnet");
