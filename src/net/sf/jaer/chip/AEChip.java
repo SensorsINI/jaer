@@ -60,8 +60,8 @@ import net.sf.jaer.util.avioutput.JaerAviWriter;
 @Description("Address-Event Chip")
 public class AEChip extends Chip2D {
 
-    /** The current and previous event extractors. The previous extractor is set whenever #setEventExtractor is called. */
-    protected EventExtractor2D eventExtractor = null, previousEventExtractor = null;
+    /** The current event extractor. */
+    protected EventExtractor2D eventExtractor = null;
     protected AEChipRenderer renderer = null;
     protected AEFileInputStream aeInputStream = null;
     protected AEFileOutputStream aeOutputStream = null;
@@ -180,23 +180,9 @@ public class AEChip extends Chip2D {
      * @see #previousEventExtractor
      */
     public void setEventExtractor(EventExtractor2D eventExtractor) {
-        if(this.eventExtractor!=null) { // TODO this logic is broken if the original event extractor is set from a base class that this AEChip subclasses, also broken if multiple AEDAT3 files are opened, etc. Job of saving extractor should fall on AEFileInputStream, not AEChip.
-            previousEventExtractor = this.eventExtractor;
-        } else{
-            previousEventExtractor=eventExtractor;
-        }
         this.eventExtractor = eventExtractor;
         setChanged();
         notifyObservers(eventExtractor);
-    }
-
-    /**
-     * This method is used to restore the previous extractor of the chip class,
-     * sometimes the extractor of the chip might be changed, then using this
-     * method can restore it.
-     */
-    public void restoreChipDefaultExtractor() {
-        setEventExtractor(previousEventExtractor);
     }
 
     public int getNumCellTypes() {

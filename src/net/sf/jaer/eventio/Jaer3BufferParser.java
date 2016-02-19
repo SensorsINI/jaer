@@ -273,6 +273,8 @@ public class Jaer3BufferParser {
         return searchPacketHeader(targetPosition, 1);
     }
 
+    private EventExtractor2D originalEventExtractor=null;
+    
     /**
      * Constructor of the jaer3BufferParser
      * @param byteBuffer
@@ -284,6 +286,9 @@ public class Jaer3BufferParser {
         in.order(ByteOrder.LITTLE_ENDIAN);    //AER3.0 spec is little endian
         this.chip = chip;
 
+        if(originalEventExtractor==null){
+            originalEventExtractor=chip.getEventExtractor();
+        }
         chip.setEventExtractor(new jaer3EventExtractor(chip));
 
         currentPkt = searchPacketHeader(0, 1);
@@ -295,6 +300,16 @@ public class Jaer3BufferParser {
                 Logger.getLogger(AEFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
         }
     } //Jaer3BufferParser
+
+    @Override
+    protected void finalize() throws Throwable {
+        super.finalize(); //To change body of generated methods, choose Tools | Templates.
+        if(originalEventExtractor!=null && chip!=null){
+            chip.setEventExtractor(originalEventExtractor);
+        }
+    }
+    
+    
 
     /**
      * gets the size of the stream in events
@@ -703,8 +718,8 @@ public class Jaer3BufferParser {
             
             // if both pixelDatas and etypes are null, it means this function is called by extractPacket in AEViewer.viewLoop, we should restore the default extractor 
             if(pixelDatas == null && etypes == null) {
-                Jaer3BufferParser.this.chip.restoreChipDefaultExtractor();   // Restore the default extractor
-                return Jaer3BufferParser.this.chip.getEventExtractor().extractPacket(in);
+                chip.setEventExtractor(originalEventExtractor);   // Restore the default extractor
+                return chip.getEventExtractor().extractPacket(in);
             }
             // NOTE we must make sure we write ApsDvsEvents when we want them, not reuse the IMUSamples
 

@@ -1337,12 +1337,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 addressType = Short.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Short.SIZE / 8);
                 jaer3EnableFlg = false;
-                chip.restoreChipDefaultExtractor();          // Restore the default extractor, because it may be changed by jaer3BufferParser   
+//                chip.restoreChipDefaultExtractor();          // Restore the default extractor, because it may be changed by jaer3BufferParser   
             } else if (Math.floor(version) == 2) { //  #!AEDAT-2.0
                 addressType = Integer.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Integer.SIZE / 8);
                 jaer3EnableFlg = false;                
-                chip.restoreChipDefaultExtractor();          // Restore the default extractor, because it may be changed by jaer3BufferParser    
+//                chip.restoreChipDefaultExtractor();          // Restore the default extractor, because it may be changed by jaer3BufferParser    
             } else if (Math.floor(version) == 3) { //  #!AEDAT-3.x
                 addressType = Integer.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Integer.SIZE / 8);
@@ -1366,6 +1366,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             jaer3BufferParser = new Jaer3BufferParser(byteBuffer, chip);
             // jaer3ParseBuffer.setInBuffer(byteBuffer);
             //  jaer3ByteBuffer =  jaer3ParseBuffer.extractAddrAndTs();
+        }else{
+            jaer3BufferParser=null; // should call finalize method to restore the extractor
         }
     }
 
