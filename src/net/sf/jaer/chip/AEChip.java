@@ -180,7 +180,7 @@ public class AEChip extends Chip2D {
      * @see #previousEventExtractor
      */
     public void setEventExtractor(EventExtractor2D eventExtractor) {
-        if(this.eventExtractor!=null) {
+        if(this.eventExtractor!=null) { // TODO this logic is broken if the original event extractor is set from a base class that this AEChip subclasses, also broken if multiple AEDAT3 files are opened, etc. Job of saving extractor should fall on AEFileInputStream, not AEChip.
             previousEventExtractor = this.eventExtractor;
         } else{
             previousEventExtractor=eventExtractor;
