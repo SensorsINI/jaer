@@ -61,6 +61,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private DatagramChannel channel = null;
     private ByteBuffer buf = ByteBuffer.allocate(2);
     private int seqNum = 0;
+    private int[] decisionArray = new int[5];
+    private int counterD = 0;
 
     public VisualiseSteeringConvNet(AEChip chip) {
         super(chip);
@@ -184,6 +186,15 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
         // 0=left, 1=center, 2=right, 3=no target
         int decision = net.outputLayer.maxActivatedUnit;
+//        if (decision != 3) {
+//            decisionArray[counterD] = decision;
+//            if (counterD < 4) {
+//                counterD = counterD + 1;
+//            } else {
+//                counterD = 0;
+//            }
+//            decision = (int) ((decisionArray[0] + decisionArray[1] + decisionArray[2] + decisionArray[3] + decisionArray[4]) / 5); //left to non-visibe is a problem!!
+//        }
         float r = color.getRed() / 255f, g = color.getGreen() / 255f, b = color.getBlue() / 255f;
         float[] cv = color.getColorComponents(null);
         if (showAnalogDecisionOutput) {
@@ -247,7 +258,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         } else {
             DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
 //            if (targetLabeler.hasLocations()) {
-                error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit, net.isLastInputTypeProcessedWasApsFrame());
+            error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit, net.isLastInputTypeProcessedWasApsFrame());
 //            }
             if (sendUDPSteeringMessages) {
                 if (checkClient()) { // if client not there, just continue - maybe it comes back

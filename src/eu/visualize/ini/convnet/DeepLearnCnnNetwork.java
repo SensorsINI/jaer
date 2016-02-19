@@ -487,7 +487,7 @@ public class DeepLearnCnnNetwork {
                     final int yfloor = (int) Math.floor(y);
                     v = renderer.getApsGrayValueAtPixel(xfloor, yfloor);
                     v = debugNet(v, xfloor, yfloor);  // TODO remove only for debug
-                    activations[o(dimy - yo - 1, xo)] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
+                    activations[o(dimy - yo - 1, xo)] = v; // NOTE -- this is flipped beacuse upper left corner is (0,xmax) and lower right corner is (ymax,0)
                     xo++;
                     operationCounter += 4;
                 }
@@ -666,42 +666,68 @@ public class DeepLearnCnnNetwork {
         private void normalizeInputFrame(float[] activations, boolean aps) {
             // net trained gets 0-1 range inputs, so make our input so
             int n = activations.length;
-            float sum = 0, sum2 = 0;
+            float sum = 0, sum2 = 0, var = 0, vari = 0;
             final float mid = .5f;
             float min = Float.POSITIVE_INFINITY, max = Float.NEGATIVE_INFINITY;
-            for (float f : activations) {
-                sum += f;
-                sum2 += (f * f);
-                if (f < min) {
-                    min = f;
-                }
-                if (f > max) {
-                    max = f;
-                }
-                operationCounter += 4;
+            for (int i = 0; i < n; i++) {
+                sum += activations[i];
             }
-            float m = sum / n;
-            float var = (sum2 / n) - (m * m);
-            if (n == 0) {
-                var = 1;
-            }
-            float sig = (float) Math.sqrt(var);
-            float sig3 = 3 * sig;
-
-            float range1 = 1 / (max - min);
+            float mean = sum / n;
             if (aps) {
+                 for (int i = 0; i < n; i++) {
+                    vari = (float) Math.pow((activations[i] - mean), 2);
+                    var += vari;
+                }
+                var = (var / n);
+                float sig = (float) Math.sqrt(var);
+                if (sig < 0.1f) {
+                    sig = 0.1f;
+                }
                 for (int i = 0; i < n; i++) {
-                    activations[i] = (((activations[i])) - min) * range1;
+                    activations[i] = (activations[i] - mean) / sig;
+                }
+                for (int i = 0; i < n; i++) {
+                    if (activations[i] < min) {
+                        min = activations[i];
+                    }
+                    if (activations[i] > max) {
+                        max = activations[i];
+                    }
+                    operationCounter += 4;
+                }
+                float range = (max - min);
+                float rangenew = (1 - 0);
+                for (int i = 0; i < n; i++) {
+                    activations[i] = (((activations[i])) - min) * rangenew / range;
                     operationCounter += 4;
                 }
             } else {
+                mean = 127.0f/255.0f;
                 for (int i = 0; i < n; i++) {
-                    float d = activations[i];
-//                    if(d >sig3) d=sig3; else if(d<-sig3)d=-sig3;
-                    activations[i] = ((d - mid) * range1) + mid;
+                    vari = (float) Math.pow((activations[i] - mean), 2);
+                    var += vari;
+                }
+                var = (var / n);
+                float sig = (float) Math.sqrt(var);
+                if (sig < 0.1f/255.0f) {
+                    sig = 0.1f/255.0f;
+                }
+                for (int i = 0; i < n; i++) {
+                    activations[i] = (activations[i] - mean);
+                }
+                 for (int i = 0; i < n; i++) {
+                    if (activations[i] > sig*3.0f) {
+                        activations[i] = sig*3.0f;
+                    } else if (activations[i] < -sig*3.0f) {
+                        activations[i] = -sig*3.0f;
+                    }
+                }
+                float range = ((3.f*sig) - (-3.f*sig));
+                float rangenew = (1 - 0);
+                for (int i = 0; i < n; i++) {
+                    activations[i] = (((activations[i])) - (-3.0f*sig)) * rangenew / range;
                     operationCounter += 4;
                 }
-
             }
         }
 
