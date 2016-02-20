@@ -191,6 +191,11 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     private boolean jaer3EnableFlg = false;      // jaer3 parse enable flag
     private EventExtractor2D previousEventExtractor  = null;  // This value saves the previous aeInputFileStream's extractor, if it's the first input stream, then it saves the current chip's extractor
 
+    /**
+     * This function is used to return the previous event extractor of the last AEFileInputStream. we don't provide the set method because 
+     * we don't want this value be changed by external objects.
+     * @return the previous event extractor of the last AEFileInputStream
+     */
     public EventExtractor2D getPreviousEventExtractor() {
         return previousEventExtractor;
     }
@@ -206,11 +211,11 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         this.chip = chip;
         /*
         Here is the logic: chip.getAeInputStream() is null means this is the first aeInputStream of the chip, so it stores the first extractor of the chip.
-        If chip.getAeInputStream() is not null, it means the chip has been used to preview or play several input streams now. Some of these streams may be
-        jaer3.0 which means the extractor of the chip may be changed in jaer3BufferParse class. We restore the extrator when we create a new AEFileInputStream
-        by using the originalEventExtractor.
+        If chip.getAeInputStream() is not null, it means the chip has been used to preview or play several input streams now. But some of these streams may be
+        jaer3.0 which means the extractor of the chip may be changed in jaer3BufferParse class, so we need to restore it.
+        We restore the extrator when we create a new AEFileInputStream by using the previousEventExtractor.
         Sometimes user may need to change the chip, the previousEventExtractor will respond to that automatically. The reason is that this value will always store
-        the extractor of the time when the chip has its first aeInputStream.
+        the extractor of the chip when the it has its first aeInputStream.
         */
         if(this.chip.getAeInputStream() == null) {
             previousEventExtractor = this.chip.getEventExtractor();
