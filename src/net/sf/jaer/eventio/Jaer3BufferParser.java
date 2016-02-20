@@ -301,13 +301,14 @@ public class Jaer3BufferParser {
         }
     } //Jaer3BufferParser
 
-    @Override
-    protected void finalize() throws Throwable {
-        super.finalize(); //To change body of generated methods, choose Tools | Templates.
-        if(originalEventExtractor!=null && chip!=null){
-            chip.setEventExtractor(originalEventExtractor);
-        }
-    }
+    /* This method cannot always work, now AEInputFileStream takes over the job of restore the extractor
+//    @Override
+//    protected void finalize() throws Throwable {
+//        super.finalize(); //To change body of generated methods, choose Tools | Templates.
+//        if(originalEventExtractor!=null && chip!=null){
+//            chip.setEventExtractor(originalEventExtractor);
+//        }
+//    }
     
     
 

@@ -33,6 +33,7 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.aemonitor.EventRaw.EventType;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.ListPropertyChangeListeners;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
@@ -188,7 +189,11 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     // jaer3 parse
     private Jaer3BufferParser jaer3BufferParser = null; // if non-null, then we have a jaer 3 file     
     private boolean jaer3EnableFlg = false;      // jaer3 parse enable flag
-    // private ByteBuffer jaer3ByteBuffer;          // output buffer of jaer3ParseBuffer
+    private EventExtractor2D previousEventExtractor  = null;  // This value saves the previous aeInputFileStream's extractor, if it's the first input stream, then it saves the current chip's extractor
+
+    public EventExtractor2D getPreviousEventExtractor() {
+        return previousEventExtractor;
+    }
     
     /**
      * Creates a new instance of AEInputStream
@@ -199,6 +204,22 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     public AEFileInputStream(File f, AEChip chip) throws IOException {
         super(new FileInputStream(f));
         this.chip = chip;
+        /*
+        Here is the logic: chip.getAeInputStream() is null means this is the first aeInputStream of the chip, so it stores the first extractor of the chip.
+        If chip.getAeInputStream() is not null, it means the chip has been used to preview or play several input streams now. Some of these streams may be
+        jaer3.0 which means the extractor of the chip may be changed in jaer3BufferParse class. We restore the extrator when we create a new AEFileInputStream
+        by using the originalEventExtractor.
+        Sometimes user may need to change the chip, the previousEventExtractor will respond to that automatically. The reason is that this value will always store
+        the extractor of the time when the chip has its first aeInputStream.
+        */
+        if(this.chip.getAeInputStream() == null) {
+            previousEventExtractor = this.chip.getEventExtractor();
+        } else {
+            previousEventExtractor = this.chip.getAeInputStream().getPreviousEventExtractor();            
+        }
+        this.chip.setAeInputStream(this);
+        this.chip.setEventExtractor(previousEventExtractor);
+        
         init(new FileInputStream(f));
 
         setFile(f);
@@ -1337,17 +1358,14 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 addressType = Short.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Short.SIZE / 8);
                 jaer3EnableFlg = false;
-//                chip.restoreChipDefaultExtractor();          // Restore the default extractor, because it may be changed by jaer3BufferParser   
             } else if (Math.floor(version) == 2) { //  #!AEDAT-2.0
                 addressType = Integer.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Integer.SIZE / 8);
                 jaer3EnableFlg = false;                
-//                chip.restoreChipDefaultExtractor();          // Restore the default extractor, because it may be changed by jaer3BufferParser    
             } else if (Math.floor(version) == 3) { //  #!AEDAT-3.x
                 addressType = Integer.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Integer.SIZE / 8);
                 log.warning("This is a jAER 3.0 format file; parsing is a work in progress - no sensible output will be produced now");
-                // jaer3fileinputstream = new Jaer3FileInputStream(this, chip);
                 jaer3EnableFlg = true;
             }
             log.info("Data file version=" + version + " and has addressType=" + addressType);
