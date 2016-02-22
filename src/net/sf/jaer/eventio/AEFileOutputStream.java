@@ -31,14 +31,17 @@ import net.sf.jaer.chip.AEChip;
  */
 public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 
-	// tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
+	// tobi changed to 8k buffer (from 400k) because this has measurably better performance than super large buffer
 	/**
 	 * buffer size for this output stream
 	 */
-	protected FileChannel channel = null;
-	ByteBuffer byteBuf = null;
-	protected int BUF_SIZE_EVENTS = 8192;
-	int eventCounter = 0;
+	private static final int BUFFER_EVENTS = 8192;
+	private static final int SIZE_EVENT = (Integer.SIZE / 8) * 2;
+
+	private FileChannel channel = null;
+	private ByteBuffer byteBuf = null;
+
+	private int eventCounter = 0;
 
 	/**
 	 * Creates a new instance of AEOutputStream and writes the header. If there
@@ -71,8 +74,8 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 
 			if (os instanceof FileOutputStream) {
 				channel = ((FileOutputStream) os).getChannel();
-				AEOutputStream.log.info("using ByteBuffer with " + BUF_SIZE_EVENTS + " events to buffer disk writes");
-				byteBuf = ByteBuffer.allocateDirect(BUF_SIZE_EVENTS * (Integer.SIZE / 8) * 2);
+				AEOutputStream.log.info("using ByteBuffer with " + AEFileOutputStream.BUFFER_EVENTS + " events to buffer disk writes");
+				byteBuf = ByteBuffer.allocateDirect(AEFileOutputStream.BUFFER_EVENTS * AEFileOutputStream.SIZE_EVENT);
 			}
 		}
 		catch (final BackingStoreException ex) {
@@ -115,11 +118,12 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 		writeByte(AEDataFile.EOL[0]); // '\r'
 		writeByte(AEDataFile.EOL[1]); // '\n'
 	}
-        
-   	/**
+
+	/**
 	 * Writes a comment header from an input String s containing multiple lines. Each line is prepended with '#'
 	 *
-	 * @param s the multiline string to write
+	 * @param s
+	 *            the multiline string to write
 	 * @throws java.io.IOException
 	 *             when we try to write header but have already
 	 *             written a data packet
@@ -129,19 +133,16 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 		if (wrotePacket) {
 			throw new IOException("already wrote a packet, not writing the header");
 		}
-                StringBuilder sb=new StringBuilder();
-                StringTokenizer st=new StringTokenizer(s,System.lineSeparator(),true);
-                while(st.hasMoreElements()){
-                    sb.append(AEDataFile.COMMENT_CHAR);
-                    sb.append(st.nextToken());
-                }
+		final StringBuilder sb = new StringBuilder();
+		final StringTokenizer st = new StringTokenizer(s, System.lineSeparator(), true);
+		while (st.hasMoreElements()) {
+			sb.append(AEDataFile.COMMENT_CHAR);
+			sb.append(st.nextToken());
+		}
 		writeBytes(sb.toString());
-//		writeByte(AEDataFile.EOL[0]); // '\r'
-//		writeByte(AEDataFile.EOL[1]); // '\n'
+		// writeByte(AEDataFile.EOL[0]); // '\r'
+		// writeByte(AEDataFile.EOL[1]); // '\n'
 	}
-        
-        
-     
 
 	/**
 	 * Writes the raw (device) address-event packet out as sequence of
@@ -168,14 +169,12 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 		final int[] ts = ae.getTimestamps();
 
 		for (int i = 0; i < n; i++) {
-			byteBuf.putInt(addr[i]);// changed from writeShort with change to int raw addresses in v2.0 format
+			byteBuf.putInt(addr[i]);
 			byteBuf.putInt(ts[i]);
-			// if(ts[i]==0){
-			// log.info("zero timestamp at event "+i+" (eventCounter="+eventCounter+")");
-			// }
+
 			eventCounter++;
 
-			if (byteBuf.remaining() < AEFileInputStream.EVENT32_SIZE) {
+			if (byteBuf.remaining() < AEFileOutputStream.SIZE_EVENT) {
 				byteBuf.rewind();
 				channel.write(byteBuf);
 				byteBuf.clear();
@@ -188,7 +187,7 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 	@Override
 	public void close() throws IOException {
 		// Flush last buffer to file, to avoid loosing small amounts of data.
-		byteBuf.rewind();
+		byteBuf.flip();
 		channel.write(byteBuf);
 		byteBuf.clear();
 
