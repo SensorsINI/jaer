@@ -13,15 +13,14 @@ import java.nio.FloatBuffer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
-import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.util.avioutput.AbstractAviWriter;
-import eu.seebetter.ini.chips.DavisChip;
 
 /**
  * Writes AVI file from DAVIS APS frames, using ApsFrameExtractor. The AVI file
@@ -78,10 +77,10 @@ public class DavisFrameAviWriter extends AbstractAviWriter {
 
     @Override
     synchronized public void propertyChange(PropertyChangeEvent evt) {
-        if ((aviOutputStream != null) 
+        if ((aviOutputStream != null)
                 && (evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)
                 && !chip.getAeViewer().isPaused()) {
-            FloatBuffer frame = ((AEFrameChipRenderer)chip.getRenderer()).getPixBuffer();
+            FloatBuffer frame = ((AEFrameChipRenderer)chip.getRenderer()).getPixmap();
 
             BufferedImage bufferedImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_3BYTE_BGR);
             WritableRaster raster = bufferedImage.getRaster();

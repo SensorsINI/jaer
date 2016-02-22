@@ -24,6 +24,7 @@ import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.event.orientation.OrientationEventInterface;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 import net.sf.jaer.util.histogram.SimpleHistogram;
@@ -317,7 +318,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 		}
 
 		final ApsDvsEventPacket packetAPS = (ApsDvsEventPacket) pkt;
-		this.packet = packetAPS;
+		packet = packetAPS;
 
 		checkPixmapAllocation();
 		resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
@@ -376,7 +377,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 			}
 		}
 
-		this.packet = pkt;
+		packet = pkt;
 
 		checkPixmapAllocation();
 		resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
@@ -423,29 +424,30 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 			if ((index < 0) || (index >= buf.length)) {
 				return;
 			}
+
 			final float val = e.getAdcSample();
 			buf[index] = val;
-			buf[index + 1] = val;
-			buf[index + 2] = val;
+			// buf[index + 1] = val;
+			// buf[index + 2] = val;
 		}
 		else if (e.isSignalRead()) {
 			final int index = getIndex(e);
 			if ((index < 0) || (index >= buf.length)) {
 				return;
 			}
+
 			int val = ((int) buf[index] - e.getAdcSample());
 			if (val < 0) {
 				val = 0;
 			}
-			if ((val >= 0) && (val < minValue)) { // tobi only update min if it is >0, to deal with sensors with bad
-													// column read, like 240C
+			if ((val >= 0) && (val < minValue)) {
 				minValue = val;
 			}
 			else if (val > maxValue) {
 				maxValue = val;
 			}
-			// right here sample-reset value of this pixel is in val
 
+			// right here sample-reset value of this pixel is in val
 			if (computeHistograms) {
 				if (!((DavisChip) chip).getAutoExposureController().isCenterWeighted()) {
 					nextHist.add(val);
@@ -453,21 +455,17 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 				else {
 					// randomly add histogram values to histogram depending on distance from center of image
 					// to implement a simple form of center weighting of the histogram
-					float d = (1 - Math.abs(((float) e.x - (sizeX / 2)) / sizeX)) + Math.abs(((float) e.y - (sizeY / 2)) / sizeY); // d
-																																	// is
-																																	// zero
-																																	// at
-																																	// center,
-																																	// 1
-																																	// at
-																																	// corners
+					float d = (1 - Math.abs(((float) e.x - (sizeX / 2)) / sizeX)) + Math.abs(((float) e.y - (sizeY / 2)) / sizeY);
+					// d is zero at center, 1 at corners
 					d *= d;
+
 					final float r = random.nextFloat();
 					if (r > d) {
 						nextHist.add(val);
 					}
 				}
 			}
+
 			final float fval = normalizeFramePixel(val);
 			buf[index] = fval;
 			buf[index + 1] = fval;
@@ -476,14 +474,15 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 		}
 		else if (e.isEndOfFrame()) {
 			endFrame(e.timestamp);
+
 			final SimpleHistogram tmp = currentHist;
 			if (computeHistograms) {
 				currentHist = nextHist;
 				nextHist = tmp;
 				nextHist.reset();
 			}
-			((DavisChip) chip).controlExposure();
 
+			((DavisChip) chip).controlExposure();
 		}
 	}
 
@@ -498,12 +497,12 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 	protected void endFrame(final int ts) {
 		timestampFrameEnd = ts;
 		System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
+
 		if ((contrastController != null) && (minValue != Float.MAX_VALUE) && (maxValue != Float.MIN_VALUE)) {
 			contrastController.endFrame(minValue, maxValue, timestampFrameEnd);
 		}
-		getSupport().firePropertyChange(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, null, this); // TODO document what
-																									// is sent and send
-		// something reasonable
+
+		getSupport().firePropertyChange(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, null, this);
 	}
 
 	/**
@@ -514,58 +513,54 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 	 */
 	protected void updateEventMaps(final PolarityEvent e) {
 		float[] map;
-		final int index = getIndex(e);
 		if (packet.getNumCellTypes() > 2) {
 			map = onMap.array();
 		}
-		else if (e.polarity == ApsDvsEvent.Polarity.On) {
+		else if (e.polarity == Polarity.On) {
 			map = onMap.array();
 		}
 		else {
 			map = offMap.array();
 		}
+
+		final int index = getIndex(e);
 		if ((index < 0) || (index >= map.length)) {
 			return;
 		}
+
 		if (packet.getNumCellTypes() > 2) {
 			checkTypeColors(packet.getNumCellTypes());
-			if (e.isSpecial()) {
-				setSpecialCount(specialCount + 1); // TODO optimize special count increment
-				return;
-			}
-			final int type = e.getType();
-			if ((e.x == xsel) && (e.y == ysel)) {
-				playSpike(type);
-			}
-			final int ind = getPixMapIndex(e.x, e.y);
-			final float[] c = typeColorRGBComponents[type];
-			float alpha = map[index + 3] + (1.0f / colorScale);
-			alpha = normalizeEvent(alpha);
+
 			if ((e instanceof OrientationEventInterface) && (((OrientationEventInterface) e).isHasOrientation() == false)) {
 				// if event is orientation event but orientation was not set, just draw as gray level
-				map[ind] = 1.0f; // if(f[0]>1f) f[0]=1f;
-				map[ind + 1] = 1.0f; // if(f[1]>1f) f[1]=1f;
-				map[ind + 2] = 1.0f; // if(f[2]>1f) f[2]=1f;
+				map[index] = 1.0f; // if(f[0]>1f) f[0]=1f;
+				map[index + 1] = 1.0f; // if(f[1]>1f) f[1]=1f;
+				map[index + 2] = 1.0f; // if(f[2]>1f) f[2]=1f;
 			}
 			else {
 				// if color scale is 1, then last value is used as the pixel value, which quantizes the color to full
 				// scale.
-				map[ind] = c[0]; // if(f[0]>1f) f[0]=1f;
-				map[ind + 1] = c[1]; // if(f[1]>1f) f[1]=1f;
-				map[ind + 2] = c[2]; // if(f[2]>1f) f[2]=1f;
+				final float[] c = typeColorRGBComponents[e.getType()];
+				map[index] = c[0]; // if(f[0]>1f) f[0]=1f;
+				map[index + 1] = c[1]; // if(f[1]>1f) f[1]=1f;
+				map[index + 2] = c[2]; // if(f[2]>1f) f[2]=1f;
 			}
-			map[index + 3] += alpha;
+
+			float alpha = map[index + 3] + (1.0f / colorScale);
+			map[index + 3] += normalizeEvent(alpha);
 		}
 		else if (colorMode == ColorMode.ColorTime) {
 			final int ts0 = packet.getFirstTimestamp();
 			final float dt = packet.getDurationUs();
 			int ind = (int) Math.floor(((AEChipRenderer.NUM_TIME_COLORS - 1) * (e.timestamp - ts0)) / dt);
+
 			if (ind < 0) {
 				ind = 0;
 			}
 			else if (ind >= timeColors.length) {
 				ind = timeColors.length - 1;
 			}
+
 			map[index] = timeColors[ind][0];
 			map[index + 1] = timeColors[ind][1];
 			map[index + 2] = timeColors[ind][2];
@@ -575,14 +570,13 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 			final int ts0 = packet.getFirstTimestamp();
 			final float dt = packet.getDurationUs();
 			final float v = 0.95f - (0.95f * ((e.timestamp - ts0) / dt));
+
 			map[index] = v;
 			map[index + 1] = v;
 			map[index + 2] = v;
 			map[index + 3] = 1.0f;
 		}
 		else {
-			float alpha = map[index + 3] + (1.0f / colorScale);
-			alpha = normalizeEvent(alpha);
 			if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
 				map[index] = onColor[0];
 				map[index + 1] = onColor[1];
@@ -593,7 +587,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 				map[index + 1] = offColor[1];
 				map[index + 2] = offColor[2];
 			}
-			map[index + 3] = alpha;
+
+			float alpha = map[index + 3] + (1.0f / colorScale);
+			map[index + 3] = normalizeEvent(alpha);
 		}
 	}
 
@@ -608,6 +604,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 	 */
 	protected int getIndex(final BasicEvent e) {
 		final int x = e.x, y = e.y;
+
 		if ((x < 0) || (y < 0) || (x >= sizeX) || (y >= sizeY)) {
 			if ((System.currentTimeMillis() - lastWarningPrintedTimeMs) > INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS) {
 				log.warning(String.format(
@@ -615,9 +612,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 					e.toString(), sizeX, sizeY, INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS));
 				lastWarningPrintedTimeMs = System.currentTimeMillis();
 			}
+
 			return -1;
 		}
-		return 4 * (x + (y * textureWidth));
+
+		return getPixMapIndex(x, y);
 	}
 
 	@Override
@@ -625,9 +624,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 		if ((sizeX != chip.getSizeX()) || (sizeY != chip.getSizeY())) {
 			sizeX = chip.getSizeX();
 			textureWidth = AEFrameChipRenderer.ceilingPow2(sizeX);
+
 			sizeY = chip.getSizeY();
 			textureHeight = AEFrameChipRenderer.ceilingPow2(sizeY);
 		}
+
 		final int n = 4 * textureWidth * textureHeight;
 		if ((pixmap == null) || (pixmap.capacity() < n) || (pixBuffer.capacity() < n) || (onMap.capacity() < n) || (offMap.capacity() < n)
 			|| (annotateMap.capacity() < n)) {
@@ -648,12 +649,14 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 	@Override
 	synchronized public void setColorScale(int colorScale) {
 		final int old = this.colorScale;
+
 		if (colorScale < 1) {
 			colorScale = 1;
 		}
-		if (colorScale > 128) {
+		else if (colorScale > 128) {
 			colorScale = 128;
 		}
+
 		this.colorScale = colorScale;
 		prefs.putInt("Chip2DRenderer.colorScale", colorScale);
 		getSupport().firePropertyChange(AEChipRenderer.EVENT_COLOR_SCALE_CHANGE, old, colorScale);
@@ -680,7 +683,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 	 * @return a float buffer. Obtain a pixel from it using getPixMapIndex
 	 * @see #getPixMapIndex(int, int)
 	 */
-	public FloatBuffer getOnMap() {
+	protected FloatBuffer getOnMap() {
 		onMap.rewind();
 		checkPixmapAllocation();
 		return onMap;
@@ -692,7 +695,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 	 * @return a float buffer. Obtain a pixel from it using getPixMapIndex
 	 * @see #getPixMapIndex(int, int)
 	 */
-	public FloatBuffer getOffMap() {
+	protected FloatBuffer getOffMap() {
 		offMap.rewind();
 		checkPixmapAllocation();
 		return offMap;
@@ -704,7 +707,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 	 * @return a float buffer. Obtain a pixel from it using getPixMapIndex
 	 * @see #getPixMapIndex(int, int)
 	 */
-	public FloatBuffer getAnnotateMap() {
+	protected FloatBuffer getAnnotateMap() {
 		annotateMap.rewind();
 		checkPixmapAllocation();
 		return annotateMap;
@@ -779,7 +782,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 	 * Returns the buffer holding the image frame brightness values in RGBA
 	 * order
 	 */
-	public FloatBuffer getPixBuffer() {
+	protected FloatBuffer getPixBuffer() {
 		return pixBuffer;
 	}
 
@@ -906,9 +909,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 		if (contrastController != null) {
 			return contrastController.normalizePixelGrayValue(value, maxADC);
 		}
-		else {
-			return 0;
-		}
+
+		// Return unchanged in absence of contrast controller.
+		return value;
 	}
 
 	private float normalizeEvent(float value) {
@@ -918,6 +921,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 		else if (value > 1) {
 			value = 1;
 		}
+
 		return value;
 	}
 
@@ -944,6 +948,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 		else {
 			grayValue = 0.0f;
 		}
+
 		return grayValue;
 	}
 
@@ -1078,6 +1083,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 	@Override
 	public void propertyChange(final PropertyChangeEvent pce) {
 		super.propertyChange(pce); // To change body of generated methods, choose Tools | Templates.
+
 		chip.getBiasgen().getSupport().firePropertyChange(pce); // pass on events to chip configuration
 	}
 
@@ -1100,5 +1106,4 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 	public int getTimestampFrameEnd() {
 		return timestampFrameEnd;
 	}
-
 }
