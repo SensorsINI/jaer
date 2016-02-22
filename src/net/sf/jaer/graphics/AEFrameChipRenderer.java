@@ -333,6 +333,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
 		final boolean displayEvents = isDisplayEvents();
 		final boolean displayFrames = isDisplayFrames();
+		final boolean paused = chip.getAeViewer().isPaused();
 		final boolean backwards = packetAPS.getDurationUs() < 0;
 
 		final Iterator allItr = packetAPS.fullIterator();
@@ -362,7 +363,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 					updateEventMaps(e);
 				}
 			}
-			else if (!backwards && isAPSPixel && displayFrames) { // TODO need to handle single step updates here
+			else if (!backwards && isAPSPixel && displayFrames && !paused) { // TODO need to handle single step updates
+																				// here
 				updateFrameBuffer(e);
 			}
 		}
@@ -416,6 +418,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 	protected void updateFrameBuffer(final ApsDvsEvent e) {
 		final float[] buf = pixBuffer.array();
 		// TODO if playing backwards, then frame will come out white because B sample comes before A
+
 		if (e.isStartOfFrame()) {
 			startFrame(e.timestamp);
 		}
@@ -427,8 +430,6 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
 			final float val = e.getAdcSample();
 			buf[index] = val;
-			// buf[index + 1] = val;
-			// buf[index + 2] = val;
 		}
 		else if (e.isSignalRead()) {
 			final int index = getIndex(e);
@@ -437,6 +438,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 			}
 
 			int val = ((int) buf[index] - e.getAdcSample());
+
 			if (val < 0) {
 				val = 0;
 			}
@@ -546,7 +548,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 				map[index + 2] = c[2]; // if(f[2]>1f) f[2]=1f;
 			}
 
-			float alpha = map[index + 3] + (1.0f / colorScale);
+			final float alpha = map[index + 3] + (1.0f / colorScale);
 			map[index + 3] += normalizeEvent(alpha);
 		}
 		else if (colorMode == ColorMode.ColorTime) {
@@ -588,7 +590,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 				map[index + 2] = offColor[2];
 			}
 
-			float alpha = map[index + 3] + (1.0f / colorScale);
+			final float alpha = map[index + 3] + (1.0f / colorScale);
 			map[index + 3] = normalizeEvent(alpha);
 		}
 	}
@@ -905,7 +907,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 	 *            the ADC value
 	 * @return the gray value
 	 */
-	private float normalizeFramePixel(final float value) {
+	protected float normalizeFramePixel(final float value) {
 		if (contrastController != null) {
 			return contrastController.normalizePixelGrayValue(value, maxADC);
 		}
@@ -914,7 +916,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 		return value;
 	}
 
-	private float normalizeEvent(float value) {
+	protected float normalizeEvent(float value) {
 		if (value < 0) {
 			value = 0;
 		}
