@@ -61,8 +61,14 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private DatagramChannel channel = null;
     private ByteBuffer buf = ByteBuffer.allocate(2);
     private int seqNum = 0;
-    private int[] decisionArray = new int[5];
+    private int[] decisionArray = new int[2];
+    private int[] decisionLowPassArray = new int[3];
+    private int savedDecision = 5;
     private int counterD = 0;
+    volatile private boolean apply_LR_RL_constraint = getBoolean("apply_LR_RL_constraint", true);
+    volatile private boolean apply_LNR_RNL_constraint = getBoolean("apply_LNR_RNL_constraint", true);
+    volatile private boolean apply_CN_NC_constraint = getBoolean("apply_CN_NC_constraint", true);
+    volatile private boolean applyLowpass = getBoolean("applyLowpass", true);
 
     public VisualiseSteeringConvNet(AEChip chip) {
         super(chip);
@@ -77,6 +83,11 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(udp, "port", "destination UDP port address to send UDP messages to, e.g. 5678");
         setPropertyTooltip(udp, "forcedNetworkOutputValue", "forced value of network output sent to client (0=left, 1=middle, 2=right, 3=invisible)");
         setPropertyTooltip(udp, "forceNetworkOutpout", "force (override) network output classification to forcedNetworkOutputValue");
+        setPropertyTooltip(udp, "apply_LR_RL_constraint", "force (override) network output classification to make sure there is no switching from L to R or viceversa directly");
+        setPropertyTooltip(udp, "apply_LNR_RNL_constraint", "force (override) network output classification to make sure there is no switching from L to N and to R or viceversa, since the predator will see the prey back from the same last seen steering output (it spins in the last seen direction)");
+        setPropertyTooltip(udp, "apply_CN_NC_constraint", "force (override) network output classification to make sure there is no switching from C to N or viceversa directly");
+        setPropertyTooltip(udp, "applyLowpass", "force (override) network output classification to lowpass the last 3 values");
+
         FilterChain chain = new FilterChain(chip);
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
         chain.add(targetLabeler);
@@ -186,15 +197,6 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
         // 0=left, 1=center, 2=right, 3=no target
         int decision = net.outputLayer.maxActivatedUnit;
-//        if (decision != 3) {
-//            decisionArray[counterD] = decision;
-//            if (counterD < 4) {
-//                counterD = counterD + 1;
-//            } else {
-//                counterD = 0;
-//            }
-//            decision = (int) ((decisionArray[0] + decisionArray[1] + decisionArray[2] + decisionArray[3] + decisionArray[4]) / 5); //left to non-visibe is a problem!!
-//        }
         float r = color.getRed() / 255f, g = color.getGreen() / 255f, b = color.getBlue() / 255f;
         float[] cv = color.getColorComponents(null);
         if (showAnalogDecisionOutput) {
@@ -218,6 +220,66 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             gl.glColor3f((shade * r), (shade * g), (shade * b));
             gl.glRecti(x0, 0, x1, sy);
         }
+    }
+
+    public void applyConstraints(DeepLearnCnnNetwork net) {
+        int currentDecision = net.outputLayer.maxActivatedUnit;
+        if (applyLowpass) {
+            if ((currentDecision == 3 && decisionLowPassArray[counterD] == 0) || (currentDecision == 0 && decisionLowPassArray[counterD] == 3)) { //transitions from L to N or viceversa are a problem (averaging 3 and 0 gives wrong outputs)
+                decisionLowPassArray[0] = currentDecision;
+                decisionLowPassArray[1] = currentDecision;
+                decisionLowPassArray[2] = currentDecision;
+            } else {
+                if (counterD < 2) {
+                    counterD = counterD + 1;
+                } else {
+                    counterD = 0;
+                }
+                decisionLowPassArray[counterD] = currentDecision;
+            }
+            net.outputLayer.maxActivatedUnit = (int) ((decisionLowPassArray[0] + decisionLowPassArray[1] + decisionLowPassArray[2] / 3));
+        }
+        if (apply_CN_NC_constraint) {// Cannot switch from C to N and viceversa
+            if (currentDecision == 1 && decisionArray[1] == 3) {
+                net.outputLayer.maxActivatedUnit = 3;
+            } else if (currentDecision == 3 && decisionArray[1] == 1) {
+                net.outputLayer.maxActivatedUnit = 1;
+            }
+        }
+        if (apply_LNR_RNL_constraint) { //Remember last position before going to N, the robot will reappear from there
+            // Possible transition to N (RN or LN)
+            if (currentDecision == 3 && decisionArray[1] == 0) {
+                savedDecision = 0;
+            } else if (currentDecision == 3 && decisionArray[1] == 2) {
+                savedDecision = 2;
+            }
+            // Possible transition back from N (NR or LN)
+            if (savedDecision < 5) {//Real value saved
+                if (currentDecision == 0 && decisionArray[1] == 3) {
+                    if (currentDecision != savedDecision) {
+                        net.outputLayer.maxActivatedUnit = 3;
+                    } else {
+                        savedDecision = 5;
+                    }
+                } else if (currentDecision == 3 && decisionArray[1] == 2) {
+                    if (currentDecision != savedDecision) {
+                        net.outputLayer.maxActivatedUnit = 3;
+                    } else {
+                        savedDecision = 5;
+                    }
+                }
+            }
+        }
+        if (apply_LR_RL_constraint) {// Cannot switch from R to L and viceversa
+            if (currentDecision == 0 && decisionArray[1] == 2) {
+                net.outputLayer.maxActivatedUnit = 2;
+            } else if (currentDecision == 2 && decisionArray[1] == 0) {
+                net.outputLayer.maxActivatedUnit = 0;
+            }
+        }
+        //Update decision
+        decisionArray[0] = decisionArray[1];
+        decisionArray[1] = net.outputLayer.maxActivatedUnit;
     }
 
     /**
@@ -260,6 +322,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 //            if (targetLabeler.hasLocations()) {
             error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit, net.isLastInputTypeProcessedWasApsFrame());
 //            }
+            applyConstraints(net);
             if (sendUDPSteeringMessages) {
                 if (checkClient()) { // if client not there, just continue - maybe it comes back
                     buf.clear();
@@ -579,4 +642,63 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         putBoolean("showStatistics", showStatistics);
     }
 
+    /**
+     * @return the applyLowpass
+     */
+    public boolean isApplyLowpass() {
+        return applyLowpass;
+    }
+
+    /**
+     * @param showStatistics the applyLowpass to set
+     */
+    public void setApplyLowpass(boolean applyLowpass) {
+        this.applyLowpass = applyLowpass;
+        putBoolean("applyLowpass", applyLowpass);
+    }
+
+    /**
+     * @return the apply_CN_NC_constraint
+     */
+    public boolean isApply_CN_NC_constraint() {
+        return apply_CN_NC_constraint;
+    }
+
+    /**
+     * @param apply_CN_NC_constraint the apply_CN_NC_constraint to set
+     */
+    public void setApply_CN_NC_constraint(boolean apply_CN_NC_constraint) {
+        this.apply_CN_NC_constraint = apply_CN_NC_constraint;
+        putBoolean("apply_CN_NC_constraint", apply_CN_NC_constraint);
+    }
+
+    /**
+     * @return the apply_LNR_RNL_constraint
+     */
+    public boolean isApply_LNR_RNL_constraint() {
+        return apply_LNR_RNL_constraint;
+    }
+
+    /**
+     * @param apply_LNR_RNL_constraint the apply_LNR_RNL_constraint to set
+     */
+    public void setApply_LNR_RNL_constraint(boolean apply_LNR_RNL_constraint) {
+        this.apply_LNR_RNL_constraint = apply_LNR_RNL_constraint;
+        putBoolean("apply_LNR_RNL_constraint", apply_LNR_RNL_constraint);
+    }
+
+    /**
+     * @return the apply_LR_RL_constraint
+     */
+    public boolean isApply_LR_RL_constraint() {
+        return apply_LR_RL_constraint;
+    }
+
+    /**
+     * @param apply_LR_RL_constraint the apply_LR_RL_constraint to set
+     */
+    public void setApply_LR_RL_constraint(boolean apply_LR_RL_constraint) {
+        this.apply_LR_RL_constraint = apply_LR_RL_constraint;
+        putBoolean("apply_LR_RL_constraint", apply_LR_RL_constraint);
+    }
 }
