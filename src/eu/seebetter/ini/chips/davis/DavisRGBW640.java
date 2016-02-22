@@ -14,9 +14,8 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEvent.ReadoutType;
 import net.sf.jaer.event.ApsDvsEventPacket;
-import net.sf.jaer.event.ApsDvsEventRGBW;
-import net.sf.jaer.event.ApsDvsEventRGBW.ColorFilter;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
@@ -40,8 +39,6 @@ public class DavisRGBW640 extends DavisBaseCamera {
 		setDefaultPreferencesFile("biasgenSettings/DavisRGBW640/DavisRGBW640.xml");
 		setSizeX(DavisRGBW640.WIDTH_PIXELS);
 		setSizeY(DavisRGBW640.HEIGHT_PIXELS);
-
-		setEventClass(ApsDvsEventRGBW.class);
 
 		setEventExtractor(new DavisRGBWEventExtractor(this));
 
@@ -108,7 +105,7 @@ public class DavisRGBW640 extends DavisBaseCamera {
 			final int[] datas = in.getAddresses();
 			final int[] timestamps = in.getTimestamps();
 			final OutputEventIterator outItr = out.outputIterator();
-			// NOTE we must make sure we write ApsDvsEventRGBWs when we want them, not reuse the IMUSamples
+			// NOTE we must make sure we write ApsDvsEvents when we want them, not reuse the IMUSamples
 
 			// at this point the raw data from the USB IN packet has already been digested to extract timestamps,
 			// including timestamp wrap events and timestamp resets.
@@ -128,12 +125,12 @@ public class DavisRGBW640 extends DavisBaseCamera {
 							i += IMUSample.SIZE_EVENTS - 1;
 							incompleteIMUSampleException = null;
 							imuSample = possibleSample; // asking for sample from AEChip now gives this value
-                                                        ApsDvsEvent imuEvent=new ApsDvsEvent(); // this davis event holds the IMUSample
-                                                        imuEvent.setTimestamp(imuSample.getTimestampUs());
-                                                        imuEvent.setImuSample(imuSample);
+							ApsDvsEvent imuEvent = new ApsDvsEvent(); // this davis event holds the IMUSample
+							imuEvent.setTimestamp(imuSample.getTimestampUs());
+							imuEvent.setImuSample(imuSample);
 							outItr.writeToNextOutput(imuEvent); // also write the event out to the next output event
-//                                                        System.out.println("lastImu dt="+(imuSample.timestamp-lastImuTs));
-//                                                        lastImuTs=imuSample.timestamp;
+							// System.out.println("lastImu dt="+(imuSample.timestamp-lastImuTs));
+							// lastImuTs=imuSample.timestamp;
 							continue;
 						}
 						catch (final IMUSample.IncompleteIMUSampleException ex) {
@@ -158,28 +155,24 @@ public class DavisRGBW640 extends DavisBaseCamera {
 				}
 				else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_DVS) {
 					// DVS event
-					final ApsDvsEventRGBW e = nextApsDvsEvent(outItr);
+					final ApsDvsEvent e = nextApsDvsEvent(outItr);
 					if ((data & DavisChip.EVENT_TYPE_MASK) == DavisChip.EXTERNAL_INPUT_EVENT_ADDR) {
-						e.adcSample = -1; // TODO hack to mark as not an ADC sample
-						e.special = true; // TODO special is set here when capturing frames which will mess us up if
-						// this is an IMUSample used as a plain ApsDvsEventRGBW
+						e.setReadoutType(ReadoutType.DVS);
+						e.setSpecial(true);
+
 						e.address = data;
 						e.timestamp = (timestamps[i]);
-						e.setIsDVS(true);
 					}
 					else {
-						e.adcSample = -1; // TODO hack to mark as not an ADC sample
-						e.special = false;
+						e.setReadoutType(ReadoutType.DVS);
+
 						e.address = data;
 						e.timestamp = (timestamps[i]);
-						e.polarity = (data & DavisChip.POLMASK) == DavisChip.POLMASK ? ApsDvsEventRGBW.Polarity.On
-							: ApsDvsEventRGBW.Polarity.Off;
+						e.polarity = (data & DavisChip.POLMASK) == DavisChip.POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
 						e.type = (byte) ((data & DavisChip.POLMASK) == DavisChip.POLMASK ? 1 : 0);
 						e.x = (short) (2 * (319 - ((data & DavisChip.XMASK) >>> DavisChip.XSHIFT)));
 						e.y = (short) (2 * ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT));
-						e.setIsDVS(true);
-						e.setColorFilter(ColorFilter.W);
-						// System.out.println(data);
+
 						// autoshot triggering
 						autoshotEventsSinceLastShot++; // number DVS events captured here
 					}
@@ -193,31 +186,31 @@ public class DavisRGBW640 extends DavisBaseCamera {
 					final short x = (short) (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
 					final short y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
 
-					ApsDvsEventRGBW.ColorFilter ColorFilter = ApsDvsEventRGBW.ColorFilter.Null;
+					ApsDvsEvent.ColorFilter ColorFilter = ApsDvsEvent.ColorFilter.W;
 					if (((x % 2) == 1) && ((y % 2) == 1)) {
-						ColorFilter = ApsDvsEventRGBW.ColorFilter.R;// R
+						ColorFilter = ApsDvsEvent.ColorFilter.R;// R
 					}
 					else if (((x % 2) == 0) && ((y % 2) == 1)) {
-						ColorFilter = ApsDvsEventRGBW.ColorFilter.G;// G
+						ColorFilter = ApsDvsEvent.ColorFilter.G;// G
 					}
 					else if (((x % 2) == 0) && ((y % 2) == 0)) {
-						ColorFilter = ApsDvsEventRGBW.ColorFilter.B;// B
+						ColorFilter = ApsDvsEvent.ColorFilter.B;// B
 					}
 					else if (((x % 2) == 1) && ((y % 2) == 0)) {
-						ColorFilter = ApsDvsEventRGBW.ColorFilter.W;// w
+						ColorFilter = ApsDvsEvent.ColorFilter.W;// w
 					}
 
 					final boolean pixFirst = firstFrameAddress(x, y); // First event of frame (addresses get flipped)
 					final boolean pixLast = lastFrameAddress(x, y); // Last event of frame (addresses get flipped)
 
-					ApsDvsEventRGBW.ReadoutType readoutType = ApsDvsEventRGBW.ReadoutType.Null;
+					ApsDvsEvent.ReadoutType readoutType = ApsDvsEvent.ReadoutType.Null;
 					switch ((data & DavisChip.ADC_READCYCLE_MASK) >>> ADC_NUMBER_OF_TRAILING_ZEROS) {
 						case 0:
-							readoutType = ApsDvsEventRGBW.ReadoutType.ResetRead;
+							readoutType = ApsDvsEvent.ReadoutType.ResetRead;
 							break;
 
 						case 1:
-							readoutType = ApsDvsEventRGBW.ReadoutType.SignalRead;
+							readoutType = ApsDvsEvent.ReadoutType.SignalRead;
 							break;
 
 						case 3:
@@ -233,49 +226,44 @@ public class DavisRGBW640 extends DavisBaseCamera {
 					}
 
 					// Start of Frame (SOF)
-					if (pixFirst && !getDavisConfig().isGlobalShutter()
-						&& (readoutType == ApsDvsEventRGBW.ReadoutType.ResetRead)) { // RS
-						createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.SOF, timestamp);
+					if (pixFirst && !getDavisConfig().isGlobalShutter() && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) { // RS
+						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamp);
 
 						frameIntervalUs = timestamp - frameExposureStartTimestampUs;
 						frameExposureStartTimestampUs = timestamp;
 					}
-					if (pixFirst && getDavisConfig().isGlobalShutter()
-						&& (readoutType == ApsDvsEventRGBW.ReadoutType.SignalRead)) { // GS
-						createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.SOF, timestamp);
+					if (pixFirst && getDavisConfig().isGlobalShutter() && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) { // GS
+						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamp);
 
 						frameIntervalUs = timestamp - frameExposureStartTimestampUs;
 						frameExposureStartTimestampUs = timestamp;
 					}
 
-					final ApsDvsEventRGBW e = nextApsDvsEvent(outItr);
-					e.adcSample = data & DavisChip.ADC_DATA_MASK;
-					e.readoutType = readoutType;
-					e.special = false;
-					e.timestamp = timestamp;
+					final ApsDvsEvent e = nextApsDvsEvent(outItr);
+					e.setReadoutType(readoutType);
+					e.setAdcSample(data & DavisChip.ADC_DATA_MASK);
 					e.address = data;
+					e.timestamp = timestamp;
+					e.type = (byte) (2);
 					e.x = x;
 					e.y = y;
-					e.type = (byte) (2);
 					e.setColorFilter(ColorFilter);
 
 					// TODO: figure out exposure for both GS and RS, and start of frame for GS.
-					if (pixLast && !getDavisConfig().isGlobalShutter()
-						&& (readoutType == ApsDvsEventRGBW.ReadoutType.SignalRead)) {
+					if (pixLast && !getDavisConfig().isGlobalShutter() && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
 						// if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and we
 						// are at last APS pixel, then write EOF event
 						// insert a new "end of frame" event not present in original data
-						createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.EOF, timestamp);
+						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
 
 						increaseFrameCount(1);
 					}
 
-					if (pixLast && getDavisConfig().isGlobalShutter()
-						&& (readoutType == ApsDvsEventRGBW.ReadoutType.ResetRead)) {
+					if (pixLast && getDavisConfig().isGlobalShutter() && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) {
 						// if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and we
 						// are at last APS pixel, then write EOF event
 						// insert a new "end of frame" event not present in original data
-						createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.EOF, timestamp);
+						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
 
 						increaseFrameCount(1);
 					}
@@ -290,24 +278,13 @@ public class DavisRGBW640 extends DavisBaseCamera {
 			return out;
 		} // extractPacket
 
-		@Override
-		protected ApsDvsEventRGBW nextApsDvsEvent(final OutputEventIterator outItr) {
-			final ApsDvsEvent e = super.nextApsDvsEvent(outItr);
-
-			if (e instanceof ApsDvsEventRGBW) {
-				((ApsDvsEventRGBW) e).setColorFilter(null);
-			}
-
-			return (ApsDvsEventRGBW) e;
-		}
-
 		/**
-		 * To handle filtered ApsDvsEventRGBWs, this method rewrites the fields
+		 * To handle filtered ApsDvsEvents, this method rewrites the fields
 		 * of the raw address encoding x and y addresses to reflect the event's
 		 * x and y fields.
 		 *
 		 * @param e
-		 *            the ApsDvsEventRGBW
+		 *            the ApsDvsEvent
 		 * @return the raw address
 		 */
 		@Override
@@ -321,7 +298,7 @@ public class DavisRGBW640 extends DavisBaseCamera {
 			// }
 			// e.x came from e.x = (short) (chip.getSizeX()-1-((data & XMASK) >>> XSHIFT)); // for DVS event, no x flip
 			// if APS event
-			if (((ApsDvsEventRGBW) e).adcSample >= 0) {
+			if (((ApsDvsEvent) e).getAdcSample() >= 0) {
 				address = (address & ~DavisChip.XMASK) | (((e.x) / 2) << DavisChip.XSHIFT);
 			}
 			else {

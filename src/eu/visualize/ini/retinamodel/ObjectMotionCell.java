@@ -3,15 +3,15 @@
  * and open the template in the editor.
  */
 package eu.visualize.ini.retinamodel;
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.glu.GLU;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.Observer;
 import java.util.Random;
 
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.glu.GLU;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
@@ -89,7 +89,7 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
         }
         for (Object o : in) {
             PolarityEvent e = (PolarityEvent) o;
-            if (e.special) {
+            if (e.isSpecial()) {
                 continue;
             }
             subunits.update(e);

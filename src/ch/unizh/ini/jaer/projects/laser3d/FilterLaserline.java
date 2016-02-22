@@ -19,7 +19,9 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GL2ES1;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLException;
+import com.jogamp.opengl.util.awt.TextRenderer;
 
+import ch.unizh.ini.jaer.projects.laser3d.plothistogram.PlotEvtHistogram;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -28,11 +30,9 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
+import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
-import ch.unizh.ini.jaer.projects.laser3d.plothistogram.PlotEvtHistogram;
-
-import com.jogamp.opengl.util.awt.TextRenderer;
 
 /**
  * Filter a pulsed laser limapSizeXe
@@ -161,7 +161,7 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater, Ob
             // check if filter is initialized yet
             if (!isInitialized) {
                 BasicEvent ev = (BasicEvent) e;
-                if (ev.special) {
+                if (ev.isSpecial()) {
                     // if new and last laserPeriod do not differ too much from each other
                     // -> 2 consecutive periods must have about the same length before filter is initialized
                     if (Math.abs(laserPeriod - (ev.timestamp - lastTriggerTimestamp)) < 10) {
@@ -176,7 +176,7 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater, Ob
             }
             if (isInitialized) {
                 PolarityEvent ev = (PolarityEvent) e;
-                if (ev.special) { // TODO not all special events are now external input events, they could be IMU samples, frame start, etc, must have external input events
+                if (ev.isSpecial()) { // TODO not all special events are now external input events, they could be IMU samples, frame start, etc, must have external input events
                     laserLineDeteted=true;
                     /*
                      * Update pxlScoreMap, histograms, curBinWeights, laserline
@@ -999,7 +999,7 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater, Ob
             if ((x >= 0) & (x <= mapSizeX) & (y >= 0) & (y <= mapSizeY)) {
                 return pxlScore[x][y];
             } else {
-                filter.log.warning("PxlScoreMap.getScore(): pixel not on chip!");
+                EventFilter.log.warning("PxlScoreMap.getScore(): pixel not on chip!");
             }
             return 0;
         }

@@ -4,15 +4,16 @@
  */
 package eu.visualize.ini.retinamodel;
 
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.glu.GLU;
-import com.jogamp.opengl.glu.GLUquadric;
 import java.awt.Font;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Random;
 
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.glu.GLU;
+import com.jogamp.opengl.glu.GLUquadric;
+import com.jogamp.opengl.util.awt.TextRenderer;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
@@ -25,8 +26,6 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.SpikeSound;
 import net.sf.jaer.util.filter.LowpassFilter;
-
-import com.jogamp.opengl.util.awt.TextRenderer;
 
 /**
  * Models a frequency detecting cell with scanning excitation line
@@ -91,7 +90,7 @@ public class FrequencyDetectionCell extends EventFilter2D implements FrameAnnota
         }
         for (Object o : in) {
             PolarityEvent e = (PolarityEvent) o;
-            if (e.special) {
+            if (e.isSpecial()) {
                 continue;
             }
             subunits.update(e);

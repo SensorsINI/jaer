@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 
+import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -18,7 +19,6 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
-import eu.seebetter.ini.chips.DavisChip;
 
 /**
  * Renders the Misc events from integrated FPGA filters and trackers.
@@ -33,7 +33,7 @@ public class DavisFx3MiscEventsRenderer extends EventFilter2D implements FrameAn
 	private boolean ShowTrackerCM = getBoolean("ShowTrackerCM", true);
 	private boolean ShowTrackerCluster = getBoolean("ShowTrackerCluster", true);
         private boolean ShowOMCevent = getBoolean("ShowOMCevent", true);
-        
+
 	public DavisFx3MiscEventsRenderer(AEChip chip) {
 		super(chip);
 		setPropertyTooltip("ShowDVS", "Show or hide DVS output.");
@@ -77,7 +77,7 @@ public class DavisFx3MiscEventsRenderer extends EventFilter2D implements FrameAn
 		this.ShowOMCevent = ShowOMCevent;
 		putBoolean("ShowOMCevent", ShowOMCevent);
 	}
-        
+
 	@Override
 	synchronized public void annotate(GLAutoDrawable drawable) {
 		GL2 gl = drawable.getGL().getGL2();
@@ -114,12 +114,12 @@ public class DavisFx3MiscEventsRenderer extends EventFilter2D implements FrameAn
                                         }
                                         if ((e.address & 0x5) == 1) { // Look  at 5th bit (if Object Motion Cell 5 fires)
                                             gl.glColor3f(0, 1, 0);
-                                            gl.glRectf(chip.getSizeX()/4, chip.getSizeY()/4, 3*chip.getSizeX()/4, 3*chip.getSizeY()/4);
+                                            gl.glRectf(chip.getSizeX()/4, chip.getSizeY()/4, (3*chip.getSizeX())/4, (3*chip.getSizeY())/4);
                                         }
                                 }
 			}
 			else {
-				e.special = false; // this is to do nothing but make a
+				e.setSpecial(false); // this is to do nothing but make a
 									// breakpoint to stop.
 			}
 

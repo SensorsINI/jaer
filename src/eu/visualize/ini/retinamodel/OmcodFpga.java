@@ -1,26 +1,29 @@
 //-- Packages ----------------------------------------------------------------//
 package eu.visualize.ini.retinamodel;
 
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.glu.GLU;
-import eu.seebetter.ini.chips.davis.HotPixelFilter;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.Observer;
 import java.util.Random;
+
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.glu.GLU;
+
+import eu.seebetter.ini.chips.davis.HotPixelFilter;
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.util.filter.LowpassFilter;
-import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
+import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
+import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
 //****************************************************************************//
+import net.sf.jaer.util.filter.LowpassFilter;
 
 //-- Description -------------------------------------------------------------//
 // Models multiple object motion cells that are excited by on or off activity
@@ -67,7 +70,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
     private int[][] lastSpikedOMCTracker1; // save the OMC cells that last spiked
     private int[][] lastSpikedOMCTracker2; // save the OMC cells that last spiked
     private int[] lastSpikedOMC; // save the OMC cell that last spiked
-    private int[][] lastSpikedOMCArray; // save the OMC cells that last spiked    
+    private int[][] lastSpikedOMCArray; // save the OMC cells that last spiked
     private float synapticWeight = getFloat("synapticWeight", 100f);
     private float vmemIncrease = getFloat("vmemIncrease", 100f);
     private float centerExcitationToSurroundInhibitionRatio = getFloat("centerExcitationToSurroundInhibitionRatio", 1.7f);
@@ -146,11 +149,11 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         //if (!(in.getEventPrototype() instanceof PolarityEvent)) {
-        //return 
+        //return
 //        EventPacket temp = (EventPacket) eventRateFilter.filterPacket(dirFilter.filterPacket(backgroundActivityFilter.filterPacket(hotPixelFilter.filterPacket(in))));
-        EventPacket temp = (EventPacket) getEnclosedFilterChain().filterPacket(in);
+        EventPacket temp = getEnclosedFilterChain().filterPacket(in);
         //if (in instanceof ApsDvsEventPacket) {
-        checkOutputPacketEventType(getEnclosedFilterChain().filterPacket(in)); // make sure memory is allocated to avoid leak. 
+        checkOutputPacketEventType(getEnclosedFilterChain().filterPacket(in)); // make sure memory is allocated to avoid leak.
         // we don't use output packet but it is necesary to iterate over DVS events only
         //}
         //clearOutputPacket();
@@ -163,7 +166,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
         float lastTime = 0;
         for (Object o : temp) {
             PolarityEvent e = (PolarityEvent) o;
-            if (e.special || e.isFilteredOut()) {
+            if (e.isSpecial() || e.isFilteredOut()) {
                 continue;
             }
             subunits.update(e);
@@ -178,7 +181,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
             }
             lastTime = e.timestamp;
         }
-        PrintStream p; // declare a print stream object     
+        PrintStream p; // declare a print stream object
         return in;
     }
 //----------------------------------------------------------------------------//
@@ -191,12 +194,12 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
-        gl.glEnable(GL2.GL_BLEND);
-        gl.glBlendFunc(GL2.GL_SRC_ALPHA, GL2.GL_ONE_MINUS_SRC_ALPHA);
-        gl.glBlendEquation(GL2.GL_FUNC_ADD);
+        gl.glEnable(GL.GL_BLEND);
+        gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+        gl.glBlendEquation(GL.GL_FUNC_ADD);
         gl.glPushMatrix();
         if ((getShowXcoord() < 0) || (getShowYcoord() < 0)
-                || (getShowXcoord() > nxmax - 1) || (getShowYcoord() > nymax - 1)) {
+                || (getShowXcoord() > (nxmax - 1)) || (getShowYcoord() > (nymax - 1))) {
             setShowXcoord(0);
             setShowYcoord(0);
         }
@@ -225,8 +228,8 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
                 gl.glColor4f(1, 0, 0, 0.1f); //4 side centers
                 gl.glRectf((omcx << subsample),
                         (omcy << subsample),
-                        (omcx + 2 << subsample),
-                        (omcy + 2 << subsample));
+                        ((omcx + 2) << subsample),
+                        ((omcy + 2) << subsample));
                 gl.glPopMatrix();
             }
         }
@@ -235,13 +238,13 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
         gl.glColor4f(1, 0, 0, 0.1f);
         gl.glRectf((3 << subsample),
                 (3 << subsample),
-                (3 + 2 << subsample),
-                (3 + 2 << subsample));
+                ((3 + 2) << subsample),
+                ((3 + 2) << subsample));
         gl.glPopMatrix();
 
         if (showAllOMCoutputs) { // Dispaly outputs of OMC that fire
-            if (enableSpikeDraw && nSpikesArray[lastSpikedOMC[0]][lastSpikedOMC[1]] != 0) {
-                if (counter < 2 - 1) {
+            if (enableSpikeDraw && (nSpikesArray[lastSpikedOMC[0]][lastSpikedOMC[1]] != 0)) {
+                if (counter < (2 - 1)) {
                     counter++;
                 } else {
                     counter = 0;
@@ -264,8 +267,8 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
                 gl.glColor4f(1, 0, 0, 1f); // Violet outputs of OMCs
                 gl.glRectf((lastSpikedOMC[0] << subsample),
                         (lastSpikedOMC[1] << subsample),
-                        (lastSpikedOMC[0] + 2 << subsample),
-                        (lastSpikedOMC[1] + 2 << subsample));
+                        ((lastSpikedOMC[0] + 2) << subsample),
+                        ((lastSpikedOMC[1] + 2) << subsample));
                 gl.glPopMatrix();
 
                 gl.glPushMatrix();
@@ -276,7 +279,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
                 enableSpikeDraw = false;
                 gl.glPopMatrix();
 
-                if (lastOmcodFpgaSpikeCheckTimestampUs - lastTimeStampSpikeArray[lastSpikedOMC[0]][lastSpikedOMC[1]] > 1000 * getWaitingTimeRstMs()) {//reset if long wait
+                if ((lastOmcodFpgaSpikeCheckTimestampUs - lastTimeStampSpikeArray[lastSpikedOMC[0]][lastSpikedOMC[1]]) > (1000 * getWaitingTimeRstMs())) {//reset if long wait
                     for (int index = 0; index < 2; index++) {
                         for (int i = 0; i < 2; i++) {
                             if (i == 0) { //store x
@@ -295,7 +298,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
                     gl.glColor4f(1, 1, 0, 1f); // Violet outputs of OMCs
                     gl.glLineWidth(10);
                     DrawGL.drawVector(gl, (lastSpikedOMCArray[0][counterP] + 1) << subsample,
-                            lastSpikedOMCArray[1][counterP] + 1 << subsample,
+                            (lastSpikedOMCArray[1][counterP] + 1) << subsample,
                             ((lastSpikedOMC[0] + 1) << subsample) - ((lastSpikedOMCArray[0][counterP] + 1) << subsample),
                             ((lastSpikedOMC[1] + 1) << subsample) - ((lastSpikedOMCArray[1][counterP] + 1) << subsample),
                             1 << subsample, 1);
@@ -308,9 +311,9 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
         if (showSubunits && showSpecificOMCoutput && !showAllOMCoutputs) { // Show subunits bars
             gl.glPushMatrix();
             gl.glColor4f(0, 1, 0, .3f);
-            gl.glRectf(-10, 4, -5, 4 + barsHeight * inhibitionValue);
+            gl.glRectf(-10, 4, -5, 4 + (barsHeight * inhibitionValue));
             gl.glColor4f(1, 0, 0, .3f);
-            gl.glRectf(-20, 4, -15, 4 + barsHeight * excitationArray[getShowXcoord()][getShowYcoord()]);
+            gl.glRectf(-20, 4, -15, 4 + (barsHeight * excitationArray[getShowXcoord()][getShowYcoord()]));
             gl.glPopMatrix();
             gl.glPushMatrix();
             renderer.begin3DRendering();
@@ -352,7 +355,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
         gl.glPopMatrix();
     }
 //----------------------------------------------------------------------------//
-//----------------------------------------------------------------------------//    
+//----------------------------------------------------------------------------//
 
 //----------------------------------------------------------------------------//
 //-- Reset subunits method ---------------------------------------------------//
@@ -430,7 +433,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
         int ntot;
         int lastUpdateTimestamp;
         FileOutputStream out; // declare a file output object
-        PrintStream p; // declare a print stream object        
+        PrintStream p; // declare a print stream object
 //----------------------------------------------------------------------------//
 //-- Reset Subunits method ---------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -439,7 +442,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
             reset();
         }
 //----------------------------------------------------------------------------//
-//----------------------------------------------------------------------------//        
+//----------------------------------------------------------------------------//
 
 //----------------------------------------------------------------------------//
 //-- Update events method ----------------------------------------------------//
@@ -496,7 +499,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
 
 //----------------------------------------------------------------------------//
 //-- Inhibition Calculation method -------------------------------------------//
-//----------------------------------------------------------------------------//        
+//----------------------------------------------------------------------------//
         float computeInhibitionToOutputCell() {
             // For all subunits, excluding the edge ones and the last ones (far right and bottom)
             // Find inhibition around center made of [omcx,omcy], [omcx+1,omcy+1], [omcx+1,omcy], [omcx,omcy+1]
@@ -504,8 +507,8 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
             for (int x = 0; x < (nxmax); x++) {
                 for (int y = 0; y < (nymax); y++) {
                     // Multiply by 2
-                    if (2 * synapticWeight * subunits[x][y].computeInputToCell() < Saturation) { // If squared subunit less than limit
-                        inhibitionValue += (float) synapticWeight * subunits[x][y].computeInputToCell() * 2;
+                    if ((2 * synapticWeight * subunits[x][y].computeInputToCell()) < Saturation) { // If squared subunit less than limit
+                        inhibitionValue += synapticWeight * subunits[x][y].computeInputToCell() * 2;
                     } else {
                         inhibitionValue += Saturation;
                     }
@@ -515,7 +518,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
             return inhibitionValue;
         }
 //----------------------------------------------------------------------------//
-//----------------------------------------------------------------------------//        
+//----------------------------------------------------------------------------//
 
 //----------------------------------------------------------------------------//
 //-- Excitation Calculation method -------------------------------------------//
@@ -526,13 +529,13 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
             excitationArray[omcx][omcy] = 0;
 
             // Average of 4 central cells
-            for (int x = omcx; x <= omcx + 1; x++) {
-                for (int y = omcy; y <= omcy + 1; y++) {
+            for (int x = omcx; x <= (omcx + 1); x++) {
+                for (int y = omcy; y <= (omcy + 1); y++) {
                     //if(Math.pow(subunits[x][y].computeInputToCell(),nonLinearityOrder) < Saturation){
                     //    excitationArray[omcx][omcy] += (float) Math.pow(subunits[x][y].computeInputToCell(),nonLinearityOrder);
                     //}
-                    if (2 * synapticWeight * subunits[x][y].computeInputToCell() < Saturation) {
-                        excitationArray[omcx][omcy] += (float) synapticWeight * subunits[x][y].computeInputToCell() * 2;
+                    if ((2 * synapticWeight * subunits[x][y].computeInputToCell()) < Saturation) {
+                        excitationArray[omcx][omcy] += synapticWeight * subunits[x][y].computeInputToCell() * 2;
                     } else {
                         excitationArray[omcx][omcy] += Saturation;
                     }
@@ -574,8 +577,8 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
                     for (int y = 0; y < (nymax); y++) {
                         gl.glPushMatrix();
                         gl.glTranslatef((x << subsample) + off, (y << subsample) + off, 5);
-                        if (((x == getShowXcoord()) && (y == getShowYcoord())) || ((x == getShowXcoord() + 1) && (y == getShowYcoord() + 1))
-                                || ((x == getShowXcoord()) && (y == getShowYcoord() + 1)) || ((x == getShowXcoord() + 1) && (y == getShowYcoord()))) {
+                        if (((x == getShowXcoord()) && (y == getShowYcoord())) || ((x == (getShowXcoord() + 1)) && (y == (getShowYcoord() + 1)))
+                                || ((x == getShowXcoord()) && (y == (getShowYcoord() + 1))) || ((x == (getShowXcoord() + 1)) && (y == getShowYcoord()))) {
                             gl.glColor4f(1, 0, 0, alpha);
                         } else {
                             gl.glColor4f(0, 1, 0, alpha);
@@ -623,7 +626,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
         public void decayBy(float factor) {
             vmem *= factor;
         }
-//----------------------------------------------------------------------------//        
+//----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 
 //----------------------------------------------------------------------------//
@@ -646,7 +649,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
 
 //----------------------------------------------------------------------------//
 //-- Compute input to cell method --------------------------------------------//
-//----------------------------------------------------------------------------//        
+//----------------------------------------------------------------------------//
         // subunit input is pure rectification
         public float computeInputToCell() {
             return vmem;
@@ -747,7 +750,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
             lastSpikedOMC[0] = omcx;
             lastSpikedOMC[1] = omcy;
             if (enableSpikeSound) {
-                if (omcx == getShowXcoord() && omcy == getShowYcoord()) {
+                if ((omcx == getShowXcoord()) && (omcy == getShowYcoord())) {
                     spikeSound.play();
                 }
             }
@@ -787,7 +790,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
 
 //----------------------------------------------------------------------------//
 //-- Reset spike count method ------------------------------------------------//
-//----------------------------------------------------------------------------//        
+//----------------------------------------------------------------------------//
         private void resetSpikeCount() {
             for (int omcx = 0; omcx < (nymax - 1); omcx++) {
                 for (int omcy = 0; omcy < (nymax - 1); omcy++) {
@@ -798,12 +801,12 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
     }
-//-- end class OmcodFpgaModel-------------------------------------------------//    
-//****************************************************************************//    
+//-- end class OmcodFpgaModel-------------------------------------------------//
+//****************************************************************************//
 
 //----------------------------------------------------------------------------//
 //-- Set and Get methods -----------------------------------------------------//
-//----------------------------------------------------------------------------//   
+//----------------------------------------------------------------------------//
     // @return the subunitActivityBlobRadiusScale
     public float getSubunitActivityBlobRadiusScale() {
         return subunitActivityBlobRadiusScale;
@@ -853,7 +856,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
         OmcodFpgaModel.reset();
     }
 //------------------------------------------------------------------------------
-    // @return the showYcoord    
+    // @return the showYcoord
 
     public int getShowYcoord() {
         return showYcoord;
@@ -866,7 +869,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
         resetFilter();
         OmcodFpgaModel.reset();
     }
-//------------------------------------------------------------------------------    
+//------------------------------------------------------------------------------
     // @return the synapticWeight
 
     public float getSynapticWeight() {
@@ -878,7 +881,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
         this.synapticWeight = synapticWeight;
         putFloat("synapticWeight", synapticWeight);
     }
-//------------------------------------------------------------------------------    
+//------------------------------------------------------------------------------
     // @return the vmemIncrease
 
     public float getVmemIncrease() {
@@ -914,7 +917,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
         this.centerExcitationToSurroundInhibitionRatio = onOffWeightRatio;
         putFloat("centerExcitationToSurroundInhibitionRatio", onOffWeightRatio);
     }
-//------------------------------------------------------------------------------    
+//------------------------------------------------------------------------------
     // @return the Saturation
 
     public int getSaturation() {

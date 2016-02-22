@@ -5,28 +5,31 @@
  */
 package ch.unizh.ini.jaer.projects.davis.stereo;
 
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.util.awt.TextRenderer;
-import eu.seebetter.ini.chips.DavisChip;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.util.List;
+
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+
+import org.openni.Device;
+import org.openni.DeviceInfo;
+import org.openni.OpenNI;
+
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.util.awt.TextRenderer;
+
+import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.eventprocessing.filter.RefractoryFilter;
 import net.sf.jaer.graphics.FrameAnnotater;
-import org.openni.Device;
-import org.openni.DeviceInfo;
-import org.openni.OpenNI;
 
 /**
  *
@@ -80,19 +83,19 @@ public class StereoRecorder extends EventFilter2D implements FrameAnnotater {
     synchronized public EventPacket filterPacket(EventPacket in) {
         getEnclosedFilterChain().filterPacket(in);
 
-        // for each event only keep it if it is within dt of the last time 
+        // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
         for (Object eIn : in) {
             if (eIn == null) {
                 break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
             }
             BasicEvent e = (BasicEvent) eIn;
-            if (e.special) {
+            if (e.isSpecial()) {
                 continue;
             }
 
             //trigger action (on ts reset)
-            if (e.timestamp < lastTimestamp && e.timestamp < 100000 && startLoggingOnTimestampReset) {
+            if ((e.timestamp < lastTimestamp) && (e.timestamp < 100000) && startLoggingOnTimestampReset) {
                 log.info("****** ACTION TRIGGRED ******");
 
                 //do something
@@ -104,7 +107,7 @@ public class StereoRecorder extends EventFilter2D implements FrameAnnotater {
             }
 
             //delay action for waitSeconds
-            if (actionTriggered && e.timestamp > waitSeconds * 1000000) {
+            if (actionTriggered && (e.timestamp > (waitSeconds * 1000000))) {
                 log.info("****** ACTION START (at " + (e.timestamp) + "us) ******");
 
                 //start recording
@@ -165,7 +168,8 @@ public class StereoRecorder extends EventFilter2D implements FrameAnnotater {
         return in;
     }
 
-    public void annotate(GLAutoDrawable drawable) {
+    @Override
+	public void annotate(GLAutoDrawable drawable) {
 
         GL2 gl = drawable.getGL().getGL2();
 

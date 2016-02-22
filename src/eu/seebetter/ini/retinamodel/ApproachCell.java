@@ -7,13 +7,12 @@ package eu.seebetter.ini.retinamodel;
 import java.util.Observable;
 import java.util.Random;
 
-import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
 
+import eu.visualize.ini.retinamodel.AbstractRetinaModelCell;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -22,8 +21,6 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.util.filter.LowpassFilter;
-import eu.visualize.ini.retinamodel.AbstractRetinaModelCell;
-import java.lang.*;
 
 /**
  * Models a single PV-5 approach cell discovered by Botond Roska group in Basel.
@@ -183,7 +180,7 @@ public class ApproachCell extends AbstractRetinaModelCell {
         }
         for (Object o : in) {
             PolarityEvent e = (PolarityEvent) o;
-            if (e.special) {
+            if (e.isSpecial()) {
                 continue;
             }
 
@@ -234,7 +231,7 @@ public class ApproachCell extends AbstractRetinaModelCell {
             gl.glColor4f(0, 0, 1, .2f);
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
             //float radius = (chip.getMaxSize() * approachCellModel.spikeRateHz) / maxSpikeRateHz / 2;
-            float radius = (chip.getMaxSize() * approachCellModel.spikeRateHz) * 3/100;
+            float radius = ((chip.getMaxSize() * approachCellModel.spikeRateHz) * 3)/100;
             glu.gluDisk(quad, 0, radius, 32, 1);
             approachCellModel.resetSpikeCount();
         }
@@ -386,7 +383,7 @@ public class ApproachCell extends AbstractRetinaModelCell {
                     gl.glColor4f(1, 0, 0, alpha);
                     glu.gluDisk(quad, 0, scaleRadius *synapticWeight*  offSubunits[x][y].computeInputToApproachCell(), 16, 1);
                     //glu.gluDisk(quad, 0, (float)Math.log10((double)scaleRadius *synapticWeight* onSubunits[x][y].computeInputToApproachCell()), 16, 1);
-                    gl.glPopMatrix(); 
+                    gl.glPopMatrix();
                 }
             }
             renderer.begin3DRendering();
@@ -394,7 +391,7 @@ public class ApproachCell extends AbstractRetinaModelCell {
             renderer.draw3D("Inhibitory ON subunits", 0, chip.getSizeY(), 0, .5f);
             renderer.setColor(1, 0, 0, 1);
             renderer.draw3D("Excitatory OFF subunits", chip.getSizeX() / 2, chip.getSizeY(), 0, .5f);
-            renderer.end3DRendering(); // annotation on top 
+            renderer.end3DRendering(); // annotation on top
 
         }
     }

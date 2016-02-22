@@ -5,37 +5,43 @@
  */
 package ch.unizh.ini.jaer.projects.davis.calibration;
 
-import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
-import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLAutoDrawable;
+import static org.bytedeco.javacpp.opencv_core.CV_64FC3;
+import static org.bytedeco.javacpp.opencv_core.CV_8U;
+import static org.bytedeco.javacpp.opencv_core.CV_8UC3;
+import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_EPS;
+import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_ITER;
+import static org.bytedeco.javacpp.opencv_imgproc.CV_GRAY2RGB;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+
 import java.util.List;
+
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+
+import org.bytedeco.javacpp.FloatPointer;
+import org.bytedeco.javacpp.opencv_calib3d;
+import org.bytedeco.javacpp.opencv_core;
+import org.bytedeco.javacpp.opencv_core.Mat;
+import org.bytedeco.javacpp.opencv_core.MatVector;
+import org.bytedeco.javacpp.opencv_core.Size;
+import org.bytedeco.javacpp.opencv_highgui;
+import org.bytedeco.javacpp.opencv_imgproc;
+import org.openni.Device;
+import org.openni.DeviceInfo;
+import org.openni.OpenNI;
+
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
+import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
-import org.bytedeco.javacpp.FloatPointer;
-import org.bytedeco.javacpp.opencv_calib3d;
-import org.bytedeco.javacpp.opencv_core;
-import static org.bytedeco.javacpp.opencv_core.CV_64FC3;
-import static org.bytedeco.javacpp.opencv_core.CV_8U;
-import static org.bytedeco.javacpp.opencv_core.CV_8UC3;
-import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_EPS;
-import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_ITER;
-import org.bytedeco.javacpp.opencv_core.Mat;
-import org.bytedeco.javacpp.opencv_core.MatVector;
-import org.bytedeco.javacpp.opencv_core.Size;
-import org.bytedeco.javacpp.opencv_highgui;
-import org.bytedeco.javacpp.opencv_imgproc;
-import static org.bytedeco.javacpp.opencv_imgproc.CV_GRAY2RGB;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import org.openni.Device;
-import org.openni.DeviceInfo;
-import org.openni.OpenNI;
 
 /**
  *
@@ -48,7 +54,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private int lastTimestamp = 0;
 
     private float[] lastFrame;
-    
+
     SimpleDepthCameraViewerApplication depthViewerThread;
 
     //encapsulated fields
@@ -103,19 +109,19 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     synchronized public EventPacket filterPacket(EventPacket in) {
         getEnclosedFilterChain().filterPacket(in);
 
-        // for each event only keep it if it is within dt of the last time 
+        // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
         for (Object eIn : in) {
             if (eIn == null) {
                 break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
             }
             BasicEvent e = (BasicEvent) eIn;
-            if (e.special) {
+            if (e.isSpecial()) {
                 continue;
             }
 
             //trigger action (on ts reset)
-            if (e.timestamp < lastTimestamp && e.timestamp < 100000 && takeImageOnTimestampReset) {
+            if ((e.timestamp < lastTimestamp) && (e.timestamp < 100000) && takeImageOnTimestampReset) {
                 log.info("****** ACTION TRIGGRED ******");
                 actionTriggered = true;
                 nAcqFrames = 0;
@@ -131,11 +137,11 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 }
 
                 //iterate
-                if (actionTriggered && nAcqFrames < nMaxAcqFrames) {
+                if (actionTriggered && (nAcqFrames < nMaxAcqFrames)) {
                     nAcqFrames++;
                 }
                 //take action
-                if (actionTriggered && nAcqFrames == nMaxAcqFrames) {
+                if (actionTriggered && (nAcqFrames == nMaxAcqFrames)) {
                     patternFound = findCurrentCorners(true);
                     //reset action
                     actionTriggered = false;
@@ -218,9 +224,9 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                     y = h * rectangleSize;
                     for (int w = 0; w < patternWidth; w++) {
                         x = w * rectangleSize;
-                        objectPoints.getFloatBuffer().put(3 * (patternWidth * h + w), x);
-                        objectPoints.getFloatBuffer().put(3 * (patternWidth * h + w) + 1, y);
-                        objectPoints.getFloatBuffer().put(3 * (patternWidth * h + w) + 2, 0);
+                        objectPoints.getFloatBuffer().put(3 * ((patternWidth * h) + w), x);
+                        objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 1, y);
+                        objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 2, 0);
                     }
                 }
                 allObjectPoints.put(imageCounter, objectPoints);
@@ -240,7 +246,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         return patternFound;
     }
 
-    public void annotate(GLAutoDrawable drawable) {
+    @Override
+	public void annotate(GLAutoDrawable drawable) {
 
         GL2 gl = drawable.getGL().getGL2();
 
@@ -254,21 +261,21 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             gl.glLineWidth(2f);
             gl.glColor3f(0, 0, 1);
             //log.info("width="+w+" height="+h);
-            gl.glBegin(GL2.GL_LINES);
+            gl.glBegin(GL.GL_LINES);
             for (int i = 0; i < h; i++) {
                 float y0 = corners.getFloatBuffer().get(2 * w * i);
-                float y1 = corners.getFloatBuffer().get(2 * w * (i + 1) - 2);
-                float x0 = corners.getFloatBuffer().get(2 * w * i + 1);
-                float x1 = corners.getFloatBuffer().get(2 * w * (i + 1) - 1);
+                float y1 = corners.getFloatBuffer().get((2 * w * (i + 1)) - 2);
+                float x0 = corners.getFloatBuffer().get((2 * w * i) + 1);
+                float x1 = corners.getFloatBuffer().get((2 * w * (i + 1)) - 1);
                 //log.info("i="+i+" x="+x+" y="+y);
                 gl.glVertex2f(y0, x0);
                 gl.glVertex2f(y1, x1);
             }
             for (int i = 0; i < w; i++) {
                 float y0 = corners.getFloatBuffer().get(2 * i);
-                float y1 = corners.getFloatBuffer().get(2 * (w * (h - 1) + i));
-                float x0 = corners.getFloatBuffer().get(2 * i + 1);
-                float x1 = corners.getFloatBuffer().get(2 * (w * (h - 1) + i) + 1);
+                float y1 = corners.getFloatBuffer().get(2 * ((w * (h - 1)) + i));
+                float x0 = corners.getFloatBuffer().get((2 * i) + 1);
+                float x1 = corners.getFloatBuffer().get((2 * ((w * (h - 1)) + i)) + 1);
                 //log.info("i="+i+" x="+x+" y="+y);
                 gl.glVertex2f(y0, x0);
                 gl.glVertex2f(y1, x1);
@@ -277,10 +284,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             //draw corners
             gl.glLineWidth(2f);
             gl.glColor3f(1, 1, 0);
-            gl.glBegin(GL2.GL_LINES);
+            gl.glBegin(GL.GL_LINES);
             for (int i = 0; i < n; i++) {
                 float y = corners.getFloatBuffer().get(2 * i);
-                float x = corners.getFloatBuffer().get(2 * i + 1);
+                float x = corners.getFloatBuffer().get((2 * i) + 1);
                 //log.info("i="+i+" x="+x+" y="+y);
                 gl.glVertex2f(y, x - c);
                 gl.glVertex2f(y, x + c);

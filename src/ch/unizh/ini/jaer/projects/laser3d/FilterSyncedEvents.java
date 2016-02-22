@@ -1,8 +1,8 @@
 /*
  * FilterSyncedEvents.java
- * 
+ *
  * Created on February 1, 2012
- * 
+ *
  */
 package ch.unizh.ini.jaer.projects.laser3d;
 
@@ -33,23 +33,23 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
      * Options
      * *******
      */
-    
+
     /**
-     * 
-     */    
+     *
+     */
     protected boolean useOnAndOff = getPrefs().getBoolean("FilterSyncedEvents.useOnAndOff", true);
     /**
-     * 
+     *
      */
     protected int t0 = getPrefs().getInt("FilterSyncedEvents.t0", 500);
     /**
-     * 
+     *
      */
     protected int t1 = getPrefs().getInt("FilterSyncedEvents.t1", 500);
-    
+
     /**
      * *********************
-     * Variables 
+     * Variables
      * *********************
      */
     private int DEFAULT_TIMESTAMP = 0; //Integer.MIN_VALUE;
@@ -60,7 +60,7 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
 
     /**
      * Creates a new instance of FilterLaserLine
-     * @param chip 
+     * @param chip
      */
     public FilterSyncedEvents(AEChip chip) {
         super(chip);
@@ -83,7 +83,7 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
         OutputEventIterator outItr = out.outputIterator();
         for (Object e : in) {
             PolarityEvent pE = (PolarityEvent) e;
-            if (pE.special) {
+            if (pE.isSpecial()) {
                 if (lastTriggerTimestamp != DEFAULT_TIMESTAMP) {
                     laserPeriod = pE.timestamp - lastTriggerTimestamp;
                     if (laserPeriod < 0) {
@@ -92,7 +92,7 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
                     }
                 }
                 lastTriggerTimestamp = pE.timestamp;
-                BasicEvent o = (BasicEvent) outItr.nextOutput();
+                BasicEvent o = outItr.nextOutput();
                 o.copyFrom(pE);
                 continue;
             }
@@ -104,10 +104,10 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
                 lastOnTimestamp = getLastActivity(pE.x, pE.y, PolarityEvent.Polarity.On);
                 lastOffTimestamp = pE.timestamp;
 
-                if (lastOnTimestamp >= lastTriggerTimestamp + t0
-                        & lastOnTimestamp < lastTriggerTimestamp + t0 + t1
-                        & lastOffTimestamp > lastTriggerTimestamp + laserPeriod/2) {
-                    BasicEvent o = (BasicEvent) outItr.nextOutput();
+                if ((lastOnTimestamp >= (lastTriggerTimestamp + t0))
+                        & (lastOnTimestamp < (lastTriggerTimestamp + t0 + t1))
+                        & (lastOffTimestamp > (lastTriggerTimestamp + (laserPeriod/2)))) {
+                    BasicEvent o = outItr.nextOutput();
                     o.copyFrom(pE);
                 }
             }
@@ -117,7 +117,7 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
 
     @Override
     public final void resetFilter() {
-        if (lastOnTimestamps != null & lastOffTimestamps != null & chip != null) {
+        if ((lastOnTimestamps != null) & (lastOffTimestamps != null) & (chip != null)) {
             for (int x = 0; x < chip.getSizeX(); x++) {
                 Arrays.fill(lastOnTimestamps[x], DEFAULT_TIMESTAMP);
                 Arrays.fill(lastOffTimestamps[x], DEFAULT_TIMESTAMP);
@@ -127,7 +127,7 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
 
     @Override
     public final void initFilter() {
-        if (chip != null & chip.getNumCells() > 0) {
+        if ((chip != null) & (chip.getNumCells() > 0)) {
             lastOnTimestamps = new int[chip.getSizeX()][chip.getSizeY()];
             lastOffTimestamps = new int[chip.getSizeX()][chip.getSizeY()];
         }
@@ -174,7 +174,7 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
     }
 
     /**
-     * 
+     *
      * @return
      */
     public Object getFilterState() {
@@ -211,7 +211,7 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
     }
 
     /**
-     * 
+     *
      * @return
      */
     public int getMinT0() {
@@ -219,7 +219,7 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
     }
 
     /**
-     * 
+     *
      * @return
      */
     public int getMaxT0() {
@@ -248,7 +248,7 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
     }
 
     /**
-     * 
+     *
      * @return
      */
     public int getMinT1() {
@@ -256,7 +256,7 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
     }
 
     /**
-     * 
+     *
      * @return
      */
     public int getMaxT1() {

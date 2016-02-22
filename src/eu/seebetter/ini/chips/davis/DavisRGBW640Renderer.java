@@ -13,9 +13,8 @@ import java.util.Iterator;
 import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEvent.ColorFilter;
 import net.sf.jaer.event.ApsDvsEventPacket;
-import net.sf.jaer.event.ApsDvsEventRGBW;
-import net.sf.jaer.event.ApsDvsEventRGBW.ColorFilter;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
@@ -83,7 +82,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 		setSpecialCount(0);
 		while (allItr.hasNext()) {
 			// The iterator only iterates over the DVS events
-			final ApsDvsEventRGBW e = (ApsDvsEventRGBW) allItr.next();
+			final ApsDvsEvent e = (ApsDvsEvent) allItr.next();
 			if (e.isSpecial()) {
 				setSpecialCount(specialCount + 1); // TODO optimize special count increment
 				continue;
@@ -128,7 +127,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 		}
 		if (packet.getNumCellTypes() > 2) {
 			checkTypeColors(packet.getNumCellTypes());
-			if (e.special) {
+			if (e.isSpecial()) {
 				setSpecialCount(specialCount + 1); // TODO optimize special count increment
 				return;
 			}
@@ -295,7 +294,8 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 	 *            the ADC sample event
 	 */
 	// @Override
-	protected void updateFrameBuffer(final ApsDvsEventRGBW e) {
+	@Override
+	protected void updateFrameBuffer(final ApsDvsEvent e) {
 		final float[] buf = pixBuffer.array();
 
 		// TODO if playing backwards, then frame will come out white because B sample comes before A
@@ -423,7 +423,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 			return -1;
 		}
 		if (isSeparateAPSByColor()) {
-			final ColorFilter color = ((ApsDvsEventRGBW) e).getColorFilter();
+			final ColorFilter color = ((ApsDvsEvent) e).getColorFilter();
 
 			if (color == ColorFilter.G) {
 				x = x / 2;

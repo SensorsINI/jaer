@@ -31,6 +31,11 @@ import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
 
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.util.gl2.GLUT;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -39,11 +44,6 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
-
-import com.jogamp.opengl.GL;
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.util.gl2.GLUT;
 
 @Description("Measures the frequency of vibrating structures")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
@@ -195,7 +195,7 @@ public class InstrumentStringFilter extends EventFilter2D implements Observer, F
 				break;  // this can occur if we are supplied packet that has data (e.g. APS samples) but no events @author tobi
 			}
             PolarityEvent i = (PolarityEvent)e;
-            if (i.special) {
+            if (i.isSpecial()) {
 				continue;
 			}
             ts = i.timestamp;

@@ -31,6 +31,7 @@ import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.chip.RetinaExtractor;
 import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEvent.ReadoutType;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -439,24 +440,22 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 					final ApsDvsEvent e = nextApsDvsEvent(outItr); // imu sample possibly contained here set to null by
 																	// this method
 					if ((data & DavisChip.EVENT_TYPE_MASK) == DavisChip.EXTERNAL_INPUT_EVENT_ADDR) {
-						e.adcSample = -1; // TODO hack to mark as not an ADC sample
-						e.special = true; // TODO special is set here when capturing frames which will mess us up if
-						// this is an IMUSample used as a plain ApsDvsEvent
+						e.setReadoutType(ReadoutType.DVS);
+						e.setSpecial(true);
+
 						e.address = data;
 						e.timestamp = (timestamps[i]);
-						e.setIsDVS(true);
 					}
 					else {
-						e.adcSample = -1; // TODO hack to mark as not an ADC sample
-						e.special = false;
+						e.setReadoutType(ReadoutType.DVS);
+
 						e.address = data;
 						e.timestamp = (timestamps[i]);
 						e.polarity = (data & DavisChip.POLMASK) == DavisChip.POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
 						e.type = (byte) ((data & DavisChip.POLMASK) == DavisChip.POLMASK ? 1 : 0);
 						e.x = (short) (sx1 - ((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
 						e.y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
-						e.setIsDVS(true);
-						// System.out.println(data);
+
 						// autoshot triggering
 						autoshotEventsSinceLastShot++; // number DVS events captured here
 					}
@@ -515,14 +514,13 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 					}
 
 					final ApsDvsEvent e = nextApsDvsEvent(outItr);
-					e.adcSample = data & DavisChip.ADC_DATA_MASK;
-					e.readoutType = readoutType;
-					e.special = false;
-					e.timestamp = timestamp;
+					e.setReadoutType(readoutType);
+					e.setAdcSample(data & DavisChip.ADC_DATA_MASK);
 					e.address = data;
+					e.timestamp = timestamp;
+					e.type = (byte) (2);
 					e.x = x;
 					e.y = y;
-					e.type = (byte) (2);
 
 					// end of exposure, same for both
 					if (pixFirst && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
@@ -561,12 +559,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
 		protected ApsDvsEvent nextApsDvsEvent(final OutputEventIterator outItr) {
 			final ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
-			e.special = false;
-			e.adcSample = -1;
-			e.readoutType = ApsDvsEvent.ReadoutType.Null;
-			if (e.isImuSample()) {
-				e.setImuSample(null);
-			}
+			e.reset();
 			return e;
 		}
 
@@ -582,52 +575,52 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		protected ApsDvsEvent createApsFlagEvent(final OutputEventIterator outItr, final ApsDvsEvent.ReadoutType flag,
 			final int timestamp) {
 			final ApsDvsEvent a = nextApsDvsEvent(outItr);
-			a.adcSample = 0; // set this effectively as ADC sample even though fake
 			a.timestamp = timestamp;
-			a.x = -1;
-			a.y = -1;
-			a.address = -1;
-			a.readoutType = flag;
+			a.setReadoutType(flag);
 			return a;
 		}
 
-            @Override
-            public AEPacketRaw reconstructRawPacket(final EventPacket packet) {
-                if (raw == null) {
-                    raw = new AEPacketRaw();
-                }
-                if (!(packet instanceof ApsDvsEventPacket)) {
-                    return null;
-                }
-                final ApsDvsEventPacket apsDVSpacket = (ApsDvsEventPacket) packet;
-                raw.ensureCapacity(packet.getSize()); // TODO must handle extra capacity needed for inserting multiple raw events for each IMU sample below
-                raw.setNumEvents(0);
-                apsDVSpacket.getSize();
-                final Iterator evItr = apsDVSpacket.fullIterator();
-                int k = 0;
-                EventRaw tmpRawEvent=new EventRaw();
-                while (evItr.hasNext()) {
-                    final ApsDvsEvent e = (ApsDvsEvent) evItr.next();
-                    // not writing out these EOF events (which were synthesized on extraction) results in reconstructed
-                    // packets with giant time gaps, reason unknown
-                    if (e.isFilteredOut() || e.isEndOfFrame() || e.isStartOfFrame() || e.isStartOfExposure() || e.isEndOfExposure()) {
-                        continue; // these flag events were synthesized from data in first place
-                    }
-                    if (e.isImuSample()) {
-                        // TODO insert special handling to split up the IMU sample back to multiple raw events to hold the samples
-                        final IMUSample imuSample = e.getImuSample();
-                        k += imuSample.writeToPacket(raw, k);
-                    } else {
-                        // TODO must reset the ts and a references after ensure capacity increases backing arrays to new ones
-                        tmpRawEvent.timestamp=e.timestamp;
-                        tmpRawEvent.address=reconstructRawAddressFromEvent(e);
-                        raw.addEvent(tmpRawEvent);
-                        k++;
-                    }
-                }
-                raw.setNumEvents(k);
-                return raw;
-            }
+		@Override
+		public AEPacketRaw reconstructRawPacket(final EventPacket packet) {
+			if (raw == null) {
+				raw = new AEPacketRaw();
+			}
+			if (!(packet instanceof ApsDvsEventPacket)) {
+				return null;
+			}
+			final ApsDvsEventPacket apsDVSpacket = (ApsDvsEventPacket) packet;
+			raw.ensureCapacity(packet.getSize()); // TODO must handle extra capacity needed for inserting multiple raw
+													// events for each IMU sample below
+			raw.setNumEvents(0);
+			apsDVSpacket.getSize();
+			final Iterator evItr = apsDVSpacket.fullIterator();
+			int k = 0;
+			EventRaw tmpRawEvent = new EventRaw();
+			while (evItr.hasNext()) {
+				final ApsDvsEvent e = (ApsDvsEvent) evItr.next();
+				// not writing out these EOF events (which were synthesized on extraction) results in reconstructed
+				// packets with giant time gaps, reason unknown
+				if (e.isFilteredOut() || e.isEndOfFrame() || e.isStartOfFrame() || e.isStartOfExposure() || e.isEndOfExposure()) {
+					continue; // these flag events were synthesized from data in first place
+				}
+				if (e.isImuSample()) {
+					// TODO insert special handling to split up the IMU sample back to multiple raw events to hold the
+					// samples
+					final IMUSample imuSample = e.getImuSample();
+					k += imuSample.writeToPacket(raw, k);
+				}
+				else {
+					// TODO must reset the ts and a references after ensure capacity increases backing arrays to new
+					// ones
+					tmpRawEvent.timestamp = e.timestamp;
+					tmpRawEvent.address = reconstructRawAddressFromEvent(e);
+					raw.addEvent(tmpRawEvent);
+					k++;
+				}
+			}
+			raw.setNumEvents(k);
+			return raw;
+		}
 
 		/**
 		 * To handle filtered ApsDvsEvents, this method rewrites the fields of
@@ -649,7 +642,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			// }
 			// e.x came from e.x = (short) (chip.getSizeX()-1-((data & XMASK) >>> XSHIFT)); // for DVS event, no x flip
 			// if APS event
-			if (((ApsDvsEvent) e).adcSample >= 0) {
+			if (((ApsDvsEvent) e).getAdcSample() >= 0) {
 				address = (address & ~DavisChip.XMASK) | ((e.x) << DavisChip.XSHIFT);
 			}
 			else {
@@ -744,8 +737,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			float x, y;
 
 			// acceleration x,y
-			x = (vectorScale * imuSampleRender.getAccelX() * getSizeY()/2) / IMUSample.getFullScaleAccelG();
-			y = (vectorScale * imuSampleRender.getAccelY() * getSizeY()/2) / IMUSample.getFullScaleAccelG();
+			x = ((vectorScale * imuSampleRender.getAccelX() * getSizeY()) / 2) / IMUSample.getFullScaleAccelG();
+			y = ((vectorScale * imuSampleRender.getAccelY() * getSizeY()) / 2) / IMUSample.getFullScaleAccelG();
 			gl.glColor3f(0, 1, 0);
 			gl.glBegin(GL.GL_LINES);
 			gl.glVertex2f(0, 0);
@@ -783,8 +776,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			gl.glColor3f(1f, 0, 1);
 			gl.glBegin(GL.GL_LINES);
 			gl.glVertex2f(0, 0);
-			x = (vectorScale * imuSampleRender.getGyroYawY() * getMinSize()/2) / IMUSample.getFullScaleGyroDegPerSec();
-			y = (vectorScale * imuSampleRender.getGyroTiltX() * getMinSize()/2) / IMUSample.getFullScaleGyroDegPerSec();
+			x = ((vectorScale * imuSampleRender.getGyroYawY() * getMinSize()) / 2) / IMUSample.getFullScaleGyroDegPerSec();
+			y = ((vectorScale * imuSampleRender.getGyroTiltX() * getMinSize()) / 2) / IMUSample.getFullScaleGyroDegPerSec();
 			gl.glVertex2f(x, y);
 			gl.glEnd();
 
@@ -795,7 +788,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			imuTextRenderer.end3DRendering();
 
 			// gyro roll
-			x = (vectorScale * imuSampleRender.getGyroRollZ() * getMinSize()/2) / IMUSample.getFullScaleGyroDegPerSec();
+			x = ((vectorScale * imuSampleRender.getGyroRollZ() * getMinSize()) / 2) / IMUSample.getFullScaleGyroDegPerSec();
 			y = chip.getSizeY() * .25f;
 			gl.glBegin(GL.GL_LINES);
 			gl.glVertex2f(0, y);

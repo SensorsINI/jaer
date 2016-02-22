@@ -21,24 +21,23 @@ import java.util.logging.Level;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.util.awt.TextRenderer;
 
+import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
+import eu.seebetter.ini.chips.DVSWithIntensityDisplayMethod;
 import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.RetinaExtractor;
 //import es.us.atc.jaer.chips.NodeBoard.ApsDvsEvent;
 //import eu.seebetter.ini.chips.sbret10.SBret10.SBret10Config.*;
 import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEvent.ReadoutType;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 //import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.RetinaRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.util.filter.LowpassFilter2d;
-import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
-
-import com.jogamp.opengl.util.awt.TextRenderer;
-
-import eu.seebetter.ini.chips.DVSWithIntensityDisplayMethod;
 
 
     @Description("NodeBoard FrameGrabber 256x256 version 0.0")
@@ -249,7 +248,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
                         firstFrameTs = timestamps[i];
                         //diffts=timestamps[i]-lastts;
                         //lastts=timestamps[i];
-                        e.setStartOfFrame(true);
+                        e.setReadoutType(ReadoutType.SOF);
                         e.address=0;
                         e.x=0;
                         e.y=0;
@@ -261,7 +260,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
                         if (((data%256)>=0) && ((data%256)<64)) {
                             for (t=0;t<(64-(data%128));t++){
                                 ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
-                                e.setStartOfFrame(false);
+                                e.setReadoutType(ReadoutType.DVS);
                                 e.setAdcSample(-1);//(short)data);//(data & 0xFF)*32); //data_l*16
                                 e.timestamp = (timestamps[i]);
                                 //e.address = pixCnt; //(data & 0xFF)*32; //data_l*16
@@ -272,7 +271,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
                         }else if (((data%256)>64) && ((data%256)<128)) {
                             for (t=0;t<((data%128)-64);t++){
                                 ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
-                                e.setStartOfFrame(false);
+                                e.setReadoutType(ReadoutType.DVS);
                                 e.setAdcSample(-1);//(short)data);//(data & 0xFF)*32); //data_l*16
                                 e.timestamp = (timestamps[i]);
                                 //e.address = pixCnt; //(data & 0xFF)*32; //data_l*16
@@ -294,7 +293,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
                                 //e1.readoutType = ApsDvsEvent.Type.ResetRead;
                                 e1.x= (short)(128-(pixCnt%128));
                                 e1.y= (short)(128-((pixCnt/256)%128));
-                                e1.setStartOfFrame(false);
+                                e1.setReadoutType(ReadoutType.DVS);
                             }
                         }else if (((data/256)>64) && ((data/256)<128)) {
                             for (t=0;t<(((data/256)%128)-64);t++) {
@@ -306,7 +305,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
                                 //e1..readoutType = ApsDvsEvent.Type.ResetRead;
                                 e1.x= (short)(128-(pixCnt%128)); //countX[0];
                                 e1.y= (short)(128-((pixCnt/256)%128)); //countY[0];
-                                e1.setStartOfFrame(false);
+                                e1.setReadoutType(ReadoutType.DVS);
                             }
                         }
 
