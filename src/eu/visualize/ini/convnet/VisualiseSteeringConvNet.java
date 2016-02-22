@@ -63,12 +63,13 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private int seqNum = 0;
     private int[] decisionArray = new int[2];
     private int[] decisionLowPassArray = new int[3];
-    private int savedDecision = 5;
+    private int savedDecision = -1;
     private int counterD = 0;
+    private float[] LCRNstate = new float[]{0.5f, 0.5f, 0.5f, 0.5f};
     volatile private boolean apply_LR_RL_constraint = getBoolean("apply_LR_RL_constraint", true);
     volatile private boolean apply_LNR_RNL_constraint = getBoolean("apply_LNR_RNL_constraint", true);
     volatile private boolean apply_CN_NC_constraint = getBoolean("apply_CN_NC_constraint", true);
-    volatile private boolean applyLowpass = getBoolean("applyLowpass", true);
+    volatile private float LCRNstep = getFloat("LCRNstep", 1f);
 
     public VisualiseSteeringConvNet(AEChip chip) {
         super(chip);
@@ -86,7 +87,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(udp, "apply_LR_RL_constraint", "force (override) network output classification to make sure there is no switching from L to R or viceversa directly");
         setPropertyTooltip(udp, "apply_LNR_RNL_constraint", "force (override) network output classification to make sure there is no switching from L to N and to R or viceversa, since the predator will see the prey back from the same last seen steering output (it spins in the last seen direction)");
         setPropertyTooltip(udp, "apply_CN_NC_constraint", "force (override) network output classification to make sure there is no switching from C to N or viceversa directly");
-        setPropertyTooltip(udp, "applyLowpass", "force (override) network output classification to lowpass the last 3 values");
+        setPropertyTooltip(udp, "LCRNstep", "step from one state (LCR or N) to another (if 1, no lowpass filtering, if lower, then slower transitions)");
 
         FilterChain chain = new FilterChain(chip);
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
@@ -178,7 +179,10 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 //        if (dvsNet != null && dvsNet.outputLayer != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
 //            drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
 //        }
-
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .5f);
+        MultilineAnnotationTextRenderer.setScale(.3f);
+        MultilineAnnotationTextRenderer.renderMultilineString(String.format("Current state = [L: %6.1f]  [C: %6.1f]  [R: %6.1f]  [N: %6.1f]", LCRNstate[0], LCRNstate[1], LCRNstate[2], LCRNstate[3]));
+        MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
         if (showStatistics) {
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .5f);
             MultilineAnnotationTextRenderer.setScale(.3f);
@@ -187,7 +191,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             }
             MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
         }
-//        if (totalDecisions > 0) {
+        //        if (totalDecisions > 0) {
 //            float errorRate = (float) incorrect / totalDecisions;
 //            String s = String.format("Error rate %.2f%% (total=%d correct=%d incorrect=%d)\n", errorRate * 100, totalDecisions, correct, incorrect);
 //            MultilineAnnotationTextRenderer.renderMultilineString(s);
@@ -224,21 +228,31 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 
     public void applyConstraints(DeepLearnCnnNetwork net) {
         int currentDecision = net.outputLayer.maxActivatedUnit;
-        if (applyLowpass) {
-            if ((currentDecision == 3 && decisionLowPassArray[counterD] == 0) || (currentDecision == 0 && decisionLowPassArray[counterD] == 3)) { //transitions from L to N or viceversa are a problem (averaging 3 and 0 gives wrong outputs)
-                decisionLowPassArray[0] = currentDecision;
-                decisionLowPassArray[1] = currentDecision;
-                decisionLowPassArray[2] = currentDecision;
-            } else {
-                if (counterD < 2) {
-                    counterD = counterD + 1;
-                } else {
-                    counterD = 0;
+        float maxLCRN = 0;
+        int maxLCRNindex = -1;
+        for (int i = 0; i < 4; i++) {
+            if (i == currentDecision) {
+                LCRNstate[i] = LCRNstate[i] + LCRNstep;
+                if(LCRNstate[i]>1){
+                    LCRNstate[i] = 1;
                 }
-                decisionLowPassArray[counterD] = currentDecision;
+                if (LCRNstate[i] > maxLCRN) {
+                    maxLCRN = LCRNstate[i];
+                    maxLCRNindex = i;
+                }
+            } else {
+                LCRNstate[i] = LCRNstate[i] - LCRNstep;
+                                if(LCRNstate[i]<0){
+                    LCRNstate[i] = 0;
+                }
+                if (LCRNstate[i] > maxLCRN) {
+                    maxLCRN = LCRNstate[i];
+                    maxLCRNindex = i;
+                }
             }
-            net.outputLayer.maxActivatedUnit = (int) ((decisionLowPassArray[0] + decisionLowPassArray[1] + decisionLowPassArray[2] / 3));
         }
+        net.outputLayer.maxActivatedUnit = maxLCRNindex;
+
         if (apply_CN_NC_constraint) {// Cannot switch from C to N and viceversa
             if (currentDecision == 1 && decisionArray[1] == 3) {
                 net.outputLayer.maxActivatedUnit = 3;
@@ -254,18 +268,18 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 savedDecision = 2;
             }
             // Possible transition back from N (NR or LN)
-            if (savedDecision < 5) {//Real value saved
+            if (savedDecision >= 0) {//Real value saved
                 if (currentDecision == 0 && decisionArray[1] == 3) {
                     if (currentDecision != savedDecision) {
                         net.outputLayer.maxActivatedUnit = 3;
                     } else {
-                        savedDecision = 5;
+                        savedDecision = -1;
                     }
                 } else if (currentDecision == 2 && decisionArray[1] == 3) {
                     if (currentDecision != savedDecision) {
                         net.outputLayer.maxActivatedUnit = 3;
                     } else {
-                        savedDecision = 5;
+                        savedDecision = -1;
                     }
                 }
             }
@@ -643,18 +657,18 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     }
 
     /**
-     * @return the applyLowpass
+     * @return the LCRNstep
      */
-    public boolean isApplyLowpass() {
-        return applyLowpass;
+    public float getLCRNstep() {
+        return LCRNstep;
     }
 
     /**
-     * @param showStatistics the applyLowpass to set
+     * @param LCRNstep the LCRNstep to set
      */
-    public void setApplyLowpass(boolean applyLowpass) {
-        this.applyLowpass = applyLowpass;
-        putBoolean("applyLowpass", applyLowpass);
+    public void setLCRNstep(float LCRNstep) {
+        this.LCRNstep = LCRNstep;
+        putFloat("LCRNstep", LCRNstep);
     }
 
     /**
