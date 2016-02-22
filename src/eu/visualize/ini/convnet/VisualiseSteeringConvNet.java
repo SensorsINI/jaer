@@ -261,7 +261,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                     } else {
                         savedDecision = 5;
                     }
-                } else if (currentDecision == 3 && decisionArray[1] == 2) {
+                } else if (currentDecision == 2 && decisionArray[1] == 3) {
                     if (currentDecision != savedDecision) {
                         net.outputLayer.maxActivatedUnit = 3;
                     } else {
