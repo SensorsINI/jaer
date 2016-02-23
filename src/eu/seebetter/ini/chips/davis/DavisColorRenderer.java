@@ -8,6 +8,8 @@
  */
 package eu.seebetter.ini.chips.davis;
 
+import java.util.Random;
+
 import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -40,11 +42,17 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 	// First lower left, then lower right, then upper right, then upper left.
 	private final ColorFilter[] colorFilterSequence;
 
-	public DavisColorRenderer(final AEChip chip, final boolean isDVSQuarterOfAPS, final ColorFilter[] colorFilterSequence) {
+	// Whether the APS readout follows normal procedure (reset then signal read), or
+	// the special readout: signal then readout mix.
+	private final boolean isAPSSpecialReadout;
+
+	public DavisColorRenderer(final AEChip chip, final boolean isDVSQuarterOfAPS, final ColorFilter[] colorFilterSequence,
+		final boolean isAPSSpecialReadout) {
 		super(chip);
 
 		this.isDVSQuarterOfAPS = isDVSQuarterOfAPS;
 		this.colorFilterSequence = colorFilterSequence;
+		this.isAPSSpecialReadout = isAPSSpecialReadout;
 	}
 
 	@Override
@@ -65,7 +73,9 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 			return;
 		}
 
-		final boolean fill = !isSeparateAPSByColor();
+		// Support expanding one DVS event to cover a four pixel box, resulting in
+		// an expansion to four pixels, for visualization without holes.
+		final boolean expandToFour = isDVSQuarterOfAPS && !isSeparateAPSByColor();
 
 		if (packet.getNumCellTypes() > 2) {
 			checkTypeColors(packet.getNumCellTypes());
@@ -76,7 +86,7 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 				map[index + 1] = 1.0f; // if(f[1]>1f) f[1]=1f;
 				map[index + 2] = 1.0f; // if(f[2]>1f) f[2]=1f;
 
-				if (fill) {
+				if (expandToFour) {
 					map[getPixMapIndex(e.x + 1, e.y)] = 1.0f;
 					map[getPixMapIndex(e.x + 1, e.y) + 1] = 1.0f;
 					map[getPixMapIndex(e.x + 1, e.y) + 2] = 1.0f;
@@ -96,7 +106,7 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 				map[index + 1] = c[1]; // if(f[1]>1f) f[1]=1f;
 				map[index + 2] = c[2]; // if(f[2]>1f) f[2]=1f;
 
-				if (fill) {
+				if (expandToFour) {
 					map[getPixMapIndex(e.x + 1, e.y)] = c[0];
 					map[getPixMapIndex(e.x + 1, e.y) + 1] = c[1];
 					map[getPixMapIndex(e.x + 1, e.y) + 2] = c[2];
@@ -112,7 +122,7 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 			final float alpha = map[index + 3] + (1.0f / colorScale);
 			map[index + 3] += normalizeEvent(alpha);
 
-			if (fill) {
+			if (expandToFour) {
 				map[getPixMapIndex(e.x + 1, e.y) + 3] += alpha;
 				map[getPixMapIndex(e.x, e.y + 1) + 3] += alpha;
 				map[getPixMapIndex(e.x + 1, e.y + 1) + 3] += alpha;
@@ -135,7 +145,7 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 			map[index + 2] = timeColors[ind][2];
 			map[index + 3] = 0.5f;
 
-			if (fill) {
+			if (expandToFour) {
 				map[getPixMapIndex(e.x + 1, e.y)] = timeColors[ind][0];
 				map[getPixMapIndex(e.x + 1, e.y) + 1] = timeColors[ind][1];
 				map[getPixMapIndex(e.x + 1, e.y) + 2] = timeColors[ind][2];
@@ -160,7 +170,7 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 			map[index + 2] = v;
 			map[index + 3] = 1.0f;
 
-			if (fill) {
+			if (expandToFour) {
 				map[getPixMapIndex(e.x + 1, e.y)] = v;
 				map[getPixMapIndex(e.x + 1, e.y) + 1] = v;
 				map[getPixMapIndex(e.x + 1, e.y) + 2] = v;
@@ -182,7 +192,7 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 				map[index + 1] = onColor[1];
 				map[index + 2] = onColor[2];
 
-				if (fill) {
+				if (expandToFour) {
 					map[getPixMapIndex(e.x + 1, e.y)] = onColor[0];
 					map[getPixMapIndex(e.x + 1, e.y) + 1] = onColor[1];
 					map[getPixMapIndex(e.x + 1, e.y) + 2] = onColor[2];
@@ -199,7 +209,7 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 				map[index + 1] = offColor[1];
 				map[index + 2] = offColor[2];
 
-				if (fill) {
+				if (expandToFour) {
 					map[getPixMapIndex(e.x + 1, e.y)] = offColor[0];
 					map[getPixMapIndex(e.x + 1, e.y) + 1] = offColor[1];
 					map[getPixMapIndex(e.x + 1, e.y) + 2] = offColor[2];
@@ -215,7 +225,7 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 			final float alpha = map[index + 3] + (1.0f / colorScale);
 			map[index + 3] = normalizeEvent(alpha);
 
-			if (fill) {
+			if (expandToFour) {
 				map[getPixMapIndex(e.x + 1, e.y) + 3] = alpha;
 				map[getPixMapIndex(e.x, e.y + 1) + 3] = alpha;
 				map[getPixMapIndex(e.x + 1, e.y + 1) + 3] = alpha;
@@ -223,13 +233,8 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 		}
 	}
 
-	/**
-	 * Overridden to do CDAVIS rendering
-	 *
-	 * @param e
-	 *            the ADC sample event
-	 */
-	// @Override
+	private final Random random = new Random();
+
 	@Override
 	protected void updateFrameBuffer(final ApsDvsEvent e) {
 		final float[] buf = pixBuffer.array();
@@ -238,7 +243,8 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 		if (e.isStartOfFrame()) {
 			startFrame(e.timestamp);
 		}
-		else if ((e.isResetRead() && !isGlobalShutter()) || (e.isSignalRead() && isGlobalShutter())) {
+		else if ((!isAPSSpecialReadout && e.isResetRead()) || (isAPSSpecialReadout && e.isResetRead() && !isGlobalShutter())
+			|| (isAPSSpecialReadout && e.isSignalRead() && isGlobalShutter())) {
 			final int index = getIndex(e);
 			if ((index < 0) || (index >= buf.length)) {
 				return;
@@ -247,7 +253,8 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 			final float val = e.getAdcSample();
 			buf[index] = val;
 		}
-		else if ((e.isSignalRead() && !isGlobalShutter()) || (e.isResetRead() && isGlobalShutter())) {
+		else if ((!isAPSSpecialReadout && e.isSignalRead()) || (isAPSSpecialReadout && e.isSignalRead() && !isGlobalShutter())
+			|| (isAPSSpecialReadout && e.isResetRead() && isGlobalShutter())) {
 			final int index = getIndex(e);
 			if ((index < 0) || (index >= buf.length)) {
 				return;
@@ -255,12 +262,12 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 
 			int val = 0;
 
-			if (isGlobalShutter()) {
+			if (isAPSSpecialReadout && isGlobalShutter()) {
 				// The second read in GS mode is the reset read, so we have to invert this.
-				val = (int) (e.getAdcSample() - buf[index]);
+				val = (e.getAdcSample() - (int) buf[index]);
 			}
 			else {
-				val = (int) (buf[index] - e.getAdcSample());
+				val = ((int) buf[index] - e.getAdcSample());
 			}
 
 			if (val < 0) {
@@ -273,8 +280,23 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 				maxValue = val;
 			}
 
-			if (computeHistograms && (e.getColorFilter() == ColorFilter.W)) {
-				nextHist.add(val);
+			// right here sample-reset value of this pixel is in val
+			if (computeHistograms) {
+				if (!((DavisChip) chip).getAutoExposureController().isCenterWeighted()) {
+					nextHist.add(val);
+				}
+				else {
+					// randomly add histogram values to histogram depending on distance from center of image
+					// to implement a simple form of center weighting of the histogram
+					float d = (1 - Math.abs(((float) e.x - (sizeX / 2)) / sizeX)) + Math.abs(((float) e.y - (sizeY / 2)) / sizeY);
+					// d is zero at center, 1 at corners
+					d *= d;
+
+					final float r = random.nextFloat();
+					if (r > d) {
+						nextHist.add(val);
+					}
+				}
 			}
 
 			final float fval = normalizeFramePixel(val);
@@ -323,21 +345,21 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 		if (isSeparateAPSByColor()) {
 			final ColorFilter color = ((ApsDvsEvent) e).getColorFilter();
 
-			if (color == ColorFilter.G) {
+			if (color == colorFilterSequence[0]) {
 				x = x / 2;
-				y = (y / 2) + (chip.getSizeY() / 2);
+				y = y / 2;
 			}
-			else if (color == ColorFilter.R) {
-				x = (x / 2) + (chip.getSizeX() / 2);
-				y = (y / 2) + (chip.getSizeY() / 2);
-			}
-			else if (color == ColorFilter.W) {
+			else if (color == colorFilterSequence[1]) {
 				x = (x / 2) + (chip.getSizeX() / 2);
 				y = y / 2;
 			}
-			else { // B
+			else if (color == colorFilterSequence[2]) {
+				x = (x / 2) + (chip.getSizeX() / 2);
+				y = (y / 2) + (chip.getSizeY() / 2);
+			}
+			else { // No check here, only colorFilterSequence[3] possible here.
 				x = x / 2;
-				y = y / 2;
+				y = (y / 2) + (chip.getSizeY() / 2);
 			}
 		}
 
@@ -604,13 +626,6 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 		}
 
 		// End frame, copy pixBuffer for display.
-		timestampFrameEnd = ts;
-		System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
-
-		if ((contrastController != null) && (minValue != Float.MAX_VALUE) && (maxValue != Float.MIN_VALUE)) {
-			contrastController.endFrame(minValue, maxValue, timestampFrameEnd);
-		}
-
-		getSupport().firePropertyChange(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, null, this);
+		super.endFrame(ts);
 	}
 }

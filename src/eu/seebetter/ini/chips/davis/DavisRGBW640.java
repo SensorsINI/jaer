@@ -37,7 +37,7 @@ public class DavisRGBW640 extends DavisBaseCamera {
 
 		setBiasgen(davisConfig = new DavisRGBW640Config(this));
 
-		davisRenderer = new DavisColorRenderer(this, true, COLOR_FILTER);
+		davisRenderer = new DavisColorRenderer(this, true, COLOR_FILTER, true);
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(davisRenderer);
 
