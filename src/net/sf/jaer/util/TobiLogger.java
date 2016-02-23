@@ -81,7 +81,8 @@ public class TobiLogger {
         }
     }
     
-    /** Adds a comment to the log preceeded by # 
+    /** Adds a comment to the log preceeded by # .
+     * Note this method should be called just after setEnabled(true).
      * 
      * @param s the string
      * @see #setEnabled
