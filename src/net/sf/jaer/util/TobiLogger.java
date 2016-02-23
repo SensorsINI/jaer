@@ -87,8 +87,11 @@ public class TobiLogger {
      * @param s the string
      * @see #setEnabled
      */
-    synchronized public void addComment(String s) {
-        if(!logDataEnabled) return;
+    synchronized public void addComment(String s) { // TODO needs to handle multiline comments by prepending comment char to each line
+        if(!logDataEnabled) {
+            log.warning("comment will not be logged because logging is not enabled yet. call setEnable to open logging file before adding comment");
+            return;
+        }
         if(logStream!=null) {
             logStream.print("# ");
             logStream.println(s);
