@@ -46,13 +46,32 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 	// the special readout: signal then readout mix.
 	private final boolean isAPSSpecialReadout;
 
+	// Color correction values matrix -> 3 colors (RGB) x 4 values.
+	private final float[][] colorCorrectionMatrix;
+
 	public DavisColorRenderer(final AEChip chip, final boolean isDVSQuarterOfAPS, final ColorFilter[] colorFilterSequence,
-		final boolean isAPSSpecialReadout) {
+		final boolean isAPSSpecialReadout, final float[][] colorCorrectionMatrix) {
 		super(chip);
+
+		// Input array length check.
+		if (colorFilterSequence.length != 4) {
+			throw new RuntimeException("ColorFilterSequence must have 4 elements (2x2 box).");
+		}
+
+		if (colorCorrectionMatrix.length != 3) {
+			throw new RuntimeException("ColorCorrectionMatrix must have 3 elements (3 colors, RGB).");
+		}
+
+		for (float[] colorCorrectionMatrixInternal : colorCorrectionMatrix) {
+			if (colorCorrectionMatrixInternal.length != 4) {
+				throw new RuntimeException("ColorCorrectionMatrix sub-array must have 4 elements (4 correction values).");
+			}
+		}
 
 		this.isDVSQuarterOfAPS = isDVSQuarterOfAPS;
 		this.colorFilterSequence = colorFilterSequence;
 		this.isAPSSpecialReadout = isAPSSpecialReadout;
+		this.colorCorrectionMatrix = colorCorrectionMatrix;
 	}
 
 	@Override
@@ -384,59 +403,75 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 
 	@Override
 	protected void endFrame(final int ts) {
-		if (isAutoWhiteBalance()) {
-			// white balance
-			final float[] image = pixBuffer.array();
-			float Rtotal = 0, Gtotal = 0, Btotal = 0;
-
-			for (int y = 0; y < chip.getSizeY(); y++) {
-				for (int x = 0; x < chip.getSizeX(); x++) {
-					if ((y % 2) == 0) {
-						// row 0, 2, 4 ... 478, from bottom of the image, containing W and B
-						if ((x % 2) == 0) { // B
-							Btotal = Btotal + image[getPixMapIndex(x, y)];
-						}
-					}
-					else {
-						// row 1, 3, 5 ... 479, from bottom of the image, containing R and G
-						if ((x % 2) == 1) { // R
-							Rtotal = Rtotal + image[getPixMapIndex(x, y)];
-						}
-						else { // G
-							Gtotal = Gtotal + image[getPixMapIndex(x, y)];
-						}
-					}
-				}
-			}
-
-			for (int y = 0; y < chip.getSizeY(); y++) {
-				for (int x = 0; x < chip.getSizeX(); x++) {
-					if ((y % 2) == 0) {
-						// row 0, 2, 4 ... 478, from bottom of the image, containing W and B
-						if ((x % 2) == 0) { // B
-							image[getPixMapIndex(x, y)] = (Gtotal / Btotal) * image[getPixMapIndex(x, y)];
-							// if (image[getPixMapIndex(x, y)] > 1) {
-							// image[getPixMapIndex(x, y)] = 1;
-							// }
-						}
-					}
-					else {
-						// row 1, 3, 5 ... 479, from bottom of the image, containing R and G
-						if ((x % 2) == 1) { // R
-							image[getPixMapIndex(x, y)] = (Gtotal / Rtotal) * image[getPixMapIndex(x, y)];
-							// if (image[getPixMapIndex(x, y)] > 1) {
-							// image[getPixMapIndex(x, y)] = 1;
-							// }
-						}
-					}
-				}
-			}
-		}
-
+		// No color operation makes sense if we separate APS by color!
 		if (!isSeparateAPSByColor()) {
-			// color interpolation
 			final float[] image = pixBuffer.array();
 
+			if (isAutoWhiteBalance()) {
+				// Automatic white balance support.
+				final float WRGBtotal[] = new float[4];
+				final int WRGBcount[] = new int[4];
+
+				for (int y = 0; y < chip.getSizeY(); y += 2) {
+					for (int x = 0; x < chip.getSizeX(); x += 2) {
+						// We always look at a full 2x2 square and update all the required counters.
+						WRGBtotal[colorFilterSequence[0].ordinal()] += image[getPixMapIndex(x, y)];
+						WRGBtotal[colorFilterSequence[1].ordinal()] += image[getPixMapIndex(x + 1, y)];
+						WRGBtotal[colorFilterSequence[2].ordinal()] += image[getPixMapIndex(x + 1, y + 1)];
+						WRGBtotal[colorFilterSequence[3].ordinal()] += image[getPixMapIndex(x, y + 1)];
+
+						// Also count how many times, since certain colors may appear twice (RGBG for example).
+						WRGBcount[colorFilterSequence[0].ordinal()]++;
+						WRGBcount[colorFilterSequence[1].ordinal()]++;
+						WRGBcount[colorFilterSequence[2].ordinal()]++;
+						WRGBcount[colorFilterSequence[3].ordinal()]++;
+					}
+				}
+
+				// Normalize values, to account for double G for example (RGBG).
+				// WRGBtotal[ColorFilter.W.ordinal()] /= WRGBcount[ColorFilter.W.ordinal()]; // WHITE (currently
+				// unused).
+				WRGBtotal[ColorFilter.R.ordinal()] /= WRGBcount[ColorFilter.R.ordinal()]; // RED
+				WRGBtotal[ColorFilter.G.ordinal()] /= WRGBcount[ColorFilter.G.ordinal()]; // GREEN
+				WRGBtotal[ColorFilter.B.ordinal()] /= WRGBcount[ColorFilter.B.ordinal()]; // BLUE
+
+				// Calculate ratios between G/R and G/B. Ignore W for now.
+				final float G_R = WRGBtotal[ColorFilter.G.ordinal()] / WRGBtotal[ColorFilter.R.ordinal()];
+				final float G_B = WRGBtotal[ColorFilter.G.ordinal()] / WRGBtotal[ColorFilter.B.ordinal()];
+
+				for (int y = 0; y < chip.getSizeY(); y += 2) {
+					for (int x = 0; x < chip.getSizeX(); x += 2) {
+						// Apply ratios to R and B pixels. Ignore W for now.
+						if (colorFilterSequence[0] == ColorFilter.R) {
+							image[getPixMapIndex(x, y)] *= G_R;
+						}
+						if (colorFilterSequence[1] == ColorFilter.R) {
+							image[getPixMapIndex(x + 1, y)] *= G_R;
+						}
+						if (colorFilterSequence[2] == ColorFilter.R) {
+							image[getPixMapIndex(x + 1, y + 1)] *= G_R;
+						}
+						if (colorFilterSequence[3] == ColorFilter.R) {
+							image[getPixMapIndex(x, y + 1)] *= G_R;
+						}
+
+						if (colorFilterSequence[0] == ColorFilter.B) {
+							image[getPixMapIndex(x, y)] *= G_B;
+						}
+						if (colorFilterSequence[1] == ColorFilter.B) {
+							image[getPixMapIndex(x + 1, y)] *= G_B;
+						}
+						if (colorFilterSequence[2] == ColorFilter.B) {
+							image[getPixMapIndex(x + 1, y + 1)] *= G_B;
+						}
+						if (colorFilterSequence[3] == ColorFilter.B) {
+							image[getPixMapIndex(x, y + 1)] *= G_B;
+						}
+					}
+				}
+			}
+
+			// Color interpolation support.
 			for (int y = 0; y < chip.getSizeY(); y++) {
 				for (int x = 0; x < chip.getSizeX(); x++) {
 					if ((y % 2) == 0) {
@@ -587,40 +622,25 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 					image[getPixMapIndex(x, y) + 3] = 1;
 				}
 			}
-		}
 
-		if (isColorCorrection() && !isSeparateAPSByColor()) {
-			final float[] image = pixBuffer.array();
+			if (isColorCorrection()) {
+				for (int y = 0; y < chip.getSizeY(); y++) {
+					for (int x = 0; x < chip.getSizeX(); x++) {
+						// Get current RGB values, since we modify them later on.
+						final float R_original = image[getPixMapIndex(x, y)];
+						final float G_original = image[getPixMapIndex(x, y) + 1];
+						final float B_original = image[getPixMapIndex(x, y) + 2];
 
-			for (int y = 0; y < chip.getSizeY(); y++) {
-				for (int x = 0; x < chip.getSizeX(); x++) {
-					// Get current RGB values, since we modify them later on.
-					final float R_original = image[getPixMapIndex(x, y)];
-					final float G_original = image[getPixMapIndex(x, y) + 1];
-					final float B_original = image[getPixMapIndex(x, y) + 2];
-
-					image[getPixMapIndex(x, y)] = (((1.75f * R_original) + (-0.19f * G_original)) + (-0.56f * B_original)) + 0.15f;
-					image[getPixMapIndex(x, y) + 1] = (-0.61f * R_original) + (1.39f * G_original) + (0.07f * B_original) + 0.21f;
-					image[getPixMapIndex(x, y) + 2] = ((-0.42f * R_original) + (-1.13f * G_original)) + (2.87f * B_original) + 0.18f;
-
-					// if (image[getPixMapIndex(x, y)] < 0) {
-					// image[getPixMapIndex(x, y)] = 0;
-					// }
-					// if (image[getPixMapIndex(x, y)] > 1) {
-					// image[getPixMapIndex(x, y)] = 1;
-					// }
-					// if (image[getPixMapIndex(x, y) + 1] < 0) {
-					// image[getPixMapIndex(x, y) + 1] = 0;
-					// }
-					// if (image[getPixMapIndex(x, y) + 1] > 1) {
-					// image[getPixMapIndex(x, y) + 1] = 1;
-					// }
-					// if (image[getPixMapIndex(x, y) + 2] < 0) {
-					// image[getPixMapIndex(x, y) + 2] = 0;
-					// }
-					// if (image[getPixMapIndex(x, y) + 2] > 1) {
-					// image[getPixMapIndex(x, y) + 2] = 1;
-					// }
+						image[getPixMapIndex(x, y)] = (colorCorrectionMatrix[0][0] * R_original)
+							+ (colorCorrectionMatrix[0][1] * G_original) + (colorCorrectionMatrix[0][2] * B_original)
+							+ colorCorrectionMatrix[0][3];
+						image[getPixMapIndex(x, y) + 1] = (colorCorrectionMatrix[1][0] * R_original)
+							+ (colorCorrectionMatrix[1][1] * G_original) + (colorCorrectionMatrix[1][2] * B_original)
+							+ colorCorrectionMatrix[1][3];
+						image[getPixMapIndex(x, y) + 2] = (colorCorrectionMatrix[2][0] * R_original)
+							+ (colorCorrectionMatrix[2][1] * G_original) + (colorCorrectionMatrix[2][2] * B_original)
+							+ colorCorrectionMatrix[2][3];
+					}
 				}
 			}
 		}
