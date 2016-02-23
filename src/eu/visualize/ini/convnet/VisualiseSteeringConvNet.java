@@ -73,7 +73,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     volatile private boolean apply_LNR_RNL_constraint = getBoolean("apply_LNR_RNL_constraint", true);
     volatile private boolean apply_CN_NC_constraint = getBoolean("apply_CN_NC_constraint", true);
     volatile private float LCRNstep = getFloat("LCRNstep", 1f);
-    private TobiLogger tobiLogger = new TobiLogger("Decisions", "Decisions of CNN sent to Predator robot Summit XL");
+    private final TobiLogger tobiLogger = new TobiLogger("Decisions", "Decisions of CNN sent to Predator robot Summit XL");
 
     public VisualiseSteeringConvNet(AEChip chip) {
         super(chip);
@@ -92,12 +92,16 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(udp, "apply_LNR_RNL_constraint", "force (override) network output classification to make sure there is no switching from L to N and to R or viceversa, since the predator will see the prey back from the same last seen steering output (it spins in the last seen direction)");
         setPropertyTooltip(udp, "apply_CN_NC_constraint", "force (override) network output classification to make sure there is no switching from C to N or viceversa directly");
         setPropertyTooltip(udp, "LCRNstep", "step from one state (LCR or N) to another (if 1, no lowpass filtering, if lower, then slower transitions)");
+        setPropertyTooltip(udp, "startLoggingUDPMessages", "start logging UDP messages to a text log file");
+        setPropertyTooltip(udp, "stopLoggingUDPMessages", "stop logging UDP messages");
 
         FilterChain chain = new FilterChain(chip);
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
         chain.add(targetLabeler);
         setEnclosedFilterChain(chain);
         apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
+        tobiLogger.setAbsoluteTimeEnabled(true);
+        tobiLogger.setNanotimeEnabled(false);
 //        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
     }
 
@@ -183,7 +187,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 //        if (dvsNet != null && dvsNet.outputLayer != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
 //            drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
 //        }
-        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .5f);
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .3f);
         MultilineAnnotationTextRenderer.setScale(.3f);
         MultilineAnnotationTextRenderer.renderMultilineString(String.format("Current state = [L: %6.1f]  [C: %6.1f]  [R: %6.1f]  [N: %6.1f]", LCRNstate[0], LCRNstate[1], LCRNstate[2], LCRNstate[3]));
         MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
@@ -350,8 +354,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                         seqNum = 0;
                     }
                     byte msg = (byte) (forceNetworkOutpout ? forcedNetworkOutputValue : net.outputLayer.maxActivatedUnit);
-                        tobiLogger.log(System.nanoTime() + " " + 1 + " " + net.outputLayer.maxActivatedUnit);
                     buf.put(msg);
+                    String s = String.format("%d\t%d", lastProcessedEventTimestamp, net.outputLayer.maxActivatedUnit);
+                    tobiLogger.log(s);
                     try {
 //                        log.info("sending buf="+buf+" to client="+client);
 //                        log.info("sending seqNum=" + seqNum + " with msg=" + msg);
@@ -721,27 +726,27 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         putBoolean("apply_LR_RL_constraint", apply_LR_RL_constraint);
     }
 
-    public void doLog() {
+    public void doStartLoggingUDPMessages() {
+        if (isSendUDPSteeringMessages() == false) {
+            JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "UDP output is not enabled yet; logging will only occur if sendUDPSteeringMessages is selected");
+        }
         if (apsDvsNet != null) {
             if (!apsDvsNet.networkRanOnce) {
                 JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Network must run at least once to correctly plot kernels (internal variables for indexing are computed at runtime)");
                 return;
             }
-            final DeepLearnCnnNetwork ref = apsDvsNet;
-            Runnable runnable = new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        setCursor(new Cursor(Cursor.WAIT_CURSOR));
-                        tobiLogger.setEnabled(true);
-                    } finally {
-                        setCursor(Cursor.getDefaultCursor());
-                    }
-                }
-
-            };
-            SwingUtilities.invokeLater(runnable);
+            tobiLogger.setEnabled(true);
+            tobiLogger.addComment("network is "+apsDvsNet.getXmlFilename());
+            tobiLogger.addComment("system.currentTimeMillis lastTimestampUs decisionLCRN");
         }
     }
-    
+
+    public void doStopLoggingUDPMessages() {
+        if (!tobiLogger.isEnabled()) {
+            log.info("Logging not enabled, no effect");
+            return;
+        }
+        tobiLogger.setEnabled(false);
+    }
+
 }

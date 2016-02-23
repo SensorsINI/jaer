@@ -62,6 +62,8 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     protected DvsSubsamplerToFrame dvsSubsampler = null;
     private int dvsColorScale = getInt("dvsColorScale", 200); // 1/dvsColorScale is amount each event color the timeslice in subsampled timeslice input
     private boolean softMaxOutput = getBoolean("softMaxOutput", false);
+    
+    protected int lastProcessedEventTimestamp=0;
 
     public DavisDeepLearnCnnProcessor(AEChip chip) {
         super(chip);
@@ -182,6 +184,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             final int sizeX = chip.getSizeX();
             final int sizeY = chip.getSizeY();
             for (BasicEvent e : in) {
+                lastProcessedEventTimestamp=e.getTimestamp();
                 PolarityEvent p = (PolarityEvent) e;
                 if (dvsSubsampler != null) {
                     dvsSubsampler.addEvent(p, sizeX, sizeY);
