@@ -136,6 +136,7 @@ public class TobiLogger {
         
     }
 
+    /** @see #setAbsoluteTimeEnabled(boolean) */
     public boolean isAbsoluteTimeEnabled() {
         return absoluteTimeEnabled;
     }
@@ -149,11 +150,12 @@ public class TobiLogger {
         this.absoluteTimeEnabled = absoluteTimeEnabled;
     }
 
+    /** @see #setNanotimeEnabled(boolean) */
     public boolean isNanotimeEnabled() {
         return nanotimeEnabled;
     }
 
-    /** Sets whether to use System.nanotime() or the (default) System.currentTimeMillis()
+    /** Sets whether to use and log System.nanotime() or the (default) System.currentTimeMillis()
      
      @param nanotimeEnabled true to use nanotime
      */
