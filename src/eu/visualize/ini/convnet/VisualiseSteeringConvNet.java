@@ -58,11 +58,11 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     volatile private boolean forceNetworkOutpout = getBoolean("forceNetworkOutpout", false);
     volatile private int forcedNetworkOutputValue = getInt("forcedNetworkOutputValue", 3); // default is prey invisible output
     private String host = getString("host", "localhost");
-    private int port = getInt("host", 5678);
+    private int port = getInt("port", 13331);
     private DatagramSocket socket = null;
     private InetSocketAddress client = null;
     private DatagramChannel channel = null;
-    private ByteBuffer buf = ByteBuffer.allocate(2);
+    private ByteBuffer udpBuf = ByteBuffer.allocate(2);
     private int seqNum = 0;
     private int[] decisionArray = new int[2];
     private int[] decisionLowPassArray = new int[3];
@@ -347,20 +347,24 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             applyConstraints(net);
             if (sendUDPSteeringMessages) {
                 if (checkClient()) { // if client not there, just continue - maybe it comes back
-                    buf.clear();
-                    buf.put((byte) (seqNum & 0xFF)); // mask bits to cast to unsigned byte value 0-255
+                    udpBuf.clear();
+                    udpBuf.put((byte) (seqNum & 0xFF)); // mask bits to cast to unsigned byte value 0-255
                     seqNum++;
                     if (seqNum > 255) {
                         seqNum = 0;
                     }
                     byte msg = (byte) (forceNetworkOutpout ? forcedNetworkOutputValue : net.outputLayer.maxActivatedUnit);
-                    buf.put(msg);
+                    udpBuf.put(msg);
                     String s = String.format("%d\t%d", lastProcessedEventTimestamp, net.outputLayer.maxActivatedUnit);
                     tobiLogger.log(s);
                     try {
 //                        log.info("sending buf="+buf+" to client="+client);
 //                        log.info("sending seqNum=" + seqNum + " with msg=" + msg);
-                        channel.send(buf, client);
+                        udpBuf.flip();
+                        int numBytesSent=channel.send(udpBuf, client);
+                        if(numBytesSent!=2){
+                            log.warning("only sent "+numBytesSent);
+                        }
                     } catch (IOException e) {
                         log.warning("Exception trying to send UDP datagram to ROS: " + e);
                     }
@@ -593,6 +597,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 return true;
             }
             client = new InetSocketAddress(host, port);
+            channel.connect(client);
             return true;
         } catch (Exception se) { // IllegalArgumentException or SecurityException
             log.warning("While checking client host=" + host + " port=" + port + " caught " + se.toString());
@@ -605,15 +610,24 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         channel = DatagramChannel.open();
         socket = channel.socket(); // bind to any available port because we will be sending datagrams with included host:port info
         socket.setTrafficClass(0x10 + 0x08); // low delay
-        log.info("opened channel on local port to send UDP messages to ROS. local port number =" + socket.getLocalPort());
+        log.info("opened channel on local port to send UDP messages to ROS.");
     }
 
     public void closeChannel() {
-        if (socket == null) {
-            return;
+        if (socket != null) {
+            log.info("closing local socket " + socket + " to UDP client");
+            socket.close();
+            socket = null;
         }
-        log.info("closing local socket " + socket + " to UDP client");
-        socket.close();
+
+        if (channel != null) {
+            try {
+                channel.close();
+            } catch (IOException ex) {
+                Logger.getLogger(VisualiseSteeringConvNet.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            channel = null;
+        }
     }
 
     /**
@@ -736,7 +750,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 return;
             }
             tobiLogger.setEnabled(true);
-            tobiLogger.addComment("network is "+apsDvsNet.getXmlFilename());
+            tobiLogger.addComment("network is " + apsDvsNet.getXmlFilename());
             tobiLogger.addComment("system.currentTimeMillis lastTimestampUs decisionLCRN");
         }
     }
