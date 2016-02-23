@@ -775,21 +775,25 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
 						// DVS COLOR SUPPORT.
 						if (isDVSColorFilter) {
-							if (((e.x % 2) == 0) && ((e.y % 2) == 0)) {
-								// Lower left.
-								e.setColorFilter(colorFilterSequence[0]);
+							if ((e.y % 2) == 0) {
+								if ((e.x % 2) == 0) {
+									// Lower left.
+									e.setColorFilter(colorFilterSequence[0]);
+								}
+								else {
+									// Lower right.
+									e.setColorFilter(colorFilterSequence[1]);
+								}
 							}
-							else if (((e.x % 2) == 1) && ((e.y % 2) == 0)) {
-								// Lower right.
-								e.setColorFilter(colorFilterSequence[1]);
-							}
-							else if (((e.x % 2) == 1) && ((e.y % 2) == 1)) {
-								// Upper right.
-								e.setColorFilter(colorFilterSequence[2]);
-							}
-							else { // No check needed, no other possibility exists.
-								// Upper left.
-								e.setColorFilter(colorFilterSequence[3]);
+							else {
+								if ((e.x % 2) == 0) {
+									// Upper left.
+									e.setColorFilter(colorFilterSequence[3]);
+								}
+								else {
+									// Upper right.
+									e.setColorFilter(colorFilterSequence[2]);
+								}
 							}
 						}
 
@@ -808,21 +812,25 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
 					ApsDvsEvent.ColorFilter ColorFilter = ApsDvsEvent.ColorFilter.W;
 
-					if (((x % 2) == 0) && ((y % 2) == 0)) {
-						// Lower left.
-						ColorFilter = colorFilterSequence[0];
+					if ((y % 2) == 0) {
+						if ((x % 2) == 0) {
+							// Lower left.
+							ColorFilter = colorFilterSequence[0];
+						}
+						else {
+							// Lower right.
+							ColorFilter = colorFilterSequence[1];
+						}
 					}
-					else if (((x % 2) == 1) && ((y % 2) == 0)) {
-						// Lower right.
-						ColorFilter = colorFilterSequence[1];
-					}
-					else if (((x % 2) == 1) && ((y % 2) == 1)) {
-						// Upper right.
-						ColorFilter = colorFilterSequence[2];
-					}
-					else { // No check needed, no other possibility exists.
-						// Upper left.
-						ColorFilter = colorFilterSequence[3];
+					else {
+						if ((x % 2) == 0) {
+							// Upper left.
+							ColorFilter = colorFilterSequence[3];
+						}
+						else {
+							// Upper right.
+							ColorFilter = colorFilterSequence[2];
+						}
 					}
 
 					final boolean pixFirst = firstFrameAddress(x, y); // First event of frame (addresses get flipped)
