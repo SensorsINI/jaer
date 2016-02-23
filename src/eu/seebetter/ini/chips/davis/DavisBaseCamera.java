@@ -775,26 +775,22 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
 						// DVS COLOR SUPPORT.
 						if (isDVSColorFilter) {
-							ApsDvsEvent.ColorFilter ColorFilter = ApsDvsEvent.ColorFilter.W;
-
 							if (((e.x % 2) == 0) && ((e.y % 2) == 0)) {
 								// Lower left.
-								ColorFilter = colorFilterSequence[0];
+								e.setColorFilter(colorFilterSequence[0]);
 							}
 							else if (((e.x % 2) == 1) && ((e.y % 2) == 0)) {
 								// Lower right.
-								ColorFilter = colorFilterSequence[1];
+								e.setColorFilter(colorFilterSequence[1]);
 							}
 							else if (((e.x % 2) == 1) && ((e.y % 2) == 1)) {
 								// Upper right.
-								ColorFilter = colorFilterSequence[2];
+								e.setColorFilter(colorFilterSequence[2]);
 							}
-							else if (((e.x % 2) == 0) && ((e.y % 2) == 1)) {
+							else { // No check needed, no other possibility exists.
 								// Upper left.
-								ColorFilter = colorFilterSequence[3];
+								e.setColorFilter(colorFilterSequence[3]);
 							}
-
-							e.setColorFilter(ColorFilter);
 						}
 
 						// autoshot triggering
@@ -824,7 +820,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 						// Upper right.
 						ColorFilter = colorFilterSequence[2];
 					}
-					else if (((x % 2) == 0) && ((y % 2) == 1)) {
+					else { // No check needed, no other possibility exists.
 						// Upper left.
 						ColorFilter = colorFilterSequence[3];
 					}

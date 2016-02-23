@@ -32,9 +32,19 @@ import net.sf.jaer.util.histogram.SimpleHistogram;
  * @author christian, tobi
  * @see ChipRendererDisplayMethod
  */
-public class DavisRGBW640Renderer extends AEFrameChipRenderer {
-	public DavisRGBW640Renderer(final AEChip chip) {
+public class DavisColorRenderer extends AEFrameChipRenderer {
+	// Special pixel arrangement, where DVS is only found once every four pixels.
+	private final boolean isDVSQuarterOfAPS;
+
+	// Color filter pattern arrangement.
+	// First lower left, then lower right, then upper right, then upper left.
+	private final ColorFilter[] colorFilterSequence;
+
+	public DavisColorRenderer(final AEChip chip, final boolean isDVSQuarterOfAPS, final ColorFilter[] colorFilterSequence) {
 		super(chip);
+
+		this.isDVSQuarterOfAPS = isDVSQuarterOfAPS;
+		this.colorFilterSequence = colorFilterSequence;
 	}
 
 	@Override
