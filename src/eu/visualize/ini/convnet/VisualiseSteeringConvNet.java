@@ -5,12 +5,14 @@
  */
 package eu.visualize.ini.convnet;
 
+import net.sf.jaer.util.TobiLogger;
 import java.awt.Color;
 import java.awt.Point;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import java.awt.Cursor;
 import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -21,6 +23,7 @@ import java.nio.channels.DatagramChannel;
 import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import net.sf.jaer.Description;
@@ -70,6 +73,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     volatile private boolean apply_LNR_RNL_constraint = getBoolean("apply_LNR_RNL_constraint", true);
     volatile private boolean apply_CN_NC_constraint = getBoolean("apply_CN_NC_constraint", true);
     volatile private float LCRNstep = getFloat("LCRNstep", 1f);
+    private TobiLogger tobiLogger = new TobiLogger("Decisions", "Decisions of CNN sent to Predator robot Summit XL");
 
     public VisualiseSteeringConvNet(AEChip chip) {
         super(chip);
@@ -233,7 +237,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         for (int i = 0; i < 4; i++) {
             if (i == currentDecision) {
                 LCRNstate[i] = LCRNstate[i] + LCRNstep;
-                if(LCRNstate[i]>1){
+                if (LCRNstate[i] > 1) {
                     LCRNstate[i] = 1;
                 }
                 if (LCRNstate[i] > maxLCRN) {
@@ -242,7 +246,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 }
             } else {
                 LCRNstate[i] = LCRNstate[i] - LCRNstep;
-                                if(LCRNstate[i]<0){
+                if (LCRNstate[i] < 0) {
                     LCRNstate[i] = 0;
                 }
                 if (LCRNstate[i] > maxLCRN) {
@@ -346,6 +350,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                         seqNum = 0;
                     }
                     byte msg = (byte) (forceNetworkOutpout ? forcedNetworkOutputValue : net.outputLayer.maxActivatedUnit);
+                        tobiLogger.log(System.nanoTime() + " " + 1 + " " + net.outputLayer.maxActivatedUnit);
                     buf.put(msg);
                     try {
 //                        log.info("sending buf="+buf+" to client="+client);
@@ -715,4 +720,28 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         this.apply_LR_RL_constraint = apply_LR_RL_constraint;
         putBoolean("apply_LR_RL_constraint", apply_LR_RL_constraint);
     }
+
+    public void doLog() {
+        if (apsDvsNet != null) {
+            if (!apsDvsNet.networkRanOnce) {
+                JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Network must run at least once to correctly plot kernels (internal variables for indexing are computed at runtime)");
+                return;
+            }
+            final DeepLearnCnnNetwork ref = apsDvsNet;
+            Runnable runnable = new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        setCursor(new Cursor(Cursor.WAIT_CURSOR));
+                        tobiLogger.setEnabled(true);
+                    } finally {
+                        setCursor(Cursor.getDefaultCursor());
+                    }
+                }
+
+            };
+            SwingUtilities.invokeLater(runnable);
+        }
+    }
+    
 }
