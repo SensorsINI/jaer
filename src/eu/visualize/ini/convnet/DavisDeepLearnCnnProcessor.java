@@ -62,8 +62,8 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     protected DvsSubsamplerToFrame dvsSubsampler = null;
     private int dvsColorScale = getInt("dvsColorScale", 200); // 1/dvsColorScale is amount each event color the timeslice in subsampled timeslice input
     private boolean softMaxOutput = getBoolean("softMaxOutput", false);
-    
-    protected int lastProcessedEventTimestamp=0;
+
+    protected int lastProcessedEventTimestamp = 0;
 
     public DavisDeepLearnCnnProcessor(AEChip chip) {
         super(chip);
@@ -98,7 +98,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
      * exported using Danny Neil's XML Matlab script cnntoxml.m.
      *
      */
-    public void doLoadApsDvsNetworkFromXML() {
+    synchronized public void doLoadApsDvsNetworkFromXML() {
         JFileChooser c = new JFileChooser(lastApsDvsNetXMLFilename);
         FileFilter filt = new FileNameExtensionFilter("XML File", "xml");
         c.addChoosableFileFilter(filt);
@@ -171,8 +171,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in
-    ) {
+    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!addedPropertyChangeListener) {
             ((AEFrameChipRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
             addedPropertyChangeListener = true;
@@ -184,7 +183,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             final int sizeX = chip.getSizeX();
             final int sizeY = chip.getSizeY();
             for (BasicEvent e : in) {
-                lastProcessedEventTimestamp=e.getTimestamp();
+                lastProcessedEventTimestamp = e.getTimestamp();
                 PolarityEvent p = (PolarityEvent) e;
                 if (dvsSubsampler != null) {
                     dvsSubsampler.addEvent(p, sizeX, sizeY);
@@ -215,7 +214,9 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     @Override
     public void resetFilter() {
-        if(dvsSubsampler!=null) dvsSubsampler.clear();
+        if (dvsSubsampler != null) {
+            dvsSubsampler.clear();
+        }
     }
 
     @Override
@@ -244,8 +245,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     }
 
     @Override
-    public void propertyChange(PropertyChangeEvent evt
-    ) {
+    synchronized public void propertyChange(PropertyChangeEvent evt) {
         // new activationsFrame is available, process it
         if (isFilterEnabled() && (apsDvsNet != null) && (processAPSFrames)) {
 //            float[] frame = frameExtractor.getNewFrame();
@@ -567,7 +567,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     }
 
     public void setSoftMaxOutput(boolean softMaxOutput) {
-        this.softMaxOutput=softMaxOutput;
+        this.softMaxOutput = softMaxOutput;
         putBoolean("softMaxOutput", softMaxOutput);
         if (apsDvsNet == null) {
             return;
