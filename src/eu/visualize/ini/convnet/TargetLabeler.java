@@ -104,6 +104,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     protected boolean showStatistics = getBoolean("showStatistics", true);
 
     private String lastDataFilename = null;
+    private boolean locationsLoadedFromFile=false;
 
     // file statistics
     private long firstInputStreamTimestamp = 0, lastInputStreamTimestamp = 0, inputStreamDuration = 0;
@@ -300,6 +301,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         Arrays.fill(labeledFractions, false);
         Arrays.fill(targetPresentInFractions, false);
         currentTargets.clear();
+        locationsLoadedFromFile=false;
     }
 
     synchronized public void doSaveLocationsAs() {
@@ -588,9 +590,11 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     /**
-     * Returns true if locations are specified already
+     * Returns true if any locations are specified already. However if there are no targets at all visible then also returns false.
+     * 
      *
      * @return true if there are locations specified
+     * @see #isLocationsLoadedFromFile() 
      */
     public boolean hasLocations() {
         return !targetLocations.isEmpty();
@@ -813,6 +817,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     mapDataFilenameToTargetFilename.put(lastDataFilename, f.getPath());
                 }
                 this.targetLocation=null;  // null out current location
+                locationsLoadedFromFile=true;
             } catch (FileNotFoundException ex) {
                 JOptionPane.showMessageDialog(glCanvas, ("couldn't find file " + f) == null ? "null" : f.toString() + ": got exception " + ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
             } catch (IOException ex) {
@@ -1022,6 +1027,21 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
      */
     public int getCurrentFrameNumber() {
         return currentFrameNumber;
+    }
+
+    /**
+     * False until locations are loaded from a file. Reset by clearLocations.
+     * @return the locationsLoadedFromFile true if data was loaded from a file successfully
+     */
+    public boolean isLocationsLoadedFromFile() {
+        return locationsLoadedFromFile;
+    }
+
+    /**
+     * @param locationsLoadedFromFile the locationsLoadedFromFile to set
+     */
+    public void setLocationsLoadedFromFile(boolean locationsLoadedFromFile) {
+        this.locationsLoadedFromFile = locationsLoadedFromFile;
     }
 
 }

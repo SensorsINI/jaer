@@ -187,17 +187,17 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 //        if (dvsNet != null && dvsNet.outputLayer != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
 //            drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
 //        }
-        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .3f);
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .5f);
         MultilineAnnotationTextRenderer.setScale(.3f);
-        MultilineAnnotationTextRenderer.renderMultilineString(String.format("Current state = [L: %6.1f]  [C: %6.1f]  [R: %6.1f]  [N: %6.1f]", LCRNstate[0], LCRNstate[1], LCRNstate[2], LCRNstate[3]));
-        MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
         if (showStatistics) {
-            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .5f);
+            MultilineAnnotationTextRenderer.renderMultilineString(String.format("Current state = [L: %6.1f]  [C: %6.1f]  [R: %6.1f]  [N: %6.1f]", LCRNstate[0], LCRNstate[1], LCRNstate[2], LCRNstate[3]));
             MultilineAnnotationTextRenderer.setScale(.3f);
             if (dvsSubsampler != null) {
-                MultilineAnnotationTextRenderer.renderMultilineString(String.format("DVS subsampler, inst/avg interval %6.1f/%6.1f ms", dvsSubsampler.getLastSubsamplerFrameIntervalUs() * 1e-3f, dvsSubsampler.getFilteredSubsamplerIntervalUs() * 1e-3f));
+                MultilineAnnotationTextRenderer.renderMultilineString(String.format("DVS subsampler, %d events, inst/avg interval %6.1f/%6.1f ms", getDvsMinEvents(), dvsSubsampler.getLastSubsamplerFrameIntervalUs() * 1e-3f, dvsSubsampler.getFilteredSubsamplerIntervalUs() * 1e-3f));
             }
-            MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
+            if (error.totalCount > 0) {
+                MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
+            }
         }
         //        if (totalDecisions > 0) {
 //            float errorRate = (float) incorrect / totalDecisions;
@@ -341,9 +341,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 
         } else {
             DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
-//            if (targetLabeler.hasLocations()) {
-            error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit, net.isLastInputTypeProcessedWasApsFrame());
-//            }
+            if (targetLabeler.isLocationsLoadedFromFile()) {
+                error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit, net.isLastInputTypeProcessedWasApsFrame());
+            }
             applyConstraints(net);
             if (sendUDPSteeringMessages) {
                 if (checkClient()) { // if client not there, just continue - maybe it comes back
@@ -361,9 +361,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 //                        log.info("sending buf="+buf+" to client="+client);
 //                        log.info("sending seqNum=" + seqNum + " with msg=" + msg);
                         udpBuf.flip();
-                        int numBytesSent=channel.send(udpBuf, client);
-                        if(numBytesSent!=2){
-                            log.warning("only sent "+numBytesSent);
+                        int numBytesSent = channel.send(udpBuf, client);
+                        if (numBytesSent != 2) {
+                            log.warning("only sent " + numBytesSent);
                         }
                     } catch (IOException e) {
                         log.warning("Exception trying to send UDP datagram to ROS: " + e);
