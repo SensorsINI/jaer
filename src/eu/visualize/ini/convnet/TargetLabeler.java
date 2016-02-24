@@ -48,6 +48,7 @@ import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
+import javafx.scene.input.KeyCode;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -83,9 +84,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private int currentFrameNumber = -1;
     private final String LAST_FOLDER_KEY = "lastFolder";
     TextRenderer textRenderer = null;
-    private int minTargetPointIntervalUs = getInt("minTargetPointIntervalUs", 10000);
+    private int minTargetPointIntervalUs = getInt("minTargetPointIntervalUs", 2000);
     private int targetRadius = getInt("targetRadius", 10);
-    private int maxTimeLastTargetLocationValidUs = getInt("maxTimeLastTargetLocationValidUs", 100000);
+    private int maxTimeLastTargetLocationValidUs = getInt("maxTimeLastTargetLocationValidUs", 50000);
     private int minSampleTimestamp = Integer.MAX_VALUE, maxSampleTimestamp = Integer.MIN_VALUE;
     private final int N_FRACTIONS = 1000;
     private boolean[] labeledFractions = new boolean[N_FRACTIONS];  // to annotate graphically what has been labeled so far in event stream
@@ -124,6 +125,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         setPropertyTooltip("saveLocationsAs", "show file dialog to save target locations to a new file");
         setPropertyTooltip("loadLocations", "loads locations from a file");
         setPropertyTooltip("clearLocations", "clears all existing targets");
+        setPropertyTooltip("resampleLabeling", "resamples the existing labeling to fill in null locations for unlabeled parts and fills in copies of latest location between samples, to specified minTargetPointIntervalUs");
         setPropertyTooltip("showLabeledFraction", "shows labeled part of input by a bar with red=unlabeled, green=labeled, blue=current position");
         setPropertyTooltip("showHelpText", "shows help text on screen. Uncheck to hide");
         setPropertyTooltip("showStatistics", "shows statistics");
@@ -340,6 +342,43 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         warnSave = false;
     }
 
+    public void doResampleLabeling() {
+        if (targetLocations == null) {
+            log.warning("null targetLocations - nothing to resample");
+            return;
+        }
+        if (targetLocations.size() == 0) {
+            log.warning("no locations labeled  - nothing to resample");
+            return;
+        }
+        Map.Entry<Integer, SimultaneouTargetLocations> prevTargets = targetLocations.firstEntry();
+        TreeMap<Integer, SimultaneouTargetLocations> newTargets = new TreeMap();
+        for (Map.Entry<Integer, SimultaneouTargetLocations> nextTargets : targetLocations.entrySet()) { // for each existing set of targets by timestamp key list
+            if (nextTargets.getKey() - prevTargets.getKey() > maxTimeLastTargetLocationValidUs) {
+                int n = (nextTargets.getKey() - prevTargets.getKey()) / minTargetPointIntervalUs;
+                for (int i = 0; i < n; i++) {
+                    int ts = prevTargets.getKey() + i * minTargetPointIntervalUs;
+                    SimultaneouTargetLocations s = new SimultaneouTargetLocations();
+                    TargetLocation t = new TargetLocation(prevTargets.getValue().get(0).frameNumber, ts, null, targetRadius, -1, -1);
+                    s.add(t);
+                    newTargets.put(ts, s);
+                }
+            } else if (nextTargets.getKey() - prevTargets.getKey() > minTargetPointIntervalUs) {
+                int n = (nextTargets.getKey() - prevTargets.getKey()) / minTargetPointIntervalUs;
+                for (int i = 0; i < n; i++) {
+                    int ts = prevTargets.getKey() + (i+1) * minTargetPointIntervalUs;
+                    newTargets.put(ts, prevTargets.getValue());
+                }
+            }
+
+            prevTargets = nextTargets;
+
+        }
+        targetLocations.putAll(newTargets);
+        fixLabeledFraction();
+
+    }
+
     synchronized public void doSaveLocations() {
         if (warnSave) {
             int ret = JOptionPane.showConfirmDialog(chip.getAeViewer().getFilterFrame(), "Really overwrite " + lastFileName + " ?", "Overwrite warning", JOptionPane.WARNING_MESSAGE);
@@ -435,7 +474,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                             } else if (targetLocation != t) {
                                 targetLocation = t;
                                 currentTargets.add(targetLocation);
-                                markDataHasTarget(targetLocation.timestamp);
+                                markDataHasTarget(targetLocation.timestamp, targetLocation.location!=null);
                             }
                         }
                     }
@@ -452,7 +491,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         currentTargets.add(newTargetLocation);
 
                     } else if (shiftPressed && !ctlPressed) { // specify no target present now but mark recording as reviewed
-                        markDataReviewedButNoTargetPresent(e.timestamp);
+                        newTargetLocation = new TargetLocation(getCurrentFrameNumber(), e.timestamp, null, currentTargetTypeID, targetRadius, targetRadius);
+                        addSample(e.timestamp, newTargetLocation);
+//                       markDataReviewedButNoTargetPresent(e.timestamp);
                     }
                     if (newTargetLocation != null) {
                         if (newTargetLocation.timestamp > maxSampleTimestamp) {
@@ -535,6 +576,28 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     @Override
     public void keyTyped(KeyEvent ke) {
+        // forward space and b (toggle direction of playback) to AEPlayer
+        int k = ke.getKeyChar();
+        log.info("keyChar=" + k + " keyEvent=" + ke.toString());
+        if (shiftPressed || ctlPressed) { // only forward to AEViewer if we are blocking ordinary input to AEViewer by labeling
+            switch (k) {
+                case KeyEvent.VK_SPACE:
+                    chip.getAeViewer().setPaused(!chip.getAeViewer().isPaused());
+                    break;
+                case KeyEvent.VK_B:
+                case 2:
+                    chip.getAeViewer().getAePlayer().toggleDirection();
+                    break;
+                case 'F':
+                case 6:
+                    chip.getAeViewer().getAePlayer().speedUp();
+                    break;
+                case 'S':
+                case 19:
+                    chip.getAeViewer().getAePlayer().slowDown();
+                    break;
+            }
+        }
     }
 
     @Override
@@ -644,7 +707,13 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
      * List of targets simultaneously present at a particular timestamp
      */
     private class SimultaneouTargetLocations extends ArrayList<TargetLocation> {
-
+        
+        boolean hasTargetWithLocation(){
+            for(TargetLocation t:this){
+                if(t.location!=null) return true;
+            }
+            return false;
+        }
     }
 
     class TargetLocation {
@@ -803,7 +872,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         tmpTargetLocation.location = null;
                     }
                     addSample(tmpTargetLocation.timestamp, tmpTargetLocation);
-                    markDataHasTarget(tmpTargetLocation.timestamp);
+                    markDataHasTarget(tmpTargetLocation.timestamp,tmpTargetLocation.location!=null);
                     if (tmpTargetLocation != null) {
                         if (tmpTargetLocation.timestamp > maxSampleTimestamp) {
                             maxSampleTimestamp = tmpTargetLocation.timestamp;
@@ -814,7 +883,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     }
                 }
                 long endMs = System.currentTimeMillis();
-                log.info("Took " + (endMs - startMs) + " ms to load " + f);
+                log.info("Took " + (endMs - startMs) + " ms to load " + f + " with " + targetLocations.size() + " SimultaneouTargetLocations entries");
                 if (lastDataFilename != null) {
                     mapDataFilenameToTargetFilename.put(lastDataFilename, f.getPath());
                 }
@@ -828,6 +897,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         } finally {
             setCursor(Cursor.getDefaultCursor());
         }
+        fixLabeledFraction();
     }
 
     int maxDataHasTargetWarningCount = 10;
@@ -846,7 +916,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         targetPresentInFractions[frac] = false;
     }
 
-    private void markDataHasTarget(int timestamp) {
+    private void markDataHasTarget(int timestamp, boolean visible) {
         if (inputStreamDuration == 0) {
             return;
         }
@@ -861,7 +931,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             return;
         }
         labeledFractions[frac] = true;
-        targetPresentInFractions[frac] = true;
+        targetPresentInFractions[frac] = visible;
     }
 
     private void fixLabeledFraction() {
@@ -875,8 +945,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     Arrays.fill(labeledFractions, false);
                     return;
                 }
-                for (int t : targetLocations.keySet()) {
-                    markDataHasTarget(t);
+                for (Map.Entry<Integer,SimultaneouTargetLocations> t : targetLocations.entrySet()) {
+                    markDataHasTarget(t.getKey(),t.getValue().hasTargetWithLocation());
                 }
             }
         }
@@ -976,7 +1046,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 break;
             case AEInputStream.EVENT_REWIND:
             case AEInputStream.EVENT_REPOSITIONED:
-                log.info("rewind to start or mark position or reposition event " + evt.toString());
+//                log.info("rewind to start or mark position or reposition event " + evt.toString());
                 if (evt.getNewValue() instanceof Long) {
                     long position = (long) evt.getNewValue();
                     if (chip.getAeInputStream() == null) {
