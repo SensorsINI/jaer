@@ -309,7 +309,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     synchronized public void doSaveLocationsAs() {
         String fn = mapDataFilenameToTargetFilename.get(lastDataFilename);
         if (fn == null) {
-            fn = DEFAULT_FILENAME;
+            fn = lastFileName==null?DEFAULT_FILENAME:lastFileName;
         }
         JFileChooser c = new JFileChooser(fn);
         c.setSelectedFile(new File(fn));
