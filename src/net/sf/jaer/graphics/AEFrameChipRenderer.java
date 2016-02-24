@@ -55,8 +55,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 	 * Set true after we have added a property change listener
 	 */
 	protected boolean addedPropertyChangeListener = false;
-	public int textureWidth; // due to hardware acceloration reasons, has to be a 2^x with x a natural number
-	public int textureHeight; // due to hardware acceloration reasons, has to be a 2^x with x a natural number
+	public int textureWidth; // due to hardware acceleration reasons, has to be a 2^x with x a natural number
+	public int textureHeight; // due to hardware acceleration reasons, has to be a 2^x with x a natural number
 
 	/**
 	 * Fields used to reduce method calls
@@ -726,7 +726,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 	 */
 	@Override
 	public int getPixMapIndex(final int x, final int y) {
-		return 4 * (x + (y * textureWidth));
+		return 4 * ((y * textureWidth) + x);
 	}
 
 	/**

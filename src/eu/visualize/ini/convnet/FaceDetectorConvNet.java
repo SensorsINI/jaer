@@ -9,11 +9,14 @@ import java.awt.Color;
 import java.awt.Point;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+
+import javax.swing.SwingUtilities;
+
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
-import javax.swing.SwingUtilities;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -98,14 +101,16 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
-        if(targetLabeler!=null) targetLabeler.annotate(drawable);
+        if(targetLabeler!=null) {
+			targetLabeler.annotate(drawable);
+		}
         if (hideOutput) {
             return;
         }
         GL2 gl = drawable.getGL().getGL2();
         checkBlend(gl);
         int sy = chip.getSizeY();
-        if (apsDvsNet != null && apsDvsNet.outputLayer!=null && apsDvsNet.outputLayer.activations != null && isProcessAPSFrames()) {
+        if ((apsDvsNet != null) && (apsDvsNet.outputLayer!=null) && (apsDvsNet.outputLayer.activations != null) && isProcessAPSFrames()) {
             drawDecisionOutput(gl, sy, apsDvsNet, Color.RED);
         }
 
@@ -172,7 +177,7 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
     }
 
     @Override
-    public void propertyChange(PropertyChangeEvent evt) {
+    public synchronized void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName() != DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
             super.propertyChange(evt);
         } else {
