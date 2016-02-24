@@ -48,7 +48,6 @@ import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
-import javafx.scene.input.KeyCode;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -354,19 +353,19 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         Map.Entry<Integer, SimultaneouTargetLocations> prevTargets = targetLocations.firstEntry();
         TreeMap<Integer, SimultaneouTargetLocations> newTargets = new TreeMap();
         for (Map.Entry<Integer, SimultaneouTargetLocations> nextTargets : targetLocations.entrySet()) { // for each existing set of targets by timestamp key list
-            if (nextTargets.getKey() - prevTargets.getKey() > maxTimeLastTargetLocationValidUs) {
+            if ((nextTargets.getKey() - prevTargets.getKey()) > maxTimeLastTargetLocationValidUs) {
                 int n = (nextTargets.getKey() - prevTargets.getKey()) / minTargetPointIntervalUs;
                 for (int i = 0; i < n; i++) {
-                    int ts = prevTargets.getKey() + i * minTargetPointIntervalUs;
+                    int ts = prevTargets.getKey() + (i * minTargetPointIntervalUs);
                     SimultaneouTargetLocations s = new SimultaneouTargetLocations();
                     TargetLocation t = new TargetLocation(prevTargets.getValue().get(0).frameNumber, ts, null, targetRadius, -1, -1);
                     s.add(t);
                     newTargets.put(ts, s);
                 }
-            } else if (nextTargets.getKey() - prevTargets.getKey() > minTargetPointIntervalUs) {
+            } else if ((nextTargets.getKey() - prevTargets.getKey()) > minTargetPointIntervalUs) {
                 int n = (nextTargets.getKey() - prevTargets.getKey()) / minTargetPointIntervalUs;
                 for (int i = 0; i < n; i++) {
-                    int ts = prevTargets.getKey() + (i+1) * minTargetPointIntervalUs;
+                    int ts = prevTargets.getKey() + ((i+1) * minTargetPointIntervalUs);
                     newTargets.put(ts, prevTargets.getValue());
                 }
             }
@@ -707,10 +706,12 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
      * List of targets simultaneously present at a particular timestamp
      */
     private class SimultaneouTargetLocations extends ArrayList<TargetLocation> {
-        
+
         boolean hasTargetWithLocation(){
             for(TargetLocation t:this){
-                if(t.location!=null) return true;
+                if(t.location!=null) {
+					return true;
+				}
             }
             return false;
         }
