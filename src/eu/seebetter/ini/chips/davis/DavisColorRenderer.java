@@ -49,6 +49,23 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 	// Color correction values matrix -> 3 colors (RGB) x 4 values.
 	private final float[][] colorCorrectionMatrix;
 
+	// Given a pixel being at positions 0, 1, 2, 3 in the same arrangement as in colorFilterSequence,
+	// what is its color and the color of all its neighbors? This four tables pre-compute that for
+	// fast lookup later on.
+	private final static int NEIGHBORHOOD_SIZE = 9;
+
+	private final ColorFilter[] colors0 = new ColorFilter[DavisColorRenderer.NEIGHBORHOOD_SIZE];
+	private final ColorFilter[] colors1 = new ColorFilter[DavisColorRenderer.NEIGHBORHOOD_SIZE];
+	private final ColorFilter[] colors2 = new ColorFilter[DavisColorRenderer.NEIGHBORHOOD_SIZE];
+	private final ColorFilter[] colors3 = new ColorFilter[DavisColorRenderer.NEIGHBORHOOD_SIZE];
+
+	// Given a pixel, what is its R or G or B color value, as well as the corresponding color values
+	// of all its neighbors? Held in this array for fast lookup and to have the same structure as
+	// the color information above.
+	private final float[] valuesR = new float[DavisColorRenderer.NEIGHBORHOOD_SIZE];
+	private final float[] valuesG = new float[DavisColorRenderer.NEIGHBORHOOD_SIZE];
+	private final float[] valuesB = new float[DavisColorRenderer.NEIGHBORHOOD_SIZE];
+
 	public DavisColorRenderer(final AEChip chip, final boolean isDVSQuarterOfAPS, final ColorFilter[] colorFilterSequence,
 		final boolean isAPSSpecialReadout, final float[][] colorCorrectionMatrix) {
 		super(chip);
@@ -62,7 +79,7 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 			throw new RuntimeException("ColorCorrectionMatrix must have 3 elements (3 colors, RGB).");
 		}
 
-		for (float[] colorCorrectionMatrixInternal : colorCorrectionMatrix) {
+		for (final float[] colorCorrectionMatrixInternal : colorCorrectionMatrix) {
 			if (colorCorrectionMatrixInternal.length != 4) {
 				throw new RuntimeException("ColorCorrectionMatrix sub-array must have 4 elements (4 correction values).");
 			}
@@ -72,6 +89,47 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 		this.colorFilterSequence = colorFilterSequence;
 		this.isAPSSpecialReadout = isAPSSpecialReadout;
 		this.colorCorrectionMatrix = colorCorrectionMatrix;
+
+		// Pre-compute all the possible color patterns of the neighbors.
+		colors0[0] = colorFilterSequence[2];
+		colors0[1] = colorFilterSequence[3];
+		colors0[2] = colorFilterSequence[2];
+		colors0[3] = colorFilterSequence[1];
+		colors0[4] = colorFilterSequence[0];
+		colors0[5] = colorFilterSequence[1];
+		colors0[6] = colorFilterSequence[2];
+		colors0[7] = colorFilterSequence[3];
+		colors0[8] = colorFilterSequence[2];
+
+		colors1[0] = colorFilterSequence[3];
+		colors1[1] = colorFilterSequence[2];
+		colors1[2] = colorFilterSequence[3];
+		colors1[3] = colorFilterSequence[0];
+		colors1[4] = colorFilterSequence[1];
+		colors1[5] = colorFilterSequence[0];
+		colors1[6] = colorFilterSequence[3];
+		colors1[7] = colorFilterSequence[2];
+		colors1[8] = colorFilterSequence[3];
+
+		colors2[0] = colorFilterSequence[0];
+		colors2[1] = colorFilterSequence[1];
+		colors2[2] = colorFilterSequence[0];
+		colors2[3] = colorFilterSequence[3];
+		colors2[4] = colorFilterSequence[2];
+		colors2[5] = colorFilterSequence[3];
+		colors2[6] = colorFilterSequence[0];
+		colors2[7] = colorFilterSequence[1];
+		colors2[8] = colorFilterSequence[0];
+
+		colors3[0] = colorFilterSequence[1];
+		colors3[1] = colorFilterSequence[0];
+		colors3[2] = colorFilterSequence[1];
+		colors3[3] = colorFilterSequence[2];
+		colors3[4] = colorFilterSequence[3];
+		colors3[5] = colorFilterSequence[2];
+		colors3[6] = colorFilterSequence[1];
+		colors3[7] = colorFilterSequence[0];
+		colors3[8] = colorFilterSequence[1];
 	}
 
 	@Override
@@ -362,23 +420,30 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 		}
 
 		if (isSeparateAPSByColor()) {
-			final ColorFilter color = ((ApsDvsEvent) e).getColorFilter();
-
-			if (color == colorFilterSequence[0]) {
-				x = x / 2;
-				y = y / 2;
+			// Separate by using X/Y position, and not color, because some colors
+			// might appear twice (think G), and would then be mapped to same quadrant.
+			if ((y % 2) == 0) {
+				if ((x % 2) == 0) {
+					// Lower left.
+					x = x / 2;
+					y = y / 2;
+				}
+				else {
+					x = (x / 2) + (chip.getSizeX() / 2);
+					y = y / 2;
+				}
 			}
-			else if (color == colorFilterSequence[1]) {
-				x = (x / 2) + (chip.getSizeX() / 2);
-				y = y / 2;
-			}
-			else if (color == colorFilterSequence[2]) {
-				x = (x / 2) + (chip.getSizeX() / 2);
-				y = (y / 2) + (chip.getSizeY() / 2);
-			}
-			else { // No check here, only colorFilterSequence[3] possible here.
-				x = x / 2;
-				y = (y / 2) + (chip.getSizeY() / 2);
+			else {
+				if ((x % 2) == 0) {
+					// Upper left.
+					x = x / 2;
+					y = (y / 2) + (chip.getSizeY() / 2);
+				}
+				else {
+					// Upper right.
+					x = (x / 2) + (chip.getSizeX() / 2);
+					y = (y / 2) + (chip.getSizeY() / 2);
+				}
 			}
 		}
 
@@ -441,7 +506,7 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 
 				for (int y = 0; y < chip.getSizeY(); y += 2) {
 					for (int x = 0; x < chip.getSizeX(); x += 2) {
-						// Apply ratios to R and B pixels. Ignore W for now.
+						// Apply ratios to R and B pixels' R and B component values. Ignore W for now.
 						if (colorFilterSequence[0] == ColorFilter.R) {
 							image[getPixMapIndex(x, y)] *= G_R;
 						}
@@ -456,16 +521,16 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 						}
 
 						if (colorFilterSequence[0] == ColorFilter.B) {
-							image[getPixMapIndex(x, y)] *= G_B;
+							image[getPixMapIndex(x, y) + 2] *= G_B;
 						}
 						if (colorFilterSequence[1] == ColorFilter.B) {
-							image[getPixMapIndex(x + 1, y)] *= G_B;
+							image[getPixMapIndex(x + 1, y) + 2] *= G_B;
 						}
 						if (colorFilterSequence[2] == ColorFilter.B) {
-							image[getPixMapIndex(x + 1, y + 1)] *= G_B;
+							image[getPixMapIndex(x + 1, y + 1) + 2] *= G_B;
 						}
 						if (colorFilterSequence[3] == ColorFilter.B) {
-							image[getPixMapIndex(x, y + 1)] *= G_B;
+							image[getPixMapIndex(x, y + 1) + 2] *= G_B;
 						}
 					}
 				}
@@ -474,152 +539,163 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 			// Color interpolation support.
 			for (int y = 0; y < chip.getSizeY(); y++) {
 				for (int x = 0; x < chip.getSizeX(); x++) {
+					// What pixel am I? Get color information and color values on pixel
+					// itself and all its neighbors to pass to interpolation function.
+					final ColorFilter[] colors = new ColorFilter[DavisColorRenderer.NEIGHBORHOOD_SIZE];
+
+					// Copy right array over, so that we can modify values without impacting original.
 					if ((y % 2) == 0) {
-						// row 0, 2, 4 ... 478, from bottom of the image, contianing W and B
-						if ((x % 2) == 1) { // W
-							// interpolating R for W
-							if (y == 0) {
-								// bottom egde of W
-								image[getPixMapIndex(x, y)] = image[getPixMapIndex(x, y + 1)];
-							}
-							else {
-								// rest of W
-								image[getPixMapIndex(x, y)] = 0.5f * (image[getPixMapIndex(x, y + 1)] + image[getPixMapIndex(x, y - 1)]);
-							}
-							// interpolating B for W
-							if (x == (chip.getSizeX() - 1)) {
-								// right edge of W
-								image[getPixMapIndex(x, y) + 2] = image[getPixMapIndex(x - 1, y) + 2];
-							}
-							else {
-								// rest of W
-								image[getPixMapIndex(x, y) + 2] = 0.5f
-									* (image[getPixMapIndex(x - 1, y) + 2] + image[getPixMapIndex(x + 1, y) + 2]);
-							}
-							// interpolating G for W
-							if (y == 0) {
-								// bottom edge of W
-								if (x == (chip.getSizeX() - 1)) {
-									// bottom right corner of W
-									image[getPixMapIndex(x, y) + 1] = image[getPixMapIndex(x - 1, y + 1) + 1];
-								}
-								else {
-									// rest of the bottom edge of W
-									image[getPixMapIndex(x, y) + 1] = 0.5f
-										* (image[getPixMapIndex(x + 1, y + 1) + 1] + image[getPixMapIndex(x - 1, y + 1) + 1]);
-								}
-							}
-							else if (x == (chip.getSizeX() - 1)) {
-								// right edge of W excluding bottom right corner
-								image[getPixMapIndex(x, y) + 1] = 0.5f
-									* (image[getPixMapIndex(x - 1, y + 1) + 1] + image[getPixMapIndex(x - 1, y - 1) + 1]);
-							}
-							else {
-								// rest of W
-								image[getPixMapIndex(x, y) + 1] = 0.25f
-									* (image[getPixMapIndex(x + 1, y + 1) + 1] + image[getPixMapIndex(x + 1, y - 1) + 1]
-										+ image[getPixMapIndex(x - 1, y + 1) + 1] + image[getPixMapIndex(x - 1, y - 1) + 1]);
-							}
+						if ((x % 2) == 0) {
+							// Lower left.
+							System.arraycopy(colors0, 0, colors, 0, DavisColorRenderer.NEIGHBORHOOD_SIZE);
 						}
-						else { // B
-								// interpolating R for B
-							if (y == 0) {
-								// bottom edge of B
-								if (x == 0) {
-									// bottom left corner of B
-									image[getPixMapIndex(x, y)] = image[getPixMapIndex(x + 1, y + 1)];
-								}
-								else {
-									// rest of the bottom edge of B
-									image[getPixMapIndex(x, y)] = 0.5f
-										* (image[getPixMapIndex(x - 1, y + 1)] + image[getPixMapIndex(x + 1, y + 1)]);
-								}
-							}
-							else if (x == 0) {
-								// left edge of B excluding bottom left corner
-								image[getPixMapIndex(x, y)] = 0.5f
-									* (image[getPixMapIndex(x + 1, y + 1)] + image[getPixMapIndex(x + 1, y - 1)]);
-							}
-							else {
-								// rest of B
-								image[getPixMapIndex(x, y)] = 0.25f
-									* (image[getPixMapIndex(x - 1, y - 1)] + image[getPixMapIndex(x - 1, y + 1)]
-										+ image[getPixMapIndex(x + 1, y - 1)] + image[getPixMapIndex(x + 1, y + 1)]);
-							}
-							// interpolating G for B
-							if (y == 0) {
-								// bottom egde of B
-								image[getPixMapIndex(x, y) + 1] = image[getPixMapIndex(x, y + 1) + 1];
-							}
-							else {
-								// rest of B
-								image[getPixMapIndex(x, y) + 1] = 0.5f
-									* (image[getPixMapIndex(x, y - 1) + 1] + image[getPixMapIndex(x, y + 1) + 1]);
-							}
+						else {
+							// Lower right.
+							System.arraycopy(colors1, 0, colors, 0, DavisColorRenderer.NEIGHBORHOOD_SIZE);
 						}
 					}
 					else {
-						// row 1, 3, 5 ... 479, from bottom of the image, contianing R and G
-						if ((x % 2) == 1) { // R
-							// interpolation B for R
-							if (y == (chip.getSizeY() - 1)) {
-								// top edge of R
-								if (x == (chip.getSizeX() - 1)) {
-									// top right corner of R
-									image[getPixMapIndex(x, y) + 2] = image[getPixMapIndex(x - 1, y - 1) + 2];
-								}
-								else {
-									// rest of the top edge of R
-									image[getPixMapIndex(x, y) + 2] = 0.5f
-										* (image[getPixMapIndex(x - 1, y - 1) + 2] + image[getPixMapIndex(x + 1, y - 1) + 2]);
-								}
-							}
-							else if (x == (chip.getSizeX() - 1)) {
-								// right edge of R excluding top right corner
-								image[getPixMapIndex(x, y) + 2] = 0.5f
-									* (image[getPixMapIndex(x - 1, y + 1) + 2] + image[getPixMapIndex(x - 1, y - 1) + 2]);
-							}
-							else {
-								// rest of R
-								image[getPixMapIndex(x, y) + 2] = 0.25f
-									* (image[getPixMapIndex(x - 1, y - 1) + 2] + image[getPixMapIndex(x - 1, y + 1) + 2]
-										+ image[getPixMapIndex(x + 1, y - 1) + 2] + image[getPixMapIndex(x + 1, y + 1) + 2]);
-							}
-							// interpolating G for R
-							if (x == (chip.getSizeX() - 1)) {
-								// right egde of R
-								image[getPixMapIndex(x, y) + 1] = image[getPixMapIndex(x - 1, y) + 1];
-							}
-							else {
-								// rest of R
-								image[getPixMapIndex(x, y) + 1] = 0.5f
-									* (image[getPixMapIndex(x - 1, y) + 1] + image[getPixMapIndex(x + 1, y) + 1]);
-							}
+						if ((x % 2) == 0) {
+							// Upper left.
+							System.arraycopy(colors3, 0, colors, 0, DavisColorRenderer.NEIGHBORHOOD_SIZE);
 						}
-						else { // G
-								// interpolating R for G
-							if (x == 0) {
-								// left egde of G
-								image[getPixMapIndex(x, y)] = image[getPixMapIndex(x + 1, y)];
-							}
-							else {
-								// rest of G
-								image[getPixMapIndex(x, y)] = 0.5f * (image[getPixMapIndex(x - 1, y)] + image[getPixMapIndex(x + 1, y)]);
-							}
-							// interpolating B for G
-							if (y == (chip.getSizeY() - 1)) {
-								// top egde of G
-								image[getPixMapIndex(x, y) + 2] = image[getPixMapIndex(x, y - 1) + 2];
-							}
-							else {
-								// rest of G
-								image[getPixMapIndex(x, y) + 2] = 0.5f
-									* (image[getPixMapIndex(x, y - 1) + 2] + image[getPixMapIndex(x, y + 1) + 2]);
-							}
+						else {
+							// Upper right.
+							System.arraycopy(colors2, 0, colors, 0, DavisColorRenderer.NEIGHBORHOOD_SIZE);
 						}
 					}
 
-					image[getPixMapIndex(x, y) + 3] = 1;
+					// Handle borders, by setting color filter value to NULL for pixels outside image edge.
+					if (y == 0) {
+						colors[6] = null;
+						colors[7] = null;
+						colors[8] = null;
+					}
+					else if (y == (chip.getSizeY() - 1)) {
+						colors[0] = null;
+						colors[1] = null;
+						colors[2] = null;
+					}
+
+					if (x == 0) {
+						colors[0] = null;
+						colors[3] = null;
+						colors[6] = null;
+					}
+					else if (x == (chip.getSizeX() - 1)) {
+						colors[2] = null;
+						colors[5] = null;
+						colors[8] = null;
+					}
+
+					// Color values for R/G/B channels are simply based on pixel position,
+					// the color filter pattern doesn't matter here. To avoid getting invalid
+					// pixel indexes and values when on image edges, we simply check that the
+					// color value is not NULL for that pixel. If it is, we just set the
+					// corresponding value to zero.
+					if (colors[0] != null) {
+						valuesR[0] = image[getPixMapIndex(x - 1, y + 1)];
+						valuesG[0] = image[getPixMapIndex(x - 1, y + 1) + 1];
+						valuesB[0] = image[getPixMapIndex(x - 1, y + 1) + 2];
+					}
+					else {
+						valuesR[0] = 0;
+						valuesG[0] = 0;
+						valuesB[0] = 0;
+					}
+
+					if (colors[1] != null) {
+						valuesR[1] = image[getPixMapIndex(x, y + 1)];
+						valuesG[1] = image[getPixMapIndex(x, y + 1) + 1];
+						valuesB[1] = image[getPixMapIndex(x, y + 1) + 2];
+					}
+					else {
+						valuesR[1] = 0;
+						valuesG[1] = 0;
+						valuesB[1] = 0;
+					}
+
+					if (colors[2] != null) {
+						valuesR[2] = image[getPixMapIndex(x + 1, y + 1)];
+						valuesG[2] = image[getPixMapIndex(x + 1, y + 1) + 1];
+						valuesB[2] = image[getPixMapIndex(x + 1, y + 1) + 2];
+					}
+					else {
+						valuesR[2] = 0;
+						valuesG[2] = 0;
+						valuesB[2] = 0;
+					}
+
+					if (colors[3] != null) {
+						valuesR[3] = image[getPixMapIndex(x - 1, y)];
+						valuesG[3] = image[getPixMapIndex(x - 1, y) + 1];
+						valuesB[3] = image[getPixMapIndex(x - 1, y) + 2];
+					}
+					else {
+						valuesR[3] = 0;
+						valuesG[3] = 0;
+						valuesB[3] = 0;
+					}
+
+					if (colors[4] != null) {
+						valuesR[4] = image[getPixMapIndex(x, y)];
+						valuesG[4] = image[getPixMapIndex(x, y) + 1];
+						valuesB[4] = image[getPixMapIndex(x, y) + 2];
+					}
+					else {
+						valuesR[4] = 0;
+						valuesG[4] = 0;
+						valuesB[4] = 0;
+					}
+
+					if (colors[5] != null) {
+						valuesR[5] = image[getPixMapIndex(x + 1, y)];
+						valuesG[5] = image[getPixMapIndex(x + 1, y) + 1];
+						valuesB[5] = image[getPixMapIndex(x + 1, y) + 2];
+					}
+					else {
+						valuesR[5] = 0;
+						valuesG[5] = 0;
+						valuesB[5] = 0;
+					}
+
+					if (colors[6] != null) {
+						valuesR[6] = image[getPixMapIndex(x - 1, y - 1)];
+						valuesG[6] = image[getPixMapIndex(x - 1, y - 1) + 1];
+						valuesB[6] = image[getPixMapIndex(x - 1, y - 1) + 2];
+					}
+					else {
+						valuesR[6] = 0;
+						valuesG[6] = 0;
+						valuesB[6] = 0;
+					}
+
+					if (colors[7] != null) {
+						valuesR[7] = image[getPixMapIndex(x, y - 1)];
+						valuesG[7] = image[getPixMapIndex(x, y - 1) + 1];
+						valuesB[7] = image[getPixMapIndex(x, y - 1) + 2];
+					}
+					else {
+						valuesR[7] = 0;
+						valuesG[7] = 0;
+						valuesB[7] = 0;
+					}
+
+					if (colors[8] != null) {
+						valuesR[8] = image[getPixMapIndex(x + 1, y - 1)];
+						valuesG[8] = image[getPixMapIndex(x + 1, y - 1) + 1];
+						valuesB[8] = image[getPixMapIndex(x + 1, y - 1) + 2];
+					}
+					else {
+						valuesR[8] = 0;
+						valuesG[8] = 0;
+						valuesB[8] = 0;
+					}
+
+					// Call R/G/B generators for each pixel.
+					image[getPixMapIndex(x, y)] = generateRForPixel(colors, valuesR);
+					image[getPixMapIndex(x, y) + 1] = generateGForPixel(colors, valuesG);
+					image[getPixMapIndex(x, y) + 2] = generateBForPixel(colors, valuesB);
 				}
 			}
 
@@ -647,5 +723,65 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 
 		// End frame, copy pixBuffer for display.
 		super.endFrame(ts);
+	}
+
+	protected float generateRForPixel(final ColorFilter[] pixelColors, final float[] redValues) {
+		// Simple for now, if we're already a pixel of this color, we don't do anything.
+		// If we aren't, we just average all neighbor pixels with that color.
+		if (pixelColors[4] == ColorFilter.R) {
+			return (redValues[4]);
+		}
+
+		float redSum = 0;
+		int redCount = 0;
+
+		for (int i = 0; i < DavisColorRenderer.NEIGHBORHOOD_SIZE; i++) {
+			if (pixelColors[i] == ColorFilter.R) {
+				redSum += redValues[i];
+				redCount++;
+			}
+		}
+
+		return (redSum / redCount);
+	}
+
+	protected float generateGForPixel(final ColorFilter[] pixelColors, final float[] greenValues) {
+		// Simple for now, if we're already a pixel of this color, we don't do anything.
+		// If we aren't, we just average all neighbor pixels with that color.
+		if (pixelColors[4] == ColorFilter.G) {
+			return (greenValues[4]);
+		}
+
+		float greenSum = 0;
+		int greenCount = 0;
+
+		for (int i = 0; i < DavisColorRenderer.NEIGHBORHOOD_SIZE; i++) {
+			if (pixelColors[i] == ColorFilter.G) {
+				greenSum += greenValues[i];
+				greenCount++;
+			}
+		}
+
+		return (greenSum / greenCount);
+	}
+
+	protected float generateBForPixel(final ColorFilter[] pixelColors, final float[] blueValues) {
+		// Simple for now, if we're already a pixel of this color, we don't do anything.
+		// If we aren't, we just average all neighbor pixels with that color.
+		if (pixelColors[4] == ColorFilter.B) {
+			return (blueValues[4]);
+		}
+
+		float blueSum = 0;
+		int blueCount = 0;
+
+		for (int i = 0; i < DavisColorRenderer.NEIGHBORHOOD_SIZE; i++) {
+			if (pixelColors[i] == ColorFilter.B) {
+				blueSum += blueValues[i];
+				blueCount++;
+			}
+		}
+
+		return (blueSum / blueCount);
 	}
 }

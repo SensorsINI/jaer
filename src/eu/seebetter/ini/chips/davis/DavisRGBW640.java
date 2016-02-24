@@ -27,7 +27,7 @@ public class DavisRGBW640 extends DavisBaseCamera {
 	public static final short HEIGHT_PIXELS = 480;
 	public static final ColorFilter[] COLOR_FILTER = { ColorFilter.B, ColorFilter.W, ColorFilter.R, ColorFilter.G };
 	public static final float[][] COLOR_CORRECTION = { { 1.75f, -0.19f, -0.56f, 0.15f }, { -0.61f, 1.39f, 0.07f, 0.21f },
-		{ -0.42f, -1.13f, 2.87f, 0.18f } };
+		{ -0.42f, -1.13f, 2.47f, 0.18f } };
 
 	public DavisRGBW640() {
 		setName("DavisRGBW640");
