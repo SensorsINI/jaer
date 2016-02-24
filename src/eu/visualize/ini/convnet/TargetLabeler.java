@@ -1087,6 +1087,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 } else {
                     log.warning("couldn't determine stream position after rewind from PropertyChangeEvent " + evt.toString());
                 }
+                shiftPressed=false;
+                ctlPressed=false; // disable labeling on rewind to prevent bad labels at start
                 break;
             case AEInputStream.EVENT_INIT:
                 fixLabeledFraction();
