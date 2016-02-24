@@ -205,6 +205,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         if (glCanvas == null) {
             return;
         }
+        glu=new GLU();
         if (isSelected()) {
             Point mp = glCanvas.getMousePosition();
             Point p = chipCanvas.getPixelFromPoint(mp);
