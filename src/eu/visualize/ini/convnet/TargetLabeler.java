@@ -205,7 +205,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         if (glCanvas == null) {
             return;
         }
-        glu=GLU.createGLU(gl); // TODO check if this solves problem of bad GL context in file preview
+        glu = GLU.createGLU(gl); // TODO check if this solves problem of bad GL context in file preview
         if (isSelected()) {
             Point mp = glCanvas.getMousePosition();
             Point p = chipCanvas.getPixelFromPoint(mp);
@@ -309,7 +309,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     synchronized public void doSaveLocationsAs() {
         String fn = mapDataFilenameToTargetFilename.get(lastDataFilename);
         if (fn == null) {
-            fn = lastFileName==null?DEFAULT_FILENAME:lastFileName;
+            fn = lastFileName == null ? DEFAULT_FILENAME : lastFileName;
         }
         JFileChooser c = new JFileChooser(fn);
         c.setSelectedFile(new File(fn));
@@ -372,11 +372,11 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             }
         }
         // handle time after last label
-        AEFileInputStream fileInputStream=chip.getAeViewer().getAePlayer().getAEInputStream();
+        AEFileInputStream fileInputStream = chip.getAeViewer().getAePlayer().getAEInputStream();
         int tFirstLabel = prevTargets != null ? prevTargets.getKey() : fileInputStream.getFirstTimestamp();
         int tLastLabel = fileInputStream.getLastTimestamp(); // TODO handle wrapped timestamp during recording
         int frameNumber = prevTargets != null ? prevTargets.getValue().get(0).frameNumber : -1;
-        int n = (tLastLabel-tFirstLabel) / minTargetPointIntervalUs;  // add this many total
+        int n = (tLastLabel - tFirstLabel) / minTargetPointIntervalUs;  // add this many total
         for (int i = 0; i < n; i++) {
             SimultaneouTargetLocations s = new SimultaneouTargetLocations();
             int ts = tFirstLabel + ((i + 1) * minTargetPointIntervalUs);
@@ -1087,8 +1087,15 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 } else {
                     log.warning("couldn't determine stream position after rewind from PropertyChangeEvent " + evt.toString());
                 }
-                shiftPressed=false;
-                ctlPressed=false; // disable labeling on rewind to prevent bad labels at start
+                shiftPressed = false;
+                ctlPressed = false; // disable labeling on rewind to prevent bad labels at start
+                if (evt.getPropertyName() == AEInputStream.EVENT_REWIND) {
+                    try {
+                        Thread.currentThread().sleep(1000);// time for preparing label
+
+                    } catch (InterruptedException e) {
+                    }
+                }
                 break;
             case AEInputStream.EVENT_INIT:
                 fixLabeledFraction();
