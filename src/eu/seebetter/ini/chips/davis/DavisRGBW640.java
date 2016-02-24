@@ -31,15 +31,15 @@ public class DavisRGBW640 extends DavisBaseCamera {
 
 	public DavisRGBW640() {
 		setName("DavisRGBW640");
-		setDefaultPreferencesFile("biasgenSettings/DavisRGBW640/DavisRGBW640.xml");
+		setDefaultPreferencesFile("biasgenSettings/DavisRGBW640/DavisRGBW640test6.xml");
 		setSizeX(DavisRGBW640.WIDTH_PIXELS);
 		setSizeY(DavisRGBW640.HEIGHT_PIXELS);
 
-		setEventExtractor(new DavisColorEventExtractor(this, true, false, COLOR_FILTER, true));
+		setEventExtractor(new DavisColorEventExtractor(this, true, false, DavisRGBW640.COLOR_FILTER, true));
 
 		setBiasgen(davisConfig = new DavisRGBW640Config(this));
 
-		davisRenderer = new DavisColorRenderer(this, true, COLOR_FILTER, true, COLOR_CORRECTION);
+		davisRenderer = new DavisColorRenderer(this, true, DavisRGBW640.COLOR_FILTER, true, DavisRGBW640.COLOR_CORRECTION);
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(davisRenderer);
 

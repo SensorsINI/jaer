@@ -8,11 +8,6 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
-/**
- * Base camera for Tower Davis208PixelParade cameras
- *
- * @author Diederik Paul Moeys, Luca Longinotti
- */
 @Description("Davis208PixelParade base class for 208x192 pixel sensitive APS-DVS DAVIS sensor")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class Davis208PixelParade extends DavisBaseCamera {
@@ -20,9 +15,6 @@ public class Davis208PixelParade extends DavisBaseCamera {
 	public static final short WIDTH_PIXELS = 208;
 	public static final short HEIGHT_PIXELS = 192;
 
-	/**
-	 * Creates a new instance.
-	 */
 	public Davis208PixelParade() {
 		setName("Davis208PixelParade");
 		setDefaultPreferencesFile("biasgenSettings/Davis208PixelParade/Davis208PixelParade.xml");
@@ -39,14 +31,6 @@ public class Davis208PixelParade extends DavisBaseCamera {
 		setApsLastPixelReadOut(new Point(0, getSizeY() - 1));
 	}
 
-	/**
-	 * Creates a new instance
-	 *
-	 * @param hardwareInterface
-	 *            an existing hardware interface. This constructor
-	 *            is preferred. It makes a new cDVSTest10Biasgen object to talk to the
-	 *            on-chip biasgen.
-	 */
 	public Davis208PixelParade(final HardwareInterface hardwareInterface) {
 		this();
 		setHardwareInterface(hardwareInterface);

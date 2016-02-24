@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package eu.seebetter.ini.chips.davis;
 
 import java.awt.Point;
@@ -13,11 +8,6 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
-/**
- * Davis640 camera
- *
- * @author tobi
- */
 @Description("DAVIS APS-DVS camera with 640x480 pixels")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class Davis640 extends DavisBaseCamera {
@@ -25,12 +15,9 @@ public class Davis640 extends DavisBaseCamera {
 	public static final short WIDTH_PIXELS = 640;
 	public static final short HEIGHT_PIXELS = 480;
 
-	/**
-	 * Creates a new instance.
-	 */
 	public Davis640() {
-		setName("DAVIS640");
-		setDefaultPreferencesFile("biasgenSettings/Davis640/Davis640.xml");
+		setName("Davis640");
+		setDefaultPreferencesFile("biasgenSettings/Davis640/DAVIS640_TestExp.xml");
 		setSizeX(Davis640.WIDTH_PIXELS);
 		setSizeY(Davis640.HEIGHT_PIXELS);
 
@@ -44,14 +31,6 @@ public class Davis640 extends DavisBaseCamera {
 		setApsLastPixelReadOut(new Point(0, 0));
 	}
 
-	/**
-	 * Creates a new instance of DAViS240
-	 *
-	 * @param hardwareInterface
-	 *            an existing hardware interface. This constructor
-	 *            is preferred. It makes a new cDVSTest10Biasgen object to talk to the
-	 *            on-chip biasgen.
-	 */
 	public Davis640(final HardwareInterface hardwareInterface) {
 		this();
 		setHardwareInterface(hardwareInterface);
