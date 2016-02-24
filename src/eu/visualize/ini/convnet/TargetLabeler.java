@@ -555,6 +555,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     public void setSelected(boolean yes) {
         super.setSelected(yes); // register/deregister mouse listeners
         if (yes) {
+            glCanvas.removeKeyListener(this); // only add ourselves once in case we were added on startup
             glCanvas.addKeyListener(this);
         } else {
             glCanvas.removeKeyListener(this);
