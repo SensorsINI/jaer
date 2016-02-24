@@ -205,7 +205,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         if (glCanvas == null) {
             return;
         }
-        glu=new GLU();
+        glu=GLU.createGLU(gl); // TODO check if this solves problem of bad GL context in file preview
         if (isSelected()) {
             Point mp = glCanvas.getMousePosition();
             Point p = chipCanvas.getPixelFromPoint(mp);
@@ -503,13 +503,14 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     TargetLocation newTargetLocation = null;
                     if (shiftPressed && ctlPressed && (mousePoint != null)) { // specify (additional) target present
                         // add a labeled location sample
-                        maybeEraseSamples(mostRecentTargetsBeforeThisEvent, e, lastNewTargetLocation);
+                        maybeEraseSamples(mostRecentTargetsBeforeThisEvent);
                         newTargetLocation = new TargetLocation(getCurrentFrameNumber(), e.timestamp, mousePoint, currentTargetTypeID, targetRadius, targetRadius);
 
                         addSample(e.timestamp, newTargetLocation);
                         currentTargets.add(newTargetLocation);
 
                     } else if (shiftPressed && !ctlPressed) { // specify no target present now but mark recording as reviewed
+                        maybeEraseSamples(mostRecentTargetsBeforeThisEvent);
                         newTargetLocation = new TargetLocation(getCurrentFrameNumber(), e.timestamp, null, currentTargetTypeID, targetRadius, targetRadius);
                         addSample(e.timestamp, newTargetLocation);
 //                       markDataReviewedButNoTargetPresent(e.timestamp);
@@ -542,21 +543,12 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         return in;
     }
 
-    private void maybeEraseSamples(Map.Entry<Integer, SimultaneouTargetLocations> entry, BasicEvent e, TargetLocation lastSampleAdded) {
+    private void maybeEraseSamples(Map.Entry<Integer, SimultaneouTargetLocations> entry) {
         if (!isEraseSamplesEnabled() || (entry == null)) {
             return;
         }
-        boolean removed = false;
-        for (TargetLocation t : entry.getValue()) { // ArrayList of TargetLocation
-            if ((t != null) && (t != lastSampleAdded) && ((e.timestamp - entry.getKey()) < minTargetPointIntervalUs)) {
-                log.info("removing previous " + entry.getValue() + " because entry.getValue()!=lastSampleAdded=" + (t != lastSampleAdded) + " && timestamp difference " + (e.timestamp - entry.getKey()) + " is < " + minTargetPointIntervalUs);
-                targetLocations.remove(entry.getKey());
-                removed = true;
-            }
-        }
-        if (removed) {
-            entry = null;
-        }
+        targetLocations.remove(entry.getKey());
+        fixLabeledFraction();
     }
 
     @Override
@@ -597,7 +589,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     public void keyTyped(KeyEvent ke) {
         // forward space and b (toggle direction of playback) to AEPlayer
         int k = ke.getKeyChar();
-        log.info("keyChar=" + k + " keyEvent=" + ke.toString());
+//        log.info("keyChar=" + k + " keyEvent=" + ke.toString());
         if (shiftPressed || ctlPressed) { // only forward to AEViewer if we are blocking ordinary input to AEViewer by labeling
             switch (k) {
                 case KeyEvent.VK_SPACE:
