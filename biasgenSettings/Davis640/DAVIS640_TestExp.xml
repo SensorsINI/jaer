@@ -13,10 +13,11 @@
             <map/>
             <node name="davis">
               <map>
+                <entry key="Davis640.APS.ADCTestMode" value="false"/>
                 <entry key="Davis640.APS.ColumnSettle" value="30"/>
-                <entry key="Davis640.APS.Exposure" value="5000"/>
-                <entry key="Davis640.APS.FrameDelay" value="1000"/>
-                <entry key="Davis640.APS.GlobalShutter" value="true"/>
+                <entry key="Davis640.APS.Exposure" value="2000"/>
+                <entry key="Davis640.APS.FrameDelay" value="0"/>
+                <entry key="Davis640.APS.GlobalShutter" value="false"/>
                 <entry key="Davis640.APS.NullSettle" value="3"/>
                 <entry key="Davis640.APS.RampReset" value="10"/>
                 <entry key="Davis640.APS.RampShortReset" value="false"/>
@@ -174,7 +175,7 @@
                 <entry key="Davis640.DVS.AckExtensionColumn" value="0"/>
                 <entry key="Davis640.DVS.AckExtensionRow" value="1"/>
                 <entry key="Davis640.DVS.ExternalAERControl" value="false"/>
-                <entry key="Davis640.DVS.FilterBackgroundActivity" value="false"/>
+                <entry key="Davis640.DVS.FilterBackgroundActivity" value="true"/>
                 <entry key="Davis640.DVS.FilterBackgroundActivityDeltaTime" value="20000"/>
                 <entry key="Davis640.DVS.FilterRowOnlyEvents" value="true"/>
                 <entry key="Davis640.DVS.Run" value="true"/>
@@ -200,7 +201,7 @@
                 <entry key="Davis640.IMU.Run" value="false"/>
                 <entry key="Davis640.IMU.SampleRateDivider" value="0"/>
                 <entry key="Davis640.IMU.TempStandby" value="false"/>
-                <entry key="Davis640.IMU.displayEnabled" value="true"/>
+                <entry key="Davis640.IMU.displayEnabled" value="false"/>
                 <entry key="Davis640.Masterbias.internalResistorUsed" value="false"/>
                 <entry key="Davis640.Masterbias.rint" value="46000.0"/>
                 <entry key="Davis640.Masterbias.rx" value="8200.0"/>
@@ -228,15 +229,16 @@
                 <entry key="Davis640.VDACBias.ApsCas.VdacBitValue" value="21"/>
                 <entry key="Davis640.VDACBias.apsOverflowLevel.BufBitValue" value="6"/>
                 <entry key="Davis640.VDACBias.apsOverflowLevel.VdacBitValue" value="27"/>
-                <entry key="Davis640.VideoControl.autoWhiteBalance" value="true"/>
-                <entry key="Davis640.VideoControl.colorCorrection" value="true"/>
+                <entry key="Davis640.VideoControl.autoWhiteBalance" value="false"/>
+                <entry key="Davis640.VideoControl.colorCorrection" value="false"/>
                 <entry key="Davis640.VideoControl.displayEvents" value="true"/>
                 <entry key="Davis640.VideoControl.displayFrames" value="true"/>
                 <entry key="Davis640.VideoControl.separateAPSByColor" value="false"/>
+                <entry key="DavisBaseCamera.autoshotThresholdEvents" value="0"/>
                 <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="0"/>
-                <entry key="FilterChain.timeLimitEnabled" value="false"/>
-                <entry key="FilterChain.timeLimitMs" value="10"/>
-                <entry key="Info.useLocalTimeZone" value="true"/>
+                <entry key="DavisVideoContrastController.brightness" value="0.0"/>
+                <entry key="DavisVideoContrastController.contrast" value="1.6500001"/>
+                <entry key="DavisVideoContrastController.useAutoContrast" value="false"/>
               </map>
             </node>
           </node>
