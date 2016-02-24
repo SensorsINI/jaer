@@ -153,6 +153,13 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 		// Support expanding one DVS event to cover a four pixel box, resulting in
 		// an expansion to four pixels, for visualization without holes.
 		final boolean expandToFour = isDVSQuarterOfAPS && !isSeparateAPSByColor();
+		int idx1 = 0, idx2 = 0, idx3 = 0;
+
+		if (expandToFour) {
+			idx1 = getPixMapIndex(e.x + 1, e.y);
+			idx2 = getPixMapIndex(e.x, e.y + 1);
+			idx3 = getPixMapIndex(e.x + 1, e.y + 1);
+		}
 
 		if (packet.getNumCellTypes() > 2) {
 			checkTypeColors(packet.getNumCellTypes());
@@ -164,15 +171,15 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 				map[index + 2] = 1.0f; // if(f[2]>1f) f[2]=1f;
 
 				if (expandToFour) {
-					map[getPixMapIndex(e.x + 1, e.y)] = 1.0f;
-					map[getPixMapIndex(e.x + 1, e.y) + 1] = 1.0f;
-					map[getPixMapIndex(e.x + 1, e.y) + 2] = 1.0f;
-					map[getPixMapIndex(e.x, e.y + 1)] = 1.0f;
-					map[getPixMapIndex(e.x, e.y + 1) + 1] = 1.0f;
-					map[getPixMapIndex(e.x, e.y + 1) + 2] = 1.0f;
-					map[getPixMapIndex(e.x + 1, e.y + 1)] = 1.0f;
-					map[getPixMapIndex(e.x + 1, e.y + 1) + 1] = 1.0f;
-					map[getPixMapIndex(e.x + 1, e.y + 1) + 2] = 1.0f;
+					map[idx1] = 1.0f;
+					map[idx1 + 1] = 1.0f;
+					map[idx1 + 2] = 1.0f;
+					map[idx2] = 1.0f;
+					map[idx2 + 1] = 1.0f;
+					map[idx2 + 2] = 1.0f;
+					map[idx3] = 1.0f;
+					map[idx3 + 1] = 1.0f;
+					map[idx3 + 2] = 1.0f;
 				}
 			}
 			else {
@@ -184,15 +191,15 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 				map[index + 2] = c[2]; // if(f[2]>1f) f[2]=1f;
 
 				if (expandToFour) {
-					map[getPixMapIndex(e.x + 1, e.y)] = c[0];
-					map[getPixMapIndex(e.x + 1, e.y) + 1] = c[1];
-					map[getPixMapIndex(e.x + 1, e.y) + 2] = c[2];
-					map[getPixMapIndex(e.x, e.y + 1)] = c[0];
-					map[getPixMapIndex(e.x, e.y + 1) + 1] = c[1];
-					map[getPixMapIndex(e.x, e.y + 1) + 2] = c[2];
-					map[getPixMapIndex(e.x + 1, e.y + 1)] = c[0];
-					map[getPixMapIndex(e.x + 1, e.y + 1) + 1] = c[1];
-					map[getPixMapIndex(e.x + 1, e.y + 1) + 2] = c[2];
+					map[idx1] = c[0];
+					map[idx1 + 1] = c[1];
+					map[idx1 + 2] = c[2];
+					map[idx2] = c[0];
+					map[idx2 + 1] = c[1];
+					map[idx2 + 2] = c[2];
+					map[idx3] = c[0];
+					map[idx3 + 1] = c[1];
+					map[idx3 + 2] = c[2];
 				}
 			}
 
@@ -200,9 +207,9 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 			map[index + 3] += normalizeEvent(alpha);
 
 			if (expandToFour) {
-				map[getPixMapIndex(e.x + 1, e.y) + 3] += alpha;
-				map[getPixMapIndex(e.x, e.y + 1) + 3] += alpha;
-				map[getPixMapIndex(e.x + 1, e.y + 1) + 3] += alpha;
+				map[idx1 + 3] += alpha;
+				map[idx2 + 3] += alpha;
+				map[idx3 + 3] += alpha;
 			}
 		}
 		else if (colorMode == ColorMode.ColorTime) {
@@ -223,18 +230,19 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 			map[index + 3] = 0.5f;
 
 			if (expandToFour) {
-				map[getPixMapIndex(e.x + 1, e.y)] = timeColors[ind][0];
-				map[getPixMapIndex(e.x + 1, e.y) + 1] = timeColors[ind][1];
-				map[getPixMapIndex(e.x + 1, e.y) + 2] = timeColors[ind][2];
-				map[getPixMapIndex(e.x, e.y + 1)] = timeColors[ind][0];
-				map[getPixMapIndex(e.x, e.y + 1) + 1] = timeColors[ind][1];
-				map[getPixMapIndex(e.x, e.y + 1) + 2] = timeColors[ind][2];
-				map[getPixMapIndex(e.x + 1, e.y + 1)] = timeColors[ind][0];
-				map[getPixMapIndex(e.x + 1, e.y + 1) + 1] = timeColors[ind][1];
-				map[getPixMapIndex(e.x + 1, e.y + 1) + 2] = timeColors[ind][2];
-				map[getPixMapIndex(e.x + 1, e.y) + 3] = 0.5f;
-				map[getPixMapIndex(e.x, e.y + 1) + 3] = 0.5f;
-				map[getPixMapIndex(e.x + 1, e.y + 1) + 3] = 0.5f;
+				map[idx1] = timeColors[ind][0];
+				map[idx1 + 1] = timeColors[ind][1];
+				map[idx1 + 2] = timeColors[ind][2];
+				map[idx2] = timeColors[ind][0];
+				map[idx2 + 1] = timeColors[ind][1];
+				map[idx2 + 2] = timeColors[ind][2];
+				map[idx3] = timeColors[ind][0];
+				map[idx3 + 1] = timeColors[ind][1];
+				map[idx3 + 2] = timeColors[ind][2];
+
+				map[idx1 + 3] = 0.5f;
+				map[idx2 + 3] = 0.5f;
+				map[idx3 + 3] = 0.5f;
 			}
 		}
 		else if (colorMode == ColorMode.GrayTime) {
@@ -248,18 +256,19 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 			map[index + 3] = 1.0f;
 
 			if (expandToFour) {
-				map[getPixMapIndex(e.x + 1, e.y)] = v;
-				map[getPixMapIndex(e.x + 1, e.y) + 1] = v;
-				map[getPixMapIndex(e.x + 1, e.y) + 2] = v;
-				map[getPixMapIndex(e.x, e.y + 1)] = v;
-				map[getPixMapIndex(e.x, e.y + 1) + 1] = v;
-				map[getPixMapIndex(e.x, e.y + 1) + 2] = v;
-				map[getPixMapIndex(e.x + 1, e.y + 1)] = v;
-				map[getPixMapIndex(e.x + 1, e.y + 1) + 1] = v;
-				map[getPixMapIndex(e.x + 1, e.y + 1) + 2] = v;
-				map[getPixMapIndex(e.x + 1, e.y) + 3] = 1.0f;
-				map[getPixMapIndex(e.x, e.y + 1) + 3] = 1.0f;
-				map[getPixMapIndex(e.x + 1, e.y + 1) + 3] = 1.0f;
+				map[idx1] = v;
+				map[idx1 + 1] = v;
+				map[idx1 + 2] = v;
+				map[idx2] = v;
+				map[idx2 + 1] = v;
+				map[idx2 + 2] = v;
+				map[idx3] = v;
+				map[idx3 + 1] = v;
+				map[idx3 + 2] = v;
+
+				map[idx1 + 3] = 1.0f;
+				map[idx2 + 3] = 1.0f;
+				map[idx3 + 3] = 1.0f;
 			}
 		}
 		else {
@@ -270,15 +279,15 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 				map[index + 2] = onColor[2];
 
 				if (expandToFour) {
-					map[getPixMapIndex(e.x + 1, e.y)] = onColor[0];
-					map[getPixMapIndex(e.x + 1, e.y) + 1] = onColor[1];
-					map[getPixMapIndex(e.x + 1, e.y) + 2] = onColor[2];
-					map[getPixMapIndex(e.x, e.y + 1)] = onColor[0];
-					map[getPixMapIndex(e.x, e.y + 1) + 1] = onColor[1];
-					map[getPixMapIndex(e.x, e.y + 1) + 2] = onColor[2];
-					map[getPixMapIndex(e.x + 1, e.y + 1)] = onColor[0];
-					map[getPixMapIndex(e.x + 1, e.y + 1) + 1] = onColor[1];
-					map[getPixMapIndex(e.x + 1, e.y + 1) + 2] = onColor[2];
+					map[idx1] = onColor[0];
+					map[idx1 + 1] = onColor[1];
+					map[idx1 + 2] = onColor[2];
+					map[idx2] = onColor[0];
+					map[idx2 + 1] = onColor[1];
+					map[idx2 + 2] = onColor[2];
+					map[idx3] = onColor[0];
+					map[idx3 + 1] = onColor[1];
+					map[idx3 + 2] = onColor[2];
 				}
 			}
 			else {
@@ -287,15 +296,15 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 				map[index + 2] = offColor[2];
 
 				if (expandToFour) {
-					map[getPixMapIndex(e.x + 1, e.y)] = offColor[0];
-					map[getPixMapIndex(e.x + 1, e.y) + 1] = offColor[1];
-					map[getPixMapIndex(e.x + 1, e.y) + 2] = offColor[2];
-					map[getPixMapIndex(e.x, e.y + 1)] = offColor[0];
-					map[getPixMapIndex(e.x, e.y + 1) + 1] = offColor[1];
-					map[getPixMapIndex(e.x, e.y + 1) + 2] = offColor[2];
-					map[getPixMapIndex(e.x + 1, e.y + 1)] = offColor[0];
-					map[getPixMapIndex(e.x + 1, e.y + 1) + 1] = offColor[1];
-					map[getPixMapIndex(e.x + 1, e.y + 1) + 2] = offColor[2];
+					map[idx1] = offColor[0];
+					map[idx1 + 1] = offColor[1];
+					map[idx1 + 2] = offColor[2];
+					map[idx2] = offColor[0];
+					map[idx2 + 1] = offColor[1];
+					map[idx2 + 2] = offColor[2];
+					map[idx3] = offColor[0];
+					map[idx3 + 1] = offColor[1];
+					map[idx3 + 2] = offColor[2];
 				}
 			}
 
@@ -303,9 +312,9 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 			map[index + 3] = normalizeEvent(alpha);
 
 			if (expandToFour) {
-				map[getPixMapIndex(e.x + 1, e.y) + 3] = alpha;
-				map[getPixMapIndex(e.x, e.y + 1) + 3] = alpha;
-				map[getPixMapIndex(e.x + 1, e.y + 1) + 3] = alpha;
+				map[idx1 + 3] = alpha;
+				map[idx2 + 3] = alpha;
+				map[idx3 + 3] = alpha;
 			}
 		}
 	}
@@ -466,6 +475,9 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 		return ((DavisDisplayConfigInterface) chip.getBiasgen()).isGlobalShutter();
 	}
 
+	// Allocate memory for this only once!
+	private final ColorFilter[] colors = new ColorFilter[DavisColorRenderer.NEIGHBORHOOD_SIZE];
+
 	@Override
 	protected void endFrame(final int ts) {
 		// No color operation makes sense if we separate APS by color!
@@ -510,26 +522,28 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 						if (colorFilterSequence[0] == ColorFilter.R) {
 							image[getPixMapIndex(x, y)] *= G_R;
 						}
+						else if (colorFilterSequence[0] == ColorFilter.B) {
+							image[getPixMapIndex(x, y) + 2] *= G_B;
+						}
+
 						if (colorFilterSequence[1] == ColorFilter.R) {
 							image[getPixMapIndex(x + 1, y)] *= G_R;
 						}
+						else if (colorFilterSequence[1] == ColorFilter.B) {
+							image[getPixMapIndex(x + 1, y) + 2] *= G_B;
+						}
+
 						if (colorFilterSequence[2] == ColorFilter.R) {
 							image[getPixMapIndex(x + 1, y + 1)] *= G_R;
 						}
+						else if (colorFilterSequence[2] == ColorFilter.B) {
+							image[getPixMapIndex(x + 1, y + 1) + 2] *= G_B;
+						}
+
 						if (colorFilterSequence[3] == ColorFilter.R) {
 							image[getPixMapIndex(x, y + 1)] *= G_R;
 						}
-
-						if (colorFilterSequence[0] == ColorFilter.B) {
-							image[getPixMapIndex(x, y) + 2] *= G_B;
-						}
-						if (colorFilterSequence[1] == ColorFilter.B) {
-							image[getPixMapIndex(x + 1, y) + 2] *= G_B;
-						}
-						if (colorFilterSequence[2] == ColorFilter.B) {
-							image[getPixMapIndex(x + 1, y + 1) + 2] *= G_B;
-						}
-						if (colorFilterSequence[3] == ColorFilter.B) {
+						else if (colorFilterSequence[3] == ColorFilter.B) {
 							image[getPixMapIndex(x, y + 1) + 2] *= G_B;
 						}
 					}
@@ -541,7 +555,6 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 				for (int x = 0; x < chip.getSizeX(); x++) {
 					// What pixel am I? Get color information and color values on pixel
 					// itself and all its neighbors to pass to interpolation function.
-					final ColorFilter[] colors = new ColorFilter[DavisColorRenderer.NEIGHBORHOOD_SIZE];
 
 					// Copy right array over, so that we can modify values without impacting original.
 					if ((y % 2) == 0) {
@@ -593,109 +606,74 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 					// pixel indexes and values when on image edges, we simply check that the
 					// color value is not NULL for that pixel. If it is, we just set the
 					// corresponding value to zero.
+					int index = 0;
+
 					if (colors[0] != null) {
-						valuesR[0] = image[getPixMapIndex(x - 1, y + 1)];
-						valuesG[0] = image[getPixMapIndex(x - 1, y + 1) + 1];
-						valuesB[0] = image[getPixMapIndex(x - 1, y + 1) + 2];
-					}
-					else {
-						valuesR[0] = 0;
-						valuesG[0] = 0;
-						valuesB[0] = 0;
+						index = getPixMapIndex(x - 1, y + 1);
+						valuesR[0] = image[index];
+						valuesG[0] = image[index + 1];
+						valuesB[0] = image[index + 2];
 					}
 
 					if (colors[1] != null) {
-						valuesR[1] = image[getPixMapIndex(x, y + 1)];
-						valuesG[1] = image[getPixMapIndex(x, y + 1) + 1];
-						valuesB[1] = image[getPixMapIndex(x, y + 1) + 2];
-					}
-					else {
-						valuesR[1] = 0;
-						valuesG[1] = 0;
-						valuesB[1] = 0;
+						index = getPixMapIndex(x, y + 1);
+						valuesR[1] = image[index];
+						valuesG[1] = image[index + 1];
+						valuesB[1] = image[index + 2];
 					}
 
 					if (colors[2] != null) {
-						valuesR[2] = image[getPixMapIndex(x + 1, y + 1)];
-						valuesG[2] = image[getPixMapIndex(x + 1, y + 1) + 1];
-						valuesB[2] = image[getPixMapIndex(x + 1, y + 1) + 2];
-					}
-					else {
-						valuesR[2] = 0;
-						valuesG[2] = 0;
-						valuesB[2] = 0;
+						index = getPixMapIndex(x + 1, y + 1);
+						valuesR[2] = image[index];
+						valuesG[2] = image[index + 1];
+						valuesB[2] = image[index + 2];
 					}
 
 					if (colors[3] != null) {
-						valuesR[3] = image[getPixMapIndex(x - 1, y)];
-						valuesG[3] = image[getPixMapIndex(x - 1, y) + 1];
-						valuesB[3] = image[getPixMapIndex(x - 1, y) + 2];
-					}
-					else {
-						valuesR[3] = 0;
-						valuesG[3] = 0;
-						valuesB[3] = 0;
-					}
-
-					if (colors[4] != null) {
-						valuesR[4] = image[getPixMapIndex(x, y)];
-						valuesG[4] = image[getPixMapIndex(x, y) + 1];
-						valuesB[4] = image[getPixMapIndex(x, y) + 2];
-					}
-					else {
-						valuesR[4] = 0;
-						valuesG[4] = 0;
-						valuesB[4] = 0;
+						index = getPixMapIndex(x - 1, y);
+						valuesR[3] = image[index];
+						valuesG[3] = image[index + 1];
+						valuesB[3] = image[index + 2];
 					}
 
 					if (colors[5] != null) {
-						valuesR[5] = image[getPixMapIndex(x + 1, y)];
-						valuesG[5] = image[getPixMapIndex(x + 1, y) + 1];
-						valuesB[5] = image[getPixMapIndex(x + 1, y) + 2];
-					}
-					else {
-						valuesR[5] = 0;
-						valuesG[5] = 0;
-						valuesB[5] = 0;
+						index = getPixMapIndex(x + 1, y);
+						valuesR[5] = image[index];
+						valuesG[5] = image[index + 1];
+						valuesB[5] = image[index + 2];
 					}
 
 					if (colors[6] != null) {
-						valuesR[6] = image[getPixMapIndex(x - 1, y - 1)];
-						valuesG[6] = image[getPixMapIndex(x - 1, y - 1) + 1];
-						valuesB[6] = image[getPixMapIndex(x - 1, y - 1) + 2];
-					}
-					else {
-						valuesR[6] = 0;
-						valuesG[6] = 0;
-						valuesB[6] = 0;
+						index = getPixMapIndex(x - 1, y - 1);
+						valuesR[6] = image[index];
+						valuesG[6] = image[index + 1];
+						valuesB[6] = image[index + 2];
 					}
 
 					if (colors[7] != null) {
-						valuesR[7] = image[getPixMapIndex(x, y - 1)];
-						valuesG[7] = image[getPixMapIndex(x, y - 1) + 1];
-						valuesB[7] = image[getPixMapIndex(x, y - 1) + 2];
-					}
-					else {
-						valuesR[7] = 0;
-						valuesG[7] = 0;
-						valuesB[7] = 0;
+						index = getPixMapIndex(x, y - 1);
+						valuesR[7] = image[index];
+						valuesG[7] = image[index + 1];
+						valuesB[7] = image[index + 2];
 					}
 
 					if (colors[8] != null) {
-						valuesR[8] = image[getPixMapIndex(x + 1, y - 1)];
-						valuesG[8] = image[getPixMapIndex(x + 1, y - 1) + 1];
-						valuesB[8] = image[getPixMapIndex(x + 1, y - 1) + 2];
-					}
-					else {
-						valuesR[8] = 0;
-						valuesG[8] = 0;
-						valuesB[8] = 0;
+						index = getPixMapIndex(x + 1, y - 1);
+						valuesR[8] = image[index];
+						valuesG[8] = image[index + 1];
+						valuesB[8] = image[index + 2];
 					}
 
+					// CENTER PIXEL (CURRENT). Can never be NULL.
+					index = getPixMapIndex(x, y);
+					valuesR[4] = image[index];
+					valuesG[4] = image[index + 1];
+					valuesB[4] = image[index + 2];
+
 					// Call R/G/B generators for each pixel.
-					image[getPixMapIndex(x, y)] = generateRForPixel(colors, valuesR);
-					image[getPixMapIndex(x, y) + 1] = generateGForPixel(colors, valuesG);
-					image[getPixMapIndex(x, y) + 2] = generateBForPixel(colors, valuesB);
+					image[index] = DavisColorRenderer.generateRForPixel(colors, valuesR);
+					image[index + 1] = DavisColorRenderer.generateGForPixel(colors, valuesG);
+					image[index + 2] = DavisColorRenderer.generateBForPixel(colors, valuesB);
 				}
 			}
 
@@ -703,19 +681,18 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 				for (int y = 0; y < chip.getSizeY(); y++) {
 					for (int x = 0; x < chip.getSizeX(); x++) {
 						// Get current RGB values, since we modify them later on.
-						final float R_original = image[getPixMapIndex(x, y)];
-						final float G_original = image[getPixMapIndex(x, y) + 1];
-						final float B_original = image[getPixMapIndex(x, y) + 2];
+						final int index = getPixMapIndex(x, y);
 
-						image[getPixMapIndex(x, y)] = (colorCorrectionMatrix[0][0] * R_original)
-							+ (colorCorrectionMatrix[0][1] * G_original) + (colorCorrectionMatrix[0][2] * B_original)
-							+ colorCorrectionMatrix[0][3];
-						image[getPixMapIndex(x, y) + 1] = (colorCorrectionMatrix[1][0] * R_original)
-							+ (colorCorrectionMatrix[1][1] * G_original) + (colorCorrectionMatrix[1][2] * B_original)
-							+ colorCorrectionMatrix[1][3];
-						image[getPixMapIndex(x, y) + 2] = (colorCorrectionMatrix[2][0] * R_original)
-							+ (colorCorrectionMatrix[2][1] * G_original) + (colorCorrectionMatrix[2][2] * B_original)
-							+ colorCorrectionMatrix[2][3];
+						final float R_original = image[index];
+						final float G_original = image[index + 1];
+						final float B_original = image[index + 2];
+
+						image[index] = (colorCorrectionMatrix[0][0] * R_original) + (colorCorrectionMatrix[0][1] * G_original)
+							+ (colorCorrectionMatrix[0][2] * B_original) + colorCorrectionMatrix[0][3];
+						image[index + 1] = (colorCorrectionMatrix[1][0] * R_original) + (colorCorrectionMatrix[1][1] * G_original)
+							+ (colorCorrectionMatrix[1][2] * B_original) + colorCorrectionMatrix[1][3];
+						image[index + 2] = (colorCorrectionMatrix[2][0] * R_original) + (colorCorrectionMatrix[2][1] * G_original)
+							+ (colorCorrectionMatrix[2][2] * B_original) + colorCorrectionMatrix[2][3];
 					}
 				}
 			}
@@ -725,7 +702,7 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 		super.endFrame(ts);
 	}
 
-	protected float generateRForPixel(final ColorFilter[] pixelColors, final float[] redValues) {
+	private static float generateRForPixel(final ColorFilter[] pixelColors, final float[] redValues) {
 		// Simple for now, if we're already a pixel of this color, we don't do anything.
 		// If we aren't, we just average all neighbor pixels with that color.
 		if (pixelColors[4] == ColorFilter.R) {
@@ -745,7 +722,7 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 		return (redSum / redCount);
 	}
 
-	protected float generateGForPixel(final ColorFilter[] pixelColors, final float[] greenValues) {
+	private static float generateGForPixel(final ColorFilter[] pixelColors, final float[] greenValues) {
 		// Simple for now, if we're already a pixel of this color, we don't do anything.
 		// If we aren't, we just average all neighbor pixels with that color.
 		if (pixelColors[4] == ColorFilter.G) {
@@ -765,7 +742,7 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 		return (greenSum / greenCount);
 	}
 
-	protected float generateBForPixel(final ColorFilter[] pixelColors, final float[] blueValues) {
+	private static float generateBForPixel(final ColorFilter[] pixelColors, final float[] blueValues) {
 		// Simple for now, if we're already a pixel of this color, we don't do anything.
 		// If we aren't, we just average all neighbor pixels with that color.
 		if (pixelColors[4] == ColorFilter.B) {
