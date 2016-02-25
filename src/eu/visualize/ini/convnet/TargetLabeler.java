@@ -462,7 +462,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 propertyChangeListenerAdded = true;
             }
         }
-
+        int nCurrentTargets=currentTargets.size();
 //        currentTargets.clear();
         for (BasicEvent e : in) {
             if (e.isSpecial()) {
@@ -513,6 +513,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         maybeEraseSamples(mostRecentTargetsBeforeThisEvent);
                         newTargetLocation = new TargetLocation(getCurrentFrameNumber(), e.timestamp, null, currentTargetTypeID, targetRadius, targetRadius);
                         addSample(e.timestamp, newTargetLocation);
+                        currentTargets.add(newTargetLocation);
 //                       markDataReviewedButNoTargetPresent(e.timestamp);
                     }
                     if (newTargetLocation != null) {
@@ -540,6 +541,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             }
         }
         currentTargets.removeAll(removeList);
+        if(currentTargets.size()!=nCurrentTargets) fixLabeledFraction();
         return in;
     }
 
@@ -548,6 +550,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             return;
         }
         targetLocations.remove(entry.getKey());
+        currentTargets.remove(entry.getValue());
         fixLabeledFraction();
     }
 
