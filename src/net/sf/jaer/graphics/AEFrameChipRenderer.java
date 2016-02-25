@@ -333,7 +333,6 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
 		final boolean displayEvents = isDisplayEvents();
 		final boolean displayFrames = isDisplayFrames();
-		final boolean paused = chip.getAeViewer().isPaused();
 		final boolean backwards = packetAPS.getDurationUs() < 0;
 
 		final Iterator allItr = packetAPS.fullIterator();
@@ -363,7 +362,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 					updateEventMaps(e);
 				}
 			}
-			else if (!backwards && isAPSPixel && displayFrames && !paused) { // TODO need to handle single step updates
+			else if (!backwards && isAPSPixel && displayFrames) { // TODO need to handle single step updates
 																				// here
 				updateFrameBuffer(e);
 			}
