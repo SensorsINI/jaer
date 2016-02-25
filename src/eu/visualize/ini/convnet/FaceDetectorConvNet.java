@@ -110,7 +110,7 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
         GL2 gl = drawable.getGL().getGL2();
         checkBlend(gl);
         int sy = chip.getSizeY();
-        if ((apsDvsNet != null) && (apsDvsNet.outputLayer!=null) && (apsDvsNet.outputLayer.activations != null) && isProcessAPSFrames()) {
+        if ((apsDvsNet != null) && (apsDvsNet.outputLayer!=null) && (apsDvsNet.outputLayer.activations != null)) {
             drawDecisionOutput(gl, sy, apsDvsNet, Color.RED);
         }
 
@@ -137,7 +137,7 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
         }
 
         float rad = chip.getMinSize() / 4, rim = 3;
-        final float brightness = net.outputLayer.activations[0] * 1f; // brightness scale
+        final float brightness = net.outputLayer.activations[1] * 1f; // brightness scale
         gl.glColor3f(brightness, brightness, brightness);
         gl.glPushMatrix();
         gl.glTranslatef(chip.getSizeX()/2, chip.getSizeY()/2, 0);
