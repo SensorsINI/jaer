@@ -797,8 +797,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                     log.warning("suppressing further warnings about NonMonotonicTimeException");
                 }
             }
-            // currentStartTimestamp = e.getCurrentTimestamp();
-            // mostRecentTimestamp = e.getCurrentTimestamp();
+             currentStartTimestamp = e.getCurrentTimestamp();
+             mostRecentTimestamp = e.getCurrentTimestamp();
             getSupport().firePropertyChange(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP, lastTimestamp, mostRecentTimestamp);
         } finally {
             // currentStartTimestamp = mostRecentTimestamp;
