@@ -301,7 +301,35 @@ public class Jaer3BufferParser {
 			Logger.getLogger(AEFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
 		}
 	} // Jaer3BufferParser
+        
+        /**
+	 * Constructor of the jaer3BufferParser
+	 *
+	 * @param byteBuffer
+	 * @param chip
+	 * @throws IOException
+	 */
+	public Jaer3BufferParser(ByteBuffer byteBuffer, AEChip chip) throws IOException {
+		in = byteBuffer;
+		in.order(ByteOrder.LITTLE_ENDIAN); // AER3.0 spec is little endian
+		this.chip = chip;
 
+		if (originalEventExtractor == null) {
+			originalEventExtractor = chip.getEventExtractor();
+		}
+		chip.setEventExtractor(new jaer3EventExtractor(chip));
+
+		currentPkt = searchPacketHeader(0, 1);
+
+		try {
+			numEvents = bufferNumEvents();
+		}
+		catch (IOException ex) {
+			log.warning(ex.toString());
+			Logger.getLogger(AEFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
+		}
+	} // Jaer3BufferParser
+        
 	/*
 	 * This method cannot always work, now AEInputFileStream takes over the job of restore the extractor
 	 * // @Override
@@ -312,9 +340,9 @@ public class Jaer3BufferParser {
 	 * // }
 	 * // }
 	 *
-	 *
-	 *
-	 * /**
+
+        
+        /**
 	 * gets the size of the stream in events
 	 *
 	 * @return size in events
@@ -350,21 +378,7 @@ public class Jaer3BufferParser {
 		// int nextPktPos = currentPktPos + packetHeader.eventNumber * packetHeader.eventSize + pkt.PKT_HEADER_SIZE;
 
 		// Now we get the correct currentPktPos
-		if (((currentPosition - currentPktPos) <= PKT_HEADER_SIZE) && ((currentPosition - currentPktPos) >= 0)) { // current
-																													// position
-																													// is
-																													// in
-																													// the
-																													// packet
-																													// header,
-																													// then
-																													// the
-																													// offset
-																													// is
-																													// the
-																													// first
-																													// event
-																													// offset
+		if (((currentPosition - currentPktPos) <= PKT_HEADER_SIZE) && ((currentPosition - currentPktPos) >= 0)) { 													// offset
 			return currentPktPos + PKT_HEADER_SIZE;
 		}
 
@@ -421,22 +435,7 @@ public class Jaer3BufferParser {
 		}
 
 		// Now we get the correct currentPktPos and the current position is in the header.
-		if (((currentPosition - currentPktPos) <= PKT_HEADER_SIZE) && ((currentPosition - currentPktPos) >= 0)) { // current
-																													// position
-																													// is
-																													// in
-																													// the
-																													// packet
-																													// header,
-																													// then
-																													// the
-																													// next
-																													// offset
-																													// is
-																													// the
-																													// first
-																													// event
-																													// offset
+		if (((currentPosition - currentPktPos) <= PKT_HEADER_SIZE) && ((currentPosition - currentPktPos) >= 0)) { 														// offset
 			return currentPktPos + PKT_HEADER_SIZE;
 		}
 
@@ -496,17 +495,6 @@ public class Jaer3BufferParser {
 
 		// This while loop is used to exclude the invalid events
 		while (((eventFirstInt & validMask) != 1) || (currentPkt.pktHeader.eventType == EventType.Imu6Event)) {
-			/*
-			 * try {
-			 * if(currentPkt.pktHeader.eventType != EventType.PolarityEvent) {
-			 * //in.position(currentPkt.pktPosition + currentPkt.pktHeader.eventNumber * currentPkt.pktHeader.eventSize
-			 * + PKT_HEADER_SIZE);
-			 * }
-			 * } catch(IllegalArgumentException e) {
-			 * log.log(Level.INFO, "Packet Position is {0} and current position is {1}", new
-			 * Object[]{currentPkt.pktPosition, in.position()});
-			 * }
-			 */
 			nextEventOffset = getNextEventOffset();
 			if (-1 == nextEventOffset) {
 				log.warning("Reach the end of the buffer, can't read data!");
@@ -786,7 +774,20 @@ public class Jaer3BufferParser {
 			if ((pixelDatas == null) && (etypes == null)) {
 				chip.setEventExtractor(originalEventExtractor); // Restore the default extractor
 				return chip.getEventExtractor().extractPacket(in);
-			}
+			} else {  
+                            // This else branch is also called from AEViewer.viewLoop, the difference from the last branch is that
+                            // in this case, etypes is not null becasue ensureCapacity is called at some time, so it will allocate
+                            // the space for eventtypes and pixelDataArray, but it will not initial. So if some value of etypes is 
+                            // null, it means it's not AER3.0, we should restore the default extractor.
+                            // Notice: etypes will only be initial in the readEventForwards of AEFileInputStream, the defaut initial 
+                            // value is PolarityEvent.                            
+                            // If this branch is removed, when you open the file window and choose some files to preview and one or two
+                            // cameras is connected to the jAER, then when you click cancel or close the window, it will report the nullPointException.
+                            if(etypes[0] == null) {
+				chip.setEventExtractor(originalEventExtractor); // Restore the default extractor
+				return chip.getEventExtractor().extractPacket(in);                                
+                            }
+                        }
 			// NOTE we must make sure we write ApsDvsEvents when we want them, not reuse the IMUSamples
 
 			// at this point the raw data from the USB IN packet has already been digested to extract timestamps,

@@ -14,6 +14,7 @@ import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Semaphore;
@@ -23,8 +24,13 @@ import java.util.prefs.Preferences;
 
 import net.sf.jaer.aemonitor.AENetworkRawPacket;
 import net.sf.jaer.aemonitor.AEPacket;
+import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import static net.sf.jaer.eventio.AEFileInputStream.MAX_BUFFER_SIZE_EVENTS;
+import net.sf.jaer.eventio.Jaer3BufferParser;
+import net.sf.jaer.eventio.Jaer3BufferParser.jaer3EventExtractor;
 
 /**
  * Receives input via datagram (connectionless, UDP) packets from a server.
@@ -86,6 +92,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private volatile boolean paused = false;
     private Reader readingThread = null;
     private AEChip chip=null; // needed to support cAER jaer3.0 decoding to jAER format
+
 
     /**
      * Constructs an instance of AEUnicastInput and binds it to the default
@@ -410,30 +417,37 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             final int[] addresses = packet.getAddresses();
             final int[] timestamps = packet.getTimestamps();
             int nTmpAddr = 0;    //tmp value for address
+            
 
             if(cAERStreamEnabled) {
-                nTmp = swapByteOrder(buffer.getInt());
-                if(nTmp != 0x10001) {
-                    log.warning("!!!!!!!!!!The first byte of the packet is not 0x10001 as it should be for cEAR packet, but is instead" + nTmp);
+                try {
+                    Jaer3BufferParser j3Parser = new Jaer3BufferParser(buffer, chip);
+                    EventRaw.EventType[] etypes = packet.getEventtypes(); // For jAER 3.0, no influence on jAER 2.0
+                    int[] pixelDataArray = packet.getPixelDataArray();
+                    long nEventsNum = j3Parser.size();
+                    for(int i = 0; i < nEventsNum; i++) {
+                        ByteBuffer tmpEventBuffer = ByteBuffer.allocate(16);
+                        tmpEventBuffer = j3Parser.getJaer2EventBuf();
+                        int etypeValue = tmpEventBuffer.getInt();
+                        eventRaw.eventtype = EventRaw.EventType.values()[etypeValue];
+                        eventRaw.address = tmpEventBuffer.getInt();
+                        eventRaw.timestamp = tmpEventBuffer.getInt();   
+                        eventRaw.pixelData = tmpEventBuffer.getInt();
+                        etypes[startingIndex + i] = eventRaw.eventtype;
+                        addresses[startingIndex + i] = eventRaw.address;
+                        timestamps[startingIndex + i] = eventRaw.timestamp;    
+                        pixelDataArray[startingIndex + i] = eventRaw.pixelData;  
+                    }
+                    packet.setNumEvents((int) (startingIndex + nEventsNum));   
+                } catch (IOException ex) {
+                    Logger.getLogger(AEUnicastInput.class.getName()).log(Level.SEVERE, null, ex);
                 }
-                nTmp = swapByteOrder(buffer.getInt());     //eventsize
-                nTmp = buffer.getInt();     //eventoffset
-                nTmp = buffer.getInt();     //eventoverflow
-                nEventCapacity = swapByteOrder(buffer.getInt());     //eventcapacity
-                nTmp = buffer.getInt();     //eventnumber
-                nTmp = buffer.getInt();     //eventvalid
+                return;                
             }
             
             for (int i = 0; i < nEventsInPacket; i++) {
                 if (addressFirstEnabled) {
-                    if (use4ByteAddrTs) {
-                        if(cAERStreamEnabled) {
-                            nTmpAddr = swapByteOrder(buffer.getInt()); // swab(buffer.getInt()); // swapInt is switched to handle big endian event sources (like ARC camera)          
-                            //                        x_addr                          y_addr                     on_off event
-                            // eventRaw.address = ((nTmpAddr & 0xfe0000) >> 16) + ((nTmpAddr  & 0x1fc) << 6) + ((nTmpAddr & 2) >> 1);     //just for DVS128 data format convertion
-                             eventRaw.address = ((0x1de0000 - (nTmpAddr & 0x7fe0000)) >> 5) + ((nTmpAddr  & 0x7fc) << 20) + ((nTmpAddr & 2) >> 1);     //just for DAVIS data format convertion                            
-                        }
-                        
+                    if (use4ByteAddrTs) {                        
                         //log.info("address " + eventRaw.address);
                         //int v=buffer.getInt();
                         // if timestamps are enabled, they have to be read out even if they are not used because of local timestamps

@@ -161,12 +161,20 @@ public abstract class AEPacket {
 //        System.out.println("ensure capacity "+c);
         if(timestamps==null) {
             timestamps=new int[c]; // if we have no timestamps, just allocate c
+            eventtypes = new EventType[c]; // EventTypes and pixelDataArray just for AER3.0 Data file, no influence on 2.0
+            pixelDataArray = new int[c];
             this.capacity=c;
         }else if(this.capacity<c){
             int newcap=(int)ENLARGE_CAPACITY_FACTOR*c;
             int[] newtimestamps=new int[newcap];
+            EventType[] newEventTypes = new EventType[newcap];
+            int[] newPixelDataArray = new int[newcap];
             System.arraycopy(timestamps, 0, newtimestamps, 0, this.capacity);
-            timestamps=newtimestamps;
+            System.arraycopy(eventtypes, 0, newEventTypes, 0, this.capacity);
+            System.arraycopy(pixelDataArray, 0, newPixelDataArray, 0, this.capacity);
+            timestamps = newtimestamps;
+            eventtypes = newEventTypes; // EventTypes and pixelDataArray just for AER3.0 Data file, no influence on 2.0
+            pixelDataArray = newPixelDataArray;
             this.capacity=newcap; // only if we enlarge capacity to desired set the new capacity, otherwise leave it untouched!
         }
 
