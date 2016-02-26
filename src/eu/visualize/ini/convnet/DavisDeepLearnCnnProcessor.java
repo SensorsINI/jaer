@@ -31,6 +31,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
  * Computes CNN from DAVIS APS frames.
@@ -269,9 +270,13 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     }
 
     @Override
-    public void annotate(GLAutoDrawable drawable
-    ) {
+    public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
+        if (apsDvsNet != null && apsDvsNet.netname != null) {
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1f);
+            MultilineAnnotationTextRenderer.setScale(.3f);
+            MultilineAnnotationTextRenderer.renderMultilineString(apsDvsNet.netname);
+        }
         if (showActivations) {
             if (apsDvsNet != null) {
                 apsDvsNet.drawActivations();
