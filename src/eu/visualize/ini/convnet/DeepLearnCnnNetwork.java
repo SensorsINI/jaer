@@ -702,7 +702,7 @@ public class DeepLearnCnnNetwork {
                     operationCounter += 4;
                 }
             } else {
-                mean = 127.0f/255.0f;
+                float mean_png_gray = 127.0f/255.0f;                
                 for (int i = 0; i < n; i++) {
                     vari = (float) Math.pow((activations[i] - mean), 2);
                     var += vari;
@@ -713,7 +713,7 @@ public class DeepLearnCnnNetwork {
                     sig = 0.1f/255.0f;
                 }
                 for (int i = 0; i < n; i++) {
-                    activations[i] = (activations[i] - mean);
+                    activations[i] = (activations[i] - mean_png_gray);
                 }
                  for (int i = 0; i < n; i++) {
                     if (activations[i] > sig*3.0f) {
