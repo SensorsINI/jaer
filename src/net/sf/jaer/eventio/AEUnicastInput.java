@@ -26,7 +26,9 @@ import net.sf.jaer.aemonitor.AENetworkRawPacket;
 import net.sf.jaer.aemonitor.AEPacket;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
+import net.sf.jaer.aemonitor.EventRaw.EventType;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.EventPacket;
 import static net.sf.jaer.eventio.AEFileInputStream.MAX_BUFFER_SIZE_EVENTS;
 import net.sf.jaer.eventio.Jaer3BufferParser;
@@ -92,7 +94,8 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private volatile boolean paused = false;
     private Reader readingThread = null;
     private AEChip chip=null; // needed to support cAER jaer3.0 decoding to jAER format
-
+    private EventExtractor2D restoreEventExtractor = null; // The restore extractor
+   
 
     /**
      * Constructs an instance of AEUnicastInput and binds it to the default
@@ -107,6 +110,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
      */
     public AEUnicastInput(AEChip chip) { // TODO basic problem here is that if port is unavailable, then we cannot construct and set port
         this.chip=chip;
+        restoreEventExtractor = chip.getEventExtractor();
     }
 
     /**
@@ -416,7 +420,6 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             packet.ensureCapacity(newPacketLength);
             final int[] addresses = packet.getAddresses();
             final int[] timestamps = packet.getTimestamps();
-            int nTmpAddr = 0;    //tmp value for address
             
 
             if(cAERStreamEnabled) {
@@ -541,6 +544,8 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     public void close() {
         if ((channel != null) && channel.isOpen()) {
             try {
+                chip.setEventExtractor(restoreEventExtractor);  // The extractor might be changed in the AEUnicastInput, so we should restore it back. 
+                                                                // Must close before setting the stopme flag.
                 stopme = true;
                 channel.close();
                 datagramSocket.close();

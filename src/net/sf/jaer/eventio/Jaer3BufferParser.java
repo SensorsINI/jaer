@@ -84,6 +84,9 @@ public class Jaer3BufferParser {
 	private boolean inFrameEvent = false;
 	private int frameCurrentEventOffset;
 	private boolean readOutType = false;
+        
+        private static AEChip ORIGINAL_CHIP = null;
+	private static EventExtractor2D ORIGINAL_EVENT_EXTRACTOR = null;
 
 	public class PacketHeader {
 
@@ -271,39 +274,9 @@ public class Jaer3BufferParser {
 	private PacketDescriptor getNextPkt(int targetPosition) throws IOException {
 		return searchPacketHeader(targetPosition, 1);
 	}
-
-	private EventExtractor2D originalEventExtractor = null;
-
-	/**
-	 * Constructor of the jaer3BufferParser
-	 *
-	 * @param byteBuffer
-	 * @param chip
-	 * @throws IOException
-	 */
-	public Jaer3BufferParser(MappedByteBuffer byteBuffer, AEChip chip) throws IOException {
-		in = byteBuffer;
-		in.order(ByteOrder.LITTLE_ENDIAN); // AER3.0 spec is little endian
-		this.chip = chip;
-
-		if (originalEventExtractor == null) {
-			originalEventExtractor = chip.getEventExtractor();
-		}
-		chip.setEventExtractor(new jaer3EventExtractor(chip));
-
-		currentPkt = searchPacketHeader(0, 1);
-
-		try {
-			numEvents = bufferNumEvents();
-		}
-		catch (IOException ex) {
-			log.warning(ex.toString());
-			Logger.getLogger(AEFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
-		}
-	} // Jaer3BufferParser
         
         /**
-	 * Constructor of the jaer3BufferParser
+	 * Constructor of the jaer3BufferParser.
 	 *
 	 * @param byteBuffer
 	 * @param chip
@@ -314,9 +287,14 @@ public class Jaer3BufferParser {
 		in.order(ByteOrder.LITTLE_ENDIAN); // AER3.0 spec is little endian
 		this.chip = chip;
 
-		if (originalEventExtractor == null) {
-			originalEventExtractor = chip.getEventExtractor();
-		}
+                /* Here is the logic:
+                 * The chip and extractor will be updated unless the chip changed such as by the user.
+                 * It makes the chip and the extractor are alwayse associated with each other. 
+                */
+                if(this.chip != ORIGINAL_CHIP) {
+                    ORIGINAL_CHIP = this.chip;
+                    ORIGINAL_EVENT_EXTRACTOR = this.chip.getEventExtractor();
+                }
 		chip.setEventExtractor(new jaer3EventExtractor(chip));
 
 		currentPkt = searchPacketHeader(0, 1);
@@ -328,19 +306,18 @@ public class Jaer3BufferParser {
 			log.warning(ex.toString());
 			Logger.getLogger(AEFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
 		}
-	} // Jaer3BufferParser
-        
-	/*
-	 * This method cannot always work, now AEInputFileStream takes over the job of restore the extractor
-	 * // @Override
-	 * // protected void finalize() throws Throwable {
-	 * // super.finalize(); //To change body of generated methods, choose Tools | Templates.
-	 * // if(originalEventExtractor!=null && chip!=null){
-	 * // chip.setEventExtractor(originalEventExtractor);
-	 * // }
-	 * // }
-	 *
+	} // Jaer3BufferParser       
 
+	/**
+	 * Constructor of the jaer3BufferParser
+	 *
+	 * @param byteBuffer
+	 * @param chip
+	 * @throws IOException
+	 */
+	public Jaer3BufferParser(MappedByteBuffer byteBuffer, AEChip chip) throws IOException {
+            this((ByteBuffer) byteBuffer, chip);
+	} // Jaer3BufferParser
         
         /**
 	 * gets the size of the stream in events
@@ -769,25 +746,6 @@ public class Jaer3BufferParser {
 			final int[] pixelDatas = in.getPixelDataArray();
 			final OutputEventIterator outItr = out.outputIterator();
 
-			// if both pixelDatas and etypes are null, it means this function is called by extractPacket in
-			// AEViewer.viewLoop, we should restore the default extractor
-			if ((pixelDatas == null) && (etypes == null)) {
-				chip.setEventExtractor(originalEventExtractor); // Restore the default extractor
-				return chip.getEventExtractor().extractPacket(in);
-			} else {  
-                            // This else branch is also called from AEViewer.viewLoop, the difference from the last branch is that
-                            // in this case, etypes is not null becasue ensureCapacity is called at some time, so it will allocate
-                            // the space for eventtypes and pixelDataArray, but it will not initial. So if some value of etypes is 
-                            // null, it means it's not AER3.0, we should restore the default extractor.
-                            // Notice: etypes will only be initial in the readEventForwards of AEFileInputStream, the defaut initial 
-                            // value is PolarityEvent.                            
-                            // If this branch is removed, when you open the file window and choose some files to preview and one or two
-                            // cameras is connected to the jAER, then when you click cancel or close the window, it will report the nullPointException.
-                            if(etypes[0] == null) {
-				chip.setEventExtractor(originalEventExtractor); // Restore the default extractor
-				return chip.getEventExtractor().extractPacket(in);                                
-                            }
-                        }
 			// NOTE we must make sure we write ApsDvsEvents when we want them, not reuse the IMUSamples
 
 			// at this point the raw data from the USB IN packet has already been digested to extract timestamps,
@@ -799,28 +757,36 @@ public class Jaer3BufferParser {
 				// events and still delivering frames
 				final int addr = addrs[i];
 				final int data = pixelDatas[i];
+                                
+                                if(etypes[i] == null) { // The packet is not from AEDAT3.0 file or network, it comes from AEDAT2.0, we need restore it.
+                                    chip.setEventExtractor(ORIGINAL_EVENT_EXTRACTOR); // Restore the default extractor
+                                    return chip.getEventExtractor().extractPacket(in);         
+                                }
 
-				switch (etypes[i]) {
-					case PolarityEvent:
-						readDVS(outItr, addr, timestamps[i]);
-						break;
-					case FrameEvent:
-						readFrame(outItr, addr, data, timestamps[i]);
-						break;
-					case SampleEvent:
-						// readSample();
-						break;
-					case ConfigEvent:
-						// readConfig();
-						break;
-					case Imu6Event:
-						// readImu6();
-						break;
-					case Imu9Event:
-						// readImu9();;
-						break;
-					default:
-				}
+                            
+                                switch (etypes[i]) {
+                                      case PolarityEvent:
+                                              readDVS(outItr, addr, timestamps[i]);
+                                              break;
+                                      case FrameEvent:
+                                              readFrame(outItr, addr, data, timestamps[i]);
+                                              break;
+                                      case SampleEvent:
+                                              // readSample();
+                                              break;
+                                      case ConfigEvent:
+                                              // readConfig();
+                                              break;
+                                      case Imu6Event:
+                                              // readImu6();
+                                              break;
+                                      case Imu9Event:
+                                              // readImu9();;
+                                              break;
+                                      default:
+                                }  
+                                
+				 
 				/*
 				 * if ((getAutoshotThresholdEvents() > 0) && (autoshotEventsSinceLastShot >
 				 * getAutoshotThresholdEvents())) {
