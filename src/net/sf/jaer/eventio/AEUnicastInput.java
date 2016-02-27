@@ -544,8 +544,6 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     public void close() {
         if ((channel != null) && channel.isOpen()) {
             try {
-                chip.setEventExtractor(restoreEventExtractor);  // The extractor might be changed in the AEUnicastInput, so we should restore it back. 
-                                                                // Must close before setting the stopme flag.
                 stopme = true;
                 channel.close();
                 datagramSocket.close();
@@ -567,6 +565,14 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private void cleanup() {
         try {
             datagramSocket.close();
+            /* The extractor might be changed in the AEUnicastInput, so we should restore it back. 
+             * This operation must be after the datagramSocket.close() to make sure there're no packets
+             * on the network now.
+             * If there're still packets on the network, then jaer3BufferParser will be called again which
+             * will result in the change of extractor again. 
+             * So we should put the extractor restore after the datagrarSocket.close().
+            */
+            chip.setEventExtractor(restoreEventExtractor);  
         } catch (Exception e) {
             log.warning("on closing caught " + e);
         }
