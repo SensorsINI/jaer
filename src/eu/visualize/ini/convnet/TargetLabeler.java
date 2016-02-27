@@ -449,7 +449,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         loadLocations(new File(lastFileName));
     }
 
-    private TargetLocation lastNewTargetLocation = null;
+    private TargetLocation lastAddedSample = null;
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -462,7 +462,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 propertyChangeListenerAdded = true;
             }
         }
-        int nCurrentTargets=currentTargets.size();
+        int nCurrentTargets = currentTargets.size();
 //        currentTargets.clear();
         for (BasicEvent e : in) {
             if (e.isSpecial()) {
@@ -483,48 +483,16 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 }
 
                 if (((long) e.timestamp - (long) lastTimestamp) >= minTargetPointIntervalUs) {
-                    // show the nearest TargetLocation if at least minTargetPointIntervalUs has passed by,
-                    // or "No target" if the location was previously
-                    Map.Entry<Integer, SimultaneouTargetLocations> mostRecentTargetsBeforeThisEvent = targetLocations.lowerEntry(e.timestamp);
-                    if (mostRecentTargetsBeforeThisEvent != null) {
-                        for (TargetLocation t : mostRecentTargetsBeforeThisEvent.getValue()) {
-                            if ((t == null) || ((t != null) && ((e.timestamp - t.timestamp) > maxTimeLastTargetLocationValidUs))) {
-                                targetLocation = null;
-                            } else if (targetLocation != t) {
-                                targetLocation = t;
-                                currentTargets.add(targetLocation);
-                                markDataHasTarget(targetLocation.timestamp, targetLocation.location != null);
-                            }
-                        }
-                    }
+                    updateCurrentlyDisplayedTargets(e);
 
                     lastTimestamp = e.timestamp;
                     // find next saved target location that is just before this time (lowerEntry)
-                    TargetLocation newTargetLocation = null;
                     if (shiftPressed && ctlPressed && (mousePoint != null)) { // specify (additional) target present
                         // add a labeled location sample
-                        maybeEraseSamples(mostRecentTargetsBeforeThisEvent);
-                        newTargetLocation = new TargetLocation(getCurrentFrameNumber(), e.timestamp, mousePoint, currentTargetTypeID, targetRadius, targetRadius);
-
-                        addSample(e.timestamp, newTargetLocation);
-                        currentTargets.add(newTargetLocation);
-
+                        addSample(e.timestamp, mousePoint, false);
                     } else if (shiftPressed && !ctlPressed) { // specify no target present now but mark recording as reviewed
-                        maybeEraseSamples(mostRecentTargetsBeforeThisEvent);
-                        newTargetLocation = new TargetLocation(getCurrentFrameNumber(), e.timestamp, null, currentTargetTypeID, targetRadius, targetRadius);
-                        addSample(e.timestamp, newTargetLocation);
-                        currentTargets.add(newTargetLocation);
-//                       markDataReviewedButNoTargetPresent(e.timestamp);
+                        addSample(e.timestamp, null, false);
                     }
-                    if (newTargetLocation != null) {
-                        if (newTargetLocation.timestamp > maxSampleTimestamp) {
-                            maxSampleTimestamp = newTargetLocation.timestamp;
-                        }
-                        if (newTargetLocation.timestamp < minSampleTimestamp) {
-                            minSampleTimestamp = newTargetLocation.timestamp;
-                        }
-                    }
-                    lastNewTargetLocation = newTargetLocation;
                 }
                 if (e.timestamp < lastTimestamp) {
                     lastTimestamp = e.timestamp;
@@ -541,16 +509,43 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             }
         }
         currentTargets.removeAll(removeList);
-        if(currentTargets.size()!=nCurrentTargets) fixLabeledFraction();
+        if (currentTargets.size() != nCurrentTargets) {
+            fixLabeledFraction();
+        }
         return in;
     }
 
-    private void maybeEraseSamples(Map.Entry<Integer, SimultaneouTargetLocations> entry) {
-        if (!isEraseSamplesEnabled() || (entry == null)) {
+    private void updateCurrentlyDisplayedTargets(BasicEvent e) {
+        // if at least minTargetPointIntervalUs has passed by maybe add new labels
+        Map.Entry<Integer, SimultaneouTargetLocations> mostRecentTargetsBeforeThisEvent = targetLocations.lowerEntry(e.timestamp);
+        if (mostRecentTargetsBeforeThisEvent != null) {
+            for (TargetLocation t : mostRecentTargetsBeforeThisEvent.getValue()) {
+                if ((t == null) || ((t != null) && ((e.timestamp - t.timestamp) > maxTimeLastTargetLocationValidUs))) {
+                    targetLocation = null;
+                } else if (targetLocation != t) {
+                    targetLocation = t;
+                    currentTargets.add(targetLocation);
+                    markDataHasTarget(targetLocation.timestamp, targetLocation.location != null);
+                }
+            }
+        }
+    }
+
+    private void maybeEraseSamplesBefore(int timestamp) {
+        if (!isEraseSamplesEnabled()) {
             return;
         }
-        targetLocations.remove(entry.getKey());
-        currentTargets.remove(entry.getValue());
+
+        Map.Entry<Integer, SimultaneouTargetLocations> nextBack = targetLocations.floorEntry(timestamp);
+        while (nextBack != null && nextBack.getKey() > timestamp - minTargetPointIntervalUs) {
+            if (lastAddedSample != null && lastAddedSample.timestamp == nextBack.getKey()) {
+                log.info("not erasing " + nextBack.getKey() + " because we just added it");
+                return;
+            }
+            targetLocations.remove(nextBack.getKey());
+//            log.info("removed " + nextBack.getKey());
+            nextBack = targetLocations.lowerEntry(nextBack.getKey());
+        }
         fixLabeledFraction();
     }
 
@@ -695,13 +690,31 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         return targetLocation;
     }
 
-    private void addSample(int timestamp, TargetLocation newTargetLocation) {
+    private void addSample(int timestamp, Point point, boolean fastAdd) {
+        if (!fastAdd) {
+            maybeEraseSamplesBefore(timestamp);
+        }
+        TargetLocation newTargetLocation = new TargetLocation(getCurrentFrameNumber(), timestamp, point, currentTargetTypeID, targetRadius, targetRadius);
         SimultaneouTargetLocations s = targetLocations.get(timestamp);
         if (s == null) {
             s = new SimultaneouTargetLocations();
             targetLocations.put(timestamp, s);
         }
         s.add(newTargetLocation);
+        currentTargets.add(newTargetLocation);
+        if (newTargetLocation != null) {
+            if (newTargetLocation.timestamp > maxSampleTimestamp) {
+                maxSampleTimestamp = newTargetLocation.timestamp;
+            }
+            if (newTargetLocation.timestamp < minSampleTimestamp) {
+                minSampleTimestamp = newTargetLocation.timestamp;
+            }
+        }
+        lastAddedSample = newTargetLocation;
+        if (!fastAdd) {
+            markDataHasTarget(timestamp, point != null);
+        }
+//        log.info("added " + timestamp);
     }
 
     private int getFractionOfFileDuration(int timestamp) {
@@ -842,6 +855,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     synchronized private void loadLocations(File f) {
         long startMs = System.currentTimeMillis();
         log.info("loading " + f);
+        boolean oldEraseSamples = this.eraseSamplesEnabled;
         doClearLocations();
         TargetLocation tmpTargetLocation = null;
         try {
@@ -881,28 +895,16 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         if (mt != null) {
                             targetdimy = Integer.parseInt(scanner.match().group());
                         }
+                        Point p = null;
+                        if ((x != -1) && (y != -1)) {
+                            p = new Point(x, y);
+                        }
+                        addSample(ts, p, true);
 
-                        tmpTargetLocation = new TargetLocation(frame, ts,
-                                new Point(x, y),
-                                targetTypeID,
-                                targetdimx,
-                                targetdimy); // read target location
                     } catch (NoSuchElementException ex2) {
                         throw new IOException(("couldn't parse file " + f) == null ? "null" : f.toString() + ", got InputMismatchException on line: " + s);
                     }
-                    if ((tmpTargetLocation.location.x == -1) && (tmpTargetLocation.location.y == -1)) {
-                        tmpTargetLocation.location = null;
-                    }
-                    addSample(tmpTargetLocation.timestamp, tmpTargetLocation);
-                    markDataHasTarget(tmpTargetLocation.timestamp, tmpTargetLocation.location != null);
-                    if (tmpTargetLocation != null) {
-                        if (tmpTargetLocation.timestamp > maxSampleTimestamp) {
-                            maxSampleTimestamp = tmpTargetLocation.timestamp;
-                        }
-                        if (tmpTargetLocation.timestamp < minSampleTimestamp) {
-                            minSampleTimestamp = tmpTargetLocation.timestamp;
-                        }
-                    }
+
                 }
                 long endMs = System.currentTimeMillis();
                 log.info("Took " + (endMs - startMs) + " ms to load " + f + " with " + targetLocations.size() + " SimultaneouTargetLocations entries");
@@ -918,6 +920,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             }
         } finally {
             setCursor(Cursor.getDefaultCursor());
+            this.eraseSamplesEnabled = oldEraseSamples;
         }
         fixLabeledFraction();
     }
