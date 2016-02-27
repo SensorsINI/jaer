@@ -48,6 +48,7 @@ import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
+import java.io.LineNumberReader;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -489,9 +490,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     // find next saved target location that is just before this time (lowerEntry)
                     if (shiftPressed && ctlPressed && (mousePoint != null)) { // specify (additional) target present
                         // add a labeled location sample
-                        addSample(e.timestamp, mousePoint, false);
+                        addSample(getCurrentFrameNumber(), e.timestamp, mousePoint, false);
                     } else if (shiftPressed && !ctlPressed) { // specify no target present now but mark recording as reviewed
-                        addSample(e.timestamp, null, false);
+                        addSample(getCurrentFrameNumber(), e.timestamp, null, false);
                     }
                 }
                 if (e.timestamp < lastTimestamp) {
@@ -696,7 +697,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
      * @param point null to label target not visible
      * @param fastAdd  true during file read, to speed up and avoid memory thrashing
      */
-    private void addSample(int timestamp, Point point, boolean fastAdd) {
+    private void addSample(int frame, int timestamp, Point point, boolean fastAdd) {
         if (!fastAdd) {
             maybeEraseSamplesBefore(timestamp);
         }
@@ -872,7 +873,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             minSampleTimestamp = Integer.MAX_VALUE;
             maxSampleTimestamp = Integer.MIN_VALUE;
             try {
-                BufferedReader reader = new BufferedReader(new FileReader(f));
+                LineNumberReader reader = new LineNumberReader(new FileReader(f));
                 String s = reader.readLine();
                 StringBuilder sb = new StringBuilder();
                 while ((s != null) && s.startsWith("#")) {
@@ -907,10 +908,12 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         if ((x != -1) && (y != -1)) {
                             p = new Point(x, y);
                         }
-                        addSample(ts, p, true);
+                        addSample(frame, ts, p, true);
 
                     } catch (NoSuchElementException ex2) {
-                        throw new IOException(("couldn't parse file " + f) == null ? "null" : f.toString() + ", got InputMismatchException on line: " + s);
+                        String l=("couldn't parse file " + f) == null ? "null" : f.toString() + ", got InputMismatchException on line: " + reader.getLineNumber();
+                        log.warning(l);
+                        throw new IOException(l);
                     }
 
                 }
@@ -922,9 +925,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 this.targetLocation = null;  // null out current location
                 locationsLoadedFromFile = true;
             } catch (FileNotFoundException ex) {
-                JOptionPane.showMessageDialog(glCanvas, ("couldn't find file " + f) == null ? "null" : f.toString() + ": got exception " + ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
+                JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
             } catch (IOException ex) {
-                JOptionPane.showMessageDialog(glCanvas, ("IOException with file " + f) == null ? "null" : f.toString() + ": got exception " + ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
+                JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
             }
         } finally {
             setCursor(Cursor.getDefaultCursor());
