@@ -291,7 +291,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             x = curPosFrac * chip.getSizeX();
             y = y + dy;
             gl.glColor3f(1, 1, 1);
-            gl.glRectf(x - (dx / 2), y - (dy * 2), x + (dx / 2), y + dy);
+            gl.glRectf(x - (dx * 6), y - (dy * 2), x, y + dy * 2);
         }
 
     }
@@ -690,6 +690,12 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         return targetLocation;
     }
 
+    /** Add a new label
+     * 
+     * @param timestamp
+     * @param point null to label target not visible
+     * @param fastAdd  true during file read, to speed up and avoid memory thrashing
+     */
     private void addSample(int timestamp, Point point, boolean fastAdd) {
         if (!fastAdd) {
             maybeEraseSamplesBefore(timestamp);
@@ -701,7 +707,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             targetLocations.put(timestamp, s);
         }
         s.add(newTargetLocation);
-        currentTargets.add(newTargetLocation);
+        if (!fastAdd) {
+            currentTargets.add(newTargetLocation);
+        }
         if (newTargetLocation != null) {
             if (newTargetLocation.timestamp > maxSampleTimestamp) {
                 maxSampleTimestamp = newTargetLocation.timestamp;
