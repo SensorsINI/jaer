@@ -628,14 +628,12 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 	 * typeColorRGBComponents[t][1] for green, and typeColorRGBComponents[t][3]
 	 * for blue. It should also populate the Color[] typeColors.
 	 *
-	 * @param numCellTypes
-	 *            the number of colors to generate
+         * new code should use the #makeTypeColors method which caches the colors in a HashMap by numbers of cell types
+         * 
+	 * @param numCellTypes the number of colors to generate
 	 * @see #typeColors
 	 * @see #typeColorRGBComponents
-	 * @deprecated new code should use the #makeTypeColors method which caches
-	 *             the colors in a HashMap by numbers of cell types
 	 */
-	@Deprecated
 	protected void checkTypeColors(int numCellTypes) {
 		if ((typeColorRGBComponents == null) || (typeColorRGBComponents.length != numCellTypes)) {
 			typeColorRGBComponents = new float[numCellTypes][3];
