@@ -486,7 +486,7 @@ public class DeepLearnCnnNetwork {
                     final int xfloor = (int) Math.floor(x);
                     final int yfloor = (int) Math.floor(y);
                     v = renderer.getApsGrayValueAtPixel(xfloor, yfloor);
-                    v = debugNet(v, xfloor, yfloor);  // TODO remove only for debug
+                    v = debugNet(v, xo, yo);  // TODO remove only for debug
                     activations[o(dimy - yo - 1, xo)] = v; // NOTE -- this is flipped beacuse upper left corner is (0,xmax) and lower right corner is (ymax,0)
                     xo++;
                     operationCounter += 4;
