@@ -587,7 +587,7 @@ public class DeepLearnCnnNetwork {
         public void printActivations() {
             super.printActivations();
             System.out.println("Activations:");
-            for (int y = 0; y < dimx; y++) {
+            for (int y = 0; y < dimy; y++) {
                 System.out.print(String.format("y=%6d ", y));
                 for (int x = 0; x < dimx; x++) {
                     System.out.print(String.format("%6.2g ", activations[o(x, y)]));
@@ -664,6 +664,9 @@ public class DeepLearnCnnNetwork {
          * subtract mean)
          */
         private void normalizeInputFrame(float[] activations, boolean aps) {
+            if (inputClampedTo1 || inputClampedToIncreasingIntegers) {
+                return;
+            }
             // net trained gets 0-1 range inputs, so make our input so
             int n = activations.length;
             float sum = 0, sum2 = 0, var = 0, vari = 0;
@@ -674,7 +677,7 @@ public class DeepLearnCnnNetwork {
             }
             float mean = sum / n;
             if (aps) {
-                 for (int i = 0; i < n; i++) {
+                for (int i = 0; i < n; i++) {
                     vari = (float) Math.pow((activations[i] - mean), 2);
                     var += vari;
                 }
@@ -702,30 +705,30 @@ public class DeepLearnCnnNetwork {
                     operationCounter += 4;
                 }
             } else {
-                float mean_png_gray = 127.0f/255.0f;                
+                float mean_png_gray = 127.0f / 255.0f;
                 for (int i = 0; i < n; i++) {
                     vari = (float) Math.pow((activations[i] - mean), 2);
                     var += vari;
                 }
                 var = (var / n);
                 float sig = (float) Math.sqrt(var);
-                if (sig < 0.1f/255.0f) {
-                    sig = 0.1f/255.0f;
+                if (sig < 0.1f / 255.0f) {
+                    sig = 0.1f / 255.0f;
                 }
                 for (int i = 0; i < n; i++) {
                     activations[i] = (activations[i] - mean_png_gray);
                 }
-                 for (int i = 0; i < n; i++) {
-                    if (activations[i] > sig*3.0f) {
-                        activations[i] = sig*3.0f;
-                    } else if (activations[i] < -sig*3.0f) {
-                        activations[i] = -sig*3.0f;
+                for (int i = 0; i < n; i++) {
+                    if (activations[i] > sig * 3.0f) {
+                        activations[i] = sig * 3.0f;
+                    } else if (activations[i] < -sig * 3.0f) {
+                        activations[i] = -sig * 3.0f;
                     }
                 }
-                float range = ((3.f*sig) - (-3.f*sig));
+                float range = ((3.f * sig) - (-3.f * sig));
                 float rangenew = (1 - 0);
                 for (int i = 0; i < n; i++) {
-                    activations[i] = (((activations[i])) - (-3.0f*sig)) * rangenew / range;
+                    activations[i] = (((activations[i])) - (-3.0f * sig)) * rangenew / range;
                     operationCounter += 4;
                 }
             }
