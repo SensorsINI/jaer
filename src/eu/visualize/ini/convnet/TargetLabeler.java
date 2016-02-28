@@ -1073,6 +1073,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        if(!isFilterEnabled()) return;
         switch (evt.getPropertyName()) {
             case AEInputStream.EVENT_POSITION:
                 filePositionEvents = (long) evt.getNewValue();
