@@ -487,7 +487,7 @@ public class DeepLearnCnnNetwork {
                     final int yfloor = (int) Math.floor(y);
                     v = renderer.getApsGrayValueAtPixel(xfloor, yfloor);
                     v = debugNet(v, xo, yo);  // TODO remove only for debug
-                    activations[o(dimy - yo - 1, xo)] = v; // NOTE -- this is flipped beacuse upper left corner is (0,xmax) and lower right corner is (ymax,0)
+                    activations[o(dimy - yo - 1, xo)] = v; 
                     xo++;
                     operationCounter += 4;
                 }
@@ -558,7 +558,7 @@ public class DeepLearnCnnNetwork {
                 for (int x = 0; x < dimy; x++) {  // take every xstride, ystride pixels as output
                     float v = subsampler.getValueAtPixel(x, y);
                     v = debugNet(v, x, y);
-                    activations[o(dimy - y - 1, x)] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
+                    activations[o(dimy - y - 1,x)] = v; 
                 }
             }
             normalizeInputFrame(activations, false);
@@ -964,7 +964,7 @@ public class DeepLearnCnnNetwork {
                         int iny = (yincenter + yy) - halfKernelDim; // iny is input coordinate
 //                    sum += 1;
 //                    sum += input.a(inputMap, inx, iny);
-                        sum += kernels[k(inputMap, outputMap, xx, kernelDim - yy - 1)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
+                        sum += kernels[k(inputMap, outputMap, xx,  yy)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
                         operationCounter += 2;
 //                    iny++;
 //                    nterms++;

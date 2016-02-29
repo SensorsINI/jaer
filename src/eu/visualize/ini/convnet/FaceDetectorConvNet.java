@@ -137,7 +137,7 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
         }
 
         float rad = chip.getMinSize() / 4, rim = 3;
-        final float brightness = net.outputLayer.activations[1] * 1f; // brightness scale
+        final float brightness = net.outputLayer.activations[0] * 1f; // brightness scale
         gl.glColor3f(brightness, brightness, brightness);
         gl.glPushMatrix();
         gl.glTranslatef(chip.getSizeX()/2, chip.getSizeY()/2, 0);
