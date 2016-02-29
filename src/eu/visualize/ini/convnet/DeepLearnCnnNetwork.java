@@ -1067,7 +1067,7 @@ public class DeepLearnCnnNetwork {
             for (int map = 0; map < nOutputMaps; map++) {
                 for (int x = 0; x < outputMapDim; x++) {
                     for (int y = 0; y < outputMapDim; y++) {
-                        activationDisplays[map].setPixmapGray(x, y, activations[o(map, x, y)]);
+                        activationDisplays[map].setPixmapGray(y, outputMapDim - x - 1, activations[o(map, x, y)]);
                     }
                 }
                 activationDisplays[map].display();
@@ -1236,7 +1236,7 @@ public class DeepLearnCnnNetwork {
             for (int map = 0; map < nOutputMaps; map++) {
                 for (int x = 0; x < outputMapDim; x++) {
                     for (int y = 0; y < outputMapDim; y++) {
-                        activationDisplays[map].setPixmapGray(x, y, activations[o(map, x, y)]);
+                        activationDisplays[map].setPixmapGray(y, outputMapDim-x-1, activations[o(map, x, y)]);
                     }
                 }
                 activationDisplays[map].display();
