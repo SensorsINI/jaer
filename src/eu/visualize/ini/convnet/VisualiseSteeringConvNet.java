@@ -69,9 +69,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private int savedDecision = -1;
     private int counterD = 0;
     private float[] LCRNstate = new float[]{0.5f, 0.5f, 0.5f, 0.5f};
-    volatile private boolean apply_LR_RL_constraint = getBoolean("apply_LR_RL_constraint", true);
-    volatile private boolean apply_LNR_RNL_constraint = getBoolean("apply_LNR_RNL_constraint", true);
-    volatile private boolean apply_CN_NC_constraint = getBoolean("apply_CN_NC_constraint", true);
+    volatile private boolean apply_LR_RL_constraint = getBoolean("apply_LR_RL_constraint", false);
+    volatile private boolean apply_LNR_RNL_constraint = getBoolean("apply_LNR_RNL_constraint", false);
+    volatile private boolean apply_CN_NC_constraint = getBoolean("apply_CN_NC_constraint", false);
     volatile private float LCRNstep = getFloat("LCRNstep", 1f);
     private final TobiLogger tobiLogger = new TobiLogger("Decisions", "Decisions of CNN sent to Predator robot Summit XL");
 
@@ -91,7 +91,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(udp, "apply_LR_RL_constraint", "force (override) network output classification to make sure there is no switching from L to R or viceversa directly");
         setPropertyTooltip(udp, "apply_LNR_RNL_constraint", "force (override) network output classification to make sure there is no switching from L to N and to R or viceversa, since the predator will see the prey back from the same last seen steering output (it spins in the last seen direction)");
         setPropertyTooltip(udp, "apply_CN_NC_constraint", "force (override) network output classification to make sure there is no switching from C to N or viceversa directly");
-        setPropertyTooltip(udp, "LCRNstep", "step from one state (LCR or N) to another (if 1, no lowpass filtering, if lower, then slower transitions)");
+        setPropertyTooltip(udp, "LCRNstep", "mixture of decisicion outputs over time (LCR or N) to another (if 1, no lowpass filtering, if lower, then slower transitions)");
         setPropertyTooltip(udp, "startLoggingUDPMessages", "start logging UDP messages to a text log file");
         setPropertyTooltip(udp, "stopLoggingUDPMessages", "stop logging UDP messages");
 
@@ -691,6 +691,11 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
      * @param LCRNstep the LCRNstep to set
      */
     public void setLCRNstep(float LCRNstep) {
+        if (LCRNstep > 1) {
+            LCRNstep = 1;
+        } else if (LCRNstep < .01) {
+            LCRNstep = 0.01f;
+        }
         this.LCRNstep = LCRNstep;
         putFloat("LCRNstep", LCRNstep);
     }
