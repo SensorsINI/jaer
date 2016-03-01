@@ -171,8 +171,12 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 
 			final int inc = up ? 1 : -1;
 
-			intConfig.set(intConfig.get() + inc);
-			intConfig.setFileModified();
+			int val = intConfig.get() + inc;
+
+			if (val >= 0) {
+				intConfig.set(val);
+				intConfig.setFileModified();
+			}
 		}
 	}
 
@@ -194,8 +198,12 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 
 			final int inc = -clicks;
 
-			intConfig.set(intConfig.get() + inc);
-			intConfig.setFileModified();
+			int val = intConfig.get() + inc;
+
+			if (val >= 0) {
+				intConfig.set(val);
+				intConfig.setFileModified();
+			}
 		}
 	}
 }

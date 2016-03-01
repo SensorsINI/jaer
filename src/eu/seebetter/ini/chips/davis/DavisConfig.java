@@ -267,7 +267,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		extInControl.add(new SPIConfigBit("ExtInput.DetectPulsePolarity", "Polarity of the pulse to be detected.", CypressFX3.FPGA_EXTINPUT,
 			(short) 4, true, this));
 		extInControl.add(new SPIConfigInt("ExtInput.DetectPulseLength", "Minimal length of the pulse to be detected.",
-			CypressFX3.FPGA_EXTINPUT, (short) 5, 27, 120, this));
+			CypressFX3.FPGA_EXTINPUT, (short) 5, 27, 60, this));
 
 		// TODO: new boards only.
 		extInControl.add(new SPIConfigBit("ExtInput.RunGenerator", "Enable signal generator (PWM-like).", CypressFX3.FPGA_EXTINPUT,
@@ -276,10 +276,44 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 			"Use custom FPGA-internal signal, instead of PWM-like generator output.", CypressFX3.FPGA_EXTINPUT, (short) 8, false, this));
 		extInControl.add(new SPIConfigBit("ExtInput.GeneratePulsePolarity", "Polarity of the generated pulse.", CypressFX3.FPGA_EXTINPUT,
 			(short) 9, false, this));
-		extInControl.add(new SPIConfigInt("ExtInput.GeneratePulseInterval", "Time interval between consecutive pulses.",
-			CypressFX3.FPGA_EXTINPUT, (short) 10, 27, 120, this));
-		extInControl.add(new SPIConfigInt("ExtInput.GeneratePulseLength", "Time length of a pulse.", CypressFX3.FPGA_EXTINPUT, (short) 11,
-			27, 60, this));
+
+		final SPIConfigInt extOutPulseInterval = new SPIConfigInt("ExtInput.GeneratePulseInterval",
+			"Time interval between consecutive pulses.", CypressFX3.FPGA_EXTINPUT, (short) 10, 27, 60, this);
+		extInControl.add(extOutPulseInterval);
+
+		final SPIConfigInt extOutPulseLength = new SPIConfigInt("ExtInput.GeneratePulseLength", "Time length of a pulse.",
+			CypressFX3.FPGA_EXTINPUT, (short) 11, 27, 30, this);
+		extInControl.add(extOutPulseLength);
+
+		final SPIConfigInt extOutPulseFrequency = new SPIConfigInt("ExtInput.GeneratePulseFrequency",
+			"Frequency (in Hz) of the pulse to be generated.", CypressFX3.FPGA_EXTINPUT, (short) 255, 27, 1_000_000, this);
+		extInControl.add(extOutPulseFrequency);
+
+		final SPIConfigInt extOutPulseDutyCycle = new SPIConfigInt("ExtInput.GeneratePulseDutyCycle",
+			"Duty cycle % of the pulse to be generated.", CypressFX3.FPGA_EXTINPUT, (short) 255, 27, 50, this);
+		extInControl.add(extOutPulseDutyCycle);
+
+		extOutPulseFrequency.addObserver(new Observer() {
+			@Override
+			public void update(final Observable o, final Object arg) {
+				final int expectedExtOutPulseInterval = (60 * 1_000_000) / extOutPulseFrequency.get();
+
+				if (extOutPulseInterval.get() != expectedExtOutPulseInterval) {
+					extOutPulseInterval.set(expectedExtOutPulseInterval);
+				}
+			}
+		});
+
+		extOutPulseDutyCycle.addObserver(new Observer() {
+			@Override
+			public void update(final Observable o, final Object arg) {
+				final int expectedExtOutPulseLength = (extOutPulseDutyCycle.get() * extOutPulseInterval.get()) / 100;
+
+				if (extOutPulseLength.get() != expectedExtOutPulseLength) {
+					extOutPulseLength.set(expectedExtOutPulseLength);
+				}
+			}
+		});
 
 		for (final SPIConfigValue cfgVal : extInControl) {
 			cfgVal.addObserver(this);
@@ -331,34 +365,34 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		// Link to DavisUserControlPanel to update values there too.
 		dvsRun.addObserver(new Observer() {
 			@Override
-			public void update(Observable o, Object arg) {
+			public void update(final Observable o, final Object arg) {
 				getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_CAPTURE_EVENTS_ENABLED, null,
 					((SPIConfigBit) o).isSet());
 			}
 		});
 		apsRun.addObserver(new Observer() {
 			@Override
-			public void update(Observable o, Object arg) {
+			public void update(final Observable o, final Object arg) {
 				getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_CAPTURE_FRAMES_ENABLED, null,
 					((SPIConfigBit) o).isSet());
 			}
 		});
 		globalShutter.addObserver(new Observer() {
 			@Override
-			public void update(Observable o, Object arg) {
+			public void update(final Observable o, final Object arg) {
 				getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED, null,
 					((SPIConfigBit) o).isSet());
 			}
 		});
 		apsExposure.addObserver(new Observer() {
 			@Override
-			public void update(Observable o, Object arg) {
+			public void update(final Observable o, final Object arg) {
 				getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_EXPOSURE_DELAY_US, null, ((SPIConfigInt) o).get());
 			}
 		});
 		apsFrameDelay.addObserver(new Observer() {
 			@Override
-			public void update(Observable o, Object arg) {
+			public void update(final Observable o, final Object arg) {
 				getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_FRAME_DELAY_US, null, ((SPIConfigInt) o).get());
 			}
 		});
@@ -870,25 +904,33 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 					final SPIConfigBit cfgBit = (SPIConfigBit) observable;
 
 					fx3HwIntf.spiConfigSend(cfgBit.getModuleAddr(), cfgBit.getParamAddr(), (cfgBit.isSet()) ? (1) : (0));
-
-					// Ensure GUI is up-to-date.
-					if (configValueMap.containsKey(cfgBit)) {
-						((JRadioButton) configValueMap.get(cfgBit)).setSelected(cfgBit.isSet());
-					}
 				}
 				else if (observable instanceof SPIConfigInt) {
 					final SPIConfigInt cfgInt = (SPIConfigInt) observable;
 
 					fx3HwIntf.spiConfigSend(cfgInt.getModuleAddr(), cfgInt.getParamAddr(), cfgInt.get());
-
-					// Ensure GUI is up-to-date.
-					if (configValueMap.containsKey(cfgInt)) {
-						((JTextField) configValueMap.get(cfgInt)).setText(Integer.toString(cfgInt.get()));
-					}
 				}
 			}
 			catch (final HardwareInterfaceException e) {
 				net.sf.jaer.biasgen.Biasgen.log.warning("On update() caught " + e.toString());
+			}
+		}
+
+		// Always update GUI components, even if no HW present.
+		if (observable instanceof SPIConfigBit) {
+			final SPIConfigBit cfgBit = (SPIConfigBit) observable;
+
+			// Ensure GUI is up-to-date.
+			if (configValueMap.containsKey(cfgBit)) {
+				((JRadioButton) configValueMap.get(cfgBit)).setSelected(cfgBit.isSet());
+			}
+		}
+		else if (observable instanceof SPIConfigInt) {
+			final SPIConfigInt cfgInt = (SPIConfigInt) observable;
+
+			// Ensure GUI is up-to-date.
+			if (configValueMap.containsKey(cfgInt)) {
+				((JTextField) configValueMap.get(cfgInt)).setText(Integer.toString(cfgInt.get()));
 			}
 		}
 	}
