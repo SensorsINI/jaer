@@ -12,6 +12,7 @@ import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
@@ -32,6 +33,7 @@ import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.EventPacket;
 import static net.sf.jaer.eventio.AEFileInputStream.MAX_BUFFER_SIZE_EVENTS;
 import net.sf.jaer.eventio.Jaer3BufferParser;
+import net.sf.jaer.eventio.Jaer3BufferParser.PacketDescriptor;
 import net.sf.jaer.eventio.Jaer3BufferParser.jaer3EventExtractor;
 
 /**
@@ -95,7 +97,9 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private Reader readingThread = null;
     private AEChip chip=null; // needed to support cAER jaer3.0 decoding to jAER format
     private EventExtractor2D restoreEventExtractor = null; // The restore extractor
-   
+    private ByteBuffer wholePktBuffer = null;
+    private int jaer3PktSize = 0, jaer3PktNum = 0;
+    private long jaer3EventsNum = 0;
 
     /**
      * Constructs an instance of AEUnicastInput and binds it to the default
@@ -175,7 +179,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                 buffer.clear();
                 availableBufferQueue.put(buffer);
              }
-            return packet;
+                return packet;
         } catch (InterruptedException e) {
             log.info("Interrupted exchange of buffers in AEUnicastInput: " + e.toString());
             return null;
@@ -259,7 +263,16 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
 
         return b1 << 24 | b2 << 16 | b3 << 8 | b4 << 0;
     }
-
+    
+    private static ByteBuffer clone(ByteBuffer original) {
+       ByteBuffer clone = ByteBuffer.allocate(original.capacity());
+       original.rewind();//copy from the beginning
+       clone.put(original);
+       original.rewind();
+       // clone.flip();
+       return clone;
+    }
+    
     /**
      * Extracts data from internal buffer and adds to packet, according to all
      * the option flags.
@@ -416,19 +429,54 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             int ts = !timestampsEnabled || localTimestampsEnabled ? (int) (((System.nanoTime() / 1000) << 32) >> 32) : 0; // if no timestamps coming, add system clock for all.
             //log.info("nanoTime shift " +(int)( ((System.nanoTime()/1000) <<32)>>32));
             final int startingIndex = packet.getNumEvents();
-            final int newPacketLength = startingIndex + nEventsInPacket;
+            int newPacketLength = startingIndex + nEventsInPacket;
             packet.ensureCapacity(newPacketLength);
-            final int[] addresses = packet.getAddresses();
-            final int[] timestamps = packet.getTimestamps();
+            int[] addresses = packet.getAddresses();
+            int[] timestamps = packet.getTimestamps();
             
 
             if(cAERStreamEnabled) {
                 try {
                     Jaer3BufferParser j3Parser = new Jaer3BufferParser(buffer, chip);
+                    long nEventsNum = j3Parser.size();
+                    
+                    if(nEventsNum != 0) {  // This is the packet's head buffer
+                        jaer3PktSize = buffer.getInt(4);                
+                        jaer3PktNum = buffer.getInt(20); 
+                        jaer3EventsNum = nEventsNum;
+                        wholePktBuffer = clone(buffer);
+                        
+                        if(wholePktBuffer.position() == (jaer3PktSize * jaer3PktNum + 28)) { // The packet is over
+                            wholePktBuffer.flip();
+                            j3Parser = new Jaer3BufferParser(wholePktBuffer, chip); 
+                        } else {
+                            return;
+                        }
+                    } else {              
+                        if(wholePktBuffer == null) {  // We still not get a valid buffer, return back to continue wait the valid head buffer
+                            return;
+                        }
+                        try {
+                            wholePktBuffer.put(buffer);
+                        } catch(BufferOverflowException e) {  // Sometimes the buffer's order may be wrong which will result in the bufferoverflow, so just reset the wholePktBuffer in this case
+                            wholePktBuffer = null;
+                            return;
+                        }
+                        if(wholePktBuffer.position() == (jaer3PktSize * jaer3PktNum + 28)) { // The packet is over
+                            wholePktBuffer.flip();
+                            j3Parser = new Jaer3BufferParser(wholePktBuffer, chip); 
+                        } else {
+                            return;
+                        }
+                    }
+                    
+                    newPacketLength = (int) (startingIndex + jaer3EventsNum);
+                    packet.ensureCapacity((int) newPacketLength);  // TODO, too much annoying output, maybe it's better to depress the output. The log output is in net.sf.jaer.event.EventPacket enlargeCapacity
                     EventRaw.EventType[] etypes = packet.getEventtypes(); // For jAER 3.0, no influence on jAER 2.0
                     int[] pixelDataArray = packet.getPixelDataArray();
-                    long nEventsNum = j3Parser.size();
-                    for(int i = 0; i < nEventsNum; i++) {
+                    addresses = packet.getAddresses();
+                    timestamps = packet.getTimestamps();                    
+                    for(int i = 0; i < jaer3EventsNum; i++) {
                         ByteBuffer tmpEventBuffer = ByteBuffer.allocate(16);
                         tmpEventBuffer = j3Parser.getJaer2EventBuf();
                         int etypeValue = tmpEventBuffer.getInt();
@@ -441,7 +489,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                         timestamps[startingIndex + i] = eventRaw.timestamp;    
                         pixelDataArray[startingIndex + i] = eventRaw.pixelData;  
                     }
-                    packet.setNumEvents((int) (startingIndex + nEventsNum));   
+                    packet.setNumEvents((int) (startingIndex + jaer3EventsNum));   
                 } catch (IOException ex) {
                     Logger.getLogger(AEUnicastInput.class.getName()).log(Level.SEVERE, null, ex);
                 }

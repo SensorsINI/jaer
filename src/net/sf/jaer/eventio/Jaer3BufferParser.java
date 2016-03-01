@@ -615,7 +615,7 @@ public class Jaer3BufferParser {
 				int xlength = in.getInt(pkt.pktPosition + PKT_HEADER_SIZE + 20);
 				int ylength = in.getInt(pkt.pktPosition + PKT_HEADER_SIZE + 24);
 
-				numEvents += xlength * ylength * (pkt.pktHeader.eventValid);
+				numEvents += 2* (xlength * ylength * (pkt.pktHeader.eventValid)); // One array has been divided into 2 arrays, so the event numbers in Frame should also increase
 			}
 			try {
 				pkt = getNextPkt(pkt.pktPosition + ((pkt.pktHeader.eventNumber) * (pkt.pktHeader.eventSize)));
@@ -884,24 +884,6 @@ public class Jaer3BufferParser {
 
 					break;
 			}
-
-			// if (pixFirst && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) {
-			// createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamp);
-			//
-			// if (rollingShutter) {
-			// // rolling shutter start of exposure (SOE)
-			// createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamp);
-			// frameIntervalUs = timestamp - frameExposureStartTimestampUs;
-			// frameExposureStartTimestampUs = timestamp;
-			// }
-			// }
-			//
-			// if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.ResetRead) && !rollingShutter) {
-			// // global shutter start of exposure (SOE)
-			// createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamp);
-			// frameIntervalUs = timestamp - frameExposureStartTimestampUs;
-			// frameExposureStartTimestampUs = timestamp;
-			// }
 
 			e.setAdcSample(data);
 			e.setReadoutType(readoutType);
