@@ -295,7 +295,7 @@ public class Jaer3BufferParser {
                     ORIGINAL_CHIP = this.chip;
                     ORIGINAL_EVENT_EXTRACTOR = this.chip.getEventExtractor();
                 }
-		chip.setEventExtractor(new jaer3EventExtractor(chip));
+		chip.setEventExtractor(new jaer3EventExtractor(chip)); // TODO, make the jaer3EventExtractor a static value, not created every time
 
 		currentPkt = searchPacketHeader(0, 1);
 
@@ -726,8 +726,7 @@ public class Jaer3BufferParser {
 		@Override
 		synchronized public EventPacket extractPacket(final AEPacketRaw in) {
 			if (out == null) {
-				out = new ApsDvsEventPacket(ApsDvsEvent.class); // In order to be general, we make the packet's event
-																// ApsDvsEvent.
+				out = new ApsDvsEventPacket(ApsDvsEvent.class); // In order to be general, we make the packet's event ApsDvsEvent.
 			}
 			else {
 				out.clear();

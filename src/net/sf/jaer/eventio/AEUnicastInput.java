@@ -100,6 +100,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private ByteBuffer wholePktBuffer = null;
     private int jaer3PktSize = 0, jaer3PktNum = 0;
     private long jaer3EventsNum = 0;
+    private Jaer3BufferParser j3Parser;
 
     /**
      * Constructs an instance of AEUnicastInput and binds it to the default
@@ -265,12 +266,15 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     }
     
     private static ByteBuffer clone(ByteBuffer original) {
-       ByteBuffer clone = ByteBuffer.allocate(original.capacity());
-       original.rewind();//copy from the beginning
-       clone.put(original);
-       original.rewind();
-       // clone.flip();
-       return clone;
+    ByteBuffer clone = ByteBuffer.allocate(original.capacity());
+    if(clone.capacity() < 90000) { // The max length of a whole frame packet is 86464, so the capacity must be bigger than 86464, here we use 90000 for convience. 
+        clone = ByteBuffer.allocate(90000);
+    }
+    original.rewind(); //copy from the beginning
+    clone.put(original);
+    original.rewind();
+    // clone.flip(); // We still need to put data in the buffer, we will flip it in the end buffer, so we don't need flip at the head buffer.
+    return clone;
     }
     
     /**
@@ -435,18 +439,24 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             int[] timestamps = packet.getTimestamps();
             
 
+            /*
+             * All AEDAT 3.0 data extracting will just be processed in this if block.
+             * If the frame events can't be displayed in jAER, please check "maxBytesPerPacket" in the UDP node of caer-config.xml. 
+             * This value should be not 0 and not very big (better smaller than 90000). At the same time, this value should also be
+             * bigger than maxBytesPerPacket, otherwise every jAER buffer (this value) can't copy the buffer (maxBytesPerPacket) from cAER.
+            */
             if(cAERStreamEnabled) {
                 try {
                     Jaer3BufferParser j3Parser = new Jaer3BufferParser(buffer, chip);
                     long nEventsNum = j3Parser.size();
                     
-                    if(nEventsNum != 0) {  // This is the packet's head buffer
+                    if(nEventsNum != 0) {  // This is a valid packet's head buffer
                         jaer3PktSize = buffer.getInt(4);                
                         jaer3PktNum = buffer.getInt(20); 
                         jaer3EventsNum = nEventsNum;
                         wholePktBuffer = clone(buffer);
                         
-                        if(wholePktBuffer.position() == (jaer3PktSize * jaer3PktNum + 28)) { // The packet is over
+                        if(wholePktBuffer.position() == (jaer3PktSize * jaer3PktNum + 28)) { // This is the end buffer, the packet is finished.
                             wholePktBuffer.flip();
                             j3Parser = new Jaer3BufferParser(wholePktBuffer, chip); 
                         } else {
@@ -462,7 +472,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                             wholePktBuffer = null;
                             return;
                         }
-                        if(wholePktBuffer.position() == (jaer3PktSize * jaer3PktNum + 28)) { // The packet is over
+                        if(wholePktBuffer.position() == (jaer3PktSize * jaer3PktNum + 28)) { // This is the end buffer, the packet is finished.
                             wholePktBuffer.flip();
                             j3Parser = new Jaer3BufferParser(wholePktBuffer, chip); 
                         } else {
@@ -471,7 +481,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                     }
                     
                     newPacketLength = (int) (startingIndex + jaer3EventsNum);
-                    packet.ensureCapacity((int) newPacketLength);  // TODO, too much annoying output, maybe it's better to depress the output. The log output is in net.sf.jaer.event.EventPacket enlargeCapacity
+                    packet.ensureCapacity((int) newPacketLength); 
                     EventRaw.EventType[] etypes = packet.getEventtypes(); // For jAER 3.0, no influence on jAER 2.0
                     int[] pixelDataArray = packet.getPixelDataArray();
                     addresses = packet.getAddresses();
@@ -495,6 +505,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                 }
                 return;                
             }
+            
             
             for (int i = 0; i < nEventsInPacket; i++) {
                 if (addressFirstEnabled) {
