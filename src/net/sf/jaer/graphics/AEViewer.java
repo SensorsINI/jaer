@@ -1890,11 +1890,11 @@ two interfaces). otherwise force user choice.
 
 		} // viewLoop.run()
 
-		/** Grab the input.
+		/** Grabs the input data from whatever source is currently supplying it, e.g. a file, live sensor input, etc.
 		 *
-		 * @return returns true if the code should continue from here and skip future processing
+		 * @return returns false if there are no error and data was acquired, true if there is no input and the code should continue from here and skip future processing
 		 */
-		boolean grabInput(){
+		private boolean grabInput(){
 
 			switch (getPlayMode()) {
 				case SEQUENCING:
@@ -1915,7 +1915,7 @@ two interfaces). otherwise force user choice.
 					sliderDontProcess = true;
 					playerControls.getPlayerSlider().setValue(position);
 					if (!(chip.getHardwareInterface() instanceof AEMonitorInterface)) {
-						return true;                            // if we're a monitor plus sequencer than go on to monitor events, otherwise break out since there are no events to monitor
+						return true; // if we're a monitor plus sequencer than go on to monitor events, otherwise break out since there are no events to monitor
 					}
 				case LIVE:
 					openAEMonitor();
@@ -2089,7 +2089,7 @@ two interfaces). otherwise force user choice.
 				return true;
 			}
 
-			return false;
+			return false;  // false means there was no error, so go on to process the raw packet
 		}
 
 		/** Filters packet through processing chain if ProcessingMode is RENDERING or LIVE.
