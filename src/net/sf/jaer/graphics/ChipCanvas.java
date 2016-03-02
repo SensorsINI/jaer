@@ -286,7 +286,13 @@ public class ChipCanvas implements GLEventListener, Observer {
             displayMethods.add(chip.getCanvas().getDisplayMethod());
         }
 
-        drawable.setSharedAutoDrawable(JAERViewer.sharedDrawable); // TODO tobi added to try to use shared context
+        if (System.getProperty("os.name").startsWith("Windows")) {
+            // TODO tobi added to try to use shared context on windows, to address problems with opening multiple canvases (e.g. multiple AEViewers)
+            // opening 2nd instance, or even creating live file preview in AE file open dialog, often causes JOGL to bomb with
+            // complaints about non availablility of the desired GLProfile.
+            // On Linux systems, using the shared context below with Intel graphics causes an immediate native exception.
+            drawable.setSharedAutoDrawable(JAERViewer.sharedDrawable);
+        }
         // between all viewers and file open dialog
         // previews.
         // TODO we now get under windows this exception:
