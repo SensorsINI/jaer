@@ -179,6 +179,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                 extractEvents(buffer, packet);
                 buffer.clear();
                 availableBufferQueue.put(buffer);
+                if(packet.getNumEvents() >= 10000) break; // Set a threshold to avoid the big dealy caused by accumulating too many events in the packet.
              }
                 return packet;
         } catch (InterruptedException e) {

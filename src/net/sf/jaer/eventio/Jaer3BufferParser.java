@@ -88,6 +88,8 @@ public class Jaer3BufferParser {
         private static AEChip ORIGINAL_CHIP = null;
 	private static EventExtractor2D ORIGINAL_EVENT_EXTRACTOR = null;
 
+        private static jaer3EventExtractor JAER3_EXTRACTOR = null;
+        
 	public class PacketHeader {
 
 		EventType eventType = EventType.SpecialEvent;
@@ -295,7 +297,12 @@ public class Jaer3BufferParser {
                     ORIGINAL_CHIP = this.chip;
                     ORIGINAL_EVENT_EXTRACTOR = this.chip.getEventExtractor();
                 }
-		chip.setEventExtractor(new jaer3EventExtractor(chip)); // TODO, make the jaer3EventExtractor a static value, not created every time
+                
+                if(JAER3_EXTRACTOR == null) {
+                    JAER3_EXTRACTOR = new jaer3EventExtractor(chip);
+                }
+                
+		chip.setEventExtractor(JAER3_EXTRACTOR); 
 
 		currentPkt = searchPacketHeader(0, 1);
 
