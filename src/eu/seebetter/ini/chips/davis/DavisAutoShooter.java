@@ -37,11 +37,13 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
 	private final RectangularClusterTracker tracker = new RectangularClusterTracker(chip);
 	private final TextRenderer textRenderer = new TextRenderer(new Font("Monospaced", Font.BOLD, 24));
 	private float eventRateThresholdHz = getFloat("eventRateThresholdHz", 50000);
+        private float blurEventRateThresholdHz = getFloat("blurEventRateThresholdHz", 100000);
 	private int eventCountThresholdKEvents = getInt("eventCountThresholdKEvents", 100);
 	private boolean showAnnotation = getBoolean("showAnnotation", true);
 	private int eventsSinceLastShot = 0;
 	private boolean snapshotTriggered = false;
 	private boolean uninitialized = true;
+        private boolean activityFlag = false;
 	private boolean useTracker = getBoolean("useTracker", false);
 	private boolean useEventCount = getBoolean("useEventCount", true);
 	private boolean useEventRateThreshold = getBoolean("useEventRateThreshold", true);
@@ -62,6 +64,7 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
 		setPropertyTooltip(count, "eventCountThresholdKEvents", "shots are triggered every this many thousand DVS events");
 		setPropertyTooltip(count, "useEventCount", "use an accumulated event count criteria");
 		setPropertyTooltip(rate, "eventRateThresholdHz", "shots are triggered whenever the DVS event rate in Hz is above this value");
+                setPropertyTooltip(rate, "blurEventRateThresholdHz", "shots are delayed whenever the DVS event rate in Hz is above this value");
 		setPropertyTooltip(rate, "useEventRateThreshold", "use an event rate criteria");
 		setPropertyTooltip(track, "useTracker", "use the object tracker to determine whether to trigger new frame capture");
 		setPropertyTooltip(track, "trackerMovementPixelsForNewFrame",
@@ -112,7 +115,9 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
 			}
 		}
 
-		if (uninitialized || (useEventRateThreshold && (eventRateEstimator.getFilteredEventRate() > eventRateThresholdHz))
+		if (uninitialized || (useEventRateThreshold && (eventRateEstimator.getFilteredEventRate() < eventRateThresholdHz) && activityFlag)
+                        || (useEventRateThreshold && (eventRateEstimator.getFilteredEventRate() > eventRateThresholdHz)
+                        && (eventRateEstimator.getFilteredEventRate() < blurEventRateThresholdHz))
 			|| (useEventCount && (eventsSinceLastShot > (eventCountThresholdKEvents << 10))) || (newClusterFound)
 			|| (maxDistance > getTrackerMovementPixelsForNewFrame())) {
 			// trigger shot
@@ -120,7 +125,12 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
 			snapshotTriggered = true;
 			((DavisChip) chip).takeSnapshot();
 			uninitialized = false;
+                        activityFlag = false;
 		}
+                else if (useEventRateThreshold && (eventRateEstimator.getFilteredEventRate() > blurEventRateThresholdHz))
+                        {
+                        activityFlag = true;
+                } 
 		else {
 			snapshotTriggered = false;
 		}
@@ -145,14 +155,20 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
 	public float getEventRateThresholdHz() {
 		return eventRateThresholdHz;
 	}
-
-	/**
-	 * @param eventRateThresholdHz
-	 *            the eventRateThresholdHz to set
-	 */
-	public void setEventRateThresholdHz(final float eventRateThresholdHz) {
+        
+        public void setEventRateThresholdHz(final float eventRateThresholdHz) {
 		this.eventRateThresholdHz = eventRateThresholdHz;
 		putFloat("eventRateThresholdHz", eventRateThresholdHz);
+	}
+        
+        public float getBlurEventRateThresholdHz() {
+		return blurEventRateThresholdHz;
+	}
+
+        
+        public void setBlurEventRateThresholdHz(final float blurEventRateThresholdHz) {
+		this.blurEventRateThresholdHz = blurEventRateThresholdHz;
+		putFloat("blurEventRateThresholdHz", blurEventRateThresholdHz);
 	}
 
 	/**
