@@ -27,7 +27,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JSeparator;
 
 /**
- * Keeps track of recent files used (e.g. in BiasgenFrame)
+ * Keeps track of recent files and folders opened.
  * @author tobi
  */
 public class RecentFiles {
