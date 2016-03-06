@@ -36,7 +36,10 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
+import java.io.File;
+import java.util.Iterator;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -44,8 +47,9 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- *
- * @author marc
+ * Calibrates a single camera using DAVIS frames and OpenCV calibration methods.
+ * 
+ * @author Marc Osswald, Tobi Delbruck
  */
 public class SingleCameraCalibration extends EventFilter2D implements FrameAnnotater {
 
@@ -60,7 +64,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     //encapsulated fields
     private boolean realtimePatternDetectionEnabled = true;
     private boolean cornerSubPixRefinement = true;
-    private String imagesDirPath = System.getProperty("user.dir");
+    private String imagesDirPath = getString("imagesDirPath",System.getProperty("user.dir"));
     private int patternWidth = 9;
     private int patternHeight = 5;
     private int rectangleSize = 20; //size in mm
@@ -92,7 +96,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         frameExtractor = new ApsFrameExtractor(chip);
         filterChain = new FilterChain(chip);
         filterChain.add(frameExtractor);
-        frameExtractor.setExtRender(true);
+        frameExtractor.setExtRender(false);
         setEnclosedFilterChain(filterChain);
         resetFilter();
     }
@@ -111,14 +115,16 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
         // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
-        for (Object eIn : in) {
-            if (eIn == null) {
+        Iterator itr = ((ApsDvsEventPacket) in).fullIterator();
+        while (itr.hasNext()) {
+            Object o = itr.next();
+            if (o == null) {
                 break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
             }
-            BasicEvent e = (BasicEvent) eIn;
-            if (e.isSpecial()) {
-                continue;
-            }
+            BasicEvent e = (BasicEvent) o;
+//            if (e.isSpecial()) {
+//                continue;
+//            }
 
             //trigger action (on ts reset)
             if ((e.timestamp < lastTimestamp) && (e.timestamp < 100000) && takeImageOnTimestampReset) {
@@ -203,11 +209,11 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 String filename = "davis" + fileBaseName + "_" + String.format("%03d", imageCounter) + ".jpg";
                 opencv_highgui.imwrite(imagesDirPath + "\\" + filename, imgSave);
                 //save depth sensor image if enabled
-                if (depthViewerThread!=null) {
+                if (depthViewerThread != null) {
                     if (depthViewerThread.isFrameCaptureRunning()) {
                         //save img
                         String fileSuffix = "_" + String.format("%03d", imageCounter) + ".jpg";
-                        depthViewerThread.saveLastImage(imagesDirPath,fileSuffix);
+                        depthViewerThread.saveLastImage(imagesDirPath, fileSuffix);
                     }
                 }
                 //store image points
@@ -247,7 +253,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     @Override
-	public void annotate(GLAutoDrawable drawable) {
+    public void annotate(GLAutoDrawable drawable) {
 
         GL2 gl = drawable.getGL().getGL2();
 
@@ -344,7 +350,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     synchronized public void doSetPath() {
         JFileChooser j = new JFileChooser();
-        //j.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        j.setCurrentDirectory(new File(imagesDirPath));
+        //j.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // let user specify a base filename
         j.showSaveDialog(null);
         //imagesDirPath = j.getSelectedFile().getAbsolutePath();
         imagesDirPath = j.getCurrentDirectory().getAbsolutePath();
@@ -353,6 +360,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             fileBaseName = "_" + fileBaseName;
         }
         log.info("Changed images path to " + imagesDirPath);
+        putString("imagesDirPath",imagesDirPath);
     }
 
     synchronized public void doCalibrate() {
@@ -467,7 +475,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     public void doDepthViewer() {
         try {
-            System.load(System.getProperty("user.dir")+"\\jars\\openni2\\OpenNI2.dll");
+            System.load(System.getProperty("user.dir") + "\\jars\\openni2\\OpenNI2.dll");
 
             // initialize OpenNI
             OpenNI.initialize();
