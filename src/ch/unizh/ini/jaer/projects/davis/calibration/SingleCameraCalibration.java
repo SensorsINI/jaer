@@ -38,6 +38,11 @@ import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplicatio
 import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.Iterator;
 import java.util.logging.Level;
 import net.sf.jaer.Description;
@@ -50,13 +55,6 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 
 /**
@@ -468,13 +466,68 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         calibrated = true;
 
     }
-    
-    public void doSaveCalibration(){
-        if(!calibrated) return;
-        TaFileStorage fs=new TaFileStorage();
-        fs.create(imagesDirPath+File.separator+"calibration.xml");
-//        fs.writeMat("cameraMatrix", cameraMatrix);
-        
+
+    synchronized public void doSaveCalibration() {
+        if (!calibrated) {
+            JOptionPane.showMessageDialog(null, "No calibration yet");
+            return;
+        }
+        JFileChooser j = new JFileChooser();
+        j.setCurrentDirectory(new File(imagesDirPath));
+        j.setApproveButtonText("Select folder");
+        j.setDialogTitle("Select a folder to store calibration XML files");
+        j.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // let user specify a base filename
+        int ret = j.showSaveDialog(null);
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        imagesDirPath = j.getSelectedFile().getPath();
+        serializeMat(imagesDirPath, "cameraMatrix", cameraMatrix);
+        serializeMat(imagesDirPath, "distortionCoefs", distortionCoefs);
+    }
+
+    synchronized public void doLoadCalibration() {
+        JFileChooser j = new JFileChooser();
+        j.setCurrentDirectory(new File(imagesDirPath));
+        j.setApproveButtonText("Select folder");
+        j.setDialogTitle("Select a folder that has XML files storing calibration");
+        j.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // let user specify a base filename
+        int ret = j.showSaveDialog(null);
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        imagesDirPath = j.getSelectedFile().getPath();
+        try {
+            cameraMatrix = deserializeMat(imagesDirPath, "cameraMatrix");
+            distortionCoefs = deserializeMat(imagesDirPath, "distortionCoefs");
+            calibrated=true;
+            log.info("loaded cameraMatrix and distortionCoefs");
+        } catch (Exception i) {
+            log.warning(i.toString());
+        }
+    }
+
+    /**
+     * Writes an XML file for the matrix X called path/X.xml
+     *
+     * @param dir path to folder
+     * @param name base name of file
+     * @param sMat the Mat to write
+     */
+    public void serializeMat(String dir, String name, opencv_core.Mat sMat) {
+        String fn = dir + File.separator + name + ".xml";
+        opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.WRITE);
+        opencv_core.CvMat cvMat = sMat.asCvMat();
+        storage.writeObj(name, cvMat);
+        storage.release();
+        log.info("saved in " + fn);
+    }
+
+    public opencv_core.Mat deserializeMat(String dir, String name) {
+        opencv_core.FileStorage storage = new opencv_core.FileStorage(imagesDirPath + File.separator + name + ".xml", opencv_core.FileStorage.READ);
+        opencv_core.CvMat cvMat = new opencv_core.CvMat(storage.get(name).readObj());
+        opencv_core.Mat mat = new opencv_core.Mat(cvMat);
+        return mat;
     }
 
     synchronized public void doTakeImage() {
@@ -610,6 +663,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     /**
      * http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
+     *
      * @return the cameraMatrix
      */
     public Mat getCameraMatrix() {
@@ -618,6 +672,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     /**
      * http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
+     *
      * @return the distortionCoefs
      */
     public Mat getDistortionCoefs() {
@@ -626,6 +681,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     /**
      * Human friendly summary of calibration
+     *
      * @return the calibrationString
      */
     public String getCalibrationString() {
@@ -633,7 +689,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     /**
-     * 
+     *
      * @return true if calibration was completed successfully
      */
     public boolean isCalibrated() {
