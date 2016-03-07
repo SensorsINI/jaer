@@ -34,7 +34,10 @@ public class JAERWindowUtilities {
 
     final static int WINDOWS_TASK_BAR_HEIGHT = 100; // accounts for task bar at bottom, don't want window to underlap it
     private static int lowerInset = WINDOWS_TASK_BAR_HEIGHT; // filled in from windows screen inset
-    static Logger log = Logger.getLogger("JAERWindowUtilities");
+    private static Logger log = Logger.getLogger("JAERWindowUtilities");
+    private static int resizeCounter=0;
+    final static int STOP_TRYING_THRESHOLD=30;  // after this many calls on same window, give up, some feedback loop with underlying window manager such as Windows tablet mode
+    private static JFrame lastFrame=null;
 
     /**
      * Creates a new instance of JAERWindowUtilities
@@ -51,6 +54,15 @@ public class JAERWindowUtilities {
      */
     public static void constrainFrameSizeToScreenSize(final JFrame frame) {
         boolean resize = false; // set true if window is too big for screen
+        
+        if(lastFrame!=null && lastFrame==frame){
+            resizeCounter++;
+            if(resizeCounter>=STOP_TRYING_THRESHOLD){
+                log.info("won't try to constrain window size anymore; could be some loop with underlying window manager. Try disabling tablet mode.");
+                return;
+            }
+        }
+        lastFrame=frame;
 
         try {
             Point loc = frame.getLocationOnScreen();
@@ -93,7 +105,7 @@ public class JAERWindowUtilities {
                 resize = true;
             }
             if (w > sd.width) {
-                log.info("window width (" + w + ") is bigger than screen width (" + (sd.width) + "), resizing height");
+                log.info("window width (" + w + ") is bigger than screen width (" + (sd.width) + "), resizing width");
                 w = sd.width;
                 resize = true;
             }
@@ -107,7 +119,7 @@ public class JAERWindowUtilities {
                     if (resize2 && !(frame instanceof WindowSaver.DontResize)) {
                         frame.setSize(new Dimension(w2, h2));
                     }
-                    frame.validate();
+//                    frame.validate();
                 }
             });
         } catch (IllegalComponentStateException e) {
