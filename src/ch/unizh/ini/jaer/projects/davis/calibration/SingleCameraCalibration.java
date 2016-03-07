@@ -51,6 +51,13 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 
 /**
  * Calibrates a single camera using DAVIS frames and OpenCV calibration methods.
@@ -67,7 +74,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     private float[] lastFrame;
 
-    SimpleDepthCameraViewerApplication depthViewerThread;
+    private SimpleDepthCameraViewerApplication depthViewerThread;
 
     //encapsulated fields
     private boolean realtimePatternDetectionEnabled = getBoolean("realtimePatternDetectionEnabled", true);
@@ -82,21 +89,23 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private String fileBaseName = "";
 
     //opencv matrices
-    Mat corners;
-    MatVector allImagePoints;
-    MatVector allObjectPoints;
-    Mat cameraMatrix;
-    Mat distCoeffs;
-    Mat imgIn, imgOut;
+    private Mat corners;
+    private MatVector allImagePoints;
+    private MatVector allObjectPoints;
+    private Mat cameraMatrix;
+    private Mat distortionCoefs;
+    private MatVector rotationVectors;
+    private MatVector translationVectors;
+    private Mat imgIn, imgOut;
 
-    float focalLengthPixels = 0;
-    float focalLengthMm = 0;
-    Point2D.Float principlePoint = null;
-    String calibrationString = null;
+    private float focalLengthPixels = 0;
+    private float focalLengthMm = 0;
+    private Point2D.Float principlePoint = null;
+    private String calibrationString = null;
 
-    boolean patternFound;
-    int imageCounter = 0;
-    boolean calibrated = false;
+    private boolean patternFound;
+    private int imageCounter = 0;
+    private boolean calibrated = false;
 
     private boolean actionTriggered = false;
     private int nAcqFrames = 0;
@@ -185,7 +194,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                     input.convertTo(input, CV_8U, 255, 0);
                     Mat img = input.reshape(0, sy);
                     Mat undistortedImg = new Mat();
-                    opencv_imgproc.undistort(img, undistortedImg, cameraMatrix, distCoeffs);
+                    opencv_imgproc.undistort(img, undistortedImg, cameraMatrix, distortionCoefs);
                     Mat imgOut8u = new Mat(sy, sx, CV_8UC3);
                     cvtColor(undistortedImg, imgOut8u, CV_GRAY2RGB);
                     Mat outImgF = new Mat(sy, sx, CV_64FC3);
@@ -411,7 +420,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         int ret = j.showSaveDialog(null);
         if (ret != JFileChooser.APPROVE_OPTION) {
             return;
-        }        
+        }
         //imagesDirPath = j.getSelectedFile().getAbsolutePath();
         imagesDirPath = j.getCurrentDirectory().getAbsolutePath();
         fileBaseName = j.getSelectedFile().getName();
@@ -426,26 +435,26 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         //init
         Size imgSize = new Size(sx, sy);
         cameraMatrix = new Mat();
-        distCoeffs = new Mat();
-        MatVector rvecs = new MatVector();
-        MatVector tvecs = new MatVector();
+        distortionCoefs = new Mat();
+        rotationVectors = new MatVector();
+        translationVectors = new MatVector();
 
         allImagePoints.resize(imageCounter);
         allObjectPoints.resize(imageCounter); // resize has side effect that lists cannot hold any more data
         log.info(String.format("calibrating based on %d images sized %d x %d", allObjectPoints.size(), imgSize.width(), imgSize.height()));
         //calibrate
         try {
-            opencv_calib3d.calibrateCamera(allObjectPoints, allImagePoints, imgSize, cameraMatrix, distCoeffs, rvecs, tvecs);
+            opencv_calib3d.calibrateCamera(allObjectPoints, allImagePoints, imgSize, cameraMatrix, distortionCoefs, rotationVectors, translationVectors);
             focalLengthPixels = (float) (cameraMatrix.asCvMat().get(0, 0) + cameraMatrix.asCvMat().get(0, 0)) / 2;
             focalLengthMm = chip.getPixelWidthUm() * 1e-3f * focalLengthPixels;
             principlePoint = new Point2D.Float((float) cameraMatrix.asCvMat().get(0, 2), (float) cameraMatrix.asCvMat().get(1, 2));
-            calibrationString = String.format("Using %d images\nfocal length avg=%.1f pixels=%.2f mm\nPrincipl point=%.1f,%.1f, Chip size/2=%d,%d\n",
+            calibrationString = String.format("Using %d images\nfocal length avg=%.1f pixels=%.2f mm\nPrincipal point (green cross)=%.1f,%.1f, Chip size/2=%d,%d\n",
                     imageCounter, focalLengthPixels, focalLengthMm,
                     principlePoint.x, principlePoint.y,
                     chip.getSizeX() / 2, chip.getSizeY() / 2);
-            log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html\n"
+            log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html \n"
                     + "\nCamera matrix: " + cameraMatrix.toString() + "\n" + printMatD(cameraMatrix)
-                    + "\nDist coefficients: " + distCoeffs.toString() + "\n" + printMatD(distCoeffs)
+                    + "\nDistortion coefficients k_1 k_2 p_1 p_2 k_3 ...: " + distortionCoefs.toString() + "\n" + printMatD(distortionCoefs)
                     + calibrationString);
         } catch (RuntimeException e) {
             log.warning("calibration failed with exception " + e + "See https://adventuresandwhathaveyou.wordpress.com/2014/03/14/opencv-error-messages-suck/");
@@ -589,5 +598,37 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
+     * @return the cameraMatrix
+     */
+    public Mat getCameraMatrix() {
+        return cameraMatrix;
+    }
+
+    /**
+     * http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
+     * @return the distortionCoefs
+     */
+    public Mat getDistortionCoefs() {
+        return distortionCoefs;
+    }
+
+    /**
+     * Human friendly summary of calibration
+     * @return the calibrationString
+     */
+    public String getCalibrationString() {
+        return calibrationString;
+    }
+
+    /**
+     * 
+     * @return true if calibration was completed successfully
+     */
+    public boolean isCalibrated() {
+        return calibrated;
     }
 }
