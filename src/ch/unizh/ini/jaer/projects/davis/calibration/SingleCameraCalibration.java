@@ -11,7 +11,6 @@ import static org.bytedeco.javacpp.opencv_core.CV_8UC3;
 import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_EPS;
 import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_ITER;
 import static org.bytedeco.javacpp.opencv_imgproc.CV_GRAY2RGB;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 
 import java.util.List;
 
@@ -40,6 +39,9 @@ import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.io.File;
 import java.util.Iterator;
+import java.util.logging.Level;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
@@ -49,35 +51,14 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 
 /**
  * Calibrates a single camera using DAVIS frames and OpenCV calibration methods.
  *
  * @author Marc Osswald, Tobi Delbruck
  */
+@Description("Calibrates a single camera using DAVIS frames and OpenCV calibration methods")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class SingleCameraCalibration extends EventFilter2D implements FrameAnnotater {
 
     private int sx;
@@ -111,7 +92,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     float focalLengthPixels = 0;
     float focalLengthMm = 0;
     Point2D.Float principlePoint = null;
-    String calibrationString=null;
+    String calibrationString = null;
 
     boolean patternFound;
     int imageCounter = 0;
@@ -119,10 +100,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     private boolean actionTriggered = false;
     private int nAcqFrames = 0;
-    private int nMaxAcqFrames = 8;
+    private int nMaxAcqFrames = 1;
 
-    private ApsFrameExtractor frameExtractor;
-    private FilterChain filterChain;
+    private final ApsFrameExtractor frameExtractor;
+    private final FilterChain filterChain;
 
     public SingleCameraCalibration(AEChip chip) {
         super(chip);
@@ -132,15 +113,16 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         frameExtractor.setExtRender(false);
         setEnclosedFilterChain(filterChain);
         resetFilter();
-        setPropertyTooltip("patternHeight", "height of checkerboard calibration pattern in internal corner intersections");
-        setPropertyTooltip("patternWidth", "width of checkerboard calibration pattern in internal corner intersections");
+        setPropertyTooltip("patternHeight", "height of chessboard calibration pattern in internal corner intersections, i.e. one less than number of squares");
+        setPropertyTooltip("patternWidth", "width of chessboard calibration pattern in internal corner intersections, i.e. one less than number of squares");
         setPropertyTooltip("realtimePatternDetectionEnabled", "width of checkerboard calibration pattern in internal corner intersections");
-        setPropertyTooltip("rectangleSizeMm", "size of square rectangles of calibration pattern in mm");
+        setPropertyTooltip("rectangleWidthMm", "width of square rectangles of calibration pattern in mm");
+        setPropertyTooltip("rectangleHeightMm", "height of square rectangles of calibration pattern in mm");
         setPropertyTooltip("showUndistortedFrames", "shows the undistorted frame in the ApsFrameExtractor display, if calibration has been completed");
         setPropertyTooltip("takeImageOnTimestampReset", "??");
         setPropertyTooltip("cornerSubPixRefinement", "refine corner locations to subpixel resolution");
         setPropertyTooltip("calibrate", "run the camera calibration on collected frame data and print results to console");
-        setPropertyTooltip("depthViewer", "shows the depth viewer if an NI2 device is connected");
+        setPropertyTooltip("depthViewer", "shows the depth or color image viewer if a Kinect device is connected via NI2 interface");
         setPropertyTooltip("setPath", "sets the folder and basename of saved images");
         setPropertyTooltip("takeImage", "snaps a calibration image that forms part of the calibration dataset");
     }
@@ -172,7 +154,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
             //trigger action (on ts reset)
             if ((e.timestamp < lastTimestamp) && (e.timestamp < 100000) && takeImageOnTimestampReset) {
-                log.info("****** ACTION TRIGGRED ******");
+                log.info("timestamp reset action trigggered");
                 actionTriggered = true;
                 nAcqFrames = 0;
             }
@@ -189,7 +171,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 //iterate
                 if (actionTriggered && (nAcqFrames < nMaxAcqFrames)) {
                     nAcqFrames++;
-                    log.info("acquiring frame " + nAcqFrames);
                 }
                 //take action
                 if (actionTriggered && (nAcqFrames == nMaxAcqFrames)) {
@@ -234,30 +215,33 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         cvtColor(imgIn, imgOut, CV_GRAY2RGB);
         //opencv_highgui.imshow("test", imgIn);
         //opencv_highgui.waitKey(1);
-        boolean patternFound = opencv_calib3d.findChessboardCorners(imgIn, patternSize, corners);
+        boolean locPatternFound;
+        locPatternFound = opencv_calib3d.findChessboardCorners(imgIn, patternSize, corners);
         if (drawAndSave) {
             //render frame
-            if (patternFound && cornerSubPixRefinement) {
+            if (locPatternFound && cornerSubPixRefinement) {
                 opencv_core.TermCriteria tc = new opencv_core.TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1);
                 opencv_imgproc.cornerSubPix(imgIn, corners, new Size(3, 3), new Size(-1, -1), tc);
             }
-            opencv_calib3d.drawChessboardCorners(imgOut, patternSize, corners, patternFound);
+            opencv_calib3d.drawChessboardCorners(imgOut, patternSize, corners, locPatternFound);
             Mat outImgF = new Mat(sy, sx, CV_64FC3);
             imgOut.convertTo(outImgF, CV_64FC3, 1.0 / 255, 0);
             float[] outFrame = new float[sy * sx * 3];
             outImgF.getFloatBuffer().get(outFrame);
             frameExtractor.setDisplayFrameRGB(outFrame);
             //save image
-            if (patternFound) {
+            if (locPatternFound) {
                 Mat imgSave = new Mat(sy, sx, CV_8U);
                 opencv_core.flip(imgIn, imgSave, 0);
-                String filename = "davis" + fileBaseName + "_" + String.format("%03d", imageCounter) + ".jpg";
-                opencv_highgui.imwrite(imagesDirPath + "\\" + filename, imgSave);
+                String filename = chip.getName() + "-" + fileBaseName + "-" + String.format("%03d", imageCounter) + ".jpg";
+                String fullFilePath = imagesDirPath + "\\" + filename;
+                opencv_highgui.imwrite(fullFilePath, imgSave);
+                log.info("wrote " + fullFilePath);
                 //save depth sensor image if enabled
                 if (depthViewerThread != null) {
                     if (depthViewerThread.isFrameCaptureRunning()) {
                         //save img
-                        String fileSuffix = "_" + String.format("%03d", imageCounter) + ".jpg";
+                        String fileSuffix = "-" + String.format("%03d", imageCounter) + ".jpg";
                         depthViewerThread.saveLastImage(imagesDirPath, fileSuffix);
                     }
                 }
@@ -267,23 +251,25 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                     allObjectPoints = new MatVector(100);
                 }
                 allImagePoints.put(imageCounter, corners);
-                //create and store object points
+                //create and store object points, which are just coordinates in mm of corners of pattern as we know they are drawn on the 
+                // calibration target
                 Mat objectPoints = new Mat(corners.rows(), 1, opencv_core.CV_32FC3);
-                float x = 0;
-                float y = 0;
+                float x, y;
                 for (int h = 0; h < patternHeight; h++) {
                     y = h * rectangleHeightMm;
                     for (int w = 0; w < patternWidth; w++) {
                         x = w * rectangleWidthMm;
                         objectPoints.getFloatBuffer().put(3 * ((patternWidth * h) + w), x);
                         objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 1, y);
-                        objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 2, 0);
+                        objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 2, 0); // z=0 for object points
                     }
                 }
                 allObjectPoints.put(imageCounter, objectPoints);
                 //iterate image counter
+                log.info(String.format("added corner points from image %d", imageCounter));
                 imageCounter++;
                 frameExtractor.apsDisplay.setxLabel(filename);
+
 //                //debug
 //                System.out.println(allImagePoints.toString());
 //                for (int n = 0; n < imageCounter; n++) {
@@ -292,9 +278,11 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 //                        System.out.println(allImagePoints.get(n).getFloatBuffer().get(2 * i) + " " + allImagePoints.get(n).getFloatBuffer().get(2 * i + 1)+" | "+allObjectPoints.get(n).getFloatBuffer().get(3 * i) + " " + allObjectPoints.get(n).getFloatBuffer().get(3 * i + 1) + " " + allObjectPoints.get(n).getFloatBuffer().get(3 * i + 2));
 //                    }
 //                }
+            } else {
+                log.warning("corners not found for this image");
             }
         }
-        return patternFound;
+        return locPatternFound;
     }
 
     @Override
@@ -359,9 +347,9 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             gl.glEnd();
 
         }
-        
-        if(calibrationString!=null){
-            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()*.1f);
+
+        if (calibrationString != null) {
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .15f);
             MultilineAnnotationTextRenderer.setColor(Color.green);
             MultilineAnnotationTextRenderer.setScale(.3f);
             MultilineAnnotationTextRenderer.renderMultilineString(calibrationString);
@@ -375,8 +363,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         patternFound = false;
         imageCounter = 0;
         calibrated = false;
-        calibrationString=null;
-        principlePoint=null;
+        calibrationString = null;
+        principlePoint = null;
     }
 
     @Override
@@ -417,15 +405,20 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     synchronized public void doSetPath() {
         JFileChooser j = new JFileChooser();
         j.setCurrentDirectory(new File(imagesDirPath));
-        //j.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // let user specify a base filename
-        j.showSaveDialog(null);
+        j.setApproveButtonText("Select");
+        j.setDialogTitle("Select a folder and base file name for calibration images");
+        j.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES); // let user specify a base filename
+        int ret = j.showSaveDialog(null);
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            return;
+        }        
         //imagesDirPath = j.getSelectedFile().getAbsolutePath();
         imagesDirPath = j.getCurrentDirectory().getAbsolutePath();
         fileBaseName = j.getSelectedFile().getName();
         if (!fileBaseName.isEmpty()) {
-            fileBaseName = "_" + fileBaseName;
+            fileBaseName = "-" + fileBaseName;
         }
-        log.info("Changed images path to " + imagesDirPath);
+        log.log(Level.INFO, "Changed images path to {0}", imagesDirPath);
         putString("imagesDirPath", imagesDirPath);
     }
 
@@ -438,21 +431,28 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         MatVector tvecs = new MatVector();
 
         allImagePoints.resize(imageCounter);
-        allObjectPoints.resize(imageCounter);
-        log.info(String.format("calibrating based on %d object points, %d image points for image sized %d x %d", allObjectPoints.size(), allImagePoints.size(), imgSize.width(), imgSize.height()));
+        allObjectPoints.resize(imageCounter); // resize has side effect that lists cannot hold any more data
+        log.info(String.format("calibrating based on %d images sized %d x %d", allObjectPoints.size(), imgSize.width(), imgSize.height()));
         //calibrate
         try {
             opencv_calib3d.calibrateCamera(allObjectPoints, allImagePoints, imgSize, cameraMatrix, distCoeffs, rvecs, tvecs);
             focalLengthPixels = (float) (cameraMatrix.asCvMat().get(0, 0) + cameraMatrix.asCvMat().get(0, 0)) / 2;
             focalLengthMm = chip.getPixelWidthUm() * 1e-3f * focalLengthPixels;
             principlePoint = new Point2D.Float((float) cameraMatrix.asCvMat().get(0, 2), (float) cameraMatrix.asCvMat().get(1, 2));
-            calibrationString=String.format("\nfocal length avg=%.1f pixels=%.2f mm\nPrincipl point=%.1f,%.1f, Chip size/2=%d,%d\n", focalLengthPixels, focalLengthMm, principlePoint.x, principlePoint.y, chip.getSizeX() / 2, chip.getSizeY() / 2);
+            calibrationString = String.format("Using %d images\nfocal length avg=%.1f pixels=%.2f mm\nPrincipl point=%.1f,%.1f, Chip size/2=%d,%d\n",
+                    imageCounter, focalLengthPixels, focalLengthMm,
+                    principlePoint.x, principlePoint.y,
+                    chip.getSizeX() / 2, chip.getSizeY() / 2);
             log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html\n"
                     + "\nCamera matrix: " + cameraMatrix.toString() + "\n" + printMatD(cameraMatrix)
                     + "\nDist coefficients: " + distCoeffs.toString() + "\n" + printMatD(distCoeffs)
                     + calibrationString);
         } catch (RuntimeException e) {
-            log.warning("calibration failed with exception " + e);
+            log.warning("calibration failed with exception " + e + "See https://adventuresandwhathaveyou.wordpress.com/2014/03/14/opencv-error-messages-suck/");
+        } finally {
+            allImagePoints.resize(100);
+            allObjectPoints.resize(100);
+
         }
         //debug
 
@@ -462,7 +462,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     synchronized public void doTakeImage() {
         actionTriggered = true;
-        nAcqFrames = nMaxAcqFrames;
+        nAcqFrames = 0;
     }
 
     private String printMatD(Mat M) {
@@ -577,7 +577,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
             List<DeviceInfo> devicesInfo = OpenNI.enumerateDevices();
             if (devicesInfo.isEmpty()) {
-                JOptionPane.showMessageDialog(null, "No NI2 device is connected", "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(null, "No Kinect device is connected via NI2 interface", "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
