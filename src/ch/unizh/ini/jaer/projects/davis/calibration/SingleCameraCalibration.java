@@ -443,13 +443,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         //calibrate
         try {
             opencv_calib3d.calibrateCamera(allObjectPoints, allImagePoints, imgSize, cameraMatrix, distortionCoefs, rotationVectors, translationVectors);
-            focalLengthPixels = (float) (cameraMatrix.asCvMat().get(0, 0) + cameraMatrix.asCvMat().get(0, 0)) / 2;
-            focalLengthMm = chip.getPixelWidthUm() * 1e-3f * focalLengthPixels;
-            principlePoint = new Point2D.Float((float) cameraMatrix.asCvMat().get(0, 2), (float) cameraMatrix.asCvMat().get(1, 2));
-            calibrationString = String.format("Using %d images\nfocal length avg=%.1f pixels=%.2f mm\nPrincipal point (green cross)=%.1f,%.1f, Chip size/2=%d,%d\n",
-                    imageCounter, focalLengthPixels, focalLengthMm,
-                    principlePoint.x, principlePoint.y,
-                    chip.getSizeX() / 2, chip.getSizeY() / 2);
+            generateCalibrationString();
             log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html \n"
                     + "\nCamera matrix: " + cameraMatrix.toString() + "\n" + printMatD(cameraMatrix)
                     + "\nDistortion coefficients k_1 k_2 p_1 p_2 k_3 ...: " + distortionCoefs.toString() + "\n" + printMatD(distortionCoefs)
@@ -465,6 +459,16 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
         calibrated = true;
 
+    }
+
+    private void generateCalibrationString() {
+        focalLengthPixels = (float) (cameraMatrix.asCvMat().get(0, 0) + cameraMatrix.asCvMat().get(0, 0)) / 2;
+        focalLengthMm = chip.getPixelWidthUm() * 1e-3f * focalLengthPixels;
+        principlePoint = new Point2D.Float((float) cameraMatrix.asCvMat().get(0, 2), (float) cameraMatrix.asCvMat().get(1, 2));
+        calibrationString = String.format("Using %d images\nfocal length avg=%.1f pixels=%.2f mm\nPrincipal point (green cross)=%.1f,%.1f, Chip size/2=%d,%d\n",
+                imageCounter, focalLengthPixels, focalLengthMm,
+                principlePoint.x, principlePoint.y,
+                chip.getSizeX() / 2, chip.getSizeY() / 2);
     }
 
     synchronized public void doSaveCalibration() {
@@ -501,6 +505,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             cameraMatrix = deserializeMat(imagesDirPath, "cameraMatrix");
             distortionCoefs = deserializeMat(imagesDirPath, "distortionCoefs");
             calibrated=true;
+            generateCalibrationString();
             log.info("loaded cameraMatrix and distortionCoefs");
         } catch (Exception i) {
             log.warning(i.toString());
