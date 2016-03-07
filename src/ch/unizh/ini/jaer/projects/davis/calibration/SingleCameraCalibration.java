@@ -504,7 +504,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         try {
             cameraMatrix = deserializeMat(imagesDirPath, "cameraMatrix");
             distortionCoefs = deserializeMat(imagesDirPath, "distortionCoefs");
-            calibrated=true;
+            calibrated = true;
             generateCalibrationString();
             log.info("loaded cameraMatrix and distortionCoefs");
         } catch (Exception i) {
@@ -667,9 +667,21 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     /**
-     * http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
-     *
-     * @return the cameraMatrix
+     * Returns the camera calibration matrix, as specified in
+     * <a href="http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html">OpenCV
+     * camera calibration</a>
+     * <p>
+     * The matrix entries can be accessed as shown in code snippet below. Note order of matrix entries returned is column-wise;
+     * the inner loop is vertically over column or y index:
+     * <pre>
+     * Mat M;
+     * for (int i = 0; i < M.rows(); i++) {
+     *  for (int j = 0; j < M.cols(); j++) {
+     *      M.getDoubleBuffer().get(c));
+     *      c++;
+     *  }
+     * }
+     * </pre> @return the cameraMatrix
      */
     public Mat getCameraMatrix() {
         return cameraMatrix;
