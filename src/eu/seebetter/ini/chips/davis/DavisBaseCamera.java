@@ -581,14 +581,15 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			if (!(packet instanceof ApsDvsEventPacket)) {
 				return null;
 			}
+
 			final ApsDvsEventPacket apsDVSpacket = (ApsDvsEventPacket) packet;
 			raw.ensureCapacity(packet.getSize()); // TODO must handle extra capacity needed for inserting multiple raw
 													// events for each IMU sample below
 			raw.setNumEvents(0);
-			apsDVSpacket.getSize();
 			final Iterator evItr = apsDVSpacket.fullIterator();
 			int k = 0;
 			final EventRaw tmpRawEvent = new EventRaw();
+
 			while (evItr.hasNext()) {
 				final ApsDvsEvent e = (ApsDvsEvent) evItr.next();
 				// not writing out these EOF events (which were synthesized on extraction) results in reconstructed
@@ -596,6 +597,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 				if (e.isFilteredOut() || e.isEndOfFrame() || e.isStartOfFrame() || e.isStartOfExposure() || e.isEndOfExposure()) {
 					continue; // these flag events were synthesized from data in first place
 				}
+
 				if (e.isImuSample()) {
 					final IMUSample imuSample = e.getImuSample();
 					k += imuSample.writeToPacket(raw, k);
@@ -607,6 +609,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 					k++;
 				}
 			}
+
 			raw.setNumEvents(k);
 			return raw;
 		}
@@ -624,11 +627,13 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		public int reconstructRawAddressFromEvent(final TypedEvent e) {
 			int address = e.address;
 
-			if (((ApsDvsEvent) e).getAdcSample() >= 0) {
-				address = (address & ~DavisChip.XMASK) | ((e.x) << DavisChip.XSHIFT);
+			if (((ApsDvsEvent) e).isDVSEvent()) {
+				// Do inversion for DVS events.
+				final int sx1 = getChip().getSizeX() - 1;
+				address = (address & ~DavisChip.XMASK) | ((sx1 - e.x) << DavisChip.XSHIFT);
 			}
 			else {
-				address = (address & ~DavisChip.XMASK) | ((getSizeX() - 1 - e.x) << DavisChip.XSHIFT);
+				address = (address & ~DavisChip.XMASK) | (e.x << DavisChip.XSHIFT);
 			}
 
 			address = (address & ~DavisChip.YMASK) | (e.y << DavisChip.YSHIFT);
@@ -967,22 +972,27 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		 */
 		@Override
 		public int reconstructRawAddressFromEvent(final TypedEvent e) {
-			if (isDVSQuarterOfAPS) {
-				int address = e.address;
+			int address = e.address;
 
-				if (((ApsDvsEvent) e).getAdcSample() >= 0) {
-					address = (address & ~DavisChip.XMASK) | (((e.x) / 2) << DavisChip.XSHIFT);
+			if (((ApsDvsEvent) e).isDVSEvent()) {
+				// Do inversion for DVS events.
+				if (isDVSQuarterOfAPS) {
+					final int sx1 = (getChip().getSizeX() / 2) - 1;
+					address = (address & ~DavisChip.XMASK) | ((sx1 - (e.x / 2)) << DavisChip.XSHIFT);
+					address = (address & ~DavisChip.YMASK) | ((e.y / 2) << DavisChip.YSHIFT);
 				}
 				else {
-					address = (address & ~DavisChip.XMASK) | ((getSizeX() - 1 - (e.x / 2)) << DavisChip.XSHIFT);
+					final int sx1 = getChip().getSizeX() - 1;
+					address = (address & ~DavisChip.XMASK) | ((sx1 - e.x) << DavisChip.XSHIFT);
+					address = (address & ~DavisChip.YMASK) | (e.y << DavisChip.YSHIFT);
 				}
-
-				address = (address & ~DavisChip.YMASK) | ((e.y / 2) << DavisChip.YSHIFT);
-
-				return address;
+			}
+			else {
+				address = (address & ~DavisChip.XMASK) | (e.x << DavisChip.XSHIFT);
+				address = (address & ~DavisChip.YMASK) | (e.y << DavisChip.YSHIFT);
 			}
 
-			return super.reconstructRawAddressFromEvent(e);
+			return address;
 		}
 	} // extractor
 
