@@ -468,6 +468,14 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         calibrated = true;
 
     }
+    
+    public void doSaveCalibration(){
+        if(!calibrated) return;
+        TaFileStorage fs=new TaFileStorage();
+        fs.create(imagesDirPath+File.separator+"calibration.xml");
+//        fs.writeMat("cameraMatrix", cameraMatrix);
+        
+    }
 
     synchronized public void doTakeImage() {
         actionTriggered = true;
