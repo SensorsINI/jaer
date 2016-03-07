@@ -36,6 +36,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
+import java.awt.geom.Point2D;
 import java.io.File;
 import java.util.Iterator;
 import net.sf.jaer.chip.AEChip;
@@ -45,10 +46,34 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 
 /**
  * Calibrates a single camera using DAVIS frames and OpenCV calibration methods.
- * 
+ *
  * @author Marc Osswald, Tobi Delbruck
  */
 public class SingleCameraCalibration extends EventFilter2D implements FrameAnnotater {
@@ -62,14 +87,15 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     SimpleDepthCameraViewerApplication depthViewerThread;
 
     //encapsulated fields
-    private boolean realtimePatternDetectionEnabled = true;
-    private boolean cornerSubPixRefinement = true;
-    private String imagesDirPath = getString("imagesDirPath",System.getProperty("user.dir"));
-    private int patternWidth = 9;
-    private int patternHeight = 5;
-    private int rectangleSize = 20; //size in mm
-    private boolean showUndistortedFrames = false;
-    private boolean takeImageOnTimestampReset = false;
+    private boolean realtimePatternDetectionEnabled = getBoolean("realtimePatternDetectionEnabled", true);
+    private boolean cornerSubPixRefinement = getBoolean("cornerSubPixRefinement", true);
+    private String imagesDirPath = getString("imagesDirPath", System.getProperty("user.dir"));
+    private int patternWidth = getInt("patternWidth", 9);
+    private int patternHeight = getInt("patternHeight", 5);
+    private int rectangleHeightMm = getInt("rectangleHeightMm", 20); //height in mm
+    private int rectangleWidthMm = getInt("rectangleWidthMm", 20); //width in mm
+    private boolean showUndistortedFrames = getBoolean("showUndistortedFrames", false);
+    private boolean takeImageOnTimestampReset = getBoolean("takeImageOnTimestampReset", false);
     private String fileBaseName = "";
 
     //opencv matrices
@@ -99,6 +125,17 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         frameExtractor.setExtRender(false);
         setEnclosedFilterChain(filterChain);
         resetFilter();
+        setPropertyTooltip("patternHeight", "height of checkerboard calibration pattern in internal corner intersections");
+        setPropertyTooltip("patternWidth", "width of checkerboard calibration pattern in internal corner intersections");
+        setPropertyTooltip("realtimePatternDetectionEnabled", "width of checkerboard calibration pattern in internal corner intersections");
+        setPropertyTooltip("rectangleSizeMm", "size of square rectangles of calibration pattern in mm");
+        setPropertyTooltip("showUndistortedFrames", "shows the undistorted frame in the ApsFrameExtractor display, if calibration has been completed");
+        setPropertyTooltip("takeImageOnTimestampReset", "??");
+        setPropertyTooltip("cornerSubPixRefinement", "refine corner locations to subpixel resolution");
+        setPropertyTooltip("calibrate", "run the camera calibration on collected frame data and print results to console");
+        setPropertyTooltip("depthViewer", "shows the depth viewer if an NI2 device is connected");
+        setPropertyTooltip("setPath", "sets the folder and basename of saved images");
+        setPropertyTooltip("takeImage", "snaps a calibration image that forms part of the calibration dataset");
     }
 
     /**
@@ -145,6 +182,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 //iterate
                 if (actionTriggered && (nAcqFrames < nMaxAcqFrames)) {
                     nAcqFrames++;
+                    log.info("acquiring frame " + nAcqFrames);
                 }
                 //take action
                 if (actionTriggered && (nAcqFrames == nMaxAcqFrames)) {
@@ -227,9 +265,9 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 float x = 0;
                 float y = 0;
                 for (int h = 0; h < patternHeight; h++) {
-                    y = h * rectangleSize;
+                    y = h * rectangleHeightMm;
                     for (int w = 0; w < patternWidth; w++) {
-                        x = w * rectangleSize;
+                        x = w * rectangleWidthMm;
                         objectPoints.getFloatBuffer().put(3 * ((patternWidth * h) + w), x);
                         objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 1, y);
                         objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 2, 0);
@@ -360,11 +398,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             fileBaseName = "_" + fileBaseName;
         }
         log.info("Changed images path to " + imagesDirPath);
-        putString("imagesDirPath",imagesDirPath);
+        putString("imagesDirPath", imagesDirPath);
     }
 
     synchronized public void doCalibrate() {
-
         //init
         Size imgSize = new Size(sx, sy);
         cameraMatrix = new Mat();
@@ -374,15 +411,23 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
         allImagePoints.resize(imageCounter);
         allObjectPoints.resize(imageCounter);
+        log.info(String.format("calibrating based on %d object points, %d image points for image sized %d x %d", allObjectPoints.size(), allImagePoints.size(), imgSize.width(), imgSize.height()));
         //calibrate
-        opencv_calib3d.calibrateCamera(allObjectPoints, allImagePoints, imgSize, cameraMatrix, distCoeffs, rvecs, tvecs);
-
+        try {
+            opencv_calib3d.calibrateCamera(allObjectPoints, allImagePoints, imgSize, cameraMatrix, distCoeffs, rvecs, tvecs);
+            float focalLengthPixels=(float)(cameraMatrix.asCvMat().get(0, 0)+cameraMatrix.asCvMat().get(0, 0))/2;
+            float focalLengthMm=chip.getPixelWidthUm()*1e-3f*focalLengthPixels;
+            Point2D.Float principlePoint=new Point2D.Float((float)cameraMatrix.asCvMat().get(0, 2),(float)cameraMatrix.asCvMat().get(1, 2));
+            log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html\n"+
+                "\nCamera matrix: " + cameraMatrix.toString() + "\n" + printMatD(cameraMatrix)
+                + "\nDist coefficients: " + distCoeffs.toString() + "\n" + printMatD(distCoeffs)+
+                String.format("\nfocal length avg=%.1f pixels=%.2f mm\nPrincipl point=%s",focalLengthPixels, focalLengthMm,principlePoint));
+        } catch (RuntimeException e) {
+            log.warning("calibration failed with exception " + e);
+        }
         //debug
-        System.out.println("Camera matrix: " + cameraMatrix.toString());
-        printMatD(cameraMatrix);
-        System.out.println("Dist coefficients: " + distCoeffs.toString());
-        printMatD(distCoeffs);
-
+        
+        
         calibrated = true;
 
     }
@@ -392,15 +437,17 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         nAcqFrames = nMaxAcqFrames;
     }
 
-    private void printMatD(Mat M) {
+    private String printMatD(Mat M) {
+        StringBuilder sb = new StringBuilder();
         int c = 0;
         for (int i = 0; i < M.rows(); i++) {
             for (int j = 0; j < M.cols(); j++) {
-                System.out.print(" " + M.getDoubleBuffer().get(c));
+                sb.append(String.format("%10.5f\t", M.getDoubleBuffer().get(c)));
                 c++;
             }
-            System.out.println();
+            sb.append("\n");
         }
+        return sb.toString();
     }
 
     /**
@@ -415,6 +462,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      */
     public void setPatternWidth(int patternWidth) {
         this.patternWidth = patternWidth;
+        putInt("patternWidth", patternWidth);
     }
 
     /**
@@ -429,20 +477,36 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      */
     public void setPatternHeight(int patternHeight) {
         this.patternHeight = patternHeight;
+        putInt("patternHeight", patternHeight);
     }
 
     /**
-     * @return the rectangleSize
+     * @return the rectangleHeightMm
      */
-    public int getRectangleSize() {
-        return rectangleSize;
+    public int getRectangleHeightMm() {
+        return rectangleHeightMm;
     }
 
     /**
-     * @param rectangleSize the rectangleSize to set
+     * @param rectangleHeightMm the rectangleHeightMm to set
      */
-    public void setRectangleSize(int rectangleSize) {
-        this.rectangleSize = rectangleSize;
+    public void setRectangleHeightMm(int rectangleHeightMm) {
+        this.rectangleHeightMm = rectangleHeightMm;
+        putInt("rectangleHeightMm", rectangleHeightMm);
+    }
+  /**
+     * @return the rectangleHeightMm
+     */
+    public int getRectangleWidthMm() {
+        return rectangleWidthMm;
+    }
+
+    /**
+     * @param rectangleWidthMm the rectangleHeightMm to set
+     */
+    public void setRectangleWidthMm(int rectangleWidthMm) {
+        this.rectangleHeightMm = rectangleWidthMm;
+        putInt("rectangleWidthMm", rectangleWidthMm);
     }
 
     /**
@@ -457,6 +521,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      */
     public void setShowUndistortedFrames(boolean showUndistortedFrames) {
         this.showUndistortedFrames = showUndistortedFrames;
+        putBoolean("showUndistortedFrames", showUndistortedFrames);
     }
 
     /**
@@ -471,6 +536,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      */
     public void setTakeImageOnTimestampReset(boolean takeImageOnTimestampReset) {
         this.takeImageOnTimestampReset = takeImageOnTimestampReset;
+        putBoolean("takeImageOnTimestampReset", takeImageOnTimestampReset);
     }
 
     public void doDepthViewer() {
@@ -482,7 +548,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
             List<DeviceInfo> devicesInfo = OpenNI.enumerateDevices();
             if (devicesInfo.isEmpty()) {
-                JOptionPane.showMessageDialog(null, "No device is connected", "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(null, "No NI2 device is connected", "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
