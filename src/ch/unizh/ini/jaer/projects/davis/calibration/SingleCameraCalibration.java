@@ -36,6 +36,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
+import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.io.File;
 import java.util.Iterator;
@@ -46,6 +47,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
@@ -106,13 +108,18 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     Mat distCoeffs;
     Mat imgIn, imgOut;
 
+    float focalLengthPixels = 0;
+    float focalLengthMm = 0;
+    Point2D.Float principlePoint = null;
+    String calibrationString=null;
+
     boolean patternFound;
     int imageCounter = 0;
     boolean calibrated = false;
 
     private boolean actionTriggered = false;
     private int nAcqFrames = 0;
-    private int nMaxAcqFrames = 3;
+    private int nMaxAcqFrames = 8;
 
     private ApsFrameExtractor frameExtractor;
     private FilterChain filterChain;
@@ -340,6 +347,25 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             }
             gl.glEnd();
         }
+
+        if (principlePoint != null) {
+            gl.glLineWidth(3f);
+            gl.glColor3f(0, 1, 0);
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex2f(principlePoint.x - 4, principlePoint.y);
+            gl.glVertex2f(principlePoint.x + 4, principlePoint.y);
+            gl.glVertex2f(principlePoint.x, principlePoint.y - 4);
+            gl.glVertex2f(principlePoint.x, principlePoint.y + 4);
+            gl.glEnd();
+
+        }
+        
+        if(calibrationString!=null){
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()*.1f);
+            MultilineAnnotationTextRenderer.setColor(Color.green);
+            MultilineAnnotationTextRenderer.setScale(.3f);
+            MultilineAnnotationTextRenderer.renderMultilineString(calibrationString);
+        }
     }
 
     @Override
@@ -349,6 +375,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         patternFound = false;
         imageCounter = 0;
         calibrated = false;
+        calibrationString=null;
+        principlePoint=null;
     }
 
     @Override
@@ -415,19 +443,19 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         //calibrate
         try {
             opencv_calib3d.calibrateCamera(allObjectPoints, allImagePoints, imgSize, cameraMatrix, distCoeffs, rvecs, tvecs);
-            float focalLengthPixels=(float)(cameraMatrix.asCvMat().get(0, 0)+cameraMatrix.asCvMat().get(0, 0))/2;
-            float focalLengthMm=chip.getPixelWidthUm()*1e-3f*focalLengthPixels;
-            Point2D.Float principlePoint=new Point2D.Float((float)cameraMatrix.asCvMat().get(0, 2),(float)cameraMatrix.asCvMat().get(1, 2));
-            log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html\n"+
-                "\nCamera matrix: " + cameraMatrix.toString() + "\n" + printMatD(cameraMatrix)
-                + "\nDist coefficients: " + distCoeffs.toString() + "\n" + printMatD(distCoeffs)+
-                String.format("\nfocal length avg=%.1f pixels=%.2f mm\nPrincipl point=%s",focalLengthPixels, focalLengthMm,principlePoint));
+            focalLengthPixels = (float) (cameraMatrix.asCvMat().get(0, 0) + cameraMatrix.asCvMat().get(0, 0)) / 2;
+            focalLengthMm = chip.getPixelWidthUm() * 1e-3f * focalLengthPixels;
+            principlePoint = new Point2D.Float((float) cameraMatrix.asCvMat().get(0, 2), (float) cameraMatrix.asCvMat().get(1, 2));
+            calibrationString=String.format("\nfocal length avg=%.1f pixels=%.2f mm\nPrincipl point=%.1f,%.1f, Chip size/2=%d,%d\n", focalLengthPixels, focalLengthMm, principlePoint.x, principlePoint.y, chip.getSizeX() / 2, chip.getSizeY() / 2);
+            log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html\n"
+                    + "\nCamera matrix: " + cameraMatrix.toString() + "\n" + printMatD(cameraMatrix)
+                    + "\nDist coefficients: " + distCoeffs.toString() + "\n" + printMatD(distCoeffs)
+                    + calibrationString);
         } catch (RuntimeException e) {
             log.warning("calibration failed with exception " + e);
         }
         //debug
-        
-        
+
         calibrated = true;
 
     }
@@ -494,7 +522,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         this.rectangleHeightMm = rectangleHeightMm;
         putInt("rectangleHeightMm", rectangleHeightMm);
     }
-  /**
+
+    /**
      * @return the rectangleHeightMm
      */
     public int getRectangleWidthMm() {
