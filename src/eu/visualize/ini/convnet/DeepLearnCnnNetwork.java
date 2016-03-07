@@ -683,8 +683,8 @@ public class DeepLearnCnnNetwork {
                 }
                 var = (var / n);
                 float sig = (float) Math.sqrt(var);
-                if (sig < 0.1f) {
-                    sig = 0.1f;
+                if (sig < 0.1f/ 255.0f) {
+                    sig = 0.1f/ 255.0f;
                 }
                 for (int i = 0; i < n; i++) {
                     activations[i] = (activations[i] - mean) / sig;
@@ -965,6 +965,9 @@ public class DeepLearnCnnNetwork {
 //                    sum += 1;
 //                    sum += input.a(inputMap, inx, iny);
                         sum += kernels[k(inputMap, outputMap, xx,  yy)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
+//                        sum += kernels[k(inputMap, outputMap, kernelDim - xx - 1, yy)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
+//                        sum += kernels[k(inputMap, outputMap, kernelDim - xx - 1, kernelDim - yy - 1)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
+//                        sum += kernels[k(inputMap, outputMap, xx, yy)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
                         operationCounter += 2;
 //                    iny++;
 //                    nterms++;
