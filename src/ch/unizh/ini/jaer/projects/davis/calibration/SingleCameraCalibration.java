@@ -72,12 +72,17 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     private float[] lastFrame;
 
+    /**
+     * Fires property change with this string when new calibration is available
+     */
+    public static String EVENT_NEW_CALIBRATION = "EVENT_NEW_CALIBRATION";
+
     private SimpleDepthCameraViewerApplication depthViewerThread;
 
     //encapsulated fields
     private boolean realtimePatternDetectionEnabled = getBoolean("realtimePatternDetectionEnabled", true);
     private boolean cornerSubPixRefinement = getBoolean("cornerSubPixRefinement", true);
-    private String imagesDirPath = getString("imagesDirPath", System.getProperty("user.dir"));
+    private String dirPath = getString("dirPath", System.getProperty("user.dir"));
     private int patternWidth = getInt("patternWidth", 9);
     private int patternHeight = getInt("patternHeight", 5);
     private int rectangleHeightMm = getInt("rectangleHeightMm", 20); //height in mm
@@ -87,7 +92,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private String fileBaseName = "";
 
     //opencv matrices
-    private Mat corners;
+    private Mat corners;  // TODO change to OpenCV java, not bytedeco http://docs.opencv.org/2.4/doc/tutorials/introduction/desktop_java/java_dev_intro.html
     private MatVector allImagePoints;
     private MatVector allObjectPoints;
     private Mat cameraMatrix;
@@ -131,7 +136,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         setPropertyTooltip("calibrate", "run the camera calibration on collected frame data and print results to console");
         setPropertyTooltip("depthViewer", "shows the depth or color image viewer if a Kinect device is connected via NI2 interface");
         setPropertyTooltip("setPath", "sets the folder and basename of saved images");
+        setPropertyTooltip("saveCalibration", "saves calibration files to a selected folder");
+        setPropertyTooltip("loadCalibration", "loads saved calibration files from selected folder");
         setPropertyTooltip("takeImage", "snaps a calibration image that forms part of the calibration dataset");
+        loadCalibration();
     }
 
     /**
@@ -195,12 +203,19 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                     opencv_imgproc.undistort(img, undistortedImg, cameraMatrix, distortionCoefs);
                     Mat imgOut8u = new Mat(sy, sx, CV_8UC3);
                     cvtColor(undistortedImg, imgOut8u, CV_GRAY2RGB);
-                    Mat outImgF = new Mat(sy, sx, CV_64FC3);
-                    imgOut8u.convertTo(outImgF, CV_64FC3, 1.0 / 255, 0);
+                    Mat outImgF = new Mat(sy, sx, opencv_core.CV_32F);
+                    imgOut8u.convertTo(outImgF, opencv_core.CV_32F, 1.0 / 255, 0);
                     float[] outFrame = new float[sy * sx * 3];
                     outImgF.getFloatBuffer().get(outFrame);
                     frameExtractor.setDisplayFrameRGB(outFrame);
-                    frameExtractor.apsDisplay.setxLabel("lens correction enabled");
+                }
+
+                if (calibrated && showUndistortedFrames) {
+                    frameExtractor.setExtRender(true); // to not alternate
+                    frameExtractor.apsDisplay.setTitleLabel("lens correction enabled");
+                } else {
+                    frameExtractor.setExtRender(false); // to not alternate
+                    frameExtractor.apsDisplay.setTitleLabel("raw input image");
                 }
             }
 
@@ -223,7 +238,12 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         //opencv_highgui.imshow("test", imgIn);
         //opencv_highgui.waitKey(1);
         boolean locPatternFound;
-        locPatternFound = opencv_calib3d.findChessboardCorners(imgIn, patternSize, corners);
+        try {
+            locPatternFound = opencv_calib3d.findChessboardCorners(imgIn, patternSize, corners);
+        } catch (RuntimeException e) {
+            log.warning(e.toString());
+            return false;
+        }
         if (drawAndSave) {
             //render frame
             if (locPatternFound && cornerSubPixRefinement) {
@@ -241,7 +261,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 Mat imgSave = new Mat(sy, sx, CV_8U);
                 opencv_core.flip(imgIn, imgSave, 0);
                 String filename = chip.getName() + "-" + fileBaseName + "-" + String.format("%03d", imageCounter) + ".jpg";
-                String fullFilePath = imagesDirPath + "\\" + filename;
+                String fullFilePath = dirPath + "\\" + filename;
                 opencv_highgui.imwrite(fullFilePath, imgSave);
                 log.info("wrote " + fullFilePath);
                 //save depth sensor image if enabled
@@ -249,7 +269,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                     if (depthViewerThread.isFrameCaptureRunning()) {
                         //save img
                         String fileSuffix = "-" + String.format("%03d", imageCounter) + ".jpg";
-                        depthViewerThread.saveLastImage(imagesDirPath, fileSuffix);
+                        depthViewerThread.saveLastImage(dirPath, fileSuffix);
                     }
                 }
                 //store image points
@@ -411,7 +431,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     synchronized public void doSetPath() {
         JFileChooser j = new JFileChooser();
-        j.setCurrentDirectory(new File(imagesDirPath));
+        j.setCurrentDirectory(new File(dirPath));
         j.setApproveButtonText("Select");
         j.setDialogTitle("Select a folder and base file name for calibration images");
         j.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES); // let user specify a base filename
@@ -420,13 +440,13 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             return;
         }
         //imagesDirPath = j.getSelectedFile().getAbsolutePath();
-        imagesDirPath = j.getCurrentDirectory().getAbsolutePath();
+        dirPath = j.getCurrentDirectory().getPath();
         fileBaseName = j.getSelectedFile().getName();
         if (!fileBaseName.isEmpty()) {
             fileBaseName = "-" + fileBaseName;
         }
-        log.log(Level.INFO, "Changed images path to {0}", imagesDirPath);
-        putString("imagesDirPath", imagesDirPath);
+        log.log(Level.INFO, "Changed images path to {0}", dirPath);
+        putString("dirPath", dirPath);
     }
 
     synchronized public void doCalibrate() {
@@ -458,6 +478,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         //debug
 
         calibrated = true;
+        getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
 
     }
 
@@ -477,7 +498,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             return;
         }
         JFileChooser j = new JFileChooser();
-        j.setCurrentDirectory(new File(imagesDirPath));
+        j.setCurrentDirectory(new File(dirPath));
         j.setApproveButtonText("Select folder");
         j.setDialogTitle("Select a folder to store calibration XML files");
         j.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // let user specify a base filename
@@ -485,28 +506,37 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         if (ret != JFileChooser.APPROVE_OPTION) {
             return;
         }
-        imagesDirPath = j.getSelectedFile().getPath();
-        serializeMat(imagesDirPath, "cameraMatrix", cameraMatrix);
-        serializeMat(imagesDirPath, "distortionCoefs", distortionCoefs);
+        dirPath = j.getSelectedFile().getPath();
+        putString("dirPath", dirPath);
+        serializeMat(dirPath, "cameraMatrix", cameraMatrix);
+        serializeMat(dirPath, "distortionCoefs", distortionCoefs);
     }
 
     synchronized public void doLoadCalibration() {
         JFileChooser j = new JFileChooser();
-        j.setCurrentDirectory(new File(imagesDirPath));
+        j.setCurrentDirectory(new File(dirPath));
         j.setApproveButtonText("Select folder");
         j.setDialogTitle("Select a folder that has XML files storing calibration");
         j.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // let user specify a base filename
-        int ret = j.showSaveDialog(null);
+        j.setApproveButtonText("Select folder");
+        int ret = j.showOpenDialog(null);
         if (ret != JFileChooser.APPROVE_OPTION) {
             return;
         }
-        imagesDirPath = j.getSelectedFile().getPath();
+        dirPath = j.getSelectedFile().getPath();
+        putString("dirPath", dirPath);
+
+        loadCalibration();
+    }
+
+    private void loadCalibration() {
         try {
-            cameraMatrix = deserializeMat(imagesDirPath, "cameraMatrix");
-            distortionCoefs = deserializeMat(imagesDirPath, "distortionCoefs");
+            cameraMatrix = deserializeMat(dirPath, "cameraMatrix");
+            distortionCoefs = deserializeMat(dirPath, "distortionCoefs");
             calibrated = true;
             generateCalibrationString();
             log.info("loaded cameraMatrix and distortionCoefs");
+            getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
         } catch (Exception i) {
             log.warning(i.toString());
         }
@@ -529,7 +559,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     public opencv_core.Mat deserializeMat(String dir, String name) {
-        opencv_core.FileStorage storage = new opencv_core.FileStorage(imagesDirPath + File.separator + name + ".xml", opencv_core.FileStorage.READ);
+        opencv_core.FileStorage storage = new opencv_core.FileStorage(dirPath + File.separator + name + ".xml", opencv_core.FileStorage.READ);
         opencv_core.CvMat cvMat = new opencv_core.CvMat(storage.get(name).readObj());
         opencv_core.Mat mat = new opencv_core.Mat(cvMat);
         return mat;
@@ -671,8 +701,9 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      * <a href="http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html">OpenCV
      * camera calibration</a>
      * <p>
-     * The matrix entries can be accessed as shown in code snippet below. Note order of matrix entries returned is column-wise;
-     * the inner loop is vertically over column or y index:
+     * The matrix entries can be accessed as shown in code snippet below. Note
+     * order of matrix entries returned is column-wise; the inner loop is
+     * vertically over column or y index:
      * <pre>
      * Mat M;
      * for (int i = 0; i < M.rows(); i++) {
