@@ -535,7 +535,7 @@ public class Jaer3BufferParser {
 			int ylength = in.getInt(ylengthOffset);
 			// int channelNumber = (in.getInt(frameCurrentEventOffset) & 0xe) >> 1;
 			int tsOffset = currentPkt.pktHeader.eventTSOffset;
-			int ts = in.getInt(frameCurrentEventOffset + tsOffset);
+			int ts = in.getInt(frameCurrentEventOffset + tsOffset); // Start of Exposure timestamp
 
 			if (translatedArrayIndex >= 0) {
 				inFrameEvent = true;
@@ -558,14 +558,15 @@ public class Jaer3BufferParser {
 					if ((frameCurrentEventOffset + dataOffset) >= in.limit()) {
 						throw new BufferUnderflowException(); // Reach the end of the buffer
 					}
-					data = in.getShort(frameCurrentEventOffset + dataOffset);
-
+					data = in.getShort(frameCurrentEventOffset + dataOffset);  // Reset read array
+                                        ts = in.getInt(frameCurrentEventOffset + tsOffset - 8); // Start of Frame Capture timestamp                          
 				}
 				else {
 					jaer2FrameAddr = ((((translatedArrayIndex) / ylength)) << 17) + (((translatedArrayIndex) % ylength) << 2) + 1;
 
 					// Signal Read Array
 					data = 0;
+                                        ts = in.getInt(frameCurrentEventOffset + tsOffset - 4); // End of Frame Capture timestamp
 				}
 
 				jaer2Buffer.putInt(jaer2FrameAddr);
