@@ -412,8 +412,14 @@ public class ApsFrameExtractor extends EventFilter2D
         return maxBufferValue;
     }
 
-    public void setExtRender(final boolean setExt) {
-        useExtRender = setExt;
+    /** Sets whether external source sets the displayed data.
+     * 
+     * @param yes true to not fill image values, false to set image values from ApsFrameExtractor
+     * @see #setDisplayFrameRGB(float[]) 
+     * @see #setDisplayGrayFrame(double[]) 
+     */
+    public void setExtRender(final boolean yes) {
+        useExtRender = yes;
     }
 
     public void setLegend(final String legend) {
