@@ -61,13 +61,14 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
             if (singleCameraCalibration.isCalibrated()) {
                 float[] vel = {vx, vy};
-                Mat evM = new Mat(2, 1, opencv_core.CV_32FC3);
+                Mat evM = new Mat(1, 2, opencv_core.CV_32FC2);
                 evM.put(new Scalar(x,y));
+//                evM.put(new Scalar(vx,vy));
                 String sev = printMatF(evM);
-                Mat evMT = new Mat(1, 2, opencv_core.CV_32FC3);
-                String sevT = printMatF(evMT);
+                Mat evMT = new Mat();
                 undistortPoints(evM,evMT,singleCameraCalibration.getCameraMatrix(),singleCameraCalibration.getDistortionCoefs());
-//                CvMat m2=m.asCvMat();
+                String sevT = printMatF(evMT);
+                log.info(sevT);
             }
             if (apsDvsEvent.isImuSample()) {
                 continue;
