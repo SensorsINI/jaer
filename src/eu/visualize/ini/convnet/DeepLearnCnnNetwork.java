@@ -487,7 +487,7 @@ public class DeepLearnCnnNetwork {
                     final int yfloor = (int) Math.floor(y);
                     v = renderer.getApsGrayValueAtPixel(xfloor, yfloor);
                     v = debugNet(v, xo, yo);  // TODO remove only for debug
-                    activations[o(dimy - yo - 1, xo)] = v; 
+                    activations[o(xo, dimy - yo - 1)] = v; 
                     xo++;
                     operationCounter += 4;
                 }
@@ -558,7 +558,7 @@ public class DeepLearnCnnNetwork {
                 for (int x = 0; x < dimy; x++) {  // take every xstride, ystride pixels as output
                     float v = subsampler.getValueAtPixel(x, y);
                     v = debugNet(v, x, y);
-                    activations[o(dimy - y - 1,x)] = v; 
+                    activations[o(x,dimy - y - 1)] = v; 
                 }
             }
             normalizeInputFrame(activations, false);
@@ -616,7 +616,7 @@ public class DeepLearnCnnNetwork {
             }
             for (int x = 0; x < dimx; x++) {
                 for (int y = 0; y < dimy; y++) {
-                    imageDisplay.setPixmapGray(y, dimx - x - 1, (a(0, x, y))); // try to fit mean 0 std 1 into 0-1 range nicely by offset and gain of .5
+                    imageDisplay.setPixmapGray(x ,dimx - y - 1, (a(0, x, y))); // try to fit mean 0 std 1 into 0-1 range nicely by offset and gain of .5
                 }
             }
             imageDisplay.repaint();
