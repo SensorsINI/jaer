@@ -7,8 +7,12 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.orientation.ApsDvsMotionOrientationEvent;
 import net.sf.jaer.eventprocessing.FilterChain;
+import org.bytedeco.javacpp.indexer.DoubleIndexer;
+import org.bytedeco.javacpp.indexer.FloatIndexer;
 import org.bytedeco.javacpp.opencv_core;
 import org.bytedeco.javacpp.opencv_core.Mat;
 import org.bytedeco.javacpp.opencv_core.Scalar;
@@ -51,6 +55,8 @@ public class ImuFlow extends AbstractMotionFlowIMU {
         } else {
             i = ((ApsDvsEventPacket) in).inputIterator();
         }
+        float fx = 1, fy = 1, cx = 0, cy = 0;
+
         while (i.hasNext()) {
             Object ein = i.next();
             ApsDvsEvent apsDvsEvent = (ApsDvsEvent) ein;
@@ -59,17 +65,7 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             }
             extractEventInfo(ein);
             imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
-            if (singleCameraCalibration.isCalibrated()) {
-                float[] vel = {vx, vy};
-                Mat evM = new Mat(1, 2, opencv_core.CV_32FC2);
-                evM.put(new Scalar(x,y));
-//                evM.put(new Scalar(vx,vy));
-                String sev = printMatF(evM);
-                Mat evMT = new Mat();
-                undistortPoints(evM,evMT,singleCameraCalibration.getCameraMatrix(),singleCameraCalibration.getDistortionCoefs());
-                String sevT = printMatF(evMT);
-                log.info(sevT);
-            }
+
             if (apsDvsEvent.isImuSample()) {
                 continue;
             }
@@ -99,6 +95,34 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             if (measureAccuracy) {
                 getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
             }
+        }
+        if (singleCameraCalibration.isCalibrated()) {
+            DoubleIndexer k = singleCameraCalibration.getCameraMatrix().createIndexer();
+            fx = (float) k.get(0, 0);
+            fy = (float) k.get(1, 1);
+            cx = (float) k.get(0, 2);
+            cy = (float) k.get(1, 2);
+            int nout=dirPacket.getSize();
+            
+            Mat inEvents = new Mat(nout, 2, opencv_core.CV_32FC2);
+            for(Object o:dirPacket){
+                ApsDvsMotionOrientationEvent e=(ApsDvsMotionOrientationEvent)o;
+                
+            }
+////            evM.put(new Scalar(x, y));
+////                evM.put(new Scalar(vx,vy));
+////            String sev = printMatF(evM);
+//            Mat evMT = new Mat();
+////            undistortPoints(evM, evMT, singleCameraCalibration.getCameraMatrix(), singleCameraCalibration.getDistortionCoefs());
+//            Mat evMT2 = new Mat();
+//            sev = printMatF(evMT2);
+//            FloatIndexer fidx = evMT.createIndexer();
+//            float newx = fidx.get(0);
+//            float newy = fidx.get(1);
+//            newx = fx * newx + cx;
+//            newy = fy * newy + cy;
+//            String sevT = printMatF(evMT);
+//                log.info(sevT);
         }
         getMotionFlowStatistics().updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket;
