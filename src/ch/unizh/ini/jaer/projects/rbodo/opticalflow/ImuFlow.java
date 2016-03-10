@@ -97,7 +97,7 @@ public class ImuFlow extends AbstractMotionFlowIMU {
                 getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
             }
         }
-        if (calibration.isCalibrated() && !dirPacket.isEmpty()) {
+        if (calibration.isFilterEnabled() && calibration.isCalibrated() && !dirPacket.isEmpty()) {
 
             int nev = dirPacket.getSize();
             FloatPointer fp = new FloatPointer(nev * 2);
