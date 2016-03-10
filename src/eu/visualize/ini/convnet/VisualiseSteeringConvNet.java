@@ -7,30 +7,28 @@ package eu.visualize.ini.convnet;
 
 import net.sf.jaer.util.TobiLogger;
 import java.awt.Color;
-import java.awt.Point;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
-import java.awt.Cursor;
 import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventio.AEUnicastOutput;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
@@ -58,7 +56,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     volatile private boolean forceNetworkOutpout = getBoolean("forceNetworkOutpout", false);
     volatile private int forcedNetworkOutputValue = getInt("forcedNetworkOutputValue", 3); // default is prey invisible output
     private String host = getString("host", "localhost");
-    private int port = getInt("port", 13331);
+    private int remotePort = getInt("remotePort", 13331);
+    private int localPort = getInt("localPort", 15555);
     private DatagramSocket socket = null;
     private InetSocketAddress client = null;
     private DatagramChannel channel = null;
@@ -73,7 +72,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     volatile private boolean apply_LNR_RNL_constraint = getBoolean("apply_LNR_RNL_constraint", false);
     volatile private boolean apply_CN_NC_constraint = getBoolean("apply_CN_NC_constraint", false);
     volatile private float LCRNstep = getFloat("LCRNstep", 1f);
-    private final TobiLogger tobiLogger = new TobiLogger("Decisions", "Decisions of CNN sent to Predator robot Summit XL");
+    private final TobiLogger descisionLogger = new TobiLogger("Decisions", "Decisions of CNN sent to Predator robot Summit XL");
+    private final TobiLogger behaviorLogger = new TobiLogger("Behavior", "Behavior of robots as sent back by Predator robot Summit XL");
+    BehaviorLoggingThread behaviorLoggingThread = new BehaviorLoggingThread();
 
     public VisualiseSteeringConvNet(AEChip chip) {
         super(chip);
@@ -85,7 +86,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(disp, "showStatistics", "shows statistics of DVS frame rate and error rate (when ground truth TargetLabeler file is loaded)");
         setPropertyTooltip(udp, "sendUDPSteeringMessages", "sends UDP packets with steering network output to host:port in hostAndPort");
         setPropertyTooltip(udp, "host", "hostname or IP address to send UDP messages to, e.g. localhost");
-        setPropertyTooltip(udp, "port", "destination UDP port address to send UDP messages to, e.g. 5678");
+        setPropertyTooltip(udp, "remotePort", "destination UDP port address to send UDP messages to, e.g. 13331");
+        setPropertyTooltip(udp, "localPort", "our UDP port address to recieve UDP messages from robot, e.g. 15555");
+
         setPropertyTooltip(udp, "forcedNetworkOutputValue", "forced value of network output sent to client (0=left, 1=middle, 2=right, 3=invisible)");
         setPropertyTooltip(udp, "forceNetworkOutpout", "force (override) network output classification to forcedNetworkOutputValue");
         setPropertyTooltip(udp, "apply_LR_RL_constraint", "force (override) network output classification to make sure there is no switching from L to R or viceversa directly");
@@ -100,8 +103,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         chain.add(targetLabeler);
         setEnclosedFilterChain(chain);
         apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
-        tobiLogger.setAbsoluteTimeEnabled(true);
-        tobiLogger.setNanotimeEnabled(false);
+        descisionLogger.setAbsoluteTimeEnabled(true);
+        descisionLogger.setNanotimeEnabled(false);
 //        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
     }
 
@@ -356,7 +359,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                     byte msg = (byte) (forceNetworkOutpout ? forcedNetworkOutputValue : net.outputLayer.maxActivatedUnit);
                     udpBuf.put(msg);
                     String s = String.format("%d\t%d", lastProcessedEventTimestamp, net.outputLayer.maxActivatedUnit);
-                    tobiLogger.log(s);
+                    descisionLogger.log(s);
                     try {
 //                        log.info("sending buf="+buf+" to client="+client);
 //                        log.info("sending seqNum=" + seqNum + " with msg=" + msg);
@@ -420,18 +423,18 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     }
 
     /**
-     * @return the port
+     * @return the remotePort
      */
-    public int getPort() {
-        return port;
+    public int getRemotePort() {
+        return remotePort;
     }
 
     /**
-     * @param port the port to set
+     * @param remotePort the remotePort to set
      */
-    public void setPort(int port) {
-        this.port = port;
-        putInt("port", port);
+    public void setRemotePort(int remotePort) {
+        this.remotePort = remotePort;
+        putInt("remotePort", remotePort);
     }
 
     private class Error {
@@ -596,11 +599,11 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             if (socket.isBound()) {
                 return true;
             }
-            client = new InetSocketAddress(host, port);
-            channel.connect(client);
+            client = new InetSocketAddress(host, remotePort);
+//            channel.connect(client); // connecting the channel causes some kind of portunavailable error on linux
             return true;
         } catch (Exception se) { // IllegalArgumentException or SecurityException
-            log.warning("While checking client host=" + host + " port=" + port + " caught " + se.toString());
+            log.warning("While checking client host=" + host + " port=" + remotePort + " caught " + se.toString());
             return false;
         }
     }
@@ -608,7 +611,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     public void openChannel() throws IOException {
         closeChannel();
         channel = DatagramChannel.open();
-        socket = channel.socket(); // bind to any available port because we will be sending datagrams with included host:port info
+        socket = channel.socket(); // bind to any available remotePort because we will be sending datagrams with included host:remotePort info
         socket.setTrafficClass(0x10 + 0x08); // low delay
         log.info("opened channel on local port to send UDP messages to ROS.");
     }
@@ -754,18 +757,105 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Network must run at least once to correctly plot kernels (internal variables for indexing are computed at runtime)");
                 return;
             }
-            tobiLogger.setEnabled(true);
-            tobiLogger.addComment("network is " + apsDvsNet.getXmlFilename());
-            tobiLogger.addComment("system.currentTimeMillis lastTimestampUs decisionLCRN");
+            descisionLogger.setEnabled(true);
+            descisionLogger.addComment("network is " + apsDvsNet.getXmlFilename());
+            descisionLogger.addComment("system.currentTimeMillis lastTimestampUs decisionLCRN");
+            behaviorLogger.setEnabled(true);
+            behaviorLogger.addComment("network is " + apsDvsNet.getXmlFilename());
+            behaviorLogger.addComment("system.currentTimeMillis string_message_from_ROS");
+            if(behaviorLoggingThread!=null) {
+                behaviorLoggingThread.closeChannel();
+            }
+      
+            behaviorLoggingThread = new BehaviorLoggingThread();
+            behaviorLoggingThread.start();
         }
     }
 
     public void doStopLoggingUDPMessages() {
-        if (!tobiLogger.isEnabled()) {
+        if (!descisionLogger.isEnabled()) {
             log.info("Logging not enabled, no effect");
             return;
         }
-        tobiLogger.setEnabled(false);
+        descisionLogger.setEnabled(false);
+        behaviorLogger.setEnabled(false);
+        behaviorLoggingThread.closeChannel();
+        behaviorLoggingThread=null;
+    }
+
+    /**
+     * @return the localPort
+     */
+    public int getLocalPort() {
+        return localPort;
+    }
+
+    /**
+     * @param localPort the localPort to set
+     */
+    public void setLocalPort(int localPort) {
+        this.localPort = localPort;
+        putInt("localPort", localPort);
+    }
+
+    private class BehaviorLoggingThread extends Thread {
+
+//        private DatagramSocket socket = null;
+        private InetSocketAddress localSocketAddress = null;
+        private DatagramChannel channel = null;
+        private ByteBuffer udpBuf = ByteBuffer.allocate(1024);
+        private int seqNum = 0;
+        boolean keepRunning = true;
+        int expectedSeqNum = 0;
+
+        @Override
+        public void run() {
+            try {
+                openChannel();
+
+                while (keepRunning) {
+                    udpBuf.clear();
+                    SocketAddress address = channel.receive(udpBuf);
+                    if (udpBuf.limit() == 0) {
+                        continue;
+                    }
+                    seqNum = (int) (udpBuf.get(0));
+                    if (seqNum != expectedSeqNum) {
+                        log.warning(String.format("dropped %d packets from %s", (seqNum - expectedSeqNum), address.toString()));
+                    }
+                    byte[] b2 = new byte[udpBuf.limit() - 1];
+                    udpBuf.get(b2,1,udpBuf.limit()-1);
+                    behaviorLogger.log(new String(b2));
+                }
+                closeChannel();
+            } catch (Exception ex) {
+                log.warning(ex.toString());
+            }
+        }
+
+        private void openChannel() throws IOException {
+            closeChannel();
+            keepRunning=true;
+            channel = DatagramChannel.open();
+            localSocketAddress = new InetSocketAddress("localhost",localPort);
+            channel.bind(localSocketAddress);
+            log.info("opened channel on local port " + localSocketAddress + " to receive UDP messages from ROS.");
+        }
+
+        public void closeChannel() {
+            keepRunning = false;
+            if (channel != null) {
+                log.info("closing local channel " + localSocketAddress + " from UDP client");
+                try {
+                    channel.close();
+                    channel = null;
+                } catch (IOException ex) {
+                    Logger.getLogger(VisualiseSteeringConvNet.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+
+        }
+
     }
 
 }
