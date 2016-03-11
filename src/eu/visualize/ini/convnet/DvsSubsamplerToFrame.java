@@ -62,7 +62,6 @@ public class DvsSubsamplerToFrame {
         accumulatedEventCount = 0;
         mostOffCount = Integer.MAX_VALUE;
         mostOnCount = Integer.MIN_VALUE;
-        frameIntervalFilter.reset();
         lastIntervalUs = 0;
         accumulatedEventCount = 0;
         lastTimestamp = Integer.MIN_VALUE;
@@ -245,6 +244,10 @@ public class DvsSubsamplerToFrame {
         if (cleared) {
             cleared = false;
             int lastStartTimestamp = startTimestamp;
+            if(e.timestamp<startTimestamp){
+                frameIntervalFilter.reset();
+                lastStartTimestamp=e.timestamp;
+            }
             startTimestamp = e.timestamp;
             lastIntervalUs = startTimestamp - lastStartTimestamp;
             if (lastStartTimestamp != 0) {
