@@ -679,7 +679,7 @@
               <Properties>
                 <Property name="mnemonic" type="int" value="67"/>
                 <Property name="text" type="java.lang.String" value="Customize AEChip Menu..."/>
-                <Property name="toolTipText" type="java.lang.String" value="Let&apos;s you customize which AEChip&apos;s are available"/>
+                <Property name="toolTipText" type="java.lang.String" value="Let&apos;s you customize which AEChip&apos;s are available. If your device does not appear, then find it and add it using this option."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="customizeDevicesMenuItemActionPerformed"/>

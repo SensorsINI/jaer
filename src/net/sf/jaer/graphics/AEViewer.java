@@ -7,6 +7,7 @@
  */
 package net.sf.jaer.graphics;
 
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -82,6 +83,9 @@ import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 
 import ch.unizh.ini.jaer.chip.retina.DVS128;
+import eu.seebetter.ini.chips.davis.DAVIS240B;
+import eu.seebetter.ini.chips.davis.DAVIS240C;
+import eu.seebetter.ini.chips.davis.Davis640;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -126,7 +130,6 @@ import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2FirmwareFilennameChooserOkCancelDialog;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import net.sf.jaer.util.ClassChooserDialog;
 import net.sf.jaer.util.DATFileFilter;
@@ -551,6 +554,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private AEChip chip;
     /** The default AEChip class. */
     public static String DEFAULT_CHIP_CLASS = DVS128.class.getName();
+    /** The array list of default available AEChip classes pre-loaded into AEChip menu */
+    public static String[] DEFAULT_CHIP_CLASS_NAMES={
+        DEFAULT_CHIP_CLASS,
+        DAVIS240B.class.getName(),
+        DAVIS240C.class.getName(),
+        CochleaAMS1c.class.getName(),
+        Davis640.class.getName(),
+    };
     /** The class name of the aeChipClass */
     private String aeChipClassName = null;
     /** The class we are displaying - this is the root object for practically everything display in an AEViewer. */
@@ -933,7 +944,7 @@ two interfaces). otherwise force user choice.
                             chipClassNames = (ArrayList<String>) in.readObject();
                             in.close();
                     } else {
-                            log.warning("building list of all AEChip classses - this takes some time. To reduce startup time, use AEChip/Customize to specify desired classes");
+                            log.warning("Building list of default AEChip devices - this can takes some time. To reduce startup time, use AEChip/Customize to specify desired devices");
                             makeDefaultChipClassNames();
                     }
             } catch (Exception e) {
@@ -943,7 +954,11 @@ two interfaces). otherwise force user choice.
     }
 
     private void makeDefaultChipClassNames() {
-            chipClassNames = SubclassFinder.findSubclassesOf(AEChip.class.getName());
+//      chipClassNames = SubclassFinder.findSubclassesOf(AEChip.class.getName());
+        chipClassNames=new ArrayList<String>();
+        for(String s:DEFAULT_CHIP_CLASS_NAMES){
+            chipClassNames.add(s);
+        }
     }
 
     private void putChipClassPrefs() {
@@ -3575,7 +3590,7 @@ two interfaces). otherwise force user choice.
 
         customizeDevicesMenuItem.setMnemonic('C');
         customizeDevicesMenuItem.setText("Customize AEChip Menu...");
-        customizeDevicesMenuItem.setToolTipText("Let's you customize which AEChip's are available");
+        customizeDevicesMenuItem.setToolTipText("Let's you customize which AEChip's are available. If your device does not appear, then find it and add it using this option.");
         customizeDevicesMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 customizeDevicesMenuItemActionPerformed(evt);
