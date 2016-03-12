@@ -30,7 +30,7 @@ import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * Simple convolutional neural network (CNN) data structure to hold CNN from
- * Matlab DeepLearnToolbox. Replicates the computation in matlab function
+ * Matlab DeepLearnToolbox or Caffe. Replicates the computation in matlab function
  * cnnff.m, which is as follows:
  * <pre>
  *
@@ -1037,12 +1037,12 @@ public class DeepLearnCnnNetwork {
          * @param y
          * @return the index into kernels[]
          */
-        final int k(int inputMap, int outputMap, int x, int y) {
+        public final int k(int inputMap, int outputMap, int x, int y) {
             return (inputMap * kernelWeightsPerOutputMap) + (singleKernelLength * outputMap) + (kernelDim * x) + y; //(kernelDim - y - 1);
         }
 
         // output index
-        final int o(int outputMap, int x, int y) {
+        public final int o(int outputMap, int x, int y) {
             return (outputMap * outputMapLength) + (outputMapDim * x) + y; //(outputMapDim-y-1);
         }
 
@@ -1118,7 +1118,7 @@ public class DeepLearnCnnNetwork {
         }
 
         @Override
-        public float a(int map, int x, int y) {
+        public final float a(int map, int x, int y) {
             return activations[o(map, x, y)];
         }
 
