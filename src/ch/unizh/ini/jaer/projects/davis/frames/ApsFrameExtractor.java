@@ -222,7 +222,7 @@ public class ApsFrameExtractor extends EventFilter2D
         }
         if (e.isStartOfFrame()) {
             if (newFrame && useExtRender) {
-                EventFilter.log.warning("Acquistion of new frame started even though old frame was never delivered to ext renderer");
+                EventFilter.log.warning("new frame started even though old frame was never gotten by anyone calling getNewFrame()");
             }
         }
         if (e.isEndOfFrame()) {
@@ -351,7 +351,7 @@ public class ApsFrameExtractor extends EventFilter2D
     }
 
     /**
-     * Checks if new frame is available.
+     * Checks if new frame is available. This flag is reset by getNewFrame()
      *
      * @return true if new frame is available
      * @see #getNewFrame()
@@ -361,9 +361,10 @@ public class ApsFrameExtractor extends EventFilter2D
     }
 
     /**
-     * Returns a double[] buffer of latest displayed frame with adjustments like
+     * Returns a float[] buffer of latest displayed frame with adjustments like
      * brightness, contrast, log intensity conversion, etc. The array is indexed
      * by y * width + x. To access a particular pixel, use getIndex().
+     * newFrame is set to false by this call.
      *
      * @return the double[] frame
      * @see #getDisplayBuffer()
@@ -378,6 +379,7 @@ public class ApsFrameExtractor extends EventFilter2D
      * raw pixel values from sensor, before conversion, brightness, etc. The
      * array is indexed by <code>y * width + x</code>. To access a particular
      * pixel, use getIndex() for convenience.
+     * newFrame is set to false by this call.
      *
      * @return the float[] of pixel values
      * @see #getIndex(int, int)
