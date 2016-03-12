@@ -70,7 +70,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private int sy;
     private int lastTimestamp = 0;
 
-    private float[] lastFrame;
+    private float[] lastFrame = null, outFrame = null;
 
     /**
      * Fires property change with this string when new calibration is available
@@ -138,6 +138,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         setPropertyTooltip("setPath", "sets the folder and basename of saved images");
         setPropertyTooltip("saveCalibration", "saves calibration files to a selected folder");
         setPropertyTooltip("loadCalibration", "loads saved calibration files from selected folder");
+        setPropertyTooltip("clearCalibration", "clears existing calibration");
         setPropertyTooltip("takeImage", "snaps a calibration image that forms part of the calibration dataset");
         loadCalibration();
     }
@@ -194,23 +195,12 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                     actionTriggered = false;
                 }
 
-                if (calibrated && showUndistortedFrames) {
-                    FloatPointer ip = new FloatPointer(lastFrame);
-                    Mat input = new Mat(ip);
-                    input.convertTo(input, CV_8U, 255, 0);
-                    Mat img = input.reshape(0, sy);
-                    Mat undistortedImg = new Mat();
-                    opencv_imgproc.undistort(img, undistortedImg, cameraMatrix, distortionCoefs);
-                    Mat imgOut8u = new Mat(sy, sx, CV_8UC3);
-                    cvtColor(undistortedImg, imgOut8u, CV_GRAY2RGB);
-                    Mat outImgF = new Mat(sy, sx, opencv_core.CV_32F);
-                    imgOut8u.convertTo(outImgF, opencv_core.CV_32F, 1.0 / 255, 0);
-                    float[] outFrame = new float[sy * sx * 3];
-                    outImgF.getFloatBuffer().get(outFrame);
+                if (calibrated && showUndistortedFrames && frameExtractor.isShowAPSFrameDisplay()) {
+                    float[] outFrame = undistortFrame(lastFrame);
                     frameExtractor.setDisplayFrameRGB(outFrame);
                 }
 
-                if (calibrated && showUndistortedFrames) {
+                if (calibrated && showUndistortedFrames && frameExtractor.isShowAPSFrameDisplay()) {
                     frameExtractor.setExtRender(true); // to not alternate
                     frameExtractor.apsDisplay.setTitleLabel("lens correction enabled");
                 } else {
@@ -224,6 +214,34 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         }
 
         return in;
+    }
+
+    /**
+     * Undistorts an image frame using the calibration.
+     *
+     * @param src the source image, RGB float valued in 0-1 range
+     * @return float[] destination. IAn internal float[] is created and reused.
+     * If there is no calibration, the src array is returned.
+     */
+    public float[] undistortFrame(float[] src) {
+        if (!calibrated) {
+            return src;
+        }
+        FloatPointer ip = new FloatPointer(src);
+        Mat input = new Mat(ip);
+        input.convertTo(input, CV_8U, 255, 0);
+        Mat img = input.reshape(0, sy);
+        Mat undistortedImg = new Mat();
+        opencv_imgproc.undistort(img, undistortedImg, cameraMatrix, distortionCoefs);
+        Mat imgOut8u = new Mat(sy, sx, CV_8UC3);
+        cvtColor(undistortedImg, imgOut8u, CV_GRAY2RGB);
+        Mat outImgF = new Mat(sy, sx, opencv_core.CV_32F);
+        imgOut8u.convertTo(outImgF, opencv_core.CV_32F, 1.0 / 255, 0);
+        if (outFrame == null) {
+            outFrame = new float[sy * sx * 3];
+        }
+        outImgF.getFloatBuffer().get(outFrame);
+        return outFrame;
     }
 
     public boolean findCurrentCorners(boolean drawAndSave) {
@@ -389,8 +407,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         filterChain.reset();
         patternFound = false;
         imageCounter = 0;
-        calibrated = false;
-        calibrationString = null;
         principlePoint = null;
     }
 
@@ -527,6 +543,11 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         putString("dirPath", dirPath);
 
         loadCalibration();
+    }
+
+    synchronized public void doClearCalibration() {
+        calibrated = false;
+        calibrationString = null;
     }
 
     private void loadCalibration() {
