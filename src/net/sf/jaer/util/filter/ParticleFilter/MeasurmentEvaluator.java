@@ -11,7 +11,7 @@ import java.util.Random;
  *
  * @author minliu and hongjie
  */
-class MeasurmentEvaluator implements ParticleEvaluator<SimpleParticle, Double> {
+public class MeasurmentEvaluator implements ParticleEvaluator<SimpleParticle, Double> {
 	double	mu = 0;
 	double	sigma	= 20;
 	double noise = 0.0;
