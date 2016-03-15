@@ -163,6 +163,7 @@ private void optionPanePropertyChange (java.beans.PropertyChangeEvent evt) {//GE
         //it here.
         prefs.putBoolean(prefsKey(), dontShowAgainCheckBox.isSelected());
         setVisible(false);
+        dispose();
     }
 }//GEN-LAST:event_optionPanePropertyChange
 
