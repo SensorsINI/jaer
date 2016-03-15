@@ -3632,8 +3632,8 @@ two interfaces). otherwise force user choice.
         controlMenu.setText("USB");
         controlMenu.setToolTipText("control CypresFX2 driver parameters");
 
-        increaseBufferSizeMenuItem.setText("Increase hardware buffer size");
-        increaseBufferSizeMenuItem.setToolTipText("Increases the host USB fifo size");
+        increaseBufferSizeMenuItem.setText("Increase host side USB buffer size");
+        increaseBufferSizeMenuItem.setToolTipText("Increases the host USB fifo size. This buffer is used to buffer the data delivered by kernel-level USB host contoller. Decrease if you want lower latency servicing under high data rates from the device.");
         increaseBufferSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 increaseBufferSizeMenuItemActionPerformed(evt);
@@ -3651,7 +3651,7 @@ two interfaces). otherwise force user choice.
         controlMenu.add(decreaseBufferSizeMenuItem);
 
         increaseNumBuffersMenuItem.setText("Increase number of hardware buffers");
-        increaseNumBuffersMenuItem.setToolTipText("Increases the host number of USB read buffers");
+        increaseNumBuffersMenuItem.setToolTipText("Increases the host number of host USB read buffers. Increase this value if your data is very bursty, with intervals of high data rate.");
         increaseNumBuffersMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 increaseNumBuffersMenuItemActionPerformed(evt);
@@ -3729,7 +3729,7 @@ two interfaces). otherwise force user choice.
         printUSBStatisticsCBMI.setMnemonic('t');
         printUSBStatisticsCBMI.setSelected(true);
         printUSBStatisticsCBMI.setText("Show USB statistics");
-        printUSBStatisticsCBMI.setToolTipText("Prints statistics about USB packet sizes and packet intervals");
+        printUSBStatisticsCBMI.setToolTipText("Prints statistics about USB packet sizes and packet intervals to System.out (only visible in standard console, not built in logging console)");
         printUSBStatisticsCBMI.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 printUSBStatisticsCBMIActionPerformed(evt);
@@ -4364,8 +4364,8 @@ two interfaces). otherwise force user choice.
 					int f = readerControl.getFifoSize();
 					decreaseNumBuffersMenuItem.setText("Decrease num buffers to " + (n - 1));
 					increaseNumBuffersMenuItem.setText("Increase num buffers to " + (n + 1));
-					decreaseBufferSizeMenuItem.setText("Decrease FIFO size to " + (f / 2));
-					increaseBufferSizeMenuItem.setText("Increase FIFO size to " + (f * 2));
+					decreaseBufferSizeMenuItem.setText("Decrease host USB FIFO size to " + (f / 2)+" bytes");
+					increaseBufferSizeMenuItem.setText("Increase host USB FIFO size to " + (f * 2)+" bytes");
 
 					for (int i = 0; i < k; i++) {
 						if (controlMenu.getMenuComponent(i) instanceof JMenuItem) {
