@@ -49,15 +49,17 @@ public class USBPacketStatistics implements HasUsbStatistics {
         int dtNs = (int) (timeNowNs - lastTimeNs);
         int dtUs = dtNs / 1000;
         lastTimeNs = timeNowNs;
-        packetSizeBytesFilter.filter(nBytes, dtUs);
-        packetIntevalUsFilter.filter(dtUs, dtUs);
-        packetIntervalUsHistogram.add(log2(dtUs));
-        packetSizeHistogram.add(log2(nBytes));
-        if (printEnabled) {
-            printStatistics();
-        }
-        if (showEnabled) {
-            showStatistics();
+        if (nBytes > 0 && dtUs >= 0) {
+            packetSizeBytesFilter.filter(nBytes, dtUs);
+            packetIntevalUsFilter.filter(dtUs, dtUs);
+            packetIntervalUsHistogram.add(log2(dtUs));
+            packetSizeHistogram.add(log2(nBytes));
+            if (printEnabled) {
+                printStatistics();
+            }
+            if (showEnabled) {
+                showStatistics();
+            }
         }
     }
 
@@ -125,7 +127,10 @@ public class USBPacketStatistics implements HasUsbStatistics {
         return printEnabled;
     }
 
-    /** from http://stackoverflow.com/questions/3305059/how-do-you-calculate-log-base-2-in-java-for-integers */
+    /**
+     * from
+     * http://stackoverflow.com/questions/3305059/how-do-you-calculate-log-base-2-in-java-for-integers
+     */
     public static int log2(int n) {
         if (n <= 0) {
             throw new IllegalArgumentException();
