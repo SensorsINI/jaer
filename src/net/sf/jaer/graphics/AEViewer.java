@@ -143,6 +143,7 @@ import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.SubclassFinder;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
+import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 
 /**
  * This is the main jAER interface to the user. The main event loop "ViewLoop" is here; see ViewLoop.run(). AEViewer shows AE chip live view and allows for controlling view and recording and playing back events from files and network connections.
@@ -2626,9 +2627,25 @@ two interfaces). otherwise force user choice.
 		int delayMs = 1;
 		int desiredPeriodMs = (int) (1000f / desiredFPS);
 		private long beforeTimeNs = System.nanoTime(), lastdt, afterTimeNs;
-
-		final void setDesiredFPS(int fps) {
-			if (fps < 1) {
+                WarningDialogWithDontShowPreference fpsWarning;
+ 
+            final void setDesiredFPS(int fps) {
+                if (fps < 30 || fps > 120) {
+                    if (fpsWarning == null) {
+                        fpsWarning = new WarningDialogWithDontShowPreference(AEViewer.this, false,
+                                "jAER Rendering rate warning",
+                                "<html>You are setting rendering (and processing rate) at " + fps + " Hz. <br>which is either less than 30Hz or greater than 120Hz. "
+                                + "<p>To change the rendering rate, see menu item use the LEFT or RIGHT arrow keys. "
+                                + "<p>The current actual/desired rendering rate is shown in the status bar as XX/YYfps"
+                                + "<p>You can render at a higher rate to reduce latency, but computational cost will be higher. "
+                                + "<p>For real-time applications, see the <i>Options/Process on acquistion cycle</i> menu item in the FilterFrame window."
+                        );
+                    }
+                    if(!fpsWarning.isVisible()){
+                         fpsWarning.setVisible(true);
+                    }
+                }
+                if (fps < 1) {
 				fps = 1;
 			} else if (fps > MAX_FPS) {
 				fps = MAX_FPS;
