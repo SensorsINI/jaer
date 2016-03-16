@@ -657,10 +657,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     /**
-     * @param rectangleWidthMm the rectangleHeightMm to set
+     * @param rectangleWidthMm the rectangleWidthMm to set
      */
     public void setRectangleWidthMm(int rectangleWidthMm) {
-        this.rectangleHeightMm = rectangleWidthMm;
+        this.rectangleWidthMm = rectangleWidthMm;
         putInt("rectangleWidthMm", rectangleWidthMm);
     }
 
