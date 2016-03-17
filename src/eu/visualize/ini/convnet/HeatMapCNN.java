@@ -143,7 +143,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
 
     }
 
-    private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
+   /* private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
 
         renderer.setExternalRenderer(true);
         renderer.resetAnnotationFrame(0.0f);
@@ -164,7 +164,38 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
             }
         }
     }
+*/
+    private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
+        
+        renderer.setExternalRenderer(true);
+        renderer.resetAnnotationFrame(0.0f);
+        renderer.setAnnotateAlpha(alpha);
+        float[] colors = new float[3];
+        int sizeX = chip.getSizeX()/strideX;
+        int sizeY = chip.getSizeY()/strideY;
+        float max = heatMap[0];
+        int max_x_index = 0, max_y_index =0;
+        
+        for (int x = 0; x < sizeX; x++) {
+            for (int y = 0; y < sizeY; y++) {
+                float heat = heatMap[getHeatmapIdx(x,y)];
+                float hue = 3f-3f*heat;       
+                if(heat > max) {
+                    max = heat;  
+                    max_x_index = x;
+                    max_y_index = y;
+                    colors = ColorHelper.HSVtoRGB(hue, 1.0f, 1.0f);
+                }
+            }
+        }              
 
+        for(int xx = 0; xx<strideX; xx++){
+            for(int yy = 0; yy<strideY; yy++){
+                renderer.setAnnotateColorRGB(max_x_index*strideX + xx, max_y_index*strideY + yy, colors);
+            }
+        }
+    }
+    
     public int getHeatmapIdx(int x, int y){
         int sizeX = chip.getSizeX()/strideX;
         return x+(y*sizeX);
