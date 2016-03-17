@@ -118,10 +118,10 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
             for(Object o : dirPacket){
                 gl.glPushMatrix();
                 MotionOrientationEventInterface ei = (MotionOrientationEventInterface) o;
-                for (sy = -searchDistance; sy <= searchDistance; sy++)
-                    for (sx = -searchDistance; sx <= searchDistance; sx++) {
-                        gl.glColor4f(timestamps[ei.getX()+sx][ei.getY()+sy][ei.getType()].size()/100f,timestamps[ei.getX()+sx][ei.getY()+sy][ei.getType()].size()/100f, 0, 0.25f);
-                        gl.glRectf(ei.getX()+sx, ei.getY()+sy, ei.getX()+sx+1, ei.getY()+sy+1);
+                for (j = -searchDistance; j <= searchDistance; j++)
+                    for (i = -searchDistance; i <= searchDistance; i++) {
+                        gl.glColor4f(timestamps[ei.getX()+i][ei.getY()+j][ei.getType()].size()/100f,timestamps[ei.getX()+i][ei.getY()+j][ei.getType()].size()/100f, 0, 0.25f);
+                        gl.glRectf(ei.getX()+i, ei.getY()+j, ei.getX()+i+1, ei.getY()+j+1);
                     }
                 gl.glPopMatrix();
             }
@@ -163,27 +163,27 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
         if (fitOrder == 1) {
             a[0][1] = 0;
             a[1][0] = 0;
-            for (sy = -searchDistance; sy <= searchDistance; sy++) {
-                for (sx = -searchDistance; sx <= searchDistance; sx++) {
-                    while (!timestamps[x + sx][y + sy][type].isEmpty()
-                            && ts > timestamps[x + sx][y + sy][type].peekFirst() + maxDtThreshold) {
-                        timestamps[x + sx][y + sy][type].removeFirst();
+            for (j = -searchDistance; j <= searchDistance; j++) {
+                for (i = -searchDistance; i <= searchDistance; i++) {
+                    while (!timestamps[x + i][y + j][type].isEmpty()
+                            && ts > timestamps[x + i][y + j][type].peekFirst() + maxDtThreshold) {
+                        timestamps[x + i][y + j][type].removeFirst();
                     }
-                    while (!timestamps2[x + sx][y + sy][type].isEmpty()
-                            && ts > timestamps2[x + sx][y + sy][type].peekFirst() + 2 * maxDtThreshold) {
-                        timestamps2[x + sx][y + sy][type].removeFirst();
+                    while (!timestamps2[x + i][y + j][type].isEmpty()
+                            && ts > timestamps2[x + i][y + j][type].peekFirst() + 2 * maxDtThreshold) {
+                        timestamps2[x + i][y + j][type].removeFirst();
                     }
-                    a[0][1] += C[2][jj] * timestamps[x + sx][y + sy][type].size();
-                    a[1][0] += C[1][jj] * timestamps[x + sx][y + sy][type].size();
+                    a[0][1] += C[2][jj] * timestamps[x + i][y + j][type].size();
+                    a[1][0] += C[1][jj] * timestamps[x + i][y + j][type].size();
                     jj++;
                 }
             }
         } else {
-            for (sy = -searchDistance; sy <= searchDistance; sy++) {
-                for (sx = -searchDistance; sx <= searchDistance; sx++) {
-                    while (!timestamps[x + sx][y + sy][type].isEmpty()
-                            && ts > timestamps[x + sx][y + sy][type].peekFirst() + maxDtThreshold) {
-                        timestamps[x + sx][y + sy][type].removeFirst();
+            for (j = -searchDistance; j <= searchDistance; j++) {
+                for (i = -searchDistance; i <= searchDistance; i++) {
+                    while (!timestamps[x + i][y + j][type].isEmpty()
+                            && ts > timestamps[x + i][y + j][type].peekFirst() + maxDtThreshold) {
+                        timestamps[x + i][y + j][type].removeFirst();
                     }
                 }
             }
@@ -191,9 +191,9 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
             for (j = 0; j <= fitOrder; j++) {
                 for (i = 0; i <= fitOrder - j; i++) {
                     a[i][j] = 0;
-                    for (sy = -searchDistance; sy <= searchDistance; sy++) {
-                        for (sx = -searchDistance; sx <= searchDistance; sx++) {
-                            a[i][j] += C[ii][jj++] * timestamps[x + sx][y + sy][type].size();
+                    for (jjj = -searchDistance; jjj <= searchDistance; jjj++) {
+                        for (iii = -searchDistance; iii <= searchDistance; iii++) {
+                            a[i][j] += C[ii][jj++] * timestamps[x + iii][y + jjj][type].size();
                         }
                     }
                     ii++;
@@ -214,22 +214,22 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
      */
     synchronized private void computeDerivatives() {
         if (!SavitzkyGolayFilter) {
-            for (sy = -searchDistance - d; sy <= searchDistance + d; sy++) {
-                for (sx = -searchDistance - d; sx <= searchDistance + d; sx++) {
-                    while (!timestamps[x + sx][y + sy][type].isEmpty()
-                            && ts > timestamps[x + sx][y + sy][type].peekFirst() + maxDtThreshold) {
-                        timestamps[x + sx][y + sy][type].removeFirst();
+            for (j = -searchDistance - d; j <= searchDistance + d; j++) {
+                for (i = -searchDistance - d; i <= searchDistance + d; i++) {
+                    while (!timestamps[x + i][y + j][type].isEmpty()
+                            && ts > timestamps[x + i][y + j][type].peekFirst() + maxDtThreshold) {
+                        timestamps[x + i][y + j][type].removeFirst();
                     }
-                    while (!timestamps2[x + sx][y + sy][type].isEmpty()
-                            && ts > timestamps2[x + sx][y + sy][type].peekFirst() + 2 * maxDtThreshold) {
-                        timestamps2[x + sx][y + sy][type].removeFirst();
+                    while (!timestamps2[x + i][y + j][type].isEmpty()
+                            && ts > timestamps2[x + i][y + j][type].peekFirst() + 2 * maxDtThreshold) {
+                        timestamps2[x + i][y + j][type].removeFirst();
                     }
                 }
             }
         }
         ii = 0;
-        for (sy = -searchDistance; sy <= searchDistance; sy++) {
-            for (sx = -searchDistance; sx <= searchDistance; sx++) {
+        for (jjj = -searchDistance; jjj <= searchDistance; jjj++) {
+            for (iii = -searchDistance; iii <= searchDistance; iii++) {
                 if (SavitzkyGolayFilter) {
                     if (fitOrder == 1) { // Direct computation saves time, and we seldom need general method.
                         spatDerivNeighb[ii][0] = (float) a[1][0];
@@ -239,54 +239,54 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
                         spatDerivNeighb[ii][1] = 0;
                         for (j = 0; j <= fitOrder; j++) {
                             for (i = 1; i <= fitOrder - j; i++) {
-                                spatDerivNeighb[ii][0] += (float) (i * a[i][j] * Math.pow(sx, i - 1) * Math.pow(sy, j));
+                                spatDerivNeighb[ii][0] += (float) (i * a[i][j] * Math.pow(iii, i - 1) * Math.pow(jjj, j));
                             }
                         }
                         for (j = 1; j <= fitOrder; j++) {
                             for (i = 0; i <= fitOrder - j; i++) {
-                                spatDerivNeighb[ii][1] += (float) (j * a[i][j] * Math.pow(sx, i) * Math.pow(sy, j - 1));
+                                spatDerivNeighb[ii][1] += (float) (j * a[i][j] * Math.pow(iii, i) * Math.pow(jjj, j - 1));
                             }
                         }
                     }
-                    tempDerivNeighb[ii] = timestamps[x + sx][y + sy][type].size();
+                    tempDerivNeighb[ii] = timestamps[x + iii][y + jjj][type].size();
                     if (secondTempDerivative) {
-                        tempDerivNeighb[ii] = timestamps[x + sx][y + sy][type].size() * 2
-                                - timestamps2[x + sx][y + sy][type].size();
+                        tempDerivNeighb[ii] = timestamps[x + iii][y + jjj][type].size() * 2
+                                - timestamps2[x + iii][y + jjj][type].size();
                     }
                     tempDerivNeighb[ii] /= searchDistance;
                 } else if (backwardFiniteDifference) {
-                    spatDerivNeighb[ii][0] = timestamps[x + sx][y + sy][type].size()
-                            - timestamps[x + sx - 1][y + sy][type].size();
-                    spatDerivNeighb[ii][1] = timestamps[x + sx][y + sy][type].size()
-                            - timestamps[x + sx][y + sy - 1][type].size();
-                    tempDerivNeighb[ii] = timestamps[x + sx][y + sy][type].size();
+                    spatDerivNeighb[ii][0] = timestamps[x + iii][y + jjj][type].size()
+                            - timestamps[x + iii - 1][y + jjj][type].size();
+                    spatDerivNeighb[ii][1] = timestamps[x + iii][y + jjj][type].size()
+                            - timestamps[x + iii][y + jjj - 1][type].size();
+                    tempDerivNeighb[ii] = timestamps[x + iii][y + jjj][type].size();
                     if (secondTempDerivative) {
-                        tempDerivNeighb[ii] = timestamps[x + sx][y + sy][type].size() * 2
-                                - timestamps2[x + sx][y + sy][type].size();
+                        tempDerivNeighb[ii] = timestamps[x + iii][y + jjj][type].size() * 2
+                                - timestamps2[x + iii][y + jjj][type].size();
                     }
                 } else if (centralFiniteDifferenceFirstOrder) {
-                    spatDerivNeighb[ii][0] = timestamps[x + sx + 1][y + sy][type].size()
-                            - timestamps[x + sx - 1][y + sy][type].size();
-                    spatDerivNeighb[ii][1] = timestamps[x + sx][y + sy + 1][type].size()
-                            - timestamps[x + sx][y + sy - 1][type].size();
-                    tempDerivNeighb[ii] = timestamps[x + sx][y + sy][type].size() * 2;
+                    spatDerivNeighb[ii][0] = timestamps[x + iii + 1][y + jjj][type].size()
+                            - timestamps[x + iii - 1][y + jjj][type].size();
+                    spatDerivNeighb[ii][1] = timestamps[x + iii][y + jjj + 1][type].size()
+                            - timestamps[x + iii][y + jjj - 1][type].size();
+                    tempDerivNeighb[ii] = timestamps[x + iii][y + jjj][type].size() * 2;
                     if (secondTempDerivative) {
-                        tempDerivNeighb[ii] = (timestamps[x + sx][y + sy][type].size() * 2
-                                - timestamps2[x + sx][y + sy][type].size()) * 2;
+                        tempDerivNeighb[ii] = (timestamps[x + iii][y + jjj][type].size() * 2
+                                - timestamps2[x + iii][y + jjj][type].size()) * 2;
                     }
                 } else if (centralFiniteDifferenceSecondOrder) {
-                    spatDerivNeighb[ii][0] = timestamps[x + sx - 2][y + sy][type].size()
-                            - timestamps[x + sx - 1][y + sy][type].size() * 8
-                            + timestamps[x + sx + 1][y + sy][type].size() * 8
-                            - timestamps[x + sx + 2][y + sy][type].size();
-                    spatDerivNeighb[ii][1] = timestamps[x + sx][y + sy - 2][type].size()
-                            - timestamps[x + sx][y + sy - 1][type].size() * 8
-                            + timestamps[x + sx][y + sy + 1][type].size() * 8
-                            - timestamps[x + sx][y + sy + 2][type].size();
-                    tempDerivNeighb[ii] = timestamps[x + sx][y + sy][type].size() * 12;
+                    spatDerivNeighb[ii][0] = timestamps[x + iii - 2][y + jjj][type].size()
+                            - timestamps[x + iii - 1][y + jjj][type].size() * 8
+                            + timestamps[x + iii + 1][y + jjj][type].size() * 8
+                            - timestamps[x + iii + 2][y + jjj][type].size();
+                    spatDerivNeighb[ii][1] = timestamps[x + iii][y + jjj - 2][type].size()
+                            - timestamps[x + iii][y + jjj - 1][type].size() * 8
+                            + timestamps[x + iii][y + jjj + 1][type].size() * 8
+                            - timestamps[x + iii][y + jjj + 2][type].size();
+                    tempDerivNeighb[ii] = timestamps[x + iii][y + jjj][type].size() * 12;
                     if (secondTempDerivative) {
-                        tempDerivNeighb[ii] = (timestamps[x + sx][y + sy][type].size() * 2
-                                - timestamps2[x + sx][y + sy][type].size()) * 12;
+                        tempDerivNeighb[ii] = (timestamps[x + iii][y + jjj][type].size() * 2
+                                - timestamps2[x + iii][y + jjj][type].size()) * 12;
                     }
                 }
                 // The temporal intensity gradient tempDerivNeighb is estimated 
@@ -363,10 +363,10 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
             deriv += Arrays.toString(spatDerivNeighb[j]) + ";";
         }
         deriv += "]";
-        i = 0;
-        for (sy = -searchDistance - 1; sy <= searchDistance + 1; sy++) {
-            for (sx = -searchDistance - 1; sx <= searchDistance + 1; sx++) {
-                neighb[i++] = timestamps[x + sx][y + sy][type].size();
+        iii = 0;
+        for (j = -searchDistance - 1; j <= searchDistance + 1; j++) {
+            for (i = -searchDistance - 1; i <= searchDistance + 1; i++) {
+                neighb[iii++] = timestamps[x + i][y + j][type].size();
             }
         }
         log.log(Level.INFO, String.format(Locale.ENGLISH, "z = %1$s; ds = %2$s; dt = %3$s; v = [%4$2.2f %5$2.2f]; vIMU = [%6$2.2f %7$2.2f];",

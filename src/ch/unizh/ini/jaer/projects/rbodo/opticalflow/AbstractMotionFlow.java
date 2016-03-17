@@ -42,7 +42,7 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
     int fitOrder = 1;
 
     // Indices.
-    int sx, sy, i, j, ii, jj;
+    int i, j, ii, jj, iii, jjj;
 
     public AbstractMotionFlow(AEChip chip) {
         super(chip);
@@ -124,11 +124,11 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
         a = new double[Math.round((fitOrder + 1) * (fitOrder + 2) / 4f)][Math.round((fitOrder + 1) * (fitOrder + 2) / 4f)];
         ii = 0;
         jj = 0;
-        for (sy = -searchDistance; sy <= searchDistance; sy++) {
-            for (sx = -searchDistance; sx <= searchDistance; sx++) {
+        for (jjj = -searchDistance; jjj <= searchDistance; jjj++) {
+            for (iii = -searchDistance; iii <= searchDistance; iii++) {
                 for (j = 0; j <= fitOrder; j++) {
                     for (i = 0; i <= fitOrder - j; i++) {
-                        A[ii][jj++] = Math.pow(sx, i) * Math.pow(sy, j);
+                        A[ii][jj++] = Math.pow(iii, i) * Math.pow(jjj, j);
                     }
                 }
                 ii++;

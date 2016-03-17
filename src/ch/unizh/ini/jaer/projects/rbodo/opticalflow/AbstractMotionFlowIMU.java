@@ -1,5 +1,6 @@
 package ch.unizh.ini.jaer.projects.rbodo.opticalflow;
 
+import ch.unizh.ini.jaer.projects.davis.calibration.SingleCameraCalibration;
 import com.jmatio.io.MatFileReader;
 import com.jmatio.io.MatFileWriter;
 import com.jmatio.types.MLDouble;
@@ -31,12 +32,14 @@ import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
+import org.bytedeco.javacpp.indexer.DoubleIndexer;
 
 /**
  * Abstract base class for motion flow filters. The filters that extend this
@@ -179,6 +182,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     protected static String smoothingTT = "Smoothing";
     protected static String motionFieldTT = "Motion field";
 
+    private SingleCameraCalibration calibration = null;
+    int uidx;
+
     public AbstractMotionFlowIMU(AEChip chip) {
         super(chip);
         addObservers(chip);
@@ -189,8 +195,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setMeasureAccuracy(getBoolean("measureAccuracy", false));
         setMeasureProcessingTime(getBoolean("measureProcessingTime", false));
         setMeasureGlobalMotion(getBoolean("measureGlobalMotion", false));
+        
+        FilterChain chain = new FilterChain(chip);
+        calibration = new SingleCameraCalibration(chip);
+        calibration.setRealtimePatternDetectionEnabled(false);
+        getSupport().addPropertyChangeListener(SingleCameraCalibration.EVENT_NEW_CALIBRATION, this);
+        chain.add(calibration);
+        setEnclosedFilterChain(chain);
+        
         // Labels for setPropertyTooltip.
-
         setPropertyTooltip("startLoggingMotionVectorEvents", "starts saving motion vector events to a human readable file");
         setPropertyTooltip("stopLoggingMotionVectorEvents", "stops logging motion vector events to a human readable file");
         setPropertyTooltip("printStatistics", "<html> Prints to console as log output a single instance of statistics collected since <b>measureAccuracy</b> was selected. (These statistics are reset when the filter is reset, e.g. at rewind.)");
@@ -395,6 +408,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             panCalibrator = new Measurand();
             tiltCalibrator = new Measurand();
             rollCalibrator = new Measurand();
+            // Some initial IMU calibration values.
+            // Will be overwritten when calibrating IMU
             panOffset = 0.7216f;
             tiltOffset = 3.4707f;
             rollOffset = -0.2576f;
@@ -543,9 +558,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         for (boolean[] a : subsampledPixelIsSet) {
             Arrays.fill(a, false);
         }
-        if (lastTimesMap == null) {
-            lastTimesMap = new int[subSizeX][subSizeY][numInputTypes];
-        }
+        lastTimesMap = new int[subSizeX][subSizeY][numInputTypes];
+
         for (int[][] a : lastTimesMap) {
             for (int[] b : a) {
                 Arrays.fill(b, Integer.MIN_VALUE);
@@ -609,6 +623,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     in.getSupport().addPropertyChangeListener(this);
                     // Treat FileOpen same as a rewind
                     resetFilter();
+                    break;
+                case SingleCameraCalibration.EVENT_NEW_CALIBRATION:
+                    calibration.generateUndistortedAddressLUT(sizex, sizey);
                     break;
             }
         }
@@ -733,6 +750,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
         motionField.checkArrays();
 
+        if (!calibration.isUndistortedAddressLUTgenerated()) {
+            calibration.generateUndistortedAddressLUT(sizex, sizey);
+        }
+        
+        getEnclosedFilterChain().filterPacket(in);
     }
 
     /**
@@ -778,8 +800,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     protected synchronized void extractEventInfo(Object ein) {
         e = (PolarityEvent) ein;
-        x = e.getX() >> subSampleShift;
-        y = e.getY() >> subSampleShift;
+        // If camera calibrated, undistort pixel locations
+        if (calibration.isFilterEnabled() && calibration.isCalibrated()) {
+            uidx = 2 * (e.y + sizey * e.x);
+            e.x = calibration.getUndistortedAddressFromLUT(uidx);
+            e.y = calibration.getUndistortedAddressFromLUT(uidx+1);
+        }
+        x = e.x >> subSampleShift;
+        y = e.y >> subSampleShift;
         ts = e.getTimestamp();
         type = e.getPolarity() == PolarityEvent.Polarity.Off ? 0 : 1;
     }
@@ -951,6 +979,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 //        putFloat("discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg", discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg);
 //    }
     // </editor-fold>
+    
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --discardOutliersForStatisticalMeasurementEnabled--">
 //    public boolean getDiscardOutliersEnabled() {
 //        return this.discardOutliersForStatisticalMeasurementEnabled;
@@ -962,6 +991,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 //        putBoolean("discardOutliersForStatisticalMeasurementEnabled", discardOutliersForStatisticalMeasurementEnabled);
 //    }
     // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --loggingFolder--">
     public String getLoggingFolder() {
         return loggingFolder;
