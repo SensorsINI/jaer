@@ -55,6 +55,9 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import org.bytedeco.javacpp.BytePointer;
+import org.bytedeco.javacpp.indexer.DoubleIndexer;
+import static org.bytedeco.javacpp.opencv_core.CV_32FC2;
 import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 
 /**
@@ -75,7 +78,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     /**
      * Fires property change with this string when new calibration is available
      */
-    public static String EVENT_NEW_CALIBRATION = "EVENT_NEW_CALIBRATION";
+    public static final String EVENT_NEW_CALIBRATION = "EVENT_NEW_CALIBRATION";
 
     private SimpleDepthCameraViewerApplication depthViewerThread;
 
@@ -100,7 +103,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private MatVector rotationVectors;
     private MatVector translationVectors;
     private Mat imgIn, imgOut;
-
+    
+    private short[] undistortedAddressLUT;
+    private boolean isUndistortedAddressLUTgenerated = false;
+    
     private float focalLengthPixels = 0;
     private float focalLengthMm = 0;
     private Point2D.Float principlePoint = null;
@@ -489,15 +495,55 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         } finally {
             allImagePoints.resize(100);
             allObjectPoints.resize(100);
-
         }
         //debug
-
+               
         calibrated = true;
         getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
 
     }
 
+    /*
+    Generate a look-up table that maps the entire chip to undistorted addresses.
+    */
+    public void generateUndistortedAddressLUT(int sx, int sy) {
+        if (!calibrated) {
+            return;
+        }
+        FloatPointer fp = new FloatPointer(2 * sx * sy);
+        int idx = 0;
+        for (int x = 0; x < sx; x++) {
+            for (int y = 0; y < sy; y++) {
+                fp.put(idx++, x);
+                fp.put(idx++, y);
+            }
+        }
+        Mat dst = new Mat();
+        Mat pixelArray = new Mat(1, sx * sy, CV_32FC2, fp); // make wide 2 channel matrix of source event x,y 
+        opencv_imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs()); 
+        isUndistortedAddressLUTgenerated = true;
+        // get the camera matrix elements (focal lengths and principal point)
+        DoubleIndexer k = getCameraMatrix().createIndexer();
+        float fx, fy, cx, cy;
+        fx = (float) k.get(0, 0);
+        fy = (float) k.get(1, 1);
+        cx = (float) k.get(0, 2);
+        cy = (float) k.get(1, 2);
+        undistortedAddressLUT = new short[2 * sx * sy];
+        
+        for (int x = 0; x < sx; x++) {
+            for (int y = 0; y < sy; y++) {
+                idx = 2 * (y + sy * x);
+                undistortedAddressLUT[idx] = (short) Math.round(dst.getFloatBuffer().get(idx) * fx + cx);
+                undistortedAddressLUT[idx+1] = (short) Math.round(dst.getFloatBuffer().get(idx+1) * fy + cy);
+            }
+        }
+    }
+    
+    public boolean isUndistortedAddressLUTgenerated() {
+        return isUndistortedAddressLUTgenerated;
+    }
+    
     private void generateCalibrationString() {
         focalLengthPixels = (float) (cameraMatrix.asCvMat().get(0, 0) + cameraMatrix.asCvMat().get(0, 0)) / 2;
         focalLengthMm = chip.getPixelWidthUm() * 1e-3f * focalLengthPixels;
@@ -548,14 +594,16 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     synchronized public void doClearCalibration() {
         calibrated = false;
         calibrationString = null;
+        undistortedAddressLUT = null;
+        isUndistortedAddressLUTgenerated = false;
     }
 
     private void loadCalibration() {
         try {
             cameraMatrix = deserializeMat(dirPath, "cameraMatrix");
             distortionCoefs = deserializeMat(dirPath, "distortionCoefs");
-            calibrated = true;
             generateCalibrationString();
+            calibrated = true;
             log.info("loaded cameraMatrix and distortionCoefs");
             getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
         } catch (Exception i) {
@@ -763,5 +811,22 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      */
     public boolean isCalibrated() {
         return calibrated;
+    }
+    
+    /**
+     * @return the look-up table of undistorted pixel addresses.
+     */
+    public short[] getUndistortedAddressLUT() {
+        return undistortedAddressLUT;
+    }
+    
+    /**
+     * @return the undistorted pixel address. The input index i is obtained by
+     * iterating column-wise over the pixel array (y-loop is inner loop) until
+     * getting to (x,y). Have to multiply by two because both x and y addresses
+     * are stored consecutively. Thus, i = 2 * (y + sizeY * x)
+     */
+    public short getUndistortedAddressFromLUT(int i) {
+        return undistortedAddressLUT[i];
     }
 }
