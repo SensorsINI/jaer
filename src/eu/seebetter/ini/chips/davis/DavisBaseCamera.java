@@ -31,6 +31,7 @@ import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
+import javax.swing.JSeparator;
 import javax.swing.KeyStroke;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
@@ -93,8 +94,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     private JComponent helpMenuItem1 = null;
     private JComponent helpMenuItem2 = null;
     private JComponent helpMenuItem3 = null;
-    
-    private JMenu davisMenu=null;
+
+    private JMenu davisMenu = null;
 
     /**
      * These points are the first and last pixel APS read out from the array.
@@ -148,9 +149,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         getAeViewer().removeHelpItem(helpMenuItem1);
         getAeViewer().removeHelpItem(helpMenuItem2);
         getAeViewer().removeHelpItem(helpMenuItem3);
-        if(davisMenu!=null){
+        if (davisMenu != null) {
             getAeViewer().removeMenu(davisMenu);
-            davisMenu=null;
+            davisMenu = null;
         }
     }
 
@@ -165,10 +166,17 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 "Opens DAVIS240 user guide");
         helpMenuItem3 = getAeViewer().addHelpURLItem(DavisBaseCamera.USER_GUIDE_URL_FLASHY, "Flashy user guide",
                 "User guide for external tool flashy for firmware/logic updates to devices using the libusb driver");
-        
-        davisMenu=new JMenu("DAVIS");
+
+        davisMenu = new JMenu("DAVIS");
         davisMenu.add(new JMenuItem(new ToggleEventsAction()));
         davisMenu.add(new JMenuItem(new ToggleFrameCaptureDisplayAction()));
+        davisMenu.add(new JSeparator());
+        davisMenu.add(new JMenuItem(new ToggleAutoExposure()));
+        davisMenu.add(new JMenuItem(new ToggleHistogram()));
+        davisMenu.add(new JMenuItem(new IncreaseAPSExposure()));
+        davisMenu.add(new JMenuItem(new DecreaseExposureAction()));
+        davisMenu.add(new JSeparator());
+        davisMenu.add(new JMenuItem(new ToggleIMU()));
         getAeViewer().addMenu(davisMenu);
     }
 
@@ -1320,6 +1328,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         getAutoExposureController().setAutoExposureEnabled(yes);
     }
 
+    /**
+     * Used to add custom Menu items and keyboard accelerators for DAVIS cameras
+     */
     abstract public class MyAction extends AbstractAction {
 
         protected final String path = "/net/sf/jaer/graphics/icons/";
@@ -1336,35 +1347,133 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         }
     }
 
+    /**
+     * Adds frame capture/display toggle
+     */
     final public class ToggleFrameCaptureDisplayAction extends MyAction {
 
         public ToggleFrameCaptureDisplayAction() {
-            super("ToggleFrames", "Toggle DAVIS frame capture and display","ToggleFrames");
+            super("ToggleFrames", "Toggle DAVIS frame capture and display", "ToggleFrames");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F, java.awt.event.InputEvent.SHIFT_MASK));
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            boolean old=getDavisConfig().isDisplayFrames();
+            boolean old = getDavisConfig().isDisplayFrames();
             getDavisConfig().setCaptureFramesEnabled(!old);
             getDavisConfig().setDisplayFrames(!old);
             putValue(Action.SELECTED_KEY, true);
         }
     }
-    
+
+    /**
+     * Adds event capture/display option
+     */
     final public class ToggleEventsAction extends MyAction {
 
         public ToggleEventsAction() {
-            super("ToggleEvents", "Toggle DAVIS event capture and display","ToggleEvents");
+            super("ToggleEvents", "Toggle DAVIS event capture and display", "ToggleEvents");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_E, java.awt.event.InputEvent.SHIFT_MASK));
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            boolean old=getDavisConfig().isDisplayEvents();
+            boolean old = getDavisConfig().isDisplayEvents();
             getDavisConfig().setCaptureEvents(!old);
             getDavisConfig().setDisplayEvents(!old);
             putValue(Action.SELECTED_KEY, true);
         }
     }
+
+    /**
+     * Adds event capture/display option
+     */
+    final public class ToggleHistogram extends MyAction {
+
+        public ToggleHistogram() {
+            super("Toggle APS Histgram display", "Toggles whether the histogram of APS levels is display", "ToggleHistogram");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_H, java.awt.event.InputEvent.SHIFT_MASK));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            setShowImageHistogram(!isShowImageHistogram());
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
+    /**
+     * Adds event capture/display option
+     */
+    final public class ToggleAutoExposure extends MyAction {
+
+        public ToggleAutoExposure() {
+            super("Toggle APS Autoexposure",
+                    "<html>Toggles whether autoexposure control is enabled<p>See <i>APS AutoExposure Control</i> tab in HW configuration panel for full control",
+                    "ToggleAutoExposure");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_A, java.awt.event.InputEvent.SHIFT_MASK));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            setAutoExposureEnabled(!isAutoExposureEnabled());
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
+    final float exposureChangeFactor = (float) Math.sqrt(2);
+
+    /**
+     * Adds event capture/display option
+     */
+    final public class DecreaseExposureAction extends MyAction {
+
+        public DecreaseExposureAction() {
+            super("Increase APS exposure",
+                    "<html>Decreases APS exposure<p>See <i>User-Friendly Controls</i> tab in HW configuration panel for more control",
+                    "DecreaseExposure");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, java.awt.event.InputEvent.SHIFT_MASK));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            getDavisConfig().setExposureDelayMs(getDavisConfig().getExposureDelayMs() / exposureChangeFactor);
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
+    final public class IncreaseAPSExposure extends MyAction {
+
+        public IncreaseAPSExposure() {
+            super("Increase APS exposure",
+                    "<html>Increases APS exposure<p>See <i>User-Friendly Controls</i> tab in HW configuration panel for more control",
+                    "IncreaseExposure");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_UP, java.awt.event.InputEvent.SHIFT_MASK));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            getDavisConfig().setExposureDelayMs(getDavisConfig().getExposureDelayMs() * exposureChangeFactor);
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
+    final public class ToggleIMU extends MyAction {
+
+        public ToggleIMU() {
+            super("Toggle IMU",
+                    "<html>Toggles IMU (inertial measurement unit) capture and display<p>See <i>IMU Config</i> tab in HW configuration panel for more control",
+                    "ToggleIMU");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_I, java.awt.event.InputEvent.SHIFT_MASK));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            boolean old = getDavisConfig().isImuEnabled();
+            getDavisConfig().setImuEnabled(!old);
+            getDavisConfig().setDisplayImu(!old);
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
 }
