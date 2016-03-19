@@ -36,15 +36,15 @@ import com.jogamp.opengl.GLAutoDrawable;
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
 import java.awt.geom.Point2D;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.Iterator;
 import java.util.logging.Level;
+import javax.swing.JButton;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -55,7 +55,6 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
-import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.indexer.DoubleIndexer;
 import static org.bytedeco.javacpp.opencv_core.CV_32FC2;
 import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
@@ -540,6 +539,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         }
     }
     
+  
+    
     public boolean isUndistortedAddressLUTgenerated() {
         return isUndistortedAddressLUTgenerated;
     }
@@ -573,14 +574,49 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         serializeMat(dirPath, "cameraMatrix", cameraMatrix);
         serializeMat(dirPath, "distortionCoefs", distortionCoefs);
     }
+    
+    static void setButtonState(Container c, String buttonString,boolean flag ) {
+    int len = c.getComponentCount();
+    for (int i = 0; i < len; i++) {
+      Component comp = c.getComponent(i);
+
+      if (comp instanceof JButton) {
+        JButton b = (JButton) comp;
+
+        if ( buttonString.equals(b.getText()) ) {
+            b.setEnabled(flag);
+        }
+
+      } else if (comp instanceof Container) {
+          setButtonState((Container) comp, buttonString, flag);
+      }
+    }     
+}
 
     synchronized public void doLoadCalibration() {
-        JFileChooser j = new JFileChooser();
+        final JFileChooser j = new JFileChooser();
         j.setCurrentDirectory(new File(dirPath));
         j.setApproveButtonText("Select folder");
         j.setDialogTitle("Select a folder that has XML files storing calibration");
         j.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // let user specify a base filename
         j.setApproveButtonText("Select folder");
+        j.addPropertyChangeListener(JFileChooser.DIRECTORY_CHANGED_PROPERTY, new PropertyChangeListener() {
+            @Override
+            public void propertyChange(PropertyChangeEvent pce) {
+                String fn = j.getCurrentDirectory().getPath() + File.separator + "cameraMatrix" + ".xml";
+                File f=new File(fn);
+                boolean cameraMatrixExists=f.exists();
+                fn = j.getCurrentDirectory().getPath() + File.separator + "distortionCoefs" + ".xml";
+                f=new File(fn);
+                boolean distortionCoefsExists=f.exists();
+                if(distortionCoefsExists && cameraMatrixExists){
+                    setButtonState(j, j.getApproveButtonText(), true);
+                }else{
+                    setButtonState(j, j.getApproveButtonText(), false);
+                }
+                
+            }
+        });
         int ret = j.showOpenDialog(null);
         if (ret != JFileChooser.APPROVE_OPTION) {
             return;
