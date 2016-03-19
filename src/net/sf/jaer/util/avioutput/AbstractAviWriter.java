@@ -110,15 +110,17 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
             log.warning("No AEViewer");
             return;
         }
-        GLCanvas c = (GLCanvas)(chip.getCanvas().getCanvas());
+        GLCanvas c = (GLCanvas) (chip.getCanvas().getCanvas());
         if (c == null) {
             log.warning("No Canvas to resize");
             return;
         }
-        int ww=c.getWidth(), hh=c.getHeight();
-        v.setSize(w, h);
-        c.revalidate();
-        int ww2=c.getWidth(), hh2=c.getHeight();
+        int ww = c.getWidth(), hh = c.getHeight();
+        int vw=v.getWidth(), vh=v.getHeight();
+        v.setSize(w + (vw-ww), h + (vh-hh));
+        v.revalidate();
+        int ww2 = c.getWidth(), hh2 = c.getHeight();
+        log.info(String.format("Canvas resized from %d x %d to %d x %d pixels", ww, hh, ww2, hh2));
     }
 
     public void doShowFolderInDesktop() {
