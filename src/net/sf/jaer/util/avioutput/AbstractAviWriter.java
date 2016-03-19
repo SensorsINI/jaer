@@ -57,6 +57,7 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
     protected int maxFrames = getInt("maxFrames", 0);
     protected float compressionQuality = getFloat("compressionQuality", 0.9f);
     private String[] additionalComments = null;
+    private int frameRate=getInt("frameRate",30);
 
     public AbstractAviWriter(AEChip chip) {
         super(chip);
@@ -71,6 +72,7 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
         setPropertyTooltip("framesWritten", "READONLY, shows number of frames written");
         setPropertyTooltip("compressionQuality", "In PNG or JPG format, sets compression quality; 0 is lowest quality and 1 is highest, 0.9 is default value");
         setPropertyTooltip("showFolderInDesktop", "Opens the folder containging the last-written AVI file");
+        setPropertyTooltip("frameRate", "Specifies frame rate of AVI file.");
         chip.getSupport().addPropertyChangeListener(this);
 
     }
@@ -105,6 +107,10 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
     }
 
     private void resizeWindowTo(int w, int h) {
+        if(aviOutputStream!=null){
+            log.warning("resizing disabled during recording to prevent AVI corruption");
+            return;
+        }
         AEViewer v = chip.getAeViewer();
         if (v == null) {
             log.warning("No AEViewer");
@@ -207,7 +213,8 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
     private void openAVIOutputStream(File f, String[] additionalComments) {
         try {
             aviOutputStream = new AVIOutputStream(f, format);
-            aviOutputStream.setFrameRate(chip.getAeViewer().getFrameRate());
+//            aviOutputStream.setFrameRate(chip.getAeViewer().getFrameRate());
+            aviOutputStream.setFrameRate(frameRate);
             aviOutputStream.setVideoCompressionQuality(compressionQuality);
 //            aviOutputStream.setVideoDimension(chip.getSizeX(), chip.getSizeY());
             lastFileName = f.toString();
@@ -411,5 +418,21 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
      */
     public void setAdditionalComments(String[] additionalComments) {
         this.additionalComments = additionalComments;
+    }
+
+    /**
+     * @return the frameRate
+     */
+    public int getFrameRate() {
+        return frameRate;
+    }
+
+    /**
+     * @param frameRate the frameRate to set
+     */
+    public void setFrameRate(int frameRate) {
+        if(frameRate<1)frameRate=1;
+        this.frameRate = frameRate;
+        putInt("frameRate",frameRate);
     }
 }
