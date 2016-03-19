@@ -44,7 +44,7 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             if (apsDvsEvent.isApsData()) {
                 continue;
             }
-            extractEventInfo(ein);
+            if(!extractEventInfo(ein)) continue;
             imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
 
             if (apsDvsEvent.isImuSample()) {

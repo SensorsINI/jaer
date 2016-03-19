@@ -438,7 +438,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             
 //            ApsDvsEvent ein = (ApsDvsEvent) itr.next();
             ApsDvsEvent ein = (ApsDvsEvent)o;
-            extractEventInfo(ein);
+            if(!extractEventInfo(ein)) continue;
             if (!ein.isApsData()) { // should pass on IMU samples
 //                if (ein instanceof ApsDvsEvent && ((ApsDvsEvent) ein).isImuSample()) {
 //                    IMUSample imu = ((ApsDvsEvent) ein).getImuSample();

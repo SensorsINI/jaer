@@ -195,14 +195,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setMeasureAccuracy(getBoolean("measureAccuracy", false));
         setMeasureProcessingTime(getBoolean("measureProcessingTime", false));
         setMeasureGlobalMotion(getBoolean("measureGlobalMotion", false));
-        
+
         FilterChain chain = new FilterChain(chip);
         calibration = new SingleCameraCalibration(chip);
         calibration.setRealtimePatternDetectionEnabled(false);
         getSupport().addPropertyChangeListener(SingleCameraCalibration.EVENT_NEW_CALIBRATION, this);
         chain.add(calibration);
         setEnclosedFilterChain(chain);
-        
+
         // Labels for setPropertyTooltip.
         setPropertyTooltip("startLoggingMotionVectorEvents", "starts saving motion vector events to a human readable file");
         setPropertyTooltip("stopLoggingMotionVectorEvents", "stops logging motion vector events to a human readable file");
@@ -391,7 +391,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
         // Calibration
         private boolean calibrating = false; // used to flag calibration state
-        private int calibrationSamples = getInt("calibrationSamples",100); // number of samples, typically they come at 1kHz
+        private int calibrationSamples = getInt("calibrationSamples", 100); // number of samples, typically they come at 1kHz
         private final Measurand panCalibrator, tiltCalibrator, rollCalibrator;
         private float panOffset;
         private float tiltOffset;
@@ -672,8 +672,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             gl.glRasterPos2i(2, 10);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("glob. speed=%.2f pps ", Math.sqrt(
-                                    Math.pow(motionFlowStatistics.getGlobalMotion().meanGlobalVx, 2)
-                                    + Math.pow(motionFlowStatistics.getGlobalMotion().meanGlobalVy, 2))));
+                            Math.pow(motionFlowStatistics.getGlobalMotion().meanGlobalVx, 2)
+                            + Math.pow(motionFlowStatistics.getGlobalMotion().meanGlobalVy, 2))));
             gl.glPopMatrix();
 
             // Draw global rotation vector as line left/right
@@ -712,8 +712,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             gl.glRasterPos2i(240, 0);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("%4.2f +/- %5.2f us", new Object[]{
-                        motionFlowStatistics.processingTime.getMean(),
-                        motionFlowStatistics.processingTime.getStdDev()}));
+                motionFlowStatistics.processingTime.getMean(),
+                motionFlowStatistics.processingTime.getStdDev()}));
             gl.glPopMatrix();
         }
 
@@ -722,15 +722,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             gl.glRasterPos2i(240, 10);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("%4.2f +/- %5.2f pixel/s", new Object[]{
-                        motionFlowStatistics.endpointErrorAbs.getMean(),
-                        motionFlowStatistics.endpointErrorAbs.getStdDev()}));
+                motionFlowStatistics.endpointErrorAbs.getMean(),
+                motionFlowStatistics.endpointErrorAbs.getStdDev()}));
             gl.glPopMatrix();
             gl.glPushMatrix();
             gl.glRasterPos2i(240, 20);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("%4.2f +/- %5.2f °", new Object[]{
-                        motionFlowStatistics.angularError.getMean(),
-                        motionFlowStatistics.angularError.getStdDev()}));
+                motionFlowStatistics.angularError.getMean(),
+                motionFlowStatistics.angularError.getStdDev()}));
             gl.glPopMatrix();
         }
 
@@ -753,7 +753,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         if (!calibration.isUndistortedAddressLUTgenerated()) {
             calibration.generateUndistortedAddressLUT(sizex, sizey);
         }
-        
+
         getEnclosedFilterChain().filterPacket(in);
     }
 
@@ -798,18 +798,49 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         return ts < lastTs + refractoryPeriodUs;
     }
 
-    protected synchronized void extractEventInfo(Object ein) {
+    /**
+     * extracts the event into to fields e, x,y,ts,type. x and y are in
+     * subsampled address space
+     *
+     * @param ein input event
+     * @return true if result is in-bounds, false if not, which can occur when
+     * the camera calibration magnifies the address beyond the sensor
+     * coordinates
+     */
+    protected synchronized boolean extractEventInfo(Object ein) {
         e = (PolarityEvent) ein;
         // If camera calibrated, undistort pixel locations
         if (calibration.isFilterEnabled() && calibration.isCalibrated()) {
             uidx = 2 * (e.y + sizey * e.x);
             e.x = calibration.getUndistortedAddressFromLUT(uidx);
-            e.y = calibration.getUndistortedAddressFromLUT(uidx+1);
+            e.y = calibration.getUndistortedAddressFromLUT(uidx + 1);
+            x = e.x >> subSampleShift;
+            y = e.y >> subSampleShift;
+            if (xeob(x) || yeob(y)) {
+                e.setFilteredOut(true);
+                return false;
+            }
+        } else {
+            x = e.x >> subSampleShift;
+            y = e.y >> subSampleShift;
         }
-        x = e.x >> subSampleShift;
-        y = e.y >> subSampleShift;
         ts = e.getTimestamp();
         type = e.getPolarity() == PolarityEvent.Polarity.Off ? 0 : 1;
+        return true;
+    }
+
+    private boolean xeob(int x) {
+        if (x < 0 || x > sizex - 1) {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean yeob(int y) {
+        if (y < 0 || y > sizey - 1) {
+            return true;
+        }
+        return false;
     }
 
     synchronized void writeOutputEvent() {
@@ -979,7 +1010,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 //        putFloat("discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg", discardOutliersForStatisticalMeasurementMaxAngleDifferenceDeg);
 //    }
     // </editor-fold>
-    
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --discardOutliersForStatisticalMeasurementEnabled--">
 //    public boolean getDiscardOutliersEnabled() {
 //        return this.discardOutliersForStatisticalMeasurementEnabled;
@@ -991,7 +1021,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 //        putBoolean("discardOutliersForStatisticalMeasurementEnabled", discardOutliersForStatisticalMeasurementEnabled);
 //    }
     // </editor-fold>
-
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --loggingFolder--">
     public String getLoggingFolder() {
         return loggingFolder;
@@ -1331,7 +1360,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
          */
         private boolean checkConsistent(int timestamp, int x1, int y1, float vx, float vy) {
             int dt = timestamp - lastTs[x1][y1];
-            if (dt > maxAgeUs ) {
+            if (dt > maxAgeUs) {
                 return false;
             }
             boolean thisAngleConsistentWithCurrentAngle = true;
@@ -1541,7 +1570,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     /**
      * Returns the object holding flow statistics.
-     * 
+     *
      * @return the motionFlowStatistics
      */
     public MotionFlowStatistics getMotionFlowStatistics() {
@@ -1555,9 +1584,5 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     public void setCalibrationSamples(int calibrationSamples) {
         imuFlowEstimator.setCalibrationSamples(calibrationSamples);
     }
-    
-    
-    
-    
 
 }

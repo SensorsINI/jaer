@@ -380,7 +380,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
        motionField.checkArrays();
 
         for (Object ein : in) {
-            extractEventInfo(ein);
+            if(!extractEventInfo(ein)) continue;
             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                 imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
                 setGroundTruth();

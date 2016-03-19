@@ -47,13 +47,14 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
             + "E.g. 100 us filter out speeds higher than 10 cm/s (for a pixelWidth of 10 um)");
     }
     
-    @Override synchronized public void extractEventInfo(Object ein) {
-        super.extractEventInfo(ein);
+    @Override synchronized public boolean extractEventInfo(Object ein) {
+        if(!super.extractEventInfo(ein)) return false;
         polValue = e.getPolarity() == PolarityEvent.Polarity.On ? 0 : 4;
         ori = ((OrientationEventInterface) ein).getOrientation();
         // Type information here is mixture of input orientation and polarity, 
         // in order to match both characteristics.
         type = (byte) (ori + polValue); 
+        return true;
     }
 
     synchronized void writeOutputEvent(byte motionDir, Object ein) {
@@ -87,7 +88,7 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
          */ 
         // </editor-fold>
         for (Object ein : oriPacket) {
-            extractEventInfo(ein);
+            if(!extractEventInfo(ein)) continue;
             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                 imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
                 setGroundTruth();
