@@ -1331,17 +1331,17 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     /**
      * Used to add custom Menu items and keyboard accelerators for DAVIS cameras
      */
-    abstract public class MyAction extends AbstractAction {
+    abstract public class DavisMenuAction extends AbstractAction {
 
-        protected final String path = "/net/sf/jaer/graphics/icons/";
+        protected final String path = "/eu/seebetter/ini/chips/davis/icons/"; // C:\Users\tobi\Documents\~jaer2\jAER\trunk\build\classes\net\sf\jaer\graphics\icons
 
-        public MyAction() {
+        public DavisMenuAction() {
             super();
         }
 
-        public MyAction(String name, String tooltip, String icon) {
+        public DavisMenuAction(String name, String tooltip, String icon) {
             putValue(Action.NAME, name);
-//            putValue(Action.SMALL_ICON, new javax.swing.ImageIcon(getClass().getResource(path + icon + ".gif")));
+            putValue(Action.SMALL_ICON, new javax.swing.ImageIcon(getClass().getResource(path + icon + ".gif")));
             putValue("hideActionText", "true");
             putValue(Action.SHORT_DESCRIPTION, tooltip);
         }
@@ -1350,7 +1350,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     /**
      * Adds frame capture/display toggle
      */
-    final public class ToggleFrameCaptureDisplayAction extends MyAction {
+    final public class ToggleFrameCaptureDisplayAction extends DavisMenuAction {
 
         public ToggleFrameCaptureDisplayAction() {
             super("ToggleFrames", "Toggle DAVIS frame capture and display", "ToggleFrames");
@@ -1369,7 +1369,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     /**
      * Adds event capture/display option
      */
-    final public class ToggleEventsAction extends MyAction {
+    final public class ToggleEventsAction extends DavisMenuAction {
 
         public ToggleEventsAction() {
             super("ToggleEvents", "Toggle DAVIS event capture and display", "ToggleEvents");
@@ -1388,7 +1388,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     /**
      * Adds event capture/display option
      */
-    final public class ToggleHistogram extends MyAction {
+    final public class ToggleHistogram extends DavisMenuAction {
 
         public ToggleHistogram() {
             super("Toggle APS Histgram display", "Toggles whether the histogram of APS levels is display", "ToggleHistogram");
@@ -1405,7 +1405,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     /**
      * Adds event capture/display option
      */
-    final public class ToggleAutoExposure extends MyAction {
+    final public class ToggleAutoExposure extends DavisMenuAction {
 
         public ToggleAutoExposure() {
             super("Toggle APS Autoexposure",
@@ -1426,7 +1426,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     /**
      * Adds event capture/display option
      */
-    final public class DecreaseExposureAction extends MyAction {
+    final public class DecreaseExposureAction extends DavisMenuAction {
 
         public DecreaseExposureAction() {
             super("Increase APS exposure",
@@ -1442,7 +1442,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         }
     }
 
-    final public class IncreaseAPSExposure extends MyAction {
+    final public class IncreaseAPSExposure extends DavisMenuAction {
 
         public IncreaseAPSExposure() {
             super("Increase APS exposure",
@@ -1458,7 +1458,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         }
     }
 
-    final public class ToggleIMU extends MyAction {
+    final public class ToggleIMU extends DavisMenuAction {
 
         public ToggleIMU() {
             super("Toggle IMU",
