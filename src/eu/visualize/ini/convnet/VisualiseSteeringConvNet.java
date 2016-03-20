@@ -193,7 +193,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .5f);
         MultilineAnnotationTextRenderer.setScale(.3f);
         if (showStatistics) {
-            MultilineAnnotationTextRenderer.renderMultilineString(String.format("Current state = [L: %6.1f]  [C: %6.1f]  [R: %6.1f]  [N: %6.1f]", LCRNstate[0], LCRNstate[1], LCRNstate[2], LCRNstate[3]));
+            MultilineAnnotationTextRenderer.renderMultilineString(String.format("LCRN states: [L=%6.1f]  [C=%6.1f]  [R%6.1f]  [N=%6.1f]", LCRNstate[0], LCRNstate[1], LCRNstate[2], LCRNstate[3]));
             MultilineAnnotationTextRenderer.setScale(.3f);
             if (dvsSubsampler != null) {
                 MultilineAnnotationTextRenderer.renderMultilineString(String.format("DVS subsampler, %d events, inst/avg interval %6.1f/%6.1f ms", getDvsMinEvents(), dvsSubsampler.getLastSubsamplerFrameIntervalUs() * 1e-3f, dvsSubsampler.getFilteredSubsamplerIntervalUs() * 1e-3f));
@@ -219,12 +219,12 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             for (int i = 0; i < 3; i++) {
                 int x0 = third * i;
                 int x1 = x0 + third;
-                float shade = brightness * net.outputLayer.activations[i];
+                float shade = brightness * chooseOutputToShow(net, i);
                 gl.glColor3f((shade * r), (shade * g), (shade * b));
                 gl.glRecti(x0, 0, x1, sy);
                 gl.glRecti(x0, 0, x1, sy);
             }
-            float shade = brightness * net.outputLayer.activations[3]; // no target
+            float shade = brightness * chooseOutputToShow(net, 3); // no target
             gl.glColor3f((shade * r), (shade * g), (shade * b));
             gl.glRecti(0, 0, chip.getSizeX(), sy / 8);
 
@@ -234,6 +234,15 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             float shade = .5f;
             gl.glColor3f((shade * r), (shade * g), (shade * b));
             gl.glRecti(x0, 0, x1, sy);
+        }
+    }
+    
+    // returns either network or lowpass filtered output
+    private float chooseOutputToShow(DeepLearnCnnNetwork net, int i){
+        if(LCRNstep<1){
+            return LCRNstate[i];
+        }else{
+            return net.outputLayer.activations[i];
         }
     }
 
