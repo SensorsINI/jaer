@@ -624,9 +624,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     // Treat FileOpen same as a rewind
                     resetFilter();
                     break;
-                case SingleCameraCalibration.EVENT_NEW_CALIBRATION:
-                    calibration.generateUndistortedAddressLUT(sizex, sizey);
-                    break;
             }
         }
     }
@@ -810,37 +807,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     protected synchronized boolean extractEventInfo(Object ein) {
         e = (PolarityEvent) ein;
         // If camera calibrated, undistort pixel locations
-        if (calibration.isFilterEnabled() && calibration.isCalibrated()) {
-            uidx = 2 * (e.y + sizey * e.x);
-            e.x = calibration.getUndistortedAddressFromLUT(uidx);
-            e.y = calibration.getUndistortedAddressFromLUT(uidx + 1);
-            x = e.x >> subSampleShift;
-            y = e.y >> subSampleShift;
-            if (xeob(x) || yeob(y)) {
-                e.setFilteredOut(true);
-                return false;
-            }
-        } else {
-            x = e.x >> subSampleShift;
-            y = e.y >> subSampleShift;
-        }
+
+        x = e.x >> subSampleShift;
+        y = e.y >> subSampleShift;
         ts = e.getTimestamp();
         type = e.getPolarity() == PolarityEvent.Polarity.Off ? 0 : 1;
         return true;
-    }
-
-    private boolean xeob(int x) {
-        if (x < 0 || x > sizex - 1) {
-            return true;
-        }
-        return false;
-    }
-
-    private boolean yeob(int y) {
-        if (y < 0 || y > sizey - 1) {
-            return true;
-        }
-        return false;
     }
 
     synchronized void writeOutputEvent() {

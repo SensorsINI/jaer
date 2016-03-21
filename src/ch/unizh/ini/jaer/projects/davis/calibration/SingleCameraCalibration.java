@@ -48,6 +48,7 @@ import javax.swing.JButton;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -68,8 +69,8 @@ import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class SingleCameraCalibration extends EventFilter2D implements FrameAnnotater {
 
-    private int sx;
-    private int sy;
+    private int sx; // set to chip.getSizeX()
+    private int sy; // chip.getSizeY()
     private int lastTimestamp = 0;
 
     private float[] lastFrame = null, outFrame = null;
@@ -90,6 +91,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private int rectangleHeightMm = getInt("rectangleHeightMm", 20); //height in mm
     private int rectangleWidthMm = getInt("rectangleWidthMm", 20); //width in mm
     private boolean showUndistortedFrames = getBoolean("showUndistortedFrames", false);
+    private boolean undistortDVSevents = getBoolean("undistortDVSevents", false);
     private boolean takeImageOnTimestampReset = getBoolean("takeImageOnTimestampReset", false);
     private String fileBaseName = "";
 
@@ -102,10 +104,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private MatVector rotationVectors;
     private MatVector translationVectors;
     private Mat imgIn, imgOut;
-    
-    private short[] undistortedAddressLUT;
+
+    private short[] undistortedAddressLUT; // stores undistortion LUT for event addresses. values are stored by idx = 2 * (y + sy * x);
     private boolean isUndistortedAddressLUTgenerated = false;
-    
+
     private float focalLengthPixels = 0;
     private float focalLengthMm = 0;
     private Point2D.Float principlePoint = null;
@@ -121,7 +123,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     private final ApsFrameExtractor frameExtractor;
     private final FilterChain filterChain;
-    private boolean saved=false;
+    private boolean saved = false;
 
     public SingleCameraCalibration(AEChip chip) {
         super(chip);
@@ -137,6 +139,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         setPropertyTooltip("rectangleWidthMm", "width of square rectangles of calibration pattern in mm");
         setPropertyTooltip("rectangleHeightMm", "height of square rectangles of calibration pattern in mm");
         setPropertyTooltip("showUndistortedFrames", "shows the undistorted frame in the ApsFrameExtractor display, if calibration has been completed");
+        setPropertyTooltip("undistortDVSevents", "applies LUT undistortion to DVS event address if calibration has been completed; events outside AEChip address space are filtered out");
         setPropertyTooltip("takeImageOnTimestampReset", "??");
         setPropertyTooltip("cornerSubPixRefinement", "refine corner locations to subpixel resolution");
         setPropertyTooltip("calibrate", "run the camera calibration on collected frame data and print results to console");
@@ -218,6 +221,9 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
             //store last timestamp
             lastTimestamp = e.timestamp;
+            if(calibrated && undistortDVSevents && ((ApsDvsEvent)e).isDVSEvent()){
+                undistortEvent(e);
+            }
         }
 
         return in;
@@ -436,6 +442,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      */
     public void setRealtimePatternDetectionEnabled(boolean realtimePatternDetectionEnabled) {
         this.realtimePatternDetectionEnabled = realtimePatternDetectionEnabled;
+        putBoolean("realtimePatternDetectionEnabled",realtimePatternDetectionEnabled);
     }
 
     /**
@@ -497,16 +504,18 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             allImagePoints.resize(100);
             allObjectPoints.resize(100);
         }
-        //debug
-               
+        generateUndistortedAddressLUT(sx, sy);
         calibrated = true;
         getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
-
     }
 
-    /*
-    Generate a look-up table that maps the entire chip to undistorted addresses.
-    */
+    /**
+     * Generate a look-up table that maps the entire chip to undistorted
+     * addresses.
+     *
+     * @param sx chip size x
+     * @param sy chip size y
+     */
     public void generateUndistortedAddressLUT(int sx, int sy) {
         if (!calibrated) {
             return;
@@ -521,7 +530,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         }
         Mat dst = new Mat();
         Mat pixelArray = new Mat(1, sx * sy, CV_32FC2, fp); // make wide 2 channel matrix of source event x,y 
-        opencv_imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs()); 
+        opencv_imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
         isUndistortedAddressLUTgenerated = true;
         // get the camera matrix elements (focal lengths and principal point)
         DoubleIndexer k = getCameraMatrix().createIndexer();
@@ -531,40 +540,38 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         cx = (float) k.get(0, 2);
         cy = (float) k.get(1, 2);
         undistortedAddressLUT = new short[2 * sx * sy];
-        
+
         for (int x = 0; x < sx; x++) {
             for (int y = 0; y < sy; y++) {
                 idx = 2 * (y + sy * x);
                 undistortedAddressLUT[idx] = (short) Math.round(dst.getFloatBuffer().get(idx) * fx + cx);
-                undistortedAddressLUT[idx+1] = (short) Math.round(dst.getFloatBuffer().get(idx+1) * fy + cy);
+                undistortedAddressLUT[idx + 1] = (short) Math.round(dst.getFloatBuffer().get(idx + 1) * fy + cy);
             }
         }
     }
-    
-  
-    
+
     public boolean isUndistortedAddressLUTgenerated() {
         return isUndistortedAddressLUTgenerated;
     }
-    
+
     private void generateCalibrationString() {
-        if(cameraMatrix==null || cameraMatrix.isNull() || cameraMatrix.empty()){
-            calibrationString="uncalibrated";
+        if (cameraMatrix == null || cameraMatrix.isNull() || cameraMatrix.empty()) {
+            calibrationString = "uncalibrated";
             return;
         }
         focalLengthPixels = (float) (cameraMatrix.asCvMat().get(0, 0) + cameraMatrix.asCvMat().get(0, 0)) / 2;
         focalLengthMm = chip.getPixelWidthUm() * 1e-3f * focalLengthPixels;
         principlePoint = new Point2D.Float((float) cameraMatrix.asCvMat().get(0, 2), (float) cameraMatrix.asCvMat().get(1, 2));
-        StringBuilder sb=new StringBuilder();
-        if(imageCounter>0){
-            sb.append(String.format("Using %d images",imageCounter));
-            if(!saved){
+        StringBuilder sb = new StringBuilder();
+        if (imageCounter > 0) {
+            sb.append(String.format("Using %d images", imageCounter));
+            if (!saved) {
                 sb.append("; not yet saved\n");
-            }else{
+            } else {
                 sb.append("; saved\n");
             }
-        }else{
-            sb.append(String.format("Path:%s\n",shortenDirPath(dirPath)));
+        } else {
+            sb.append(String.format("Path:%s\n", shortenDirPath(dirPath)));
         }
         sb.append(String.format("focal length avg=%.1f pixels=%.2f mm\nPrincipal point (green cross)=%.1f,%.1f, Chip size/2=%d,%d\n",
                 focalLengthPixels, focalLengthMm,
@@ -574,10 +581,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     public String shortenDirPath(String dirPath) {
-        String dirComp=dirPath;
-        if(dirPath.length()>30){
-            int n=dirPath.length();
-            dirComp=dirPath.substring(0,10)+"..."+dirPath.substring(n-20, n);
+        String dirComp = dirPath;
+        if (dirPath.length() > 30) {
+            int n = dirPath.length();
+            dirComp = dirPath.substring(0, 10) + "..." + dirPath.substring(n - 20, n);
         }
         return dirComp;
     }
@@ -601,26 +608,26 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         serializeMat(dirPath, "cameraMatrix", cameraMatrix);
         serializeMat(dirPath, "distortionCoefs", distortionCoefs);
         generateCalibrationString();
-        saved=true;
+        saved = true;
     }
-    
-    static void setButtonState(Container c, String buttonString,boolean flag ) {
-    int len = c.getComponentCount();
-    for (int i = 0; i < len; i++) {
-      Component comp = c.getComponent(i);
 
-      if (comp instanceof JButton) {
-        JButton b = (JButton) comp;
+    static void setButtonState(Container c, String buttonString, boolean flag) {
+        int len = c.getComponentCount();
+        for (int i = 0; i < len; i++) {
+            Component comp = c.getComponent(i);
 
-        if ( buttonString.equals(b.getText()) ) {
-            b.setEnabled(flag);
+            if (comp instanceof JButton) {
+                JButton b = (JButton) comp;
+
+                if (buttonString.equals(b.getText())) {
+                    b.setEnabled(flag);
+                }
+
+            } else if (comp instanceof Container) {
+                setButtonState((Container) comp, buttonString, flag);
+            }
         }
-
-      } else if (comp instanceof Container) {
-          setButtonState((Container) comp, buttonString, flag);
-      }
-    }     
-}
+    }
 
     synchronized public void doLoadCalibration() {
         final JFileChooser j = new JFileChooser();
@@ -633,17 +640,17 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             @Override
             public void propertyChange(PropertyChangeEvent pce) {
                 String fn = j.getCurrentDirectory().getPath() + File.separator + "cameraMatrix" + ".xml";
-                File f=new File(fn);
-                boolean cameraMatrixExists=f.exists();
+                File f = new File(fn);
+                boolean cameraMatrixExists = f.exists();
                 fn = j.getCurrentDirectory().getPath() + File.separator + "distortionCoefs" + ".xml";
-                f=new File(fn);
-                boolean distortionCoefsExists=f.exists();
-                if(distortionCoefsExists && cameraMatrixExists){
+                f = new File(fn);
+                boolean distortionCoefsExists = f.exists();
+                if (distortionCoefsExists && cameraMatrixExists) {
                     setButtonState(j, j.getApproveButtonText(), true);
-                }else{
+                } else {
                     setButtonState(j, j.getApproveButtonText(), false);
                 }
-                
+
             }
         });
         int ret = j.showOpenDialog(null);
@@ -670,6 +677,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             generateCalibrationString();
             calibrated = true;
             log.info("loaded cameraMatrix and distortionCoefs");
+            generateUndistortedAddressLUT(sx, sy);
             getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
         } catch (Exception i) {
             log.warning(i.toString());
@@ -702,7 +710,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     synchronized public void doTakeImage() {
         actionTriggered = true;
         nAcqFrames = 0;
-        saved=false;
+        saved = false;
     }
 
     private String printMatD(Mat M) {
@@ -878,21 +886,73 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     public boolean isCalibrated() {
         return calibrated;
     }
-    
+
     /**
-     * @return the look-up table of undistorted pixel addresses.
+     * @return the look-up table of undistorted pixel addresses. The index i is
+     * obtained by iterating column-wise over the pixel array (y-loop is inner
+     * loop) until getting to (x,y). Have to multiply by two because both x and
+     * y addresses are stored consecutively. Thus, i = 2 * (y + sizeY * x)
      */
-    public short[] getUndistortedAddressLUT() {
+    private short[] getUndistortedAddressLUT() {
         return undistortedAddressLUT;
     }
-    
+
     /**
      * @return the undistorted pixel address. The input index i is obtained by
      * iterating column-wise over the pixel array (y-loop is inner loop) until
      * getting to (x,y). Have to multiply by two because both x and y addresses
      * are stored consecutively. Thus, i = 2 * (y + sizeY * x)
      */
-    public short getUndistortedAddressFromLUT(int i) {
+    private short getUndistortedAddressFromLUT(int i) {
         return undistortedAddressLUT[i];
+    }
+
+    /**
+     * Transforms an event to undistorted address, using the LUT computed from
+     * calibration
+     *
+     * @param e input event. The address x and y are modified to the unmodified
+     * address. If the address falls outside the Chip boundaries, the event is
+     * filtered out.
+     * @return true if the transformation succeeds within chip boundaries, false
+     * if the event has been filtered out.
+     */
+    public boolean undistortEvent(BasicEvent e) {
+        int uidx = 2 * (e.y + sy * e.x);
+        e.x = getUndistortedAddressFromLUT(uidx);
+        e.y = getUndistortedAddressFromLUT(uidx + 1);
+        if(xeob(e.x) || yeob(e.y)) {
+            e.setFilteredOut(true);
+            return false;
+        }
+        return true;
+    }
+
+    private boolean xeob(int x) {
+        if (x < 0 || x > sx - 1) {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean yeob(int y) {
+        if (y < 0 || y > sy - 1) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @return the undistortDVSevents
+     */
+    public boolean isUndistortDVSevents() {
+        return undistortDVSevents;
+    }
+
+    /**
+     * @param undistortDVSevents the undistortDVSevents to set
+     */
+    public void setUndistortDVSevents(boolean undistortDVSevents) {
+        this.undistortDVSevents = undistortDVSevents;
     }
 }
