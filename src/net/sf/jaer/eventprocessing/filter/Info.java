@@ -209,14 +209,14 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     /**
      * @return the showAccumulatedEventCount
      */
-    public boolean isShowAccumulateEventCount() {
+    public boolean isShowAccumulatedEventCount() {
         return showAccumulatedEventCount;
     }
 
     /**
      * @param showAccumulatedEventCount the showAccumulatedEventCount to set
      */
-    public void setShowAccumulateEventCount(boolean showAccumulatedEventCount) {
+    public void setShowAccumulatedEventCount(boolean showAccumulatedEventCount) {
         this.showAccumulatedEventCount = showAccumulatedEventCount;
         putBoolean("showAccumulatedEventCount", showAccumulatedEventCount);
     }
@@ -646,7 +646,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 engFmt.format(accumulatedDVSEventCount), engFmt.format(cDvs / t),
                 engFmt.format(accumulatedAPSSampleCount / 2), engFmt.format(cAps / 2 / t), // divide by two for reset/signal reads
                 engFmt.format(accumulatedIMUSampleCount), engFmt.format(cImu / t));
-        MultilineAnnotationTextRenderer.setScale(.5f);
+        MultilineAnnotationTextRenderer.setScale(.2f);
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
 //        glut.glutBitmapString(font, s);
