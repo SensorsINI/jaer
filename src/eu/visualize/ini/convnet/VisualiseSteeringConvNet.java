@@ -80,7 +80,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         super(chip);
         String deb = "3. Debug", disp = "1. Display", anal = "2. Analysis";
         String udp = "UDP messages";
-        setPropertyTooltip(disp, "showAnalogDecisionOutput", "shows output units as analog shading rather than binary");
+        setPropertyTooltip(disp, "showAnalogDecisionOutput", "Shows output units as analog shading rather than binary. If LCRNstep=1, then the analog CNN output is shown. Otherwise, the lowpass filtered LCRN states are shown.");
         setPropertyTooltip(disp, "hideSteeringOutput", "hides steering output unit rendering as shading over sensor image. If the prey is invisible no rectangle is rendered when showAnalogDecisionOutput is deselected.");
         setPropertyTooltip(anal, "pixelErrorAllowedForSteering", "If ground truth location is within this many pixels of closest border then the descision is still counted as corret");
         setPropertyTooltip(disp, "showStatistics", "shows statistics of DVS frame rate and error rate (when ground truth TargetLabeler file is loaded)");
