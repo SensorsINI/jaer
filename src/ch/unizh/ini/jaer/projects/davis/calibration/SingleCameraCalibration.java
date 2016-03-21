@@ -548,6 +548,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
     
     private void generateCalibrationString() {
+        if(cameraMatrix==null || cameraMatrix.isNull() || cameraMatrix.empty()){
+            calibrationString="uncalibrated";
+            return;
+        }
         focalLengthPixels = (float) (cameraMatrix.asCvMat().get(0, 0) + cameraMatrix.asCvMat().get(0, 0)) / 2;
         focalLengthMm = chip.getPixelWidthUm() * 1e-3f * focalLengthPixels;
         principlePoint = new Point2D.Float((float) cameraMatrix.asCvMat().get(0, 2), (float) cameraMatrix.asCvMat().get(1, 2));
