@@ -34,6 +34,8 @@ public class DavisRGBW640 extends DavisBaseCamera {
 		setDefaultPreferencesFile("biasgenSettings/DavisRGBW640/DavisRGBW640test6.xml");
 		setSizeX(DavisRGBW640.WIDTH_PIXELS);
 		setSizeY(DavisRGBW640.HEIGHT_PIXELS);
+                setPixelHeightUm(10);
+                setPixelWidthUm(10); // subpixel size, APS pixel spacing
 
 		setEventExtractor(new DavisColorEventExtractor(this, true, false, DavisRGBW640.COLOR_FILTER, true));
 
