@@ -109,7 +109,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private float focalLengthPixels = 0;
     private float focalLengthMm = 0;
     private Point2D.Float principlePoint = null;
-    private String calibrationString = null;
+    private String calibrationString = "Uncalibrated";
 
     private boolean patternFound;
     private int imageCounter = 0;
@@ -121,6 +121,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     private final ApsFrameExtractor frameExtractor;
     private final FilterChain filterChain;
+    private boolean saved=false;
 
     public SingleCameraCalibration(AEChip chip) {
         super(chip);
@@ -192,6 +193,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 //iterate
                 if (actionTriggered && (nAcqFrames < nMaxAcqFrames)) {
                     nAcqFrames++;
+                    generateCalibrationString();
                 }
                 //take action
                 if (actionTriggered && (nAcqFrames == nMaxAcqFrames)) {
@@ -549,10 +551,31 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         focalLengthPixels = (float) (cameraMatrix.asCvMat().get(0, 0) + cameraMatrix.asCvMat().get(0, 0)) / 2;
         focalLengthMm = chip.getPixelWidthUm() * 1e-3f * focalLengthPixels;
         principlePoint = new Point2D.Float((float) cameraMatrix.asCvMat().get(0, 2), (float) cameraMatrix.asCvMat().get(1, 2));
-        calibrationString = String.format("Using %d images\nfocal length avg=%.1f pixels=%.2f mm\nPrincipal point (green cross)=%.1f,%.1f, Chip size/2=%d,%d\n",
-                imageCounter, focalLengthPixels, focalLengthMm,
+        StringBuilder sb=new StringBuilder();
+        if(imageCounter>0){
+            sb.append(String.format("Using %d images",imageCounter));
+            if(!saved){
+                sb.append("; not yet saved\n");
+            }else{
+                sb.append("; saved\n");
+            }
+        }else{
+            sb.append(String.format("Path:%s\n",shortenDirPath(dirPath)));
+        }
+        sb.append(String.format("focal length avg=%.1f pixels=%.2f mm\nPrincipal point (green cross)=%.1f,%.1f, Chip size/2=%d,%d\n",
+                focalLengthPixels, focalLengthMm,
                 principlePoint.x, principlePoint.y,
-                chip.getSizeX() / 2, chip.getSizeY() / 2);
+                chip.getSizeX() / 2, chip.getSizeY() / 2));
+        calibrationString = sb.toString();
+    }
+
+    public String shortenDirPath(String dirPath) {
+        String dirComp=dirPath;
+        if(dirPath.length()>30){
+            int n=dirPath.length();
+            dirComp=dirPath.substring(0,10)+"..."+dirPath.substring(n-20, n);
+        }
+        return dirComp;
     }
 
     synchronized public void doSaveCalibration() {
@@ -573,6 +596,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         putString("dirPath", dirPath);
         serializeMat(dirPath, "cameraMatrix", cameraMatrix);
         serializeMat(dirPath, "distortionCoefs", distortionCoefs);
+        generateCalibrationString();
+        saved=true;
     }
     
     static void setButtonState(Container c, String buttonString,boolean flag ) {
@@ -629,7 +654,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     synchronized public void doClearCalibration() {
         calibrated = false;
-        calibrationString = null;
+        calibrationString = "Uncalibrated";
         undistortedAddressLUT = null;
         isUndistortedAddressLUTgenerated = false;
     }
@@ -673,6 +698,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     synchronized public void doTakeImage() {
         actionTriggered = true;
         nAcqFrames = 0;
+        saved=false;
     }
 
     private String printMatD(Mat M) {
