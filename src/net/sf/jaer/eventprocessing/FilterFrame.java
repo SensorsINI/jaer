@@ -181,7 +181,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         updateIntervalLabel = new javax.swing.JLabel();
         updateIntervalField = new javax.swing.JTextField();
         jbuttonSelectFilt = new javax.swing.JButton();
-        statusPanel = new javax.swing.JPanel();
+        jLabel1 = new javax.swing.JLabel();
         scrollPane = new javax.swing.JScrollPane();
         filtersPanel = new javax.swing.JPanel();
         mainMenuBar = new javax.swing.JMenuBar();
@@ -209,17 +209,17 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("FilterControl");
         setMinimumSize(new java.awt.Dimension(150, 37));
-        addWindowListener(new java.awt.event.WindowAdapter() {
-            public void windowClosed(java.awt.event.WindowEvent evt) {
-                formWindowClosed(evt);
-            }
-        });
         addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentMoved(java.awt.event.ComponentEvent evt) {
                 formComponentMoved(evt);
             }
             public void componentResized(java.awt.event.ComponentEvent evt) {
                 formComponentResized(evt);
+            }
+        });
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosed(java.awt.event.WindowEvent evt) {
+                formWindowClosed(evt);
             }
         });
 
@@ -261,17 +261,12 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         });
         toolBar1.add(jbuttonSelectFilt);
 
-        getContentPane().add(toolBar1, java.awt.BorderLayout.NORTH);
-
-        statusPanel.setLayout(new java.awt.BorderLayout());
-        getContentPane().add(statusPanel, java.awt.BorderLayout.SOUTH);
+        jLabel1.setText("<html>Enabled filters (check box selected) <br>are processed from top to bottom");
 
         filtersPanel.setMaximumSize(new java.awt.Dimension(0, 0));
         filtersPanel.setMinimumSize(new java.awt.Dimension(100, 300));
         filtersPanel.setLayout(new javax.swing.BoxLayout(filtersPanel, javax.swing.BoxLayout.Y_AXIS));
         scrollPane.setViewportView(filtersPanel);
-
-        getContentPane().add(scrollPane, java.awt.BorderLayout.CENTER);
 
         fileMenu.setMnemonic('f');
         fileMenu.setText("File");
@@ -422,6 +417,30 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         mainMenuBar.add(helpMenu);
 
         setJMenuBar(mainMenuBar);
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addComponent(scrollPane)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(toolBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, Short.MAX_VALUE))
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(toolBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(scrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 499, Short.MAX_VALUE)
+                .addGap(0, 0, 0))
+        );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -781,6 +800,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JMenu fileMenu;
     protected javax.swing.JPanel filtersPanel;
     private javax.swing.JMenu helpMenu;
+    private javax.swing.JLabel jLabel1;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator2;
@@ -800,7 +820,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JMenuItem saveAsMenuItem;
     private javax.swing.JScrollPane scrollPane;
     private javax.swing.JMenuItem setTimeLimitMenuItem;
-    private javax.swing.JPanel statusPanel;
     private javax.swing.JToolBar toolBar1;
     private javax.swing.JTextField updateIntervalField;
     private javax.swing.JLabel updateIntervalLabel;
