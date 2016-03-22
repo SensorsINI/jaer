@@ -16,17 +16,64 @@
                 <entry key="FilterChain.timeLimitEnabled" value="false"/>
                 <entry key="FilterChain.timeLimitMs" value="10"/>
                 <entry key="Info.useLocalTimeZone" value="true"/>
+                <entry key="DAVIS240C.VideoControl.displayFrames" value="true"/>
+                <entry key="DAVIS240C.VideoControl.displayEvents" value="true"/>
+                <entry key="DAVIS240C.VideoControl.separateAPSByColor" value="false"/>
+                <entry key="DAVIS240C.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="DAVIS240C.VideoControl.colorCorrection" value="true"/>
                 <entry key="VideoControl.displayFrames" value="true"/>
                 <entry key="VideoControl.displayEvents" value="true"/>
+                <entry key="XYTypeFilter.filterEnabled" value="false"/>
+                <entry key="RotateFilter.filterEnabled" value="false"/>
+                <entry key="BackgroundActivityFilter.filterEnabled" value="false"/>
+                <entry key="RefractoryFilter.filterEnabled" value="false"/>
+                <entry key="HotPixelFilter.filterEnabled" value="false"/>
+                <entry key="Info.filterEnabled" value="false"/>
+                <entry key="JaerAviWriter.filterEnabled" value="true"/>
+                <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAMdwQAAAAMdAA0bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5BcHNEdnNFdmVudEZpbHRlcnQAL25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuWFlUeXBlRmlsdGVydAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5Sb3RhdGVGaWx0ZXJ0ACtldS5zZWViZXR0ZXIuaW5pLmNoaXBzLmRhdmlzLkhvdFBpeGVsRmlsdGVydAA7bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5CYWNrZ3JvdW5kQWN0aXZpdHlGaWx0ZXJ0ADNuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJlZnJhY3RvcnlGaWx0ZXJ0ADljaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy5kYXZpcy5mcmFtZXMuQXBzRnJhbWVFeHRyYWN0b3J0AC1ldS5zZWViZXR0ZXIuaW5pLmNoaXBzLmRhdmlzLkRhdmlzQXV0b1Nob290ZXJ0ADJuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkNlbGxTdGF0c1Byb2JlcnQAJ25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuSW5mb3QAO2NoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLmRhdmlzLmZyYW1lcy5EYXZpc0ZyYW1lQXZpV3JpdGVydAAobmV0LnNmLmphZXIudXRpbC5hdmlvdXRwdXQuSmFlckF2aVdyaXRlcng="/>
+                <entry key="LocalPlanesFlow.planeEstimator" value="LinearSavitzkyGolay"/>
+                <entry key="LocalPlanesFlow.filterEnabled" value="false"/>
+                <entry key="ImuFlow.filterEnabled" value="false"/>
+                <entry key="FilterFrame.lastFilterSelected" value=""/>
+                <entry key="RefractoryFilter.refractoryPeriodUs" value="586"/>
+                <entry key="DavisVideoContrastController.useAutoContrast" value="true"/>
+                <entry key="TargetLabeler.lastFileName" value="C:\Users\tobi\Dropbox\CNN\2016-01-11 Predator-Prey Recordings\Recording 4\DAVIS240C-2016-01-11T15-57-58+0000-04010058-0 recording 4-targets.txt"/>
+                <entry key="TargetLabeler.filterEnabled" value="false"/>
+                <entry key="VisualiseSteeringConvNet.filterEnabled" value="false"/>
+                <entry key="VisualiseSteeringConvNet.lastAPSNetXMLFilename" value="C:\Users\tobi\Dropbox\Share Visualise INI\Left-Center-Right-NonVisible\LCRN_cnn_nearest_1500_epoch.xml"/>
+                <entry key="VisualiseSteeringConvNet.showOutputAsBarChart" value="false"/>
+                <entry key="VisualiseSteeringConvNet.showAnalogDecisionOutput" value="true"/>
+                <entry key="DavisVideoContrastController.contrast" value="1.6500001"/>
+                <entry key="VisualiseSteeringConvNet.dvsMinEvents" value="1000"/>
+                <entry key="VisualiseSteeringConvNet.processDVSTimeSlices" value="false"/>
+                <entry key="VisualiseSteeringConvNet.processAPSDVSTogetherInAPSNet" value="true"/>
+                <entry key="VisualiseSteeringConvNet.processAPSFrames" value="false"/>
+                <entry key="DvsSliceAviWriter.filterEnabled" value="false"/>
+                <entry key="DvsSliceAviWriter.dvsMinEvents" value="12153"/>
+                <entry key="DvsSliceAviWriter.grayScale" value="46"/>
+                <entry key="LocalPlanesFlow.showTimestampMap" value="false"/>
+                <entry key="LocalPlanesFlow.maxDtThreshold" value="300000"/>
+                <entry key="LocalPlanesFlow.searchDistance" value="3"/>
+                <entry key="LocalPlanesFlow.th1" value="3.655584E-5"/>
+                <entry key="LocalPlanesFlow.th3" value="1.5809253E-4"/>
+                <entry key="LocalPlanesFlow.ppsScale" value="0.029511536"/>
+                <entry key="VisualiseSteeringConvNet.sendUDPSteeringMessages" value="false"/>
+                <entry key="VisualiseSteeringConvNet.port" value="5678"/>
+                <entry key="VisualiseSteeringConvNet.host" value="localhost"/>
+                <entry key="DvsSliceAviWriter.format" value="JPG"/>
+                <entry key="DvsSliceAviWriter.lastFileName" value="C:\Users\tobi\Documents\jAER.avi"/>
+                <entry key="DvsSliceAviWriter.showOutput" value="true"/>
+                <entry key="FaceDetectorConvNet.filterEnabled" value="false"/>
+                <entry key="LucasKanadeFlow.derivator" value="CentralFiniteDifferenceFirstOrder"/>
+                <entry key="LucasKanadeFlow.filterEnabled" value="false"/>
+                <entry key="LucasKanadeFlow.showTimestampMap" value="false"/>
+                <entry key="LucasKanadeFlow.maxDtThreshold" value="300000"/>
                 <entry key="VideoControl.useAutoContrast" value="false"/>
                 <entry key="VideoControl.contrast" value="1.8000001"/>
                 <entry key="VideoControl.brightness" value="0.0"/>
                 <entry key="VideoControl.gamma" value="1.0"/>
                 <entry key="agcTauMs" value="1000.0"/>
                 <entry key="DAViS240.bgTabbedPaneSelectedIndex" value="0"/>
-                <entry key="XYTypeFilter.filterEnabled" value="false"/>
-                <entry key="RotateFilter.filterEnabled" value="false"/>
-                <entry key="BackgroundActivityFilter.filterEnabled" value="false"/>
                 <entry key="apsIntensityGain" value="1"/>
                 <entry key="apsIntensityOffset" value="0"/>
                 <entry key="invertADCvalues" value="false"/>
@@ -76,7 +123,7 @@
                 <entry key="DAVIS240C.AddressedIPotCF.LocalBufBn.Sex" value="N"/>
                 <entry key="DAVIS240C.AddressedIPotCF.LocalBufBn.Type" value="NORMAL"/>
                 <entry key="DAVIS240C.AddressedIPotCF.PixInvBn.BitValueCoarse" value="2"/>
-                <entry key="DAVIS240C.AddressedIPotCF.PixInvBn.BitValueFine" value="129"/>
+                <entry key="DAVIS240C.AddressedIPotCF.PixInvBn.BitValueFine" value="175"/>
                 <entry key="DAVIS240C.AddressedIPotCF.PixInvBn.Enabled" value="true"/>
                 <entry key="DAVIS240C.AddressedIPotCF.PixInvBn.LowCurrent" value="false"/>
                 <entry key="DAVIS240C.AddressedIPotCF.PixInvBn.Sex" value="N"/>
@@ -142,7 +189,7 @@
                 <entry key="DAVIS240C.AddressedIPotCF.PadFollBn.Sex" value="N"/>
                 <entry key="DAVIS240C.AddressedIPotCF.PadFollBn.Type" value="NORMAL"/>
                 <entry key="DAVIS240C.AddressedIPotCF.apsOverflowLevel.BitValueCoarse" value="1"/>
-                <entry key="DAVIS240C.AddressedIPotCF.apsOverflowLevel.BitValueFine" value="255"/>
+                <entry key="DAVIS240C.AddressedIPotCF.apsOverflowLevel.BitValueFine" value="253"/>
                 <entry key="DAVIS240C.AddressedIPotCF.apsOverflowLevel.Enabled" value="true"/>
                 <entry key="DAVIS240C.AddressedIPotCF.apsOverflowLevel.LowCurrent" value="false"/>
                 <entry key="DAVIS240C.AddressedIPotCF.apsOverflowLevel.Sex" value="N"/>
@@ -199,8 +246,6 @@
                 <entry key="DAVIS240C.extTrigger" value="false"/>
                 <entry key="DAVIS240C.testPixAPSread" value="false"/>
                 <entry key="agcEnabled" value="false"/>
-                <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAJdwQAAAAJdAA5Y2gudW5pemguaW5pLmphZXIucHJvamVjdHMuZGF2aXMuZnJhbWVzLkFwc0ZyYW1lRXh0cmFjdG9ydAA1bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5BcHNOb2lzZVN0YXRpc3RpY3N0ADtuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkJhY2tncm91bmRBY3Rpdml0eUZpbHRlcnQALW9yZy5jYXBvY2FjY2lhLmNuZS5qYWVyLmNuZTIwMTIudm9yLlN0ZWFkaWNhbXQAQmNoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLmRhdmlzLmZyYW1lcy5BcHNGcmFtZUV4dHJhcG9sYXRpb25JU0NBU3QAMWV1LnZpc3VhbGl6ZS5pbmkuY29udm5ldC5WaXN1YWxpc2VTdGVlcmluZ0NvbnZOZXR0ACxldS52aXN1YWxpemUuaW5pLmNvbnZuZXQuRmFjZURldGVjdG9yQ29udk5ldHQAJ25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuSW5mb3QAMm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuQ2VsbFN0YXRzUHJvYmVyeA=="/>
-                <entry key="RefractoryFilter.filterEnabled" value="false"/>
                 <entry key="DAVIS240C.AddressedIPotCF.ApsROSFBn.BitValueCoarse" value="1"/>
                 <entry key="DAVIS240C.AddressedIPotCF.ApsROSFBn.BitValueFine" value="219"/>
                 <entry key="DAVIS240C.AddressedIPotCF.ApsROSFBn.Enabled" value="true"/>
@@ -211,7 +256,6 @@
                 <entry key="AEChip.subSamplingEnabled" value="false"/>
                 <entry key="useDVSExtrapolation" value="false"/>
                 <entry key="CPLDInt.pad" value="0"/>
-                <entry key="FilterFrame.lastFilterSelected" value="class org.capocaccia.cne.jaer.cne2012.vor.Steadicam"/>
                 <entry key="XYTypeFilter.startX" value="134"/>
                 <entry key="XYTypeFilter.xEnabled" value="true"/>
                 <entry key="XYTypeFilter.endX" value="139"/>
@@ -258,9 +302,7 @@
                 <entry key="ApsFrameExtrapolation.manualOffGain" value="-0.06837005"/>
                 <entry key="ApsFrameExtrapolation.lowPassTimeConst" value="1.0"/>
                 <entry key="ApsFrameExtrapolation.averagingWindow" value="10"/>
-                <entry key="Info.filterEnabled" value="false"/>
                 <entry key="Info.eventRateScaleMax" value="613913.56"/>
-                <entry key="RefractoryFilter.refractoryPeriodUs" value="586"/>
                 <entry key="DirectionSelectiveFilter.filterEnabled" value="false"/>
                 <entry key="DepressingSynapseFilter.filterEnabled" value="false"/>
                 <entry key="SimpleOrientationFilter.filterEnabled" value="false"/>
@@ -334,7 +376,7 @@
                 <entry key="MultiLineClusterTracker.mixingFactorRho" value="0.0110249985"/>
                 <entry key="MultiLineClusterTracker.minDistanceNormalized" value="0.01812906"/>
                 <entry key="DAVIS240C.showImageHistogram" value="false"/>
-                <entry key="CPLDInt.exposure" value="1053"/>
+                <entry key="CPLDInt.exposure" value="7777"/>
                 <entry key="ApsFrameExtractor.logCompress" value="false"/>
                 <entry key="ApsFrameExtractor.deltaBufferSize" value="1000.0"/>
                 <entry key="ApsFrameExtractor.displayBrightness" value="0.0"/>
@@ -369,7 +411,7 @@
                 <entry key="ApsDvsFaceTracker.scale" value="1.0"/>
                 <entry key="ApsFrameExtractor.logDecompress" value="false"/>
                 <entry key="ApsFrameExtractor.preBufferFrame" value="false"/>
-                <entry key="ApsNoiseStatistics.filterEnabled" value="true"/>
+                <entry key="ApsNoiseStatistics.filterEnabled" value="false"/>
                 <entry key="ApsNoiseStatistics.histNumBins" value="29"/>
                 <entry key="ApsNoiseStatistics.spatialHistogramEnabled" value="true"/>
                 <entry key="ApsNoiseStatistics.scaleHistogramsIncludingOverflow" value="true"/>
@@ -400,7 +442,6 @@
                 <entry key="FrequencyDetectionCell.filterEnabled" value="false"/>
                 <entry key="Steadicam.disableTranslation" value="false"/>
                 <entry key="Steadicam.disableRotation" value="false"/>
-                <entry key="HotPixelFilter.filterEnabled" value="true"/>
                 <entry key="HotPixelFilter.HotPixelSet" value="rO0ABXVyABNbTGphdmEubGFuZy5PYmplY3Q7kM5YnxBzKWwCAAB4cAAAABtzcgA0ZXUuc2VlYmV0dGVyLmluaS5jaGlwcy5EQVZpUy5Ib3RQaXhlbEZpbHRlciRIb3RQaXhlbPtTxzoUKi/5AgAESQAHYWRkcmVzc0kABWNvdW50SQABeEkAAXl4cA1D+AAAAAAAAAAAsAAAADVzcQB+AAIrxQgAAAAAAAAAAJ8AAACvc3EAfgACE0ZYAAAAAAAAAACKAAAATXNxAH4AAhGJaAAAAAAAAAAAWQAAAEZzcQB+AAIADHgAAAAAAAAAACgAAAAAc3EAfgACAUzoAAAAAAAAAAAhAAAABXNxAH4AAh8MyAAAAAAAAAAAIwAAAHxzcQB+AAIZTcgAAAAAAAAAABMAAABlc3EAfgACGQ3AAAAAAAAAAAATAAAAZHNxAH4AAhjNuAAAAAAAAAAAFAAAAGNzcQB+AAIYzbAAAAAAAAAAABQAAABjc3EAfgACBI2IAAAAAAAAAAAXAAAAEnNxAH4AAgTNeAAAAAAAAAAAGAAAABNzcQB+AAIAzTgAAAAAAAAAABwAAAADc3EAfgACAU04AAAAAAAAAAAcAAAABXNxAH4AAgBOWAAAAAAAAAAACgAAAAFzcQB+AAIADkgAAAAAAAAAAAsAAAAAc3EAfgACAI4oAAAAAAAAAAANAAAAAnNxAH4AAgAOaAAAAAAAAAAACQAAAABzcQB+AAIADlgAAAAAAAAAAAoAAAAAc3EAfgACAE5IAAAAAAAAAAALAAAAAXNxAH4AAgBOOAAAAAAAAAAADAAAAAFzcQB+AAIAjjgAAAAAAAAAAAwAAAACc3EAfgACAM4oAAAAAAAAAAANAAAAA3NxAH4AAgDOGAAAAAAAAAAADgAAAANzcQB+AAIBDigAAAAAAAAAAA0AAAAEc3EAfgACAQ4YAAAAAAAAAAAOAAAABA=="/>
                 <entry key="HotPixelFilter.showHotPixels" value="false"/>
                 <entry key="Steadicam.showTransformRectangle" value="true"/>
@@ -509,10 +550,10 @@
                 <entry key="TrackdefineFilter.minDistance" value="2.2035983"/>
                 <entry key="TrackdefineFilter.scalePointsCurvature" value="true"/>
                 <entry key="TrackdefineFilter.lastFile" value="C:\Users\tobi\Documents\jAER_1.5\computer large track 1.track"/>
-                <entry key="AutoExposureController.lowBoundary" value="0.13400951"/>
-                <entry key="AutoExposureController.highBoundary" value="0.5801483"/>
+                <entry key="AutoExposureController.lowBoundary" value="0.13258041"/>
+                <entry key="AutoExposureController.highBoundary" value="0.41762838"/>
                 <entry key="expDelta" value="0.094282396"/>
-                <entry key="underOverFractionThreshold" value="0.28141996"/>
+                <entry key="underOverFractionThreshold" value="0.35917106"/>
                 <entry key="SimpleSpeedController.filterEnabled" value="true"/>
                 <entry key="HumanVsComputerThrottleController.filterEnabled" value="true"/>
                 <entry key="TrackHistogramFilter.erosionSize" value="0"/>
@@ -584,10 +625,10 @@
                 <entry key="CPLDByte.imu0_PWR_MGMT_1" value="2"/>
                 <entry key="CPLDByte.imu1_CONFIG" value="0"/>
                 <entry key="CPLDByte.imu2_SMPLRT_DIV" value="0"/>
-                <entry key="CPLDByte.imu3_GYRO_CONFIG" value="16"/>
-                <entry key="CPLDByte.imu4_ACCEL_CONFIG" value="16"/>
-                <entry key="ImuGyroScale" value="GyroFullScaleDegPerSec1000"/>
-                <entry key="ImuAccelScale" value="ImuAccelScaleG8"/>
+                <entry key="CPLDByte.imu3_GYRO_CONFIG" value="0"/>
+                <entry key="CPLDByte.imu4_ACCEL_CONFIG" value="0"/>
+                <entry key="ImuGyroScale" value="GyroFullScaleDegPerSec250"/>
+                <entry key="ImuAccelScale" value="ImuAccelScaleG2"/>
                 <entry key="CPLDByte.miscControlBits" value="1"/>
                 <entry key="XYTypeFilter.typeEnabled" value="true"/>
                 <entry key="XYTypeFilter.endType" value="1"/>
@@ -779,21 +820,14 @@
                 <entry key="DAVIS240B.syncTimestampMaster" value="true"/>
                 <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="0"/>
                 <entry key="showImageHistogram" value="true"/>
-                <entry key="JaerAviWriter.filterEnabled" value="true"/>
                 <entry key="JaerAviWriter.lastFileName" value="C:\Users\tobi\Documents\jAER.avi"/>
                 <entry key="DavisFrameAviWriter.lastFileName" value="C:\Users\tobi\Documents\jAER.avi"/>
                 <entry key="DavisFrameAviWriter.filterEnabled" value="true"/>
                 <entry key="pidControllerEnabled" value="true"/>
-                <entry key="VisualiseSteeringConvNet.lastAPSNetXMLFilename" value="C:\Users\tobi\Dropbox\Share Visualise INI\Left-Center-Right-NonVisible\LCRN_cnn_nearest_1500_epoch.xml"/>
                 <entry key="VisualiseSteeringConvNet.lastDVSNetXMLFilename" value="C:\Users\tobi\Dropbox\Share Visualise INI\DVS Paintings\LCRN_DVS_noHotPixel_36x36_cnn2.xml"/>
-                <entry key="VisualiseSteeringConvNet.filterEnabled" value="false"/>
-                <entry key="VisualiseSteeringConvNet.processDVSTimeSlices" value="false"/>
-                <entry key="VisualiseSteeringConvNet.showOutputAsBarChart" value="false"/>
                 <entry key="class eu.seebetter.ini.chips.davis.DAVIS240B.preferredDisplayMethod" value="eu.seebetter.ini.chips.davis.DavisBaseCamera$DavisDisplayMethod"/>
                 <entry key="DavisDeepLearnCnnProcessor.filterEnabled" value="true"/>
                 <entry key="VideoControl.separateAPSByColor" value="false"/>
-                <entry key="DavisVideoContrastController.useAutoContrast" value="false"/>
-                <entry key="DavisVideoContrastController.contrast" value="1.6500001"/>
                 <entry key="Davis346B.AddressedIPotCF.ADCcompBp.BitValueCoarse" value="2"/>
                 <entry key="Davis346B.AddressedIPotCF.ADCcompBp.BitValueFine" value="44"/>
                 <entry key="Davis346B.AddressedIPotCF.ADCcompBp.Enabled" value="true"/>
@@ -1438,6 +1472,653 @@
                 <entry key="class eu.seebetter.ini.chips.davis.DAVIS240C.preferredDisplayMethod" value="eu.seebetter.ini.chips.davis.DavisBaseCamera$DavisDisplayMethod"/>
                 <entry key="Oscilloscope.triggerMode" value="Normal"/>
                 <entry key="Oscilloscope.triggerType" value="BiasChange"/>
+                <entry key="DirectionSelectiveFlow.filterEnabled" value="false"/>
+                <entry key="DirectionSelectiveFlow.ppsScale" value="0.20776048"/>
+                <entry key="VisualiseSteeringConvNet.pixelErrorAllowedForSteering" value="0"/>
+                <entry key="VisualiseSteeringConvNet.forceNetworkOutpout" value="true"/>
+                <entry key="VisualiseSteeringConvNet.forcedNetworkOutputValue" value="0"/>
+                <entry key="VisualiseSteeringConvNet.showStatistics" value="true"/>
+                <entry key="ImuFlow.ppsScale" value="0.5"/>
+                <entry key="LucasKanadeFlow.ppsScale" value="0.13305786"/>
+                <entry key="LucasKanadeFlow.thr" value="1.2738408"/>
+                <entry key="LucasKanadeFlow.searchDistance" value="3"/>
+                <entry key="LucasKanadeFlow.refractoryPeriodUs" value="1"/>
+                <entry key="LucasKanadeFlow.showGlobalEnabled" value="true"/>
+                <entry key="LucasKanadeFlow.measureAccuracy" value="false"/>
+                <entry key="LucasKanadeFlow.measureProcessingTime" value="false"/>
+                <entry key="LucasKanadeFlow.measureGlobalMotion" value="false"/>
+                <entry key="ImuFlow.measureAccuracy" value="false"/>
+                <entry key="ImuFlow.measureProcessingTime" value="false"/>
+                <entry key="ImuFlow.measureGlobalMotion" value="false"/>
+                <entry key="DirectionSelectiveFlow.measureAccuracy" value="false"/>
+                <entry key="DirectionSelectiveFlow.measureProcessingTime" value="false"/>
+                <entry key="DirectionSelectiveFlow.measureGlobalMotion" value="false"/>
+                <entry key="LocalPlanesFlow.measureAccuracy" value="false"/>
+                <entry key="LocalPlanesFlow.measureProcessingTime" value="false"/>
+                <entry key="LocalPlanesFlow.measureGlobalMotion" value="false"/>
+                <entry key="DAVIS240B.AERnArow" value="false"/>
+                <entry key="DAVIS240B.GlobalShutter" value="true"/>
+                <entry key="DAVIS240B.ResetCalibNeuron" value="true"/>
+                <entry key="DAVIS240B.ResetTestPixel" value="true"/>
+                <entry key="DAVIS240B.SpecialPixelControl" value="false"/>
+                <entry key="DAVIS240B.TypeNCalibNeuron" value="false"/>
+                <entry key="DAVIS240B.UseAOut" value="false"/>
+                <entry key="DAViS240.autoshotThresholdEvents" value="0"/>
+                <entry key="DataLogger.maxLogFileSizeMB" value="104"/>
+                <entry key="FaceDetectionAPS.displayBrightness" value="1.3400954"/>
+                <entry key="FaceDetectionAPS.displayContrast" value="1.904762"/>
+                <entry key="FaceDetectionAPS.edgePixelMethod" value="CDSframe"/>
+                <entry key="FaceDetectionAPS.face_loggingEnabled" value="false"/>
+                <entry key="FaceDetectionAPS.filterEnabled" value="true"/>
+                <entry key="FaceDetectionAPS.invertIntensity" value="false"/>
+                <entry key="FaceDetectionAPS.logCompress" value="false"/>
+                <entry key="FaceDetectionAPS.logDecompress" value="false"/>
+                <entry key="FaceDetectionAPS.preBufferFrame" value="true"/>
+                <entry key="FaceDetectionAPS.realTimeLabelFrame" value="true"/>
+                <entry key="apsGuaranteedImageTransfer" value="true"/>
+                <entry key="DAVIS240C.Mux.ForceChipBiasEnable" value="false"/>
+                <entry key="DAVIS240C.Mux.DropDVSOnTransferStall" value="true"/>
+                <entry key="DAVIS240C.Mux.DropAPSOnTransferStall" value="false"/>
+                <entry key="DAVIS240C.Mux.DropIMUOnTransferStall" value="false"/>
+                <entry key="DAVIS240C.Mux.DropExtInputOnTransferStall" value="true"/>
+                <entry key="DAVIS240C.USB.EarlyPacketDelay" value="8"/>
+                <entry key="DAVIS240C.DVS.Run" value="true"/>
+                <entry key="DAVIS240C.DVS.AckDelayRow" value="4"/>
+                <entry key="DAVIS240C.DVS.AckDelayColumn" value="0"/>
+                <entry key="DAVIS240C.DVS.AckExtensionRow" value="1"/>
+                <entry key="DAVIS240C.DVS.AckExtensionColumn" value="0"/>
+                <entry key="DAVIS240C.DVS.WaitOnTransferStall" value="false"/>
+                <entry key="DAVIS240C.DVS.FilterRowOnlyEvents" value="true"/>
+                <entry key="DAVIS240C.DVS.ExternalAERControl" value="false"/>
+                <entry key="DAVIS240C.DVS.FilterBackgroundActivity" value="false"/>
+                <entry key="DAVIS240C.DVS.FilterBackgroundActivityDeltaTime" value="20000"/>
+                <entry key="DAVIS240C.APS.Run" value="true"/>
+                <entry key="DAVIS240C.APS.ResetRead" value="true"/>
+                <entry key="DAVIS240C.APS.WaitOnTransferStall" value="true"/>
+                <entry key="DAVIS240C.APS.GlobalShutter" value="true"/>
+                <entry key="DAVIS240C.APS.Exposure" value="4873"/>
+                <entry key="DAVIS240C.APS.FrameDelay" value="32000"/>
+                <entry key="DAVIS240C.APS.ResetSettle" value="10"/>
+                <entry key="DAVIS240C.APS.ColumnSettle" value="30"/>
+                <entry key="DAVIS240C.APS.RowSettle" value="10"/>
+                <entry key="DAVIS240C.APS.NullSettle" value="3"/>
+                <entry key="DAVIS240C.IMU.Run" value="true"/>
+                <entry key="DAVIS240C.IMU.TempStandby" value="false"/>
+                <entry key="DAVIS240C.IMU.LPCycle" value="false"/>
+                <entry key="DAVIS240C.IMU.LPWakeup" value="1"/>
+                <entry key="DAVIS240C.IMU.SampleRateDivider" value="0"/>
+                <entry key="DAVIS240C.IMU.DigitalLowPassFilter" value="1"/>
+                <entry key="DAVIS240C.IMU.AccelFullScale" value="2"/>
+                <entry key="DAVIS240C.IMU.GyroFullScale" value="2"/>
+                <entry key="DAVIS240C.ExtInput.RunDetector" value="false"/>
+                <entry key="DAVIS240C.ExtInput.DetectRisingEdges" value="false"/>
+                <entry key="DAVIS240C.ExtInput.DetectFallingEdges" value="false"/>
+                <entry key="DAVIS240C.ExtInput.DetectPulses" value="true"/>
+                <entry key="DAVIS240C.ExtInput.DetectPulsePolarity" value="true"/>
+                <entry key="DAVIS240C.ExtInput.DetectPulseLength" value="120"/>
+                <entry key="DAVIS240C.ExtInput.RunGenerator" value="false"/>
+                <entry key="DAVIS240C.ExtInput.GenerateUseCustomSignal" value="false"/>
+                <entry key="DAVIS240C.ExtInput.GeneratePulsePolarity" value="false"/>
+                <entry key="DAVIS240C.ExtInput.GeneratePulseInterval" value="60"/>
+                <entry key="DAVIS240C.ExtInput.GeneratePulseLength" value="30"/>
+                <entry key="DAVIS240C.Chip.DigitalMux0" value="0"/>
+                <entry key="DAVIS240C.Chip.DigitalMux1" value="0"/>
+                <entry key="DAVIS240C.Chip.DigitalMux2" value="0"/>
+                <entry key="DAVIS240C.Chip.DigitalMux3" value="0"/>
+                <entry key="DAVIS240C.Chip.AnalogMux0" value="0"/>
+                <entry key="DAVIS240C.Chip.AnalogMux1" value="0"/>
+                <entry key="DAVIS240C.Chip.AnalogMux2" value="0"/>
+                <entry key="DAVIS240C.Chip.BiasMux0" value="0"/>
+                <entry key="DAVIS240C.Chip.ResetCalibNeuron" value="true"/>
+                <entry key="DAVIS240C.Chip.TypeNCalibNeuron" value="false"/>
+                <entry key="DAVIS240C.Chip.ResetTestPixel" value="true"/>
+                <entry key="DAVIS240C.Chip.AERnArow" value="false"/>
+                <entry key="DAVIS240C.Chip.UseAOut" value="false"/>
+                <entry key="DAVIS240C.Chip.SpecialPixelControl" value="false"/>
+                <entry key="DAVIS240C.IMU.GyroScale" value="GyroFullScaleDegPerSec1000"/>
+                <entry key="DAVIS240C.IMU.AccelScale" value="ImuAccelScaleG8"/>
+                <entry key="DAVIS240C.IMU.displayEnabled" value="true"/>
+                <entry key="DAVIS240C.Masterbias.rx" value="8200.0"/>
+                <entry key="DAVIS240C.Masterbias.rint" value="46000.0"/>
+                <entry key="DAVIS240C.Masterbias.internalResistorUsed" value="false"/>
+                <entry key="VisualiseSteeringDistNetVisualizer.filterEnabled" value="false"/>
+                <entry key="VisualiseSteeringDistNetVisualizer.lastAPSNetXMLFilename" value="C:\Users\tobi\Dropbox\Share Visualise INI\Tobi_SteeringDistNet\cnnweights-3-1-aps_dvs-1e1n.xml"/>
+                <entry key="DavisAutoShooter.filterEnabled" value="false"/>
+                <entry key="VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="ApsDvsEventFilter.filterIMUSamples" value="false"/>
+                <entry key="ApsDvsEventFilter.filterFrameTransientEvents" value="false"/>
+                <entry key="Steadicam.showGrid" value="false"/>
+                <entry key="VisualiseSteeringDistNetVisualizer.showErrorStatistics" value="true"/>
+                <entry key="VisualiseSteeringDistNetVisualizer.yOffset" value="0.383333"/>
+                <entry key="VisualiseSteeringDistNetVisualizer.yRange" value="0.338889"/>
+                <entry key="Goalie.filterEnabled" value="false"/>
+                <entry key="ApsDvsDirectionSelectiveFilter.searchDistance" value="3"/>
+                <entry key="LocalPlanesFlow.showGlobalEnabled" value="true"/>
+                <entry key="LocalPlanesFlow.showRawInputEnabled" value="true"/>
+                <entry key="LocalPlanesFlow.showVectorsEnabled" value="true"/>
+                <entry key="LocalPlanesFlow.refractoryPeriodUs" value="1"/>
+                <entry key="LocalPlanesFlow.speedControlEnabled" value="true"/>
+                <entry key="LocalPlanesFlow.th2" value="0.012988302"/>
+                <entry key="ApsDvsDynamicEquation.filterEnabled" value="false"/>
+                <entry key="ApsDvsDynamicEquation.passAllEvents" value="false"/>
+                <entry key="ApsDvsDynamicEquation.jitterVectorLocations" value="false"/>
+                <entry key="ApsDvsDynamicEquation.showGlobalEnabled" value="true"/>
+                <entry key="ApsDvsDynamicEquation.showRawInputEnabled" value="true"/>
+                <entry key="ApsDvsDynamicEquation.showVectorsEnabled" value="true"/>
+                <entry key="ApsDvsDynamicEquation.speedControlEnabled" value="false"/>
+                <entry key="ApsDvsDynamicEquation.useAvgDtEnabled" value="false"/>
+                <entry key="ApsDvsDynamicEquation.dt" value="813023"/>
+                <entry key="ApsDvsDynamicEquation.searchDistance" value="2"/>
+                <entry key="ApsDvsDynamicEquation.t1" value="100000"/>
+                <entry key="ApsDvsDynamicEquation.ppsScale" value="7.850269"/>
+                <entry key="ApsDvsDynamicEquation.subSampleShift" value="0"/>
+                <entry key="ApsDvsLocalPlanesFitting.filterEnabled" value="false"/>
+                <entry key="ApsDvsLocalPlanesFitting.ppsScale" value="0.19234994"/>
+                <entry key="ApsDvsLocalPlanesFitting.showRawInputEnabled" value="true"/>
+                <entry key="ApsDvsLocalPlanesFitting.dt" value="27"/>
+                <entry key="ApsDvsLocalPlanesFitting.searchDistance" value="2"/>
+                <entry key="ApsDvsLocalPlanesFitting.subSampleShift" value="0"/>
+                <entry key="ApsDvsLocalPlanesFitting.jitterVectorLocations" value="false"/>
+                <entry key="ApsDvsLocalPlanesFitting.showVectorsEnabled" value="true"/>
+                <entry key="ApsDvsLocalPlanesFitting.excessSpeedRejectFactor" value="0.17159909"/>
+                <entry key="ApsDvsLocalPlanesFitting.speedControlEnabled" value="true"/>
+                <entry key="ApsDvsDynamicEquation.excessSpeedRejectFactor" value="1"/>
+                <entry key="ProximityLEDDetector.method" value="RatioBeforeAfter"/>
+                <entry key="ProximityLEDDetector.filterEnabled" value="false"/>
+                <entry key="OpticalGyro.vanishingPoint.x" value="37.0"/>
+                <entry key="OpticalGyro.vanishingPoint.y" value="101.0"/>
+                <entry key="OpticalGyro.filterEnabled" value="false"/>
+                <entry key="OpticalGyro.colorClustersDifferentlyEnabled" value="false"/>
+                <entry key="OpticalGyro.showAllClusters" value="false"/>
+                <entry key="OpticalGyro.showClusterEps" value="false"/>
+                <entry key="OpticalGyro.showClusterMass" value="false"/>
+                <entry key="OpticalGyro.showClusterNumber" value="false"/>
+                <entry key="OpticalGyro.showClusterRadius" value="false"/>
+                <entry key="OpticalGyro.showClusterVelocity" value="false"/>
+                <entry key="OpticalGyro.showPaths" value="true"/>
+                <entry key="OpticalGyro.useEllipticalClusters" value="true"/>
+                <entry key="OpticalGyro.filterEventsEnabled" value="false"/>
+                <entry key="OpticalGyro.maxNumClusters" value="10"/>
+                <entry key="OpticalGyro.dontMergeEver" value="false"/>
+                <entry key="OpticalGyro.enableClusterExitPurging" value="true"/>
+                <entry key="OpticalGyro.surroundInhibitionEnabled" value="false"/>
+                <entry key="RectangularClusterTracker.frictionTauMs" value="NaN"/>
+                <entry key="RectangularClusterTracker.smoothMove" value="true"/>
+                <entry key="RectangularClusterTracker.angleFollowsVelocity" value="true"/>
+                <entry key="ClusterBasedOpticalFlow.vanishingPoint.x" value="NaN"/>
+                <entry key="ClusterBasedOpticalFlow.vanishingPoint.y" value="NaN"/>
+                <entry key="BackgroundMotionSelectiveFilter.filterEnabled" value="false"/>
+                <entry key="EMDMotionCorrelator.filterEnabled" value="false"/>
+                <entry key="VerticalObjectMotionCell.showSubunits" value="true"/>
+                <entry key="VerticalObjectMotionCell.subunitActivityBlobRadiusScale" value="0.001200729"/>
+                <entry key="VerticalObjectMotionCell.surroundSuppressionEnabled" value="false"/>
+                <entry key="ApsDvsLocalPlanesFitting.tauLow" value="29"/>
+                <entry key="ApsDvsLocalPlanesFitting.showGlobalEnabled" value="true"/>
+                <entry key="ApsDvsLocalPlanesFitting.discretizeVelocity" value="true"/>
+                <entry key="ApsDvsLocalPlanesFitting.useAvgDtEnabled" value="true"/>
+                <entry key="ApsDvsLocalPlanesFitting.th2" value="1.5084898"/>
+                <entry key="ApsDvsLocalPlanesFitting.th1" value="0.19744518"/>
+                <entry key="ApsDvsLocalPlanesFitting.passAllEvents" value="false"/>
+                <entry key="ApsDvsLocalPlanesFitting.maxDtThreshold" value="68587"/>
+                <entry key="ApsDvsLocalPlanesFitting.minDtThreshold" value="1"/>
+                <entry key="ApsDvsDynamicEquation.discretizeVelocity" value="true"/>
+                <entry key="ApsDvsDynamicEquation.tauLow" value="18"/>
+                <entry key="ApsDvsDirectionSelectiveFilter.ppsScale" value="0.06840299"/>
+                <entry key="ApsDvsDynamicEquation.maxDtThreshold" value="2041575"/>
+                <entry key="ApsDvsDirectionSelectiveFilter.passAllEvents" value="false"/>
+                <entry key="ApsDvsDirectionSelectiveFilter.jitterVectorLocations" value="false"/>
+                <entry key="ApsDvsDirectionSelectiveFilter.subSampleShift" value="0"/>
+                <entry key="ApsDvsDirectionSelectiveFilter.tauLow" value="100"/>
+                <entry key="ApsDvsDynamicEquation.minDtThreshold" value="1"/>
+                <entry key="ApsDvsLocalPlanesFitting.debugMode" value="false"/>
+                <entry key="DAVIS240C.globalShutter" value="false"/>
+                <entry key="ImuIntegration.filterEnabled" value="false"/>
+                <entry key="ImuIntegration.showRawInputEnabled" value="true"/>
+                <entry key="ImuIntegration.epsilon" value="1.0"/>
+                <entry key="ServoReaction.goalieMode" value="false"/>
+                <entry key="ServoReaction.useClusterTracker" value="false"/>
+                <entry key="ImuFlow.discretizeVelocity" value="true"/>
+                <entry key="ImuFlow.showRawInputEnabled" value="true"/>
+                <entry key="ImuFlow.showVectorsEnabled" value="true"/>
+                <entry key="ImuFlow.tauLow" value="9"/>
+                <entry key="ImuFlow.speedControlEnabled" value="false"/>
+                <entry key="ImuFlow.jitterVectorLocations" value="false"/>
+                <entry key="DepthMap.filterEnabled" value="false"/>
+                <entry key="DAVIS240B.globalShutter" value="true"/>
+                <entry key="DepthMap.showRawInputEnabled" value="true"/>
+                <entry key="ImuFlow.showGlobalEnabled" value="true"/>
+                <entry key="ImuFlow.passAllEvents" value="false"/>
+                <entry key="ImuFlow.useAvgDtEnabled" value="true"/>
+                <entry key="ImuFlow.searchDistance" value="1"/>
+                <entry key="ImuFlow.isUseQuaternions" value="false"/>
+                <entry key="SmallEyeMovements.filterEnabled" value="false"/>
+                <entry key="StereoTranslateRotate.filterEnabled" value="false"/>
+                <entry key="ImuFlow.highpassTauMsRotation" value="89.99998"/>
+                <entry key="ImuFlow.highpassTauMsTranslation" value="89.99998"/>
+                <entry key="ImuFlow.jitterAmountPixels" value="1.7214752"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.filterEnabled" value="false"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.passAllEvents" value="false"/>
+                <entry key="ImuIntegration.flowComputer" value="DynamicEquation"/>
+                <entry key="ImuIntegration.showGlobalEnabled" value="true"/>
+                <entry key="ImuIntegration.showVectorsEnabled" value="true"/>
+                <entry key="ImuIntegration.speedControlEnabled" value="false"/>
+                <entry key="OpticalGyro.velocityVectorScaling" value="0.61391354"/>
+                <entry key="OpticalGyro.thresholdMassForVisibleCluster" value="6"/>
+                <entry key="ApsDvsDynamicEquation.imuIntegrationEnabled" value="true"/>
+                <entry key="ImuFlow.imuIntegrationEnabled" value="false"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.imuIntegrationEnabled" value="true"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.isUseQuaternions" value="true"/>
+                <entry key="ApsDvsDynamicEquation.isUseQuaternions" value="true"/>
+                <entry key="ImuFlow.quaternionsEnabled" value="false"/>
+                <entry key="ImuFlow.discardOutliersEnabled" value="false"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.quaternionsEnabled" value="false"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.discardOutliersEnabled" value="false"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.epsilon" value="0.66225165"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.showGlobalEnabled" value="true"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.showRawInputEnabled" value="true"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.showVectorsEnabled" value="true"/>
+                <entry key="ApsDvsDynamicEquation.quaternionsEnabled" value="false"/>
+                <entry key="ApsDvsDynamicEquation.discardOutliersEnabled" value="true"/>
+                <entry key="ApsDvsDynamicEquation.epsilon" value="0.036998533"/>
+                <entry key="ApsDvsLocalPlanesFitting.quaternionsEnabled" value="false"/>
+                <entry key="ApsDvsLocalPlanesFitting.imuIntegrationEnabled" value="false"/>
+                <entry key="ApsDvsLocalPlanesFitting.discardOutliersEnabled" value="false"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.tauLow" value="12"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.ppsScale" value="0.01523124"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.highpassTauMsTranslation" value="80.07857"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.speedControlEnabled" value="false"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.highpassTauMsRotation" value="73.01324"/>
+                <entry key="ApsDvsLocalPlanesFitting.epsilon" value="0.66225165"/>
+                <entry key="ImuFlow.excessSpeedRejectFactor" value="1"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.subSampleShift" value="0"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.maxDtThreshold" value="150991"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.minDtThreshold" value="737"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.speedMixingFactor" value="0.005198856"/>
+                <entry key="ApsDvsDynamicEquation.vxOffset" value="-0.28977513"/>
+                <entry key="ApsDvsDynamicEquation.vyOffset" value="-0.31790745"/>
+                <entry key="ApsDvsLocalPlanesFitting.highpassTauMsRotation" value="66.22517"/>
+                <entry key="ApsDvsLocalPlanesFitting.highpassTauMsTranslation" value="66.22517"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.refractoryPeriodUs" value="1"/>
+                <entry key="ImuFlow.subSampleShift" value="0"/>
+                <entry key="ImuFlow.tauMs" value="0.001"/>
+                <entry key="ImuFlow.refractoryPeriodUs" value="1"/>
+                <entry key="ApsDvsDynamicEquation.tauMs" value="0.001"/>
+                <entry key="ApsDvsDynamicEquation.refractoryPeriodUs" value="538425"/>
+                <entry key="ApsDvsLocalPlanesFitting.refractoryPeriodUs" value="813023"/>
+                <entry key="ApsDvsLocalPlanesFitting.tauMs" value="0.001"/>
+                <entry key="SimpleVS_GlobalOpticFlow.filterEnabled" value="false"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.tauMs" value="0.0015100001"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.searchDistance" value="3"/>
+                <entry key="ApsDvsDynamicEquation.highpassTauMsRotation" value="19.235003"/>
+                <entry key="ApsDvsDynamicEquation.highpassTauMsTranslation" value="19.235003"/>
+                <entry key="ImuFlow.transformResetLimitDegrees" value="5"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.useAvgDtEnabled" value="true"/>
+                <entry key="ApsDvsDirectionSelectiveFilterNew.excessSpeedRejectFactor" value="2.0"/>
+                <entry key="RectangularClusterTracker.clusterLoggingMethod" value="LogFrames"/>
+                <entry key="ImuFlow.subsamplingTauMs" value="0.001"/>
+                <entry key="ImuFlow.lensFocalLengthMm" value="4.5"/>
+                <entry key="ImuFlow.epsilon" value="1.0"/>
+                <entry key="ImuFlow.panOffset" value="0.0"/>
+                <entry key="ImuFlow.tiltOffset" value="0.0"/>
+                <entry key="ImuFlow.rollOffset" value="0.0"/>
+                <entry key="LucasKanadeFlow.passAllEvents" value="false"/>
+                <entry key="LucasKanadeFlow.jitterVectorLocations" value="false"/>
+                <entry key="LucasKanadeFlow.showRawInputEnabled" value="true"/>
+                <entry key="LucasKanadeFlow.showVectorsEnabled" value="true"/>
+                <entry key="LucasKanadeFlow.speedControlEnabled" value="false"/>
+                <entry key="LucasKanadeFlow.useAvgDtEnabled" value="false"/>
+                <entry key="LucasKanadeFlow.dt" value="813023"/>
+                <entry key="LucasKanadeFlow.t1" value="100000"/>
+                <entry key="LucasKanadeFlow.subSampleShift" value="0"/>
+                <entry key="LocalPlanesFlow.dt" value="27"/>
+                <entry key="LocalPlanesFlow.subSampleShift" value="0"/>
+                <entry key="LocalPlanesFlow.jitterVectorLocations" value="false"/>
+                <entry key="LocalPlanesFlow.excessSpeedRejectFactor" value="1.989602"/>
+                <entry key="LucasKanadeFlow.excessSpeedRejectFactor" value="2.0"/>
+                <entry key="LocalPlanesFlow.tauLow" value="29"/>
+                <entry key="LocalPlanesFlow.discretizeVelocity" value="true"/>
+                <entry key="LocalPlanesFlow.useAvgDtEnabled" value="true"/>
+                <entry key="LocalPlanesFlow.passAllEvents" value="false"/>
+                <entry key="LocalPlanesFlow.minDtThreshold" value="1"/>
+                <entry key="LucasKanadeFlow.discretizeVelocity" value="true"/>
+                <entry key="LucasKanadeFlow.tauLow" value="18"/>
+                <entry key="LucasKanadeFlow.minDtThreshold" value="1"/>
+                <entry key="LocalPlanesFlow.debugMode" value="false"/>
+                <entry key="DirectionSelectiveFlow.passAllEvents" value="false"/>
+                <entry key="LucasKanadeFlow.imuIntegrationEnabled" value="true"/>
+                <entry key="DirectionSelectiveFlow.imuIntegrationEnabled" value="false"/>
+                <entry key="DirectionSelectiveFlow.isUseQuaternions" value="true"/>
+                <entry key="LucasKanadeFlow.isUseQuaternions" value="true"/>
+                <entry key="DirectionSelectiveFlow.quaternionsEnabled" value="false"/>
+                <entry key="DirectionSelectiveFlow.discardOutliersEnabled" value="false"/>
+                <entry key="DirectionSelectiveFlow.epsilon" value="10.0"/>
+                <entry key="DirectionSelectiveFlow.showGlobalEnabled" value="true"/>
+                <entry key="DirectionSelectiveFlow.showRawInputEnabled" value="true"/>
+                <entry key="DirectionSelectiveFlow.showVectorsEnabled" value="true"/>
+                <entry key="LucasKanadeFlow.quaternionsEnabled" value="false"/>
+                <entry key="LucasKanadeFlow.discardOutliersEnabled" value="false"/>
+                <entry key="LucasKanadeFlow.epsilon" value="119.205315"/>
+                <entry key="LocalPlanesFlow.quaternionsEnabled" value="false"/>
+                <entry key="LocalPlanesFlow.imuIntegrationEnabled" value="false"/>
+                <entry key="LocalPlanesFlow.discardOutliersEnabled" value="false"/>
+                <entry key="DirectionSelectiveFlow.tauLow" value="12"/>
+                <entry key="DirectionSelectiveFlow.highpassTauMsTranslation" value="65.0"/>
+                <entry key="DirectionSelectiveFlow.speedControlEnabled" value="true"/>
+                <entry key="DirectionSelectiveFlow.highpassTauMsRotation" value="65.0"/>
+                <entry key="LocalPlanesFlow.epsilon" value="40.048588"/>
+                <entry key="DirectionSelectiveFlow.subSampleShift" value="0"/>
+                <entry key="DirectionSelectiveFlow.maxDtThreshold" value="344300"/>
+                <entry key="DirectionSelectiveFlow.minDtThreshold" value="177"/>
+                <entry key="DirectionSelectiveFlow.speedMixingFactor" value="0.001"/>
+                <entry key="LucasKanadeFlow.vxOffset" value="-0.036092937"/>
+                <entry key="LucasKanadeFlow.vyOffset" value="0.026521834"/>
+                <entry key="LocalPlanesFlow.highpassTauMsRotation" value="65.0"/>
+                <entry key="LocalPlanesFlow.highpassTauMsTranslation" value="65.0"/>
+                <entry key="DirectionSelectiveFlow.refractoryPeriodUs" value="1"/>
+                <entry key="LucasKanadeFlow.tauMs" value="0.001"/>
+                <entry key="LocalPlanesFlow.tauMs" value="0.001"/>
+                <entry key="DirectionSelectiveFlow.tauMs" value="0.0015100001"/>
+                <entry key="DirectionSelectiveFlow.searchDistance" value="5"/>
+                <entry key="LucasKanadeFlow.highpassTauMsRotation" value="65.0"/>
+                <entry key="LucasKanadeFlow.highpassTauMsTranslation" value="65.0"/>
+                <entry key="DirectionSelectiveFlow.useAvgDtEnabled" value="true"/>
+                <entry key="DirectionSelectiveFlow.excessSpeedRejectFactor" value="1.1136755"/>
+                <entry key="LucasKanadeFlow.subsamplingTauMs" value="0.001"/>
+                <entry key="LocalPlanesFlow.subsamplingTauMs" value="0.001"/>
+                <entry key="LocalPlanesFlow.speedMixingFactor" value="0.001"/>
+                <entry key="LocalPlanesFlow.precisionScale" value="1"/>
+                <entry key="DavisVideoContrastController.brightness" value="2.2675017E-6"/>
+                <entry key="LocalPlanesFlow.tauLowLocal" value="1"/>
+                <entry key="LocalPlanesFlow.tauLowGlobal" value="1"/>
+                <entry key="LocalPlanesFlow.transformResetLimitDegrees" value="45"/>
+                <entry key="LucasKanadeFlow.tauLowGlobal" value="1"/>
+                <entry key="ImuFlow.tauLowLocal" value="1"/>
+                <entry key="ImuFlow.tauLowGlobal" value="1"/>
+                <entry key="LucasKanadeFlow.lensFocalLengthMm" value="8.500001"/>
+                <entry key="LucasKanadeFlow.measurePerformanceEnabled" value="true"/>
+                <entry key="LocalPlanesFlow.measurePerformanceEnabled" value="true"/>
+                <entry key="LucasKanadeFlow.transformResetLimitDegrees" value="45"/>
+                <entry key="ImuFlow.measurePerformanceEnabled" value="false"/>
+                <entry key="ImuFlow.maxDtThreshold" value="100000"/>
+                <entry key="DirectionSelectiveFlow.measurePerformanceEnabled" value="true"/>
+                <entry key="DirectionSelectiveFlow.tauLowGlobal" value="1"/>
+                <entry key="LocalPlanesFlow.lensFocalLengthMm" value="4.5"/>
+                <entry key="LucasKanadeFlow.tauLowLocal" value="1"/>
+                <entry key="LocalPlanesFlow.logMotionFlowStatistics" value="true"/>
+                <entry key="LocalPlanesFlow.logProcessingTime" value="false"/>
+                <entry key="LucasKanadeFlow.logMotionFlowStatistics" value="true"/>
+                <entry key="LucasKanadeFlow.logProcessingTime" value="false"/>
+                <entry key="LucasKanadeFlow.colorVectorsEnabled" value="true"/>
+                <entry key="DataLogger.loggingFolder" value="C:\Users\tobi\Documents\~jaer\jAER\trunk"/>
+                <entry key="ImuFlow.logMotionFlowStatistics" value="false"/>
+                <entry key="ImuFlow.logProcessingTime" value="false"/>
+                <entry key="DirectionSelectiveFlow.logProcessingTime" value="false"/>
+                <entry key="DirectionSelectiveFlow.logMotionFlowStatistics" value="false"/>
+                <entry key="LocalPlanesFlow.colorVectorsEnabled" value="false"/>
+                <entry key="LucasKanadeFlow.xMin" value="0"/>
+                <entry key="LucasKanadeFlow.xMax" value="240"/>
+                <entry key="LucasKanadeFlow.yMax" value="180"/>
+                <entry key="LucasKanadeFlow.yMin" value="0"/>
+                <entry key="LocalPlanesFlow.xMax" value="240"/>
+                <entry key="LocalPlanesFlow.yMax" value="180"/>
+                <entry key="LocalPlanesFlow.yMin" value="0"/>
+                <entry key="DirectionSelectiveFlow.xMax" value="240"/>
+                <entry key="DirectionSelectiveFlow.yMax" value="180"/>
+                <entry key="DirectionSelectiveFlow.yMin" value="0"/>
+                <entry key="LucasKanadeFlow.fitOrder" value="1"/>
+                <entry key="LocalPlanesFlow.presmoothingEnabled" value="false"/>
+                <entry key="DirectionSelectiveFlow.fitOrder" value="1"/>
+                <entry key="LucasKanadeFlow.presmoothingEnabled" value="false"/>
+                <entry key="LocalPlanesFlow.fitOrder" value="1"/>
+                <entry key="LocalPlanesFlow.linearSavitzkyGolayFit" value="false"/>
+                <entry key="LocalPlanesFlow.xMin" value="0"/>
+                <entry key="ImuFlow.yMin" value="0"/>
+                <entry key="ImuFlow.xMax" value="240"/>
+                <entry key="ImuFlow.yMax" value="180"/>
+                <entry key="ImuFlow.xMin" value="0"/>
+                <entry key="ImuFlow.presmoothingEnabled" value="false"/>
+                <entry key="ImuFlow.speedMixingFactor" value="0.001"/>
+                <entry key="VideoControl.colorCorrection" value="true"/>
+                <entry key="LucasKanadeFlow.logAngularError" value="false"/>
+                <entry key="DirectionSelectiveFlow.logAngularError" value="false"/>
+                <entry key="LocalPlanesFlow.logAngularError" value="false"/>
+                <entry key="DirectionSelectiveFlow.presmoothingEnabled" value="false"/>
+                <entry key="LucasKanadeFlow.secondTempDerivative" value="false"/>
+                <entry key="DavisVideoContrastController.gamma" value="1.0"/>
+                <entry key="JaerAviWriter.format" value="JPG"/>
+                <entry key="JaerAviWriter.writeTimecodeFile" value="false"/>
+                <entry key="Histogram2DFilter.filterEnabled" value="false"/>
+                <entry key="Histogram2DFilter.showHistogram" value="true"/>
+                <entry key="Histogram2DFilter.filePath" value="D:"/>
+                <entry key="Histogram2DFilter.showBitmap" value="false"/>
+                <entry key="Histogram2DFilter.invertFiltering" value="false"/>
+                <entry key="PlotEvtHistogram.filterEnabled" value="false"/>
+                <entry key="ISIHistogrammer.filterEnabled" value="false"/>
+                <entry key="ISIHistogrammer.direction" value="XtimesYDirection"/>
+                <entry key="ISIHistogrammer.logPlotEnabled" value="false"/>
+                <entry key="Histogram2DFilter.threshold" value="10.0"/>
+                <entry key="Histogram2DFilter.erosionSize" value="0"/>
+                <entry key="VisualiseSteeringDistNetVisualizer.lastDVSNetXMLFilename" value="C:\Users\tobi\Dropbox\Share Visualise INI\Tobi_SteeringDistNet\cnnweights-10-4-dvs.xml"/>
+                <entry key="VisualiseSteeringDistNetVisualizer.processDVSTimeSlices" value="false"/>
+                <entry key="VisualiseSteeringDistNetVisualizer.processAPSFrames" value="false"/>
+                <entry key="FaceDetectorConvNet.lastAPSNetXMLFilename" value="C:\Users\tobi\BitTorrent Sync\data (1)\face detector\TellurideFaces\faceDetectorNet1.xml"/>
+                <entry key="FaceDetectorConvNet.processDVSTimeSlices" value="false"/>
+                <entry key="FaceDetectorConvNet.dvsColorScale" value="205"/>
+                <entry key="OMCOD.filterEnabled" value="false"/>
+                <entry key="VisualiseSteeringDistNetVisualizer.processAPSDVSTogetherInAPSNet" value="true"/>
+                <entry key="VisualiseSteeringConvNet.measurePerformance" value="false"/>
+                <entry key="VisualiseSteeringConvNet.hideOutput" value="false"/>
+                <entry key="VisualiseSteeringConvNet.dvsColorScale" value="199"/>
+                <entry key="JaerAviWriter.closeOnRewind" value="false"/>
+                <entry key="Steadicam.imuLagMs" value="0.0"/>
+                <entry key="Davis346cBSI.AERnArow" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ADCcompBp.BitValueCoarse" value="2"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ADCcompBp.BitValueFine" value="20"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ADCcompBp.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ADCcompBp.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ADCcompBp.Sex" value="P"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ADCcompBp.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPdBn.BitValueCoarse" value="1"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPdBn.BitValueFine" value="91"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPdBn.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPdBn.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPdBn.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPdBn.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPuXBp.BitValueCoarse" value="3"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPuXBp.BitValueFine" value="80"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPuXBp.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPuXBp.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPuXBp.Sex" value="P"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPuXBp.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPuYBp.BitValueCoarse" value="0"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPuYBp.BitValueFine" value="152"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPuYBp.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPuYBp.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPuYBp.Sex" value="P"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.AEPuYBp.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ApsROSFBn.BitValueCoarse" value="1"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ApsROSFBn.BitValueFine" value="219"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ApsROSFBn.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ApsROSFBn.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ApsROSFBn.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ApsROSFBn.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk1N.BitValueCoarse" value="0"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk1N.BitValueFine" value="0"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk1N.Enabled" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk1N.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk1N.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk1N.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk1P.BitValueCoarse" value="0"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk1P.BitValueFine" value="0"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk1P.Enabled" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk1P.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk1P.Sex" value="P"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk1P.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk2N.BitValueCoarse" value="0"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk2N.BitValueFine" value="0"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk2N.Enabled" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk2N.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk2N.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk2N.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk2P.BitValueCoarse" value="0"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk2P.BitValueFine" value="0"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk2P.Enabled" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk2P.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk2P.Sex" value="P"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk2P.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk3N.BitValueCoarse" value="0"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk3N.BitValueFine" value="0"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk3N.Enabled" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk3N.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk3N.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk3N.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk4N.BitValueCoarse" value="0"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk4N.BitValueFine" value="0"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk4N.Enabled" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk4N.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk4N.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.Blk4N.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ColSelLowBn.BitValueCoarse" value="7"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ColSelLowBn.BitValueFine" value="1"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ColSelLowBn.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ColSelLowBn.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ColSelLowBn.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ColSelLowBn.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.DACBufBp.BitValueCoarse" value="1"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.DACBufBp.BitValueFine" value="60"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.DACBufBp.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.DACBufBp.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.DACBufBp.Sex" value="P"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.DACBufBp.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.DiffBn.BitValueCoarse" value="3"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.DiffBn.BitValueFine" value="39"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.DiffBn.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.DiffBn.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.DiffBn.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.DiffBn.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.IFRefrBn.BitValueCoarse" value="2"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.IFRefrBn.BitValueFine" value="255"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.IFRefrBn.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.IFRefrBn.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.IFRefrBn.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.IFRefrBn.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.IFThrBn.BitValueCoarse" value="2"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.IFThrBn.BitValueFine" value="255"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.IFThrBn.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.IFThrBn.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.IFThrBn.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.IFThrBn.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.LcolTimeoutBn.BitValueCoarse" value="2"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.LcolTimeoutBn.BitValueFine" value="49"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.LcolTimeoutBn.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.LcolTimeoutBn.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.LcolTimeoutBn.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.LcolTimeoutBn.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.LocalBufBn.BitValueCoarse" value="2"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.LocalBufBn.BitValueFine" value="164"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.LocalBufBn.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.LocalBufBn.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.LocalBufBn.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.LocalBufBn.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.OffBn.BitValueCoarse" value="3"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.OffBn.BitValueFine" value="0"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.OffBn.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.OffBn.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.OffBn.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.OffBn.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.OnBn.BitValueCoarse" value="2"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.OnBn.BitValueFine" value="255"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.OnBn.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.OnBn.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.OnBn.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.OnBn.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PadFollBn.BitValueCoarse" value="0"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PadFollBn.BitValueFine" value="215"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PadFollBn.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PadFollBn.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PadFollBn.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PadFollBn.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PixInvBn.BitValueCoarse" value="2"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PixInvBn.BitValueFine" value="19"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PixInvBn.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PixInvBn.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PixInvBn.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PixInvBn.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PrBp.BitValueCoarse" value="7"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PrBp.BitValueFine" value="43"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PrBp.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PrBp.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PrBp.Sex" value="P"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PrBp.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PrSFBp.BitValueCoarse" value="7"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PrSFBp.BitValueFine" value="31"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PrSFBp.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PrSFBp.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PrSFBp.Sex" value="P"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.PrSFBp.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ReadoutBufBP.BitValueCoarse" value="1"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ReadoutBufBP.BitValueFine" value="20"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ReadoutBufBP.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ReadoutBufBP.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ReadoutBufBP.Sex" value="P"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.ReadoutBufBP.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.RefrBp.BitValueCoarse" value="3"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.RefrBp.BitValueFine" value="25"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.RefrBp.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.RefrBp.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.RefrBp.Sex" value="P"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.RefrBp.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.biasBuffer.BitValueCoarse" value="2"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.biasBuffer.BitValueFine" value="254"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.biasBuffer.Enabled" value="true"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.biasBuffer.LowCurrent" value="false"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.biasBuffer.Sex" value="N"/>
+                <entry key="Davis346cBSI.AddressedIPotCF.biasBuffer.Type" value="NORMAL"/>
+                <entry key="Davis346cBSI.GlobalShutter" value="false"/>
+                <entry key="Davis346cBSI.ResetCalibNeuron" value="true"/>
+                <entry key="Davis346cBSI.ResetTestPixel" value="true"/>
+                <entry key="Davis346cBSI.SelectGrayCounter" value="true"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.ADC_RefHigh.BufBitValue" value="7"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.ADC_RefHigh.VdacBitValue" value="30"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.ADC_RefLow.BufBitValue" value="7"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.ADC_RefLow.VdacBitValue" value="1"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.AdcTestVoltagexAI.BufBitValue" value="7"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.AdcTestVoltagexAI.VdacBitValue" value="21"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.ApsCas.BufBitValue" value="6"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.ApsCas.VdacBitValue" value="21"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.BlkV1.BufBitValue" value="0"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.BlkV1.VdacBitValue" value="0"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.BlkV2.BufBitValue" value="0"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.BlkV2.VdacBitValue" value="0"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.BlkV3.BufBitValue" value="0"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.BlkV3.VdacBitValue" value="0"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.SSN.OperatingMode" value="ShiftedSource"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.SSN.RefValue" value="1"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.SSN.RegBitValue" value="33"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.SSN.VoltageLevel" value="SplitGate"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.SSP.OperatingMode" value="ShiftedSource"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.SSP.RefValue" value="1"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.SSP.RegBitValue" value="33"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.SSP.VoltageLevel" value="SplitGate"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.apsOverflowLevel.BufBitValue" value="6"/>
+                <entry key="Davis346cBSI.ShiftedSourceBias.apsOverflowLevel.VdacBitValue" value="27"/>
+                <entry key="Davis346cBSI.TestADC" value="false"/>
+                <entry key="Davis346cBSI.TypeNCalibNeuron" value="false"/>
+                <entry key="Davis346cBSI.UseAOut" value="false"/>
+                <entry key="Davis346cBSI.globalShutter" value="true"/>
+                <entry key="Davis346cBSI.hotPixelSuppression" value="false"/>
+                <entry key="Davis346cBSI.nArow" value="false"/>
+                <entry key="Davis346cBSI.nChipReset" value="true"/>
+                <entry key="Davis346cBSI.powerDown" value="false"/>
+                <entry key="Davis346cBSI.resetCalib" value="true"/>
+                <entry key="Davis346cBSI.resetTestpixel" value="true"/>
+                <entry key="Davis346cBSI.runAdc" value="true"/>
+                <entry key="Davis346cBSI.runCpld" value="true"/>
+                <entry key="Davis346cBSI.typeNCalib" value="false"/>
+                <entry key="Davis346cBSI.useAout" value="false"/>
+                <entry key="DavisBaseCamera.showImageHistogram" value="true"/>
+                <entry key="DAVIS240C.ExtInput.GeneratePulseFrequency" value="1000000"/>
+                <entry key="DAVIS240C.ExtInput.GeneratePulseDutyCycle" value="50"/>
               </map>
             </node>
           </node>
