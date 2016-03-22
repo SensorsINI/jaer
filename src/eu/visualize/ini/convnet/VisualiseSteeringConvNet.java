@@ -73,6 +73,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private int[] decisionLowPassArray = new int[3];
     private int savedDecision = -1;
     private int counterD = 0;
+    private static Color colorBehavior=Color.RED;
     private float[] LCRNstate = new float[]{0.5f, 0.5f, 0.5f, 0.5f};
     volatile private boolean apply_LR_RL_constraint = getBoolean("apply_LR_RL_constraint", false);
     volatile private boolean apply_LNR_RNL_constraint = getBoolean("apply_LNR_RNL_constraint", false);
@@ -211,23 +212,20 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
             }
         }
-        gl.glPushMatrix();
-        renderer.begin3DRendering();
-        renderer.setColor(12, 0, 1, .3f);
         if (behavior != null) {
             int currentBehavior = Integer.parseInt(behavior);
+            MultilineAnnotationTextRenderer.setScale(0.9f);
+            MultilineAnnotationTextRenderer.setColor(colorBehavior);
             if (currentBehavior == 4) {
-                renderer.draw3D("Rotating in the last seen direction", -80, 20, 0, .4f);
+                MultilineAnnotationTextRenderer.renderMultilineString(String.format("Rotating towards prey"));
             }
             if (currentBehavior == 5) {
-                renderer.draw3D("Wandering...", -80, 20, 0, .4f);
+                MultilineAnnotationTextRenderer.renderMultilineString(String.format("Wandering..."));
             }
             if (currentBehavior == 6) {
-                renderer.draw3D("Prey Caught!", -80, 20, 0, .4f);
+                MultilineAnnotationTextRenderer.renderMultilineString(String.format("Prey Caught!"));
             }
-            renderer.end3DRendering();
         }
-        gl.glPopMatrix();
         //        if (totalDecisions > 0) {
 //            float errorRate = (float) incorrect / totalDecisions;
 //            String s = String.format("Error rate %.2f%% (total=%d correct=%d incorrect=%d)\n", errorRate * 100, totalDecisions, correct, incorrect);
