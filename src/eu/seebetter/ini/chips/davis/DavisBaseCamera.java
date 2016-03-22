@@ -1429,7 +1429,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     final public class DecreaseExposureAction extends DavisMenuAction {
 
         public DecreaseExposureAction() {
-            super("Increase APS exposure",
+            super("Decrease APS exposure",
                     "<html>Decreases APS exposure<p>See <i>User-Friendly Controls</i> tab in HW configuration panel for more control",
                     "DecreaseExposure");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, java.awt.event.InputEvent.SHIFT_MASK));
