@@ -69,6 +69,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private String behavior = null;
     private ByteBuffer udpBuf = ByteBuffer.allocate(2);
     private int seqNum = 0;
+    private int countRender = 0;
     private int[] decisionArray = new int[2];
     private int[] decisionLowPassArray = new int[3];
     private int savedDecision = -1;
@@ -226,7 +227,11 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             if (currentBehavior == 6) {
                 MultilineAnnotationTextRenderer.renderMultilineString(String.format("Prey Caught!"));
             }
+            countRender = countRender+1;
+            if(countRender > 10){
             flagBehavior = false;
+            countRender = 0;
+            }
         }
         //        if (totalDecisions > 0) {
 //            float errorRate = (float) incorrect / totalDecisions;
