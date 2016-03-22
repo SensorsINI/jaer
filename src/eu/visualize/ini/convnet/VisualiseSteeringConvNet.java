@@ -31,6 +31,8 @@ import net.sf.jaer.event.EventPacket;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import com.jogamp.opengl.util.awt.TextRenderer;
+import java.awt.Font;
 
 /**
  * Extends DavisDeepLearnCnnProcessor to add annotation graphics to show
@@ -48,6 +50,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     volatile private boolean showStatistics = getBoolean("showStatistics", true);
     private TargetLabeler targetLabeler = null;
     private Error error = new Error();
+    protected TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10), true, true);
 //    /** This object used to publish the results to ROS */
 //    public VisualiseSteeringNetRosNodePublisher visualiseSteeringNetRosNodePublisher=new VisualiseSteeringNetRosNodePublisher();
 
@@ -63,6 +66,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private DatagramSocket socket = null;
     private InetSocketAddress client = null;
     private DatagramChannel channel = null;
+    private String behavior = null;
     private ByteBuffer udpBuf = ByteBuffer.allocate(2);
     private int seqNum = 0;
     private int[] decisionArray = new int[2];
@@ -207,6 +211,23 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
             }
         }
+        gl.glPushMatrix();
+        renderer.begin3DRendering();
+        renderer.setColor(12, 0, 1, .3f);
+        if (behavior != null) {
+            int currentBehavior = Integer.parseInt(behavior);
+            if (currentBehavior == 4) {
+                renderer.draw3D("Rotating in the last seen direction", -80, 20, 0, .4f);
+            }
+            if (currentBehavior == 5) {
+                renderer.draw3D("Wandering...", -80, 20, 0, .4f);
+            }
+            if (currentBehavior == 6) {
+                renderer.draw3D("Prey Caught!", -80, 20, 0, .4f);
+            }
+            renderer.end3DRendering();
+        }
+        gl.glPopMatrix();
         //        if (totalDecisions > 0) {
 //            float errorRate = (float) incorrect / totalDecisions;
 //            String s = String.format("Error rate %.2f%% (total=%d correct=%d incorrect=%d)\n", errorRate * 100, totalDecisions, correct, incorrect);
@@ -366,7 +387,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 if (checkClient()) { // if client not there, just continue - maybe it comes back
                     byte msg = (byte) (forceNetworkOutpout ? forcedNetworkOutputValue : net.outputLayer.maxActivatedUnit);
                     if (!sendOnlyNovelSteeringMessages || msg != lastUDPmessage) {
-                        lastUDPmessage=msg;
+                        lastUDPmessage = msg;
                         udpBuf.clear();
                         udpBuf.put((byte) (seqNum & 0xFF)); // mask bits to cast to unsigned byte value 0-255
                         seqNum++;
@@ -856,7 +877,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                     if (seqNum != expectedSeqNum) {
                         log.warning(String.format("dropped %d packets from %s", (seqNum - expectedSeqNum), address.toString()));
                     }
-                    behaviorLogger.log(Byte.toString(udpBuf.get(1)));
+                    behavior = Byte.toString(udpBuf.get(1));
+                    behaviorLogger.log(behavior);
                 }
                 closeChannel();
             } catch (Exception ex) {
