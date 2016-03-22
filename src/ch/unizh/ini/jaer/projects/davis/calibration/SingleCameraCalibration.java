@@ -42,7 +42,10 @@ import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.text.NumberFormat;
 import java.util.Iterator;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.logging.Level;
 import javax.swing.JButton;
 import net.sf.jaer.Description;
@@ -67,7 +70,7 @@ import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
  */
 @Description("Calibrates a single camera using DAVIS frames and OpenCV calibration methods")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class SingleCameraCalibration extends EventFilter2D implements FrameAnnotater {
+public class SingleCameraCalibration extends EventFilter2D implements FrameAnnotater, Observer /* observes this to get informed about our size */ {
 
     private int sx; // set to chip.getSizeX()
     private int sy; // chip.getSizeY()
@@ -105,7 +108,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private MatVector translationVectors;
     private Mat imgIn, imgOut;
 
-    private short[] undistortedAddressLUT; // stores undistortion LUT for event addresses. values are stored by idx = 2 * (y + sy * x);
+    private short[] undistortedAddressLUT = null; // stores undistortion LUT for event addresses. values are stored by idx = 2 * (y + sy * x);
     private boolean isUndistortedAddressLUTgenerated = false;
 
     private float focalLengthPixels = 0;
@@ -127,6 +130,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     public SingleCameraCalibration(AEChip chip) {
         super(chip);
+        chip.addObserver(this);
         frameExtractor = new ApsFrameExtractor(chip);
         filterChain = new FilterChain(chip);
         filterChain.add(frameExtractor);
@@ -221,7 +225,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
             //store last timestamp
             lastTimestamp = e.timestamp;
-            if(calibrated && undistortDVSevents && ((ApsDvsEvent)e).isDVSEvent()){
+            if (calibrated && undistortDVSevents && ((ApsDvsEvent) e).isDVSEvent()) {
                 undistortEvent(e);
             }
         }
@@ -442,7 +446,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      */
     public void setRealtimePatternDetectionEnabled(boolean realtimePatternDetectionEnabled) {
         this.realtimePatternDetectionEnabled = realtimePatternDetectionEnabled;
-        putBoolean("realtimePatternDetectionEnabled",realtimePatternDetectionEnabled);
+        putBoolean("realtimePatternDetectionEnabled", realtimePatternDetectionEnabled);
     }
 
     /**
@@ -504,7 +508,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             allImagePoints.resize(100);
             allObjectPoints.resize(100);
         }
-        generateUndistortedAddressLUT(sx, sy);
         calibrated = true;
         getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
     }
@@ -516,9 +519,13 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      * @param sx chip size x
      * @param sy chip size y
      */
-    public void generateUndistortedAddressLUT(int sx, int sy) {
+    public void generateUndistortedAddressLUT() {
         if (!calibrated) {
             return;
+        }
+
+        if (sx == 0 || sy == 0) {
+            return; // not set yet
         }
         FloatPointer fp = new FloatPointer(2 * sx * sy);
         int idx = 0;
@@ -636,21 +643,12 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         j.setDialogTitle("Select a folder that has XML files storing calibration");
         j.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // let user specify a base filename
         j.setApproveButtonText("Select folder");
+        j.setApproveButtonToolTipText("Only enabled for a folder that has cameraMatrix.xml and distortionCoefs.xml");
+        setButtonState(j, j.getApproveButtonText(), calibrationExists(j.getCurrentDirectory().getPath()));
         j.addPropertyChangeListener(JFileChooser.DIRECTORY_CHANGED_PROPERTY, new PropertyChangeListener() {
             @Override
             public void propertyChange(PropertyChangeEvent pce) {
-                String fn = j.getCurrentDirectory().getPath() + File.separator + "cameraMatrix" + ".xml";
-                File f = new File(fn);
-                boolean cameraMatrixExists = f.exists();
-                fn = j.getCurrentDirectory().getPath() + File.separator + "distortionCoefs" + ".xml";
-                f = new File(fn);
-                boolean distortionCoefsExists = f.exists();
-                if (distortionCoefsExists && cameraMatrixExists) {
-                    setButtonState(j, j.getApproveButtonText(), true);
-                } else {
-                    setButtonState(j, j.getApproveButtonText(), false);
-                }
-
+                setButtonState(j, j.getApproveButtonText(), calibrationExists(j.getCurrentDirectory().getPath()));
             }
         });
         int ret = j.showOpenDialog(null);
@@ -661,6 +659,20 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         putString("dirPath", dirPath);
 
         loadCalibration();
+    }
+
+    private boolean calibrationExists(String dirPath) {
+        String fn = dirPath + File.separator + "cameraMatrix" + ".xml";
+        File f = new File(fn);
+        boolean cameraMatrixExists = f.exists();
+        fn = dirPath + File.separator + "distortionCoefs" + ".xml";
+        f = new File(fn);
+        boolean distortionCoefsExists = f.exists();
+        if (distortionCoefsExists && cameraMatrixExists) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     synchronized public void doClearCalibration() {
@@ -675,12 +687,11 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             cameraMatrix = deserializeMat(dirPath, "cameraMatrix");
             distortionCoefs = deserializeMat(dirPath, "distortionCoefs");
             generateCalibrationString();
+            log.info("loaded cameraMatrix and distortionCoefs from folder " + dirPath);
             calibrated = true;
-            log.info("loaded cameraMatrix and distortionCoefs");
-            generateUndistortedAddressLUT(sx, sy);
             getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
         } catch (Exception i) {
-            log.warning(i.toString());
+            log.warning("Could not load existing calibration from folder " + dirPath + " on construction:" + i.toString());
         }
     }
 
@@ -704,6 +715,9 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         opencv_core.FileStorage storage = new opencv_core.FileStorage(dirPath + File.separator + name + ".xml", opencv_core.FileStorage.READ);
         opencv_core.CvMat cvMat = new opencv_core.CvMat(storage.get(name).readObj());
         opencv_core.Mat mat = new opencv_core.Mat(cvMat);
+        if (mat.empty()) {
+            return null;
+        }
         return mat;
     }
 
@@ -918,10 +932,13 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      * if the event has been filtered out.
      */
     public boolean undistortEvent(BasicEvent e) {
+        if (undistortedAddressLUT == null) {
+            generateUndistortedAddressLUT();
+        }
         int uidx = 2 * (e.y + sy * e.x);
         e.x = getUndistortedAddressFromLUT(uidx);
         e.y = getUndistortedAddressFromLUT(uidx + 1);
-        if(xeob(e.x) || yeob(e.y)) {
+        if (xeob(e.x) || yeob(e.y)) {
             e.setFilteredOut(true);
             return false;
         }
@@ -955,4 +972,15 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     public void setUndistortDVSevents(boolean undistortDVSevents) {
         this.undistortDVSevents = undistortDVSevents;
     }
+
+    @Override
+    public void update(Observable o, Object o1) {
+        if (o instanceof AEChip) {
+            if (chip.getNumPixels() > 0) {
+                sx = chip.getSizeX();
+                sy = chip.getSizeY(); // might not yet have been set in constructor
+            }
+        }
+    }
+
 }
