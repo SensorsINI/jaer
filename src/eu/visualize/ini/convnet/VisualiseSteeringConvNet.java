@@ -108,6 +108,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
         descisionLogger.setAbsoluteTimeEnabled(true);
         descisionLogger.setNanotimeEnabled(false);
+        behaviorLogger.setAbsoluteTimeEnabled(true);
+        behaviorLogger.setNanotimeEnabled(false);
 //        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
     }
 
@@ -834,7 +836,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 //        private DatagramSocket socket = null;
         private InetSocketAddress localSocketAddress = null;
         private DatagramChannel channel = null;
-        private ByteBuffer udpBuf = ByteBuffer.allocate(1024);
+        private ByteBuffer udpBuf = ByteBuffer.allocate(16);
         private int seqNum = 0;
         boolean keepRunning = true;
         int expectedSeqNum = 0;
@@ -854,9 +856,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                     if (seqNum != expectedSeqNum) {
                         log.warning(String.format("dropped %d packets from %s", (seqNum - expectedSeqNum), address.toString()));
                     }
-                    byte[] b2 = new byte[udpBuf.limit() - 1];
-                    udpBuf.get(b2, 1, udpBuf.limit() - 1);
-                    behaviorLogger.log(new String(b2));
+                    behaviorLogger.log(Byte.toString(udpBuf.get(1)));
                 }
                 closeChannel();
             } catch (Exception ex) {
@@ -868,7 +868,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             closeChannel();
             keepRunning = true;
             channel = DatagramChannel.open();
-            localSocketAddress = new InetSocketAddress("localhost", localPort);
+            localSocketAddress = new InetSocketAddress("192.168.1.161", localPort);
             channel.bind(localSocketAddress);
             log.info("opened channel on local port " + localSocketAddress + " to receive UDP messages from ROS.");
         }
