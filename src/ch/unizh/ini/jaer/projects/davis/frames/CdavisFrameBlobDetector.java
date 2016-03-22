@@ -253,12 +253,15 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         if ((evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)
                 && !chip.getAeViewer().isPaused()) {
             FloatBuffer lastFrameBuffer = ((AEFrameChipRenderer)chip.getRenderer()).getPixmap();
-            
-            for (int x = 0; x < chip.getSizeX(); x += 1) {
-                for (int y = 0; y < chip.getSizeY(); y += 1) {
-                    lastFrame[x*3 + (y*chip.getSizeX()*3)] = lastFrameBuffer.get(((AEFrameChipRenderer)chip.getRenderer()).getPixMapIndex(x, y));
-                    lastFrame[x*3 + (y*chip.getSizeX()*3) + 1] = lastFrameBuffer.get(((AEFrameChipRenderer)chip.getRenderer()).getPixMapIndex(x, y) + 1);
-                    lastFrame[x*3 + (y*chip.getSizeX()*3) + 2] = lastFrameBuffer.get(((AEFrameChipRenderer)chip.getRenderer()).getPixMapIndex(x, y) + 2);
+            int sx=chip.getSizeX(), sy=chip.getSizeY();
+            AEFrameChipRenderer r=((AEFrameChipRenderer)chip.getRenderer());
+            // rewrite frame to avoid padding for texture
+            for (int x = 0; x < sx; x++) {
+                for (int y = 0; y < sy; y++) {
+                    int i=r.getPixMapIndex(x, y),j=x*3 + (y*sx*3);
+                    lastFrame[j] = lastFrameBuffer.get(i);
+                    lastFrame[j+ 1] = lastFrameBuffer.get(i + 1);
+                    lastFrame[j+ 2] = lastFrameBuffer.get(i + 2);
                 }
             }
                                 
