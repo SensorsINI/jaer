@@ -75,6 +75,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private int counterD = 0;
     private static Color colorBehavior=Color.RED;
     private float[] LCRNstate = new float[]{0.5f, 0.5f, 0.5f, 0.5f};
+    private boolean flagBehavior = false;
     volatile private boolean apply_LR_RL_constraint = getBoolean("apply_LR_RL_constraint", false);
     volatile private boolean apply_LNR_RNL_constraint = getBoolean("apply_LNR_RNL_constraint", false);
     volatile private boolean apply_CN_NC_constraint = getBoolean("apply_CN_NC_constraint", false);
@@ -212,7 +213,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
             }
         }
-        if (behavior != null) {
+        if (behavior != null && flagBehavior == true) {
             int currentBehavior = Integer.parseInt(behavior);
             MultilineAnnotationTextRenderer.setScale(0.9f);
             MultilineAnnotationTextRenderer.setColor(colorBehavior);
@@ -225,6 +226,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             if (currentBehavior == 6) {
                 MultilineAnnotationTextRenderer.renderMultilineString(String.format("Prey Caught!"));
             }
+            flagBehavior = false;
         }
         //        if (totalDecisions > 0) {
 //            float errorRate = (float) incorrect / totalDecisions;
@@ -876,6 +878,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                         log.warning(String.format("dropped %d packets from %s", (seqNum - expectedSeqNum), address.toString()));
                     }
                     behavior = Byte.toString(udpBuf.get(1));
+                    flagBehavior = true;
                     behaviorLogger.log(behavior);
                 }
                 closeChannel();
