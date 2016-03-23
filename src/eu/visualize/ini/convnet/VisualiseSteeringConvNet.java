@@ -218,7 +218,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         }
         if (behavior != null && flagBehavior == true) {
             int currentBehavior = Integer.parseInt(behavior);
-            MultilineAnnotationTextRenderer.setScale(0.9f);
+            MultilineAnnotationTextRenderer.setScale(0.8f);
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(10);
             MultilineAnnotationTextRenderer.setColor(colorBehavior);
             if (currentBehavior == 4) {
                 MultilineAnnotationTextRenderer.renderMultilineString(String.format("Rotating towards prey"));
@@ -228,6 +229,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             }
             if (currentBehavior == 6) {
                 MultilineAnnotationTextRenderer.renderMultilineString(String.format("Prey Caught!"));
+            }
+            if (currentBehavior == 7) {
+                MultilineAnnotationTextRenderer.renderMultilineString(String.format("Chasing"));
             }
             countRender = countRender+1;
             if(countRender > getRenderingCyclesDecision()){
