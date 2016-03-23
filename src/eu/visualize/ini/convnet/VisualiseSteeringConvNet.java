@@ -77,6 +77,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private static Color colorBehavior=Color.RED;
     private float[] LCRNstate = new float[]{0.5f, 0.5f, 0.5f, 0.5f};
     private boolean flagBehavior = false;
+    volatile private int renderingCyclesOfBehavior = getInt("renderingCyclesOfBehavior", 4);
     volatile private boolean apply_LR_RL_constraint = getBoolean("apply_LR_RL_constraint", false);
     volatile private boolean apply_LNR_RNL_constraint = getBoolean("apply_LNR_RNL_constraint", false);
     volatile private boolean apply_CN_NC_constraint = getBoolean("apply_CN_NC_constraint", false);
@@ -93,6 +94,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(disp, "hideSteeringOutput", "hides steering output unit rendering as shading over sensor image. If the prey is invisible no rectangle is rendered when showAnalogDecisionOutput is deselected.");
         setPropertyTooltip(anal, "pixelErrorAllowedForSteering", "If ground truth location is within this many pixels of closest border then the descision is still counted as corret");
         setPropertyTooltip(disp, "showStatistics", "shows statistics of DVS frame rate and error rate (when ground truth TargetLabeler file is loaded)");
+        setPropertyTooltip(disp, "renderingCyclesOfBehavior", "Number of rendering cycles for which the robot behavior is displayed");
         setPropertyTooltip(udp, "sendUDPSteeringMessages", "sends UDP packets with steering network output to host:port in hostAndPort");
         setPropertyTooltip(udp, "sendOnlyNovelSteeringMessages", "only sends UDP message if it contains a novel command; avoids too many datagrams");
         setPropertyTooltip(udp, "host", "hostname or IP address to send UDP messages to, e.g. localhost");
@@ -228,7 +230,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 MultilineAnnotationTextRenderer.renderMultilineString(String.format("Prey Caught!"));
             }
             countRender = countRender+1;
-            if(countRender > 10){
+            if(countRender > getRenderingCyclesOfBehavior()){
             flagBehavior = false;
             countRender = 0;
             }
@@ -856,7 +858,22 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         this.sendOnlyNovelSteeringMessages = sendOnlyNovelSteeringMessages;
         putBoolean("sendOnlyNovelSteeringMessages", sendOnlyNovelSteeringMessages);
     }
+    
+    /**
+     * @return the renderingCyclesOfBehavior
+     */
+    public int getRenderingCyclesOfBehavior() {
+        return renderingCyclesOfBehavior;
+    }
 
+    /**
+     * @param renderingCyclesOfBehavior the renderingCyclesOfBehavior to
+     * set
+     */
+    public void setRenderingCyclesOfBehavior(int renderingCyclesOfBehavior) {
+        this.renderingCyclesOfBehavior = renderingCyclesOfBehavior;
+        putInt("renderingCyclesOfBehavior", renderingCyclesOfBehavior);
+    }
     private class BehaviorLoggingThread extends Thread {
 
 //        private DatagramSocket socket = null;
