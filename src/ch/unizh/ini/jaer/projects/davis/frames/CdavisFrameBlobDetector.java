@@ -5,12 +5,14 @@
  */
 package ch.unizh.ini.jaer.projects.davis.frames;
 
-import static org.bytedeco.javacpp.opencv_core.CV_64FC3;
-import static org.bytedeco.javacpp.opencv_core.CV_8U;
-import static org.bytedeco.javacpp.opencv_core.CV_8UC3;
-import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_EPS;
-import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_ITER;
-import static org.bytedeco.javacpp.opencv_imgproc.CV_GRAY2RGB;
+import static org.bytedeco.javacpp.opencv_core.*;
+import static org.bytedeco.javacpp.opencv_imgproc.*;
+//import static org.bytedeco.javacpp.opencv_core.CV_64FC3;
+//import static org.bytedeco.javacpp.opencv_core.CV_8U;
+//import static org.bytedeco.javacpp.opencv_core.CV_8UC3;
+//import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_EPS;
+//import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_ITER;
+//import static org.bytedeco.javacpp.opencv_imgproc.CV_GRAY2RGB;
 
 import java.util.List;
 
@@ -253,15 +255,15 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         if ((evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)
                 && !chip.getAeViewer().isPaused()) {
             FloatBuffer lastFrameBuffer = ((AEFrameChipRenderer)chip.getRenderer()).getPixmap();
-            int sx=chip.getSizeX(), sy=chip.getSizeY();
+            //int sx=chip.getSizeX(), sy=chip.getSizeY();
             AEFrameChipRenderer r=((AEFrameChipRenderer)chip.getRenderer());
             // rewrite frame to avoid padding for texture
             for (int x = 0; x < sx; x++) {
                 for (int y = 0; y < sy; y++) {
                     int i=r.getPixMapIndex(x, y),j=x*3 + (y*sx*3);
-                    lastFrame[j] = lastFrameBuffer.get(i);
+                    lastFrame[j] = lastFrameBuffer.get(i + 2);
                     lastFrame[j+ 1] = lastFrameBuffer.get(i + 1);
-                    lastFrame[j+ 2] = lastFrameBuffer.get(i + 2);
+                    lastFrame[j+ 2] = lastFrameBuffer.get(i);
                 }
             }
                                 
@@ -338,11 +340,13 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         FloatPointer ip = new FloatPointer(lastFrame);
         Mat input = new Mat(ip);
         input.convertTo(input, CV_8U, 255, 0);
-        imgIn = input.reshape(0, sy);
-        imgOut = new Mat(sy, sx, CV_8UC3);
-        cvtColor(imgIn, imgOut, CV_GRAY2RGB);
-        //opencv_highgui.imshow("test", imgIn);
-        //opencv_highgui.waitKey(1);
+        imgIn = input.reshape(3, sy);
+        imgOut = new Mat(ip);
+        //cvtColor(imgIn, imgOut, CV_RGB2GRAY);
+        threshold(imgIn, imgOut, 155, 255, CV_THRESH_BINARY);
+        opencv_highgui.imshow("Input", imgIn);
+        opencv_highgui.imshow("Threshold", imgOut);
+        opencv_highgui.waitKey(10000);
         boolean locPatternFound;
         try {
             locPatternFound = opencv_calib3d.findChessboardCorners(imgIn, patternSize, corners);
