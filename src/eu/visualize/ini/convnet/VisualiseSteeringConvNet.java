@@ -77,7 +77,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private static Color colorBehavior=Color.RED;
     private float[] LCRNstate = new float[]{0.5f, 0.5f, 0.5f, 0.5f};
     private boolean flagBehavior = false;
-    volatile private int renderingCyclesOfBehavior = getInt("renderingCyclesOfBehavior", 4);
+    volatile private int renderingCyclesDecision = getInt("renderingCyclesDecision", 3);
     volatile private boolean apply_LR_RL_constraint = getBoolean("apply_LR_RL_constraint", false);
     volatile private boolean apply_LNR_RNL_constraint = getBoolean("apply_LNR_RNL_constraint", false);
     volatile private boolean apply_CN_NC_constraint = getBoolean("apply_CN_NC_constraint", false);
@@ -94,7 +94,6 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(disp, "hideSteeringOutput", "hides steering output unit rendering as shading over sensor image. If the prey is invisible no rectangle is rendered when showAnalogDecisionOutput is deselected.");
         setPropertyTooltip(anal, "pixelErrorAllowedForSteering", "If ground truth location is within this many pixels of closest border then the descision is still counted as corret");
         setPropertyTooltip(disp, "showStatistics", "shows statistics of DVS frame rate and error rate (when ground truth TargetLabeler file is loaded)");
-        setPropertyTooltip(disp, "renderingCyclesOfBehavior", "Number of rendering cycles for which the robot behavior is displayed");
         setPropertyTooltip(udp, "sendUDPSteeringMessages", "sends UDP packets with steering network output to host:port in hostAndPort");
         setPropertyTooltip(udp, "sendOnlyNovelSteeringMessages", "only sends UDP message if it contains a novel command; avoids too many datagrams");
         setPropertyTooltip(udp, "host", "hostname or IP address to send UDP messages to, e.g. localhost");
@@ -109,7 +108,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(udp, "LCRNstep", "mixture of decisicion outputs over time (LCR or N) to another (if 1, no lowpass filtering, if lower, then slower transitions)");
         setPropertyTooltip(udp, "startLoggingUDPMessages", "start logging UDP messages to a text log file");
         setPropertyTooltip(udp, "stopLoggingUDPMessages", "stop logging UDP messages");
-
+        setPropertyTooltip(disp, "renderingCyclesDecision", "Display robot behavior for these many rendering cycles");
+        
         FilterChain chain = new FilterChain(chip);
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
         chain.add(targetLabeler);
@@ -230,7 +230,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 MultilineAnnotationTextRenderer.renderMultilineString(String.format("Prey Caught!"));
             }
             countRender = countRender+1;
-            if(countRender > getRenderingCyclesOfBehavior()){
+            if(countRender > getRenderingCyclesDecision()){
             flagBehavior = false;
             countRender = 0;
             }
@@ -844,6 +844,20 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     }
 
     /**
+     * @return the renderingCyclesDecision
+     */
+    public int getRenderingCyclesDecision() {
+        return renderingCyclesDecision;
+    }
+
+    /**
+     * @param renderingCyclesDecision the renderingCyclesDecision to set
+     */
+    public void setRenderingCyclesDecision(int renderingCyclesDecision) {
+        this.renderingCyclesDecision = renderingCyclesDecision;
+        putInt("renderingCyclesDecision", renderingCyclesDecision);
+    }
+    /**
      * @return the sendOnlyNovelSteeringMessages
      */
     public boolean isSendOnlyNovelSteeringMessages() {
@@ -858,22 +872,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         this.sendOnlyNovelSteeringMessages = sendOnlyNovelSteeringMessages;
         putBoolean("sendOnlyNovelSteeringMessages", sendOnlyNovelSteeringMessages);
     }
-    
-    /**
-     * @return the renderingCyclesOfBehavior
-     */
-    public int getRenderingCyclesOfBehavior() {
-        return renderingCyclesOfBehavior;
-    }
 
-    /**
-     * @param renderingCyclesOfBehavior the renderingCyclesOfBehavior to
-     * set
-     */
-    public void setRenderingCyclesOfBehavior(int renderingCyclesOfBehavior) {
-        this.renderingCyclesOfBehavior = renderingCyclesOfBehavior;
-        putInt("renderingCyclesOfBehavior", renderingCyclesOfBehavior);
-    }
     private class BehaviorLoggingThread extends Thread {
 
 //        private DatagramSocket socket = null;
