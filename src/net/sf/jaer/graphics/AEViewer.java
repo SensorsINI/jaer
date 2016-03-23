@@ -2847,6 +2847,7 @@ two interfaces). otherwise force user choice.
         viewIgnorePolarityCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         increaseFrameRateMenuItem = new javax.swing.JMenuItem();
         decreaseFrameRateMenuItem = new javax.swing.JMenuItem();
+        setFrameRateMenuItem = new javax.swing.JMenuItem();
         pauseRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         viewSingleStepMenuItem = new javax.swing.JMenuItem();
         zeroTimestampsMenuItem = new javax.swing.JMenuItem();
@@ -3445,6 +3446,16 @@ two interfaces). otherwise force user choice.
             }
         });
         viewMenu.add(decreaseFrameRateMenuItem);
+
+        setFrameRateMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_MASK));
+        setFrameRateMenuItem.setText("Set rendering rate...");
+        setFrameRateMenuItem.setToolTipText("Opens dialog to set the rendering (animation) target rate in frames/sec (fps)");
+        setFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setFrameRateMenuItemActionPerformed(evt);
+            }
+        });
+        viewMenu.add(setFrameRateMenuItem);
 
         pauseRenderingCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_SPACE, 0));
         pauseRenderingCheckBoxMenuItem.setText("Paused");
@@ -5456,6 +5467,19 @@ two interfaces). otherwise force user choice.
         }
     }//GEN-LAST:event_printUSBStatisticsCBMIActionPerformed
 
+    private void setFrameRateMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setFrameRateMenuItemActionPerformed
+       int fpsNow=getFrameRater().getDesiredFPS();
+       String fpsString=JOptionPane.showInputDialog(this, "Desired frame rate?", Integer.toString(fpsNow));
+        try{
+            int fps=Integer.parseInt(fpsString);
+            if(fps!=fpsNow){
+                getFrameRater().setDesiredFPS(fps);
+            }
+        }catch(NumberFormatException e){
+            log.warning(e.toString());
+        }
+    }//GEN-LAST:event_setFrameRateMenuItemActionPerformed
+
 	/** Returns desired frame rate of FrameRater
 	 *
 	 * @return desired frame rate in Hz.
@@ -6071,6 +6095,7 @@ two interfaces). otherwise force user choice.
     private javax.swing.JMenuItem sequenceMenuItem;
     private javax.swing.JMenuItem serverSocketOptionsMenuItem;
     private javax.swing.JMenuItem setDefaultFirmwareMenuItem;
+    private javax.swing.JMenuItem setFrameRateMenuItem;
     private javax.swing.JMenuItem setMarkInMI;
     private javax.swing.JMenuItem setMarkOutMI;
     private javax.swing.JButton showConsoleOutputButton;
