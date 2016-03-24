@@ -49,6 +49,7 @@ import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.nio.FloatBuffer;
 import java.util.Iterator;
+import java.util.Random;
 import java.util.logging.Level;
 import javax.swing.JButton;
 import net.sf.jaer.Description;
@@ -62,6 +63,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import static org.bytedeco.javacpp.Loader.sizeof;
 import org.bytedeco.javacpp.indexer.DoubleIndexer;
 import static org.bytedeco.javacpp.opencv_core.CV_32FC2;
 import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
@@ -260,7 +262,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
             // rewrite frame to avoid padding for texture
             for (int x = 0; x < sx; x++) {
                 for (int y = 0; y < sy; y++) {
-                    int i=r.getPixMapIndex(x, y),j=x*3 + (y*sx*3);
+                    int i=r.getPixMapIndex(x, y),j=x*3 + ((sy-1-y)*sx*3);
                     lastFrame[j] = lastFrameBuffer.get(i + 2);
                     lastFrame[j+ 1] = lastFrameBuffer.get(i + 1);
                     lastFrame[j+ 2] = lastFrameBuffer.get(i);
@@ -341,12 +343,59 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         Mat input = new Mat(ip);
         input.convertTo(input, CV_8U, 255, 0);
         imgIn = input.reshape(3, sy);
-        imgOut = new Mat(ip);
-        //cvtColor(imgIn, imgOut, CV_RGB2GRAY);
-        threshold(imgIn, imgOut, 155, 255, CV_THRESH_BINARY);
+        Mat imgHsv = new Mat(ip);
+        cvtColor(imgIn, imgHsv, CV_RGB2HSV);
+        CvMat imgInCvMat = imgIn.asCvMat();
+        IplImage imgInIplImage = imgInCvMat.asIplImage();
+        CvMat imgHsvCvMat = imgHsv.asCvMat();
+        IplImage imgHsvIplImage = imgHsvCvMat.asIplImage();
+        
+        IplImage hue = IplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
+        IplImage sat = IplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
+        IplImage val = IplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
+        IplImage hueBin = IplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
+
+        cvSplit( imgHsvIplImage, hue, sat, val, null );
+        
+        //threshold(hueMat, imgOut, 100, 255, CV_THRESH_BINARY);
+        cvInRangeS(hue,cvScalar(100),cvScalar(120),hueBin);
+//        CvMat imgOutCvMat = imgOut.asCvMat();
+//        IplImage imgOutIplImage = imgOutCvMat.asIplImage();
+        
+        CvMemStorage mem = cvCreateMemStorage(0);
+        CvSeq contours = new CvSeq();
+//        CvSeq ptr = new CvSeq();
+        cvFindContours(hueBin, mem, contours, sizeof(CvContour.class) , CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE, cvPoint(0,0));
+        while (contours != null && !contours.isNull()) {
+                if (contours.elem_size() > 0) {
+                    CvSeq points = cvApproxPoly(contours, sizeof(CvContour.class),
+                            mem, CV_POLY_APPROX_DP, cvContourPerimeter(contours)*0.02, 0);
+                    cvDrawContours(imgInIplImage, points, CvScalar.BLUE, CvScalar.BLUE, -1, 1, CV_AA);
+                }
+                contours = contours.h_next();
+            }
+
+//        Random rand = new Random();
+//        for (ptr = contours; ptr != null; ptr = ptr.h_next()) {
+//            Color randomColor = new Color(rand.nextFloat(), rand.nextFloat(), rand.nextFloat());
+//            CvScalar color = CV_RGB( randomColor.getRed(), randomColor.getGreen(), randomColor.getBlue());
+//            cvDrawContours(imgOutIplImage, ptr, color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
+//        }
+//        
+        Mat blobImg = new Mat(imgInIplImage,true);
+        Mat hueMat = new Mat(hue,true);
+        Mat satMat = new Mat(sat,true);
+        Mat valMat = new Mat(val,true);
+        Mat hueBinMat = new Mat(hueBin,true);
+        
         opencv_highgui.imshow("Input", imgIn);
-        opencv_highgui.imshow("Threshold", imgOut);
-        opencv_highgui.waitKey(10000);
+        opencv_highgui.imshow("Hue", hueMat);
+        opencv_highgui.imshow("Sat", satMat);
+        opencv_highgui.imshow("Val", valMat);
+        opencv_highgui.imshow("threshold Hue", hueBinMat);
+        opencv_highgui.imshow("Blob", blobImg);
+        opencv_highgui.waitKey(1000);
+        
         boolean locPatternFound;
         try {
             locPatternFound = opencv_calib3d.findChessboardCorners(imgIn, patternSize, corners);
