@@ -591,6 +591,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private RemoteControl remoteControl = null; // TODO move to JAERViewer
     private int aeFileInputStreamTimestampResetBitmask = prefs.getInt("AEViewer.aeFileInputStreamTimestampResetBitmask", 0);
     private AePlayerAdvancedControlsPanel playerControls;
+    private static boolean showedSkippedPacketsRenderingWarning=false;
 
     /** Constructs a new AEViewer using a default AEChip.
      *
@@ -787,6 +788,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             enableFiltersOnStartupCheckBoxMenuItem.setSelected(enableFiltersOnStartup);
 
             fixSkipPacketsRenderingMenuItems();
+            if(!showedSkippedPacketsRenderingWarning && skipPacketsRenderingNumber>1){
+                JOptionPane.showMessageDialog(this,String.format("<html>AEViewer rendering (but not processing) is currently skipping %d cycles.<p>If this is not desired, use menu item <i>View/Graphics Options/Skip packets rendering enabled...</i> or deselect the <i>Don't render</i> button to change behavior",skipPacketsRenderingNumber));
+                showedSkippedPacketsRenderingWarning=true;
+            }
 
             checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(prefs.getBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", true));
 
