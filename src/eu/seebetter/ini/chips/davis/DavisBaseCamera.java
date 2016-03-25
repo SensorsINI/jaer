@@ -27,6 +27,7 @@ import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.net.URL;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JMenu;
@@ -171,8 +172,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         davisMenu.add(new JMenuItem(new ToggleEventsAction()));
         davisMenu.add(new JMenuItem(new ToggleFrameCaptureDisplayAction()));
         davisMenu.add(new JSeparator());
-        davisMenu.add(new JMenuItem(new ToggleAutoExposure()));
+        davisMenu.add(new JMenuItem(new ToggleAutoContrast()));
         davisMenu.add(new JMenuItem(new ToggleHistogram()));
+        davisMenu.add(new JSeparator());
+        davisMenu.add(new JMenuItem(new ToggleAutoExposure()));
         davisMenu.add(new JMenuItem(new IncreaseAPSExposure()));
         davisMenu.add(new JMenuItem(new DecreaseExposureAction()));
         davisMenu.add(new JSeparator());
@@ -1341,7 +1344,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         public DavisMenuAction(String name, String tooltip, String icon) {
             putValue(Action.NAME, name);
-            putValue(Action.SMALL_ICON, new javax.swing.ImageIcon(getClass().getResource(path + icon + ".gif")));
+            URL url = getClass().getResource(path + icon + ".gif");
+            if (url != null) {
+                putValue(Action.SMALL_ICON, new javax.swing.ImageIcon(url));
+            }
             putValue("hideActionText", "true");
             putValue(Action.SHORT_DESCRIPTION, tooltip);
         }
@@ -1398,6 +1404,27 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         @Override
         public void actionPerformed(ActionEvent e) {
             setShowImageHistogram(!isShowImageHistogram());
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
+    /**
+     * Adds event capture/display option
+     */
+    final public class ToggleAutoContrast extends DavisMenuAction {
+
+        public ToggleAutoContrast() {
+            super("Toggle APS AutoContrast",
+                    "<html>Toggles whether automatic display contrast control is enabled<p>See <i>Auto contrast</i>  and <i>Constrat</i> controls in the <i>User-Friendly Controls</i> tab in HW Configuration panel for full control."
+                    + "<p>Note that this control is only for displayed image rendering.",
+                    "ToggleAutoContrast");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_C, java.awt.event.InputEvent.SHIFT_MASK));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            DavisVideoContrastController controller = ((AEFrameChipRenderer) getRenderer()).getContrastController();
+            controller.setUseAutoContrast(!controller.isUseAutoContrast());
             putValue(Action.SELECTED_KEY, true);
         }
     }
