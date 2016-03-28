@@ -111,6 +111,8 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     private MatVector rotationVectors;
     private MatVector translationVectors;
     private Mat imgIn, imgOut;
+    private CvSeq contours;
+    private CvMemStorage mem;
     
     private short[] undistortedAddressLUT;
     private boolean isUndistortedAddressLUTgenerated = false;
@@ -174,71 +176,6 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
      * @return the processed events, may be fewer in number. filtering may occur
      * in place in the in packet.
      */
-//    @Override
-//    synchronized public EventPacket filterPacket(EventPacket in) {
-//        getEnclosedFilterChain().filterPacket(in);
-//
-//        // for each event only keep it if it is within dt of the last time
-//        // an event happened in the direct neighborhood
-//        Iterator itr = ((ApsDvsEventPacket) in).fullIterator();
-//        while (itr.hasNext()) {
-//            Object o = itr.next();
-//            if (o == null) {
-//                break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
-//            }
-//            BasicEvent e = (BasicEvent) o;
-////            if (e.isSpecial()) {
-////                continue;
-////            }
-//
-//            //trigger action (on ts reset)
-//            if ((e.timestamp < lastTimestamp) && (e.timestamp < 100000) && takeImageOnTimestampReset) {
-//                log.info("timestamp reset action trigggered");
-//                actionTriggered = true;
-//                nAcqFrames = 0;
-//            }
-//
-//            //acquire new frame
-//            if (frameExtractor.hasNewFrame()) {
-//                lastFrame = frameExtractor.getNewFrame();
-//
-//                //process frame
-//                if (realtimePatternDetectionEnabled) {
-//                    patternFound = findCurrentCorners(false);
-//                }
-//
-//                //iterate
-//                if (actionTriggered && (nAcqFrames < nMaxAcqFrames)) {
-//                    nAcqFrames++;
-//                    generateCalibrationString();
-//                }
-//                //take action
-//                if (actionTriggered && (nAcqFrames == nMaxAcqFrames)) {
-//                    patternFound = findCurrentCorners(true);
-//                    //reset action
-//                    actionTriggered = false;
-//                }
-//
-//                if (calibrated && showUndistortedFrames && frameExtractor.isShowAPSFrameDisplay()) {
-//                    float[] outFrame = undistortFrame(lastFrame);
-//                    frameExtractor.setDisplayFrameRGB(outFrame);
-//                }
-//
-//                if (calibrated && showUndistortedFrames && frameExtractor.isShowAPSFrameDisplay()) {
-//                    frameExtractor.setExtRender(true); // to not alternate
-//                    frameExtractor.apsDisplay.setTitleLabel("lens correction enabled");
-//                } else {
-//                    frameExtractor.setExtRender(false); // to not alternate
-//                    frameExtractor.apsDisplay.setTitleLabel("raw input image");
-//                }
-//            }
-//
-//            //store last timestamp
-//            lastTimestamp = e.timestamp;
-//        }
-//
-//        return in;
-//    }
     
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -278,7 +215,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 //            }         
                 //process frame
                 if (realtimePatternDetectionEnabled) {
-                    patternFound = findCurrentCorners(false);
+                    findCurrentCorners(false);
                 }
 
                 //iterate
@@ -288,7 +225,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
                 }
                 //take action
                 if (actionTriggered && (nAcqFrames == nMaxAcqFrames)) {
-                    patternFound = findCurrentCorners(true);
+                    findCurrentCorners(true);
                     //reset action
                     actionTriggered = false;
                 }
@@ -336,7 +273,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         return outFrame;
     }
 
-    public boolean findCurrentCorners(boolean drawAndSave) {
+    public void findCurrentCorners(boolean drawAndSave) {
         Size patternSize = new Size(patternWidth, patternHeight);
         corners = new Mat();
         FloatPointer ip = new FloatPointer(lastFrame);
@@ -361,10 +298,9 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         cvInRangeS(hue,cvScalar(100),cvScalar(120),hueBin);
 //        CvMat imgOutCvMat = imgOut.asCvMat();
 //        IplImage imgOutIplImage = imgOutCvMat.asIplImage();
-        
-        CvMemStorage mem = cvCreateMemStorage(0);
-        CvSeq contours = new CvSeq();
-//        CvSeq ptr = new CvSeq();
+        contours = new CvSeq();
+        mem = cvCreateMemStorage(0);
+        //        CvSeq ptr = new CvSeq();
         cvFindContours(hueBin, mem, contours, sizeof(CvContour.class) , CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE, cvPoint(0,0));
         while (contours != null && !contours.isNull()) {
                 if (contours.elem_size() > 0) {
@@ -395,115 +331,33 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         opencv_highgui.imshow("threshold Hue", hueBinMat);
         opencv_highgui.imshow("Blob", blobImg);
         opencv_highgui.waitKey(1000);
-        
-        boolean locPatternFound;
-        try {
-            locPatternFound = opencv_calib3d.findChessboardCorners(imgIn, patternSize, corners);
-        } catch (RuntimeException e) {
-            log.warning(e.toString());
-            return false;
-        }
-        if (drawAndSave) {
-            //render frame
-            if (locPatternFound && cornerSubPixRefinement) {
-                opencv_core.TermCriteria tc = new opencv_core.TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1);
-                opencv_imgproc.cornerSubPix(imgIn, corners, new Size(3, 3), new Size(-1, -1), tc);
-            }
-            opencv_calib3d.drawChessboardCorners(imgOut, patternSize, corners, locPatternFound);
-            Mat outImgF = new Mat(sy, sx, CV_64FC3);
-            imgOut.convertTo(outImgF, CV_64FC3, 1.0 / 255, 0);
-            float[] outFrame = new float[sy * sx * 3];
-            outImgF.getFloatBuffer().get(outFrame);
-            frameExtractor.setDisplayFrameRGB(outFrame);
-            //save image
-            if (locPatternFound) {
-                Mat imgSave = new Mat(sy, sx, CV_8U);
-                opencv_core.flip(imgIn, imgSave, 0);
-                String filename = chip.getName() + "-" + fileBaseName + "-" + String.format("%03d", imageCounter) + ".jpg";
-                String fullFilePath = dirPath + "\\" + filename;
-                opencv_highgui.imwrite(fullFilePath, imgSave);
-                log.info("wrote " + fullFilePath);
-                //save depth sensor image if enabled
-                if (depthViewerThread != null) {
-                    if (depthViewerThread.isFrameCaptureRunning()) {
-                        //save img
-                        String fileSuffix = "-" + String.format("%03d", imageCounter) + ".jpg";
-                        depthViewerThread.saveLastImage(dirPath, fileSuffix);
-                    }
-                }
-                //store image points
-                if (imageCounter == 0) {
-                    allImagePoints = new MatVector(100);
-                    allObjectPoints = new MatVector(100);
-                }
-                allImagePoints.put(imageCounter, corners);
-                //create and store object points, which are just coordinates in mm of corners of pattern as we know they are drawn on the 
-                // calibration target
-                Mat objectPoints = new Mat(corners.rows(), 1, opencv_core.CV_32FC3);
-                float x, y;
-                for (int h = 0; h < patternHeight; h++) {
-                    y = h * rectangleHeightMm;
-                    for (int w = 0; w < patternWidth; w++) {
-                        x = w * rectangleWidthMm;
-                        objectPoints.getFloatBuffer().put(3 * ((patternWidth * h) + w), x);
-                        objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 1, y);
-                        objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 2, 0); // z=0 for object points
-                    }
-                }
-                allObjectPoints.put(imageCounter, objectPoints);
-                //iterate image counter
-                log.info(String.format("added corner points from image %d", imageCounter));
-                imageCounter++;
-                frameExtractor.apsDisplay.setxLabel(filename);
-
-//                //debug
-//                System.out.println(allImagePoints.toString());
-//                for (int n = 0; n < imageCounter; n++) {
-//                    System.out.println("n=" + n + " " + allImagePoints.get(n).toString());
-//                    for (int i = 0; i < corners.rows(); i++) {
-//                        System.out.println(allImagePoints.get(n).getFloatBuffer().get(2 * i) + " " + allImagePoints.get(n).getFloatBuffer().get(2 * i + 1)+" | "+allObjectPoints.get(n).getFloatBuffer().get(3 * i) + " " + allObjectPoints.get(n).getFloatBuffer().get(3 * i + 1) + " " + allObjectPoints.get(n).getFloatBuffer().get(3 * i + 2));
-//                    }
-//                }
-            } else {
-                log.warning("corners not found for this image");
-            }
-        }
-        return locPatternFound;
-    }
+     }
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
 
         GL2 gl = drawable.getGL().getGL2();
 
-        if (patternFound && realtimePatternDetectionEnabled) {
-            int n = corners.rows();
+        if (realtimePatternDetectionEnabled) {
+            int n = contours.total();
             int c = 3;
-            int w = patternWidth;
-            int h = patternHeight;
+            //int w = patternWidth;
+            //int h = patternHeight;
             //log.info(corners.toString()+" rows="+n+" cols="+corners.cols());
             //draw lines
             gl.glLineWidth(2f);
             gl.glColor3f(0, 0, 1);
             //log.info("width="+w+" height="+h);
             gl.glBegin(GL.GL_LINES);
-            for (int i = 0; i < h; i++) {
-                float y0 = corners.getFloatBuffer().get(2 * w * i);
-                float y1 = corners.getFloatBuffer().get((2 * w * (i + 1)) - 2);
-                float x0 = corners.getFloatBuffer().get((2 * w * i) + 1);
-                float x1 = corners.getFloatBuffer().get((2 * w * (i + 1)) - 1);
+            for (int i = 0; i < n; i++) {
+                CvPoint v =new CvPoint(cvGetSeqElem(contours, i));
+                float y0 = v.x();
+                //float y1 = contours.getFloatBuffer().get((2 * w * (i + 1)) - 2);
+                float x0 = v.y();
+                //float x1 = contours.getFloatBuffer().get((2 * w * (i + 1)) - 1);
                 //log.info("i="+i+" x="+x+" y="+y);
                 gl.glVertex2f(y0, x0);
-                gl.glVertex2f(y1, x1);
-            }
-            for (int i = 0; i < w; i++) {
-                float y0 = corners.getFloatBuffer().get(2 * i);
-                float y1 = corners.getFloatBuffer().get(2 * ((w * (h - 1)) + i));
-                float x0 = corners.getFloatBuffer().get((2 * i) + 1);
-                float x1 = corners.getFloatBuffer().get((2 * ((w * (h - 1)) + i)) + 1);
-                //log.info("i="+i+" x="+x+" y="+y);
-                gl.glVertex2f(y0, x0);
-                gl.glVertex2f(y1, x1);
+                //gl.glVertex2f(y1, x1);
             }
             gl.glEnd();
             //draw corners
@@ -511,8 +365,9 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
             gl.glColor3f(1, 1, 0);
             gl.glBegin(GL.GL_LINES);
             for (int i = 0; i < n; i++) {
-                float y = corners.getFloatBuffer().get(2 * i);
-                float x = corners.getFloatBuffer().get((2 * i) + 1);
+                CvPoint v =new CvPoint(cvGetSeqElem(contours, i));
+                float y = v.x();
+                float x = v.y();
                 //log.info("i="+i+" x="+x+" y="+y);
                 gl.glVertex2f(y, x - c);
                 gl.glVertex2f(y, x + c);
