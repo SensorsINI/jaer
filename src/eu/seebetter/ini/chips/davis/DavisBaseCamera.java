@@ -1002,12 +1002,11 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         public DavisDisplayMethod(final DavisBaseCamera chip) {
             super(chip.getCanvas());
+            getCanvas().setBorderSpacePixels(50);
         }
 
         @Override
         public void display(final GLAutoDrawable drawable) {
-            getCanvas().setBorderSpacePixels(50);
-
             super.display(drawable);
 
             if (exposureRenderer == null) {
