@@ -1,10 +1,29 @@
 package ch.unizh.ini.jaer.projects.ziyispikingcnn;
 
+import java.awt.Color;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+
+import javax.swing.JFileChooser;
+import javax.swing.filechooser.FileFilter;
+import javax.swing.filechooser.FileNameExtensionFilter;
+
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GL2ES3;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
+
 import eu.visualize.ini.convnet.EasyXMLReader;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -14,16 +33,6 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
-
-import javax.swing.*;
-import javax.swing.filechooser.FileFilter;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import java.awt.*;
-import java.awt.geom.Arc2D;
-import java.io.*;
-import java.nio.charset.Charset;
-import java.util.*;
-import java.util.List;
 
 /**
  * Created by ziyihua on 20/01/16.
@@ -340,12 +349,15 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
                 float ts;
                 if (o.timestamp>=0) {
                     ts = (float) (o.timestamp / 1e6);
-                }else ts = (float)(o.timestamp/1e6+4294.967296f);
+                }
+				else {
+					ts = (float)((o.timestamp/1e6)+4294.967296f);
+				}
                 times.add(ts);
-                y.add((int) o.y + 1);
-                x.add((int) o.x + 1);
-                y_clone.add((int) o.y + 1);
-                x_clone.add((int) o.x + 1);
+                y.add(o.y + 1);
+                x.add(o.x + 1);
+                y_clone.add(o.y + 1);
+                x_clone.add(o.x + 1);
            }
         }
 
@@ -459,12 +471,12 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
                 if (showAccuracy) {
                     GLUT glut3 = new GLUT();
                     gl.glRasterPos2f(0, 40);
-                    glut3.glutBitmapString(GLUT.BITMAP_TIMES_ROMAN_24, String.format("accuracy = %s", String.format("%.2f", ((float) correct_count_total * 100f) / ((float) count_total))));
+                    glut3.glutBitmapString(GLUT.BITMAP_TIMES_ROMAN_24, String.format("accuracy = %s", String.format("%.2f", (correct_count_total * 100f) / (count_total))));
                 }
                 if (showDigitsAccuracy) {
                     GLUT glut4 = new GLUT();
                     gl.glRasterPos2f(0, 35);
-                    glut4.glutBitmapString(GLUT.BITMAP_TIMES_ROMAN_24, String.format("0:%s " + " 1:%s " + " 2:%s " + " 3:%s " + " 4:%s " + " 5:%s " + " 6:%s " + " 7:%s " + " 8:%s " + " 9:%s ", String.format("%.1f", (100f * digit_accuracy[0][0] / digit_accuracy[0][1])), String.format("%.1f", (100f * digit_accuracy[1][0] / digit_accuracy[1][1])), String.format("%.1f", (100f * digit_accuracy[2][0] / digit_accuracy[2][1])), String.format("%.1f", (100f * digit_accuracy[3][0] / digit_accuracy[3][1])), String.format("%.1f", (100f * digit_accuracy[4][0] / digit_accuracy[4][1])), String.format("%.1f", (100f * digit_accuracy[5][0] / digit_accuracy[5][1])), String.format("%.1f", (100f * digit_accuracy[6][0] / digit_accuracy[6][1])), String.format("%.1f", (100f * digit_accuracy[7][0] / digit_accuracy[7][1])), String.format("%.1f", (100f * digit_accuracy[8][0] / digit_accuracy[8][1])), String.format("%.1f", (100f * digit_accuracy[9][0] / digit_accuracy[9][1]))));
+                    glut4.glutBitmapString(GLUT.BITMAP_TIMES_ROMAN_24, String.format("0:%s " + " 1:%s " + " 2:%s " + " 3:%s " + " 4:%s " + " 5:%s " + " 6:%s " + " 7:%s " + " 8:%s " + " 9:%s ", String.format("%.1f", ((100f * digit_accuracy[0][0]) / digit_accuracy[0][1])), String.format("%.1f", ((100f * digit_accuracy[1][0]) / digit_accuracy[1][1])), String.format("%.1f", ((100f * digit_accuracy[2][0]) / digit_accuracy[2][1])), String.format("%.1f", ((100f * digit_accuracy[3][0]) / digit_accuracy[3][1])), String.format("%.1f", ((100f * digit_accuracy[4][0]) / digit_accuracy[4][1])), String.format("%.1f", ((100f * digit_accuracy[5][0]) / digit_accuracy[5][1])), String.format("%.1f", ((100f * digit_accuracy[6][0]) / digit_accuracy[6][1])), String.format("%.1f", ((100f * digit_accuracy[7][0]) / digit_accuracy[7][1])), String.format("%.1f", ((100f * digit_accuracy[8][0]) / digit_accuracy[8][1])), String.format("%.1f", ((100f * digit_accuracy[9][0]) / digit_accuracy[9][1]))));
                 }
                 if (showLatency) {
                     GLUT glut5 = new GLUT();
@@ -475,7 +487,7 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
         }
 
         if (MNIST) {
-            gl.glBegin(GL2.GL_LINE_LOOP);
+            gl.glBegin(GL.GL_LINE_LOOP);
             gl.glVertex2d(xmedian - 13, ymedian + 14);
             gl.glVertex2d(xmedian + 14, ymedian + 14);
             gl.glVertex2d(xmedian + 14, ymedian - 13);
@@ -558,8 +570,8 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
         l.clear();
         l.addAll(lhs);
         Collections.sort(l);
-        if (l.size()%2==0){
-            median = (int)Math.ceil((double)((l.get(l.size()/2)+l.get(l.size()/2-1)))/2.0);
+        if ((l.size()%2)==0){
+            median = (int)Math.ceil(((l.get(l.size()/2)+l.get((l.size()/2)-1)))/2.0);
         }else{
             median = l.get((l.size()-1)/2);
         }
@@ -571,9 +583,9 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
         List<List<Integer>> InputSpace = new ArrayList<>();
         if (MNIST) {
             for (int i = 0; i < x.size(); i++) {
-                int x_new = x.get(i) - x_median + 14;
-                int y_new = y.get(i) - y_median + 14;
-                if (x_new >= 1 && x_new <= 28 && y_new >= 1 && y_new <= 28) {
+                int x_new = (x.get(i) - x_median) + 14;
+                int y_new = (y.get(i) - y_median) + 14;
+                if ((x_new >= 1) && (x_new <= 28) && (y_new >= 1) && (y_new <= 28)) {
                     int x_new_transformed = 28-y_new;
                     int y_new_transformed = x_new-1;
                     List<Integer> triplets = Arrays.asList(x_new_transformed, y_new_transformed, i);
@@ -585,8 +597,8 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
             int dimx = net.layers.get(0).dimx;
             int dimy = net.layers.get(0).dimy;
             for (int i = 0; i < x.size(); i++) {
-                int x_new = (int) Math.floor(x.get(i) * (dimx-1) * 1.0 / (chip.getSizeX()-1) + (chip.getSizeX()-dimx)*1.0 / (chip.getSizeX()-1));
-                int y_new = (int) Math.floor(y.get(i) * (dimy-1) * 1.0 / (chip.getSizeY()-1) + (chip.getSizeY()-dimy)*1.0 / (chip.getSizeY()-1));
+                int x_new = (int) Math.floor(((x.get(i) * (dimx-1) * 1.0) / (chip.getSizeX()-1)) + (((chip.getSizeX()-dimx)*1.0) / (chip.getSizeX()-1)));
+                int y_new = (int) Math.floor(((y.get(i) * (dimy-1) * 1.0) / (chip.getSizeY()-1)) + (((chip.getSizeY()-dimy)*1.0) / (chip.getSizeY()-1)));
                 List<Integer> triplets = Arrays.asList(x_new, y_new, i);
                 InputSpace.add(triplets);
             }
@@ -643,14 +655,14 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
                         float[] kernels = layerReader.getBase64FloatArr("kernels");
                         for (int j = 0; j < net.layers.get(i).inmaps; j++) {
                             for (int k = 0; k < net.layers.get(i).outmaps; k++) {
-                                int a = (j*net.layers.get(i).outmaps+k)*kernelsize*kernelsize;
-                                int b = a+kernelsize*kernelsize;
+                                int a = ((j*net.layers.get(i).outmaps)+k)*kernelsize*kernelsize;
+                                int b = a+(kernelsize*kernelsize);
                                 float[][] mat = ArrToMat(Arrays.copyOfRange(kernels,a,b),kernelsize);
                                 net.layers.get(i).k.add(mat);
                             }
                         }
-                        net.layers.get(i).dimx = net.layers.get(i-1).dimx-kernelsize+1;
-                        net.layers.get(i).dimy = net.layers.get(i-1).dimy-kernelsize+1;
+                        net.layers.get(i).dimx = (net.layers.get(i-1).dimx-kernelsize)+1;
+                        net.layers.get(i).dimy = (net.layers.get(i-1).dimy-kernelsize)+1;
                         int correct_size = net.layers.get(i).dimx;
                         float[][] correctly_sized_zeros = new float[correct_size][correct_size];
                         for (int j = 0; j < correct_size; j++) {
@@ -737,7 +749,7 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
         float[][] matrix = new float[kernelsize][kernelsize];
         for (int i = 0; i < kernelsize; i++) {
             for (int j = 0; j < kernelsize; j++) {
-                matrix[j][i] = array[i*kernelsize+j];
+                matrix[j][i] = array[(i*kernelsize)+j];
             }
         }
         return matrix;
@@ -748,7 +760,7 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
         float[][] matrix = new float[outputclass][mapsize*mapsize*inmaps];
         for (int i = 0; i < matrix[0].length; i++) {
             for (int j = 0; j < matrix.length; j++) {
-                matrix[j][i] = array[i*outputclass+j];
+                matrix[j][i] = array[(i*outputclass)+j];
             }
         }
         return matrix;
@@ -813,8 +825,8 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
             //ConvLayer
             if ("c".equals(net.layers.get(i).type)) {
                 //size of matrix after convolution
-                int dimx = net.layers.get(i - 1).dimx - net.layers.get(i).kernelsize + 1;
-                int dimy = net.layers.get(i - 1).dimy - net.layers.get(i).kernelsize + 1;
+                int dimx = (net.layers.get(i - 1).dimx - net.layers.get(i).kernelsize) + 1;
+                int dimy = (net.layers.get(i - 1).dimy - net.layers.get(i).kernelsize) + 1;
 
 
                 //output a map for each convolution
@@ -831,7 +843,7 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
                     for (int k = 0; k < net.layers.get(i).inmaps; k++) {
                         //for each input map convolve with corresponding kernel and add to temp output map
                         float[][] sp_in = net.layers.get(i - 1).sp.get(k);
-                        float[][] z_conv = convolution2D(sp_in, sp_in.length, sp_in[0].length, net.layers.get(i).k.get(k * net.layers.get(i).outmaps + j), net.layers.get(i).kernelsize, net.layers.get(i).kernelsize);
+                        float[][] z_conv = convolution2D(sp_in, sp_in.length, sp_in[0].length, net.layers.get(i).k.get((k * net.layers.get(i).outmaps) + j), net.layers.get(i).kernelsize, net.layers.get(i).kernelsize);
                         for (int l = 0; l < dimx; l++) {
                             for (int m = 0; m < dimy; m++) {
                                 z[l][m] = z[l][m] + z_conv[l][m];
@@ -860,8 +872,9 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
                     for (int k = 0; k < dimx; k++) {
                         for (int l = 0; l < dimy; l++) {
                             mem_new[k][l]=net.layers.get(i).m.get(j)[k][l]+z[k][l];
-                            if (mem_new[k][l] < negative_threshold)
-                                mem_new[k][l] = negative_threshold;
+                            if (mem_new[k][l] < negative_threshold) {
+								mem_new[k][l] = negative_threshold;
+							}
                         }
                     }
 
@@ -913,8 +926,8 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
                 }
             } else if ("s".equals(net.layers.get(i).type)) {
                 //subsample by averaging
-                int width = net.layers.get(i - 1).dimx - net.layers.get(i).scale + 1;
-                int height = net.layers.get(i - 1).dimy - net.layers.get(i).scale + 1;
+                int width = (net.layers.get(i - 1).dimx - net.layers.get(i).scale) + 1;
+                int height = (net.layers.get(i - 1).dimy - net.layers.get(i).scale) + 1;
                 int dimx = net.layers.get(i).dimx;
                 int dimy = net.layers.get(i).dimy;
 
@@ -1034,7 +1047,7 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
 
         for (int i = 0; i < d; i++) {
             for (int j = 0; j < e; j++) {
-                impulse[i] = impulse[i] + net.ffw[i][j] * net.fv[j];
+                impulse[i] = impulse[i] + (net.ffw[i][j] * net.fv[j]);
             }
         }
 
@@ -1085,7 +1098,7 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
         //store results for analysis later
         for (int i = 0; i < d; i++) {
             if (!reset) {
-                net.o_sum_spikes[i] = net.o_sum_spikes[i] * (float) Math.exp(- (currenttime-t_previous) / decay_output) + net.o_spikes[i];
+                net.o_sum_spikes[i] = (net.o_sum_spikes[i] * (float) Math.exp(- (currenttime-t_previous) / decay_output)) + net.o_spikes[i];
             }else{
                 net.o_sum_spikes[i] = net.o_sum_spikes[i] + net.o_spikes[i];
             }
@@ -1105,8 +1118,8 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
         }
 
 
-        int smallWidth = width - kernelWidth + 1;
-        int smallHeight = height - kernelHeight + 1;
+        int smallWidth = (width - kernelWidth) + 1;
+        int smallHeight = (height - kernelHeight) + 1;
         float[][] output = new float[smallWidth][smallHeight];
         for(int i=0;i<smallWidth;++i){
             for(int j=0;j<smallHeight;++j){
@@ -1133,12 +1146,12 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
     }
 
     public static float[][] MaxConvolution(float[][] input, int x, int y, int kernelWidth, int kernelHeight){
-        float output[][] = new float[x-kernelHeight+1][y-kernelHeight+1];
+        float output[][] = new float[(x-kernelHeight)+1][(y-kernelHeight)+1];
         for (int i = 0; i < output.length; i++) {
             for (int j = 0; j < output[0].length; j++) {
                 float max=0.0f;
-                for (int k = i; k < i+kernelWidth; k++) {
-                    for (int l = j; l < i+kernelHeight; l++) {
+                for (int k = i; k < (i+kernelWidth); k++) {
+                    for (int l = j; l < (i+kernelHeight); l++) {
                         if (input[k][l]>max) {
                             max = input[k][l];
                         }
@@ -1152,11 +1165,11 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
 
     public static float[][] MaxSubsample(float[][] input, int x, int y, int scale){
         float output[][] = new float[x/scale][y/scale];
-        for (int i = 0; i < x/scale; i++) {
-            for (int j = 0; j < y/scale; j++) {
+        for (int i = 0; i < (x/scale); i++) {
+            for (int j = 0; j < (y/scale); j++) {
                 float max = 0.0f;
-                for (int k = i*scale; k < (1+i)*scale; k++) {
-                    for (int l = j*scale; l < (1+j)*scale; l++) {
+                for (int k = i*scale; k < ((1+i)*scale); k++) {
+                    for (int l = j*scale; l < ((1+j)*scale); l++) {
                         if (input[k][l]>max){
                             max=input[k][l];
                         }
@@ -1211,7 +1224,7 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
             if (gtTargetLocation.location != null) {
                 int x = (int) Math.floor(gtTargetLocation.location.x);
                 int gtDescision = x / third;
-                if (gtDescision < 0 || gtDescision > 3) {
+                if ((gtDescision < 0) || (gtDescision > 3)) {
                     return; // bad descision output, should not happen
                 }
                 count[gtDescision]++;
@@ -1224,7 +1237,7 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
                         dvsCorrect++;
                     }
                 } else {
-                    if (/*getPixelErrorAllowedForSteering() == 0*/true) {
+                	/*if (getPixelErrorAllowedForSteering() == 0) {*/
                         incorrect[gtDescision]++;
                         totalIncorrect++;
                         if (apsType) {
@@ -1232,7 +1245,7 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
                         } else {
                             dvsIncorrect++;
                         }
-                    } else {
+                    /*} else {
                         boolean wrong = true;
                         // might be error but maybe not if the descision is e.g. to left and the target location is just over the border to middle
                         float gtX = gtTargetLocation.location.x;
@@ -1253,7 +1266,7 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
                             }
 
                         }
-                    }
+                    }*/
                 }
 
             } else {
