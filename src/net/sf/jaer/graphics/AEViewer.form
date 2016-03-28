@@ -676,6 +676,15 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="unzoomMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="setBorderSpaceMenuItem">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Set border space..."/>
+                <Property name="toolTipText" type="java.lang.String" value="Set the border space around the chip canvas in pixels"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setBorderSpaceMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
           </SubComponents>
         </Menu>
         <Menu class="javax.swing.JMenu" name="deviceMenu">

@@ -2870,6 +2870,7 @@ two interfaces). otherwise force user choice.
         zoomOutMenuItem = new javax.swing.JMenuItem();
         zoomCenterMenuItem = new javax.swing.JMenuItem();
         unzoomMenuItem = new javax.swing.JMenuItem();
+        setBorderSpaceMenuItem = new javax.swing.JMenuItem();
         deviceMenu = new javax.swing.JMenu();
         deviceMenuSpparator = new javax.swing.JSeparator();
         customizeDevicesMenuItem = new javax.swing.JMenuItem();
@@ -3613,6 +3614,15 @@ two interfaces). otherwise force user choice.
             }
         });
         viewMenu.add(unzoomMenuItem);
+
+        setBorderSpaceMenuItem.setText("Set border space...");
+        setBorderSpaceMenuItem.setToolTipText("Set the border space around the chip canvas in pixels");
+        setBorderSpaceMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setBorderSpaceMenuItemActionPerformed(evt);
+            }
+        });
+        viewMenu.add(setBorderSpaceMenuItem);
 
         menuBar.add(viewMenu);
 
@@ -5485,6 +5495,19 @@ two interfaces). otherwise force user choice.
         }
     }//GEN-LAST:event_setFrameRateMenuItemActionPerformed
 
+    private void setBorderSpaceMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setBorderSpaceMenuItemActionPerformed
+        int borderSpaceNow = chip.getCanvas().getBorderSpacePixels();
+        String borderString = JOptionPane.showInputDialog(this, "Desired border space in chip pixels?", Integer.toString(borderSpaceNow));
+        try {
+            int newSpace = Integer.parseInt(borderString);
+            if (newSpace != borderSpaceNow) {
+                chip.getCanvas().setBorderSpacePixels(newSpace);
+            }
+        } catch (NumberFormatException e) {
+            log.warning(e.toString());
+        }               
+    }//GEN-LAST:event_setBorderSpaceMenuItemActionPerformed
+
 	/** Returns desired frame rate of FrameRater
 	 *
 	 * @return desired frame rate in Hz.
@@ -6099,6 +6122,7 @@ two interfaces). otherwise force user choice.
     private javax.swing.JMenuItem rewindPlaybackMenuItem;
     private javax.swing.JMenuItem sequenceMenuItem;
     private javax.swing.JMenuItem serverSocketOptionsMenuItem;
+    private javax.swing.JMenuItem setBorderSpaceMenuItem;
     private javax.swing.JMenuItem setDefaultFirmwareMenuItem;
     private javax.swing.JMenuItem setFrameRateMenuItem;
     private javax.swing.JMenuItem setMarkInMI;
