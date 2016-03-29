@@ -135,6 +135,7 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
 
     //ways of processing input spikes
     private boolean batch = getBoolean("batch",false);
+    private float batchsize = getFloat("batchsize",0.02f);
     private boolean spike = getBoolean("spike",true);
 
     final String app = "Application", disp = "Display", param = "Parameters", inPro = "Processing Input", medTr = "Median Tracker", file = "Files";
@@ -150,7 +151,8 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip(disp, "showAccuracy","show accuracy");
         setPropertyTooltip(disp, "showDigitsAccuracy","show accuracy of each digit in the case of MNIST");
         //processing input
-        setPropertyTooltip(inPro, "batch", "process input spikes in a batched version; accuracy and latency depend on packet size and refractory period is set to zero");
+        setPropertyTooltip(inPro, "batch", "process input spikes in a batched version; accuracy and latency depend on batchsize and refractory period is set to zero; please specify batchsize below");
+        setPropertyTooltip(inPro, "batchsize", "unit:second; all spikes/events in this time interval are processed synchronously");
         setPropertyTooltip(inPro, "spike", "process input spikes in a purely spike based manner; no dependency on packet size");
         //parameters
         setPropertyTooltip(param, "reset","reset network between each digits: select this only when label file is available");
@@ -177,7 +179,9 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
     int correctTotalCount = 0;
     int label = 0;
     int finalPredict = 0;
+    int predict = 0;
     float prevTimeBatch  = 0f;
+    float currTimeBatch = batchsize;
     float[][] digitsAccuracy = new float[10][2];
     List<Float> endingTimes = new ArrayList<>();
     List<Float> startingTimes = new ArrayList<>();
@@ -196,6 +200,16 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
     public List<Pair> spikeList = new ArrayList<>();
     public List<Integer> activeSet = new ArrayList<>();
     public List<Pair> activeSetSub = new ArrayList<>();
+    //store addresses and timestamps for the batched method
+    public List<Float> batchTimes = new ArrayList<>();
+    public List<Float> batchTimesRest = new ArrayList<>();
+    public List<Integer> batchX = new ArrayList<>();
+    public List<Integer> batchXRest = new ArrayList<>();
+    public List<Integer> batchY = new ArrayList<>();
+    public List<Integer> batchYRest = new ArrayList<>();
+    int countEvents = 0;
+
+
 
     @Override
     public void resetFilter() {
@@ -250,7 +264,7 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
         if(showLatency) {
             if (changeDigit) {
                 if (!times.isEmpty()) {
-                    digitStart = times.get(0);
+                    digitStart = startingTimes.get(0);
                     changeDigit = false;
                     winnerGot = false;
                 }
@@ -258,80 +272,204 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
         }
 
 
-        //update network only when spike presents
-        if (!x_clone.isEmpty()) {
+        if(spike) {
+            if (!x_clone.isEmpty()) {
 
-            //use median tracker to process input
-            if(MNIST&&medianTracker) {
-                xMedian = getMedian(x_clone);
-                yMedian = getMedian(y_clone);
-            }
-
-            //process spikes such that they're consistent with the size of input layer
-            List<List<Integer>> coordinates_index_new = DVStoPixelInputSpace(x, y, xMedian, yMedian);
-            List<Float> times_new = new ArrayList<>();
-            if (MNIST){
-                for (int i = 0; i < coordinates_index_new.size(); i++) {
-                    times_new.add(times.get(coordinates_index_new.get(i).get(2)));
+                //use median tracker to process input
+                if (MNIST && medianTracker) {
+                    xMedian = getMedian(x_clone);
+                    yMedian = getMedian(y_clone);
                 }
-            }else if (robotSteering){
-                times_new = times;
-            }
 
-            //propagate through network in either batch version or purely spike based
-            if (batch&!spike){
-                propagateBatchSpikingCnn(coordinates_index_new, tRef, threshold, times_new);
-            }else if(spike&!batch){
+                //process spikes such that they're consistent with the size of input layer
+                List<List<Integer>> coordinates_index_new = DVStoPixelInputSpace(x, y, xMedian, yMedian);
+                List<Float> times_new = new ArrayList<>();
+                if (MNIST) {
+                    for (int i = 0; i < coordinates_index_new.size(); i++) {
+                        times_new.add(times.get(coordinates_index_new.get(i).get(2)));
+                    }
+                } else if (robotSteering) {
+                    times_new = times;
+                }
+
+                //propagate through network
                 propagateSpikingCnn(coordinates_index_new, tRef, threshold, times_new);
-            }else{
-                log.info("Please select exact one method for processing input.");
-            }
 
-            //make prediction based on output scores
-            prevTimeBatch = times.get(times.size()-1);
-            double max = 0;
-            int predict = 0;
-            for (int i = 0; i < net.outSumSpikes.length; i++) {
-                if (net.outSumSpikes[i] >= max) {
-                    max = net.outSumSpikes[i];
-                    predict = i;
-                }
-            }
-            //check if the neuron with the max. score corresponds to label
-            if (showLatency) {
-                if (winnerGot == false) {
-                    if (predict == labels.get(0)) {
-                        latency = prevTimeBatch - digitStart;
-                        winnerGot = true;
-                        sumLatency += latency;
+
+                //make prediction based on output scores
+                prevTimeBatch = times.get(times.size() - 1);
+                double max = 0;
+                int prediction = 0;
+                for (int i = 0; i < net.outSumSpikes.length; i++) {
+                    if (net.outSumSpikes[i] >= max) {
+                        max = net.outSumSpikes[i];
+                        prediction = i;
                     }
                 }
-            }
-
-
-            if (labelsAvailable) {
-                if (times.get(times.size() - 1) > endingTimes.get(0)) {
-                    finalPredict = predict;
-                    label = labels.get(0);
-                    totalCount++;
-                    digitsAccuracy[label][1]+=1;
-                    if (label == predict) {
-                        correctTotalCount++;
-                        digitsAccuracy[label][0] += 1;
-                    }
-                    labels.remove(0);
-                    endingTimes.remove(0);
-                    startingTimes.remove(0);
-                    numLabel++;
-                    if (showLatency) {
-                        if (winnerGot == false) {
+                predict = prediction;
+                //check if the neuron with the max. score corresponds to label
+                if (showLatency) {
+                    if (winnerGot == false) {
+                        if (predict == labels.get(0)) {
                             latency = prevTimeBatch - digitStart;
+                            winnerGot = true;
                             sumLatency += latency;
                         }
-                        meanLatency = sumLatency/numLabel;
                     }
-                    changeDigit=true;
                 }
+
+
+                if (labelsAvailable) {
+                    if (times.get(times.size() - 1) > endingTimes.get(0)) {
+                        finalPredict = predict;
+                        label = labels.get(0);
+                        totalCount++;
+                        digitsAccuracy[label][1] += 1;
+                        if (label == predict) {
+                            correctTotalCount++;
+                            digitsAccuracy[label][0] += 1;
+                        }
+                        labels.remove(0);
+                        endingTimes.remove(0);
+                        startingTimes.remove(0);
+                        numLabel++;
+                        if (showLatency) {
+                            if (winnerGot == false) {
+                                latency = prevTimeBatch - digitStart;
+                                sumLatency += latency;
+                            }
+                            meanLatency = sumLatency / numLabel;
+                        }
+                        changeDigit = true;
+                    }
+                }
+            }
+        }else if (batch) {
+            if (!times.isEmpty()) {
+                if (times.get(times.size()-1) <= currTimeBatch) {
+                    batchTimes.addAll(times);
+                    batchX.addAll(x);
+                    batchY.addAll(y);
+                    countEvents+=times.size();
+                } else {
+                    for (int i = 0; i < times.size(); i++) {
+                        if (times.get(i)<=currTimeBatch){
+                            batchTimes.add(times.get(i));
+                            batchX.add(x.get(i));
+                            batchY.add(y.get(i));
+                        }else{
+                            batchTimesRest.add(times.get(i));
+                            batchXRest.add(x.get(i));
+                            batchYRest.add(y.get(i));
+                        }
+                    }
+                }
+
+                while(!batchTimesRest.isEmpty()){
+
+                    List<Integer> batchXClone = new ArrayList<>();
+                    List<Integer> batchYClone = new ArrayList<>();
+
+                    batchXClone.addAll(batchX);
+                    batchYClone.addAll(batchY);
+
+                    //use median tracker to process input
+                    if (MNIST && medianTracker) {
+                        xMedian = getMedian(x_clone);
+                        yMedian = getMedian(y_clone);
+                    }
+
+                    //process spikes such that they're consistent with the size of input layer
+                    List<List<Integer>> coordinates_index_new = DVStoPixelInputSpace(batchX, batchY, xMedian, yMedian);
+                    List<Float> times_new = new ArrayList<>();
+                    if (MNIST) {
+                        for (int i = 0; i < coordinates_index_new.size(); i++) {
+                            times_new.add(batchTimes.get(coordinates_index_new.get(i).get(2)));
+                        }
+                    } else if (robotSteering) {
+                        times_new = batchTimes;
+                    }
+
+                    //propagate through network
+                    propagateBatchSpikingCnn(coordinates_index_new, tRef, threshold, times_new);
+
+
+                    //make prediction based on output scores
+                    prevTimeBatch = currTimeBatch;
+                    currTimeBatch += batchsize;
+                    double max = 0;
+                    int prediction = 0;
+                    for (int i = 0; i < net.outSumSpikes.length; i++) {
+                        if (net.outSumSpikes[i] >= max) {
+                            max = net.outSumSpikes[i];
+                            prediction = i;
+                        }
+                    }
+                    predict = prediction;
+                    //check if the neuron with the max. score corresponds to label
+                    if (showLatency) {
+                        if (winnerGot == false) {
+                            if (predict == labels.get(0)) {
+                                latency = prevTimeBatch - digitStart;
+                                winnerGot = true;
+                                sumLatency += latency;
+                            }
+                        }
+                    }
+
+
+                    if (labelsAvailable) {
+                        if (prevTimeBatch > endingTimes.get(0)) {
+                            finalPredict = predict;
+                            label = labels.get(0);
+                            totalCount++;
+                            digitsAccuracy[label][1] += 1;
+                            if (label == predict) {
+                                correctTotalCount++;
+                                digitsAccuracy[label][0] += 1;
+                            }
+                            labels.remove(0);
+                            endingTimes.remove(0);
+                            startingTimes.remove(0);
+                            numLabel++;
+                            if (showLatency) {
+                                if (winnerGot == false) {
+                                    latency = prevTimeBatch - digitStart;
+                                    sumLatency += latency;
+                                }
+                                meanLatency = sumLatency / numLabel;
+                            }
+                            changeDigit = true;
+                        }
+                    }
+
+                    batchTimes.clear();
+                    batchX.clear();
+                    batchY.clear();
+
+                    if (!batchTimesRest.isEmpty()) {
+                        if (batchTimesRest.get(batchTimesRest.size()-1) <= currTimeBatch) {
+                            batchTimes.addAll(batchTimesRest);
+                            batchX.addAll(batchXRest);
+                            batchY.addAll(batchYRest);
+                            batchTimesRest.clear();
+                            batchXRest.clear();
+                            batchYRest.clear();
+                        } else {
+                            int i = 0;
+                            while(batchTimesRest.get(i)<=currTimeBatch){
+                                batchTimes.add(batchTimesRest.get(i));
+                                batchX.add(batchXRest.get(i));
+                                batchY.add(batchYRest.get(i));
+                                i++;
+                            }
+                            batchTimesRest.subList(0,i).clear();
+                            batchXRest.subList(0,i).clear();
+                            batchYRest.subList(0,i).clear();
+                        }
+                    }
+                }
+
             }
         }
         return in;
@@ -419,6 +557,10 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
                     gl.glRasterPos2f(0, 30);
                     glut5.glutBitmapString(GLUT.BITMAP_TIMES_ROMAN_24, String.format("current_latency = %s " + " average_latency = %s", String.format("%.3f", latency), String.format("%.3f", meanLatency)));
                 }
+        }else{
+            GLUT glut2 = new GLUT();
+            gl.glRasterPos2f(0, 45);
+            glut2.glutBitmapString(GLUT.BITMAP_TIMES_ROMAN_24, String.format("prediction = %s", Integer.toString(predict)));
         }
 
         if (MNIST) {
@@ -999,8 +1141,6 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
     }
 
     public void propagateBatchSpikingCnn(List<List<Integer>> input, float tRef, float threshold, List<Float> ts) {
-        //current time
-        float currentTime = ts.get(ts.size() - 1);
 
         //InputLayer
         float[][] InputSpikes = InputListToSpike(input);
@@ -1207,7 +1347,7 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
         //store results for analysis later
         for (int i = 0; i < d; i++) {
             if (!reset) {
-                net.outSumSpikes[i] = net.outSumSpikes[i] * (float) Math.exp(-(currentTime - prevTimeBatch) / decayConstOutput) + net.outSpikes[i];
+                net.outSumSpikes[i] = net.outSumSpikes[i] * (float) Math.exp(-(currTimeBatch-prevTimeBatch)/ decayConstOutput) + net.outSpikes[i];
             } else {
                 net.outSumSpikes[i] = net.outSumSpikes[i] + net.outSpikes[i];
             }
@@ -1365,6 +1505,13 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
     public void setBatch(boolean batch){
         this.batch=batch;
         putBoolean("batch",batch);
+    }
+
+    public float getbatchsize(){return batchsize;}
+
+    public void setbatchsize(float batchsize){
+        this.batchsize=batchsize;
+        putFloat("batchsize",batchsize);
     }
 
     public boolean getSpike(){return spike;}
