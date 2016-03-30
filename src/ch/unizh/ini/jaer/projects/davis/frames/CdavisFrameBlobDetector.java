@@ -5,28 +5,66 @@
  */
 package ch.unizh.ini.jaer.projects.davis.frames;
 
-import static org.bytedeco.javacpp.opencv_core.*;
-import static org.bytedeco.javacpp.opencv_imgproc.*;
+import static org.bytedeco.javacpp.Loader.sizeof;
+import static org.bytedeco.javacpp.helper.opencv_imgproc.cvDrawContours;
+import static org.bytedeco.javacpp.opencv_core.CV_32FC2;
+import static org.bytedeco.javacpp.opencv_core.CV_8U;
+import static org.bytedeco.javacpp.opencv_core.CV_8UC3;
+import static org.bytedeco.javacpp.opencv_core.cvCreateMemStorage;
+import static org.bytedeco.javacpp.opencv_core.cvGetSeqElem;
+import static org.bytedeco.javacpp.opencv_core.cvInRangeS;
+import static org.bytedeco.javacpp.opencv_core.cvPoint;
+import static org.bytedeco.javacpp.opencv_core.cvScalar;
+import static org.bytedeco.javacpp.opencv_core.cvSplit;
 //import static org.bytedeco.javacpp.opencv_core.CV_64FC3;
 //import static org.bytedeco.javacpp.opencv_core.CV_8U;
 //import static org.bytedeco.javacpp.opencv_core.CV_8UC3;
 //import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_EPS;
 //import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_ITER;
 //import static org.bytedeco.javacpp.opencv_imgproc.CV_GRAY2RGB;
+import static org.bytedeco.javacpp.opencv_imgproc.CV_AA;
+import static org.bytedeco.javacpp.opencv_imgproc.CV_CHAIN_APPROX_SIMPLE;
+import static org.bytedeco.javacpp.opencv_imgproc.CV_GRAY2RGB;
+import static org.bytedeco.javacpp.opencv_imgproc.CV_POLY_APPROX_DP;
+import static org.bytedeco.javacpp.opencv_imgproc.CV_RETR_CCOMP;
+import static org.bytedeco.javacpp.opencv_imgproc.CV_RGB2HSV;
+import static org.bytedeco.javacpp.opencv_imgproc.cvApproxPoly;
+import static org.bytedeco.javacpp.opencv_imgproc.cvContourPerimeter;
+import static org.bytedeco.javacpp.opencv_imgproc.cvFindContours;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.geom.Point2D;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.io.File;
+import java.nio.FloatBuffer;
 import java.util.List;
+import java.util.logging.Level;
 
+import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 
 import org.bytedeco.javacpp.FloatPointer;
 import org.bytedeco.javacpp.opencv_calib3d;
 import org.bytedeco.javacpp.opencv_core;
+import org.bytedeco.javacpp.opencv_core.CvContour;
+import org.bytedeco.javacpp.opencv_core.CvMemStorage;
+import org.bytedeco.javacpp.opencv_core.CvPoint;
+import org.bytedeco.javacpp.opencv_core.CvSeq;
+import org.bytedeco.javacpp.opencv_core.IplImage;
 import org.bytedeco.javacpp.opencv_core.Mat;
 import org.bytedeco.javacpp.opencv_core.MatVector;
 import org.bytedeco.javacpp.opencv_core.Size;
 import org.bytedeco.javacpp.opencv_highgui;
 import org.bytedeco.javacpp.opencv_imgproc;
+import org.bytedeco.javacpp.helper.opencv_core.AbstractCvScalar;
+import org.bytedeco.javacpp.helper.opencv_core.AbstractIplImage;
+import org.bytedeco.javacpp.indexer.DoubleIndexer;
+import org.bytedeco.javacpp.indexer.ShortBufferIndexer;
 import org.openni.Device;
 import org.openni.DeviceInfo;
 import org.openni.OpenNI;
@@ -35,38 +73,17 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 
-import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
 import eu.seebetter.ini.chips.DavisChip;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.geom.Point2D;
-import java.awt.image.BufferedImage;
-import java.awt.image.WritableRaster;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.io.File;
-import java.nio.FloatBuffer;
-import java.util.Iterator;
-import java.util.Random;
-import java.util.logging.Level;
-import javax.swing.JButton;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.ApsDvsEventPacket;
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
-import static org.bytedeco.javacpp.Loader.sizeof;
-import org.bytedeco.javacpp.indexer.DoubleIndexer;
-import static org.bytedeco.javacpp.opencv_core.CV_32FC2;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 
 /**
  * Detects blobs in CDAVIS frames using OpenCV SimpleBlobDetector.
@@ -113,10 +130,10 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     private Mat imgIn, imgOut;
     private CvSeq contours;
     private CvMemStorage mem;
-    
+
     private short[] undistortedAddressLUT;
     private boolean isUndistortedAddressLUTgenerated = false;
-    
+
     private float focalLengthPixels = 0;
     private float focalLengthMm = 0;
     private Point2D.Float principlePoint = null;
@@ -133,7 +150,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     private final ApsFrameExtractor frameExtractor;
     private final FilterChain filterChain;
     private boolean saved=false;
-    
+
     private AEFrameChipRenderer renderer=null;
     private boolean rendererPropertyChangeListenerAdded=false;
     DavisChip apsDvsChip = null;
@@ -147,9 +164,9 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         setEnclosedFilterChain(filterChain);
         lastFrame = new float[640*480*3];
         resetFilter();
-        
-        
-        
+
+
+
         setPropertyTooltip("patternHeight", "height of chessboard calibration pattern in internal corner intersections, i.e. one less than number of squares");
         setPropertyTooltip("patternWidth", "width of chessboard calibration pattern in internal corner intersections, i.e. one less than number of squares");
         setPropertyTooltip("realtimePatternDetectionEnabled", "width of checkerboard calibration pattern in internal corner intersections");
@@ -176,7 +193,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
      * @return the processed events, may be fewer in number. filtering may occur
      * in place in the in packet.
      */
-    
+
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!rendererPropertyChangeListenerAdded){
@@ -188,7 +205,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 //        apsFrameExtractor.filterPacket(in);
         return in;
     }
-    
+
     @Override
     synchronized public void propertyChange(PropertyChangeEvent evt) {
         if ((evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)
@@ -199,20 +216,20 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
             // rewrite frame to avoid padding for texture
             for (int x = 0; x < sx; x++) {
                 for (int y = 0; y < sy; y++) {
-                    int i=r.getPixMapIndex(x, y),j=x*3 + ((sy-1-y)*sx*3);
+                    int i=r.getPixMapIndex(x, y),j=(x*3) + ((sy-1-y)*sx*3);
                     lastFrame[j] = lastFrameBuffer.get(i + 2);
                     lastFrame[j+ 1] = lastFrameBuffer.get(i + 1);
                     lastFrame[j+ 2] = lastFrameBuffer.get(i);
                 }
             }
-                                
+
             //trigger action (on ts reset)
-            
+
 //            if (takeImageOnTimestampReset) {
 //                log.info("timestamp reset action trigggered");
 //                actionTriggered = true;
 //                nAcqFrames = 0;
-//            }         
+//            }
                 //process frame
                 if (realtimePatternDetectionEnabled) {
                     findCurrentCorners(false);
@@ -282,18 +299,16 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         imgIn = input.reshape(3, sy);
         Mat imgHsv = new Mat(ip);
         cvtColor(imgIn, imgHsv, CV_RGB2HSV);
-        CvMat imgInCvMat = imgIn.asCvMat();
-        IplImage imgInIplImage = imgInCvMat.asIplImage();
-        CvMat imgHsvCvMat = imgHsv.asCvMat();
-        IplImage imgHsvIplImage = imgHsvCvMat.asIplImage();
-        
-        IplImage hue = IplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
-        IplImage sat = IplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
-        IplImage val = IplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
-        IplImage hueBin = IplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
+        IplImage imgInIplImage = new IplImage(imgIn);
+        IplImage imgHsvIplImage = new IplImage(imgHsv);
+
+        IplImage hue = AbstractIplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
+        IplImage sat = AbstractIplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
+        IplImage val = AbstractIplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
+        IplImage hueBin = AbstractIplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
 
         cvSplit( imgHsvIplImage, hue, sat, val, null );
-        
+
         //threshold(hueMat, imgOut, 100, 255, CV_THRESH_BINARY);
         cvInRangeS(hue,cvScalar(100),cvScalar(120),hueBin);
 //        CvMat imgOutCvMat = imgOut.asCvMat();
@@ -302,11 +317,11 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         mem = cvCreateMemStorage(0);
         //        CvSeq ptr = new CvSeq();
         cvFindContours(hueBin, mem, contours, sizeof(CvContour.class) , CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE, cvPoint(0,0));
-        while (contours != null && !contours.isNull()) {
+        while ((contours != null) && !contours.isNull()) {
                 if (contours.elem_size() > 0) {
                     CvSeq points = cvApproxPoly(contours, sizeof(CvContour.class),
                             mem, CV_POLY_APPROX_DP, cvContourPerimeter(contours)*0.02, 0);
-                    cvDrawContours(imgInIplImage, points, CvScalar.BLUE, CvScalar.BLUE, -1, 1, CV_AA);
+                    cvDrawContours(imgInIplImage, points, AbstractCvScalar.BLUE, AbstractCvScalar.BLUE, -1, 1, CV_AA);
                 }
                 contours = contours.h_next();
             }
@@ -317,13 +332,13 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 //            CvScalar color = CV_RGB( randomColor.getRed(), randomColor.getGreen(), randomColor.getBlue());
 //            cvDrawContours(imgOutIplImage, ptr, color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
 //        }
-//        
-        Mat blobImg = new Mat(imgInIplImage,true);
-        Mat hueMat = new Mat(hue,true);
-        Mat satMat = new Mat(sat,true);
-        Mat valMat = new Mat(val,true);
-        Mat hueBinMat = new Mat(hueBin,true);
-        
+//
+        Mat blobImg = new Mat(imgInIplImage);
+        Mat hueMat = new Mat(hue);
+        Mat satMat = new Mat(sat);
+        Mat valMat = new Mat(val);
+        Mat hueBinMat = new Mat(hueBin);
+
         opencv_highgui.imshow("Input", imgIn);
         opencv_highgui.imshow("Hue", hueMat);
         opencv_highgui.imshow("Sat", satMat);
@@ -487,7 +502,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
             allObjectPoints.resize(100);
         }
         //debug
-               
+
         calibrated = true;
         getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
 
@@ -509,8 +524,8 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
             }
         }
         Mat dst = new Mat();
-        Mat pixelArray = new Mat(1, sx * sy, CV_32FC2, fp); // make wide 2 channel matrix of source event x,y 
-        opencv_imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs()); 
+        Mat pixelArray = new Mat(1, sx * sy, CV_32FC2, fp); // make wide 2 channel matrix of source event x,y
+        opencv_imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
         isUndistortedAddressLUTgenerated = true;
         // get the camera matrix elements (focal lengths and principal point)
         DoubleIndexer k = getCameraMatrix().createIndexer();
@@ -520,30 +535,33 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         cx = (float) k.get(0, 2);
         cy = (float) k.get(1, 2);
         undistortedAddressLUT = new short[2 * sx * sy];
-        
+
         for (int x = 0; x < sx; x++) {
             for (int y = 0; y < sy; y++) {
-                idx = 2 * (y + sy * x);
-                undistortedAddressLUT[idx] = (short) Math.round(dst.getFloatBuffer().get(idx) * fx + cx);
-                undistortedAddressLUT[idx+1] = (short) Math.round(dst.getFloatBuffer().get(idx+1) * fy + cy);
+                idx = 2 * (y + (sy * x));
+                undistortedAddressLUT[idx] = (short) Math.round((dst.getFloatBuffer().get(idx) * fx) + cx);
+                undistortedAddressLUT[idx+1] = (short) Math.round((dst.getFloatBuffer().get(idx+1) * fy) + cy);
             }
         }
     }
-    
-  
-    
+
+
+
     public boolean isUndistortedAddressLUTgenerated() {
         return isUndistortedAddressLUTgenerated;
     }
-    
+
     private void generateCalibrationString() {
-        if(cameraMatrix==null || cameraMatrix.isNull() || cameraMatrix.empty()){
+        if((cameraMatrix==null) || cameraMatrix.isNull() || cameraMatrix.empty()){
             calibrationString="uncalibrated";
             return;
         }
-        focalLengthPixels = (float) (cameraMatrix.asCvMat().get(0, 0) + cameraMatrix.asCvMat().get(0, 0)) / 2;
+
+        ShortBufferIndexer cameraMatrixIndexer = cameraMatrix.createIndexer();
+
+        focalLengthPixels = (float) (cameraMatrixIndexer.get(0, 0) + cameraMatrixIndexer.get(0, 0)) / 2;
         focalLengthMm = chip.getPixelWidthUm() * 1e-3f * focalLengthPixels;
-        principlePoint = new Point2D.Float((float) cameraMatrix.asCvMat().get(0, 2), (float) cameraMatrix.asCvMat().get(1, 2));
+        principlePoint = new Point2D.Float(cameraMatrixIndexer.get(0, 2), cameraMatrixIndexer.get(1, 2));
         StringBuilder sb=new StringBuilder();
         if(imageCounter>0){
             sb.append(String.format("Using %d images",imageCounter));
@@ -592,7 +610,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         generateCalibrationString();
         saved=true;
     }
-    
+
     static void setButtonState(Container c, String buttonString,boolean flag ) {
     int len = c.getComponentCount();
     for (int i = 0; i < len; i++) {
@@ -608,7 +626,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
       } else if (comp instanceof Container) {
           setButtonState((Container) comp, buttonString, flag);
       }
-    }     
+    }
 }
 
     synchronized public void doLoadCalibration() {
@@ -632,7 +650,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
                 }else{
                     setButtonState(j, j.getApproveButtonText(), false);
                 }
-                
+
             }
         });
         int ret = j.showOpenDialog(null);
@@ -675,16 +693,14 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     public void serializeMat(String dir, String name, opencv_core.Mat sMat) {
         String fn = dir + File.separator + name + ".xml";
         opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.WRITE);
-        opencv_core.CvMat cvMat = sMat.asCvMat();
-        storage.writeObj(name, cvMat);
+        storage.writeObj(name, sMat);
         storage.release();
         log.info("saved in " + fn);
     }
 
     public opencv_core.Mat deserializeMat(String dir, String name) {
         opencv_core.FileStorage storage = new opencv_core.FileStorage(dirPath + File.separator + name + ".xml", opencv_core.FileStorage.READ);
-        opencv_core.CvMat cvMat = new opencv_core.CvMat(storage.get(name).readObj());
-        opencv_core.Mat mat = new opencv_core.Mat(cvMat);
+        opencv_core.Mat mat = new opencv_core.Mat(storage.get(name).readObj());
         return mat;
     }
 
@@ -867,14 +883,14 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     public boolean isCalibrated() {
         return calibrated;
     }
-    
+
     /**
      * @return the look-up table of undistorted pixel addresses.
      */
     public short[] getUndistortedAddressLUT() {
         return undistortedAddressLUT;
     }
-    
+
     /**
      * @return the undistorted pixel address. The input index i is obtained by
      * iterating column-wise over the pixel array (y-loop is inner loop) until

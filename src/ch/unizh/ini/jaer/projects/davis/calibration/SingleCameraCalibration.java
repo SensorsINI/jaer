@@ -5,15 +5,29 @@
  */
 package ch.unizh.ini.jaer.projects.davis.calibration;
 
+import static org.bytedeco.javacpp.opencv_core.CV_32FC2;
 import static org.bytedeco.javacpp.opencv_core.CV_64FC3;
 import static org.bytedeco.javacpp.opencv_core.CV_8U;
 import static org.bytedeco.javacpp.opencv_core.CV_8UC3;
 import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_EPS;
 import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_ITER;
 import static org.bytedeco.javacpp.opencv_imgproc.CV_GRAY2RGB;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.geom.Point2D;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.io.File;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.logging.Level;
 
+import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 
@@ -23,8 +37,9 @@ import org.bytedeco.javacpp.opencv_core;
 import org.bytedeco.javacpp.opencv_core.Mat;
 import org.bytedeco.javacpp.opencv_core.MatVector;
 import org.bytedeco.javacpp.opencv_core.Size;
-import org.bytedeco.javacpp.opencv_highgui;
 import org.bytedeco.javacpp.opencv_imgproc;
+import org.bytedeco.javacpp.indexer.DoubleIndexer;
+import org.bytedeco.javacpp.indexer.ShortBufferIndexer;
 import org.openni.Device;
 import org.openni.DeviceInfo;
 import org.openni.OpenNI;
@@ -35,19 +50,6 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.geom.Point2D;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.io.File;
-import java.text.NumberFormat;
-import java.util.Iterator;
-import java.util.Observable;
-import java.util.Observer;
-import java.util.logging.Level;
-import javax.swing.JButton;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -59,9 +61,6 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
-import org.bytedeco.javacpp.indexer.DoubleIndexer;
-import static org.bytedeco.javacpp.opencv_core.CV_32FC2;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 
 /**
  * Calibrates a single camera using DAVIS frames and OpenCV calibration methods.
@@ -297,7 +296,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 opencv_core.flip(imgIn, imgSave, 0);
                 String filename = chip.getName() + "-" + fileBaseName + "-" + String.format("%03d", imageCounter) + ".jpg";
                 String fullFilePath = dirPath + "\\" + filename;
-                opencv_highgui.imwrite(fullFilePath, imgSave);
+                org.bytedeco.javacpp.opencv_imgcodecs.imwrite(fullFilePath, imgSave);
                 log.info("wrote " + fullFilePath);
                 //save depth sensor image if enabled
                 if (depthViewerThread != null) {
@@ -313,7 +312,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                     allObjectPoints = new MatVector(100);
                 }
                 allImagePoints.put(imageCounter, corners);
-                //create and store object points, which are just coordinates in mm of corners of pattern as we know they are drawn on the 
+                //create and store object points, which are just coordinates in mm of corners of pattern as we know they are drawn on the
                 // calibration target
                 Mat objectPoints = new Mat(corners.rows(), 1, opencv_core.CV_32FC3);
                 float x, y;
@@ -524,7 +523,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             return;
         }
 
-        if (sx == 0 || sy == 0) {
+        if ((sx == 0) || (sy == 0)) {
             return; // not set yet
         }
         FloatPointer fp = new FloatPointer(2 * sx * sy);
@@ -536,7 +535,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             }
         }
         Mat dst = new Mat();
-        Mat pixelArray = new Mat(1, sx * sy, CV_32FC2, fp); // make wide 2 channel matrix of source event x,y 
+        Mat pixelArray = new Mat(1, sx * sy, CV_32FC2, fp); // make wide 2 channel matrix of source event x,y
         opencv_imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
         isUndistortedAddressLUTgenerated = true;
         // get the camera matrix elements (focal lengths and principal point)
@@ -550,9 +549,9 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
         for (int x = 0; x < sx; x++) {
             for (int y = 0; y < sy; y++) {
-                idx = 2 * (y + sy * x);
-                undistortedAddressLUT[idx] = (short) Math.round(dst.getFloatBuffer().get(idx) * fx + cx);
-                undistortedAddressLUT[idx + 1] = (short) Math.round(dst.getFloatBuffer().get(idx + 1) * fy + cy);
+                idx = 2 * (y + (sy * x));
+                undistortedAddressLUT[idx] = (short) Math.round((dst.getFloatBuffer().get(idx) * fx) + cx);
+                undistortedAddressLUT[idx + 1] = (short) Math.round((dst.getFloatBuffer().get(idx + 1) * fy) + cy);
             }
         }
     }
@@ -562,13 +561,16 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     private void generateCalibrationString() {
-        if (cameraMatrix == null || cameraMatrix.isNull() || cameraMatrix.empty()) {
+        if ((cameraMatrix == null) || cameraMatrix.isNull() || cameraMatrix.empty()) {
             calibrationString = "uncalibrated";
             return;
         }
-        focalLengthPixels = (float) (cameraMatrix.asCvMat().get(0, 0) + cameraMatrix.asCvMat().get(0, 0)) / 2;
+
+        ShortBufferIndexer cameraMatrixIndexer = cameraMatrix.createIndexer();
+
+        focalLengthPixels = (float) (cameraMatrixIndexer.get(0, 0) + cameraMatrixIndexer.get(0, 0)) / 2;
         focalLengthMm = chip.getPixelWidthUm() * 1e-3f * focalLengthPixels;
-        principlePoint = new Point2D.Float((float) cameraMatrix.asCvMat().get(0, 2), (float) cameraMatrix.asCvMat().get(1, 2));
+        principlePoint = new Point2D.Float(cameraMatrixIndexer.get(0, 2), cameraMatrixIndexer.get(1, 2));
         StringBuilder sb = new StringBuilder();
         if (imageCounter > 0) {
             sb.append(String.format("Using %d images", imageCounter));
@@ -705,16 +707,14 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     public void serializeMat(String dir, String name, opencv_core.Mat sMat) {
         String fn = dir + File.separator + name + ".xml";
         opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.WRITE);
-        opencv_core.CvMat cvMat = sMat.asCvMat();
-        storage.writeObj(name, cvMat);
+        storage.writeObj(name, sMat);
         storage.release();
         log.info("saved in " + fn);
     }
 
     public opencv_core.Mat deserializeMat(String dir, String name) {
         opencv_core.FileStorage storage = new opencv_core.FileStorage(dirPath + File.separator + name + ".xml", opencv_core.FileStorage.READ);
-        opencv_core.CvMat cvMat = new opencv_core.CvMat(storage.get(name).readObj());
-        opencv_core.Mat mat = new opencv_core.Mat(cvMat);
+        opencv_core.Mat mat = new opencv_core.Mat(storage.get(name).readObj());
         if (mat.empty()) {
             return null;
         }
@@ -935,7 +935,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         if (undistortedAddressLUT == null) {
             generateUndistortedAddressLUT();
         }
-        int uidx = 2 * (e.y + sy * e.x);
+        int uidx = 2 * (e.y + (sy * e.x));
         e.x = getUndistortedAddressFromLUT(uidx);
         e.y = getUndistortedAddressFromLUT(uidx + 1);
         if (xeob(e.x) || yeob(e.y)) {
@@ -946,14 +946,14 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     private boolean xeob(int x) {
-        if (x < 0 || x > sx - 1) {
+        if ((x < 0) || (x > (sx - 1))) {
             return true;
         }
         return false;
     }
 
     private boolean yeob(int y) {
-        if (y < 0 || y > sy - 1) {
+        if ((y < 0) || (y > (sy - 1))) {
             return true;
         }
         return false;
