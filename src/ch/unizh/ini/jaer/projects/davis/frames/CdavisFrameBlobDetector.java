@@ -12,10 +12,12 @@ import static org.bytedeco.javacpp.opencv_core.CV_8U;
 import static org.bytedeco.javacpp.opencv_core.CV_8UC3;
 import static org.bytedeco.javacpp.opencv_core.cvCreateMemStorage;
 import static org.bytedeco.javacpp.opencv_core.cvGetSeqElem;
-import static org.bytedeco.javacpp.opencv_core.cvInRangeS;
+import static org.bytedeco.javacpp.opencv_core.inRange;
 import static org.bytedeco.javacpp.opencv_core.cvPoint;
 import static org.bytedeco.javacpp.opencv_core.cvScalar;
-import static org.bytedeco.javacpp.opencv_core.cvSplit;
+import static org.bytedeco.javacpp.opencv_core.split;
+import static org.bytedeco.javacpp.opencv_core.KeyPoint;
+import static org.bytedeco.javacpp.opencv_core.KeyPointVector;
 //import static org.bytedeco.javacpp.opencv_core.CV_64FC3;
 //import static org.bytedeco.javacpp.opencv_core.CV_8U;
 //import static org.bytedeco.javacpp.opencv_core.CV_8UC3;
@@ -32,6 +34,7 @@ import static org.bytedeco.javacpp.opencv_imgproc.cvApproxPoly;
 import static org.bytedeco.javacpp.opencv_imgproc.cvContourPerimeter;
 import static org.bytedeco.javacpp.opencv_imgproc.cvFindContours;
 import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_features2d.SimpleBlobDetector;
 
 import java.awt.Color;
 import java.awt.Component;
@@ -84,6 +87,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import org.bytedeco.javacpp.indexer.DoubleBufferIndexer;
 
 /**
  * Detects blobs in CDAVIS frames using OpenCV SimpleBlobDetector.
@@ -130,6 +134,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     private Mat imgIn, imgOut;
     private CvSeq contours;
     private CvMemStorage mem;
+    private KeyPointVector keyPointVector;
 
     private short[] undistortedAddressLUT;
     private boolean isUndistortedAddressLUTgenerated = false;
@@ -299,32 +304,72 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         imgIn = input.reshape(3, sy);
         Mat imgHsv = new Mat(ip);
         cvtColor(imgIn, imgHsv, CV_RGB2HSV);
+//        log.info(printMatD(imgHsv));
+        
         IplImage imgInIplImage = new IplImage(imgIn);
-        IplImage imgHsvIplImage = new IplImage(imgHsv);
+        
 
         IplImage hue = AbstractIplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
         IplImage sat = AbstractIplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
         IplImage val = AbstractIplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
         IplImage hueBin = AbstractIplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
+        
+        MatVector hsvChannels = new MatVector();
+        
+        
+        
+        split( imgHsv, hsvChannels );
+//        log.info(printMatD(hsvChannels.get(1)));
+        Mat lowerBound = new Mat(480, 640, CV_8U, new opencv_core.Scalar(120.0));
+//        log.info(printMatD(lowerBound));
+        Mat upperBound = new Mat(480, 640, CV_8U, new opencv_core.Scalar(200.0));
+//        log.info(printMatD(upperBound));
+        Mat hueBinMat = new Mat(480, 640, CV_8U, new opencv_core.Scalar(0.0));
+//        log.info(printMatD(hueBinMat));
+        
+//        log.info(printMatD(hueBinMat));
+        
+//        IplImage imgHueIplImage = new IplImage(hsvChannels.get(1));
+        
+        inRange(hsvChannels.get(1),lowerBound,upperBound,hueBinMat);
+//        log.info(printMatD(hueBinMat));
+        
+        SimpleBlobDetector blobDetector = SimpleBlobDetector.create(new SimpleBlobDetector.Params()
+                .filterByArea(true)
+                .minArea(60)
+                .maxArea(9000)
 
-        cvSplit( imgHsvIplImage, hue, sat, val, null );
+                .filterByColor(true)
+                .blobColor((byte) 255)
+
+                .filterByCircularity(false)
+//                .minCircularity(circularity.get(0).floatValue())
+//                .maxCircularity(circularity.get(1).floatValue())
+                
+                .filterByConvexity(false)
+                
+                .filterByInertia(false)
+                
+        );
+        keyPointVector = new KeyPointVector();
+        blobDetector.detect(hueBinMat, keyPointVector);
 
         //threshold(hueMat, imgOut, 100, 255, CV_THRESH_BINARY);
-        cvInRangeS(hue,cvScalar(100),cvScalar(120),hueBin);
+        
 //        CvMat imgOutCvMat = imgOut.asCvMat();
 //        IplImage imgOutIplImage = imgOutCvMat.asIplImage();
-        contours = new CvSeq();
-        mem = cvCreateMemStorage(0);
-        //        CvSeq ptr = new CvSeq();
-        cvFindContours(hueBin, mem, contours, sizeof(CvContour.class) , CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE, cvPoint(0,0));
-        while ((contours != null) && !contours.isNull()) {
-                if (contours.elem_size() > 0) {
-                    CvSeq points = cvApproxPoly(contours, sizeof(CvContour.class),
-                            mem, CV_POLY_APPROX_DP, cvContourPerimeter(contours)*0.02, 0);
-                    cvDrawContours(imgInIplImage, points, AbstractCvScalar.BLUE, AbstractCvScalar.BLUE, -1, 1, CV_AA);
-                }
-                contours = contours.h_next();
-            }
+//        contours = new CvSeq();
+//        mem = cvCreateMemStorage(0);
+//        //        CvSeq ptr = new CvSeq();
+//        cvFindContours(hueBin, mem, contours, sizeof(CvContour.class) , CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE, cvPoint(0,0));
+//        while ((contours != null) && !contours.isNull()) {
+//                if (contours.elem_size() > 0) {
+//                    CvSeq points = cvApproxPoly(contours, sizeof(CvContour.class),
+//                            mem, CV_POLY_APPROX_DP, cvContourPerimeter(contours)*0.02, 0);
+//                    cvDrawContours(imgInIplImage, points, AbstractCvScalar.BLUE, AbstractCvScalar.BLUE, -1, 1, CV_AA);
+//                }
+//                contours = contours.h_next();
+//            }
 
 //        Random rand = new Random();
 //        for (ptr = contours; ptr != null; ptr = ptr.h_next()) {
@@ -337,14 +382,14 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         Mat hueMat = new Mat(hue);
         Mat satMat = new Mat(sat);
         Mat valMat = new Mat(val);
-        Mat hueBinMat = new Mat(hueBin);
+        
 
         opencv_highgui.imshow("Input", imgIn);
-        opencv_highgui.imshow("Hue", hueMat);
-        opencv_highgui.imshow("Sat", satMat);
-        opencv_highgui.imshow("Val", valMat);
+        opencv_highgui.imshow("Hue", hsvChannels.get(1));
+//        opencv_highgui.imshow("Sat", satMat);
+//        opencv_highgui.imshow("Val", valMat);
         opencv_highgui.imshow("threshold Hue", hueBinMat);
-        opencv_highgui.imshow("Blob", blobImg);
+//        opencv_highgui.imshow("Blob", blobImg);
         opencv_highgui.waitKey(1000);
      }
 
@@ -353,9 +398,9 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 
         GL2 gl = drawable.getGL().getGL2();
 
-        if (realtimePatternDetectionEnabled) {
-            int n = contours.total();
-            int c = 3;
+        if (realtimePatternDetectionEnabled && keyPointVector != null) {
+            //int n = contours.total();
+            //int c = 3;
             //int w = patternWidth;
             //int h = patternHeight;
             //log.info(corners.toString()+" rows="+n+" cols="+corners.cols());
@@ -364,32 +409,30 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
             gl.glColor3f(0, 0, 1);
             //log.info("width="+w+" height="+h);
             gl.glBegin(GL.GL_LINES);
-            for (int i = 0; i < n; i++) {
-                CvPoint v =new CvPoint(cvGetSeqElem(contours, i));
-                float y0 = v.x();
-                //float y1 = contours.getFloatBuffer().get((2 * w * (i + 1)) - 2);
-                float x0 = v.y();
-                //float x1 = contours.getFloatBuffer().get((2 * w * (i + 1)) - 1);
-                //log.info("i="+i+" x="+x+" y="+y);
-                gl.glVertex2f(y0, x0);
-                //gl.glVertex2f(y1, x1);
+            for (int i = 0; i < keyPointVector.size(); i++) {
+                KeyPoint keyPoint = keyPointVector.get(i);
+                if (keyPoint.size()>1) {
+                    float x0 = keyPoint.pt().x();
+                    float y0 = keyPoint.pt().y();
+                    gl.glVertex2f(x0, 480-y0);
+                }
             }
             gl.glEnd();
             //draw corners
-            gl.glLineWidth(2f);
-            gl.glColor3f(1, 1, 0);
-            gl.glBegin(GL.GL_LINES);
-            for (int i = 0; i < n; i++) {
-                CvPoint v =new CvPoint(cvGetSeqElem(contours, i));
-                float y = v.x();
-                float x = v.y();
-                //log.info("i="+i+" x="+x+" y="+y);
-                gl.glVertex2f(y, x - c);
-                gl.glVertex2f(y, x + c);
-                gl.glVertex2f(y - c, x);
-                gl.glVertex2f(y + c, x);
-            }
-            gl.glEnd();
+//            gl.glLineWidth(2f);
+//            gl.glColor3f(1, 1, 0);
+//            gl.glBegin(GL.GL_LINES);
+//            for (int i = 0; i < n; i++) {
+//                CvPoint v =new CvPoint(cvGetSeqElem(contours, i));
+//                float y = v.x();
+//                float x = v.y();
+//                //log.info("i="+i+" x="+x+" y="+y);
+//                gl.glVertex2f(y, x - c);
+//                gl.glVertex2f(y, x + c);
+//                gl.glVertex2f(y - c, x);
+//                gl.glVertex2f(y + c, x);
+//            }
+//            gl.glEnd();
         }
 
         if (principlePoint != null) {
@@ -715,7 +758,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         int c = 0;
         for (int i = 0; i < M.rows(); i++) {
             for (int j = 0; j < M.cols(); j++) {
-                sb.append(String.format("%10.5f\t", M.getDoubleBuffer().get(c)));
+                sb.append(String.format("%d ", (M.getByteBuffer().get(c) & 0xFF)));
                 c++;
             }
             sb.append("\n");
