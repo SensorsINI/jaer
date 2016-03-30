@@ -63,8 +63,8 @@ import org.bytedeco.javacpp.opencv_highgui;
 import org.bytedeco.javacpp.opencv_imgproc;
 import org.bytedeco.javacpp.helper.opencv_core.AbstractCvScalar;
 import org.bytedeco.javacpp.helper.opencv_core.AbstractIplImage;
+import org.bytedeco.javacpp.indexer.DoubleBufferIndexer;
 import org.bytedeco.javacpp.indexer.DoubleIndexer;
-import org.bytedeco.javacpp.indexer.ShortBufferIndexer;
 import org.openni.Device;
 import org.openni.DeviceInfo;
 import org.openni.OpenNI;
@@ -557,11 +557,11 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
             return;
         }
 
-        ShortBufferIndexer cameraMatrixIndexer = cameraMatrix.createIndexer();
+        DoubleBufferIndexer cameraMatrixIndexer = cameraMatrix.createIndexer();
 
         focalLengthPixels = (float) (cameraMatrixIndexer.get(0, 0) + cameraMatrixIndexer.get(0, 0)) / 2;
         focalLengthMm = chip.getPixelWidthUm() * 1e-3f * focalLengthPixels;
-        principlePoint = new Point2D.Float(cameraMatrixIndexer.get(0, 2), cameraMatrixIndexer.get(1, 2));
+        principlePoint = new Point2D.Float((float) cameraMatrixIndexer.get(0, 2), (float) cameraMatrixIndexer.get(1, 2));
         StringBuilder sb=new StringBuilder();
         if(imageCounter>0){
             sb.append(String.format("Using %d images",imageCounter));
