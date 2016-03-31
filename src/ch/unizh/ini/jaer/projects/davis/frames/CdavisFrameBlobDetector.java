@@ -320,7 +320,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         
         split( imgHsv, hsvChannels );
 //        log.info(printMatD(hsvChannels.get(1)));
-        Mat lowerBound = new Mat(480, 640, CV_8U, new opencv_core.Scalar(120.0));
+        Mat lowerBound = new Mat(480, 640, CV_8U, new opencv_core.Scalar(160.0));
 //        log.info(printMatD(lowerBound));
         Mat upperBound = new Mat(480, 640, CV_8U, new opencv_core.Scalar(200.0));
 //        log.info(printMatD(upperBound));
