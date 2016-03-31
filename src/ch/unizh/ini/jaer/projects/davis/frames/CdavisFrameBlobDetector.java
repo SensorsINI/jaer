@@ -134,7 +134,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     private Mat imgIn, imgOut;
     private CvSeq contours;
     private CvMemStorage mem;
-    private KeyPointVector keyPointVector;
+    private KeyPointVector blobCenterVector;
 
     private short[] undistortedAddressLUT;
     private boolean isUndistortedAddressLUTgenerated = false;
@@ -237,7 +237,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 //            }
                 //process frame
                 if (realtimePatternDetectionEnabled) {
-                    findCurrentCorners(false);
+                    findColorBlobs(false);
                 }
 
                 //iterate
@@ -247,7 +247,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
                 }
                 //take action
                 if (actionTriggered && (nAcqFrames == nMaxAcqFrames)) {
-                    findCurrentCorners(true);
+                    findColorBlobs(true);
                     //reset action
                     actionTriggered = false;
                 }
@@ -295,7 +295,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         return outFrame;
     }
 
-    public void findCurrentCorners(boolean drawAndSave) {
+    public void findColorBlobs(boolean drawAndSave) {
         Size patternSize = new Size(patternWidth, patternHeight);
         corners = new Mat();
         FloatPointer ip = new FloatPointer(lastFrame);
@@ -351,8 +351,8 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
                 .filterByInertia(false)
                 
         );
-        keyPointVector = new KeyPointVector();
-        blobDetector.detect(hueBinMat, keyPointVector);
+        blobCenterVector = new KeyPointVector();
+        blobDetector.detect(hueBinMat, blobCenterVector);
 
         //threshold(hueMat, imgOut, 100, 255, CV_THRESH_BINARY);
         
@@ -384,13 +384,12 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         Mat valMat = new Mat(val);
         
 
-        opencv_highgui.imshow("Input", imgIn);
-        opencv_highgui.imshow("Hue", hsvChannels.get(1));
-//        opencv_highgui.imshow("Sat", satMat);
-//        opencv_highgui.imshow("Val", valMat);
-        opencv_highgui.imshow("threshold Hue", hueBinMat);
-//        opencv_highgui.imshow("Blob", blobImg);
-        opencv_highgui.waitKey(1000);
+//        opencv_highgui.imshow("Input", imgIn);
+//        opencv_highgui.imshow("Hue", hsvChannels.get(1));
+
+//        opencv_highgui.imshow("threshold Hue", hueBinMat);
+
+//        opencv_highgui.waitKey(1000);
      }
 
     @Override
@@ -398,7 +397,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 
         GL2 gl = drawable.getGL().getGL2();
 
-        if (realtimePatternDetectionEnabled && keyPointVector != null) {
+        if (realtimePatternDetectionEnabled && blobCenterVector != null) {
             //int n = contours.total();
             //int c = 3;
             //int w = patternWidth;
@@ -408,16 +407,38 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
             gl.glLineWidth(2f);
             gl.glColor3f(0, 0, 1);
             //log.info("width="+w+" height="+h);
-            gl.glBegin(GL.GL_LINES);
-            for (int i = 0; i < keyPointVector.size(); i++) {
-                KeyPoint keyPoint = keyPointVector.get(i);
-                if (keyPoint.size()>1) {
-                    float x0 = keyPoint.pt().x();
-                    float y0 = keyPoint.pt().y();
+//            gl.glBegin(GL.GL_LINES);
+            for (int i = 0; i < blobCenterVector.size(); i++) {
+                KeyPoint blobCenter = blobCenterVector.get(i);
+                float size = blobCenter.size();
+                if (size > 5) {
+                    float x0 = blobCenter.pt().x()-size/2;
+                    float y0 = blobCenter.pt().y()-size/2;
+                    float x1 = blobCenter.pt().x()+size/2;
+                    float y1 = blobCenter.pt().y()-size/2;
+                    float x2 = blobCenter.pt().x()+size/2;
+                    float y2 = blobCenter.pt().y()+size/2;
+                    float x3 = blobCenter.pt().x()-size/2;
+                    float y3 = blobCenter.pt().y()+size/2;
+                    gl.glBegin(GL.GL_LINES);
                     gl.glVertex2f(x0, 480-y0);
+                    gl.glVertex2f(x1, 480-y1);
+                    gl.glEnd();
+                    gl.glBegin(GL.GL_LINES);
+                    gl.glVertex2f(x1, 480-y1);
+                    gl.glVertex2f(x2, 480-y2);
+                    gl.glEnd();
+                    gl.glBegin(GL.GL_LINES);
+                    gl.glVertex2f(x2, 480-y2);
+                     gl.glVertex2f(x3, 480-y3);
+                    gl.glEnd();
+                    gl.glBegin(GL.GL_LINES);
+                    gl.glVertex2f(x3, 480-y3);
+                    gl.glVertex2f(x0, 480-y0);
+                    gl.glEnd();
                 }
             }
-            gl.glEnd();
+//            gl.glEnd();
             //draw corners
 //            gl.glLineWidth(2f);
 //            gl.glColor3f(1, 1, 0);
