@@ -342,10 +342,11 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         
         split( imgHsv, hsvChannels );
 //        log.info(printMatD(hsvChannels.get(1)));
-        Mat lowerBound = new Mat(480, 640, CV_8U, new opencv_core.Scalar(160.0));
+        Mat lowerBound = new Mat(480, 640, CV_8U, new opencv_core.Scalar(115.0));
 //        log.info(printMatD(lowerBound));
-        Mat upperBound = new Mat(480, 640, CV_8U, new opencv_core.Scalar(200.0));
+        Mat upperBound = new Mat(480, 640, CV_8U, new opencv_core.Scalar(125.0));
 //        log.info(printMatD(upperBound));
+        Mat hueBlurMat = new Mat(480, 640, CV_8U, new opencv_core.Scalar(0.0));
         Mat hueBinMat = new Mat(480, 640, CV_8U, new opencv_core.Scalar(0.0));
 //        log.info(printMatD(hueBinMat));
         
@@ -353,7 +354,8 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         
 //        IplImage imgHueIplImage = new IplImage(hsvChannels.get(1));
         
-        inRange(hsvChannels.get(1),lowerBound,upperBound,hueBinMat);
+//        GaussianBlur(hsvChannels.get(0), hueBlurMat, Size(7,7), 1.5, 1.5);
+        inRange(hsvChannels.get(0),lowerBound,upperBound,hueBinMat);
 //        log.info(printMatD(hueBinMat));
         
         SimpleBlobDetector blobDetector = SimpleBlobDetector.create(new SimpleBlobDetector.Params()
@@ -406,12 +408,12 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 //        Mat valMat = new Mat(val);
         
 
-//        opencv_highgui.imshow("Input", imgIn);
-//        opencv_highgui.imshow("Hue", hsvChannels.get(1));
+        opencv_highgui.imshow("Input", imgIn);
+        opencv_highgui.imshow("Hue", hsvChannels.get(0));
 
-//        opencv_highgui.imshow("threshold Hue", hueBinMat);
+        opencv_highgui.imshow("threshold Hue", hueBinMat);
 
-//        opencv_highgui.waitKey(1000);
+        opencv_highgui.waitKey(1000);
      }
     
     public void trackBlobs () {
