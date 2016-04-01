@@ -2,8 +2,8 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="subprojects/JSpikeStack/src"/>
-	<classpathentry kind="lib" path="jars/javacv/javacpp.jar"/>
-	<classpathentry kind="lib" path="jars/javacv/javacv.jar"/>
+	<classpathentry kind="lib" path="jars/javacv/javacpp.jar" sourcepath="jars/javacv/javacpp-1.1-src.zip"/>
+	<classpathentry kind="lib" path="jars/javacv/javacv.jar" sourcepath="jars/javacv/javacv-1.1-src.zip"/>
 	<classpathentry kind="lib" path="jars/swing-layout-1.0.4.jar"/>
 	<classpathentry kind="lib" path="jars/UsbIoJava.jar"/>
 	<classpathentry kind="lib" path="jars/commons-net-3.4.jar">
