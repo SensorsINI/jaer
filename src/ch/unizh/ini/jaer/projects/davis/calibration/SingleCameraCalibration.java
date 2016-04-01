@@ -563,6 +563,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private void generateCalibrationString() {
         if ((cameraMatrix == null) || cameraMatrix.isNull() || cameraMatrix.empty()) {
             calibrationString = "uncalibrated";
+            calibrated=false;
             return;
         }
 
@@ -587,6 +588,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 principlePoint.x, principlePoint.y,
                 chip.getSizeX() / 2, chip.getSizeY() / 2));
         calibrationString = sb.toString();
+        calibrated=true;
     }
 
     public String shortenDirPath(String dirPath) {
@@ -616,8 +618,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         putString("dirPath", dirPath);
         serializeMat(dirPath, "cameraMatrix", cameraMatrix);
         serializeMat(dirPath, "distortionCoefs", distortionCoefs);
-        generateCalibrationString();
         saved = true;
+        generateCalibrationString();
     }
 
     static void setButtonState(Container c, String buttonString, boolean flag) {
@@ -689,8 +691,11 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             cameraMatrix = deserializeMat(dirPath, "cameraMatrix");
             distortionCoefs = deserializeMat(dirPath, "distortionCoefs");
             generateCalibrationString();
-            log.info("loaded cameraMatrix and distortionCoefs from folder " + dirPath);
-            calibrated = true;
+            if(calibrated){
+                log.info("Calibrated: loaded cameraMatrix and distortionCoefs from folder " + dirPath);
+            }else{
+                log.warning("Uncalibrated: Something was wrong with calibration files so that cameraMatrix or distortionCoefs could not be loaded");
+            }
             getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
         } catch (Exception i) {
             log.warning("Could not load existing calibration from folder " + dirPath + " on construction:" + i.toString());
