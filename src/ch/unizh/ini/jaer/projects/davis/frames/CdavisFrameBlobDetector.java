@@ -45,6 +45,7 @@ import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.nio.FloatBuffer;
 import java.util.List;
+import java.util.LinkedList;
 import java.util.logging.Level;
 
 import javax.swing.JButton;
@@ -165,7 +166,8 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     private AEFrameChipRenderer renderer=null;
     private boolean rendererPropertyChangeListenerAdded=false;
     DavisChip apsDvsChip = null;
-    RectangularClusterTracker.Cluster blobs = null;
+//    RectangularClusterTracker.Cluster blobs = null;
+    volatile protected LinkedList<RectangularClusterTracker.Cluster> blobs = new LinkedList<>();
     
     private GLU glu = new GLU();
     private GLUquadric quad = null;
@@ -175,7 +177,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 //    MedianLowpassFilter velxfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
 //    MedianLowpassFilter velyfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
 //    Point2D.Float ballVel = new Point2D.Float();
-
+    
     public CdavisFrameBlobDetector(AEChip chip) {
         super(chip);
         frameExtractor = new ApsFrameExtractor(chip);
@@ -225,6 +227,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         }
         apsDvsChip = (DavisChip) chip;
 //        apsFrameExtractor.filterPacket(in);
+        getEnclosedFilterChain().filterPacket(in);
         return in;
     }
 
@@ -421,7 +424,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
                     (new BasicEvent(lastTimestamp, (short) blobCenter.pt().x(), (short) (480-blobCenter.pt().y())));
                     b.setMass(10000); // some big number
                     tracker.getClusters().add(b);
-                    blobs = b;
+                    blobs.add(b);
                 }
             }
         }
@@ -490,7 +493,8 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 //            }
 //            gl.glEnd();
         }
-
+        tracker.annotate(drawable);
+        
 //        if (principlePoint != null) {
 //            gl.glLineWidth(3f);
 //            gl.glColor3f(0, 1, 0);
@@ -510,26 +514,26 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 //            MultilineAnnotationTextRenderer.renderMultilineString(calibrationString);
 //        }
         
-        if (glu == null) {
-            glu = new GLU();
-        }
-        if (quad == null) {
-            quad = glu.gluNewQuadric();
-        }
-
-        if (blobs != null) {
-            blobs.getColor().getRGBComponents(compArray);
-            gl.glColor4fv(compArray, 0);
-            gl.glPushMatrix();
-            gl.glTranslatef(blobs.location.x, blobs.location.y, 0);
-            glu.gluQuadricDrawStyle(quad, GLU.GLU_LINE);
-            gl.glLineWidth(2f);
-            //            glu.gluDisk(quad, 0, ball.getAverageEventDistance(), 16, 1);
-            float rad = blobs.getMass() / tracker.getThresholdMassForVisibleCluster();
-            if (rad > blobs.getRadius()) {
-                rad = blobs.getRadius();
-            }
-            glu.gluDisk(quad, 0, rad, 16, 1);
+//        if (glu == null) {
+//            glu = new GLU();
+//        }
+//        if (quad == null) {
+//            quad = glu.gluNewQuadric();
+//        }
+//
+//        if (blobs != null) {
+//            blobs.getColor().getRGBComponents(compArray);
+//            gl.glColor4fv(compArray, 0);
+//            gl.glPushMatrix();
+//            gl.glTranslatef(blobs.location.x, blobs.location.y, 0);
+//            glu.gluQuadricDrawStyle(quad, GLU.GLU_LINE);
+//            gl.glLineWidth(2f);
+//            //            glu.gluDisk(quad, 0, ball.getAverageEventDistance(), 16, 1);
+//            float rad = blobs.getMass() / tracker.getThresholdMassForVisibleCluster();
+//            if (rad > blobs.getRadius()) {
+//                rad = blobs.getRadius();
+//            }
+//            glu.gluDisk(quad, 0, rad, 16, 1);
 //            gl.glLineWidth(6f);
 //            gl.glBegin(GL.GL_LINE_STRIP);
 //            gl.glVertex2f(0, 0); // draw median-filtered velocity vector
@@ -546,13 +550,14 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 //                glu.gluDisk(quad, 0, 2, 8, 1);
 //                gl.glPopMatrix();
 //            }
-        }
+//        }
     }
 
     @Override
     public synchronized final void resetFilter() {
         initFilter();
         filterChain.reset();
+//        tracker.resetFilter();
 //        patternFound = false;
 //        imageCounter = 0;
 //        principlePoint = null;
