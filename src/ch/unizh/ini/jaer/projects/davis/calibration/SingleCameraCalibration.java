@@ -706,15 +706,22 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      */
     public void serializeMat(String dir, String name, opencv_core.Mat sMat) {
         String fn = dir + File.separator + name + ".xml";
+
         opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.WRITE);
-        storage.writeObj(name, sMat);
+        opencv_core.write(storage, name, sMat);
         storage.release();
+
         log.info("saved in " + fn);
     }
 
     public opencv_core.Mat deserializeMat(String dir, String name) {
-        opencv_core.FileStorage storage = new opencv_core.FileStorage(dirPath + File.separator + name + ".xml", opencv_core.FileStorage.READ);
-        opencv_core.Mat mat = new opencv_core.Mat(storage.get(name).readObj());
+    	String fn = dirPath + File.separator + name + ".xml";
+    	opencv_core.Mat mat = new opencv_core.Mat();
+
+        opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.READ);
+        opencv_core.read(storage.get(name), mat);
+        storage.release();
+
         if (mat.empty()) {
             return null;
         }
