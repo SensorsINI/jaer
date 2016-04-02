@@ -7,6 +7,7 @@ package ch.unizh.ini.jaer.projects.davis.frames;
 
 import static org.bytedeco.javacpp.Loader.sizeof;
 import static org.bytedeco.javacpp.helper.opencv_imgproc.cvDrawContours;
+import static org.bytedeco.javacpp.opencv_core.Size;
 import static org.bytedeco.javacpp.opencv_core.CV_32FC2;
 import static org.bytedeco.javacpp.opencv_core.CV_8U;
 import static org.bytedeco.javacpp.opencv_core.CV_8UC3;
@@ -34,6 +35,7 @@ import static org.bytedeco.javacpp.opencv_imgproc.cvApproxPoly;
 import static org.bytedeco.javacpp.opencv_imgproc.cvContourPerimeter;
 import static org.bytedeco.javacpp.opencv_imgproc.cvFindContours;
 import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.GaussianBlur;
 import static org.bytedeco.javacpp.opencv_features2d.SimpleBlobDetector;
 
 import java.awt.Color;
@@ -113,52 +115,18 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     /**
      * Fires property change with this string when new calibration is available
      */
-//    public static final String EVENT_NEW_CALIBRATION = "EVENT_NEW_CALIBRATION";
-
-//    private SimpleDepthCameraViewerApplication depthViewerThread;
-
     //encapsulated fields
-    private boolean realtimePatternDetectionEnabled = getBoolean("realtimePatternDetectionEnabled", true);
-//    private boolean cornerSubPixRefinement = getBoolean("cornerSubPixRefinement", true);
-//    private String dirPath = getString("dirPath", System.getProperty("user.dir"));
-//    private int patternWidth = getInt("patternWidth", 9);
-//    private int patternHeight = getInt("patternHeight", 5);
-//    private int rectangleHeightMm = getInt("rectangleHeightMm", 20); //height in mm
-//    private int rectangleWidthMm = getInt("rectangleWidthMm", 20); //width in mm
-//    private boolean showUndistortedFrames = getBoolean("showUndistortedFrames", false);
-//    private boolean takeImageOnTimestampReset = getBoolean("takeImageOnTimestampReset", false);
-//    private String fileBaseName = "";
-
-    //opencv matrices
-//    private Mat corners;  // TODO change to OpenCV java, not bytedeco http://docs.opencv.org/2.4/doc/tutorials/introduction/desktop_java/java_dev_intro.html
-//    private MatVector allImagePoints;
-//    private MatVector allObjectPoints;
-//    private Mat cameraMatrix;
-//    private Mat distortionCoefs;
-//    private MatVector rotationVectors;
-//    private MatVector translationVectors;
+    private boolean colorBlobDetectionEnabled = getBoolean("colorBlobDetectionEnabled", true);
+    private boolean tuningEnabled = getBoolean("tuningEnabled", false);
+    
     private Mat imgIn, imgOut;
-//    private CvSeq contours;
-//    private CvMemStorage mem;
     private KeyPointVector blobCenterVector;
-
-//    private short[] undistortedAddressLUT;
-//    private boolean isUndistortedAddressLUTgenerated = false;
-
-//    private float focalLengthPixels = 0;
-//    private float focalLengthMm = 0;
-//    private Point2D.Float principlePoint = null;
-//    private String calibrationString = "Uncalibrated";
-
-//    private boolean patternFound;
-//    private int imageCounter = 0;
-//    private boolean calibrated = false;
 
     private boolean actionTriggered = false;
     private int nAcqFrames = 0;
     private int nMaxAcqFrames = 1;
 
-    private final ApsFrameExtractor frameExtractor;
+//    private final ApsFrameExtractor frameExtractor;
     private final FilterChain filterChain;
     private final RectangularClusterTracker tracker;
     private boolean saved=false;
@@ -173,6 +141,11 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     private GLUquadric quad = null;
     private float[] compArray = new float[4];
     
+    private int gaussianBlurKernalRadius = getInt("gaussianBlurKernalRadius", 20);
+    private int hueUpperBound = getInt("hueUpperBound", 125);
+    private int hueLowerBound = getInt("hueLowerBound", 115);
+    private int areaUpperBound = getInt("areaUpperBound", 10000);
+    private int areaLowerBound = getInt("areaLowerBound", 100);
 //    int velocityMedianFilterLengthSamples = getInt("velocityMedianFilterLengthSamples", 9);
 //    MedianLowpassFilter velxfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
 //    MedianLowpassFilter velyfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
@@ -180,33 +153,23 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     
     public CdavisFrameBlobDetector(AEChip chip) {
         super(chip);
-        frameExtractor = new ApsFrameExtractor(chip);
+//        frameExtractor = new ApsFrameExtractor(chip);
         filterChain = new FilterChain(chip);
-        filterChain.add(frameExtractor);
+//        filterChain.add(frameExtractor);
         filterChain.add((tracker = new RectangularClusterTracker(chip)));
-        frameExtractor.setExtRender(false);
+//        frameExtractor.setExtRender(false);
         setEnclosedFilterChain(filterChain);
         lastFrame = new float[640*480*3];
         resetFilter();
 
-
-
-        setPropertyTooltip("patternHeight", "height of chessboard calibration pattern in internal corner intersections, i.e. one less than number of squares");
-        setPropertyTooltip("patternWidth", "width of chessboard calibration pattern in internal corner intersections, i.e. one less than number of squares");
-        setPropertyTooltip("realtimePatternDetectionEnabled", "width of checkerboard calibration pattern in internal corner intersections");
-        setPropertyTooltip("rectangleWidthMm", "width of square rectangles of calibration pattern in mm");
-        setPropertyTooltip("rectangleHeightMm", "height of square rectangles of calibration pattern in mm");
-        setPropertyTooltip("showUndistortedFrames", "shows the undistorted frame in the ApsFrameExtractor display, if calibration has been completed");
-        setPropertyTooltip("takeImageOnTimestampReset", "??");
-        setPropertyTooltip("cornerSubPixRefinement", "refine corner locations to subpixel resolution");
-        setPropertyTooltip("calibrate", "run the camera calibration on collected frame data and print results to console");
-        setPropertyTooltip("depthViewer", "shows the depth or color image viewer if a Kinect device is connected via NI2 interface");
-        setPropertyTooltip("setPath", "sets the folder and basename of saved images");
-        setPropertyTooltip("saveCalibration", "saves calibration files to a selected folder");
-        setPropertyTooltip("loadCalibration", "loads saved calibration files from selected folder");
-        setPropertyTooltip("clearCalibration", "clears existing calibration");
-        setPropertyTooltip("takeImage", "snaps a calibration image that forms part of the calibration dataset");
-//        loadCalibration();
+        String General = "General", Tuning = "Tuning";
+        setPropertyTooltip(General, "colorBlobDetectionEnabled", "Enable color blob detection in the frame");
+        setPropertyTooltip(Tuning, "tuningEnabled", "Enable tuning of the color blob detection");
+        setPropertyTooltip(Tuning, "gaussianBlurKernalRadius", "Sets the Gaussian blur kernal radius for the hue image");
+        setPropertyTooltip(Tuning, "hueUpperBound", "Sets the upper limit of the blob color to be detected in the hue image");
+        setPropertyTooltip(Tuning, "hueLowerBound", "Sets the lower limit of the blob color to be detected in the hue image");
+        setPropertyTooltip(Tuning, "areaUpperBound", "Sets the upper limit of the blob area to be detected in the hue image");
+        setPropertyTooltip(Tuning, "areaLowerBound", "Sets the lower limit of the blob area to be detected in the hue image");
     }
 
     /**
@@ -248,78 +211,15 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
                 }
             }
 
-            //trigger action (on ts reset)
-
-//            if (takeImageOnTimestampReset) {
-//                log.info("timestamp reset action trigggered");
-//                actionTriggered = true;
-//                nAcqFrames = 0;
-//            }
                 //process frame
-                if (realtimePatternDetectionEnabled) {
+                if (colorBlobDetectionEnabled) {
                     findColorBlobs(false);
                     trackBlobs();
                 }
-
-                //iterate
-//                if (actionTriggered && (nAcqFrames < nMaxAcqFrames)) {
-//                    nAcqFrames++;
-//                    generateCalibrationString();
-//                }
-                //take action
-                if (actionTriggered && (nAcqFrames == nMaxAcqFrames)) {
-                    findColorBlobs(true);
-//                    trackBlobs();
-                    //reset action
-                    actionTriggered = false;
-                }
-
-//                if (calibrated && showUndistortedFrames && frameExtractor.isShowAPSFrameDisplay()) {
-//                    float[] outFrame = undistortFrame(lastFrame);
-//                    frameExtractor.setDisplayFrameRGB(outFrame);
-//                }
-
-//                if (calibrated && showUndistortedFrames && frameExtractor.isShowAPSFrameDisplay()) {
-//                    frameExtractor.setExtRender(true); // to not alternate
-//                    frameExtractor.apsDisplay.setTitleLabel("lens correction enabled");
-//                } else {
-//                    frameExtractor.setExtRender(false); // to not alternate
-//                    frameExtractor.apsDisplay.setTitleLabel("raw input image");
-//                }
         }
     }
 
-    /**
-     * Undistorts an image frame using the calibration.
-     *
-     * @param src the source image, RGB float valued in 0-1 range
-     * @return float[] destination. IAn internal float[] is created and reused.
-     * If there is no calibration, the src array is returned.
-     */
-//    public float[] undistortFrame(float[] src) {
-//        if (!calibrated) {
-//            return src;
-//        }
-//        FloatPointer ip = new FloatPointer(src);
-//        Mat input = new Mat(ip);
-//        input.convertTo(input, CV_8U, 255, 0);
-//        Mat img = input.reshape(0, sy);
-//        Mat undistortedImg = new Mat();
-//        opencv_imgproc.undistort(img, undistortedImg, cameraMatrix, distortionCoefs);
-//        Mat imgOut8u = new Mat(sy, sx, CV_8UC3);
-//        cvtColor(undistortedImg, imgOut8u, CV_GRAY2RGB);
-//        Mat outImgF = new Mat(sy, sx, opencv_core.CV_32F);
-//        imgOut8u.convertTo(outImgF, opencv_core.CV_32F, 1.0 / 255, 0);
-//        if (outFrame == null) {
-//            outFrame = new float[sy * sx * 3];
-//        }
-//        outImgF.getFloatBuffer().get(outFrame);
-//        return outFrame;
-//    }
-
     public void findColorBlobs(boolean drawAndSave) {
-//        Size patternSize = new Size(patternWidth, patternHeight);
-//        corners = new Mat();
         FloatPointer ip = new FloatPointer(lastFrame);
         Mat input = new Mat(ip);
         input.convertTo(input, CV_8U, 255, 0);
@@ -328,40 +228,27 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         cvtColor(imgIn, imgHsv, CV_RGB2HSV);
 //        log.info(printMatD(imgHsv));
         
-        IplImage imgInIplImage = new IplImage(imgIn);
-        
-
-//        IplImage hue = AbstractIplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
-//        IplImage sat = AbstractIplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
-//        IplImage val = AbstractIplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
-//        IplImage hueBin = AbstractIplImage.create( imgIn.cols(), imgIn.rows(), imgIn.arrayDepth(), CV_8U );
-        
         MatVector hsvChannels = new MatVector();
-        
-        
-        
+                
         split( imgHsv, hsvChannels );
 //        log.info(printMatD(hsvChannels.get(1)));
-        Mat lowerBound = new Mat(480, 640, CV_8U, new opencv_core.Scalar(115.0));
+        Mat lowerBound = new Mat(480, 640, CV_8U, new opencv_core.Scalar((float) hueLowerBound));
 //        log.info(printMatD(lowerBound));
-        Mat upperBound = new Mat(480, 640, CV_8U, new opencv_core.Scalar(125.0));
+        Mat upperBound = new Mat(480, 640, CV_8U, new opencv_core.Scalar((float) hueUpperBound));
 //        log.info(printMatD(upperBound));
         Mat hueBlurMat = new Mat(480, 640, CV_8U, new opencv_core.Scalar(0.0));
         Mat hueBinMat = new Mat(480, 640, CV_8U, new opencv_core.Scalar(0.0));
 //        log.info(printMatD(hueBinMat));
-        
-//        log.info(printMatD(hueBinMat));
-        
-//        IplImage imgHueIplImage = new IplImage(hsvChannels.get(1));
-        
-//        GaussianBlur(hsvChannels.get(0), hueBlurMat, Size(7,7), 1.5, 1.5);
+
+        int kernalSize = 2*gaussianBlurKernalRadius + 1;
+        GaussianBlur(hsvChannels.get(0), hueBlurMat, new opencv_core.Size(kernalSize,kernalSize), 1.5);
         inRange(hsvChannels.get(0),lowerBound,upperBound,hueBinMat);
 //        log.info(printMatD(hueBinMat));
         
         SimpleBlobDetector blobDetector = SimpleBlobDetector.create(new SimpleBlobDetector.Params()
                 .filterByArea(true)
-                .minArea(60)
-                .maxArea(9000)
+                .minArea(areaLowerBound)
+                .maxArea(areaUpperBound)
 
                 .filterByColor(true)
                 .blobColor((byte) 255)
@@ -377,47 +264,19 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         );
         blobCenterVector = new KeyPointVector();
         blobDetector.detect(hueBinMat, blobCenterVector);
-
-        //threshold(hueMat, imgOut, 100, 255, CV_THRESH_BINARY);
         
-//        CvMat imgOutCvMat = imgOut.asCvMat();
-//        IplImage imgOutIplImage = imgOutCvMat.asIplImage();
-//        contours = new CvSeq();
-//        mem = cvCreateMemStorage(0);
-//        //        CvSeq ptr = new CvSeq();
-//        cvFindContours(hueBin, mem, contours, sizeof(CvContour.class) , CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE, cvPoint(0,0));
-//        while ((contours != null) && !contours.isNull()) {
-//                if (contours.elem_size() > 0) {
-//                    CvSeq points = cvApproxPoly(contours, sizeof(CvContour.class),
-//                            mem, CV_POLY_APPROX_DP, cvContourPerimeter(contours)*0.02, 0);
-//                    cvDrawContours(imgInIplImage, points, AbstractCvScalar.BLUE, AbstractCvScalar.BLUE, -1, 1, CV_AA);
-//                }
-//                contours = contours.h_next();
-//            }
+        if (tuningEnabled) {
+            opencv_highgui.imshow("Input", imgIn);
+            opencv_highgui.imshow("Hue", hsvChannels.get(0));
 
-//        Random rand = new Random();
-//        for (ptr = contours; ptr != null; ptr = ptr.h_next()) {
-//            Color randomColor = new Color(rand.nextFloat(), rand.nextFloat(), rand.nextFloat());
-//            CvScalar color = CV_RGB( randomColor.getRed(), randomColor.getGreen(), randomColor.getBlue());
-//            cvDrawContours(imgOutIplImage, ptr, color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
-//        }
-//
-//        Mat blobImg = new Mat(imgInIplImage);
-//        Mat hueMat = new Mat(hue);
-//        Mat satMat = new Mat(sat);
-//        Mat valMat = new Mat(val);
-        
+            opencv_highgui.imshow("threshold Hue", hueBinMat);
 
-        opencv_highgui.imshow("Input", imgIn);
-        opencv_highgui.imshow("Hue", hsvChannels.get(0));
-
-        opencv_highgui.imshow("threshold Hue", hueBinMat);
-
-        opencv_highgui.waitKey(1000);
+            opencv_highgui.waitKey(1000);
+        }
      }
     
     public void trackBlobs () {
-        if (realtimePatternDetectionEnabled && blobCenterVector != null) {
+        if (colorBlobDetectionEnabled && blobCenterVector != null) {
             for (int i = 0; i < blobCenterVector.size(); i++) {
                 KeyPoint blobCenter = blobCenterVector.get(i);
                 float size = blobCenter.size();
@@ -437,12 +296,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 
         GL2 gl = drawable.getGL().getGL2();
 
-        if (realtimePatternDetectionEnabled && blobCenterVector != null) {
-            //int n = contours.total();
-            //int c = 3;
-            //int w = patternWidth;
-            //int h = patternHeight;
-            //log.info(corners.toString()+" rows="+n+" cols="+corners.cols());
+        if (colorBlobDetectionEnabled && blobCenterVector != null) {
             //draw lines
             gl.glLineWidth(2f);
             gl.glColor3f(0, 0, 1);
@@ -478,93 +332,14 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
                     gl.glEnd();
                 }
             }
-//            gl.glEnd();
-            //draw corners
-//            gl.glLineWidth(2f);
-//            gl.glColor3f(1, 1, 0);
-//            gl.glBegin(GL.GL_LINES);
-//            for (int i = 0; i < n; i++) {
-//                CvPoint v =new CvPoint(cvGetSeqElem(contours, i));
-//                float y = v.x();
-//                float x = v.y();
-//                //log.info("i="+i+" x="+x+" y="+y);
-//                gl.glVertex2f(y, x - c);
-//                gl.glVertex2f(y, x + c);
-//                gl.glVertex2f(y - c, x);
-//                gl.glVertex2f(y + c, x);
-//            }
-//            gl.glEnd();
         }
         tracker.annotate(drawable);
-        
-//        if (principlePoint != null) {
-//            gl.glLineWidth(3f);
-//            gl.glColor3f(0, 1, 0);
-//            gl.glBegin(GL.GL_LINES);
-//            gl.glVertex2f(principlePoint.x - 4, principlePoint.y);
-//            gl.glVertex2f(principlePoint.x + 4, principlePoint.y);
-//            gl.glVertex2f(principlePoint.x, principlePoint.y - 4);
-//            gl.glVertex2f(principlePoint.x, principlePoint.y + 4);
-//            gl.glEnd();
-//
-//        }
-//
-//        if (calibrationString != null) {
-//            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .15f);
-//            MultilineAnnotationTextRenderer.setColor(Color.green);
-//            MultilineAnnotationTextRenderer.setScale(.3f);
-//            MultilineAnnotationTextRenderer.renderMultilineString(calibrationString);
-//        }
-        
-//        if (glu == null) {
-//            glu = new GLU();
-//        }
-//        if (quad == null) {
-//            quad = glu.gluNewQuadric();
-//        }
-//
-//        if (blobs != null) {
-//            blobs.getColor().getRGBComponents(compArray);
-//            gl.glColor4fv(compArray, 0);
-//            gl.glPushMatrix();
-//            gl.glTranslatef(blobs.location.x, blobs.location.y, 0);
-//            glu.gluQuadricDrawStyle(quad, GLU.GLU_LINE);
-//            gl.glLineWidth(2f);
-//            //            glu.gluDisk(quad, 0, ball.getAverageEventDistance(), 16, 1);
-//            float rad = blobs.getMass() / tracker.getThresholdMassForVisibleCluster();
-//            if (rad > blobs.getRadius()) {
-//                rad = blobs.getRadius();
-//            }
-//            glu.gluDisk(quad, 0, rad, 16, 1);
-//            gl.glLineWidth(6f);
-//            gl.glBegin(GL.GL_LINE_STRIP);
-//            gl.glVertex2f(0, 0); // draw median-filtered velocity vector
-//            float f = tracker.getVelocityVectorScaling();
-//            gl.glVertex2f(velxfilter.getValue() * f, velyfilter.getValue() * f);
-//            gl.glEnd();
-//            gl.glPopMatrix();
-//            Point2D.Float p = findNearestPathPoint();
-//            if (p != null) {
-//                gl.glPushMatrix();
-//                gl.glTranslatef(p.x, p.y, 1);
-//                gl.glColor4f(.7f, .25f, 0f, .5f);
-//                glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
-//                glu.gluDisk(quad, 0, 2, 8, 1);
-//                gl.glPopMatrix();
-//            }
-//        }
     }
 
     @Override
     public synchronized final void resetFilter() {
         initFilter();
         filterChain.reset();
-//        tracker.resetFilter();
-//        patternFound = false;
-//        imageCounter = 0;
-//        principlePoint = null;
-//        velxfilter.setInternalValue(0);
-//        velyfilter.setInternalValue(0);
     }
 
     @Override
@@ -574,188 +349,35 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     }
 
     /**
-     * @return the realtimePatternDetectionEnabled
+     * @return the colorBlobDetectionEnabled
      */
-    public boolean isRealtimePatternDetectionEnabled() {
-        return realtimePatternDetectionEnabled;
+    public boolean isColorBlobDetectionEnabled() {
+        return colorBlobDetectionEnabled;
     }
 
     /**
-     * @param realtimePatternDetectionEnabled the
-     * realtimePatternDetectionEnabled to set
+     * @param colorBlobDetectionEnabled the
+     * colorBlobDetectionEnabled to set
      */
-    public void setRealtimePatternDetectionEnabled(boolean realtimePatternDetectionEnabled) {
-        this.realtimePatternDetectionEnabled = realtimePatternDetectionEnabled;
+    public void setColorBlobDetectionEnabled(boolean colorBlobDetectionEnabled) {
+        this.colorBlobDetectionEnabled = colorBlobDetectionEnabled;
+    }
+    
+    
+    /**
+     * @return the tuningDetectionEnabled
+     */
+    public boolean isTuningEnabled() {
+        return tuningEnabled;
     }
 
     /**
-     * @return the cornerSubPixRefinement
+     * @param tuningEnabled the
+     * tuningEnabled to set
      */
-//    public boolean isCornerSubPixRefinement() {
-//        return cornerSubPixRefinement;
-//    }
-
-    /**
-     * @param cornerSubPixRefinement the cornerSubPixRefinement to set
-     */
-//    public void setCornerSubPixRefinement(boolean cornerSubPixRefinement) {
-//        this.cornerSubPixRefinement = cornerSubPixRefinement;
-//    }
-
-//    synchronized public void doSetPath() {
-//        JFileChooser j = new JFileChooser();
-//        j.setCurrentDirectory(new File(dirPath));
-//        j.setApproveButtonText("Select");
-//        j.setDialogTitle("Select a folder and base file name for calibration images");
-//        j.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES); // let user specify a base filename
-//        int ret = j.showSaveDialog(null);
-//        if (ret != JFileChooser.APPROVE_OPTION) {
-//            return;
-//        }
-//        //imagesDirPath = j.getSelectedFile().getAbsolutePath();
-//        dirPath = j.getCurrentDirectory().getPath();
-//        fileBaseName = j.getSelectedFile().getName();
-//        if (!fileBaseName.isEmpty()) {
-//            fileBaseName = "-" + fileBaseName;
-//        }
-//        log.log(Level.INFO, "Changed images path to {0}", dirPath);
-//        putString("dirPath", dirPath);
-//    }
-
-//    synchronized public void doCalibrate() {
-//        //init
-//        Size imgSize = new Size(sx, sy);
-//        cameraMatrix = new Mat();
-//        distortionCoefs = new Mat();
-//        rotationVectors = new MatVector();
-//        translationVectors = new MatVector();
-//
-//        allImagePoints.resize(imageCounter);
-//        allObjectPoints.resize(imageCounter); // resize has side effect that lists cannot hold any more data
-//        log.info(String.format("calibrating based on %d images sized %d x %d", allObjectPoints.size(), imgSize.width(), imgSize.height()));
-//        //calibrate
-//        try {
-//            opencv_calib3d.calibrateCamera(allObjectPoints, allImagePoints, imgSize, cameraMatrix, distortionCoefs, rotationVectors, translationVectors);
-//            generateCalibrationString();
-//            log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html \n"
-//                    + "\nCamera matrix: " + cameraMatrix.toString() + "\n" + printMatD(cameraMatrix)
-//                    + "\nDistortion coefficients k_1 k_2 p_1 p_2 k_3 ...: " + distortionCoefs.toString() + "\n" + printMatD(distortionCoefs)
-//                    + calibrationString);
-//        } catch (RuntimeException e) {
-//            log.warning("calibration failed with exception " + e + "See https://adventuresandwhathaveyou.wordpress.com/2014/03/14/opencv-error-messages-suck/");
-//        } finally {
-//            allImagePoints.resize(100);
-//            allObjectPoints.resize(100);
-//        }
-//        //debug
-//
-//        calibrated = true;
-//        getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
-//
-//    }
-
-    /*
-    Generate a look-up table that maps the entire chip to undistorted addresses.
-    */
-//    public void generateUndistortedAddressLUT(int sx, int sy) {
-//        if (!calibrated) {
-//            return;
-//        }
-//        FloatPointer fp = new FloatPointer(2 * sx * sy);
-//        int idx = 0;
-//        for (int x = 0; x < sx; x++) {
-//            for (int y = 0; y < sy; y++) {
-//                fp.put(idx++, x);
-//                fp.put(idx++, y);
-//            }
-//        }
-//        Mat dst = new Mat();
-//        Mat pixelArray = new Mat(1, sx * sy, CV_32FC2, fp); // make wide 2 channel matrix of source event x,y
-//        opencv_imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
-//        isUndistortedAddressLUTgenerated = true;
-//        // get the camera matrix elements (focal lengths and principal point)
-//        DoubleIndexer k = getCameraMatrix().createIndexer();
-//        float fx, fy, cx, cy;
-//        fx = (float) k.get(0, 0);
-//        fy = (float) k.get(1, 1);
-//        cx = (float) k.get(0, 2);
-//        cy = (float) k.get(1, 2);
-//        undistortedAddressLUT = new short[2 * sx * sy];
-//
-//        for (int x = 0; x < sx; x++) {
-//            for (int y = 0; y < sy; y++) {
-//                idx = 2 * (y + (sy * x));
-//                undistortedAddressLUT[idx] = (short) Math.round((dst.getFloatBuffer().get(idx) * fx) + cx);
-//                undistortedAddressLUT[idx+1] = (short) Math.round((dst.getFloatBuffer().get(idx+1) * fy) + cy);
-//            }
-//        }
-//    }
-
-
-
-//    public boolean isUndistortedAddressLUTgenerated() {
-//        return isUndistortedAddressLUTgenerated;
-//    }
-
-//    private void generateCalibrationString() {
-//        if((cameraMatrix==null) || cameraMatrix.isNull() || cameraMatrix.empty()){
-//            calibrationString="uncalibrated";
-//            return;
-//        }
-//
-//        DoubleBufferIndexer cameraMatrixIndexer = cameraMatrix.createIndexer();
-//
-//        focalLengthPixels = (float) (cameraMatrixIndexer.get(0, 0) + cameraMatrixIndexer.get(0, 0)) / 2;
-//        focalLengthMm = chip.getPixelWidthUm() * 1e-3f * focalLengthPixels;
-//        principlePoint = new Point2D.Float((float) cameraMatrixIndexer.get(0, 2), (float) cameraMatrixIndexer.get(1, 2));
-//        StringBuilder sb=new StringBuilder();
-//        if(imageCounter>0){
-//            sb.append(String.format("Using %d images",imageCounter));
-//            if(!saved){
-//                sb.append("; not yet saved\n");
-//            }else{
-//                sb.append("; saved\n");
-//            }
-//        }else{
-//            sb.append(String.format("Path:%s\n",shortenDirPath(dirPath)));
-//        }
-//        sb.append(String.format("focal length avg=%.1f pixels=%.2f mm\nPrincipal point (green cross)=%.1f,%.1f, Chip size/2=%d,%d\n",
-//                focalLengthPixels, focalLengthMm,
-//                principlePoint.x, principlePoint.y,
-//                chip.getSizeX() / 2, chip.getSizeY() / 2));
-//        calibrationString = sb.toString();
-//    }
-
-//    public String shortenDirPath(String dirPath) {
-//        String dirComp=dirPath;
-//        if(dirPath.length()>30){
-//            int n=dirPath.length();
-//            dirComp=dirPath.substring(0,10)+"..."+dirPath.substring(n-20, n);
-//        }
-//        return dirComp;
-//    }
-
-//    synchronized public void doSaveCalibration() {
-//        if (!calibrated) {
-//            JOptionPane.showMessageDialog(null, "No calibration yet");
-//            return;
-//        }
-//        JFileChooser j = new JFileChooser();
-//        j.setCurrentDirectory(new File(dirPath));
-//        j.setApproveButtonText("Select folder");
-//        j.setDialogTitle("Select a folder to store calibration XML files");
-//        j.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // let user specify a base filename
-//        int ret = j.showSaveDialog(null);
-//        if (ret != JFileChooser.APPROVE_OPTION) {
-//            return;
-//        }
-//        dirPath = j.getSelectedFile().getPath();
-//        putString("dirPath", dirPath);
-//        serializeMat(dirPath, "cameraMatrix", cameraMatrix);
-//        serializeMat(dirPath, "distortionCoefs", distortionCoefs);
-//        generateCalibrationString();
-//        saved=true;
-//    }
+    public void setTuningEnabled(boolean tuningEnabled) {
+        this.tuningEnabled = tuningEnabled;
+    }
 
     static void setButtonState(Container c, String buttonString,boolean flag ) {
     int len = c.getComponentCount();
@@ -773,88 +395,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
           setButtonState((Container) comp, buttonString, flag);
       }
     }
-}
-
-//    synchronized public void doLoadCalibration() {
-//        final JFileChooser j = new JFileChooser();
-//        j.setCurrentDirectory(new File(dirPath));
-//        j.setApproveButtonText("Select folder");
-//        j.setDialogTitle("Select a folder that has XML files storing calibration");
-//        j.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // let user specify a base filename
-//        j.setApproveButtonText("Select folder");
-//        j.addPropertyChangeListener(JFileChooser.DIRECTORY_CHANGED_PROPERTY, new PropertyChangeListener() {
-//            @Override
-//            public void propertyChange(PropertyChangeEvent pce) {
-//                String fn = j.getCurrentDirectory().getPath() + File.separator + "cameraMatrix" + ".xml";
-//                File f=new File(fn);
-//                boolean cameraMatrixExists=f.exists();
-//                fn = j.getCurrentDirectory().getPath() + File.separator + "distortionCoefs" + ".xml";
-//                f=new File(fn);
-//                boolean distortionCoefsExists=f.exists();
-//                if(distortionCoefsExists && cameraMatrixExists){
-//                    setButtonState(j, j.getApproveButtonText(), true);
-//                }else{
-//                    setButtonState(j, j.getApproveButtonText(), false);
-//                }
-//
-//            }
-//        });
-//        int ret = j.showOpenDialog(null);
-//        if (ret != JFileChooser.APPROVE_OPTION) {
-//            return;
-//        }
-//        dirPath = j.getSelectedFile().getPath();
-//        putString("dirPath", dirPath);
-//
-//        loadCalibration();
-//    }
-
-//    synchronized public void doClearCalibration() {
-//        calibrated = false;
-//        calibrationString = "Uncalibrated";
-//        undistortedAddressLUT = null;
-//        isUndistortedAddressLUTgenerated = false;
-//    }
-
-//    private void loadCalibration() {
-//        try {
-//            cameraMatrix = deserializeMat(dirPath, "cameraMatrix");
-//            distortionCoefs = deserializeMat(dirPath, "distortionCoefs");
-//            generateCalibrationString();
-//            calibrated = true;
-//            log.info("loaded cameraMatrix and distortionCoefs");
-//            getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
-//        } catch (Exception i) {
-//            log.warning(i.toString());
-//        }
-//    }
-
-    /**
-     * Writes an XML file for the matrix X called path/X.xml
-     *
-     * @param dir path to folder
-     * @param name base name of file
-     * @param sMat the Mat to write
-     */
-//    public void serializeMat(String dir, String name, opencv_core.Mat sMat) {
-//        String fn = dir + File.separator + name + ".xml";
-//        opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.WRITE);
-//        storage.writeObj(name, sMat);
-//        storage.release();
-//        log.info("saved in " + fn);
-//    }
-
-//    public opencv_core.Mat deserializeMat(String dir, String name) {
-//        opencv_core.FileStorage storage = new opencv_core.FileStorage(dirPath + File.separator + name + ".xml", opencv_core.FileStorage.READ);
-//        opencv_core.Mat mat = new opencv_core.Mat(storage.get(name).readObj());
-//        return mat;
-//    }
-
-//    synchronized public void doTakeImage() {
-//        actionTriggered = true;
-//        nAcqFrames = 0;
-//        saved=false;
-//    }
+    }
 
     private String printMatD(Mat M) {
         StringBuilder sb = new StringBuilder();
@@ -869,181 +410,95 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         return sb.toString();
     }
 
-    /**
-     * @return the patternWidth
-     */
-//    public int getPatternWidth() {
-//        return patternWidth;
-//    }
+    /*user configure gaussianBlurKernalRadius*/
+    public final int getGaussianBlurKernalRadius() {
+        return gaussianBlurKernalRadius;
+    }
 
-    /**
-     * @param patternWidth the patternWidth to set
-     */
-//    public void setPatternWidth(int patternWidth) {
-//        this.patternWidth = patternWidth;
-//        putInt("patternWidth", patternWidth);
-//    }
+    public void setGaussianBlurKernalRadius(final int gaussianBlurKernalRadius) {
+        this.gaussianBlurKernalRadius = gaussianBlurKernalRadius;
+        putInt("gaussianBlurKernalRadius", gaussianBlurKernalRadius);
+    }
 
-    /**
-     * @return the patternHeight
-     */
-//    public int getPatternHeight() {
-//        return patternHeight;
-//    }
+    public int getMinGaussianBlurKernalRadius() {
+        return 0;
+    }
 
-    /**
-     * @param patternHeight the patternHeight to set
-     */
-//    public void setPatternHeight(int patternHeight) {
-//        this.patternHeight = patternHeight;
-//        putInt("patternHeight", patternHeight);
-//    }
+    public int getMaxGaussianBlurKernalRadius() {
+	return 10000;
+    }
+    
+    
+    /*user configure hueUpperBound*/
+    public final int getHueUpperBound() {
+        return hueUpperBound;
+    }
 
-    /**
-     * @return the rectangleHeightMm
-     */
-//    public int getRectangleHeightMm() {
-//        return rectangleHeightMm;
-//    }
+    public void setHueUpperBound(final int hueUpperBound) {
+        this.hueUpperBound = hueUpperBound;
+        putInt("hueUpperBound", hueUpperBound);
+    }
 
-    /**
-     * @param rectangleHeightMm the rectangleHeightMm to set
-     */
-//    public void setRectangleHeightMm(int rectangleHeightMm) {
-//        this.rectangleHeightMm = rectangleHeightMm;
-//        putInt("rectangleHeightMm", rectangleHeightMm);
-//    }
+    public int getMinHueUpperBound() {
+        return 0;
+    }
 
-    /**
-     * @return the rectangleHeightMm
-     */
-//    public int getRectangleWidthMm() {
-//        return rectangleWidthMm;
-//    }
+    public int getMaxHueUpperBound() {
+	return 255;
+    }
+    
+    
+    /*user configure hueLowerBound*/
+    public final int getHueLowerBound() {
+        return hueLowerBound;
+    }
 
-    /**
-     * @param rectangleWidthMm the rectangleWidthMm to set
-     */
-//    public void setRectangleWidthMm(int rectangleWidthMm) {
-//        this.rectangleWidthMm = rectangleWidthMm;
-//        putInt("rectangleWidthMm", rectangleWidthMm);
-//    }
+    public void setHueLowerBound(final int hueLowerBound) {
+        this.hueLowerBound = hueLowerBound;
+        putInt("hueLowerBound", hueLowerBound);
+    }
 
-    /**
-     * @return the showUndistortedFrames
-     */
-//    public boolean isShowUndistortedFrames() {
-//        return showUndistortedFrames;
-//    }
+    public int getMinHueLowerBound() {
+        return 0;
+    }
 
-    /**
-     * @param showUndistortedFrames the showUndistortedFrames to set
-     */
-//    public void setShowUndistortedFrames(boolean showUndistortedFrames) {
-//        this.showUndistortedFrames = showUndistortedFrames;
-//        putBoolean("showUndistortedFrames", showUndistortedFrames);
-//    }
+    public int getMaxHueLowerBound() {
+	return 255;
+    }
+    
+    /*user configure areaUpperBound*/
+    public final int getAreaUpperBound() {
+        return areaUpperBound;
+    }
 
-    /**
-     * @return the takeImageOnTimestampReset
-     */
-//    public boolean isTakeImageOnTimestampReset() {
-//        return takeImageOnTimestampReset;
-//    }
+    public void setAreaUpperBound(final int areaUpperBound) {
+        this.areaUpperBound = areaUpperBound;
+        putInt("areaUpperBound", areaUpperBound);
+    }
 
-    /**
-     * @param takeImageOnTimestampReset the takeImageOnTimestampReset to set
-     */
-//    public void setTakeImageOnTimestampReset(boolean takeImageOnTimestampReset) {
-//        this.takeImageOnTimestampReset = takeImageOnTimestampReset;
-//        putBoolean("takeImageOnTimestampReset", takeImageOnTimestampReset);
-//    }
+    public int getMinAreaUpperBound() {
+        return 1;
+    }
 
-//    public void doDepthViewer() {
-//        try {
-//            System.load(System.getProperty("user.dir") + "\\jars\\openni2\\OpenNI2.dll");
-//
-//            // initialize OpenNI
-//            OpenNI.initialize();
-//
-//            List<DeviceInfo> devicesInfo = OpenNI.enumerateDevices();
-//            if (devicesInfo.isEmpty()) {
-//                JOptionPane.showMessageDialog(null, "No Kinect device is connected via NI2 interface", "Error", JOptionPane.ERROR_MESSAGE);
-//                return;
-//            }
-//
-//            Device device = Device.open(devicesInfo.get(0).getUri());
-//
-//            depthViewerThread = new SimpleDepthCameraViewerApplication(device);
-//            depthViewerThread.start();
-//
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//    }
+    public int getMaxAreaUpperBound() {
+	return 640*480;
+    }
+    
+    /*user configure areaLowerBound*/
+    public final int getAreaLowerBound() {
+        return areaLowerBound;
+    }
 
-    /**
-     * Returns the camera calibration matrix, as specified in
-     * <a href="http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html">OpenCV
-     * camera calibration</a>
-     * <p>
-     * The matrix entries can be accessed as shown in code snippet below. Note
-     * order of matrix entries returned is column-wise; the inner loop is
-     * vertically over column or y index:
-     * <pre>
-     * Mat M;
-     * for (int i = 0; i < M.rows(); i++) {
-     *  for (int j = 0; j < M.cols(); j++) {
-     *      M.getDoubleBuffer().get(c));
-     *      c++;
-     *  }
-     * }
-     * </pre> @return the cameraMatrix
-     */
-//    public Mat getCameraMatrix() {
-//        return cameraMatrix;
-//    }
+    public void setAreaLowerBound(final int areaLowerBound) {
+        this.areaLowerBound = areaLowerBound;
+        putInt("areaLowerBound", areaLowerBound);
+    }
 
-    /**
-     * http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
-     *
-     * @return the distortionCoefs
-     */
-//    public Mat getDistortionCoefs() {
-//        return distortionCoefs;
-//    }
+    public int getMinAreaLowerBound() {
+        return 1;
+    }
 
-    /**
-     * Human friendly summary of calibration
-     *
-     * @return the calibrationString
-     */
-//    public String getCalibrationString() {
-//        return calibrationString;
-//    }
-
-    /**
-     *
-     * @return true if calibration was completed successfully
-     */
-//    public boolean isCalibrated() {
-//        return calibrated;
-//    }
-
-    /**
-     * @return the look-up table of undistorted pixel addresses.
-     */
-//    public short[] getUndistortedAddressLUT() {
-//        return undistortedAddressLUT;
-//    }
-
-    /**
-     * @return the undistorted pixel address. The input index i is obtained by
-     * iterating column-wise over the pixel array (y-loop is inner loop) until
-     * getting to (x,y). Have to multiply by two because both x and y addresses
-     * are stored consecutively. Thus, i = 2 * (y + sizeY * x)
-     */
-//    public short getUndistortedAddressFromLUT(int i) {
-//        return undistortedAddressLUT[i];
-//    }
+    public int getMaxAreaLowerBound() {
+	return 640*480;
+    }
 }
