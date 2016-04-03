@@ -5,83 +5,37 @@
  */
 package ch.unizh.ini.jaer.projects.davis.frames;
 
-import static org.bytedeco.javacpp.Loader.sizeof;
-import static org.bytedeco.javacpp.helper.opencv_imgproc.cvDrawContours;
-import static org.bytedeco.javacpp.opencv_core.Size;
-import static org.bytedeco.javacpp.opencv_core.CV_32FC2;
 import static org.bytedeco.javacpp.opencv_core.CV_8U;
-import static org.bytedeco.javacpp.opencv_core.CV_8UC3;
-import static org.bytedeco.javacpp.opencv_core.cvCreateMemStorage;
-import static org.bytedeco.javacpp.opencv_core.cvGetSeqElem;
 import static org.bytedeco.javacpp.opencv_core.inRange;
-import static org.bytedeco.javacpp.opencv_core.cvPoint;
-import static org.bytedeco.javacpp.opencv_core.cvScalar;
 import static org.bytedeco.javacpp.opencv_core.split;
-import static org.bytedeco.javacpp.opencv_core.KeyPoint;
-import static org.bytedeco.javacpp.opencv_core.KeyPointVector;
-//import static org.bytedeco.javacpp.opencv_core.CV_64FC3;
-//import static org.bytedeco.javacpp.opencv_core.CV_8U;
-//import static org.bytedeco.javacpp.opencv_core.CV_8UC3;
-//import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_EPS;
-//import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_ITER;
-//import static org.bytedeco.javacpp.opencv_imgproc.CV_GRAY2RGB;
-import static org.bytedeco.javacpp.opencv_imgproc.CV_AA;
-import static org.bytedeco.javacpp.opencv_imgproc.CV_CHAIN_APPROX_SIMPLE;
-import static org.bytedeco.javacpp.opencv_imgproc.CV_GRAY2RGB;
-import static org.bytedeco.javacpp.opencv_imgproc.CV_POLY_APPROX_DP;
-import static org.bytedeco.javacpp.opencv_imgproc.CV_RETR_CCOMP;
 import static org.bytedeco.javacpp.opencv_imgproc.CV_RGB2HSV;
-import static org.bytedeco.javacpp.opencv_imgproc.cvApproxPoly;
-import static org.bytedeco.javacpp.opencv_imgproc.cvContourPerimeter;
-import static org.bytedeco.javacpp.opencv_imgproc.cvFindContours;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 import static org.bytedeco.javacpp.opencv_imgproc.GaussianBlur;
-import static org.bytedeco.javacpp.opencv_features2d.SimpleBlobDetector;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.File;
 import java.nio.FloatBuffer;
-import java.util.List;
 import java.util.LinkedList;
-import java.util.logging.Level;
 
 import javax.swing.JButton;
-import javax.swing.JFileChooser;
-import javax.swing.JOptionPane;
 
 import org.bytedeco.javacpp.FloatPointer;
-import org.bytedeco.javacpp.opencv_calib3d;
 import org.bytedeco.javacpp.opencv_core;
-import org.bytedeco.javacpp.opencv_core.CvContour;
-import org.bytedeco.javacpp.opencv_core.CvMemStorage;
-import org.bytedeco.javacpp.opencv_core.CvPoint;
-import org.bytedeco.javacpp.opencv_core.CvSeq;
-import org.bytedeco.javacpp.opencv_core.IplImage;
+import org.bytedeco.javacpp.opencv_core.KeyPoint;
+import org.bytedeco.javacpp.opencv_core.KeyPointVector;
 import org.bytedeco.javacpp.opencv_core.Mat;
 import org.bytedeco.javacpp.opencv_core.MatVector;
-import org.bytedeco.javacpp.opencv_core.Size;
+import org.bytedeco.javacpp.opencv_features2d.SimpleBlobDetector;
 import org.bytedeco.javacpp.opencv_highgui;
-import org.bytedeco.javacpp.opencv_imgproc;
-import org.bytedeco.javacpp.helper.opencv_core.AbstractCvScalar;
-import org.bytedeco.javacpp.helper.opencv_core.AbstractIplImage;
-import org.bytedeco.javacpp.indexer.DoubleBufferIndexer;
-import org.bytedeco.javacpp.indexer.DoubleIndexer;
-import org.openni.Device;
-import org.openni.DeviceInfo;
-import org.openni.OpenNI;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
-
-import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
+
 import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -93,9 +47,6 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
-import net.sf.jaer.util.filter.MedianLowpassFilter;
-import org.bytedeco.javacpp.indexer.DoubleBufferIndexer;
 
 /**
  * Detects blobs in CDAVIS frames using OpenCV SimpleBlobDetector.
@@ -118,7 +69,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     //encapsulated fields
     private boolean colorBlobDetectionEnabled = getBoolean("colorBlobDetectionEnabled", true);
     private boolean tuningEnabled = getBoolean("tuningEnabled", false);
-    
+
     private Mat imgIn, imgOut;
     private KeyPointVector blobCenterVector;
 
@@ -136,11 +87,11 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     DavisChip apsDvsChip = null;
 //    RectangularClusterTracker.Cluster blobs = null;
     volatile protected LinkedList<RectangularClusterTracker.Cluster> blobs = new LinkedList<>();
-    
+
     private GLU glu = new GLU();
     private GLUquadric quad = null;
     private float[] compArray = new float[4];
-    
+
     private int gaussianBlurKernalRadius = getInt("gaussianBlurKernalRadius", 20);
     private int hueUpperBound = getInt("hueUpperBound", 125);
     private int hueLowerBound = getInt("hueLowerBound", 115);
@@ -150,7 +101,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 //    MedianLowpassFilter velxfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
 //    MedianLowpassFilter velyfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
 //    Point2D.Float ballVel = new Point2D.Float();
-    
+
     public CdavisFrameBlobDetector(AEChip chip) {
         super(chip);
 //        frameExtractor = new ApsFrameExtractor(chip);
@@ -227,9 +178,9 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         Mat imgHsv = new Mat(ip);
         cvtColor(imgIn, imgHsv, CV_RGB2HSV);
 //        log.info(printMatD(imgHsv));
-        
+
         MatVector hsvChannels = new MatVector();
-                
+
         split( imgHsv, hsvChannels );
 //        log.info(printMatD(hsvChannels.get(1)));
         Mat lowerBound = new Mat(480, 640, CV_8U, new opencv_core.Scalar((float) hueLowerBound));
@@ -240,11 +191,11 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         Mat hueBinMat = new Mat(480, 640, CV_8U, new opencv_core.Scalar(0.0));
 //        log.info(printMatD(hueBinMat));
 
-        int kernalSize = 2*gaussianBlurKernalRadius + 1;
+        int kernalSize = (2*gaussianBlurKernalRadius) + 1;
         GaussianBlur(hsvChannels.get(0), hueBlurMat, new opencv_core.Size(kernalSize,kernalSize), 1.5);
         inRange(hsvChannels.get(0),lowerBound,upperBound,hueBinMat);
 //        log.info(printMatD(hueBinMat));
-        
+
         SimpleBlobDetector blobDetector = SimpleBlobDetector.create(new SimpleBlobDetector.Params()
                 .filterByArea(true)
                 .minArea(areaLowerBound)
@@ -256,15 +207,15 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
                 .filterByCircularity(false)
 //                .minCircularity(circularity.get(0).floatValue())
 //                .maxCircularity(circularity.get(1).floatValue())
-                
+
                 .filterByConvexity(false)
-                
+
                 .filterByInertia(false)
-                
+
         );
         blobCenterVector = new KeyPointVector();
         blobDetector.detect(hueBinMat, blobCenterVector);
-        
+
         if (tuningEnabled) {
             opencv_highgui.imshow("Input", imgIn);
             opencv_highgui.imshow("Hue", hsvChannels.get(0));
@@ -274,9 +225,9 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
             opencv_highgui.waitKey(1000);
         }
      }
-    
+
     public void trackBlobs () {
-        if (colorBlobDetectionEnabled && blobCenterVector != null) {
+        if (colorBlobDetectionEnabled && (blobCenterVector != null)) {
             for (int i = 0; i < blobCenterVector.size(); i++) {
                 KeyPoint blobCenter = blobCenterVector.get(i);
                 float size = blobCenter.size();
@@ -296,7 +247,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 
         GL2 gl = drawable.getGL().getGL2();
 
-        if (colorBlobDetectionEnabled && blobCenterVector != null) {
+        if (colorBlobDetectionEnabled && (blobCenterVector != null)) {
             //draw lines
             gl.glLineWidth(2f);
             gl.glColor3f(0, 0, 1);
@@ -306,14 +257,14 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
                 KeyPoint blobCenter = blobCenterVector.get(i);
                 float size = blobCenter.size();
                 if (size > 5) {
-                    float x0 = blobCenter.pt().x()-size/2;
-                    float y0 = blobCenter.pt().y()-size/2;
-                    float x1 = blobCenter.pt().x()+size/2;
-                    float y1 = blobCenter.pt().y()-size/2;
-                    float x2 = blobCenter.pt().x()+size/2;
-                    float y2 = blobCenter.pt().y()+size/2;
-                    float x3 = blobCenter.pt().x()-size/2;
-                    float y3 = blobCenter.pt().y()+size/2;
+                    float x0 = blobCenter.pt().x()-(size/2);
+                    float y0 = blobCenter.pt().y()-(size/2);
+                    float x1 = blobCenter.pt().x()+(size/2);
+                    float y1 = blobCenter.pt().y()-(size/2);
+                    float x2 = blobCenter.pt().x()+(size/2);
+                    float y2 = blobCenter.pt().y()+(size/2);
+                    float x3 = blobCenter.pt().x()-(size/2);
+                    float y3 = blobCenter.pt().y()+(size/2);
                     gl.glBegin(GL.GL_LINES);
                     gl.glVertex2f(x0, 480-y0);
                     gl.glVertex2f(x1, 480-y1);
@@ -362,8 +313,8 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     public void setColorBlobDetectionEnabled(boolean colorBlobDetectionEnabled) {
         this.colorBlobDetectionEnabled = colorBlobDetectionEnabled;
     }
-    
-    
+
+
     /**
      * @return the tuningDetectionEnabled
      */
@@ -427,8 +378,8 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     public int getMaxGaussianBlurKernalRadius() {
 	return 10000;
     }
-    
-    
+
+
     /*user configure hueUpperBound*/
     public final int getHueUpperBound() {
         return hueUpperBound;
@@ -446,8 +397,8 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     public int getMaxHueUpperBound() {
 	return 255;
     }
-    
-    
+
+
     /*user configure hueLowerBound*/
     public final int getHueLowerBound() {
         return hueLowerBound;
@@ -465,7 +416,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     public int getMaxHueLowerBound() {
 	return 255;
     }
-    
+
     /*user configure areaUpperBound*/
     public final int getAreaUpperBound() {
         return areaUpperBound;
@@ -483,7 +434,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     public int getMaxAreaUpperBound() {
 	return 640*480;
     }
-    
+
     /*user configure areaLowerBound*/
     public final int getAreaLowerBound() {
         return areaLowerBound;
