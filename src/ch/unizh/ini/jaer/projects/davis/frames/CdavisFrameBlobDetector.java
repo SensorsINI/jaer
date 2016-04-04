@@ -68,7 +68,12 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
      */
     //encapsulated fields
     private boolean colorBlobDetectionEnabled = getBoolean("colorBlobDetectionEnabled", true);
+    private boolean filterByAreaEnabled = getBoolean("filterByAreaEnabled", true);
     private boolean tuningEnabled = getBoolean("tuningEnabled", false);
+    private boolean filterByColorEnabled = getBoolean("filterByColorEnabled", true);
+    private boolean filterByCircularityEnabled = getBoolean("filterByCircularityEnabled", false);
+    private boolean filterByConvexityEnabled = getBoolean("filterByConvexityEnabled", false);
+    private boolean filterByInertiaEnabled = getBoolean("filterByInertiaEnabled", false);
 
     private Mat imgIn, imgOut;
     private KeyPointVector blobCenterVector;
@@ -93,10 +98,17 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     private float[] compArray = new float[4];
 
     private int gaussianBlurKernalRadius = getInt("gaussianBlurKernalRadius", 20);
+    private float gaussianSigma = getFloat("gaussianSigma", 5.0f);
     private int hueUpperBound = getInt("hueUpperBound", 125);
     private int hueLowerBound = getInt("hueLowerBound", 115);
     private int areaUpperBound = getInt("areaUpperBound", 10000);
     private int areaLowerBound = getInt("areaLowerBound", 100);
+    private float circularityUpperBound = getFloat("circularityUpperBound", 1);
+    private float circularityLowerBound = getFloat("circularityLowerBound", 0);
+    private float convexityUpperBound = getFloat("convexityUpperBound", 1);
+    private float convexityLowerBound = getFloat("convexityLowerBound", 0);
+    private float inertiaUpperBound = getFloat("inertiaUpperBound", 1);
+    private float inertiaLowerBound = getFloat("inertiaLowerBound", 0);
 //    int velocityMedianFilterLengthSamples = getInt("velocityMedianFilterLengthSamples", 9);
 //    MedianLowpassFilter velxfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
 //    MedianLowpassFilter velyfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
@@ -115,12 +127,24 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 
         String General = "General", Tuning = "Tuning";
         setPropertyTooltip(General, "colorBlobDetectionEnabled", "Enable color blob detection in the frame");
+        setPropertyTooltip(General, "filterByColorEnabled", "Using color as blob detection condition");
+        setPropertyTooltip(General, "filterByAreaEnabled", "Using area as blob detection condition");
+        setPropertyTooltip(General, "filterByCircularityEnabled", "Using circularity as blob detection condition");
+        setPropertyTooltip(General, "filterByConvexityEnabled", "Using convexity as blob detection condition");
+        setPropertyTooltip(General, "filterByInertiaEnabled", "Using inertia as blob detection condition");
         setPropertyTooltip(Tuning, "tuningEnabled", "Enable tuning of the color blob detection");
         setPropertyTooltip(Tuning, "gaussianBlurKernalRadius", "Sets the Gaussian blur kernal radius for the hue image");
+        setPropertyTooltip(Tuning, "gaussianSigma", "Sets the Gaussian blur kernal sigma for the hue image");
         setPropertyTooltip(Tuning, "hueUpperBound", "Sets the upper limit of the blob color to be detected in the hue image");
         setPropertyTooltip(Tuning, "hueLowerBound", "Sets the lower limit of the blob color to be detected in the hue image");
         setPropertyTooltip(Tuning, "areaUpperBound", "Sets the upper limit of the blob area to be detected in the hue image");
         setPropertyTooltip(Tuning, "areaLowerBound", "Sets the lower limit of the blob area to be detected in the hue image");
+        setPropertyTooltip(Tuning, "circularityUpperBound", "Sets the upper limit of the blob circularity to be detected in the hue image");
+        setPropertyTooltip(Tuning, "circularityLowerBound", "Sets the lower limit of the blob circularity to be detected in the hue image");
+        setPropertyTooltip(Tuning, "convexityUpperBound", "Sets the upper limit of the blob convexity to be detected in the hue image");
+        setPropertyTooltip(Tuning, "convexityLowerBound", "Sets the lower limit of the blob convexity to be detected in the hue image");
+        setPropertyTooltip(Tuning, "inertiaUpperBound", "Sets the upper limit of the blob inertia to be detected in the hue image");
+        setPropertyTooltip(Tuning, "inertiaLowerBound", "Sets the lower limit of the blob inertia to be detected in the hue image");
     }
 
     /**
@@ -192,25 +216,29 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 //        log.info(printMatD(hueBinMat));
 
         int kernalSize = (2*gaussianBlurKernalRadius) + 1;
-        GaussianBlur(hsvChannels.get(0), hueBlurMat, new opencv_core.Size(kernalSize,kernalSize), 1.5);
+        GaussianBlur(hsvChannels.get(0), hueBlurMat, new opencv_core.Size(kernalSize,kernalSize), gaussianSigma);
         inRange(hsvChannels.get(0),lowerBound,upperBound,hueBinMat);
 //        log.info(printMatD(hueBinMat));
 
         SimpleBlobDetector blobDetector = SimpleBlobDetector.create(new SimpleBlobDetector.Params()
-                .filterByArea(true)
+                .filterByArea(filterByAreaEnabled)
                 .minArea(areaLowerBound)
                 .maxArea(areaUpperBound)
 
-                .filterByColor(true)
+                .filterByColor(filterByColorEnabled)
                 .blobColor((byte) 255)
 
-                .filterByCircularity(false)
-//                .minCircularity(circularity.get(0).floatValue())
-//                .maxCircularity(circularity.get(1).floatValue())
+                .filterByCircularity(filterByCircularityEnabled)
+                .minCircularity(circularityLowerBound)
+                .maxCircularity(circularityUpperBound)
 
-                .filterByConvexity(false)
+                .filterByConvexity(filterByConvexityEnabled)
+                .minConvexity(convexityLowerBound)
+                .maxConvexity(convexityUpperBound)
 
-                .filterByInertia(false)
+                .filterByInertia(filterByInertiaEnabled)
+                .minInertiaRatio(inertiaLowerBound)
+                .maxInertiaRatio(inertiaUpperBound)
 
         );
         blobCenterVector = new KeyPointVector();
@@ -316,7 +344,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 
 
     /**
-     * @return the tuningDetectionEnabled
+     * @return the tuningEnabled
      */
     public boolean isTuningEnabled() {
         return tuningEnabled;
@@ -328,6 +356,86 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
      */
     public void setTuningEnabled(boolean tuningEnabled) {
         this.tuningEnabled = tuningEnabled;
+    }
+    
+    
+    /**
+     * @return the filterByColorEnabled
+     */
+    public boolean isFilterByColorEnabled() {
+        return filterByColorEnabled;
+    }
+
+    /**
+     * @param filterByColorEnabled the
+     * filterByColorEnabled to set
+     */
+    public void setFilterByColorEnabled(boolean filterByColorEnabled) {
+        this.filterByColorEnabled = filterByColorEnabled;
+    }
+    
+    
+    /**
+     * @return the filterByAreaEnabled
+     */
+    public boolean isFilterByAreaEnabled() {
+        return filterByAreaEnabled;
+    }
+
+    /**
+     * @param filterByAreaEnabled the
+     * filterByAreaEnabled to set
+     */
+    public void setFilterByAreaEnabled(boolean filterByAreaEnabled) {
+        this.filterByAreaEnabled = filterByAreaEnabled;
+    }
+    
+    
+    /**
+     * @return the filterByCircularityEnabled
+     */
+    public boolean isFilterByCircularityEnabled() {
+        return filterByCircularityEnabled;
+    }
+
+    /**
+     * @param filterByCircularityEnabled the
+     * filterByCircularityEnabled to set
+     */
+    public void setFilterByCircularityEnabled(boolean filterByCircularityEnabled) {
+        this.filterByCircularityEnabled = filterByCircularityEnabled;
+    }
+    
+    
+    /**
+     * @return the filterByConvexityEnabled
+     */
+    public boolean isFilterByConvexityEnabled() {
+        return filterByConvexityEnabled;
+    }
+
+    /**
+     * @param filterByConvexityEnabled the
+     * filterByConvexityEnabled to set
+     */
+    public void setFilterByConvexityEnabled(boolean filterByConvexityEnabled) {
+        this.filterByConvexityEnabled = filterByConvexityEnabled;
+    }
+    
+    
+    /**
+     * @return the filterByInertiaEnabled
+     */
+    public boolean isFilterByInertiaEnabled() {
+        return filterByInertiaEnabled;
+    }
+
+    /**
+     * @param filterByInertiaEnabled the
+     * filterByInertiaEnabled to set
+     */
+    public void setFilterByInertiaEnabled(boolean filterByInertiaEnabled) {
+        this.filterByInertiaEnabled = filterByInertiaEnabled;
     }
 
     static void setButtonState(Container c, String buttonString,boolean flag ) {
@@ -376,7 +484,26 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     }
 
     public int getMaxGaussianBlurKernalRadius() {
-	return 10000;
+	return 1000;
+    }
+    
+    
+    /*user configure gaussianSigma*/
+    public final float getGaussianSigma() {
+        return gaussianSigma;
+    }
+
+    public void setGaussianSigma(final float gaussianSigma) {
+        this.gaussianSigma = gaussianSigma;
+        putFloat("gaussianSigma", gaussianSigma);
+    }
+
+    public float getMinGaussianSigma() {
+        return 0f;
+    }
+
+    public float getMaxGaussianSigma() {
+	return 10f;
     }
 
 
@@ -451,5 +578,113 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 
     public int getMaxAreaLowerBound() {
 	return 640*480;
+    }
+    
+    /*user configure circularityUpperBound*/
+    public final float getCircularityUpperBound() {
+        return circularityUpperBound;
+    }
+
+    public void setCircularityUpperBound(final float circularityUpperBound) {
+        this.circularityUpperBound = circularityUpperBound;
+        putFloat("circularityUpperBound", circularityUpperBound);
+    }
+
+    public float getMinCircularityUpperBound() {
+        return 0f;
+    }
+
+    public float getMaxCircularityUpperBound() {
+	return 1f;
+    }
+
+    /*user configure circularityLowerBound*/
+    public final float getCircularityLowerBound() {
+        return circularityLowerBound;
+    }
+
+    public void setCircularityLowerBound(final float circularityLowerBound) {
+        this.circularityLowerBound = circularityLowerBound;
+        putFloat("circularityLowerBound", circularityLowerBound);
+    }
+
+    public float getMinCircularityLowerBound() {
+        return 0f;
+    }
+
+    public float getMaxCircularityLowerBound() {
+	return 1f;
+    }
+    
+    /*user configure convexityUpperBound*/
+    public final float getConvexityUpperBound() {
+        return convexityUpperBound;
+    }
+
+    public void setConvexityUpperBound(final float convexityUpperBound) {
+        this.convexityUpperBound = convexityUpperBound;
+        putFloat("convexityUpperBound", convexityUpperBound);
+    }
+
+    public float getMinConvexityUpperBound() {
+        return 0f;
+    }
+
+    public float getMaxConvexityUpperBound() {
+	return 1f;
+    }
+
+    /*user configure convexityLowerBound*/
+    public final float getConvexityLowerBound() {
+        return convexityLowerBound;
+    }
+
+    public void setConvexityLowerBound(final float convexityLowerBound) {
+        this.convexityLowerBound = convexityLowerBound;
+        putFloat("convexityLowerBound", convexityLowerBound);
+    }
+
+    public float getMinConvexityLowerBound() {
+        return 0f;
+    }
+
+    public float getMaxConvexityLowerBound() {
+	return 1f;
+    }
+    
+    /*user configure inertiaUpperBound*/
+    public final float getInertiaUpperBound() {
+        return inertiaUpperBound;
+    }
+
+    public void setInertiaUpperBound(final float inertiaUpperBound) {
+        this.inertiaUpperBound = inertiaUpperBound;
+        putFloat("inertiaUpperBound", inertiaUpperBound);
+    }
+
+    public float getMinInertiaUpperBound() {
+        return 0f;
+    }
+
+    public float getMaxInertiaUpperBound() {
+	return 1f;
+    }
+    
+    /*user configure inertiaLowerBound*/
+    public final float getInertiaLowerBound() {
+        return inertiaLowerBound;
+    }
+
+    public void setInertiaLowerBound(final float inertiaLowerBound) {
+        this.inertiaLowerBound = inertiaLowerBound;
+        putFloat("inertiaLowerBound", inertiaLowerBound);
+    }
+
+    public float getMinInertiaLowerBound() {
+        return 0f;
+    }
+
+    public float getMaxInertiaLowerBound() {
+	return 1f;
     }
 }
