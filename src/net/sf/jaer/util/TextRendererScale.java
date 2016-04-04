@@ -23,8 +23,8 @@ public class TextRendererScale {
      * @param textRenderer the TextRenderer
      * @param string the rendered String
      * @param screenPixelsPerChipPixel the scaling of screen pixels per chip
-     * pixel
-     * @param pixelWidth the width (or height
+     * pixel, e.g. chip.getCanvas().getScale()
+     * @param pixelWidth the width (or height), generally in AEChip pixels if rendering onto AEViewer display
      * @param fractionToFill the fraction of pixelWidth to fill with string
      * @return the scale that should be passed to draw3D to render text
      *
