@@ -1,4 +1,4 @@
-<?xml version="1.1" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8" ?>
 
 <Form version="1.5" maxVersion="1.7" type="org.netbeans.modules.form.forminfo.JDialogFormInfo">
   <Properties>
@@ -6,6 +6,7 @@
   </Properties>
   <SyntheticProperties>
     <SyntheticProperty name="formSizePolicy" type="int" value="1"/>
+    <SyntheticProperty name="generateCenter" type="boolean" value="false"/>
   </SyntheticProperties>
   <Events>
     <EventHandler event="windowClosing" listener="java.awt.event.WindowListener" parameters="java.awt.event.WindowEvent" handler="closeDialog"/>
@@ -76,14 +77,23 @@
               <Group type="102" attributes="0">
                   <EmptySpace max="-2" attributes="0"/>
                   <Group type="103" groupAlignment="0" attributes="0">
-                      <Component id="portCB" alignment="0" pref="370" max="32767" attributes="0"/>
-                      <Component id="jLabel1" alignment="0" min="-2" max="-2" attributes="0"/>
+                      <Component id="portCB" alignment="0" max="32767" attributes="0"/>
+                      <Group type="102" alignment="0" attributes="0">
+                          <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
+                      </Group>
                       <Group type="102" alignment="1" attributes="0">
-                          <Component id="refreshPortListButton" min="-2" max="-2" attributes="0"/>
+                          <Component id="jLabel5" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace max="32767" attributes="0"/>
+                          <Component id="baudRateCB" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                          <Component id="refreshPortListButton" min="-2" pref="117" max="-2" attributes="0"/>
                           <EmptySpace type="unrelated" max="-2" attributes="0"/>
                           <Component id="okSerPortButton" min="-2" max="-2" attributes="0"/>
                       </Group>
                   </Group>
+                  <EmptySpace max="-2" attributes="0"/>
+                  <Component id="closeButton" min="-2" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
               </Group>
           </Group>
@@ -99,6 +109,9 @@
                   <Group type="103" groupAlignment="3" attributes="0">
                       <Component id="okSerPortButton" alignment="3" min="-2" max="-2" attributes="0"/>
                       <Component id="refreshPortListButton" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="baudRateCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="jLabel5" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="closeButton" alignment="3" min="-2" max="-2" attributes="0"/>
                   </Group>
                   <EmptySpace max="-2" attributes="0"/>
               </Group>
@@ -147,6 +160,31 @@
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="refreshPortListButtonActionPerformed"/>
           </Events>
         </Component>
+        <Component class="javax.swing.JComboBox" name="baudRateCB">
+          <Properties>
+            <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Sets the serial port baud rate in megabauds. &lt;p&gt;Note that the eDVS must be separately configured to set this baud rate over a serial port console link. &lt;p&gt;The default baud rate is 4 Mbaud."/>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="baudRateCBActionPerformed"/>
+          </Events>
+          <AuxValues>
+            <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value="&lt;String&gt;"/>
+          </AuxValues>
+        </Component>
+        <Component class="javax.swing.JLabel" name="jLabel5">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="Baud rate (Mbps)"/>
+          </Properties>
+        </Component>
+        <Component class="javax.swing.JButton" name="closeButton">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="Close"/>
+            <Property name="toolTipText" type="java.lang.String" value="Closes the selected serial port."/>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="closeButtonActionPerformed"/>
+          </Events>
+        </Component>
       </SubComponents>
     </Container>
     <Container class="javax.swing.JPanel" name="jPanel2">
@@ -176,7 +214,7 @@
                                   <EmptySpace min="-2" pref="52" max="-2" attributes="0"/>
                                   <Component id="pingButton" min="-2" max="-2" attributes="0"/>
                               </Group>
-                              <Component id="hostTF" alignment="0" pref="251" max="32767" attributes="0"/>
+                              <Component id="hostTF" alignment="0" max="32767" attributes="0"/>
                           </Group>
                       </Group>
                       <Component id="jLabel4" alignment="0" min="-2" max="-2" attributes="0"/>
