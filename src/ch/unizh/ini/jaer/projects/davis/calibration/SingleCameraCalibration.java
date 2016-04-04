@@ -61,6 +61,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.TextRendererScale;
 
 /**
  * Calibrates a single camera using DAVIS frames and OpenCV calibration methods.
@@ -126,6 +127,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private final ApsFrameExtractor frameExtractor;
     private final FilterChain filterChain;
     private boolean saved = false;
+    private boolean textRendererScaleSet = false;
+    private float textRendererScale = 0.3f;
 
     public SingleCameraCalibration(AEChip chip) {
         super(chip);
@@ -410,10 +413,24 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         }
 
         if (calibrationString != null) {
+            // render once to set the scale using the same TextRenderer
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .15f);
             MultilineAnnotationTextRenderer.setColor(Color.green);
-            MultilineAnnotationTextRenderer.setScale(.3f);
+            MultilineAnnotationTextRenderer.setScale(textRendererScale);
             MultilineAnnotationTextRenderer.renderMultilineString(calibrationString);
+            if (!textRendererScaleSet) {
+                textRendererScaleSet = true;
+                String[] lines = calibrationString.split("\n", 0);
+                int max = 0;
+                String longestString = null;
+                for (String s : lines) {
+                    if (s.length() > max) {
+                        max = s.length();
+                        longestString = s;
+                    }
+                }
+                textRendererScale = TextRendererScale.draw3dScale(MultilineAnnotationTextRenderer.getRenderer(), longestString, chip.getCanvas().getScale(), chip.getSizeX(), .8f);
+            }
         }
     }
 
@@ -562,8 +579,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     private void generateCalibrationString() {
         if ((cameraMatrix == null) || cameraMatrix.isNull() || cameraMatrix.empty()) {
-            calibrationString = "uncalibrated";
-            calibrated=false;
+            calibrationString = SINGLE_CAMERA_CALIBRATION_UNCALIBRATED;
+            calibrated = false;
             return;
         }
 
@@ -588,8 +605,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 principlePoint.x, principlePoint.y,
                 chip.getSizeX() / 2, chip.getSizeY() / 2));
         calibrationString = sb.toString();
-        calibrated=true;
+        calibrated = true;
+        textRendererScaleSet=false;
     }
+    private static final String SINGLE_CAMERA_CALIBRATION_UNCALIBRATED = "SingleCameraCalibration: uncalibrated";
 
     public String shortenDirPath(String dirPath) {
         String dirComp = dirPath;
@@ -681,7 +700,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     synchronized public void doClearCalibration() {
         calibrated = false;
-        calibrationString = "Uncalibrated";
+        calibrationString = SINGLE_CAMERA_CALIBRATION_UNCALIBRATED;
         undistortedAddressLUT = null;
         isUndistortedAddressLUTgenerated = false;
     }
@@ -691,9 +710,9 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             cameraMatrix = deserializeMat(dirPath, "cameraMatrix");
             distortionCoefs = deserializeMat(dirPath, "distortionCoefs");
             generateCalibrationString();
-            if(calibrated){
+            if (calibrated) {
                 log.info("Calibrated: loaded cameraMatrix and distortionCoefs from folder " + dirPath);
-            }else{
+            } else {
                 log.warning("Uncalibrated: Something was wrong with calibration files so that cameraMatrix or distortionCoefs could not be loaded");
             }
             getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
@@ -720,8 +739,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     public opencv_core.Mat deserializeMat(String dir, String name) {
-    	String fn = dirPath + File.separator + name + ".xml";
-    	opencv_core.Mat mat = new opencv_core.Mat();
+        String fn = dirPath + File.separator + name + ".xml";
+        opencv_core.Mat mat = new opencv_core.Mat();
 
         opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.READ);
         opencv_core.read(storage.get(name), mat);
