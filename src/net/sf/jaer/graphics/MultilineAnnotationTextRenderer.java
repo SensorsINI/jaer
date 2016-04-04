@@ -14,12 +14,14 @@ import com.jogamp.opengl.GLException;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Color;
+import net.sf.jaer.util.TextRendererScale;
 
 /**
  * Useful static methods for text rendering in the annotation of an EventFilter chip output display.
  * Assumes pixel-based coordinates of GL context.
  *
  * @author tobi
+ * @see TextRendererScale for utility static method to compute a reasonable scale
  */
 public class MultilineAnnotationTextRenderer {
 	private static final float additionalSpace = 2f;
@@ -125,6 +127,14 @@ public class MultilineAnnotationTextRenderer {
      */
     public static void setColor(Color aColor) {
         color = aColor;
+    }
+
+    /**
+     * Returns the TextRenderer used by MultilineAnnotationTextRenderer. This renderer will be null before the first use.
+     * @return the renderer, or null if it has not been used yet
+     */
+    public static TextRenderer getRenderer() {
+        return renderer;
     }
     
         
