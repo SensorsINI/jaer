@@ -125,26 +125,31 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         lastFrame = new float[640*480*3];
         resetFilter();
 
-        String General = "General", Tuning = "Tuning";
+        String General = "General", byColor = "byColor", byArea = "byArea", byCircularity = "byCircularity", byConvexity = "byConvexity", byInertiaRatio = "byInertiaRatio";
         setPropertyTooltip(General, "colorBlobDetectionEnabled", "Enable color blob detection in the frame");
-        setPropertyTooltip(General, "filterByColorEnabled", "Using color as blob detection condition");
-        setPropertyTooltip(General, "filterByAreaEnabled", "Using area as blob detection condition");
-        setPropertyTooltip(General, "filterByCircularityEnabled", "Using circularity as blob detection condition");
-        setPropertyTooltip(General, "filterByConvexityEnabled", "Using convexity as blob detection condition");
-        setPropertyTooltip(General, "filterByInertiaEnabled", "Using inertia as blob detection condition");
-        setPropertyTooltip(Tuning, "tuningEnabled", "Enable tuning of the color blob detection");
-        setPropertyTooltip(Tuning, "gaussianBlurKernalRadius", "Sets the Gaussian blur kernal radius for the hue image");
-        setPropertyTooltip(Tuning, "gaussianSigma", "Sets the Gaussian blur kernal sigma for the hue image");
-        setPropertyTooltip(Tuning, "hueUpperBound", "Sets the upper limit of the blob color to be detected in the hue image");
-        setPropertyTooltip(Tuning, "hueLowerBound", "Sets the lower limit of the blob color to be detected in the hue image");
-        setPropertyTooltip(Tuning, "areaUpperBound", "Sets the upper limit of the blob area to be detected in the hue image");
-        setPropertyTooltip(Tuning, "areaLowerBound", "Sets the lower limit of the blob area to be detected in the hue image");
-        setPropertyTooltip(Tuning, "circularityUpperBound", "Sets the upper limit of the blob circularity to be detected in the hue image");
-        setPropertyTooltip(Tuning, "circularityLowerBound", "Sets the lower limit of the blob circularity to be detected in the hue image");
-        setPropertyTooltip(Tuning, "convexityUpperBound", "Sets the upper limit of the blob convexity to be detected in the hue image");
-        setPropertyTooltip(Tuning, "convexityLowerBound", "Sets the lower limit of the blob convexity to be detected in the hue image");
-        setPropertyTooltip(Tuning, "inertiaUpperBound", "Sets the upper limit of the blob inertia to be detected in the hue image");
-        setPropertyTooltip(Tuning, "inertiaLowerBound", "Sets the lower limit of the blob inertia to be detected in the hue image");
+        setPropertyTooltip(General, "gaussianBlurKernalRadius", "Sets the Gaussian blur kernal radius for the hue image");
+        setPropertyTooltip(General, "gaussianSigma", "Sets the Gaussian blur kernal sigma for the hue image");
+        setPropertyTooltip(General, "tuningEnabled", "Enable tuning of the color blob detection");
+        
+        setPropertyTooltip(byColor, "filterByColorEnabled", "Using color as blob detection condition");
+        setPropertyTooltip(byColor, "hueUpperBound", "Sets the upper limit of the blob color to be detected in the hue image");
+        setPropertyTooltip(byColor, "hueLowerBound", "Sets the lower limit of the blob color to be detected in the hue image");
+        
+        setPropertyTooltip(byArea, "filterByAreaEnabled", "Using area as blob detection condition");
+        setPropertyTooltip(byArea, "areaUpperBound", "Sets the upper limit of the blob area to be detected in the hue image");
+        setPropertyTooltip(byArea, "areaLowerBound", "Sets the lower limit of the blob area to be detected in the hue image");
+        
+        setPropertyTooltip(byCircularity, "filterByCircularityEnabled", "Using circularity as blob detection condition");
+        setPropertyTooltip(byCircularity, "circularityUpperBound", "Sets the upper limit of the blob circularity to be detected in the hue image");
+        setPropertyTooltip(byCircularity, "circularityLowerBound", "Sets the lower limit of the blob circularity to be detected in the hue image");
+        
+        setPropertyTooltip(byConvexity, "filterByConvexityEnabled", "Using convexity as blob detection condition");
+        setPropertyTooltip(byConvexity, "convexityUpperBound", "Sets the upper limit of the blob convexity to be detected in the hue image");
+        setPropertyTooltip(byConvexity, "convexityLowerBound", "Sets the lower limit of the blob convexity to be detected in the hue image");
+        
+        setPropertyTooltip(byInertiaRatio, "filterByInertiaEnabled", "Using inertia as blob detection condition");
+        setPropertyTooltip(byInertiaRatio, "inertiaUpperBound", "Sets the upper limit of the blob inertia to be detected in the hue image");
+        setPropertyTooltip(byInertiaRatio, "inertiaLowerBound", "Sets the lower limit of the blob inertia to be detected in the hue image");
     }
 
     /**
