@@ -1395,7 +1395,7 @@ two interfaces). otherwise force user choice.
                             JDialog fac = inst.getInterfaceChooser(chip);
                             fac.setVisible(true);
                             if (inst.getChosenHardwareInterface() != null) {
-                                synchronized (viewLoop) {
+//                                synchronized (viewLoop) {
                                     // close interface on chip if there is one and it's open
                                     if (chip.getHardwareInterface() != null) {
                                         log.info("before opening new interface, closing " + chip.getHardwareInterface().toString());
@@ -1405,7 +1405,7 @@ two interfaces). otherwise force user choice.
                                     HardwareInterface hw = inst.getChosenHardwareInterface();
                                     log.info("setting new interface " + hw);
                                     chip.setHardwareInterface(hw);
-                                }
+//                                }
                                 if (e.getSource() instanceof JMenuItem) {
                                     JMenuItem item = (JMenuItem) e.getSource();
                                     item.setSelected(true); // doesn't work because menu is contantly rebuilt TODO
