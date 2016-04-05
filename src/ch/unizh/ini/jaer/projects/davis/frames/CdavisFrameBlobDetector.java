@@ -222,7 +222,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 
         int kernalSize = (2*gaussianBlurKernalRadius) + 1;
         GaussianBlur(hsvChannels.get(0), hueBlurMat, new opencv_core.Size(kernalSize,kernalSize), gaussianSigma);
-        inRange(hsvChannels.get(0),lowerBound,upperBound,hueBinMat);
+        inRange(hueBlurMat,lowerBound,upperBound,hueBinMat);
 //        log.info(printMatD(hueBinMat));
 
         SimpleBlobDetector blobDetector = SimpleBlobDetector.create(new SimpleBlobDetector.Params()
@@ -251,7 +251,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 
         if (tuningEnabled) {
             opencv_highgui.imshow("Input", imgIn);
-            opencv_highgui.imshow("Hue", hsvChannels.get(0));
+            opencv_highgui.imshow("Hue", hueBlurMat);
 
             opencv_highgui.imshow("threshold Hue", hueBinMat);
 

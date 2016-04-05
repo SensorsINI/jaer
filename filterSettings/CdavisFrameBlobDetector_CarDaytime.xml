@@ -158,7 +158,7 @@
                 <entry key="AutoExposureController.highBoundary" value="0.5801483"/>
                 <entry key="AutoExposureController.lowBoundary" value="0.13400951"/>
                 <entry key="AutomaticReplayPlayer.filterEnabled" value="false"/>
-                <entry key="BackgroundActivityFilter.dt" value="8074"/>
+                <entry key="BackgroundActivityFilter.dt" value="1472"/>
                 <entry key="BackgroundActivityFilter.filterEnabled" value="false"/>
                 <entry key="BackgroundActivityFilter.subsampleBy" value="1"/>
                 <entry key="BinaryFeatureDetector.filterEnabled" value="false"/>
@@ -2392,18 +2392,22 @@
                 <entry key="SingleCameraCalibration.realtimePatternDetectionEnabled" value="true"/>
                 <entry key="SingleCameraCalibration.dirPath" value="E:\code\jAER\trunk"/>
                 <entry key="SingleCameraCalibration.showUndistortedFrames" value="false"/>
-                <entry key="CdavisFrameBlobDetector.hueLowerBound" value="118"/>
-                <entry key="CdavisFrameBlobDetector.hueUpperBound" value="123"/>
-                <entry key="CdavisFrameBlobDetector.areaLowerBound" value="400"/>
-                <entry key="CdavisFrameBlobDetector.gaussianBlurKernalRadius" value="60"/>
-                <entry key="CdavisFrameBlobDetector.areaUpperBound" value="9000"/>
+                <entry key="CdavisFrameBlobDetector.hueLowerBound" value="115"/>
+                <entry key="CdavisFrameBlobDetector.hueUpperBound" value="126"/>
+                <entry key="CdavisFrameBlobDetector.areaLowerBound" value="800"/>
+                <entry key="CdavisFrameBlobDetector.gaussianBlurKernalRadius" value="30"/>
+                <entry key="CdavisFrameBlobDetector.areaUpperBound" value="1200"/>
                 <entry key="CdavisFrameBlobDetector.convexityLowerBound" value="0.0"/>
-                <entry key="CdavisFrameBlobDetector.convexityUpperBound" value="1.0"/>
-                <entry key="CdavisFrameBlobDetector.inertiaLowerBound" value="0.0"/>
-                <entry key="CdavisFrameBlobDetector.inertiaUpperBound" value="0.87"/>
-                <entry key="CdavisFrameBlobDetector.circularityUpperBound" value="0.15"/>
-                <entry key="CdavisFrameBlobDetector.circularityLowerBound" value="0.0"/>
-                <entry key="CdavisFrameBlobDetector.gaussianSigma" value="2.0371685"/>
+                <entry key="CdavisFrameBlobDetector.convexityUpperBound" value="0.27"/>
+                <entry key="CdavisFrameBlobDetector.inertiaLowerBound" value="0.08"/>
+                <entry key="CdavisFrameBlobDetector.inertiaUpperBound" value="0.22"/>
+                <entry key="CdavisFrameBlobDetector.circularityUpperBound" value="1.0"/>
+                <entry key="CdavisFrameBlobDetector.circularityLowerBound" value="0.2930145"/>
+                <entry key="CdavisFrameBlobDetector.gaussianSigma" value="1.5"/>
+                <entry key="JaerAviWriter.maxFrames" value="0"/>
+                <entry key="DvsSliceAviWriter.filterEnabled" value="false"/>
+                <entry key="DvsSliceAviWriter.dimy" value="240"/>
+                <entry key="DvsSliceAviWriter.showOutput" value="false"/>
               </map>
               <node name="ch">
                 <map/>
@@ -2431,11 +2435,11 @@
                               <map>
                                 <entry key="RectangularClusterTracker.vanishingPoint.x" value="NaN"/>
                                 <entry key="RectangularClusterTracker.vanishingPoint.y" value="NaN"/>
-                                <entry key="RectangularClusterTracker.clusterMassDecayTauUs" value="1000000"/>
+                                <entry key="RectangularClusterTracker.clusterMassDecayTauUs" value="2000000"/>
                                 <entry key="RectangularClusterTracker.maxNumClusters" value="0"/>
-                                <entry key="RectangularClusterTracker.clusterSize" value="0.055966172"/>
+                                <entry key="RectangularClusterTracker.clusterSize" value="0.06"/>
                                 <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
-                                <entry key="RectangularClusterTracker.thresholdMassForVisibleCluster" value="2"/>
+                                <entry key="RectangularClusterTracker.thresholdMassForVisibleCluster" value="0"/>
                                 <entry key="RectangularClusterTracker.showAllClusters" value="true"/>
                                 <entry key="RectangularClusterTracker.colorClustersDifferentlyEnabled" value="true"/>
                                 <entry key="RectangularClusterTracker.showClusterEps" value="false"/>
@@ -2451,7 +2455,7 @@
                                 <entry key="RectangularClusterTracker.enableClusterExitPurging" value="true"/>
                                 <entry key="RectangularClusterTracker.useNearestCluster" value="false"/>
                                 <entry key="ApsFrameExtractor.showAPSFrameDisplay" value="false"/>
-                                <entry key="RectangularClusterTracker.mixingFactor" value="0.0070834695"/>
+                                <entry key="RectangularClusterTracker.mixingFactor" value="0.014024776"/>
                                 <entry key="RectangularClusterTracker.pathLength" value="94"/>
                                 <entry key="RectangularClusterTracker.aspectRatio" value="0.7"/>
                                 <entry key="RectangularClusterTracker.thresholdVelocityForVisibleCluster" value="0.0"/>
