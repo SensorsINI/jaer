@@ -82,8 +82,9 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
     private AEFrameChipRenderer dvsRenderer;
     private ChipRendererDisplayMethodRGBA dvsDisplayMethod = null;
     JComponent helpMenuItem1 = null, helpMenuItem2 = null, helpMenuItem3 = null;
-    public static final String HELP_URL_RETINA = "http://inilabs.com/support/overview-of-dynamic-vision-sensors";
-    public static final String USER_GUIDE_URL_RETINA = "http://inilabs.com/support/dvs128";
+    public static final String HELP_URL_INILABS_HARDWARE = "http://inilabs.com/support/hardware/";
+    public static final String USER_GUIDE_URL_DVS128 = "http://inilabs.com/support/dvs128";
+    public static final String USER_GUIDE_URL_EDVS = "http://inilabs.com/support/hardware/edvs/";
     public static final String FIRMWARE_CHANGELOG = "https://sourceforge.net/p/jaer/code/HEAD/tree/devices/firmware/CypressFX2/firmware_FX2LP_DVS128/CHANGELOG.txt";
 
     /**
@@ -365,8 +366,9 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         if (getAeViewer() == null) {
             return;
         }
-        helpMenuItem1 = getAeViewer().addHelpURLItem(HELP_URL_RETINA, "DVS128 wiki", "Opens wiki for DVS128 silicon retina");
-        helpMenuItem2 = getAeViewer().addHelpURLItem(USER_GUIDE_URL_RETINA, "DVS128 user guide", "Opens user guide wiki for DVS128 silicon retina");
+        helpMenuItem1 = getAeViewer().addHelpURLItem(HELP_URL_INILABS_HARDWARE, "inilabs hardware overview", "Opens inilabs hardware user guides overview");
+        helpMenuItem2 = getAeViewer().addHelpURLItem(USER_GUIDE_URL_DVS128, "DVS128 user guide", "Opens user guide for DVS128 silicon retina");
+        helpMenuItem2 = getAeViewer().addHelpURLItem(USER_GUIDE_URL_EDVS, "eDVS4337 user guide", "Opens user guide for eDVS4337 (128x128) silicon retina based on NXP LPC4337 microcontroller with FTDI serial USB and WLAN interfaces");
         helpMenuItem3 = getAeViewer().addHelpURLItem(FIRMWARE_CHANGELOG, "DVS128 Firmware Change Log", "Displays the head version of the DVS128 firmware change log");
         enableDVS128Menu(true);
     }
