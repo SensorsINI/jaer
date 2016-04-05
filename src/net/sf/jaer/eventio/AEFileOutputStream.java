@@ -167,8 +167,24 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 
 		final int[] addr = ae.getAddresses();
 		final int[] ts = ae.getTimestamps();
+                
+                int startIdx=0;
+                
+                
+                
+                if(eventCounter==0){
+                    // For first event written out, make sure that the data is not a comment char character, 
+                    // or else the first data will be commented away as part of the file header.
+                    // The ByteBuffer is ByteOrder.BIG_ENDIAN (default) which means that MSB is first (lower index)
 
-		for (int i = 0; i < n; i++) {
+//                    addr[0]=((AEDataFile.COMMENT_CHAR&0xFFFF)<<16); // DEBUG
+                    while(startIdx<n && ((addr[startIdx]&0xFFFF0000)>>>16)==(AEDataFile.COMMENT_CHAR&0xFFFF)){
+                        log.warning(String.format("address #%d with address value %d destined for start of data file happens to code the comment char %c, skipping this event",startIdx, addr[0],AEDataFile.COMMENT_CHAR));
+                        startIdx++;
+                    }
+                }
+
+		for (int i = startIdx; i < n; i++) {
 			byteBuf.putInt(addr[i]);
 			byteBuf.putInt(ts[i]);
 
