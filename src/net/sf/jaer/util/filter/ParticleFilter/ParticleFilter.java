@@ -10,6 +10,7 @@ package net.sf.jaer.util.filter.ParticleFilter;
  * @author minliu and hongjie
  */
 
+import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -19,7 +20,11 @@ import java.util.Random;
 public class ParticleFilter<T extends Particle> {
 	private ParticleEvaluator<T, Double> estimateEvaluator; 
         private ParticleEvaluator<T, T> dynamicEvaluator;
+        private ParticleEvaluator<T, Point2D.Double> averageEvaluator;
+        
 	private ArrayList<ParticleWeight<T> > particles = new ArrayList<ParticleWeight<T> >();
+
+
 	private double[] selectionSum = new double[0];
 	private int nextParticleCount=0;
 	private boolean useWeightRatio = false;
@@ -33,10 +38,15 @@ public class ParticleFilter<T extends Particle> {
 			else return 0;
 		}
 	};
-
-	public ParticleFilter(ParticleEvaluator<T, T> dynamic, ParticleEvaluator<T, Double> measurement) {
+        
+        public ArrayList<ParticleWeight<T>> getParticles() {
+            return particles;
+        }
+    
+	public ParticleFilter(ParticleEvaluator<T, T> dynamic, ParticleEvaluator<T, Double> measurement, ParticleEvaluator<T, Point2D.Double> average) {
 		this.estimateEvaluator = measurement;
                 this.dynamicEvaluator = dynamic;
+                this.averageEvaluator = average;
 	}
         
 	public void addParticle(T p) {
@@ -54,8 +64,8 @@ public class ParticleFilter<T extends Particle> {
 
 	public void evaluateStrength() {
 		for(ParticleWeight<T> p : this.particles) {
-                        p.data = dynamicEvaluator.evaluate(p.data);
-			double weight = estimateEvaluator.evaluate(p.data);
+                        p.data = dynamicEvaluator.evaluate(p.data);           // Generate the proposal distribution by the motion model.
+			double weight = estimateEvaluator.evaluate(p.data);   // Evaluate it with the measurement value.
 			if( p.lastWeight == 0 ) {
 				p.weightRatio = weight;
 			} else {
@@ -142,6 +152,22 @@ public class ParticleFilter<T extends Particle> {
 		int copyCount;
 	}
 
+        public double getAverageX() {
+            double sumX = 0;
+            for(ParticleWeight<T> p : this.particles) {
+                    sumX += averageEvaluator.evaluate(p.data).x;
+            }
+            return sumX/particles.size();
+        }
+        
+        public double getAverageY() {
+            double sumY = 0;
+            for(ParticleWeight<T> p : this.particles) {
+                    sumY += averageEvaluator.evaluate(p.data).y;
+            }
+            return sumY/particles.size();            
+        }
+        
 	public void setEvaluator(ParticleEvaluator<T, T>dynamic, ParticleEvaluator<T, Double> measurement) {
 		this.estimateEvaluator = measurement;
                 this.dynamicEvaluator = dynamic;

@@ -17,10 +17,14 @@ public class DynamicEvaluator implements ParticleEvaluator<SimpleParticle, Simpl
 
     @Override
     public SimpleParticle evaluate(SimpleParticle p) {
-        double x = p.x;
-        double error = r.nextDouble()*noise;
-        x = x + 0 + error;
-        p.x = x;
+        double x = p.getX();
+        double y = p.getY();
+        double errorX = r.nextDouble()*noise;
+        double errorY = r.nextDouble()*noise;
+        x = x + 0 + errorX;
+        y = y + 0 + errorY;
+        p.setX(x);
+        p.setY(y);
         return p;
     }    
 }
