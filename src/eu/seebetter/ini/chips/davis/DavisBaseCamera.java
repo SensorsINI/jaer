@@ -66,7 +66,7 @@ import net.sf.jaer.util.histogram.AbstractHistogram;
  */
 abstract public class DavisBaseCamera extends DavisChip implements RemoteControlled {
 
-    public static final String HELP_URL_RETINA = "http://inilabs.com/support/hardware/";
+    public static final String HELP_URL_HW_USERGUIDES = "http://inilabs.com/support/hardware/";
     public static final String USER_GUIDE_URL_FLASHY = "http://inilabs.com/support/software/reflashing/";
     public static final String USER_GUIDE_URL_DAVIS240 = "http://inilabs.com/support/hardware/davis240/";
 
@@ -162,7 +162,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         if (getAeViewer() == null) {
             return;
         }
-        helpMenuItem1 = getAeViewer().addHelpURLItem(DavisBaseCamera.HELP_URL_RETINA, "Product overview", "Opens product overview guide");
+        helpMenuItem1 = getAeViewer().addHelpURLItem(DavisBaseCamera.HELP_URL_HW_USERGUIDES, "inilabs hardware user guides overview", "Opens product overview guide");
         helpMenuItem2 = getAeViewer().addHelpURLItem(DavisBaseCamera.USER_GUIDE_URL_DAVIS240, "DAVIS240 user guide",
                 "Opens DAVIS240 user guide");
         helpMenuItem3 = getAeViewer().addHelpURLItem(DavisBaseCamera.USER_GUIDE_URL_FLASHY, "Flashy user guide",
