@@ -52,6 +52,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     
     private boolean colorClustersDifferentlyEnabled = getBoolean("colorClustersDifferentlyEnabled", false);
     private boolean filterEventsEnabled = getBoolean("filterEventsEnabled", false); // enables filtering events so
+    private float threshold = getFloat("threshold", 100);
     private int startPositionX = getInt("x", 0);
     private int startPositionY = getInt("y", 0);
 
@@ -127,21 +128,35 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
            
         // RectangularClusterTracker.Cluster robot = getRobotCluster();
         
-        int i = 0;
+        int i = 0, visibleCnt = 0;
+        boolean[] visibleFlg = new boolean[3];
         for (RectangularClusterTracker.Cluster c : tracker.getClusters()) {
+            clustersLocationX[i] = c.location.x;
+            clusterLocationY[i] = c.location.y;
+            visibleFlg[i] = c.isVisible();
+            i = i + 1;
             if(c.isVisible()) {
-                clustersLocationX[i] = c.location.x;
-                clusterLocationY[i] = c.location.y;
-                i = i + 1;                
-            }
+                visibleCnt = visibleCnt + 1;                
+            }     
         }
  
         
         Random r = new Random();
         measurement.setMu(clustersLocationX, clusterLocationY);
-        measurement.setVisibleClusterNum(i);
-        filter.evaluateStrength();
-        filter.resample(r);     
+        double originSum = 0;
+        double effectiveNum = 0;
+        if(visibleCnt != 0) {
+            measurement.setVisibleCluster(visibleFlg);
+            filter.evaluateStrength();            
+            originSum = filter.normalize(); // The sum value before normalize
+            effectiveNum = filter.calculateNeff();
+            if(/*originSum > threshold && */effectiveNum < filter.getParticleCount() * 0.75) {
+                filter.resample(r);   
+            } else {
+                filter.resample(r);;
+            }
+        }
+   
         outputX = filter.getAverageX();
         outputY = filter.getAverageY();
         if(outputX > 240 || outputY > 180 || outputX < 0 || outputY < 0) {
@@ -189,7 +204,11 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         gl.glColor4f(.1f, .1f, 1f, .25f);
         gl.glLineWidth(1f);
         // for (final HotPixelFilter.HotPixel p : hotPixelSet) {
-                gl.glRectf((int)outputX - 10, (int)outputY - 10, (int)outputX + 12, (int)outputY + 12);
+        for(int i = 0; i < filter.getParticleCount(); i ++) {            
+            gl.glRectf((int)filter.get(i).getX() - 1, (int)filter.get(i).getY() - 1, (int)filter.get(i).getX() + 1, (int)filter.get(i).getY() + 1);
+        }
+        gl.glRectf((int)outputX - 10, (int)outputY - 10, (int)outputX + 12, (int)outputY + 12);
+
         // }    
     } 
     
@@ -287,5 +306,20 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     public void setStartPositionY(int startPositionY) {
         putInt("y", startPositionY);
         this.startPositionY = startPositionY;
+    }
+
+    /**
+     * @return the threshold
+     */
+    public float getThreshold() {
+        return threshold;
+    }
+
+    /**
+     * @param threshold the threshold to set
+     */
+    public void setThreshold(float threshold) {
+        putFloat("threshold", threshold);
+        this.threshold = threshold;
     }
 }

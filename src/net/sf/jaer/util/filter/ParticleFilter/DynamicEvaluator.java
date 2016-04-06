@@ -12,7 +12,7 @@ import java.util.Random;
  * @author minliu and hongjie
  */
 public class DynamicEvaluator implements ParticleEvaluator<SimpleParticle, SimpleParticle> {
-    private double noise = 0.1;
+    private double noise = 0.05;
     private Random r = new Random();
 
     @Override

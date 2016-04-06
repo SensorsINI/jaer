@@ -74,41 +74,46 @@ public class ParticleFilter<T extends Particle> {
 			p.weight = weight;
 		}
 	}
+        
+        // If we don't need resample, then we should update the weight.
+        public void updateWeight() {
+            for(int i = 0; i < particles.size(); i++) {
+                ParticleWeight<T> p = particles.get(i);
+                p.weight = p.weight * p.lastWeight;
+                p.lastWeight = p.weight;
+            }
+        }
 
 	@SuppressWarnings("unchecked")
 	public void resample(Random r) {
-		double sum = prepareResampling();
-                if(sum < 0.01) {
-                    for(int i = 0; i < getParticleCount(); i++) {
-                        get(i).setX(120 + 50 * (r.nextDouble() * 2 - 1));
-                        get(i).setY(90 + 50 * (r.nextDouble() * 2 - 1));
-                    }
-                } else {
-                        int[] selectionDistribution = new int[this.particles.size()];
-                        ArrayList<ParticleWeight<T> > nextDistribution = new ArrayList<ParticleWeight<T> >();
-                        for(int i = 0; i < nextParticleCount; i++) {
-                                double sel = sum*r.nextDouble();
-                                int index = Arrays.binarySearch(this.selectionSum, sel);
-                                if( index < 0 ) {
-                                        index = -(index+1);
-                                }
-
-                                ParticleWeight<T> p = particles.get(index);
-                                ParticleWeight<T> particleWeight = new ParticleWeight<T>((T)p.data.clone(), p.weight, selectionDistribution[index]);
-                                if(selectionDistribution[index] >= 7) {
-                                    if(p.weight > 0.5) {
-                                        System.out.println("Weight is:");
-                                        System.out.println(p.weight);
-                                        System.out.println("Index is:");
-                                        System.out.println(selectionDistribution[index]);                                
-                                    }
-                                }
-                                nextDistribution.add(particleWeight);
-                                selectionDistribution[index]++;
+                this.prepareResampling();
+ 
+                int[] selectionDistribution = new int[this.particles.size()];
+                ArrayList<ParticleWeight<T> > nextDistribution = new ArrayList<ParticleWeight<T> >();
+                for(int i = 0; i < nextParticleCount; i++) {
+                        double sel = r.nextDouble();
+                        int index = Arrays.binarySearch(this.selectionSum, sel);
+                        if( index < 0 ) {
+                                index = -(index+1);
                         }
-        //		System.out.println();
-                        this.particles = nextDistribution;                    
-                }              
+
+                        ParticleWeight<T> p = particles.get(index);
+                        ParticleWeight<T> particleWeight = new ParticleWeight<T>((T)p.data.clone(), p.weight, selectionDistribution[index]);
+                        if(selectionDistribution[index] >= 7) {
+                            if(p.weight > 0.5) {
+                                System.out.println("Weight is:");
+                                System.out.println(p.weight);
+                                System.out.println("Index is:");
+                                System.out.println(selectionDistribution[index]);                                
+                            }
+                        }
+                        nextDistribution.add(particleWeight);
+                        selectionDistribution[index]++;
+                }
+//		System.out.println();
+                this.particles = nextDistribution;     
+                disperseDistribution(r, 1);
+                              
 	}
 
 	private double prepareResampling() {
@@ -123,6 +128,16 @@ public class ParticleFilter<T extends Particle> {
 		return sum;
 	}
 
+        public double calculateNeff() {
+            double retVal = 0;
+            for(int i = 0; i < particles.size(); i++) {
+                ParticleWeight<T> p = particles.get(i);
+                double weight = p.weight;
+                retVal += weight * weight;
+            }
+            return 1/retVal;
+        }
+        
 	public void disperseDistribution(Random r, double spread) {
 		for(ParticleWeight<T> p : this.particles) {
 			// do not add error to one copy of the particle
@@ -141,6 +156,21 @@ public class ParticleFilter<T extends Particle> {
 		this.nextParticleCount = value;
 	}
 
+        public double normalize() {
+            double originSum = 0;
+
+            for(int i = 0; i < nextParticleCount; i++) {
+                ParticleWeight<T> p = particles.get(i);
+                originSum += getSelectionWeight(p);
+            }
+
+            for(int i = 0; i < nextParticleCount; i++) {
+                ParticleWeight<T> p = particles.get(i);
+                p.weight = p.weight/originSum;
+            }
+            return originSum;
+        }
+        
 	public boolean isUsingWeightRatio() { return useWeightRatio; }
 	public void useWeightRatio(boolean b) { useWeightRatio = b; }
 	
