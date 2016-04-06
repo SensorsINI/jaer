@@ -28,7 +28,7 @@
                 <entry key="VideoControl.brightness" value="0.0"/>
                 <entry key="VideoControl.gamma" value="1.0"/>
                 <entry key="agcTauMs" value="1000.0"/>
-                <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="0"/>
+                <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="1"/>
                 <entry key="AEChip.subSamplingEnabled" value="false"/>
                 <entry key="ATCFpgaConfig.BGAF_OTs_Enable" value="true"/>
                 <entry key="ATCFpgaConfig.OTsEnable" value="true"/>
@@ -158,7 +158,7 @@
                 <entry key="AutoExposureController.highBoundary" value="0.5801483"/>
                 <entry key="AutoExposureController.lowBoundary" value="0.13400951"/>
                 <entry key="AutomaticReplayPlayer.filterEnabled" value="false"/>
-                <entry key="BackgroundActivityFilter.dt" value="1472"/>
+                <entry key="BackgroundActivityFilter.dt" value="3235"/>
                 <entry key="BackgroundActivityFilter.filterEnabled" value="false"/>
                 <entry key="BackgroundActivityFilter.subsampleBy" value="1"/>
                 <entry key="BinaryFeatureDetector.filterEnabled" value="false"/>
@@ -609,8 +609,8 @@
                 <entry key="EvolutionaryThrottleController.filterEnabled" value="true"/>
                 <entry key="FilterChain.processingMode" value="RENDERING"/>
                 <entry key="FilterChain.updateIntervalMs" value="1.0"/>
-                <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAEdwQAAAAEdAA7bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5CYWNrZ3JvdW5kQWN0aXZpdHlGaWx0ZXJ0AD5uZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcudHJhY2tpbmcuUmVjdGFuZ3VsYXJDbHVzdGVyVHJhY2tlcnQARGNoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLmRhdmlzLmNhbGlicmF0aW9uLlNpbmdsZUNhbWVyYUNhbGlicmF0aW9udAA/Y2gudW5pemguaW5pLmphZXIucHJvamVjdHMuZGF2aXMuZnJhbWVzLkNkYXZpc0ZyYW1lQmxvYkRldGVjdG9yeA=="/>
-                <entry key="FilterFrame.lastFilterSelected" value="class ch.unizh.ini.jaer.projects.davis.frames.CdavisFrameBlobDetector"/>
+                <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAABdwQAAAABdAA7bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5CYWNrZ3JvdW5kQWN0aXZpdHlGaWx0ZXJ4"/>
+                <entry key="FilterFrame.lastFilterSelected" value="class net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter"/>
                 <entry key="FrequencyDetectionCell.filterEnabled" value="false"/>
                 <entry key="FullGaussianTracker.filterEnabled" value="false"/>
                 <entry key="GaussianTracker.filterEnabled" value="false"/>
@@ -865,38 +865,38 @@
                 <entry key="DavisRGBW640.AddressedIPotCF.PixInvBn.LowCurrent" value="false"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.PixInvBn.Sex" value="N"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.PixInvBn.Type" value="NORMAL"/>
-                <entry key="DavisRGBW640.AddressedIPotCF.DiffBn.BitValueCoarse" value="3"/>
-                <entry key="DavisRGBW640.AddressedIPotCF.DiffBn.BitValueFine" value="54"/>
+                <entry key="DavisRGBW640.AddressedIPotCF.DiffBn.BitValueCoarse" value="4"/>
+                <entry key="DavisRGBW640.AddressedIPotCF.DiffBn.BitValueFine" value="135"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.DiffBn.Enabled" value="true"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.DiffBn.LowCurrent" value="false"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.DiffBn.Sex" value="N"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.DiffBn.Type" value="NORMAL"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.OnBn.BitValueCoarse" value="1"/>
-                <entry key="DavisRGBW640.AddressedIPotCF.OnBn.BitValueFine" value="63"/>
+                <entry key="DavisRGBW640.AddressedIPotCF.OnBn.BitValueFine" value="130"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.OnBn.Enabled" value="true"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.OnBn.LowCurrent" value="false"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.OnBn.Sex" value="N"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.OnBn.Type" value="NORMAL"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.OffBn.BitValueCoarse" value="5"/>
-                <entry key="DavisRGBW640.AddressedIPotCF.OffBn.BitValueFine" value="138"/>
+                <entry key="DavisRGBW640.AddressedIPotCF.OffBn.BitValueFine" value="109"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.OffBn.Enabled" value="true"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.OffBn.LowCurrent" value="false"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.OffBn.Sex" value="N"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.OffBn.Type" value="NORMAL"/>
-                <entry key="DavisRGBW640.AddressedIPotCF.PrBp.BitValueCoarse" value="6"/>
-                <entry key="DavisRGBW640.AddressedIPotCF.PrBp.BitValueFine" value="108"/>
+                <entry key="DavisRGBW640.AddressedIPotCF.PrBp.BitValueCoarse" value="4"/>
+                <entry key="DavisRGBW640.AddressedIPotCF.PrBp.BitValueFine" value="88"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.PrBp.Enabled" value="true"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.PrBp.LowCurrent" value="false"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.PrBp.Sex" value="P"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.PrBp.Type" value="NORMAL"/>
-                <entry key="DavisRGBW640.AddressedIPotCF.PrSFBp.BitValueCoarse" value="6"/>
-                <entry key="DavisRGBW640.AddressedIPotCF.PrSFBp.BitValueFine" value="108"/>
+                <entry key="DavisRGBW640.AddressedIPotCF.PrSFBp.BitValueCoarse" value="5"/>
+                <entry key="DavisRGBW640.AddressedIPotCF.PrSFBp.BitValueFine" value="45"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.PrSFBp.Enabled" value="true"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.PrSFBp.LowCurrent" value="false"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.PrSFBp.Sex" value="P"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.PrSFBp.Type" value="NORMAL"/>
-                <entry key="DavisRGBW640.AddressedIPotCF.RefrBp.BitValueCoarse" value="3"/>
-                <entry key="DavisRGBW640.AddressedIPotCF.RefrBp.BitValueFine" value="28"/>
+                <entry key="DavisRGBW640.AddressedIPotCF.RefrBp.BitValueCoarse" value="5"/>
+                <entry key="DavisRGBW640.AddressedIPotCF.RefrBp.BitValueFine" value="76"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.RefrBp.Enabled" value="true"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.RefrBp.LowCurrent" value="false"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.RefrBp.Sex" value="P"/>
@@ -938,7 +938,7 @@
                 <entry key="DavisRGBW640.AddressedIPotCF.ReadoutBufBp.Sex" value="P"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.ReadoutBufBp.Type" value="NORMAL"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.ApsROSFBn.BitValueCoarse" value="0"/>
-                <entry key="DavisRGBW640.AddressedIPotCF.ApsROSFBn.BitValueFine" value="82"/>
+                <entry key="DavisRGBW640.AddressedIPotCF.ApsROSFBn.BitValueFine" value="145"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.ApsROSFBn.Enabled" value="true"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.ApsROSFBn.LowCurrent" value="false"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.ApsROSFBn.Sex" value="N"/>
@@ -2222,12 +2222,12 @@
                 <entry key="DavisRGBW640.DVS.ExternalAERControl" value="false"/>
                 <entry key="DavisRGBW640.DVS.FilterBackgroundActivity" value="false"/>
                 <entry key="DavisRGBW640.DVS.FilterBackgroundActivityDeltaTime" value="20000"/>
-                <entry key="DavisRGBW640.APS.Run" value="false"/>
+                <entry key="DavisRGBW640.APS.Run" value="true"/>
                 <entry key="DavisRGBW640.APS.ResetRead" value="true"/>
                 <entry key="DavisRGBW640.APS.WaitOnTransferStall" value="true"/>
                 <entry key="DavisRGBW640.APS.GlobalShutter" value="false"/>
-                <entry key="DavisRGBW640.APS.Exposure" value="40000"/>
-                <entry key="DavisRGBW640.APS.FrameDelay" value="1000"/>
+                <entry key="DavisRGBW640.APS.Exposure" value="16000"/>
+                <entry key="DavisRGBW640.APS.FrameDelay" value="1000000"/>
                 <entry key="DavisRGBW640.APS.ResetSettle" value="10"/>
                 <entry key="DavisRGBW640.APS.ColumnSettle" value="30"/>
                 <entry key="DavisRGBW640.APS.RowSettle" value="10"/>
@@ -2249,8 +2249,8 @@
                 <entry key="DavisRGBW640.ExtInput.RunGenerator" value="false"/>
                 <entry key="DavisRGBW640.ExtInput.GenerateUseCustomSignal" value="false"/>
                 <entry key="DavisRGBW640.ExtInput.GeneratePulsePolarity" value="false"/>
-                <entry key="DavisRGBW640.ExtInput.GeneratePulseInterval" value="120"/>
-                <entry key="DavisRGBW640.ExtInput.GeneratePulseLength" value="60"/>
+                <entry key="DavisRGBW640.ExtInput.GeneratePulseInterval" value="60"/>
+                <entry key="DavisRGBW640.ExtInput.GeneratePulseLength" value="30"/>
                 <entry key="DavisRGBW640.Chip.DigitalMux0" value="0"/>
                 <entry key="DavisRGBW640.Chip.DigitalMux1" value="0"/>
                 <entry key="DavisRGBW640.Chip.DigitalMux2" value="0"/>
@@ -2299,7 +2299,7 @@
                 <entry key="DavisRGBW640.VDACBias.ADCRefLow.BufBitValue" value="7"/>
                 <entry key="DavisRGBW640.IMU.GyroScale" value="GyroFullScaleDegPerSec1000"/>
                 <entry key="DavisRGBW640.IMU.AccelScale" value="ImuAccelScaleG8"/>
-                <entry key="DavisRGBW640.IMU.displayEnabled" value="false"/>
+                <entry key="DavisRGBW640.IMU.displayEnabled" value="true"/>
                 <entry key="DavisRGBW640.Masterbias.rx" value="8200.0"/>
                 <entry key="DavisRGBW640.Masterbias.rint" value="46000.0"/>
                 <entry key="DavisRGBW640.Masterbias.internalResistorUsed" value="false"/>
@@ -2392,18 +2392,22 @@
                 <entry key="SingleCameraCalibration.realtimePatternDetectionEnabled" value="true"/>
                 <entry key="SingleCameraCalibration.dirPath" value="E:\code\jAER\trunk"/>
                 <entry key="SingleCameraCalibration.showUndistortedFrames" value="false"/>
-                <entry key="CdavisFrameBlobDetector.hueLowerBound" value="115"/>
-                <entry key="CdavisFrameBlobDetector.hueUpperBound" value="120"/>
-                <entry key="CdavisFrameBlobDetector.areaLowerBound" value="500"/>
-                <entry key="CdavisFrameBlobDetector.gaussianBlurKernalRadius" value="30"/>
+                <entry key="CdavisFrameBlobDetector.hueLowerBound" value="118"/>
+                <entry key="CdavisFrameBlobDetector.hueUpperBound" value="123"/>
+                <entry key="CdavisFrameBlobDetector.areaLowerBound" value="400"/>
+                <entry key="CdavisFrameBlobDetector.gaussianBlurKernalRadius" value="60"/>
                 <entry key="CdavisFrameBlobDetector.areaUpperBound" value="9000"/>
                 <entry key="CdavisFrameBlobDetector.convexityLowerBound" value="0.0"/>
                 <entry key="CdavisFrameBlobDetector.convexityUpperBound" value="1.0"/>
-                <entry key="CdavisFrameBlobDetector.inertiaLowerBound" value="0.31"/>
-                <entry key="CdavisFrameBlobDetector.inertiaUpperBound" value="1.0"/>
-                <entry key="CdavisFrameBlobDetector.circularityUpperBound" value="1.0"/>
-                <entry key="CdavisFrameBlobDetector.circularityLowerBound" value="0.2930145"/>
-                <entry key="CdavisFrameBlobDetector.gaussianSigma" value="1.5"/>
+                <entry key="CdavisFrameBlobDetector.inertiaLowerBound" value="0.0"/>
+                <entry key="CdavisFrameBlobDetector.inertiaUpperBound" value="0.87"/>
+                <entry key="CdavisFrameBlobDetector.circularityUpperBound" value="0.15"/>
+                <entry key="CdavisFrameBlobDetector.circularityLowerBound" value="0.0"/>
+                <entry key="CdavisFrameBlobDetector.gaussianSigma" value="2.0371685"/>
+                <entry key="JaerAviWriter.maxFrames" value="0"/>
+                <entry key="DvsSliceAviWriter.filterEnabled" value="false"/>
+                <entry key="DvsSliceAviWriter.dimy" value="240"/>
+                <entry key="DvsSliceAviWriter.showOutput" value="false"/>
               </map>
               <node name="ch">
                 <map/>
@@ -2435,7 +2439,7 @@
                                 <entry key="RectangularClusterTracker.maxNumClusters" value="0"/>
                                 <entry key="RectangularClusterTracker.clusterSize" value="0.038095247"/>
                                 <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
-                                <entry key="RectangularClusterTracker.thresholdMassForVisibleCluster" value="0"/>
+                                <entry key="RectangularClusterTracker.thresholdMassForVisibleCluster" value="100"/>
                                 <entry key="RectangularClusterTracker.showAllClusters" value="true"/>
                                 <entry key="RectangularClusterTracker.colorClustersDifferentlyEnabled" value="true"/>
                                 <entry key="RectangularClusterTracker.showClusterEps" value="false"/>
@@ -2451,7 +2455,7 @@
                                 <entry key="RectangularClusterTracker.enableClusterExitPurging" value="true"/>
                                 <entry key="RectangularClusterTracker.useNearestCluster" value="false"/>
                                 <entry key="ApsFrameExtractor.showAPSFrameDisplay" value="false"/>
-                                <entry key="RectangularClusterTracker.mixingFactor" value="0.020720975"/>
+                                <entry key="RectangularClusterTracker.mixingFactor" value="0.032145023"/>
                                 <entry key="RectangularClusterTracker.pathLength" value="94"/>
                                 <entry key="RectangularClusterTracker.aspectRatio" value="1.0"/>
                                 <entry key="RectangularClusterTracker.thresholdVelocityForVisibleCluster" value="0.0"/>

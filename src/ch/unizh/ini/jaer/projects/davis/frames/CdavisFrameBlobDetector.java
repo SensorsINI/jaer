@@ -176,9 +176,9 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 
     @Override
     synchronized public void propertyChange(PropertyChangeEvent evt) {
-        if(!isFilterEnabled()) return;
+//        if(!isFilterEnabled()) return;
         if ((evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)
-                && !chip.getAeViewer().isPaused()) {
+                && !chip.getAeViewer().isPaused() && colorBlobDetectionEnabled) {
             FloatBuffer lastFrameBuffer = ((AEFrameChipRenderer)chip.getRenderer()).getPixmap();
             //int sx=chip.getSizeX(), sy=chip.getSizeY();
             AEFrameChipRenderer r=((AEFrameChipRenderer)chip.getRenderer());
@@ -191,13 +191,11 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
                     lastFrame[j+ 2] = lastFrameBuffer.get(i);
                 }
             }
-            int frameTs=((DavisBaseCamera)chip).getFrameExposureEndTimestampUs();
+            int frameTs = renderer.getTimestampFrameEnd();
 
                 //process frame
-                if (colorBlobDetectionEnabled) {
-                    findColorBlobs(false);
-                    trackBlobs(frameTs);
-                }
+            findColorBlobs(false);
+            trackBlobs(frameTs);
         }
     }
 
