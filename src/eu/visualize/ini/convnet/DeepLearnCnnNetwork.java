@@ -523,15 +523,17 @@ public class DeepLearnCnnNetwork {
             for (int y = yOffset - dimy2; y < (yOffset + dimy2); y++) {
                 for (int x = xOffset - dimx2; x < (xOffset + dimx2); x++) {  // take every xstride, ystride pixels as output
                     float v = 0;
+                    renderer.getPixMapIndex((int) Math.floor(x), (int) Math.floor(y));
+
                     v = renderer.getApsGrayValueAtPixel((int) Math.floor(x), (int) Math.floor(y));
                     // v = debugNet(v, x, y);  // TODO remove only for debug
                     
-                    activations[o(x - (xOffset - dimx2), dimy - (y - (yOffset - dimy2)) - 1)] = v;
+                    activations[o(x - (xOffset - dimx2), dimy - (y - (yOffset - dimy2)) - 1)] = v * 1024;
                     
                     // activations[o(dimy - y % dimy- 1, x % dimx )] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
                 }
             }
-           // normalizeInputFrame(activations, true);
+            // normalizeInputFrame(activations, true);
             return activations;
         }
 

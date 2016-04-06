@@ -191,7 +191,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
             }
         }            
        
-        outputX = strideX * max_x_index + strideX/2 - 1; 
+        outputX = strideX * (max_x_index + 1) + strideX/2 - 1; 
         outputY = strideY * max_y_index + strideY/2 - 1; 
 
         System.out.printf("max heat value is: %f\n", max);
@@ -211,8 +211,8 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
     }
     
     public int getHeatmapIdx(int x, int y){
-        int sizeX = chip.getSizeX()/strideX;
-        return x+(y*sizeX);
+        // int sizeY = chip.getSizeY()/strideX;
+        return y+(x*9);
     }
 
 
