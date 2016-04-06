@@ -176,6 +176,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 
     @Override
     synchronized public void propertyChange(PropertyChangeEvent evt) {
+        if(!isFilterEnabled()) return;
         if ((evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)
                 && !chip.getAeViewer().isPaused()) {
             FloatBuffer lastFrameBuffer = ((AEFrameChipRenderer)chip.getRenderer()).getPixmap();
