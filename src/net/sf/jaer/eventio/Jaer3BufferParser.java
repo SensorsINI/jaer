@@ -434,23 +434,25 @@ public class Jaer3BufferParser {
 	 */
 	public int getLastTimeStamp() throws IOException {
 		int currentPosition = in.position();
-		PacketDescriptor pkt = getCurrentPkt(in.limit() - PKT_HEADER_SIZE);
+		PacketDescriptor lastPkt = getCurrentPkt(in.limit() - PKT_HEADER_SIZE);
 		int lastTs;
-		if (pkt.pktHeader.eventNumber == pkt.pktHeader.eventValid) {
-			int position = pkt.pktPosition + PKT_HEADER_SIZE + ((pkt.pktHeader.eventNumber - 1) * pkt.pktHeader.eventSize)
-				+ pkt.pktHeader.eventTSOffset;
+                
+                // Sometimes the last packet is not complete, we should use the second last packet to search the last timestamp
+                if (lastPkt.pktPosition + lastPkt.pktHeader.eventNumber*lastPkt.pktHeader.eventSize > in.limit()) { 
+                    lastPkt = getCurrentPkt(lastPkt.pktPosition - PKT_HEADER_SIZE); //TODO, when the function of getLastPkt is finished, we can use the getLastPkt to replace it. 
+                }
+                
+		if (lastPkt.pktHeader.eventNumber == lastPkt.pktHeader.eventValid) { // The whole packet is a complete valid packet
+			int position = lastPkt.pktPosition + PKT_HEADER_SIZE + ((lastPkt.pktHeader.eventNumber - 1) * lastPkt.pktHeader.eventSize)
+				+ lastPkt.pktHeader.eventTSOffset;
 			in.position(position);
 			lastTs = in.getInt();
 		}
-		else {
+		else {    // The packet is not totally vaid, there're some invalid events in the packet, when we search the last timestamp, we should skip it.
 			ByteBuffer tmpBuffer = ByteBuffer.allocate(16);
-			in.position(pkt.pktPosition);
-			for (int i = 0; i < pkt.pktHeader.eventValid; i++) {
-                            try {
-                                tmpBuffer = getJaer2EventBuf();
-                            } catch (BufferUnderflowException e) {
-                                log.warning("The file may be corrupted, it's not complete.");
-                            }// TODO, catch BufferUnderFlowException() here
+			in.position(lastPkt.pktPosition);
+			for (int i = 0; i < lastPkt.pktHeader.eventValid; i++) {
+                                tmpBuffer = getJaer2EventBuf();  // TODO, catch BufferUnderFlowException() here
 			}
 			tmpBuffer.getInt(); // event type
 			tmpBuffer.getInt(); // addr
