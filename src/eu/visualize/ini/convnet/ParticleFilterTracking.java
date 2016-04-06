@@ -13,6 +13,8 @@ import com.jogamp.opengl.GLException;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Random;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -50,20 +52,20 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     
     private boolean colorClustersDifferentlyEnabled = getBoolean("colorClustersDifferentlyEnabled", false);
     private boolean filterEventsEnabled = getBoolean("filterEventsEnabled", false); // enables filtering events so
+    private int startPositionX = getInt("x", 0);
+    private int startPositionY = getInt("y", 0);
 
     FilterChain trackingFilterChain;
     private RectangularClusterTracker tracker;
     
-    private double locationX, locationY; 
     private double outputX, outputY;
+    private double[] clustersLocationX = new double[3], clusterLocationY = new double[3];
     
     // private final AEFrameChipRenderer renderer;
 
     
     public ParticleFilterTracking(AEChip chip) {
         super(chip);
-        this.locationX = 0;
-        this.locationY = 0;
         
         this.outputX = 0;
         this.outputY = 0;
@@ -75,8 +77,8 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         
         Random r = new Random();
         for(int i = 0; i < 1000; i++) {
-                double x = 10 * r.nextDouble() + 170;
-                double y = 10 * r.nextDouble() + 102;
+                double x = 10 * (r.nextDouble() * 2 - 1) + getStartPositionX();
+                double y = 10 * (r.nextDouble() * 2 - 1) + getStartPositionY();
                 filter.addParticle(new SimpleParticle(x, y));
         }
 
@@ -123,25 +125,32 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
 //        }
         
            
-        RectangularClusterTracker.Cluster robot = getRobotCluster();
+        // RectangularClusterTracker.Cluster robot = getRobotCluster();
         
-        if(robot == null) {
-            return in;
+        int i = 0;
+        for (RectangularClusterTracker.Cluster c : tracker.getClusters()) {
+            if(c.isVisible()) {
+                clustersLocationX[i] = c.location.x;
+                clusterLocationY[i] = c.location.y;
+                i = i + 1;                
+            }
         }
  
-        locationX = robot.location.x;
-        locationY = robot.location.y;
- 
+        
         Random r = new Random();
-        measurement.setMu(locationX, locationY);
+        measurement.setMu(clustersLocationX, clusterLocationY);
+        measurement.setVisibleClusterNum(i);
         filter.evaluateStrength();
         filter.resample(r);     
         outputX = filter.getAverageX();
         outputY = filter.getAverageY();
+        if(outputX > 240 || outputY > 180 || outputX < 0 || outputY < 0) {
+            for(i = 0; i < filter.getParticleCount(); i++) {
+                filter.get(i).setX(120 + 50 * (r.nextDouble() * 2 - 1));
+                filter.get(i).setY(90 + 50 * (r.nextDouble() * 2 - 1));
+            }
+        }
         
-        float[] colors = new float[3];
-        colors = ColorHelper.HSVtoRGB(3.0f, 1.0f, 1.0f);
-
         // filter.disperseDistribution(r, locationX);
         return in;
     }
@@ -153,7 +162,12 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
 
     @Override
     public void initFilter() {
-        measurement.setMu(0, 0);
+        double[] xArray = new double[3];
+        double[] yArray = new double[3];
+        Arrays.fill(xArray, 0);
+        Arrays.fill(yArray, 0);
+
+        measurement.setMu(xArray, yArray);
     }
 
     @Override
@@ -244,4 +258,34 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
 
         return closest;
     }    
+
+    /**
+     * @return the startPositionX
+     */
+    public int getStartPositionX() {
+        return startPositionX;
+    }
+
+    /**
+     * @param startPositionX the startPositionX to set
+     */
+    public void setStartPositionX(int startPositionX) {
+        putInt("x", startPositionX);
+        this.startPositionX = startPositionX;
+    }
+
+    /**
+     * @return the startPositionY
+     */
+    public int getStartPositionY() {
+        return startPositionY;
+    }
+
+    /**
+     * @param startPositionY the startPositionY to set
+     */
+    public void setStartPositionY(int startPositionY) {
+        putInt("y", startPositionY);
+        this.startPositionY = startPositionY;
+    }
 }

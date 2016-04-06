@@ -12,6 +12,10 @@ package net.sf.jaer.util.filter.ParticleFilter;
 import java.util.Random;
 
 public interface Particle extends Cloneable {
+        public double getX();
+        public double getY();
+        public void setX(double x);
+        public void setY(double y);
 	public Particle clone();
 	public void addNoise(Random r, double spread);
 }

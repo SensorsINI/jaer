@@ -78,22 +78,37 @@ public class ParticleFilter<T extends Particle> {
 	@SuppressWarnings("unchecked")
 	public void resample(Random r) {
 		double sum = prepareResampling();
-		int[] selectionDistribution = new int[this.particles.size()];
-		ArrayList<ParticleWeight<T> > nextDistribution = new ArrayList<ParticleWeight<T> >();
-		for(int i = 0; i < nextParticleCount; i++) {
-			double sel = sum*r.nextDouble();
-			int index = Arrays.binarySearch(this.selectionSum, sel);
-			if( index < 0 ) {
-				index = -(index+1);
-			}
-//			System.out.print(index + " ");
-			ParticleWeight<T> p = particles.get(index);
-			ParticleWeight<T> particleWeight = new ParticleWeight<T>((T)p.data.clone(), p.weight, selectionDistribution[index]);
-			nextDistribution.add(particleWeight);
-			selectionDistribution[index]++;
-		}
-//		System.out.println();
-		this.particles = nextDistribution;
+                if(sum < 0.01) {
+                    for(int i = 0; i < getParticleCount(); i++) {
+                        get(i).setX(120 + 50 * (r.nextDouble() * 2 - 1));
+                        get(i).setY(90 + 50 * (r.nextDouble() * 2 - 1));
+                    }
+                } else {
+                        int[] selectionDistribution = new int[this.particles.size()];
+                        ArrayList<ParticleWeight<T> > nextDistribution = new ArrayList<ParticleWeight<T> >();
+                        for(int i = 0; i < nextParticleCount; i++) {
+                                double sel = sum*r.nextDouble();
+                                int index = Arrays.binarySearch(this.selectionSum, sel);
+                                if( index < 0 ) {
+                                        index = -(index+1);
+                                }
+
+                                ParticleWeight<T> p = particles.get(index);
+                                ParticleWeight<T> particleWeight = new ParticleWeight<T>((T)p.data.clone(), p.weight, selectionDistribution[index]);
+                                if(selectionDistribution[index] >= 7) {
+                                    if(p.weight > 0.5) {
+                                        System.out.println("Weight is:");
+                                        System.out.println(p.weight);
+                                        System.out.println("Index is:");
+                                        System.out.println(selectionDistribution[index]);                                
+                                    }
+                                }
+                                nextDistribution.add(particleWeight);
+                                selectionDistribution[index]++;
+                        }
+        //		System.out.println();
+                        this.particles = nextDistribution;                    
+                }              
 	}
 
 	private double prepareResampling() {
