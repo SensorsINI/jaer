@@ -446,7 +446,11 @@ public class Jaer3BufferParser {
 			ByteBuffer tmpBuffer = ByteBuffer.allocate(16);
 			in.position(pkt.pktPosition);
 			for (int i = 0; i < pkt.pktHeader.eventValid; i++) {
-				tmpBuffer = getJaer2EventBuf(); // TODO, catch BufferUnderFlowException() here
+                            try {
+                                tmpBuffer = getJaer2EventBuf();
+                            } catch (BufferUnderflowException e) {
+                                log.warning("The file may be corrupted, it's not complete.");
+                            }// TODO, catch BufferUnderFlowException() here
 			}
 			tmpBuffer.getInt(); // event type
 			tmpBuffer.getInt(); // addr

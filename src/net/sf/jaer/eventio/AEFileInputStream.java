@@ -1420,7 +1420,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             } else if (Math.floor(version) == 3) { // #!AEDAT-3.x
                 addressType = Integer.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Integer.SIZE / 8);
-                log.warning("This is a jAER 3.0 format file; parsing is a work in progress - no sensible output will be produced now");
                 jaer3EnableFlg = true;
             }
             log.info("Data file version=" + version + " and has addressType=" + addressType);
