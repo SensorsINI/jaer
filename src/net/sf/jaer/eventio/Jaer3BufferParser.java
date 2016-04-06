@@ -72,8 +72,8 @@ public class Jaer3BufferParser {
 	/**
 	 * Field for decoding jaer 3.0 dvs address
 	 */
-	public static final int JAER3YSHIFT = 4, JAER3YMASK = 0x03FF << JAER3YSHIFT, // 15 bits from bits 22 to 30
-		JAER3XSHIFT = 18, JAER3XMASK = 0x03FF << JAER3XSHIFT, // 15 bits from bits 12 to 21
+	public static final int JAER3YSHIFT = 4, JAER3YMASK = 0x03FFF << JAER3YSHIFT, // 15 bits from bits 22 to 30
+		JAER3XSHIFT = 18, JAER3XMASK = 0x03FFF << JAER3XSHIFT, // 15 bits from bits 12 to 21
 		JAER3POLSHIFT = 1, JAER3POLMASK = 1 << JAER3POLSHIFT; // , // 1 bit at bit 11
 	/**
 	 * Field for decoding jaer 3.0 aps address
