@@ -72,8 +72,8 @@ public class Jaer3BufferParser {
 	/**
 	 * Field for decoding jaer 3.0 dvs address
 	 */
-	public static final int JAER3YSHIFT = 2, JAER3YMASK = 32767 << JAER3YSHIFT, // 15 bits from bits 22 to 30
-		JAER3XSHIFT = 17, JAER3XMASK = 32767 << JAER3XSHIFT, // 15 bits from bits 12 to 21
+	public static final int JAER3YSHIFT = 4, JAER3YMASK = 0x03FF << JAER3YSHIFT, // 15 bits from bits 22 to 30
+		JAER3XSHIFT = 18, JAER3XMASK = 0x03FF << JAER3XSHIFT, // 15 bits from bits 12 to 21
 		JAER3POLSHIFT = 1, JAER3POLMASK = 1 << JAER3POLSHIFT; // , // 1 bit at bit 11
 	/**
 	 * Field for decoding jaer 3.0 aps address
@@ -84,12 +84,12 @@ public class Jaer3BufferParser {
 	private boolean inFrameEvent = false;
 	private int frameCurrentEventOffset;
 	private boolean readOutType = false;
-        
+
         private static AEChip ORIGINAL_CHIP = null;
 	private static EventExtractor2D ORIGINAL_EVENT_EXTRACTOR = null;
 
         private static jaer3EventExtractor JAER3_EXTRACTOR = null;
-        
+
 	public class PacketHeader {
 
 		EventType eventType = EventType.SpecialEvent;
@@ -276,7 +276,7 @@ public class Jaer3BufferParser {
 	private PacketDescriptor getNextPkt(int targetPosition) throws IOException {
 		return searchPacketHeader(targetPosition, 1);
 	}
-        
+
         /**
 	 * Constructor of the jaer3BufferParser.
 	 *
@@ -291,18 +291,18 @@ public class Jaer3BufferParser {
 
                 /* Here is the logic:
                  * The chip and extractor will be updated unless the chip changed such as by the user.
-                 * It makes the chip and the extractor are alwayse associated with each other. 
+                 * It makes the chip and the extractor are alwayse associated with each other.
                 */
                 if(this.chip != ORIGINAL_CHIP) {
                     ORIGINAL_CHIP = this.chip;
                     ORIGINAL_EVENT_EXTRACTOR = this.chip.getEventExtractor();
                 }
-                
+
                 if(JAER3_EXTRACTOR == null) {
                     JAER3_EXTRACTOR = new jaer3EventExtractor(chip);
                 }
-                
-		chip.setEventExtractor(JAER3_EXTRACTOR); 
+
+		chip.setEventExtractor(JAER3_EXTRACTOR);
 
 		currentPkt = searchPacketHeader(0, 1);
 
@@ -313,7 +313,7 @@ public class Jaer3BufferParser {
 			log.warning(ex.toString());
 			Logger.getLogger(AEFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
 		}
-	} // Jaer3BufferParser       
+	} // Jaer3BufferParser
 
 	/**
 	 * Constructor of the jaer3BufferParser
@@ -325,7 +325,7 @@ public class Jaer3BufferParser {
 	public Jaer3BufferParser(MappedByteBuffer byteBuffer, AEChip chip) throws IOException {
             this((ByteBuffer) byteBuffer, chip);
 	} // Jaer3BufferParser
-        
+
         /**
 	 * gets the size of the stream in events
 	 *
@@ -563,14 +563,14 @@ public class Jaer3BufferParser {
 						throw new BufferUnderflowException(); // Reach the end of the buffer
 					}
 					data = in.getShort(frameCurrentEventOffset + dataOffset);  // Reset read array
-                                        ts = in.getInt(frameCurrentEventOffset + tsOffset - 8); // Start of Frame Capture timestamp                          
+                                        ts = in.getInt((frameCurrentEventOffset + tsOffset) - 8); // Start of Frame Capture timestamp
 				}
 				else {
 					jaer2FrameAddr = ((((translatedArrayIndex) / ylength)) << 17) + (((translatedArrayIndex) % ylength) << 2) + 1;
 
 					// Signal Read Array
 					data = 0;
-                                        ts = in.getInt(frameCurrentEventOffset + tsOffset - 4); // End of Frame Capture timestamp
+                                        ts = in.getInt((frameCurrentEventOffset + tsOffset) - 4); // End of Frame Capture timestamp
 				}
 
 				jaer2Buffer.putInt(jaer2FrameAddr);
@@ -768,13 +768,13 @@ public class Jaer3BufferParser {
 				// events and still delivering frames
 				final int addr = addrs[i];
 				final int data = pixelDatas[i];
-                                
+
                                 if(etypes[i] == null) { // The packet is not from AEDAT3.0 file or network, it comes from AEDAT2.0, we need restore it.
                                     chip.setEventExtractor(ORIGINAL_EVENT_EXTRACTOR); // Restore the default extractor
-                                    return chip.getEventExtractor().extractPacket(in);         
+                                    return chip.getEventExtractor().extractPacket(in);
                                 }
 
-                            
+
                                 switch (etypes[i]) {
                                       case PolarityEvent:
                                               readDVS(outItr, addr, timestamps[i]);
@@ -795,9 +795,9 @@ public class Jaer3BufferParser {
                                               // readImu9();;
                                               break;
                                       default:
-                                }  
-                                
-				 
+                                }
+
+
 				/*
 				 * if ((getAutoshotThresholdEvents() > 0) && (autoshotEventsSinceLastShot >
 				 * getAutoshotThresholdEvents())) {
