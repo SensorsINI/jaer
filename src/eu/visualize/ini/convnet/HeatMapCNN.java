@@ -17,6 +17,8 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 
 import ch.unizh.ini.jaer.projects.util.ColorHelper;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GLException;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -43,7 +45,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
     private final int strideX = 16;
     private final int strideY = 16;
     private float[] heatMap;
-    private final AEFrameChipRenderer renderer;
+//    private final AEFrameChipRenderer renderer;
 
     public HeatMapCNN(AEChip chip) {
         super(chip);
@@ -59,7 +61,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         Arrays.fill(heatMap, 0.0f);
         apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
 //        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
-        renderer = (AEFrameChipRenderer) chip.getRenderer();
+//        renderer = (AEFrameChipRenderer) chip.getRenderer();
     }
 // initialization
 
@@ -167,14 +169,15 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
 */
     private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
         
-        renderer.setExternalRenderer(true);
-        renderer.resetAnnotationFrame(0.0f);
-        renderer.setAnnotateAlpha(alpha);
-        float[] colors = new float[3];
+//        renderer.setExternalRenderer(true);
+//        renderer.resetAnnotationFrame(0.0f);
+//        renderer.setAnnotateAlpha(alpha);
+//        float[] colors = new float[3];
         int sizeX = chip.getSizeX()/strideX;
         int sizeY = chip.getSizeY()/strideY;
         float max = heatMap[0];
         int max_x_index = 0, max_y_index =0;
+        int outputX = 0, outputY = 0;
         
         for (int x = 0; x < sizeX; x++) {
             for (int y = 0; y < sizeY; y++) {
@@ -184,16 +187,27 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
                     max = heat;  
                     max_x_index = x;
                     max_y_index = y;
-                    colors = ColorHelper.HSVtoRGB(hue, 1.0f, 1.0f);
                 }
             }
-        }              
+        }            
+       
+        outputX = strideX * max_x_index + strideX/2 - 1; 
+        outputY = strideY * max_y_index + strideY/2 - 1; 
 
-        for(int xx = 0; xx<strideX; xx++){
-            for(int yy = 0; yy<strideY; yy++){
-                renderer.setAnnotateColorRGB(max_x_index*strideX + xx, max_y_index*strideY + yy, colors);
-            }
+        System.out.printf("max heat value is: %f\n", max);
+//        final GL2 gl = drawable.getGL().getGL2();
+        try {
+                gl.glEnable(GL.GL_BLEND);
+                gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+                gl.glBlendEquation(GL.GL_FUNC_ADD);
         }
+        catch (final GLException e) {
+                e.printStackTrace();
+        }
+        gl.glColor4f(.1f, .1f, 1f, .25f);
+        gl.glLineWidth(1f);
+        // for (final HotPixelFilter.HotPixel p : hotPixelSet) {
+                gl.glRectf((int)outputX - 10, (int)outputY - 10, (int)outputX + 12, (int)outputY + 12);
     }
     
     public int getHeatmapIdx(int x, int y){
