@@ -37,6 +37,7 @@ import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
 
 import eu.seebetter.ini.chips.DavisChip;
+import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -59,7 +60,6 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
 
     private int sx;
     private int sy;
-    private int lastTimestamp = 0;
 
     private float[] lastFrame = null, outFrame = null;
 
@@ -75,7 +75,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     private boolean filterByConvexityEnabled = getBoolean("filterByConvexityEnabled", false);
     private boolean filterByInertiaEnabled = getBoolean("filterByInertiaEnabled", false);
 
-    private Mat imgIn, imgOut;
+    private Mat imgIn;
     private KeyPointVector blobCenterVector;
 
     private boolean actionTriggered = false;
@@ -191,11 +191,12 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
                     lastFrame[j+ 2] = lastFrameBuffer.get(i);
                 }
             }
+            int frameTs=((DavisBaseCamera)chip).getFrameExposureEndTimestampUs();
 
                 //process frame
                 if (colorBlobDetectionEnabled) {
                     findColorBlobs(false);
-                    trackBlobs();
+                    trackBlobs(frameTs);
                 }
         }
     }
@@ -260,14 +261,14 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
         }
      }
 
-    public void trackBlobs () {
+    public void trackBlobs (int frameTs) {
         if (colorBlobDetectionEnabled && (blobCenterVector != null)) {
             for (int i = 0; i < blobCenterVector.size(); i++) {
                 KeyPoint blobCenter = blobCenterVector.get(i);
                 float size = blobCenter.size();
                 if (size > 5) {
                     RectangularClusterTracker.Cluster b = tracker.createCluster
-                    (new BasicEvent(lastTimestamp, (short) blobCenter.pt().x(), (short) (480-blobCenter.pt().y())));
+                    (new BasicEvent(frameTs, (short) blobCenter.pt().x(), (short) (480-blobCenter.pt().y())));
                     b.setMass(10000); // some big number
                     tracker.getClusters().add(b);
                     blobs.add(b);
