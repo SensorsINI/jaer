@@ -20,8 +20,8 @@ public class DynamicEvaluator implements ParticleEvaluator<SimpleParticle, doubl
         double x = p.getX();
         double y = p.getY();
         double[] retVal = new double[2];
-        double errorX = (r.nextDouble() * 2 - 1) * noise;
-        double errorY = (r.nextDouble() * 2 - 1) * noise;
+        double errorX = r.nextGaussian() * noise;
+        double errorY = r.nextGaussian() * noise;
         retVal[0] = x + 0 + errorX;
         retVal[1] = y + 0 + errorY;
         return retVal;

@@ -15,8 +15,10 @@
               <map>
                 <entry key="FilterChain.timeLimitEnabled" value="false"/>
                 <entry key="FilterChain.timeLimitMs" value="10"/>
+                <entry key="Info.useLocalTimeZone" value="true"/>
                 <entry key="VideoControl.displayFrames" value="true"/>
                 <entry key="VideoControl.displayEvents" value="true"/>
+                <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="0"/>
                 <entry key="VideoControl.useAutoContrast" value="false"/>
                 <entry key="VideoControl.contrast" value="1.0"/>
                 <entry key="VideoControl.brightness" value="0.0"/>
@@ -197,7 +199,7 @@
                 <entry key="DAVIS240A.extTrigger" value="false"/>
                 <entry key="DAVIS240A.testPixAPSread" value="false"/>
                 <entry key="agcEnabled" value="false"/>
-                <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAGdwQAAAAGdAA0bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5BcHNEdnNFdmVudEZpbHRlcnQASGNoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLm1hY2hpbmV2aXNpb24uZmFjZWRldGVjdGlvbi5BcHNEdnNGYWNlVHJhY2tlcnQARmNoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLm1hY2hpbmV2aXNpb24uZmFjZWRldGVjdGlvbi5BcHNGYWNlRGV0ZWN0b3J0AFBjaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy5tYWNoaW5ldmlzaW9uLmZlYXR1cmVzLmV4dHJhY3Rpb24uQXBzRmVhdHVyZUV4dHJhY3RvcnQAQWNoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLm1hY2hpbmV2aXNpb24uZnJhbWVzLkFwc0ZyYW1lRXh0cmFjdG9ydABFY2gudW5pemguaW5pLmphZXIucHJvamVjdHMubWFjaGluZXZpc2lvbi5mcmFtZXMuQXBzRnJhbWVFeHRyYXBvbGF0aW9ueA=="/>
+                <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAABdwQAAAABdAA0bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5BcHNEdnNFdmVudEZpbHRlcng="/>
                 <entry key="RefractoryFilter.filterEnabled" value="false"/>
                 <entry key="DAVIS240A.AddressedIPotCF.ApsROSFBn.BitValueCoarse" value="1"/>
                 <entry key="DAVIS240A.AddressedIPotCF.ApsROSFBn.BitValueFine" value="188"/>
@@ -256,7 +258,6 @@
                 <entry key="ApsFrameExtrapolation.manualOffGain" value="-0.06837005"/>
                 <entry key="ApsFrameExtrapolation.lowPassTimeConst" value="1.0"/>
                 <entry key="ApsFrameExtrapolation.averagingWindow" value="10"/>
-                <entry key="Info.useLocalTimeZone" value="true"/>
                 <entry key="Info.filterEnabled" value="false"/>
                 <entry key="Info.eventRateScaleMax" value="1049999.9"/>
                 <entry key="RefractoryFilter.refractoryPeriodUs" value="586"/>
@@ -608,6 +609,110 @@
                 <entry key="MedianTracker.filterEnabled" value="true"/>
                 <entry key="MedianTracker.tauUs" value="16137"/>
                 <entry key="CPLDInt.nullSettle" value="3"/>
+                <entry key="DirectionSelectiveFlow.filterEnabled" value="false"/>
+                <entry key="class eu.seebetter.ini.chips.davis.DAVIS240A.preferredDisplayMethod" value="eu.seebetter.ini.chips.davis.DavisBaseCamera$DavisDisplayMethod"/>
+                <entry key="JaerAviWriter.filterEnabled" value="false"/>
+                <entry key="DavisAutoShooter.filterEnabled" value="false"/>
+                <entry key="DavisFrameAviWriter.filterEnabled" value="false"/>
+                <entry key="ApsDvsDirectionSelectiveFilterCombinedWithOMC.filterEnabled" value="false"/>
+                <entry key="LucasKanadeFlow.derivator" value="CentralFiniteDifferenceFirstOrder"/>
+                <entry key="LucasKanadeFlow.filterEnabled" value="false"/>
+                <entry key="LucasKanadeFlow.xMax" value="240"/>
+                <entry key="LucasKanadeFlow.xMin" value="1"/>
+                <entry key="LucasKanadeFlow.yMax" value="180"/>
+                <entry key="LucasKanadeFlow.yMin" value="1"/>
+                <entry key="LucasKanadeFlow.thr" value="17.973957"/>
+                <entry key="LucasKanadeFlow.ppsScale" value="0.33448228"/>
+                <entry key="LucasKanadeFlow.epsilon" value="10.0"/>
+                <entry key="LucasKanadeFlow.secondTempDerivative" value="false"/>
+                <entry key="LucasKanadeFlow.discardOutliersEnabled" value="false"/>
+                <entry key="LocalPlanesFlow.filterEnabled" value="false"/>
+                <entry key="LucasKanadeFlow.speedMixingFactor" value="0.001"/>
+                <entry key="LucasKanadeFlow.subSampleShift" value="1"/>
+                <entry key="LocalPlanesFlow.xMax" value="240"/>
+                <entry key="LocalPlanesFlow.yMax" value="180"/>
+                <entry key="ImuFlow.filterEnabled" value="false"/>
+                <entry key="ImuFlow.xMax" value="240"/>
+                <entry key="ImuFlow.xMin" value="0"/>
+                <entry key="ImuFlow.yMax" value="180"/>
+                <entry key="ImuFlow.ppsScale" value="0.45811182"/>
+                <entry key="ImuFlow.subSampleShift" value="2"/>
+                <entry key="ImuFlow.speedControlEnabled" value="false"/>
+                <entry key="LucasKanadeFlow.refractoryPeriodUs" value="126348"/>
+                <entry key="LocalPlanesFlow.planeEstimator" value="RobustLP"/>
+                <entry key="DavisVideoContrastController.useAutoContrast" value="true"/>
+                <entry key="DavisVideoContrastController.contrast" value="0.2"/>
+                <entry key="showImageHistogram" value="false"/>
+                <entry key="DAVIS240A.VideoControl.displayFrames" value="true"/>
+                <entry key="DAVIS240A.VideoControl.displayEvents" value="true"/>
+                <entry key="DAVIS240A.VideoControl.separateAPSByColor" value="false"/>
+                <entry key="DAVIS240A.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="DAVIS240A.VideoControl.colorCorrection" value="true"/>
+                <entry key="DAVIS240A.Mux.ForceChipBiasEnable" value="false"/>
+                <entry key="DAVIS240A.Mux.DropDVSOnTransferStall" value="true"/>
+                <entry key="DAVIS240A.Mux.DropAPSOnTransferStall" value="false"/>
+                <entry key="DAVIS240A.Mux.DropIMUOnTransferStall" value="false"/>
+                <entry key="DAVIS240A.Mux.DropExtInputOnTransferStall" value="true"/>
+                <entry key="DAVIS240A.USB.EarlyPacketDelay" value="8"/>
+                <entry key="DAVIS240A.DVS.Run" value="true"/>
+                <entry key="DAVIS240A.DVS.AckDelayRow" value="4"/>
+                <entry key="DAVIS240A.DVS.AckDelayColumn" value="0"/>
+                <entry key="DAVIS240A.DVS.AckExtensionRow" value="1"/>
+                <entry key="DAVIS240A.DVS.AckExtensionColumn" value="0"/>
+                <entry key="DAVIS240A.DVS.WaitOnTransferStall" value="false"/>
+                <entry key="DAVIS240A.DVS.FilterRowOnlyEvents" value="true"/>
+                <entry key="DAVIS240A.DVS.ExternalAERControl" value="false"/>
+                <entry key="DAVIS240A.DVS.FilterBackgroundActivity" value="false"/>
+                <entry key="DAVIS240A.DVS.FilterBackgroundActivityDeltaTime" value="20000"/>
+                <entry key="DAVIS240A.APS.Run" value="true"/>
+                <entry key="DAVIS240A.APS.ResetRead" value="true"/>
+                <entry key="DAVIS240A.APS.WaitOnTransferStall" value="true"/>
+                <entry key="DAVIS240A.APS.GlobalShutter" value="true"/>
+                <entry key="DAVIS240A.APS.Exposure" value="4000"/>
+                <entry key="DAVIS240A.APS.FrameDelay" value="1000"/>
+                <entry key="DAVIS240A.APS.ResetSettle" value="10"/>
+                <entry key="DAVIS240A.APS.ColumnSettle" value="30"/>
+                <entry key="DAVIS240A.APS.RowSettle" value="10"/>
+                <entry key="DAVIS240A.APS.NullSettle" value="3"/>
+                <entry key="DAVIS240A.IMU.Run" value="false"/>
+                <entry key="DAVIS240A.IMU.TempStandby" value="false"/>
+                <entry key="DAVIS240A.IMU.LPCycle" value="false"/>
+                <entry key="DAVIS240A.IMU.LPWakeup" value="1"/>
+                <entry key="DAVIS240A.IMU.SampleRateDivider" value="0"/>
+                <entry key="DAVIS240A.IMU.DigitalLowPassFilter" value="1"/>
+                <entry key="DAVIS240A.IMU.AccelFullScale" value="2"/>
+                <entry key="DAVIS240A.IMU.GyroFullScale" value="2"/>
+                <entry key="DAVIS240A.ExtInput.RunDetector" value="false"/>
+                <entry key="DAVIS240A.ExtInput.DetectRisingEdges" value="false"/>
+                <entry key="DAVIS240A.ExtInput.DetectFallingEdges" value="false"/>
+                <entry key="DAVIS240A.ExtInput.DetectPulses" value="true"/>
+                <entry key="DAVIS240A.ExtInput.DetectPulsePolarity" value="true"/>
+                <entry key="DAVIS240A.ExtInput.DetectPulseLength" value="120"/>
+                <entry key="DAVIS240A.ExtInput.RunGenerator" value="false"/>
+                <entry key="DAVIS240A.ExtInput.GenerateUseCustomSignal" value="false"/>
+                <entry key="DAVIS240A.ExtInput.GeneratePulsePolarity" value="false"/>
+                <entry key="DAVIS240A.ExtInput.GeneratePulseInterval" value="120"/>
+                <entry key="DAVIS240A.ExtInput.GeneratePulseLength" value="60"/>
+                <entry key="DAVIS240A.Chip.DigitalMux0" value="0"/>
+                <entry key="DAVIS240A.Chip.DigitalMux1" value="0"/>
+                <entry key="DAVIS240A.Chip.DigitalMux2" value="0"/>
+                <entry key="DAVIS240A.Chip.DigitalMux3" value="0"/>
+                <entry key="DAVIS240A.Chip.AnalogMux0" value="0"/>
+                <entry key="DAVIS240A.Chip.AnalogMux1" value="0"/>
+                <entry key="DAVIS240A.Chip.AnalogMux2" value="0"/>
+                <entry key="DAVIS240A.Chip.BiasMux0" value="0"/>
+                <entry key="DAVIS240A.Chip.ResetCalibNeuron" value="true"/>
+                <entry key="DAVIS240A.Chip.TypeNCalibNeuron" value="false"/>
+                <entry key="DAVIS240A.Chip.ResetTestPixel" value="true"/>
+                <entry key="DAVIS240A.Chip.AERnArow" value="false"/>
+                <entry key="DAVIS240A.Chip.UseAOut" value="false"/>
+                <entry key="DAVIS240A.Chip.SpecialPixelControl" value="false"/>
+                <entry key="DAVIS240A.IMU.GyroScale" value="GyroFullScaleDegPerSec1000"/>
+                <entry key="DAVIS240A.IMU.AccelScale" value="ImuAccelScaleG8"/>
+                <entry key="DAVIS240A.IMU.displayEnabled" value="true"/>
+                <entry key="DAVIS240A.Masterbias.rx" value="8200.0"/>
+                <entry key="DAVIS240A.Masterbias.rint" value="46000.0"/>
+                <entry key="DAVIS240A.Masterbias.internalResistorUsed" value="false"/>
               </map>
             </node>
           </node>
