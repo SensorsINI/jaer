@@ -79,8 +79,8 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         
         Random r = new Random();
         for(int i = 0; i < 1000; i++) {
-                double x = 10 * (r.nextDouble() * 2 - 1) + getStartPositionX();
-                double y = 10 * (r.nextDouble() * 2 - 1) + getStartPositionY();
+                double x = 10 * r.nextGaussian() + getStartPositionX();
+                double y = 10 * r.nextGaussian() + getStartPositionY();
                 filter.addParticle(new SimpleParticle(x, y));
         }
 
@@ -143,32 +143,32 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         }
  
         
-        Random r = new Random();
+//        Random r = new Random();
 //        clustersLocationX[0] = heatMapCNN.getOutputX();
 //        clusterLocationY[0] = heatMapCNN.getOutputY();
-        measurement.setMu(measurementLocationsX, measurementLocationsY);
-        double originSum = 0;
-        double effectiveNum = 0;
-        if(visibleCnt != 0) {
-            measurement.setVisibleCluster(visibleFlg);
-            filter.evaluateStrength();            
-            originSum = filter.normalize(); // The sum value before normalize
-            effectiveNum = filter.calculateNeff();
-            if(/*originSum > threshold && */effectiveNum < filter.getParticleCount() * 0.75) {
-                filter.resample(r);   
-            } else {
-                filter.resample(r);
-            }
-        }
-   
-        outputX = filter.getAverageX();
-        outputY = filter.getAverageY();
-        if(outputX > 240 || outputY > 180 || outputX < 0 || outputY < 0) {
-            for(i = 0; i < filter.getParticleCount(); i++) {
-                filter.get(i).setX(120 + 50 * (r.nextDouble() * 2 - 1));
-                filter.get(i).setY(90 + 50 * (r.nextDouble() * 2 - 1));
-            }
-        }
+//        measurement.setMu(measurementLocationsX, measurementLocationsY);
+//        double originSum = 0;
+//        double effectiveNum = 0;
+//        if(visibleCnt != 0) {
+//            measurement.setVisibleCluster(visibleFlg);
+//            filter.evaluateStrength();            
+//            originSum = filter.normalize(); // The sum value before normalize
+//            effectiveNum = filter.calculateNeff();
+//            if(originSum > threshold /* && effectiveNum < filter.getParticleCount() * 0.75*/) {
+//                filter.resample(r);   
+//            } else {
+//                // filter.resample(r);
+//            }
+//        }
+//   
+//        outputX = filter.getAverageX();
+//        outputY = filter.getAverageY();
+//        if(outputX > 240 || outputY > 180 || outputX < 0 || outputY < 0) {
+//            for(i = 0; i < filter.getParticleCount(); i++) {
+//                filter.get(i).setX(120 + 50 * (r.nextDouble() * 2 - 1));
+//                filter.get(i).setY(90 + 50 * (r.nextDouble() * 2 - 1));
+//            }
+//        }
         
         // filter.disperseDistribution(r, locationX);
         return in;
@@ -196,6 +196,31 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
             measurementLocationsX[3] = heatMapCNN.getOutputX();
             measurementLocationsY[3] = heatMapCNN.getOutputY();
             heatMapCNN.getOutputProbVal();
+        }
+        
+        Random r = new Random();
+
+        measurement.setMu(measurementLocationsX, measurementLocationsY);
+        double originSum = 0;
+        double effectiveNum = 0;
+
+        filter.evaluateStrength();            
+        originSum = filter.normalize(); // The sum value before normalize
+        effectiveNum = filter.calculateNeff();
+        if(originSum > threshold /* && effectiveNum < filter.getParticleCount() * 0.75*/) {
+            filter.resample(r);   
+        } else {
+            filter.resample(r);
+        }
+        
+   
+        outputX = filter.getAverageX();
+        outputY = filter.getAverageY();
+        if(outputX > 240 || outputY > 180 || outputX < 0 || outputY < 0) {
+            for(int i = 0; i < filter.getParticleCount(); i++) {
+                filter.get(i).setX(120 + 50 * (r.nextDouble() * 2 - 1));
+                filter.get(i).setY(90 + 50 * (r.nextDouble() * 2 - 1));
+            }
         }
     }
 

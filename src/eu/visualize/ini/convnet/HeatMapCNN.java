@@ -39,7 +39,6 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
     public static final String OUTPUT_AVAILBLE = "outputUpdated";
 
     private boolean hideOutput = getBoolean("hideOutput", false);
-    private boolean hideDisplayOutput = getBoolean("hideDisplayOutput", false);
 
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
     private TargetLabeler targetLabeler = null;
@@ -57,7 +56,6 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         super(chip);
         setPropertyTooltip("showAnalogDecisionOutput", "shows output units as analog shading");
         setPropertyTooltip("hideOutput", "All the output units are hided");
-        setPropertyTooltip("hideDisplayOutput", "Just hides the display outplay");
 
         FilterChain chain = new FilterChain(chip);
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
@@ -197,12 +195,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         outputX = strideX * (max_x_index + 1) + strideX/2 - 1; 
         outputY = strideY * max_y_index + strideY/2 - 1; 
         outputProbVal = max;
-        getSupport().firePropertyChange(HeatMapCNN.OUTPUT_AVAILBLE, null, this);
 
-        if(isHideDisplayOutput()) {  // Don't display the result
-            return;
-        }
-        
         System.out.printf("max heat value is: %f\n", max);
         try {
                 gl.glEnable(GL.GL_BLEND);
@@ -212,7 +205,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         catch (final GLException e) {
                 e.printStackTrace();
         }
-        gl.glColor4f(.1f, .1f, 1f, .25f);
+        gl.glColor4f(1f, .1f, .1f, .25f);
         gl.glLineWidth(1f);
         gl.glRectf((int)outputX - 10, (int)outputY - 10, (int)outputX + 12, (int)outputY + 12);
     }
@@ -285,6 +278,8 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
                     }
                 }
 
+                updateOutput(); // Heatmap is updated, the output should also be updated.
+                
                 if (measurePerformance) {
                     long dt = System.nanoTime() - startTime;
                     float ms = 1e-6f * dt;
@@ -311,20 +306,28 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         return heatMap;
     }
 
-    /**
-     * @return the hideDisplayOutput
-     */
-    public boolean isHideDisplayOutput() {
-        return hideDisplayOutput;
-    }
-
-    /**
-     * @param hideDisplayOutput the hideDisplayOutput to set
-     */
-    public void setHideDisplayOutput(boolean hideDisplayOutput) {
-        this.hideDisplayOutput = hideDisplayOutput;
-        putBoolean("hideDisplayOutput", hideDisplayOutput);
-
+    private void updateOutput() {
+        int sizeX = chip.getSizeX()/strideX;
+        int sizeY = chip.getSizeY()/strideY;
+        float max = heatMap[0];
+        int max_x_index = 0, max_y_index =0;
+        
+        for (int x = 0; x < sizeX; x++) {
+            for (int y = 0; y < sizeY; y++) {
+                float heat = heatMap[getHeatmapIdx(x,y)];
+                float hue = 3f-3f*heat;       
+                if(heat > max) {
+                    max = heat;  
+                    max_x_index = x;
+                    max_y_index = y;
+                }
+            }
+        }            
+       
+        outputX = strideX * (max_x_index + 1) + strideX/2 - 1; 
+        outputY = strideY * max_y_index + strideY/2 - 1; 
+        outputProbVal = max;
+        getSupport().firePropertyChange(HeatMapCNN.OUTPUT_AVAILBLE, null, this);
     }
 
 }

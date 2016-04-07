@@ -11,6 +11,13 @@ package net.sf.jaer.util.filter.ParticleFilter;
  */
 
 import java.awt.geom.Point2D;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -90,6 +97,9 @@ public class ParticleFilter<T extends Particle> {
  
                 int[] selectionDistribution = new int[this.particles.size()];
                 ArrayList<ParticleWeight<T> > nextDistribution = new ArrayList<ParticleWeight<T> >();
+                Charset charset = Charset.forName("US-ASCII");
+                String s = "Hello!";
+                Path file = Paths.get("E:/DVS/databases/PF Tracking/dataset/test");
                 for(int i = 0; i < nextParticleCount; i++) {
                         double sel = r.nextDouble();
                         int index = Arrays.binarySearch(this.selectionSum, sel);
@@ -107,6 +117,14 @@ public class ParticleFilter<T extends Particle> {
                                 System.out.println(selectionDistribution[index]);                                
                             }
                         }
+ 
+                        try (BufferedWriter writer = Files.newBufferedWriter(file, charset)) {
+                            writer.write(s);
+                            writer.close();
+                        } catch (IOException x) {
+                            System.err.format("IOException: %s%n", x);
+                        }
+                        
                         nextDistribution.add(particleWeight);
                         selectionDistribution[index]++;
                 }
