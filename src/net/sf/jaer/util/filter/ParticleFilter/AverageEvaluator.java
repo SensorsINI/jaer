@@ -11,10 +11,10 @@ import java.awt.geom.Point2D;
  *
  * @author minliu
  */
-public class AverageEvaluator implements ParticleEvaluator<SimpleParticle, Point2D.Double>{
+public class AverageEvaluator implements ParticleEvaluator<SimpleParticle, double[]>{
 
     @Override
-    public Point2D.Double evaluate(SimpleParticle p) {
+    public double[] evaluate(SimpleParticle p) {
         return p.getP();
     }
 }

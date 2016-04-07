@@ -13,6 +13,8 @@ package net.sf.jaer.util.filter.ParticleFilter;
 import java.awt.geom.Point2D;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -23,11 +25,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ParticleFilter<T extends Particle> {
 	private ParticleEvaluator<T, Double> estimateEvaluator; 
-        private ParticleEvaluator<T, T> dynamicEvaluator;
-        private ParticleEvaluator<T, Point2D.Double> averageEvaluator;
+        private ParticleEvaluator<T, double[]> dynamicEvaluator;
+        private ParticleEvaluator<T, double[]> averageEvaluator;
         
 	private ArrayList<ParticleWeight<T> > particles = new ArrayList<ParticleWeight<T> >();
 
@@ -50,7 +54,7 @@ public class ParticleFilter<T extends Particle> {
             return particles;
         }
     
-	public ParticleFilter(ParticleEvaluator<T, T> dynamic, ParticleEvaluator<T, Double> measurement, ParticleEvaluator<T, Point2D.Double> average) {
+	public ParticleFilter(ParticleEvaluator<T, double[]> dynamic, ParticleEvaluator<T, Double> measurement, ParticleEvaluator<T, double[]> average) {
 		this.estimateEvaluator = measurement;
                 this.dynamicEvaluator = dynamic;
                 this.averageEvaluator = average;
@@ -69,17 +73,38 @@ public class ParticleFilter<T extends Particle> {
 		return particles.get(i).data;
 	}
 
-	public void evaluateStrength() {
+	public synchronized void evaluateStrength() {
+                File file = new File("E:/DVS/databases/PF Tracking/matlab code/test1");
+                BufferedWriter out = null;
+                try {
+                    out = new BufferedWriter(new FileWriter(file));
+                } catch (IOException ex) {
+                    Logger.getLogger(ParticleFilter.class.getName()).log(Level.SEVERE, null, ex);
+                }
 		for(ParticleWeight<T> p : this.particles) {
-                        p.data = dynamicEvaluator.evaluate(p.data);           // Generate the proposal distribution by the motion model.
-			double weight = estimateEvaluator.evaluate(p.data);   // Evaluate it with the measurement value.
-			if( p.lastWeight == 0 ) {
-				p.weightRatio = weight;
-			} else {
-				p.weightRatio = weight / p.lastWeight;
-			}
-			p.weight = weight;
+                    double[] noisePoint = new double[2];
+                    noisePoint = dynamicEvaluator.evaluate(p.data);           // Generate the proposal distribution by the motion model.
+
+                    p.data.setX(noisePoint[0]);
+                    p.data.setY(noisePoint[1]);
+                    try {
+                        out.write(String.format("%.10f %.10f %.10f",p.data.getX(), p.data.getY(), p.weight) + "\n");
+                    } catch (IOException ex) {
+                        Logger.getLogger(ParticleFilter.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    double weight = estimateEvaluator.evaluate(p.data);   // Evaluate it with the measurement value.
+                    if( p.lastWeight == 0 ) {
+                            p.weightRatio = weight;
+                    } else {
+                            p.weightRatio = weight / p.lastWeight;
+                    }
+                    p.weight = weight;
 		}
+                try {
+                    out.close();
+                } catch (IOException ex) {
+                    Logger.getLogger(ParticleFilter.class.getName()).log(Level.SEVERE, null, ex);
+                }
 	}
         
         // If we don't need resample, then we should update the weight.
@@ -97,9 +122,14 @@ public class ParticleFilter<T extends Particle> {
  
                 int[] selectionDistribution = new int[this.particles.size()];
                 ArrayList<ParticleWeight<T> > nextDistribution = new ArrayList<ParticleWeight<T> >();
-                Charset charset = Charset.forName("US-ASCII");
-                String s = "Hello!";
-                Path file = Paths.get("E:/DVS/databases/PF Tracking/dataset/test");
+                File file = new File("E:/DVS/databases/PF Tracking/matlab code/test");
+                BufferedWriter out = null;
+                try {
+                    out = new BufferedWriter(new FileWriter(file));
+                } catch (IOException ex) {
+                    Logger.getLogger(ParticleFilter.class.getName()).log(Level.SEVERE, null, ex);
+                }
+
                 for(int i = 0; i < nextParticleCount; i++) {
                         double sel = r.nextDouble();
                         int index = Arrays.binarySearch(this.selectionSum, sel);
@@ -116,18 +146,20 @@ public class ParticleFilter<T extends Particle> {
                                 System.out.println("Index is:");
                                 System.out.println(selectionDistribution[index]);                                
                             }
+                        }                      
+                        try {
+                            out.write(String.format("%.10f %.10f %.10f",p.data.getX(), p.data.getY(), p.weight) + "\n");
+                        } catch (IOException ex) {
+                            Logger.getLogger(ParticleFilter.class.getName()).log(Level.SEVERE, null, ex);
                         }
- 
-                        try (BufferedWriter writer = Files.newBufferedWriter(file, charset)) {
-                            writer.write(s);
-                            writer.close();
-                        } catch (IOException x) {
-                            System.err.format("IOException: %s%n", x);
-                        }
-                        
                         nextDistribution.add(particleWeight);
                         selectionDistribution[index]++;
-                }
+                    }
+                    try {
+                        out.close();
+                    } catch (IOException ex) {
+                        Logger.getLogger(ParticleFilter.class.getName()).log(Level.SEVERE, null, ex);
+                    }
 //		System.out.println();
                 this.particles = nextDistribution;     
                 // disperseDistribution(r, 1);
@@ -197,7 +229,7 @@ public class ParticleFilter<T extends Particle> {
 		else return p.weight;
 	}
 	
-	private static class ParticleWeight<T extends Particle> implements Cloneable {
+	private class ParticleWeight<T extends Particle> implements Cloneable {
 		public ParticleWeight(T p) {
 			this(p, 1.0, 0);
 		}
@@ -218,7 +250,7 @@ public class ParticleFilter<T extends Particle> {
         public double getAverageX() {
             double sumX = 0;
             for(ParticleWeight<T> p : this.particles) {
-                    sumX += averageEvaluator.evaluate(p.data).x;
+                    sumX += averageEvaluator.evaluate(p.data)[0];
             }
             return sumX/particles.size();
         }
@@ -226,12 +258,12 @@ public class ParticleFilter<T extends Particle> {
         public double getAverageY() {
             double sumY = 0;
             for(ParticleWeight<T> p : this.particles) {
-                    sumY += averageEvaluator.evaluate(p.data).y;
+                    sumY += averageEvaluator.evaluate(p.data)[1];
             }
             return sumY/particles.size();            
         }
         
-	public void setEvaluator(ParticleEvaluator<T, T>dynamic, ParticleEvaluator<T, Double> measurement) {
+	public void setEvaluator(ParticleEvaluator<T, double[]>dynamic, ParticleEvaluator<T, Double> measurement) {
 		this.estimateEvaluator = measurement;
                 this.dynamicEvaluator = dynamic;
         }

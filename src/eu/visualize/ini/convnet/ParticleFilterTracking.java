@@ -239,7 +239,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         gl.glLineWidth(1f);
         // for (final HotPixelFilter.HotPixel p : hotPixelSet) {
         for(int i = 0; i < filter.getParticleCount(); i ++) {            
-            gl.glRectf((int)filter.get(i).getX() - 1, (int)filter.get(i).getY() - 1, (int)filter.get(i).getX() + 1, (int)filter.get(i).getY() + 1);
+            gl.glRectd(filter.get(i).getX() - 0.5, filter.get(i).getY() - 0.5, filter.get(i).getX() + 0.5, filter.get(i).getY() + 0.5);
         }
         gl.glRectf((int)outputX - 10, (int)outputY - 10, (int)outputX + 12, (int)outputY + 12);
 
