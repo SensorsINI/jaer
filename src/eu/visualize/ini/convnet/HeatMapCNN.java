@@ -36,8 +36,11 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 @Description("Computes heat map by running CNN using ROI over the frame")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
+    public static final String OUTPUT_AVAILBLE = "outputUpdated";
 
     private boolean hideOutput = getBoolean("hideOutput", false);
+    private boolean hideDisplayOutput = getBoolean("hideDisplayOutput", false);
+
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
     private TargetLabeler targetLabeler = null;
     private int totalDecisions = 0, correct = 0, incorrect = 0;
@@ -45,19 +48,24 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
     private final int strideX = 16;
     private final int strideY = 16;
     private float[] heatMap;
+    private int outputX = 0, outputY = 0;  // Output location
+    private double outputProbVal = 0; // The max probablity in the heatmap
+
 //    private final AEFrameChipRenderer renderer;
 
     public HeatMapCNN(AEChip chip) {
         super(chip);
         setPropertyTooltip("showAnalogDecisionOutput", "shows output units as analog shading");
-        setPropertyTooltip("hideOutput", "hides output units");
+        setPropertyTooltip("hideOutput", "All the output units are hided");
+        setPropertyTooltip("hideDisplayOutput", "Just hides the display outplay");
+
         FilterChain chain = new FilterChain(chip);
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
-        chain.add(targetLabeler);
+        // chain.add(targetLabeler);
         setEnclosedFilterChain(chain);
         int sx = chip.getSizeX()/strideX;
         int sy = chip.getSizeY()/strideY;
-        heatMap = new float[sx*sy];
+        heatMap = new float[15*11];
         Arrays.fill(heatMap, 0.0f);
         apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
 //        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
@@ -122,7 +130,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
         targetLabeler.annotate(drawable);
-        if (hideOutput) {
+        if (hideOutput) { // All the outputs (direct output and display output will be disabled)
             return;
         }
         GL2 gl = drawable.getGL().getGL2();
@@ -168,16 +176,11 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
     }
 */
     private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
-        
-//        renderer.setExternalRenderer(true);
-//        renderer.resetAnnotationFrame(0.0f);
-//        renderer.setAnnotateAlpha(alpha);
-//        float[] colors = new float[3];
+
         int sizeX = chip.getSizeX()/strideX;
         int sizeY = chip.getSizeY()/strideY;
         float max = heatMap[0];
         int max_x_index = 0, max_y_index =0;
-        int outputX = 0, outputY = 0;
         
         for (int x = 0; x < sizeX; x++) {
             for (int y = 0; y < sizeY; y++) {
@@ -193,9 +196,14 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
        
         outputX = strideX * (max_x_index + 1) + strideX/2 - 1; 
         outputY = strideY * max_y_index + strideY/2 - 1; 
+        outputProbVal = max;
+        getSupport().firePropertyChange(HeatMapCNN.OUTPUT_AVAILBLE, null, this);
 
+        if(isHideDisplayOutput()) {  // Don't display the result
+            return;
+        }
+        
         System.out.printf("max heat value is: %f\n", max);
-//        final GL2 gl = drawable.getGL().getGL2();
         try {
                 gl.glEnable(GL.GL_BLEND);
                 gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
@@ -206,13 +214,24 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         }
         gl.glColor4f(.1f, .1f, 1f, .25f);
         gl.glLineWidth(1f);
-        // for (final HotPixelFilter.HotPixel p : hotPixelSet) {
-                gl.glRectf((int)outputX - 10, (int)outputY - 10, (int)outputX + 12, (int)outputY + 12);
+        gl.glRectf((int)outputX - 10, (int)outputY - 10, (int)outputX + 12, (int)outputY + 12);
     }
+
+        public double getOutputProbVal() {
+            return outputProbVal;
+        }
+
+        public int getOutputX() {
+            return outputX;
+        }
+
+        public int getOutputY() {
+            return outputY;
+        }
     
     public int getHeatmapIdx(int x, int y){
         // int sizeY = chip.getSizeY()/strideX;
-        return y+(x*9);
+        return y+(x*9);    // Now the row numbers for heatmap is just 9 not 11 or 15, don't know the reason.
     }
 
 
@@ -260,11 +279,12 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
                 for(int x = dimx2; x< (chip.getSizeX()-dimx2); x+= strideX){
                     for(int y = dimy2; y< (chip.getSizeY()-dimy2); y+= strideY){
                         float[] outputs = apsDvsNet.processInputPatchFrame((AEFrameChipRenderer) (chip.getRenderer()), x, y);
-                        apsDvsNet.drawActivations();
+                        // apsDvsNet.drawActivations();
                         heatMap[idx]=outputs[0];
                         idx++;
                     }
                 }
+
                 if (measurePerformance) {
                     long dt = System.nanoTime() - startTime;
                     float ms = 1e-6f * dt;
@@ -285,6 +305,26 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
                 }
             }
         }
+    }
+
+    public float[] getHeatMap() {
+        return heatMap;
+    }
+
+    /**
+     * @return the hideDisplayOutput
+     */
+    public boolean isHideDisplayOutput() {
+        return hideDisplayOutput;
+    }
+
+    /**
+     * @param hideDisplayOutput the hideDisplayOutput to set
+     */
+    public void setHideDisplayOutput(boolean hideDisplayOutput) {
+        this.hideDisplayOutput = hideDisplayOutput;
+        putBoolean("hideDisplayOutput", hideDisplayOutput);
+
     }
 
 }

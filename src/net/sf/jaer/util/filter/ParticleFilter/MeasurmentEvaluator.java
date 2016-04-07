@@ -13,7 +13,7 @@ import java.util.Random;
  */
 public class MeasurmentEvaluator implements ParticleEvaluator<SimpleParticle, Double> {
 	double[] muX, muY = new double[3];
-	double	sigma	= 30;
+	double	sigma	= 3;
         boolean[] visibleCluster = new boolean[3];
 
         public boolean[] getVisibleCluster() {
@@ -54,7 +54,7 @@ public class MeasurmentEvaluator implements ParticleEvaluator<SimpleParticle, Do
 		double error = r.nextDouble()*noise;
 		double result = 0;
 		switch(type) {
-		case 0: result = gaussian(x, y, muX, muY, sigma, visibleCluster); break;
+		case 0: result = gaussian(x, y, muX, muY, sigma); break;
 //		case 1: result = Math.max(gaussian(x, mu, sigma), gaussian(x, -mu, sigma)); break;
 //		case 2: result = Math.max(gaussian(x, mu, sigma), 0.9*gaussian(x, -mu, sigma)); break;
 //		case 3: result = Math.max(((Math.abs(mu-x))<sigma/5)?1:0, (Math.abs(-mu-x)<sigma/5)?0.5:0); break;
@@ -62,16 +62,22 @@ public class MeasurmentEvaluator implements ParticleEvaluator<SimpleParticle, Do
 		return result + error; 
 	}
 	
-	public static double gaussian(double x, double y, double[] muX, double[] muY, double sigma, boolean visibleFlg[]) {
-		double[] d2 = new double[3];
+	public static double gaussian(double x, double y, double[] muX, double[] muY, double sigma) {
+		double[] d2 = new double[4];
+                double[] measurementWeight = new double[4];
+                measurementWeight[0] = 1;
+                measurementWeight[1] = 1;
+                measurementWeight[2] = 1;
+                measurementWeight[3] = 10;
+
                 double evaluateVal = 0;
                 int visibleCount = 0;
                 for(int i = 0; i < 3; i ++) {
-                    if(visibleFlg[i]) {
+                    //if(visibleFlg[i]) {
                         d2[i]= (x - muX[i]) * (x - muX[i]) + (y - muY[i]) * (y - muY[i]);
-                        evaluateVal += Math.exp(-d2[i] / (2* sigma * sigma));     
+                        evaluateVal += measurementWeight[i] * Math.exp(-d2[i] / (2* sigma * sigma));     
                         visibleCount += 1;
-                    }
+                    //}
                 }
                 if(visibleCount != 0) {
                     return evaluateVal/visibleCount;                    

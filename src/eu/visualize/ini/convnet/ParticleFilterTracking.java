@@ -58,9 +58,10 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
 
     FilterChain trackingFilterChain;
     private RectangularClusterTracker tracker;
+    private HeatMapCNN heatMapCNN;
     
     private double outputX, outputY;
-    private double[] clustersLocationX = new double[3], clusterLocationY = new double[3];
+    private double[] measurementLocationsX = new double[4], measurementLocationsY = new double[4];
     
     // private final AEFrameChipRenderer renderer;
 
@@ -84,17 +85,18 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         }
 
         tracker = new RectangularClusterTracker(chip);
+        heatMapCNN = new HeatMapCNN(chip);
         trackingFilterChain = new FilterChain(chip);
         trackingFilterChain.add(tracker);
+        trackingFilterChain.add(heatMapCNN);
+        tracker.setFilterEnabled(false);
         tracker.setEnclosed(true, this);        
+        heatMapCNN.getSupport().addPropertyChangeListener(HeatMapCNN.OUTPUT_AVAILBLE, this);
         setEnclosedFilterChain(trackingFilterChain);
 
         setPropertyTooltip("colorClustersDifferentlyEnabled", 
                 "each cluster gets assigned a random color, otherwise color indicates ages");
-        setPropertyTooltip("filterEventsEnabled", "Just for test");
-        
-        // renderer = (AEFrameChipRenderer) chip.getRenderer();
-
+        setPropertyTooltip("filterEventsEnabled", "Just for test");      
     }
 
     @Override
@@ -131,8 +133,8 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         int i = 0, visibleCnt = 0;
         boolean[] visibleFlg = new boolean[3];
         for (RectangularClusterTracker.Cluster c : tracker.getClusters()) {
-            clustersLocationX[i] = c.location.x;
-            clusterLocationY[i] = c.location.y;
+            measurementLocationsX[i] = c.location.x;
+            measurementLocationsY[i] = c.location.y;
             visibleFlg[i] = c.isVisible();
             i = i + 1;
             if(c.isVisible()) {
@@ -142,7 +144,9 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
  
         
         Random r = new Random();
-        measurement.setMu(clustersLocationX, clusterLocationY);
+//        clustersLocationX[0] = heatMapCNN.getOutputX();
+//        clusterLocationY[0] = heatMapCNN.getOutputY();
+        measurement.setMu(measurementLocationsX, measurementLocationsY);
         double originSum = 0;
         double effectiveNum = 0;
         if(visibleCnt != 0) {
@@ -153,7 +157,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
             if(/*originSum > threshold && */effectiveNum < filter.getParticleCount() * 0.75) {
                 filter.resample(r);   
             } else {
-                filter.resample(r);;
+                filter.resample(r);
             }
         }
    
@@ -177,8 +181,8 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
 
     @Override
     public void initFilter() {
-        double[] xArray = new double[3];
-        double[] yArray = new double[3];
+        double[] xArray = new double[4];
+        double[] yArray = new double[4];
         Arrays.fill(xArray, 0);
         Arrays.fill(yArray, 0);
 
@@ -186,8 +190,13 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     }
 
     @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public synchronized void propertyChange(PropertyChangeEvent evt) {
+        if (evt.getPropertyName().equals(HeatMapCNN.OUTPUT_AVAILBLE)) {
+            float[] map = this.heatMapCNN.getHeatMap();
+            measurementLocationsX[3] = heatMapCNN.getOutputX();
+            measurementLocationsY[3] = heatMapCNN.getOutputY();
+            heatMapCNN.getOutputProbVal();
+        }
     }
 
     @Override

@@ -112,7 +112,7 @@ public class ParticleFilter<T extends Particle> {
                 }
 //		System.out.println();
                 this.particles = nextDistribution;     
-                disperseDistribution(r, 1);
+                // disperseDistribution(r, 1);
                               
 	}
 
