@@ -51,6 +51,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     private ParticleFilter filter;
     
     private boolean colorClustersDifferentlyEnabled = getBoolean("colorClustersDifferentlyEnabled", false);
+    private boolean Useframe = false;
     private boolean filterEventsEnabled = getBoolean("filterEventsEnabled", false); // enables filtering events so
     private float threshold = getFloat("threshold", 100);
     private int startPositionX = getInt("x", 0);
@@ -355,4 +356,22 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         putFloat("threshold", threshold);
         this.threshold = threshold;
     }
+        public float getUseframe() {
+        return threshold;
+    }
+
+    /**
+     * @param Useframe the Useframe to set
+     */
+    public boolean isUseframe() {
+        return Useframe;
+    }
+
+    /**
+     * @param Useframe the Useframe to set
+     */
+    public void setSoftMaxOutput(boolean Useframe) {
+        this.Useframe = Useframe;
+    }
+    
 }
