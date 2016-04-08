@@ -52,6 +52,8 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     
     private boolean colorClustersDifferentlyEnabled = getBoolean("colorClustersDifferentlyEnabled", false);
     private boolean Useframe = false;
+    private boolean UseClustersFrametime = false;
+    private boolean UseClustersRealtime = false;
     private boolean filterEventsEnabled = getBoolean("filterEventsEnabled", false); // enables filtering events so
     private float threshold = getFloat("threshold", 100);
     private int startPositionX = getInt("x", 0);
@@ -370,8 +372,36 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     /**
      * @param Useframe the Useframe to set
      */
-    public void setSoftMaxOutput(boolean Useframe) {
+    public void setUseframe(boolean Useframe) {
         this.Useframe = Useframe;
+    }
+
+    /**
+     * @return the UseClustersFrametime
+     */
+    public boolean isUseClustersFrametime() {
+        return UseClustersFrametime;
+    }
+
+    /**
+     * @param UseClustersFrametime the UseClustersFrametime to set
+     */
+    public void setUseClustersFrametime(boolean UseClustersFrametime) {
+        this.UseClustersFrametime = UseClustersFrametime;
+    }
+
+    /**
+     * @return the UseClustersRealtime
+     */
+    public boolean isUseClustersRealtime() {
+        return UseClustersRealtime;
+    }
+
+    /**
+     * @param UseClustersRealtime the UseClustersRealtime to set
+     */
+    public void setUseClustersRealtime(boolean UseClustersRealtime) {
+        this.UseClustersRealtime = UseClustersRealtime;
     }
     
 }
