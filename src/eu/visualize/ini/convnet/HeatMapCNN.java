@@ -260,6 +260,9 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
 
     @Override
     public synchronized void propertyChange(PropertyChangeEvent evt) {
+        if(! filterEnabled) {
+            return;
+        }
         if (evt.getPropertyName().equals(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)) {
             if ((apsDvsNet != null) && processAPSFrames) {
                 long startTime = 0;

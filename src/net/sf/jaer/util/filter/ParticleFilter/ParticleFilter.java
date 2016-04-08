@@ -74,7 +74,7 @@ public class ParticleFilter<T extends Particle> {
 	}
 
 	public synchronized void evaluateStrength() {
-                File file = new File("E:/DVS/databases/PF Tracking/matlab code/test1");
+                File file = new File("afterDynamic_debug");
                 BufferedWriter out = null;
                 try {
                     out = new BufferedWriter(new FileWriter(file));
@@ -122,7 +122,7 @@ public class ParticleFilter<T extends Particle> {
  
                 int[] selectionDistribution = new int[this.particles.size()];
                 ArrayList<ParticleWeight<T> > nextDistribution = new ArrayList<ParticleWeight<T> >();
-                File file = new File("E:/DVS/databases/PF Tracking/matlab code/test");
+                File file = new File("afterResample_debug");
                 BufferedWriter out = null;
                 try {
                     out = new BufferedWriter(new FileWriter(file));

@@ -85,8 +85,8 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         
         Random r = new Random();
         for(int i = 0; i < particlesCount; i++) {
-                double x = 10 * r.nextGaussian() + getStartPositionX();
-                double y = 10 * r.nextGaussian() + getStartPositionY();
+                double x = (chip.getSizeX()/2) * (r.nextDouble()*2 - 1) + chip.getSizeX()/2;
+                double y = (chip.getSizeX()/2) * (r.nextDouble()*2 - 1) + chip.getSizeX()/2;
                 filter.addParticle(new SimpleParticle(x, y));
         }
 
@@ -297,6 +297,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
      * @param filterEventsEnabled the filterEventsEnabled to set
      */
     public void setFilterEventsEnabled(boolean filterEventsEnabled) {
+        super.setFilterEnabled(false);
         this.filterEventsEnabled = filterEventsEnabled;
         putBoolean("filterEventsEnabled", filterEventsEnabled);
     }
@@ -313,30 +314,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
      */
     public void setTracker(RectangularClusterTracker tracker) {
         this.tracker = tracker;
-    }
-
-    private RectangularClusterTracker.Cluster getRobotCluster() {
-                if (tracker.getNumClusters() == 0) {
-            return null;
-        }
-        float minDistance = Float.POSITIVE_INFINITY, f, minTimeToImpact = Float.POSITIVE_INFINITY;
-        RectangularClusterTracker.Cluster closest = null, soonest = null;
-        for (RectangularClusterTracker.Cluster c : tracker.getClusters()) {
-                if (c.isVisible()) { // cluster must be visible
-                    if ((f = c.location.y) < minDistance) {
-                        // give closest ball unconditionally if not using
-                        // ball velocityPPT
-                        // but if using velocityPPT, then only give ball if
-                        // it is moving towards goal
-                        minDistance = f;
-                        closest = c;
-                        // will it hit earlier?
-                } // visible
-            }
-        }
-
-        return closest;
-    }    
+    } 
 
     /**
      * @return the startPositionX
