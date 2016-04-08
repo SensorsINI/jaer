@@ -155,7 +155,15 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
                 }     
             }            
         } 
- 
+        
+        if(! heatMapCNN.isFilterEnabled()) {
+           if(measurementLocationsX.size() != tracker.getMaxNumClusters()) { // The heatMap is closed, then we should make the size of the state equale to the clusters number
+                measurementLocationsX.remove(measurementLocationsX.size() - 1);
+                measurementLocationsY.remove(measurementLocationsY.size() - 1);
+                enableFlg.remove(enableFlg.size() - 1);               
+           }
+
+       }
         
         Random r = new Random();
 
@@ -208,14 +216,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     public synchronized void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName().equals(HeatMapCNN.OUTPUT_AVAILBLE)) {
             float[] map = this.heatMapCNN.getHeatMap();
-            int clustersNum = 0;
-            if(! heatMapCNN.isFilterEnabled()) {
-                measurementLocationsX.remove(measurementLocationsX.size() - 1);
-                measurementLocationsY.remove(measurementLocationsY.size() - 1);
-                enableFlg.remove(enableFlg.size() - 1);
-                return;
-            }
-            
+            int clustersNum = 0;            
             if(tracker.isFilterEnabled()) {
                 clustersNum = tracker.getMaxNumClusters();
             } else {

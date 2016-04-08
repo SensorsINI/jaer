@@ -66,18 +66,20 @@ public class MeasurmentEvaluator implements ParticleEvaluator<SimpleParticle, Do
 	
 	public static double gaussian(double x, double y, List<Float> muX, List<Float> muY, double sigma) {
 		List<Double> d2 = new ArrayList<Double>();
-                double[] measurementWeight = new double[4];
-                measurementWeight[0] = 1;
-                measurementWeight[1] = 1;
-                measurementWeight[2] = 1;
-                measurementWeight[3] = 0;
+                List<Double> measurementWeight = new ArrayList<Double>();
+
+                for(int i = 0; i < muX.size(); i ++) {
+                    measurementWeight.add(1.0);
+                }
+                // measurementWeight.set(muX.size() - 1, 100.0); // TODO make element's weight is from heatmap biggest
 
                 double evaluateVal = 0;
                 int visibleCount = 0;
                 for(int i = 0; i < muX.size(); i ++) {
                     //if(visibleFlg[i]) {
-                        d2.add(i, (x - muX.get(i)) * (x - muX.get(i)) + (y - muY.get(i)) * (y - muY.get(i)));
-                        evaluateVal += (Math.exp(-d2.get(i) / (2* sigma * sigma)));     
+                        double d = (x - muX.get(i)) * (x - muX.get(i)) + (y - muY.get(i)) * (y - muY.get(i));
+                        d2.add(i, d/measurementWeight.get(i));
+                        evaluateVal +=  (Math.exp(-d2.get(i) / (2* sigma * sigma)));     
                         visibleCount += 1;
                     //}
                 }
