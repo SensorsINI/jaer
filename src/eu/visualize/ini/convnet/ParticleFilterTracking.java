@@ -15,6 +15,7 @@ import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -50,7 +51,6 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
 
     private ParticleFilter filter;
     
-    private boolean colorClustersDifferentlyEnabled = getBoolean("colorClustersDifferentlyEnabled", false);
     private boolean Useframe = false;
     private boolean UseClustersFrametime = false;
     private boolean UseClustersRealtime = false;
@@ -58,14 +58,17 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     private float threshold = getFloat("threshold", 100);
     private int startPositionX = getInt("x", 0);
     private int startPositionY = getInt("y", 0);
+    private int particlesCount = getInt("particlesCount", 1000);
+
 
     FilterChain trackingFilterChain;
     private RectangularClusterTracker tracker;
     private HeatMapCNN heatMapCNN;
     
     private double outputX, outputY;
-    private double[] measurementLocationsX = new double[4], measurementLocationsY = new double[4];
-    
+    private List<Float> measurementLocationsX = new ArrayList<Float>(), measurementLocationsY = new ArrayList<Float>();
+    private List<Boolean> enableFlg = new ArrayList<Boolean>(); // enable flag for the measurement
+
     // private final AEFrameChipRenderer renderer;
 
     
@@ -81,7 +84,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         filter = new ParticleFilter(dynamic, measurement, average);
         
         Random r = new Random();
-        for(int i = 0; i < 1000; i++) {
+        for(int i = 0; i < particlesCount; i++) {
                 double x = 10 * r.nextGaussian() + getStartPositionX();
                 double y = 10 * r.nextGaussian() + getStartPositionY();
                 filter.addParticle(new SimpleParticle(x, y));
@@ -134,35 +137,42 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         // RectangularClusterTracker.Cluster robot = getRobotCluster();
         
         int i = 0, visibleCnt = 0;
-        boolean[] visibleFlg = new boolean[3];
-        for (RectangularClusterTracker.Cluster c : tracker.getClusters()) {
-            measurementLocationsX[i] = c.location.x;
-            measurementLocationsY[i] = c.location.y;
-            visibleFlg[i] = c.isVisible();
-            i = i + 1;
-            if(c.isVisible()) {
-                visibleCnt = visibleCnt + 1;                
-            }     
-        }
+        if(tracker.isFilterEnabled()) {
+            for (RectangularClusterTracker.Cluster c : tracker.getClusters()) {
+                if(measurementLocationsX.size() <= i) {
+                    measurementLocationsX.add(i, c.location.x);
+                    measurementLocationsY.add(i, c.location.y);
+                    enableFlg.add(i, c.isVisible()); 
+                } else {
+                    measurementLocationsX.set(i, c.location.x);
+                    measurementLocationsY.set(i, c.location.y);
+                    enableFlg.set(i, c.isVisible());                 
+                }
+
+                i = i + 1;
+                if(c.isVisible()) {
+                    visibleCnt = visibleCnt + 1;                
+                }     
+            }            
+        } 
  
         
         Random r = new Random();
-//        measurementLocationsX[3] = heatMapCNN.getOutputX();
-//        measurementLocationsY[3] = heatMapCNN.getOutputY();
+
         measurement.setMu(measurementLocationsX, measurementLocationsY);
         double originSum = 0;
         double effectiveNum = 0;
-        if(visibleCnt != 0) {
-            measurement.setVisibleCluster(visibleFlg);
+        // if(visibleCnt != 0) {
+            measurement.setVisibleCluster(enableFlg);
             filter.evaluateStrength();            
             originSum = filter.normalize(); // The sum value before normalize
             effectiveNum = filter.calculateNeff();
             if(originSum > threshold /* && effectiveNum < filter.getParticleCount() * 0.75*/) {
                 filter.resample(r);   
             } else {
-                // filter.resample(r);
+                filter.updateWeight();
             }
-        }
+        // }
    
         outputX = filter.getAverageX();
         outputY = filter.getAverageY();
@@ -183,10 +193,13 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
 
     @Override
     public void initFilter() {
-        double[] xArray = new double[4];
-        double[] yArray = new double[4];
-        Arrays.fill(xArray, 0);
-        Arrays.fill(yArray, 0);
+        List<Float> xArray = new ArrayList<Float>();
+        List<Float> yArray = new ArrayList<Float>();
+
+        for(int i = 0; i < tracker.getMaxNumClusters(); i ++) {
+            xArray.add((float)0);
+            yArray.add((float)0);
+        }
 
         measurement.setMu(xArray, yArray);
     }
@@ -195,8 +208,32 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     public synchronized void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName().equals(HeatMapCNN.OUTPUT_AVAILBLE)) {
             float[] map = this.heatMapCNN.getHeatMap();
-            measurementLocationsX[3] = heatMapCNN.getOutputX();
-            measurementLocationsY[3] = heatMapCNN.getOutputY();
+            int clustersNum = 0;
+            if(! heatMapCNN.isFilterEnabled()) {
+                measurementLocationsX.remove(measurementLocationsX.size() - 1);
+                measurementLocationsY.remove(measurementLocationsY.size() - 1);
+                enableFlg.remove(enableFlg.size() - 1);
+                return;
+            }
+            
+            if(tracker.isFilterEnabled()) {
+                clustersNum = tracker.getMaxNumClusters();
+            } else {
+                measurementLocationsX.removeAll(measurementLocationsX);
+                measurementLocationsY.removeAll(measurementLocationsY);
+                enableFlg.removeAll(enableFlg);
+                clustersNum = 0;
+            }
+            if(measurementLocationsX.size() <= clustersNum) {
+                measurementLocationsX.add((float)heatMapCNN.getOutputX());
+                measurementLocationsY.add((float)heatMapCNN.getOutputY());    
+                enableFlg.add(true);
+            } else {
+                measurementLocationsX.set(clustersNum, (float)heatMapCNN.getOutputX());
+                measurementLocationsY.set(clustersNum, (float)heatMapCNN.getOutputY());
+                enableFlg.set(clustersNum, true);
+            }
+
             heatMapCNN.getOutputProbVal();
         }
         
@@ -246,21 +283,8 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         gl.glRectf((int)outputX - 10, (int)outputY - 10, (int)outputX + 12, (int)outputY + 12);
 
         // }    
-    } 
-    
-    public boolean isColorClustersDifferentlyEnabled() {
-        return colorClustersDifferentlyEnabled;
-    }
-    
-    /**
-     * @param colorClustersDifferentlyEnabled
-     *            true to color each cluster a
-     *            different color. false to color each cluster by its age
-     */
-    public void setColorClustersDifferentlyEnabled(boolean colorClustersDifferentlyEnabled) {
-            this.colorClustersDifferentlyEnabled = colorClustersDifferentlyEnabled;
-            putBoolean("colorClustersDifferentlyEnabled", colorClustersDifferentlyEnabled);
     }   
+
 
     /**
      * @return the filterEventsEnabled
@@ -402,6 +426,21 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
      */
     public void setUseClustersRealtime(boolean UseClustersRealtime) {
         this.UseClustersRealtime = UseClustersRealtime;
+    }
+
+    /**
+     * @return the particlesCount
+     */
+    public int getParticlesCount() {
+        return particlesCount;
+    }
+
+    /**
+     * @param particlesCount the particlesCount to set
+     */
+    public void setParticlesCount(int particlesCount) {
+        this.particlesCount = particlesCount;
+        putInt("particlesCount", particlesCount);
     }
     
 }

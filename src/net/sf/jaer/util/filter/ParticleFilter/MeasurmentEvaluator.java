@@ -5,6 +5,8 @@
  */
 package net.sf.jaer.util.filter.ParticleFilter;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -12,15 +14,15 @@ import java.util.Random;
  * @author minliu and hongjie
  */
 public class MeasurmentEvaluator implements ParticleEvaluator<SimpleParticle, Double> {
-	double[] muX, muY = new double[3];
+	List<Float> muX = new ArrayList<Float>(), muY = new ArrayList<Float>();
 	double	sigma	= Math.sqrt(20);
-        boolean[] visibleCluster = new boolean[3];
+        List<Boolean> visibleCluster = new ArrayList<Boolean>();
 
-        public boolean[] getVisibleCluster() {
+        public List<Boolean> getVisibleCluster() {
             return visibleCluster;
         }
 
-        public void setVisibleCluster(boolean[] visibleClusterNum) {
+        public void setVisibleCluster(List<Boolean> visibleClusterNum) {
             this.visibleCluster = visibleClusterNum;
         }
 
@@ -29,16 +31,16 @@ public class MeasurmentEvaluator implements ParticleEvaluator<SimpleParticle, Do
 	int type = 0;
 	Random r = new Random();
 
-        public void setMu(double[] x, double[] y) {
+        public void setMu(List<Float> x, List<Float> y) {
             this.muX = x;
             this.muY = y;
         }
 
-        public double[] getMuX() {
+        public List<Float> getMuX() {
             return muX;
         }
         
-        public double[] getMuY() {
+        public List<Float> getMuY() {
             return muY;
         }
         public double getSigma() {
@@ -62,8 +64,8 @@ public class MeasurmentEvaluator implements ParticleEvaluator<SimpleParticle, Do
 		return result + error; 
 	}
 	
-	public static double gaussian(double x, double y, double[] muX, double[] muY, double sigma) {
-		double[] d2 = new double[4];
+	public static double gaussian(double x, double y, List<Float> muX, List<Float> muY, double sigma) {
+		List<Double> d2 = new ArrayList<Double>();
                 double[] measurementWeight = new double[4];
                 measurementWeight[0] = 1;
                 measurementWeight[1] = 1;
@@ -72,10 +74,10 @@ public class MeasurmentEvaluator implements ParticleEvaluator<SimpleParticle, Do
 
                 double evaluateVal = 0;
                 int visibleCount = 0;
-                for(int i = 0; i < 3; i ++) {
+                for(int i = 0; i < muX.size(); i ++) {
                     //if(visibleFlg[i]) {
-                        d2[i]= (x - muX[i]) * (x - muX[i]) + (y - muY[i]) * (y - muY[i]);
-                        evaluateVal += measurementWeight[i] * Math.exp(-d2[i] / (2* sigma * sigma));     
+                        d2.add(i, (x - muX.get(i)) * (x - muX.get(i)) + (y - muY.get(i)) * (y - muY.get(i)));
+                        evaluateVal += (Math.exp(-d2.get(i) / (2* sigma * sigma)));     
                         visibleCount += 1;
                     //}
                 }
