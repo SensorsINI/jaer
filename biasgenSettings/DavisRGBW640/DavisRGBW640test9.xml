@@ -872,7 +872,7 @@
                 <entry key="DavisRGBW640.AddressedIPotCF.DiffBn.Sex" value="N"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.DiffBn.Type" value="NORMAL"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.OnBn.BitValueCoarse" value="1"/>
-                <entry key="DavisRGBW640.AddressedIPotCF.OnBn.BitValueFine" value="130"/>
+                <entry key="DavisRGBW640.AddressedIPotCF.OnBn.BitValueFine" value="30"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.OnBn.Enabled" value="true"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.OnBn.LowCurrent" value="false"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.OnBn.Sex" value="N"/>
@@ -2404,6 +2404,10 @@
                 <entry key="CdavisFrameBlobDetector.circularityUpperBound" value="0.15"/>
                 <entry key="CdavisFrameBlobDetector.circularityLowerBound" value="0.0"/>
                 <entry key="CdavisFrameBlobDetector.gaussianSigma" value="2.0371685"/>
+                <entry key="JaerAviWriter.maxFrames" value="0"/>
+                <entry key="DvsSliceAviWriter.filterEnabled" value="false"/>
+                <entry key="DvsSliceAviWriter.dimy" value="240"/>
+                <entry key="DvsSliceAviWriter.showOutput" value="false"/>
               </map>
             </node>
           </node>
