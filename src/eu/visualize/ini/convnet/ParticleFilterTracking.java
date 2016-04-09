@@ -55,10 +55,11 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     private boolean UseClustersFrametime = false;
     private boolean UseClustersRealtime = false;
     private boolean filterEventsEnabled = getBoolean("filterEventsEnabled", false); // enables filtering events so
-    private float threshold = getFloat("threshold", 100);
+    private float threshold = getFloat("threshold", 2);
     private int startPositionX = getInt("x", 0);
     private int startPositionY = getInt("y", 0);
     private int particlesCount = getInt("particlesCount", 1000);
+    private boolean UsePureEvents = getBoolean("UsePureEvents", false);
 
 
     FilterChain trackingFilterChain;
@@ -134,8 +135,54 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
 //        }
         
            
-        // RectangularClusterTracker.Cluster robot = getRobotCluster();
-        
+        // updated at every income event, notice: compuatation very expensive.
+        if(UsePureEvents) {
+            tracker.setFilterEnabled(false);
+            heatMapCNN.setFilterEnabled(false);
+            measurementLocationsX.removeAll(measurementLocationsX);
+            measurementLocationsY.removeAll(measurementLocationsY);
+            enableFlg.removeAll(enableFlg);            
+            for(int nCnt = 0; nCnt < in.getSize(); nCnt++) {
+                if(measurementLocationsX.size() <= 0) {
+                    measurementLocationsX.add(0, (float)in.getEvent(nCnt).getX());
+                    measurementLocationsY.add(0, (float)in.getEvent(nCnt).getY());
+                    enableFlg.add(0, true);                     
+                } else {
+                    measurementLocationsX.set(0, (float)in.getEvent(nCnt).getX());
+                    measurementLocationsY.set(0, (float)in.getEvent(nCnt).getY());
+                    enableFlg.set(0, true);                       
+                }      
+                Random r = new Random();
+
+                measurement.setMu(measurementLocationsX, measurementLocationsY);
+                double originSum = 0;
+                double effectiveNum = 0;
+                // if(visibleCnt != 0) {
+                    measurement.setVisibleCluster(enableFlg);
+                    filter.evaluateStrength();            
+                    originSum = filter.normalize(); // The sum value before normalize
+                    effectiveNum = filter.calculateNeff();
+                    if(originSum > threshold /* && effectiveNum < filter.getParticleCount() * 0.75*/) {
+                        filter.resample(r);   
+                    } else {
+                        // filter.updateWeight();
+                    }
+                // }
+
+                outputX = filter.getAverageX();
+                outputY = filter.getAverageY();
+                if(outputX > 240 || outputY > 180 || outputX < 0 || outputY < 0) {
+                    for(int i = 0; i < filter.getParticleCount(); i++) {
+                        filter.get(i).setX(120 + 50 * (r.nextDouble() * 2 - 1));
+                        filter.get(i).setY(90 + 50 * (r.nextDouble() * 2 - 1));
+                    }
+                }                
+            }    
+        return in;
+        } else {
+            tracker.setFilterEnabled(true);
+        }
+
         int i = 0, visibleCnt = 0;
         if(tracker.isFilterEnabled()) {
             for (RectangularClusterTracker.Cluster c : tracker.getClusters()) {
@@ -420,6 +467,21 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     public void setParticlesCount(int particlesCount) {
         this.particlesCount = particlesCount;
         putInt("particlesCount", particlesCount);
+    }
+
+    /**
+     * @return the UsePureEvents
+     */
+    public boolean isUsePureEvents() {
+        return UsePureEvents;
+    }
+
+    /**
+     * @param UsePureEvents the UsePureEvents to set
+     */
+    public void setUsePureEvents(boolean UsePureEvents) {
+        this.UsePureEvents = UsePureEvents;
+        putBoolean("UsePureEvents", UsePureEvents);
     }
     
 }
