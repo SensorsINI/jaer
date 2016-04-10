@@ -131,6 +131,9 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         if (!filterEnabled) {
                 return in;
         }
+        if(in.size == 0) {  // Empty packet
+            return in;
+        }
         EventPacket filtered = getEnclosedFilterChain().filterPacket(in);
 
         // added so that packets don't use a zero length packet to set last
@@ -261,9 +264,11 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         try (FileWriter outFile = new FileWriter(outputFilename,true)) {
             outFile.write(String.format(in.getFirstEvent().getTimestamp() + " " + (int)outputX + " " + (int)outputY + "\n"));
             outFile.close();
-        }
-         catch (IOException ex) {
+        } catch (IOException ex) {
             Logger.getLogger(ParticleFilter.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (Exception e) {
+            log.warning("Caught " + e + ". See following stack trace.");
+            e.printStackTrace();
         }
         
         return in;
