@@ -6,6 +6,7 @@
 package net.sf.jaer.util.filter.ParticleFilter;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
@@ -76,13 +77,20 @@ public class MeasurmentEvaluator implements ParticleEvaluator<SimpleParticle, Do
                 double evaluateVal = 0;
                 int visibleCount = 0;
                 for(int i = 0; i < muX.size(); i ++) {
-                    //if(visibleFlg[i]) {
+                    // if(visibleFlg[i]) {
                         double d = (x - muX.get(i)) * (x - muX.get(i)) + (y - muY.get(i)) * (y - muY.get(i));
-                        d2.add(i, d/measurementWeight.get(i));
-                        evaluateVal +=  (Math.exp(-d2.get(i) / (2* sigma * sigma)));     
+                        d2.add(i, d/measurementWeight.get(i));                        
                         visibleCount += 1;
-                    //}
+                    // }
                 }
+                
+                Collections.sort(d2); // Sort the distance list from small to big, smaller means closer
+                // d2.set(0, d2.get(0) / 10); // Make the closest measurment has the biggest weight 
+                
+                for(int i = 0; i < muX.size(); i ++) {
+                    evaluateVal +=  (Math.exp(-d2.get(i) / (2* sigma * sigma)));    
+                }
+                
                 if(visibleCount != 0) {
                     return evaluateVal/visibleCount;                    
                 } else {

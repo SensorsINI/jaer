@@ -10,13 +10,23 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLException;
+import static com.sun.org.apache.xalan.internal.lib.ExsltDatetime.date;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.Format;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -65,7 +75,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     FilterChain trackingFilterChain;
     private RectangularClusterTracker tracker;
     private HeatMapCNN heatMapCNN;
-    
+    private String outputFilename; 
     private double outputX, outputY;
     private List<Float> measurementLocationsX = new ArrayList<Float>(), measurementLocationsY = new ArrayList<Float>();
     private List<Boolean> enableFlg = new ArrayList<Boolean>(); // enable flag for the measurement
@@ -86,8 +96,10 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         
         Random r = new Random();
         for(int i = 0; i < particlesCount; i++) {
-                double x = (chip.getSizeX()/2) * (r.nextDouble()*2 - 1) + chip.getSizeX()/2;
-                double y = (chip.getSizeX()/2) * (r.nextDouble()*2 - 1) + chip.getSizeX()/2;
+//                double x = (chip.getSizeX()/2) * (r.nextDouble()*2 - 1) + chip.getSizeX()/2;
+//                double y = (chip.getSizeX()/2) * (r.nextDouble()*2 - 1) + chip.getSizeX()/2;
+                double x = r.nextGaussian() + getStartPositionX();
+                double y = r.nextGaussian() + getStartPositionY();
                 filter.addParticle(new SimpleParticle(x, y));
         }
 
@@ -100,7 +112,15 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         tracker.setEnclosed(true, this);        
         heatMapCNN.getSupport().addPropertyChangeListener(HeatMapCNN.OUTPUT_AVAILBLE, this);
         setEnclosedFilterChain(trackingFilterChain);
+        
+        // Save the result to the file
+        Format formatter = new SimpleDateFormat("YYYY-MM-dd_hh-mm-ss");
+        // Instantiate a Date object
+        Date date = new Date();
+         
+        outputFilename = "PF_Output_Location" + formatter.format(date);
 
+        
         setPropertyTooltip("colorClustersDifferentlyEnabled", 
                 "each cluster gets assigned a random color, otherwise color indicates ages");
         setPropertyTooltip("filterEventsEnabled", "Just for test");      
@@ -236,6 +256,14 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
                 filter.get(i).setX(120 + 50 * (r.nextDouble() * 2 - 1));
                 filter.get(i).setY(90 + 50 * (r.nextDouble() * 2 - 1));
             }
+        }                 
+
+        try (FileWriter outFile = new FileWriter(outputFilename,true)) {
+            outFile.write(String.format(in.getFirstEvent().getTimestamp() + " " + (int)outputX + " " + (int)outputY + "\n"));
+            outFile.close();
+        }
+         catch (IOException ex) {
+            Logger.getLogger(ParticleFilter.class.getName()).log(Level.SEVERE, null, ex);
         }
         
         return in;
@@ -321,7 +349,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         }
         catch (final GLException e) {
                 e.printStackTrace();
-        }
+        }        
         gl.glColor4f(.1f, .1f, 1f, .25f);
         gl.glLineWidth(1f);
         // for (final HotPixelFilter.HotPixel p : hotPixelSet) {
