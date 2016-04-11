@@ -70,6 +70,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     private int startPositionY = getInt("y", 0);
     private int particlesCount = getInt("particlesCount", 1000);
     private boolean UsePureEvents = getBoolean("UsePureEvents", false);
+    private boolean displayParticles = getBoolean("displayParticles", false);
 
 
     FilterChain trackingFilterChain;
@@ -86,8 +87,8 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     public ParticleFilterTracking(AEChip chip) {
         super(chip);
         
-        this.outputX = 0;
-        this.outputY = 0;
+        this.outputX = getStartPositionX();
+        this.outputY = getStartPositionY();
         
         dynamic = new DynamicEvaluator();
         measurement = new MeasurmentEvaluator();
@@ -147,11 +148,11 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
            
         // updated at every income event, notice: compuatation very expensive.
         if(UsePureEvents) {
-            tracker.setFilterEnabled(false);
-            heatMapCNN.setFilterEnabled(false);
+            // Clear the measurement list first
             measurementLocationsX.removeAll(measurementLocationsX);
             measurementLocationsY.removeAll(measurementLocationsY);
-            enableFlg.removeAll(enableFlg);            
+            enableFlg.removeAll(enableFlg);      
+            
             for(int nCnt = 0; nCnt < in.getSize(); nCnt++) {
                 if(measurementLocationsX.size() <= 0) {
                     measurementLocationsX.add(0, (float)in.getEvent(nCnt).getX());
@@ -175,13 +176,12 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
                     }
                 }                
             }    
-        return in;
-        } else {
-            tracker.setFilterEnabled(true);
-            heatMapCNN.setFilterEnabled(true);
-        }
+            
+            return in;
+        } 
 
         int i = 0, visibleCnt = 0;
+        int numMeasure = 0;
         if(tracker.isFilterEnabled()) {
             for (RectangularClusterTracker.Cluster c : tracker.getClusters()) {
                 if(measurementLocationsX.size() <= i) {
@@ -198,17 +198,26 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
                 if(c.isVisible()) {
                     visibleCnt = visibleCnt + 1;                
                 }     
-            }            
-        } 
+            }
+            numMeasure = tracker.getMaxNumClusters();
+        } else {
+            numMeasure = 0;
+        }
         
-        if(! heatMapCNN.isFilterEnabled()) {
-           if(measurementLocationsX.size() != tracker.getMaxNumClusters()) { // The heatMap is closed, then we should make the size of the state equale to the clusters number
-                measurementLocationsX.remove(measurementLocationsX.size() - 1);
-                measurementLocationsY.remove(measurementLocationsY.size() - 1);
-                enableFlg.remove(enableFlg.size() - 1);               
-           }
+        // If heatMap is enabled, then the number of the measurement should add 1.
+        if(heatMapCNN.isFilterEnabled()) { 
+            numMeasure = numMeasure + 1;
+        }
 
-       }
+        if(measurementLocationsX.size() > numMeasure) { 
+
+            // We should make the size of the measurement always equal to the clusters number
+            for(int removeCnt = measurementLocationsX.size() - 1; removeCnt >= numMeasure; removeCnt--) {
+                measurementLocationsX.remove(removeCnt);
+                measurementLocationsY.remove(removeCnt);
+                enableFlg.remove(removeCnt);
+            }             
+        }
         
         Random r = new Random();
         filterProcess();
@@ -237,7 +246,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
 
     @Override
     public void resetFilter() {
-        // throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    
     }
 
     @Override
@@ -274,9 +283,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
                 measurementLocationsX.set(clustersNum, (float)heatMapCNN.getOutputX());
                 measurementLocationsY.set(clustersNum, (float)heatMapCNN.getOutputY());
                 enableFlg.set(clustersNum, true);
-            }
-
-            heatMapCNN.getOutputProbVal();
+            }          
         }
     }
 
@@ -291,12 +298,19 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         catch (final GLException e) {
                 e.printStackTrace();
         }        
-        gl.glColor4f(.1f, .1f, 1f, .25f);
+        gl.glColor4f(1f, .1f, .1f, .25f);
         gl.glLineWidth(1f);
-        // for (final HotPixelFilter.HotPixel p : hotPixelSet) {
-        for(int i = 0; i < filter.getParticleCount(); i ++) {            
-            gl.glRectd(filter.get(i).getX() - 0.5, filter.get(i).getY() - 0.5, filter.get(i).getX() + 0.5, filter.get(i).getY() + 0.5);
+        
+        if(displayParticles) {
+            gl.glColor4f(.1f, 1f, .1f, .25f);
+
+            for(int i = 0; i < filter.getParticleCount(); i ++) {            
+                gl.glRectd(filter.get(i).getX() - 0.5, filter.get(i).getY() - 0.5, filter.get(i).getX() + 0.5, filter.get(i).getY() + 0.5);
+            }            
         }
+        
+        gl.glColor4f(1f, .1f, .1f, .25f);
+
         gl.glRectf((int)outputX - 10, (int)outputY - 10, (int)outputX + 12, (int)outputY + 12);
 
         // }    
@@ -478,6 +492,21 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     public void setUsePureEvents(boolean UsePureEvents) {
         this.UsePureEvents = UsePureEvents;
         putBoolean("UsePureEvents", UsePureEvents);
+    }
+
+    /**
+     * @return the displayParticles
+     */
+    public boolean isDisplayParticles() {
+        return displayParticles;
+    }
+
+    /**
+     * @param displayParticles the displayParticles to set
+     */
+    public void setDisplayParticles(boolean displayParticles) {
+        this.displayParticles = displayParticles;
+        putBoolean("displayParticles", displayParticles);
     }
     
 }
