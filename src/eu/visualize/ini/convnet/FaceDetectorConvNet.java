@@ -36,13 +36,15 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
 
     private boolean hideOutput = getBoolean("hideOutput", false);
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
+    private float faceDetectionThreshold = getFloat("faceDetectionThreshold", .5f);
     private TargetLabeler targetLabeler = null;
     private int totalDecisions = 0, correct = 0, incorrect = 0;
 
     public FaceDetectorConvNet(AEChip chip) {
         super(chip);
-        setPropertyTooltip("showAnalogDecisionOutput", "shows output units as analog shading");
-        setPropertyTooltip("hideOutput", "hides output units");
+        setPropertyTooltip("showAnalogDecisionOutput", "shows face detection as analog activation of face unit in softmax of network output");
+        setPropertyTooltip("hideOutput", "hides output face detection indications");
+        setPropertyTooltip("faceDetectionThreshold", "threshold activation for showing face detection; increase to decrease false postives. Default 0.5f. You may need to set softmax=true for this to work.");
         FilterChain chain = new FilterChain(chip);
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
         chain.add(targetLabeler);
@@ -66,7 +68,8 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
             if (net.outputLayer.maxActivatedUnit == 1) {
                 return true; // no face detected
             }
-        } else { // face labeled
+        } else // face labeled
+        {
             if (0 == net.outputLayer.maxActivatedUnit) {
                 return true;  // face detected
             }
@@ -101,16 +104,16 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
-        if(targetLabeler!=null) {
-			targetLabeler.annotate(drawable);
-		}
+        if (targetLabeler != null) {
+            targetLabeler.annotate(drawable);
+        }
         if (hideOutput) {
             return;
         }
         GL2 gl = drawable.getGL().getGL2();
         checkBlend(gl);
         int sy = chip.getSizeY();
-        if ((apsDvsNet != null) && (apsDvsNet.outputLayer!=null) && (apsDvsNet.outputLayer.activations != null)) {
+        if ((apsDvsNet != null) && (apsDvsNet.outputLayer != null) && (apsDvsNet.outputLayer.activations != null)) {
             drawDecisionOutput(gl, sy, apsDvsNet, Color.RED);
         }
 
@@ -126,7 +129,7 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
 
     private void drawDecisionOutput(GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
         // 0=left, 1=center, 2=right, 3=no target
-        int decision = net.outputLayer.maxActivatedUnit;
+        float faciness = net.outputLayer.activations[0], nonfaciness = net.outputLayer.activations[1];
         float r = color.getRed() / 255f, g = color.getGreen() / 255f, b = color.getBlue() / 255f;
         float[] cv = color.getColorComponents(null);
         if (glu == null) {
@@ -138,15 +141,36 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
 
         float rad = chip.getMinSize() / 4, rim = 3;
         float brightness = 0.0f;
-        if(net.outputLayer.activations[0] > net.outputLayer.activations[1]){
+        // brightness set by showAnalogDecisionOutput
+        if (showAnalogDecisionOutput) {
             brightness = net.outputLayer.activations[0] * 1f; // brightness scale
+        } else if (faciness > faceDetectionThreshold) {
+            brightness = 1;
         }
         gl.glColor3f(0.0f, brightness, brightness);
         gl.glPushMatrix();
-        gl.glTranslatef(chip.getSizeX()/2, chip.getSizeY()/2, 0);
+        gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
         glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
         glu.gluDisk(quad, rad - rim, rad + rim, 32, 1);
         gl.glPopMatrix();
+    }
+
+    @Override
+    public synchronized void propertyChange(PropertyChangeEvent evt) {
+        if (evt.getPropertyName() != DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
+            super.propertyChange(evt);
+        } else {
+            DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
+            Boolean correctDecision = correctDescisionFromTargetLabeler(targetLabeler, net);
+            if (correctDecision != null) {
+                totalDecisions++;
+                if (correctDecision) {
+                    correct++;
+                } else {
+                    incorrect++;
+                }
+            }
+        }
     }
 
     /**
@@ -179,22 +203,19 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
         putBoolean("showAnalogDecisionOutput", showAnalogDecisionOutput);
     }
 
-    @Override
-    public synchronized void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName() != DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
-            super.propertyChange(evt);
-        } else {
-            DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
-            Boolean correctDecision = correctDescisionFromTargetLabeler(targetLabeler, net);
-            if (correctDecision != null) {
-                totalDecisions++;
-                if (correctDecision) {
-                    correct++;
-                } else {
-                    incorrect++;
-                }
-            }
-        }
+    /**
+     * @return the faceDetectionThreshold
+     */
+    public float getFaceDetectionThreshold() {
+        return faceDetectionThreshold;
+    }
+
+    /**
+     * @param faceDetectionThreshold the faceDetectionThreshold to set
+     */
+    public void setFaceDetectionThreshold(float faceDetectionThreshold) {
+        this.faceDetectionThreshold = faceDetectionThreshold;
+        putFloat("faceDetectionThreshold", faceDetectionThreshold);
     }
 
 }
