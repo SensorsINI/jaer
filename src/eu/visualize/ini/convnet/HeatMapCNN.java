@@ -39,7 +39,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
     public static final String OUTPUT_AVAILBLE = "outputUpdated";
 
     private boolean hideOutput = getBoolean("hideOutput", false);
-
+    private boolean processROI = getBoolean("processROI", false);
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
     private TargetLabeler targetLabeler = null;
     private int totalDecisions = 0, correct = 0, incorrect = 0;
@@ -135,9 +135,9 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         checkBlend(gl);
         int third = chip.getSizeX() / 3;
         int sy = chip.getSizeY();
-        if ((apsDvsNet != null) && (apsDvsNet.outputLayer.activations != null) && isProcessAPSFrames()) {
+        // if ((apsDvsNet != null) && (apsDvsNet.outputLayer.activations != null) && isProcessAPSFrames()) {
             drawDecisionOutput(third, gl, sy, apsDvsNet, Color.RED);
-        }
+        // }
 
 //        if (dvsNet != null && dvsNet.outputLayer != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
 //            drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
@@ -150,7 +150,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         }
 
     }
-
+ /*below method deprecated was to draw the whole heatmap. now use the next method to draw the max of heatmap
    /* private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
 
         renderer.setExternalRenderer(true);
@@ -272,6 +272,26 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
                 int dimx2 = apsDvsNet.inputLayer.dimx/2;
                 int dimy2 = apsDvsNet.inputLayer.dimy/2;
                 int idx = 0;
+         if(processROI){
+            int filterx=ParticleFilterTracking.outputX;
+            int filtery=ParticleFilterTracking.outputY;
+            int processed_num = 4
+            int [] centerx; 
+            int [] centery; 
+            centerx(0)=filterx-stridex/2; 
+            centerx(1)=filterx+stridex/2;
+            centery(0)=filtery-stridey/2; 
+            centery(1)=filtery+stridey/2;
+            for (i=0; i< 2; i++ ){
+                for (j = 0; j< 2; j++){
+                  float[] outputs = apsDvsNet.processInputPatchFrame((AEFrameChipRenderer) (chip.getRenderer()), centerx(i), centery(j));
+                                          heatMap[idx]=outputs[0];
+                                          idx++;
+                }
+            }
+         
+            updateOutput_ROI();
+         }
                 for(int x = dimx2; x< (chip.getSizeX()-dimx2); x+= strideX){
                     for(int y = dimy2; y< (chip.getSizeY()-dimy2); y+= strideY){
                         float[] outputs = apsDvsNet.processInputPatchFrame((AEFrameChipRenderer) (chip.getRenderer()), x, y);
@@ -331,6 +351,44 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         outputY = strideY * max_y_index + strideY/2 - 1; 
         outputProbVal = max;
         getSupport().firePropertyChange(HeatMapCNN.OUTPUT_AVAILBLE, null, this);
+    }
+
+        private void updateOutput_ROI() {
+        int sizeX = chip.getSizeX()/strideX;
+        int sizeY = chip.getSizeY()/strideY;
+        float max = heatMap[0];
+        int max_x_index = 0, max_y_index =0;
+        
+        for (int x = 0; x < sizeX; x++) {
+            for (int y = 0; y < sizeY; y++) {
+                float heat = heatMap[getHeatmapIdx(x,y)];
+                float hue = 3f-3f*heat;       
+                if(heat > max) {
+                    max = heat;  
+                    max_x_index = x;
+                    max_y_index = y;
+                }
+            }
+        }            
+       
+        outputX = filterx+ 16*(max_x_index%2)-8; 
+        outputY = filtery+ 16*(max_y_index%2)-8;
+        outputProbVal = max;
+        getSupport().firePropertyChange(HeatMapCNN.OUTPUT_AVAILBLE, null, this);
+    }
+
+    /**
+     * @return the processROI
+     */
+    public boolean isProcessROI() {
+        return processROI;
+    }
+
+    /**
+     * @param processROI the processROI to set
+     */
+    public void setProcessROI(boolean processROI) {
+        this.processROI = processROI;
     }
 
 }
