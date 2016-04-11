@@ -73,6 +73,7 @@ public class MeasurmentEvaluator implements ParticleEvaluator<SimpleParticle, Do
                     measurementWeight.add(1.0);
                 }
                 // measurementWeight.set(muX.size() - 1, 100.0); // TODO make element's weight is from heatmap biggest
+                //perhaps here we should use overriding in the particle fitler tracker than changing the code here. 
 
                 double evaluateVal = 0;
                 int visibleCount = 0;

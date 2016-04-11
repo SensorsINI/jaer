@@ -49,6 +49,16 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
     private float[] heatMap;
     private int outputX = 0, outputY = 0;  // Output location
     private double outputProbVal = 0; // The max probablity in the heatmap
+    private ParticleFilterTracking tracker;
+
+    public ParticleFilterTracking getTracker() {
+        return tracker;
+    }
+
+    public void setTracker(ParticleFilterTracking tracker) {
+        this.tracker = tracker;
+    }
+    private int filterx = 0, filtery = 0;  // Output location
 
 //    private final AEFrameChipRenderer renderer;
 
@@ -180,23 +190,23 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         float max = heatMap[0];
         int max_x_index = 0, max_y_index =0;
         
-        for (int x = 0; x < sizeX; x++) {
-            for (int y = 0; y < sizeY; y++) {
-                float heat = heatMap[getHeatmapIdx(x,y)];
-                float hue = 3f-3f*heat;       
-                if(heat > max) {
-                    max = heat;  
-                    max_x_index = x;
-                    max_y_index = y;
-                }
-            }
-        }            
-       
-        outputX = strideX * (max_x_index + 1) + strideX/2 - 1; 
-        outputY = strideY * max_y_index + strideY/2 - 1; 
-        outputProbVal = max;
+//        for (int x = 0; x < sizeX; x++) {
+//            for (int y = 0; y < sizeY; y++) {
+//                float heat = heatMap[getHeatmapIdx(x,y)];
+//                float hue = 3f-3f*heat;       
+//                if(heat > max) {
+//                    max = heat;  
+//                    max_x_index = x;
+//                    max_y_index = y;
+//                }
+//            }
+//        }            
+//       
+//        outputX = strideX * (max_x_index + 1) + strideX/2 - 1; 
+//        outputY = strideY * max_y_index + strideY/2 - 1; 
+//        outputProbVal = max;
 
-        System.out.printf("max heat value is: %f\n", max);
+        System.out.printf("max heat value is: %f\n", outputProbVal);
         try {
                 gl.glEnable(GL.GL_BLEND);
                 gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
@@ -272,42 +282,45 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
                 int dimx2 = apsDvsNet.inputLayer.dimx/2;
                 int dimy2 = apsDvsNet.inputLayer.dimy/2;
                 int idx = 0;
+
+                tracker = this.getTracker();
          if(processROI){
-            int filterx=ParticleFilterTracking.outputX;
-            int filtery=ParticleFilterTracking.outputY;
-            int processed_num = 4
-            int [] centerx; 
-            int [] centery; 
-            centerx(0)=filterx-stridex/2; 
-            centerx(1)=filterx+stridex/2;
-            centery(0)=filtery-stridey/2; 
-            centery(1)=filtery+stridey/2;
-            for (i=0; i< 2; i++ ){
-                for (j = 0; j< 2; j++){
-                  float[] outputs = apsDvsNet.processInputPatchFrame((AEFrameChipRenderer) (chip.getRenderer()), centerx(i), centery(j));
-                                          heatMap[idx]=outputs[0];
-                                          idx++;
+            filterx = (int)tracker.getOutputX();
+            filtery = (int)tracker.getOutputY();
+            int processed_num = 4;
+            int [] centerx = new int[2]; 
+            int [] centery = new int[2]; 
+            centerx[0]=filterx-strideX/2; 
+            centerx[1]=filterx+strideX/2;
+            centery[0]=filtery-strideY/2; 
+            centery[1]=filtery+strideY/2;
+            
+            for (int i=0; i< 2; i++ ){
+                for (int j = 0; j< 2; j++){
+                    float[] outputs = apsDvsNet.processInputPatchFrame((AEFrameChipRenderer) (chip.getRenderer()), centerx[i], centery[j]);
+                    heatMap[idx]=outputs[0];
+                    idx++;
                 }
             }
          
             updateOutput_ROI();
-         }
-                for(int x = dimx2; x< (chip.getSizeX()-dimx2); x+= strideX){
-                    for(int y = dimy2; y< (chip.getSizeY()-dimy2); y+= strideY){
-                        float[] outputs = apsDvsNet.processInputPatchFrame((AEFrameChipRenderer) (chip.getRenderer()), x, y);
-                        // apsDvsNet.drawActivations();
-                        heatMap[idx]=outputs[0];
-                        idx++;
+         } else {
+                    for(int x = dimx2; x< (chip.getSizeX()-dimx2); x+= strideX){
+                        for(int y = dimy2; y< (chip.getSizeY()-dimy2); y+= strideY){
+                            float[] outputs = apsDvsNet.processInputPatchFrame((AEFrameChipRenderer) (chip.getRenderer()), x, y);
+                            // apsDvsNet.drawActivations();
+                            heatMap[idx]=outputs[0];
+                            idx++;
+                        }
                     }
-                }
 
-                updateOutput(); // Heatmap is updated, the output should also be updated.
-                
-                if (measurePerformance) {
-                    long dt = System.nanoTime() - startTime;
-                    float ms = 1e-6f * dt;
-                    float fps = 1e3f / ms;
-                    log.info(String.format("Frame processing time: %.1fms (%.1f FPS)", ms, fps));
+                    updateOutput(); // Heatmap is updated, the output should also be updated.
+
+                    if (measurePerformance) {
+                        long dt = System.nanoTime() - startTime;
+                        float ms = 1e-6f * dt;
+                        float fps = 1e3f / ms;
+                        log.info(String.format("Frame processing time: %.1fms (%.1f FPS)", ms, fps));
 
                 }
             }
@@ -323,6 +336,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
                 }
             }
         }
+    }
     }
 
     public float[] getHeatMap() {
@@ -359,14 +373,14 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         float max = heatMap[0];
         int max_x_index = 0, max_y_index =0;
         
-        for (int x = 0; x < sizeX; x++) {
-            for (int y = 0; y < sizeY; y++) {
-                float heat = heatMap[getHeatmapIdx(x,y)];
+         for (int i=0; i< 2; i++ ){
+                for (int j = 0; j< 2; j++){
+                float heat = heatMap[2*i+j];
                 float hue = 3f-3f*heat;       
                 if(heat > max) {
                     max = heat;  
-                    max_x_index = x;
-                    max_y_index = y;
+                    max_x_index = i;
+                    max_y_index = j;
                 }
             }
         }            
@@ -389,6 +403,8 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
      */
     public void setProcessROI(boolean processROI) {
         this.processROI = processROI;
+        putBoolean("processROI", processROI);
+
     }
 
 }

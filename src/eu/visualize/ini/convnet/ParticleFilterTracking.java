@@ -110,6 +110,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         trackingFilterChain.add(heatMapCNN);
         tracker.setFilterEnabled(false);
         tracker.setEnclosed(true, this);        
+        this.heatMapCNN.setTracker(this);
         heatMapCNN.getSupport().addPropertyChangeListener(HeatMapCNN.OUTPUT_AVAILBLE, this);
         setEnclosedFilterChain(trackingFilterChain);
         
@@ -365,6 +366,14 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
 
         // }    
     }   
+
+        public double getOutputX() {
+            return outputX;
+        }
+
+        public double getOutputY() {
+            return outputY;
+        }
 
 
     /**
