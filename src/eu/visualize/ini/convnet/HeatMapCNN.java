@@ -66,6 +66,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         super(chip);
         setPropertyTooltip("showAnalogDecisionOutput", "shows output units as analog shading");
         setPropertyTooltip("hideOutput", "All the output units are hided");
+        setPropertyTooltip("processROI", "Regions of Interest will be processed");
 
         FilterChain chain = new FilterChain(chip);
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
@@ -160,51 +161,14 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         }
 
     }
- /*below method deprecated was to draw the whole heatmap. now use the next method to draw the max of heatmap
-   /* private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
 
-        renderer.setExternalRenderer(true);
-        renderer.resetAnnotationFrame(0.0f);
-        renderer.setAnnotateAlpha(alpha);
-        float[] colors = new float[3];
-        int sizeX = chip.getSizeX()/strideX;
-        int sizeY = chip.getSizeY()/strideY;
-        for (int x = 0; x < sizeX; x++) {
-            for (int y = 0; y < sizeY; y++) {
-                float heat = heatMap[getHeatmapIdx(x,y)];
-                float hue = 3f-(3f*heat);
-                colors = ColorHelper.HSVtoRGB(hue, 1.0f, 1.0f);
-                for(int xx = 0; xx<strideX; xx++){
-                    for(int yy = 0; yy<strideY; yy++){
-                        renderer.setAnnotateColorRGB((x*strideX) + xx, (y*strideY) + yy, colors);
-                    }
-                }
-            }
-        }
-    }
-*/
     private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
 
         int sizeX = chip.getSizeX()/strideX;
         int sizeY = chip.getSizeY()/strideY;
         float max = heatMap[0];
         int max_x_index = 0, max_y_index =0;
-        
-//        for (int x = 0; x < sizeX; x++) {
-//            for (int y = 0; y < sizeY; y++) {
-//                float heat = heatMap[getHeatmapIdx(x,y)];
-//                float hue = 3f-3f*heat;       
-//                if(heat > max) {
-//                    max = heat;  
-//                    max_x_index = x;
-//                    max_y_index = y;
-//                }
-//            }
-//        }            
-//       
-//        outputX = strideX * (max_x_index + 1) + strideX/2 - 1; 
-//        outputY = strideY * max_y_index + strideY/2 - 1; 
-//        outputProbVal = max;
+     
 
         System.out.printf("max heat value is: %f\n", outputProbVal);
         try {
@@ -283,28 +247,29 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
                 int dimy2 = apsDvsNet.inputLayer.dimy/2;
                 int idx = 0;
 
-                tracker = this.getTracker();
-         if(processROI){
-            filterx = (int)tracker.getOutputX();
-            filtery = (int)tracker.getOutputY();
-            int processed_num = 4;
-            int [] centerx = new int[2]; 
-            int [] centery = new int[2]; 
-            centerx[0]=filterx-strideX/2; 
-            centerx[1]=filterx+strideX/2;
-            centery[0]=filtery-strideY/2; 
-            centery[1]=filtery+strideY/2;
-            
-            for (int i=0; i< 2; i++ ){
-                for (int j = 0; j< 2; j++){
-                    float[] outputs = apsDvsNet.processInputPatchFrame((AEFrameChipRenderer) (chip.getRenderer()), centerx[i], centery[j]);
-                    heatMap[idx]=outputs[0];
-                    idx++;
-                }
-            }
-         
-            updateOutput_ROI();
-         } else {
+                tracker = this.getTracker(); // Get the current particle filter                
+
+                // processROI is the flag to indicate the input of the heatMap
+                if(processROI){
+                   filterx = (int)tracker.getOutputX();
+                   filtery = (int)tracker.getOutputY();
+                   int processed_num = 4;
+                   int [] centerx = new int[2]; 
+                   int [] centery = new int[2]; 
+                   centerx[0]=filterx-strideX/2; 
+                   centerx[1]=filterx+strideX/2;
+                   centery[0]=filtery-strideY/2; 
+                   centery[1]=filtery+strideY/2;
+
+                   for (int i=0; i< 2; i++ ){
+                       for (int j = 0; j< 2; j++){
+                           float[] outputs = apsDvsNet.processInputPatchFrame((AEFrameChipRenderer) (chip.getRenderer()), centerx[i], centery[j]);
+                           heatMap[idx]=outputs[0];
+                           idx++;
+                       }
+                    }      
+                    updateOutput_ROI();
+                } else {
                     for(int x = dimx2; x< (chip.getSizeX()-dimx2); x+= strideX){
                         for(int y = dimy2; y< (chip.getSizeY()-dimy2); y+= strideY){
                             float[] outputs = apsDvsNet.processInputPatchFrame((AEFrameChipRenderer) (chip.getRenderer()), x, y);
@@ -321,22 +286,21 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
                         float ms = 1e-6f * dt;
                         float fps = 1e3f / ms;
                         log.info(String.format("Frame processing time: %.1fms (%.1f FPS)", ms, fps));
-
+                    }
                 }
-            }
-        } else {
-            DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
-            Boolean correctDecision = correctDescisionFromTargetLabeler(targetLabeler, net);
-            if (correctDecision != null) {
-                totalDecisions++;
-                if (correctDecision) {
-                    correct++;
-                } else {
-                    incorrect++;
+            } else {
+                DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
+                Boolean correctDecision = correctDescisionFromTargetLabeler(targetLabeler, net);
+                if (correctDecision != null) {
+                    totalDecisions++;
+                    if (correctDecision) {
+                        correct++;
+                    } else {
+                        incorrect++;
+                    }
                 }
             }
         }
-    }
     }
 
     public float[] getHeatMap() {

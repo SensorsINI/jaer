@@ -137,27 +137,13 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         }
         EventPacket filtered = getEnclosedFilterChain().filterPacket(in);
 
-        // added so that packets don't use a zero length packet to set last
-        // timestamps, etc, which can purge clusters for no reason
-//        if (in.getSize() == 0) {
-//                return in;
-//        }
-//
-//        if (enclosedFilter != null) {
-//                in = enclosedFilter.filterPacket(in);
-//        }
-//
         if (in instanceof ApsDvsEventPacket) {
                 checkOutputPacketEventType(in); // make sure memory is allocated to avoid leak
         }
         else if (isFilterEventsEnabled()) {
                 checkOutputPacketEventType(RectangularClusterTrackerEvent.class);
         }
-//        
-//        for (Object o : filtered) {
-//            BasicEvent ev = (BasicEvent) o;
-//        }
-        
+
            
         // updated at every income event, notice: compuatation very expensive.
         if(UsePureEvents) {
@@ -178,20 +164,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
                 }      
                 Random r = new Random();
 
-                measurement.setMu(measurementLocationsX, measurementLocationsY);
-                double originSum = 0;
-                double effectiveNum = 0;
-                // if(visibleCnt != 0) {
-                    measurement.setVisibleCluster(enableFlg);
-                    filter.evaluateStrength();            
-                    originSum = filter.normalize(); // The sum value before normalize
-                    effectiveNum = filter.calculateNeff();
-                    if(originSum > threshold /* && effectiveNum < filter.getParticleCount() * 0.75*/) {
-                        filter.resample(r);   
-                    } else {
-                        // filter.updateWeight();
-                    }
-                // }
+                filterProcess();
 
                 outputX = filter.getAverageX();
                 outputY = filter.getAverageY();
@@ -205,6 +178,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         return in;
         } else {
             tracker.setFilterEnabled(true);
+            heatMapCNN.setFilterEnabled(true);
         }
 
         int i = 0, visibleCnt = 0;
@@ -237,21 +211,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
        }
         
         Random r = new Random();
-
-        measurement.setMu(measurementLocationsX, measurementLocationsY);
-        double originSum = 0;
-        double effectiveNum = 0;
-        // if(visibleCnt != 0) {
-            measurement.setVisibleCluster(enableFlg);
-            filter.evaluateStrength();            
-            originSum = filter.normalize(); // The sum value before normalize
-            effectiveNum = filter.calculateNeff();
-            if(originSum > threshold /* && effectiveNum < filter.getParticleCount() * 0.75*/) {
-                filter.resample(r);   
-            } else {
-                filter.updateWeight();
-            }
-        // }
+        filterProcess();
    
         outputX = filter.getAverageX();
         outputY = filter.getAverageY();
@@ -318,31 +278,6 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
 
             heatMapCNN.getOutputProbVal();
         }
-        
-//        Random r = new Random();
-//
-//        measurement.setMu(measurementLocationsX, measurementLocationsY);
-//        double originSum = 0;
-//        double effectiveNum = 0;
-//
-//        filter.evaluateStrength();            
-//        originSum = filter.normalize(); // The sum value before normalize
-//        effectiveNum = filter.calculateNeff();
-//        if(originSum > threshold /* && effectiveNum < filter.getParticleCount() * 0.75*/) {
-//            filter.resample(r);   
-//        } else {
-//            filter.resample(r);
-//        }
-//        
-//   
-//        outputX = filter.getAverageX();
-//        outputY = filter.getAverageY();
-//        if(outputX > 240 || outputY > 180 || outputX < 0 || outputY < 0) {
-//            for(int i = 0; i < filter.getParticleCount(); i++) {
-//                filter.get(i).setX(120 + 50 * (r.nextDouble() * 2 - 1));
-//                filter.get(i).setY(90 + 50 * (r.nextDouble() * 2 - 1));
-//            }
-//        }
     }
 
     @Override
@@ -366,14 +301,33 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
 
         // }    
     }   
+    
+    public void filterProcess() {
+        Random r = new Random();
 
-        public double getOutputX() {
-            return outputX;
-        }
+        measurement.setMu(measurementLocationsX, measurementLocationsY);
+        double originSum = 0;
+        double effectiveNum = 0;
+        // if(visibleCnt != 0) {
+            measurement.setVisibleCluster(enableFlg);
+            filter.evaluateStrength();            
+            originSum = filter.normalize(); // The sum value before normalize
+            effectiveNum = filter.calculateNeff();
+            if(originSum > threshold /* && effectiveNum < filter.getParticleCount() * 0.75*/) {
+                filter.resample(r);   
+            } else {
+                filter.updateWeight();
+            }
+        // }
+    }
 
-        public double getOutputY() {
-            return outputY;
-        }
+    public double getOutputX() {
+        return outputX;
+    }
+
+    public double getOutputY() {
+        return outputY;
+    }
 
 
     /**
