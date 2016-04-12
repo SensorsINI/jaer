@@ -1423,16 +1423,16 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                     Jaer3BufferParser.JAER3XSHIFT = 17;
                     Jaer3BufferParser.JAER3XMASK = 0x7fff << Jaer3BufferParser.JAER3XSHIFT;
                     Jaer3BufferParser.JAER3YSHIFT = 2;
-                    Jaer3BufferParser.JAER3YMASK = 0x7fff << Jaer3BufferParser.JAER3YSHIFT;
-                    Jaer3BufferParser.JAER3POLMASK = 1;
+                    Jaer3BufferParser.JAER3YMASK = 0x7fff << Jaer3BufferParser.JAER3YSHIFT;                    
                     Jaer3BufferParser.JAER3POLSHIFT = 1;
+                    Jaer3BufferParser.JAER3POLMASK = 1 << Jaer3BufferParser.JAER3POLSHIFT;
                 } else {
                     Jaer3BufferParser.JAER3XSHIFT = 18;
                     Jaer3BufferParser.JAER3XMASK = 0x3fff << Jaer3BufferParser.JAER3XSHIFT;
                     Jaer3BufferParser.JAER3YSHIFT = 4;
                     Jaer3BufferParser.JAER3YMASK = 0x3fff << Jaer3BufferParser.JAER3YSHIFT;;
-                    Jaer3BufferParser.JAER3POLMASK = 1;
                     Jaer3BufferParser.JAER3POLSHIFT = 1;
+                    Jaer3BufferParser.JAER3POLMASK = 1 << Jaer3BufferParser.JAER3POLSHIFT;
                 }
                 addressType = Integer.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Integer.SIZE / 8);
