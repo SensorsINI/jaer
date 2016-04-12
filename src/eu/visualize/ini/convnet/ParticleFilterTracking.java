@@ -66,6 +66,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     private boolean UseClustersRealtime = false;
     private boolean filterEventsEnabled = getBoolean("filterEventsEnabled", false); // enables filtering events so
     private float threshold = getFloat("threshold", 2);
+    private int decay = getInt("decay", 1);
     private int startPositionX = getInt("x", 0);
     private int startPositionY = getInt("y", 0);
     private int particlesCount = getInt("particlesCount", 1000);
@@ -80,6 +81,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     private double outputX, outputY;
     private List<Float> measurementLocationsX = new ArrayList<Float>(), measurementLocationsY = new ArrayList<Float>();
     private List<Boolean> enableFlg = new ArrayList<Boolean>(); // enable flag for the measurement
+    private List<Double> measurementWeight = new ArrayList<Double>();
 
     // private final AEFrameChipRenderer renderer;
 
@@ -188,10 +190,11 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
                     measurementLocationsX.add(i, c.location.x);
                     measurementLocationsY.add(i, c.location.y);
                     enableFlg.add(i, c.isVisible()); 
+                    measurementWeight.add(1.0);
                 } else {
                     measurementLocationsX.set(i, c.location.x);
                     measurementLocationsY.set(i, c.location.y);
-                    enableFlg.set(i, c.isVisible());                 
+                    enableFlg.set(i, c.isVisible());
                 }
 
                 i = i + 1;
@@ -206,7 +209,10 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         
         // If heatMap is enabled, then the number of the measurement should add 1.
         if(heatMapCNN.isFilterEnabled()) { 
-            numMeasure = numMeasure + 1;
+            if(measurementLocationsX.size() == numMeasure + 1) {
+                measurementWeight.set(measurementWeight.size() - 1, measurementWeight.get(numMeasure)*decay);     
+                numMeasure = numMeasure + 1;
+            }
         }
 
         if(measurementLocationsX.size() > numMeasure) { 
@@ -216,6 +222,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
                 measurementLocationsX.remove(removeCnt);
                 measurementLocationsY.remove(removeCnt);
                 enableFlg.remove(removeCnt);
+                measurementWeight.remove(removeCnt);
             }             
         }
         
@@ -273,16 +280,19 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
                 measurementLocationsX.removeAll(measurementLocationsX);
                 measurementLocationsY.removeAll(measurementLocationsY);
                 enableFlg.removeAll(enableFlg);
+                measurementWeight.removeAll(measurementWeight);
                 clustersNum = 0;
             }
             if(measurementLocationsX.size() <= clustersNum) {
                 measurementLocationsX.add((float)heatMapCNN.getOutputX());
                 measurementLocationsY.add((float)heatMapCNN.getOutputY());    
                 enableFlg.add(true);
+                measurementWeight.add(1.0);
             } else {
                 measurementLocationsX.set(clustersNum, (float)heatMapCNN.getOutputX());
                 measurementLocationsY.set(clustersNum, (float)heatMapCNN.getOutputY());
                 enableFlg.set(clustersNum, true);
+                measurementWeight.set(clustersNum, 1.0);
             }          
         }
     }
@@ -320,6 +330,8 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         Random r = new Random();
 
         measurement.setMu(measurementLocationsX, measurementLocationsY);
+        measurement.setMeasurementWeight(measurementWeight);
+        
         double originSum = 0;
         double effectiveNum = 0;
         // if(visibleCnt != 0) {
@@ -507,6 +519,21 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     public void setDisplayParticles(boolean displayParticles) {
         this.displayParticles = displayParticles;
         putBoolean("displayParticles", displayParticles);
+    }
+
+    /**
+     * @return the decay
+     */
+    public int getDecay() {
+        return decay;
+    }
+
+    /**
+     * @param decay the decay to set
+     */
+    public void setDecay(int decay) {
+        this.decay = decay;
+        putInt("decay", decay);
     }
     
 }

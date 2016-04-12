@@ -18,6 +18,15 @@ public class MeasurmentEvaluator implements ParticleEvaluator<SimpleParticle, Do
 	List<Float> muX = new ArrayList<Float>(), muY = new ArrayList<Float>();
 	double	sigma	= Math.sqrt(20);
         List<Boolean> visibleCluster = new ArrayList<Boolean>();
+        List<Double> measurementWeight = new ArrayList<Double>();
+
+        public List<Double> getMeasurementWeight() {
+            return measurementWeight;
+        }
+
+        public void setMeasurementWeight(List<Double> measurementWeight) {
+            this.measurementWeight = measurementWeight;
+        }
 
         public List<Boolean> getVisibleCluster() {
             return visibleCluster;
@@ -57,7 +66,7 @@ public class MeasurmentEvaluator implements ParticleEvaluator<SimpleParticle, Do
 		double error = r.nextDouble()*noise;
 		double result = 0;
 		switch(type) {
-		case 0: result = gaussian(x, y, muX, muY, sigma); break;
+		case 0: result = gaussian(x, y, muX, muY, measurementWeight, sigma); break;
 //		case 1: result = Math.max(gaussian(x, mu, sigma), gaussian(x, -mu, sigma)); break;
 //		case 2: result = Math.max(gaussian(x, mu, sigma), 0.9*gaussian(x, -mu, sigma)); break;
 //		case 3: result = Math.max(((Math.abs(mu-x))<sigma/5)?1:0, (Math.abs(-mu-x)<sigma/5)?0.5:0); break;
@@ -65,22 +74,15 @@ public class MeasurmentEvaluator implements ParticleEvaluator<SimpleParticle, Do
 		return result + error; 
 	}
 	
-	public static double gaussian(double x, double y, List<Float> muX, List<Float> muY, double sigma) {
+	public static double gaussian(double x, double y, List<Float> muX, List<Float> muY, List<Double> measurementWeight, double sigma) {
 		List<Double> d2 = new ArrayList<Double>();
-                List<Double> measurementWeight = new ArrayList<Double>();
-
-                for(int i = 0; i < muX.size(); i ++) {
-                    measurementWeight.add(1.0);
-                }
-                // measurementWeight.set(muX.size() - 1, 100.0); // TODO make element's weight is from heatmap biggest
-                //perhaps here we should use overriding in the particle fitler tracker than changing the code here. 
 
                 double evaluateVal = 0;
                 int visibleCount = 0;
                 for(int i = 0; i < muX.size(); i ++) {
                     // if(visibleFlg[i]) {
                         double d = (x - muX.get(i)) * (x - muX.get(i)) + (y - muY.get(i)) * (y - muY.get(i));
-                        d2.add(i, d/measurementWeight.get(i));                        
+                        d2.add(i, d*measurementWeight.get(i));                        
                         visibleCount += 1;
                     // }
                 }
