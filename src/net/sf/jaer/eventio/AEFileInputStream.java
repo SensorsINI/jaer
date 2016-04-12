@@ -1418,6 +1418,22 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 eventSizeBytes = (Integer.SIZE / 8) + (Integer.SIZE / 8);
                 jaer3EnableFlg = false;
             } else if (Math.floor(version) == 3) { // #!AEDAT-3.x
+                // TODO: need to change this code's affect to the cAER network steam data parsing.
+                if(Math.round((version - 3.0)*10) == 0) {
+                    Jaer3BufferParser.JAER3XSHIFT = 17;
+                    Jaer3BufferParser.JAER3XMASK = 0x7fff << Jaer3BufferParser.JAER3XSHIFT;
+                    Jaer3BufferParser.JAER3YSHIFT = 2;
+                    Jaer3BufferParser.JAER3YMASK = 0x7fff << Jaer3BufferParser.JAER3YSHIFT;
+                    Jaer3BufferParser.JAER3POLMASK = 1;
+                    Jaer3BufferParser.JAER3POLSHIFT = 1;
+                } else {
+                    Jaer3BufferParser.JAER3XSHIFT = 18;
+                    Jaer3BufferParser.JAER3XMASK = 0x3fff << Jaer3BufferParser.JAER3XSHIFT;
+                    Jaer3BufferParser.JAER3YSHIFT = 4;
+                    Jaer3BufferParser.JAER3YMASK = 0x3fff << Jaer3BufferParser.JAER3YSHIFT;;
+                    Jaer3BufferParser.JAER3POLMASK = 1;
+                    Jaer3BufferParser.JAER3POLSHIFT = 1;
+                }
                 addressType = Integer.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Integer.SIZE / 8);
                 jaer3EnableFlg = true;

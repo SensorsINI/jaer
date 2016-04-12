@@ -70,13 +70,13 @@ public class Jaer3BufferParser {
 	private AEChip chip = null;
 
 	/**
-	 * Field for decoding jaer 3.0 dvs address
+	 * Field for decoding jaer 3.1 dvs address.
 	 */
-	public static final int JAER3YSHIFT = 4, JAER3YMASK = 0x03FFF << JAER3YSHIFT, // 15 bits from bits 22 to 30
-		JAER3XSHIFT = 18, JAER3XMASK = 0x03FFF << JAER3XSHIFT, // 15 bits from bits 12 to 21
+	public static int JAER3YSHIFT = 4, JAER3YMASK = 0x03FFF << JAER3YSHIFT, // 3.0 is 15 bits from bits 22 to 30, 3.1 is 14 bits from bits 18 to 31.
+		JAER3XSHIFT = 18, JAER3XMASK = 0x03FFF << JAER3XSHIFT, // 3.0 is 15 bits from bits 12 to 21, 3.1 is 14 bits from bits from 4 to 17.
 		JAER3POLSHIFT = 1, JAER3POLMASK = 1 << JAER3POLSHIFT; // , // 1 bit at bit 11
 	/**
-	 * Field for decoding jaer 3.0 aps address
+	 * Field for decoding jaer 3.1 aps address
 	 */
 	public static final int JAER3APSYSHIFT = 0, JAER3APSYMASK = 65535 << JAER3APSYSHIFT, // 16 bits from bits 16 to 31
 		JAER3APSXSHIFT = 16, JAER3APSXMASK = 65535 << JAER3APSXSHIFT; // 16 bits from bits 0 to 15
