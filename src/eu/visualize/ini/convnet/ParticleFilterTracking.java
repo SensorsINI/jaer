@@ -72,6 +72,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     private int particlesCount = getInt("particlesCount", 1000);
     private boolean UsePureEvents = getBoolean("UsePureEvents", false);
     private boolean displayParticles = getBoolean("displayParticles", false);
+    private int eventsNumToProcess = getInt("eventsNumToProcess", 10);
 
 
     FilterChain trackingFilterChain;
@@ -126,8 +127,14 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
 
         
         setPropertyTooltip("colorClustersDifferentlyEnabled", 
-                "each cluster gets assigned a random color, otherwise color indicates ages");
-        setPropertyTooltip("filterEventsEnabled", "Just for test");      
+                "each cluster gets assigned a random color, otherwise color indicates ages.");
+        setPropertyTooltip("threshold", "The resample threshold");
+        setPropertyTooltip("displayParticles", "Display all the particles");
+        setPropertyTooltip("startPositionX", "Particles start position x");
+        setPropertyTooltip("startPositionY", "Particles start position y");
+        setPropertyTooltip("UsePureEvents", "Only use events");
+        setPropertyTooltip("eventsNumToProcess", "The events in the packet will be processed");
+        // setPropertyTooltip("filterEventsEnabled", "Just for test");      
     }
 
     @Override
@@ -154,16 +161,22 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
             measurementLocationsX.removeAll(measurementLocationsX);
             measurementLocationsY.removeAll(measurementLocationsY);
             enableFlg.removeAll(enableFlg);      
-            
-            for(int nCnt = 0; nCnt < in.getSize(); nCnt++) {
+            measurementWeight.removeAll(measurementWeight);
+            int numProcessEvents = eventsNumToProcess;
+            if(eventsNumToProcess > in.getSize()) {
+                numProcessEvents = in.getSize();
+            }
+            for(int nCnt = 0; nCnt < numProcessEvents; nCnt++) {
                 if(measurementLocationsX.size() <= 0) {
                     measurementLocationsX.add(0, (float)in.getEvent(nCnt).getX());
                     measurementLocationsY.add(0, (float)in.getEvent(nCnt).getY());
-                    enableFlg.add(0, true);                     
+                    enableFlg.add(0, true);                    
+                    measurementWeight.add(0, 1.0);
                 } else {
                     measurementLocationsX.set(0, (float)in.getEvent(nCnt).getX());
                     measurementLocationsY.set(0, (float)in.getEvent(nCnt).getY());
-                    enableFlg.set(0, true);                       
+                    enableFlg.set(0, true);   
+                    measurementWeight.set(0, 1.0);
                 }      
                 Random r = new Random();
 
@@ -534,6 +547,21 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     public void setDecay(int decay) {
         this.decay = decay;
         putInt("decay", decay);
+    }
+
+    /**
+     * @return the eventsNumToProcess
+     */
+    public int getEventsNumToProcess() {
+        return eventsNumToProcess;
+    }
+
+    /**
+     * @param eventsNumToProcess the eventsNumToProcess to set
+     */
+    public void setEventsNumToProcess(int eventsNumToProcess) {
+        this.eventsNumToProcess = eventsNumToProcess;
+        putInt("eventsNumToProcess", eventsNumToProcess);
     }
     
 }
