@@ -10,7 +10,6 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLException;
-import static com.sun.org.apache.xalan.internal.lib.ExsltDatetime.date;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
@@ -67,6 +66,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     private boolean filterEventsEnabled = getBoolean("filterEventsEnabled", false); // enables filtering events so
     private float threshold = getFloat("threshold", 2);
     private int decay = getInt("decay", 1);
+    private float noise = getFloat("noise", 5);
     private int startPositionX = getInt("x", 0);
     private int startPositionY = getInt("y", 0);
     private int particlesCount = getInt("particlesCount", 1000);
@@ -93,7 +93,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         this.outputX = getStartPositionX();
         this.outputY = getStartPositionY();
         
-        dynamic = new DynamicEvaluator();
+        dynamic = new DynamicEvaluator(noise);
         measurement = new MeasurmentEvaluator();
         average = new AverageEvaluator();
         filter = new ParticleFilter(dynamic, measurement, average);
@@ -536,19 +536,19 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
 
     /**
      * @return the decay
-     */
+    */
     public int getDecay() {
         return decay;
     }
 
     /**
      * @param decay the decay to set
-     */
+    */
     public void setDecay(int decay) {
         this.decay = decay;
-        putInt("decay", decay);
+        putInt("decaytest", decay);
     }
-
+    
     /**
      * @return the eventsNumToProcess
      */
@@ -563,5 +563,22 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         this.eventsNumToProcess = eventsNumToProcess;
         putInt("eventsNumToProcess", eventsNumToProcess);
     }
-    
+
+    /**
+     * @return the dynamicModelNoise
+     */
+    public float getNoise() {
+        return noise;
+    }
+
+    /**
+     * @param dynamicModelNoise the dynamicModelNoise to set
+     */
+    public void setNoise(float noise) {
+        this.noise = noise;
+        putFloat("noise", noise);
+    }
+
+
+ 
 }

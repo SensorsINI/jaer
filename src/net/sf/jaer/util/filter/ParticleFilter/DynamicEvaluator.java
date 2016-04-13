@@ -14,7 +14,11 @@ import java.util.Random;
 public class DynamicEvaluator implements ParticleEvaluator<SimpleParticle, double[]> {
     private double noise = 5;
     private Random r = new Random();
-
+    
+    public DynamicEvaluator(double noise){
+        this.noise = noise;
+    }
+    
     @Override
     public double[] evaluate(SimpleParticle p) {
         double x = p.getX();
