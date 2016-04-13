@@ -18,6 +18,8 @@ import net.sf.jaer.eventprocessing.label.SimpleOrientationFilter;
  * events from DVS sensors. 
  * Output cells type has values 0-7, 0 being upward motion, increasing by 
  * 45 deg CCW to 7 being motion up and to right.
+ * <p> This class was originally DirectionSelectiveFilter (ca 2007 and later DvsDirectionSelectiveFilter (ca 2014) in the package net.sf.jaer.eventprocessing.label.
+ * These original classes have been deleted and replaced by this class. The original source code is available by version control reversion of the project.
  * @author tobi
  */
 
