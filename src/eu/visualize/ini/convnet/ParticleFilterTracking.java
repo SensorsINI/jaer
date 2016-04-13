@@ -332,7 +332,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
             }            
         }
         
-        gl.glColor4f(1f, .1f, .1f, .25f);
+        gl.glColor4f(.1f, .1f, 1f, .25f);
 
         gl.glRectf((int)outputX - 10, (int)outputY - 10, (int)outputX + 12, (int)outputY + 12);
 
