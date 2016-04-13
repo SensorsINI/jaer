@@ -296,6 +296,7 @@ public class Jaer3BufferParser {
                 if(this.chip != ORIGINAL_CHIP) {
                     ORIGINAL_CHIP = this.chip;
                     ORIGINAL_EVENT_EXTRACTOR = this.chip.getEventExtractor();
+                    JAER3_EXTRACTOR = new jaer3EventExtractor(this.chip);
                 }
 
                 if(JAER3_EXTRACTOR == null) {
