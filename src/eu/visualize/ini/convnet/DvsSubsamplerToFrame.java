@@ -11,7 +11,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
- * Subsamples DVS input ON and OFF events to a desired "frame" resolution. By
+ * Subsamples DVS input ON and OFF events to a desired "frame" resolution in a grayscale 2D histogram. By
  * subsampling (accumulation) of events it performs much better than
  * downsampling the sparse DVS output.
  * The output of the subsampler is available as a float array that
