@@ -600,10 +600,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         } else {
             sb.append(String.format("Path:%s\n", shortenDirPath(dirPath)));
         }
-        sb.append(String.format("focal length avg=%.1f pixels=%.2f mm\nPrincipal point (green cross)=%.1f,%.1f, Chip size/2=%d,%d\n",
+        sb.append(String.format("focal length avg=%.1f pixels=%.2f mm\nPrincipal point (green cross)=%.1f,%.1f, Chip size/2=%.0f,%.0f\n",
                 focalLengthPixels, focalLengthMm,
                 principlePoint.x, principlePoint.y,
-                chip.getSizeX() / 2, chip.getSizeY() / 2));
+                (float) chip.getSizeX() / 2, (float) chip.getSizeY() / 2));
         calibrationString = sb.toString();
         calibrated = true;
         textRendererScaleSet=false;
