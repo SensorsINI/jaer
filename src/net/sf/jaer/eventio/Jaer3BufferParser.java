@@ -786,7 +786,7 @@ public class Jaer3BufferParser {
                                 // TODO: handle all types of events
                                 switch (etypes[i]) {
                                     case SpecialEvent:
-                                        // readSpecial();
+                                        readSpecial(outItr, addr, timestamps[i]);
                                         break;
                                     case PolarityEvent:
                                         readDVS(outItr, addr, timestamps[i]);
@@ -833,7 +833,33 @@ public class Jaer3BufferParser {
 			e.reset();
 			return e;
 		}
-
+                
+		/**
+		 * Extractor the Special events.
+		 *
+		 * @param outItr
+		 *            the iterator of the output stream
+		 * @param data
+		 *            data, for DVS, it's the address
+		 * @param timestamp
+		 *            timestamp of the event
+		 */
+                protected void readSpecial(final OutputEventIterator outItr, final int data, final int timestamp){
+			final int sx1 = getChip().getSizeX() - 1;
+			final ApsDvsEvent e = nextApsDvsEvent(outItr);
+                        
+                        e.address = data;
+			e.timestamp = timestamp;
+                        int eventTypeID = (data >> 1) & 0x7f;
+                        // Added the process for the all types of special events.
+                        switch (eventTypeID) {
+                            case 0:
+                                break;
+                            default:
+                        }
+                        e.setSpecial(true);
+                }
+                
 		/**
 		 * Extractor the DVS events.
 		 *
