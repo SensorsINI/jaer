@@ -364,17 +364,20 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 				throw new HardwareInterfaceException("populateDescriptors(): getStringDescriptor1");
 			}
 
-			stringDescriptor2 = LibUsb.getStringDescriptor(deviceHandle, (byte) 2);
-			if (stringDescriptor2 == null) {
-				throw new HardwareInterfaceException("populateDescriptors(): getStringDescriptor2");
-			}
+                    stringDescriptor2 = LibUsb.getStringDescriptor(deviceHandle, (byte) 2);
+                    if (stringDescriptor2 == null) {
+                        throw new HardwareInterfaceException("populateDescriptors(): getStringDescriptor2");
+                    }
 
-			if (numberOfStringDescriptors == 3) {
-				stringDescriptor3 = LibUsb.getStringDescriptor(deviceHandle, (byte) 3);
-				if (stringDescriptor3 == null) {
-					throw new HardwareInterfaceException("populateDescriptors(): getStringDescriptor3");
-				}
-			}
+                    if (numberOfStringDescriptors == 3) {
+                        stringDescriptor3 = LibUsb.getStringDescriptor(deviceHandle, (byte) 3);
+                        if (stringDescriptor3 != null && stringDescriptor3.equals("????")) {
+                            stringDescriptor3 = "XXXX"; // tobi added to avoid awkward ???? filenames
+                        }
+                        if (stringDescriptor3 == null) {
+                            throw new HardwareInterfaceException("populateDescriptors(): getStringDescriptor3");
+                        }
+                    }
 
 			// build toString string
 			if (numberOfStringDescriptors == 3) {
