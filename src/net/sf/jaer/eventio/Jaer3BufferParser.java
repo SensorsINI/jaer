@@ -159,9 +159,10 @@ public class Jaer3BufferParser {
 		int position = pkt.GetPktPosition();
 
 		int eventTypeInt;
-		int currentPosition = in.position(); // store current position, guarntee the position didn't change in this
-												// function
-
+		int currentPosition = in.position(); // store current position, guarntee the position didn't change in this function
+                
+                boolean successFlg = false;
+                
 		if ((direction != 1) && (direction != -1)) {
 			log.warning("Search direction can only be 1(forward) or -1(backward!)");
 			return null;
@@ -225,12 +226,16 @@ public class Jaer3BufferParser {
 			position = in.position() - PKT_HEADER_SIZE;
 
 			if (d.eventNumber >= d.eventValid) {
-				break;
+                            successFlg = true;
+                            break;
 			}
 
 		}
 
-		if (in.position() > (in.limit() - PKT_HEADER_SIZE)) {
+                // This condition is to make sure the positions that start from the position bigger than in.limit() - PKT_HEADER_SIZE will skip the while loop
+                // and return null directly. Sometimes, the header is found and in.position() also > in.limit() - PKT_HEADER_SIZE, so here we use successFlg to 
+                // distiguish them.
+		if (in.position() > (in.limit() - PKT_HEADER_SIZE) && !successFlg) {
 			in.position(currentPosition); // restore the position, because the byteBuffer in AEFileinputStream share the
 											// position with in.
 			return null;
@@ -778,26 +783,30 @@ public class Jaer3BufferParser {
                                 }
 
 
+                                // TODO: handle all types of events
                                 switch (etypes[i]) {
-                                      case PolarityEvent:
-                                              readDVS(outItr, addr, timestamps[i]);
-                                              break;
-                                      case FrameEvent:
-                                              readFrame(outItr, addr, data, timestamps[i]);
-                                              break;
-                                      case SampleEvent:
-                                              // readSample();
-                                              break;
-                                      case ConfigEvent:
-                                              // readConfig();
-                                              break;
-                                      case Imu6Event:
-                                              // readImu6();
-                                              break;
-                                      case Imu9Event:
-                                              // readImu9();;
-                                              break;
-                                      default:
+                                    case SpecialEvent:
+                                        // readSpecial();
+                                        break;
+                                    case PolarityEvent:
+                                        readDVS(outItr, addr, timestamps[i]);
+                                        break;
+                                    case FrameEvent:
+                                        readFrame(outItr, addr, data, timestamps[i]);
+                                        break;
+                                    case SampleEvent:
+                                        // readSample();
+                                        break;
+                                    case ConfigEvent:
+                                        // readConfig();
+                                        break;
+                                    case Imu6Event:
+                                        // readImu6();
+                                        break;
+                                    case Imu9Event:
+                                        // readImu9();;
+                                        break;
+                                    default:
                                 }
 
 

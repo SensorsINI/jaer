@@ -440,7 +440,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 // log.info(e.toString());
                 // getSupport().firePropertyChange(AEInputStream.EVENT_WRAPPED_TIME,e.getPreviousTimestamp(),e.getCurrentTimestamp());
             }
-            if (enableTimeWrappingExceptionsChecking && (ts < mostRecentTimestamp) && (etype != EventType.FrameEvent)) { // FrameEvent
+            if (enableTimeWrappingExceptionsChecking && (ts < mostRecentTimestamp) && (etype != EventType.FrameEvent) && (etype != EventType.SpecialEvent)) { // FrameEvent and SpecialEvent
                 // usually
                 // have
                 // the
