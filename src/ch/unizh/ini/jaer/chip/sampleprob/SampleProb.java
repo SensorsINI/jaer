@@ -247,6 +247,9 @@ public class SampleProb extends CochleaChip implements Observer {
 				new SPIConfigBit("ClockEnable", "Enable clock generation for RNG.", CypressFX3.FPGA_CHIPBIAS, (short) 40, false, this));
 			chipControl.add(new SPIConfigInt("ClockPeriod", "Period of RNG clock in cycles at 120MHz.", CypressFX3.FPGA_CHIPBIAS,
 				(short) 41, 20, 0, this));
+			chipControl.add(
+				new SPIConfigBit("UseLandscapeSamplingVerilog", "Use Verilog LandscapeSampling module instead of externally loaded values.",
+					CypressFX3.FPGA_CHIPBIAS, (short) 42, false, this));
 
 			for (final SPIConfigValue cfgVal : chipControl) {
 				cfgVal.addObserver(this);
