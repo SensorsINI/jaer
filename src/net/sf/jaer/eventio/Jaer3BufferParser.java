@@ -860,11 +860,14 @@ public class Jaer3BufferParser {
                         int eventTypeID = (data >> 1) & 0x7f;
                         // Added the process for the all types of special events.
                         switch (eventTypeID) {
-                            case 0:
+                            case 12:
+                            case 13:
+                                e.setSpecial(true);
                                 break;
                             default:
+                                e.setSpecial(false);
+                                break;
                         }
-                        e.setSpecial(true);
                 }
                 
 		/**
