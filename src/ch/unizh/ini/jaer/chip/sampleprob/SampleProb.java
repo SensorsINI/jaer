@@ -251,6 +251,14 @@ public class SampleProb extends CochleaChip implements Observer {
 				new SPIConfigBit("UseLandscapeSamplingVerilog", "Use Verilog LandscapeSampling module instead of externally loaded values.",
 					CypressFX3.FPGA_CHIPBIAS, (short) 42, false, this));
 
+			// Special DAC configuration (random noise DAC). Kept here for convenience.
+			chipControl.add(new SPIConfigBit("RunRandomDAC", "Send random values to DAC 3 for random noise generation.",
+				CypressFX3.FPGA_DAC, (short) 10, false, this));
+			chipControl.add(new SPIConfigInt("RandomDACLowerLimit", "Lower limit value for random noise DAC.", CypressFX3.FPGA_DAC,
+				(short) 11, 14, 0, this));
+			chipControl.add(new SPIConfigInt("RandomDACUpperLimit", "Upper limit value for random noise DAC.", CypressFX3.FPGA_DAC,
+				(short) 12, 14, 16383, this));
+
 			for (final SPIConfigValue cfgVal : chipControl) {
 				cfgVal.addObserver(this);
 				allPreferencesList.add(cfgVal);
