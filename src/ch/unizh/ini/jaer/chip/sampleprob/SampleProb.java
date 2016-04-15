@@ -113,9 +113,10 @@ public class SampleProb extends CochleaChip implements Observer {
 		 */
 		private final DAC dac1 = new DAC(16, 14, 0, 5.0f, 3.3f);
 		private final DAC dac2 = new DAC(16, 14, 0, 5.0f, 3.3f);
-		private final DAC dac3 = new DAC(16, 14, 0, 5.0f, 3.3f);
+		private final DAC dac3 = new DAC(18, 14, 0, 5.0f, 3.3f); // +2 for special random DAC upper/lower limit.
 
 		final SPIConfigBit dacRun;
+		final SPIConfigBit dacRandomRun;
 
 		// All bias types.
 		final SPIConfigBit biasForceEnable;
@@ -213,6 +214,15 @@ public class SampleProb extends CochleaChip implements Observer {
 			dacRun.addObserver(this);
 			allPreferencesList.add(dacRun);
 
+			// Special DAC configuration (random noise DAC). Kept here for convenience.
+			dacRandomRun = new SPIConfigBit("DACRandomRun", "Send random values to DAC 3 for random noise generation.", CypressFX3.FPGA_DAC,
+				(short) 16, false, this);
+			dacRandomRun.addObserver(this);
+			allPreferencesList.add(dacRandomRun);
+
+			vpots.addPot(new SimpleVPot(getChip(), "DACRandomLowerLimit", dac3, 16, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "DACRandomUpperLimit", dac3, 17, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+
 			// Multiplexer module
 			biasForceEnable = new SPIConfigBit("ForceBiasEnable", "Force the biases to be always ON.", CypressFX3.FPGA_MUX, (short) 3,
 				false, this);
@@ -250,14 +260,6 @@ public class SampleProb extends CochleaChip implements Observer {
 			chipControl.add(
 				new SPIConfigBit("UseLandscapeSamplingVerilog", "Use Verilog LandscapeSampling module instead of externally loaded values.",
 					CypressFX3.FPGA_CHIPBIAS, (short) 42, false, this));
-
-			// Special DAC configuration (random noise DAC). Kept here for convenience.
-			chipControl.add(new SPIConfigBit("RunRandomDAC", "Send random values to DAC 3 for random noise generation.",
-				CypressFX3.FPGA_DAC, (short) 10, false, this));
-			chipControl.add(new SPIConfigInt("RandomDACLowerLimit", "Lower limit value for random noise DAC.", CypressFX3.FPGA_DAC,
-				(short) 11, 14, 0, this));
-			chipControl.add(new SPIConfigInt("RandomDACUpperLimit", "Upper limit value for random noise DAC.", CypressFX3.FPGA_DAC,
-				(short) 12, 14, 16383, this));
 
 			for (final SPIConfigValue cfgVal : chipControl) {
 				cfgVal.addObserver(this);
@@ -358,28 +360,39 @@ public class SampleProb extends CochleaChip implements Observer {
 					else if (observable instanceof VPot) {
 						final VPot vPot = (VPot) observable;
 
-						final SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
+						int dacNumber;
 
 						if (vPot.getDac() == dac1) {
-							configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, 0); // Select DAC1.
+							dacNumber = 0; // DAC1.
 						}
 						else if (vPot.getDac() == dac2) {
-							configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, 1); // Select DAC2.
+							dacNumber = 1; // DAC2.
 						}
 						else {
-							configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, 2); // Select DAC3.
+							dacNumber = 2; // DAC3.
 						}
 
-						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 2, 0x03); // Select input data register.
-						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 3, vPot.getChannel());
-						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 5, vPot.getBitValue());
+						// Support for random DAC3 limits. These are handled by different SPI addresses.
+						if ((dacNumber == 2) && (vPot.getChannel() >= 16)) {
+							fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) (vPot.getChannel() + 1), vPot.getBitValue());
+						}
+						else {
+							final SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
 
-						// Toggle SET flag.
-						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 1);
-						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 0);
+							configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, dacNumber); // Select DAC.
 
-						// Commit configuration.
-						configSequence.sendConfigSequence();
+							configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 2, 0x03); // Select input data
+																							// register.
+							configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 3, vPot.getChannel());
+							configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 5, vPot.getBitValue());
+
+							// Toggle SET flag.
+							configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 1);
+							configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 0);
+
+							// Commit configuration.
+							configSequence.sendConfigSequence();
+						}
 
 						// Wait 1ms to ensure operation is completed.
 						try {

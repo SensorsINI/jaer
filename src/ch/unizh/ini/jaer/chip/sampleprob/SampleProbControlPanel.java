@@ -69,6 +69,7 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 		onchipBiasgenPanel.add(Box.createVerticalGlue()); // push up to prevent expansion of PotPanel
 
 		SPIConfigBit.makeSPIBitConfig(biasgen.dacRun, offchipDACPanel, configValueMap, getBiasgen());
+		SPIConfigBit.makeSPIBitConfig(biasgen.dacRandomRun, offchipDACPanel, configValueMap, getBiasgen());
 
 		biasgen.setPotArray(biasgen.vpots);
 		offchipDACPanel.add(new BiasgenPanel(getBiasgen()));
