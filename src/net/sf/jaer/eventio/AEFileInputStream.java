@@ -289,8 +289,17 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         try {
             EventRaw ev = readEventForwards(); // init timestamp
             firstTimestamp = ev.timestamp;
-            if ((true == jaer3EnableFlg) && (fileSize <= chunkSizeBytes)) {
-                lastTimestamp = jaer3BufferParser.getLastTimeStamp();
+            if (true == jaer3EnableFlg) {
+                if(fileSize <= chunkSizeBytes) {
+                    lastTimestamp = jaer3BufferParser.getLastTimeStamp();
+                } else { //TODO, add the code to find the last time stamp of the big files
+//                    this.mapChunk((int)fileSize/chunkSizeBytes);
+//                    lastTimestamp = jaer3BufferParser.getLastTimeStamp();
+//                    mapChunk(0);
+                    position(size() - 2);
+                    ev = readEventForwards();
+                    lastTimestamp = ev.timestamp;
+                }
             } else {
                 position(size() - 2);
                 ev = readEventForwards();
@@ -854,12 +863,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             }
             byteBuffer.position((int) ((event * eventSizeBytes) % chunkSizeBytes));
 
-            // Update in buffer at the same time, just for jAER 3.0 format file
-            if (this.jaer3EnableFlg) {
-                jaer3BufferParser.setInBuffer(byteBuffer);
-                jaer3BufferParser.setInBufferOrder(ByteOrder.LITTLE_ENDIAN);
-                jaer3BufferParser.setInFrameEvent(false);
-            }
+
             position = event;
         } catch (ClosedByInterruptException e3) {
             log.info("caught interrupt, probably from single stepping this file");
@@ -1256,13 +1260,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             chunkNumber = 0; // overflow will wrap<0
         }
         mapChunk(chunkNumber);
-
-        // Update in buffer at the same time, just for jAER 3.0 format file
-        if (this.jaer3EnableFlg) {
-            jaer3BufferParser.setInBuffer(byteBuffer);
-            jaer3BufferParser.setInBufferOrder(ByteOrder.LITTLE_ENDIAN);
-            jaer3BufferParser.setInFrameEvent(false);
-        }
     }
 
     /**
@@ -1278,13 +1275,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             chunkNumber = 0; // overflow will wrap<0
         }
         mapChunk(chunkNumber);
-
-        // Update in buffer at the same time, just for jAER 3.0 format file
-        if (this.jaer3EnableFlg) {
-            jaer3BufferParser.setInBuffer(byteBuffer);
-            jaer3BufferParser.setInBufferOrder(ByteOrder.LITTLE_ENDIAN);
-            jaer3BufferParser.setInFrameEvent(false);
-        }
     }
 
     private int chunksMapped = 0;
@@ -1330,6 +1320,21 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             // log.info("ran garbage collection after mapping chunk " + chunkNumber);
         }
         // log.info("mapped chunk # "+chunkNumber+" of "+numChunks);
+        
+        if (jaer3EnableFlg) {
+            if(jaer3BufferParser == null) {
+                jaer3BufferParser = new Jaer3BufferParser(byteBuffer, chip);
+                // jaer3ParseBuffer.setInBuffer(byteBuffer);
+                // jaer3ByteBuffer = jaer3ParseBuffer.extractAddrAndTs();
+            } else {
+                // Update in buffer at the same time, just for jAER 3.0 format file
+                jaer3BufferParser.setInBuffer(byteBuffer);
+                jaer3BufferParser.setInBufferOrder(ByteOrder.LITTLE_ENDIAN);
+                jaer3BufferParser.setInFrameEvent(false);
+            }
+        } else {
+            jaer3BufferParser = null; // should call finalize method to restore the extractor
+        } 
     }
 
     /**
@@ -1450,14 +1455,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // position and for EOF
         log.info("fileSize=" + fileSize + " chunkSizeBytes=" + chunkSizeBytes + " numChunks=" + numChunks);
         mapChunk(0);
-
-        if (jaer3EnableFlg) {
-            jaer3BufferParser = new Jaer3BufferParser(byteBuffer, chip);
-            // jaer3ParseBuffer.setInBuffer(byteBuffer);
-            // jaer3ByteBuffer = jaer3ParseBuffer.extractAddrAndTs();
-        } else {
-            jaer3BufferParser = null; // should call finalize method to restore the extractor
-        }
     }
 
     /**

@@ -628,9 +628,15 @@ public class Jaer3BufferParser {
 		PacketDescriptor pkt = getNextPkt(0);
 		long numEvents = 0;
 		while (pkt != null) {
+                        // TODO: complete all kinds of the events
 			if (pkt.pktHeader.eventType == EventType.PolarityEvent) {
-				numEvents += pkt.pktHeader.eventValid;
+                            numEvents += pkt.pktHeader.eventValid;
 			}
+                        
+                        if (pkt.pktHeader.eventType == EventType.SpecialEvent) {
+                            numEvents += pkt.pktHeader.eventValid;
+                        }
+                        
 			if (pkt.pktHeader.eventType == EventType.FrameEvent) {
 				int xlength = in.getInt(pkt.pktPosition + PKT_HEADER_SIZE + 20);
 				int ylength = in.getInt(pkt.pktPosition + PKT_HEADER_SIZE + 24);
@@ -709,8 +715,9 @@ public class Jaer3BufferParser {
 	 * @param BufferToBeProcessed
 	 *            the parser to be processed
 	 */
-	public void setInBuffer(ByteBuffer BufferToBeProcessed) {
+	public void setInBuffer(ByteBuffer BufferToBeProcessed) throws IOException {
 		in = BufferToBeProcessed; // To change body of generated methods, choose Tools | Templates.
+                // currentPkt = searchPacketHeader(0, 1); TODO, Now the different chuncks may seperate the data in the same packet, so it's not easy to find the currentPkt
 	}
 
 	/**
