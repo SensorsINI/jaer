@@ -22,9 +22,11 @@ import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import ch.unizh.ini.jaer.projects.laser3d.plothistogram.PlotEvtHistogram;
+import java.util.Iterator;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -157,7 +159,10 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater, Ob
         OutputEventIterator outItr = getOutputPacket().outputIterator();
         // iterate over each event in packet
         laserLineDeteted=false;
-        for (Object e : in) {
+        //for (Object e : in) {
+        
+        for (Iterator<Object> packetIter = ((ApsDvsEventPacket)in).fullIterator(); packetIter.hasNext();){
+            Object e = packetIter.next();
             // check if filter is initialized yet
             if (!isInitialized) {
                 BasicEvent ev = (BasicEvent) e;
@@ -167,9 +172,11 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater, Ob
                     if (Math.abs(laserPeriod - (ev.timestamp - lastTriggerTimestamp)) < 10) {
                         // Init filter
                         laserPeriod = ev.timestamp - lastTriggerTimestamp;
+                        laserPeriod *= 2;
                         initFilter();
                     } else if (lastTriggerTimestamp > 0) {
                         laserPeriod = ev.timestamp - lastTriggerTimestamp;
+                        laserPeriod *= 2;
                     }
                     lastTriggerTimestamp = ev.timestamp;
                 }
