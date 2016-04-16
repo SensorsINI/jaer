@@ -4,10 +4,13 @@ import ch.unizh.ini.jaer.projects.davis.calibration.SingleCameraCalibration;
 import com.jmatio.io.MatFileReader;
 import com.jmatio.io.MatFileWriter;
 import com.jmatio.types.MLDouble;
+import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.gl2.GLUT;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import java.awt.Color;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -199,6 +202,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         FilterChain chain = new FilterChain(chip);
         calibration = new SingleCameraCalibration(chip);
         calibration.setRealtimePatternDetectionEnabled(false);
+        calibration.setFilterEnabled(false);
         getSupport().addPropertyChangeListener(SingleCameraCalibration.EVENT_NEW_CALIBRATION, this);
         chain.add(calibration);
         setEnclosedFilterChain(chain);
@@ -636,8 +640,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      * @param e the event
      */
     protected void drawMotionVector(GL2 gl, MotionOrientationEventInterface e) {
-        float angle = (float) (Math.atan2(e.getVelocity().y, e.getVelocity().x) / (2 * Math.PI) + 0.5);
-        gl.glColor3f(angle, 1 - angle, 1 / (1 + 10 * angle));
+        float angle01 = (float) (Math.atan2(e.getVelocity().y, e.getVelocity().x) / (2 * Math.PI) + 0.5);
+        // atan2 returns -pi to +pi, so dividing by 2*pi gives -.5 to +.5. Adding .5 gives range 0 to 1.
+//                    angle01=.5f; // debug
+        int rgbValue = Color.HSBtoRGB(angle01, 1, 1);
+        Color color = new Color(rgbValue);
+        float[] rgb = color.getRGBComponents(null);
+        gl.glColor3f(rgb[0], rgb[1], rgb[2]);
         gl.glPushMatrix();
         DrawGL.drawVector(gl, e.getX() + .5f, e.getY() + .5f, e.getVelocity().x, e.getVelocity().y, 1, ppsScale);
         gl.glPopMatrix();
@@ -1294,7 +1303,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
          * @param vx flow vx, pps
          * @param vy
          */
-        public void update(int timestamp, int x, int y, float vx, float vy, float speed) {
+        synchronized public void update(int timestamp, int x, int y, float vx, float vy, float speed) {
             if (!showMotionField) {
                 return;
             }
@@ -1365,6 +1374,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             if (!showMotionField || vxs == null || vys == null) {
                 return;
             }
+            try {
+                gl.glEnable(GL.GL_BLEND);
+                gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+                gl.glBlendEquation(GL.GL_FUNC_ADD);
+            } catch (GLException e) {
+                e.printStackTrace();
+            }
             float shift = ((1 << motionFieldSubsamplingShift) * .5f);
             for (int ix = 0; ix < sx; ix++) {
                 float x = (ix << motionFieldSubsamplingShift) + shift;
@@ -1378,11 +1394,17 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     }
                     float y = (iy << motionFieldSubsamplingShift) + shift;
                     float vx = vxs[ix][iy], vy = vys[ix][iy];
-                    float angle = (float) (Math.atan2(vy, vx) / (2 * Math.PI) + 0.5);
-                    gl.glColor3f(angle, 1 - angle, 1 / (1 + 10 * angle));
+                    float angle01 = (float) (Math.atan2(vy, vx) / (2 * Math.PI) + 0.5); // atan2 returns -pi to +pi, so dividing by 2*pi gives -.5 to +.5. Adding .5 gives range 0 to 1.
+//                    angle01=.5f; // debug
+                    int rgbValue = Color.HSBtoRGB(angle01, 1, 1);
+                    Color color = new Color(rgbValue);
+                    float[] rgb = color.getRGBComponents(null);
+                    gl.glColor4f(rgb[0], rgb[1], rgb[2], .25f);
+//                    gl.glColor4f(angle, 1 - angle, 1 / (1 + 10 * angle), .5f);
                     gl.glPushMatrix();
                     DrawGL.drawVector(gl, x, y, vx, vy, 1, ppsScale);
                     gl.glPopMatrix();
+                    gl.glRectf(x - shift, y - shift, x + shift, y + shift);
 
                 }
             }
