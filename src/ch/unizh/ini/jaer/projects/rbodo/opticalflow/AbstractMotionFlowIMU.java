@@ -1405,7 +1405,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     DrawGL.drawVector(gl, x, y, vx, vy, 1, ppsScale);
                     gl.glPopMatrix();
                     gl.glColor4f(rgb[0], rgb[1], rgb[2], .01f);
-                    final float s=shift/4;
+                    final float s=shift/4; 
+                    // draw a blurred square showing motion field direction
+                    // TODO add brightness to show magnitude somehow
                     for (float dxx = -shift; dxx <shift; dxx+=s) {
                         for (float dyy = -shift; dyy <shift; dyy+=s) {
                             gl.glRectf(x - shift + dxx, y - shift + dyy, x + shift + dxx, y + shift + dyy);
