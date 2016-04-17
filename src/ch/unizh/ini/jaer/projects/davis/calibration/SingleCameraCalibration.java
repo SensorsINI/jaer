@@ -96,6 +96,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private boolean showUndistortedFrames = getBoolean("showUndistortedFrames", false);
     private boolean undistortDVSevents = getBoolean("undistortDVSevents", false);
     private boolean takeImageOnTimestampReset = getBoolean("takeImageOnTimestampReset", false);
+    private boolean hideStatisticsAndStatus = getBoolean("hideStatisticsAndStatus", false);
     private String fileBaseName = "";
 
     //opencv matrices
@@ -155,6 +156,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         setPropertyTooltip("loadCalibration", "loads saved calibration files from selected folder");
         setPropertyTooltip("clearCalibration", "clears existing calibration");
         setPropertyTooltip("takeImage", "snaps a calibration image that forms part of the calibration dataset");
+        setPropertyTooltip("hideStatisticsAndStatus", "hides the status text");
         loadCalibration();
     }
 
@@ -412,7 +414,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
         }
 
-        if (calibrationString != null) {
+        if (!hideStatisticsAndStatus && calibrationString != null) {
             // render once to set the scale using the same TextRenderer
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .15f);
             MultilineAnnotationTextRenderer.setColor(Color.green);
@@ -1012,6 +1014,21 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 sy = chip.getSizeY(); // might not yet have been set in constructor
             }
         }
+    }
+
+    /**
+     * @return the hideStatisticsAndStatus
+     */
+    public boolean isHideStatisticsAndStatus() {
+        return hideStatisticsAndStatus;
+    }
+
+    /**
+     * @param hideStatisticsAndStatus the hideStatisticsAndStatus to set
+     */
+    public void setHideStatisticsAndStatus(boolean hideStatisticsAndStatus) {
+        this.hideStatisticsAndStatus = hideStatisticsAndStatus;
+        putBoolean("hideStatisticsAndStatus", hideStatisticsAndStatus);
     }
 
 }
