@@ -215,7 +215,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip("measureProcessingTime", "writes a text file with timestamp filename with the packet's mean processing time of an event. Processing time is also logged to console.");
         setPropertyTooltip("loggingFolder", "directory to store logged data files");
         setPropertyTooltip(dispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
-        setPropertyTooltip(dispTT, "showVectorsEnabled", "shows local motion vectors");
+        setPropertyTooltip(dispTT, "showVectorsEnabled", "shows local motion vector evemts as arrows");
         setPropertyTooltip(dispTT, "measureGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
         setPropertyTooltip(dispTT, "showRawInputEnabled", "shows the input events, instead of the motion types");
         setPropertyTooltip(dispTT, "xMin", "events with x-coordinate below this are filtered out.");
@@ -240,8 +240,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(motionFieldTT, "motionFieldSubsamplingShift", "The motion field is computed at this subsampled resolution, e.g. 1 means 1 motion field vector for each 2x2 pixel area.");
         setPropertyTooltip(motionFieldTT, "showMotionField", "Computes and shows a motion field");
         setPropertyTooltip(motionFieldTT, "maxAgeUs", "Maximum age of motion field value for display and for unconditionally replacing with latest flow event");
+        setPropertyTooltip(motionFieldTT, "minSpeedPpsToDrawMotionField", "Motion field locations where speed in pixels/second is less than this quantity are not drawn");
         setPropertyTooltip(motionFieldTT, "consistentWithNeighbors", "Motion field value must be consistent with several neighbors if this option is selected.");
         setPropertyTooltip(motionFieldTT, "consistentWithCurrentAngle", "Motion field value is only updated if flow event angle is in same half plane as current estimate, i.e. has non-negative dot product.");
+        setPropertyTooltip(motionFieldTT, "showColorWheelLegend", "Plots a color wheel to show flow direction colors.");
         File lf = new File(loggingFolder);
         if (!lf.exists() || !lf.isDirectory()) {
             log.log(Level.WARNING, "loggingFolder {0} doesn't exist or isn't a directory, defaulting to {1}", new Object[]{lf, lf});
@@ -1248,8 +1250,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         private int motionFieldSubsamplingShift = getInt("motionFieldSubsamplingShift", 3);
         private float motionFieldMixingFactor = getFloat("motionFieldMixingFactor", 1e-1f);
         private int maxAgeUs = getInt("motionFieldMaxAgeUs", 100000);
+        private float minSpeedPpsToDrawMotionField = getFloat("minVelocityPps", 1);
         private boolean consistentWithNeighbors = getBoolean("motionFieldConsistentWithNeighbors", false);
         private boolean consistentWithCurrentAngle = getBoolean("motionFieldConsistentWithCurrentAngle", false);
+        private boolean showColorWheelLegend = getBoolean("showColorWheelLegend", true);
 
         public MotionField() {
         }
@@ -1313,13 +1317,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 return;
             }
             if (checkConsistent(timestamp, x1, y1, vx, vy)) {
-                speeds[x1][y1] = speed;
                 float oldv = vxs[x1][y1];
                 float newv = (1 - motionFieldMixingFactor) * oldv + motionFieldMixingFactor * vx;
                 vxs[x1][y1] = newv;
                 oldv = vys[x1][y1];
                 newv = (1 - motionFieldMixingFactor) * oldv + motionFieldMixingFactor * vy;
                 vys[x1][y1] = newv;
+                oldv = speeds[x1][y1];
+                newv = (1 - motionFieldMixingFactor) * oldv + motionFieldMixingFactor * speed;
+                speeds[x1][y1] = newv;
             }
             lastTs[x1][y1] = ts;
         }
@@ -1382,6 +1388,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 e.printStackTrace();
             }
             float shift = ((1 << motionFieldSubsamplingShift) * .5f);
+            final float saturationSpeedScaleInversePixels = 0.1f; // this length of vector in pixels makes full brightness
             for (int ix = 0; ix < sx; ix++) {
                 float x = (ix << motionFieldSubsamplingShift) + shift;
                 for (int iy = 0; iy < sy; iy++) {
@@ -1389,11 +1396,16 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     if (dt > maxAgeUs || dt < 0) {
                         continue;
                     }
-                    if (speeds[ix][iy] < 1f) {
+                    float speed = speeds[ix][iy];
+                    if (speed < minSpeedPpsToDrawMotionField) {
                         continue;
                     }
                     float y = (iy << motionFieldSubsamplingShift) + shift;
                     float vx = vxs[ix][iy], vy = vys[ix][iy];
+                    float brightness = speeds[ix][iy] * ppsScale * saturationSpeedScaleInversePixels;
+                    if (brightness > 1) {
+                        brightness = 1;
+                    }
                     float angle01 = (float) (Math.atan2(vy, vx) / (2 * Math.PI) + 0.5); // atan2 returns -pi to +pi, so dividing by 2*pi gives -.5 to +.5. Adding .5 gives range 0 to 1.
 //                    angle01=.5f; // debug
                     int rgbValue = Color.HSBtoRGB(angle01, 1, 1);
@@ -1405,17 +1417,38 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     DrawGL.drawVector(gl, x, y, vx, vy, 1, ppsScale);
                     gl.glPopMatrix();
                     gl.glColor4f(rgb[0], rgb[1], rgb[2], .01f);
-                    final float s=shift/4; 
+                    final float s = shift / 4;
                     // draw a blurred square showing motion field direction
                     // TODO add brightness to show magnitude somehow
-                    for (float dxx = -shift; dxx <shift; dxx+=s) {
-                        for (float dyy = -shift; dyy <shift; dyy+=s) {
+                    for (float dxx = -shift; dxx < shift; dxx += s) {
+                        for (float dyy = -shift; dyy < shift; dyy += s) {
                             gl.glRectf(x - shift + dxx, y - shift + dyy, x + shift + dxx, y + shift + dyy);
                         }
                     }
                 }
             }
 
+            if (showColorWheelLegend) {
+                final int segments = 16;
+                final float scale=15;
+                gl.glPushMatrix();
+                gl.glTranslatef(-20,chip.getSizeY()/2,0);
+                gl.glScalef(scale, scale, 1);
+                for (float val01 = 0; val01 < 1; val01 += 1f / segments) {
+                    int rgbValue = Color.HSBtoRGB(val01, 1, 1);
+                    Color color = new Color(rgbValue);
+                    float[] rgb = color.getRGBComponents(null);
+                    final float angle0=(val01-.5f)*2*(float)Math.PI;
+                    final float angle1=((val01-.5f)+1f/segments)*2*(float)Math.PI;
+                    gl.glBegin(GL.GL_TRIANGLES);
+                    gl.glColor4f(rgb[0], rgb[1], rgb[2], 1f);
+                    gl.glVertex3d(0,0,0);
+                    gl.glVertex3d(Math.cos(angle0),Math.sin(angle0),0);
+                    gl.glVertex3d(Math.cos(angle1),Math.sin(angle1),0);
+                    gl.glEnd();
+                }
+                gl.glPopMatrix();
+            }
         }
 
         private boolean isShowMotionField() {
@@ -1514,6 +1547,36 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             this.consistentWithCurrentAngle = consistentWithCurrentAngle;
             putBoolean("motionFieldConsistentWithCurrentAngle", consistentWithCurrentAngle);
         }
+
+        /**
+         * @return the minSpeedPpsToDrawMotionField
+         */
+        public float getMinSpeedPpsToDrawMotionField() {
+            return minSpeedPpsToDrawMotionField;
+        }
+
+        /**
+         * @param minSpeedPpsToDrawMotionField the minSpeedPpsToDrawMotionField
+         * to set
+         */
+        public void setMinSpeedPpsToDrawMotionField(float minSpeedPpsToDrawMotionField) {
+            this.minSpeedPpsToDrawMotionField = minSpeedPpsToDrawMotionField;
+            putFloat("minSpeedPpsToDrawMotionField", minSpeedPpsToDrawMotionField);
+        }
+
+        /**
+         * @return the showColorWheelLegend
+         */
+        public boolean isShowColorWheelLegend() {
+            return showColorWheelLegend;
+        }
+
+        /**
+         * @param showColorWheelLegend the showColorWheelLegend to set
+         */
+        public void setShowColorWheelLegend(boolean showColorWheelLegend) {
+            this.showColorWheelLegend = showColorWheelLegend;
+        }
     } // MotionField
 
     public boolean isShowMotionField() {
@@ -1564,6 +1627,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         motionField.setConsistentWithCurrentAngle(consistentWithCurrentAngle);
     }
 
+    public float getMinSpeedPpsToDrawMotionField() {
+        return motionField.getMinSpeedPpsToDrawMotionField();
+    }
+
+    public void setMinSpeedPpsToDrawMotionField(float minSpeedPpsToDrawMotionField) {
+        motionField.setMinSpeedPpsToDrawMotionField(minSpeedPpsToDrawMotionField);
+    }
+
     /**
      * Returns the object holding flow statistics.
      *
@@ -1579,6 +1650,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     public void setCalibrationSamples(int calibrationSamples) {
         imuFlowEstimator.setCalibrationSamples(calibrationSamples);
+    }
+
+    public boolean isShowColorWheelLegend() {
+        return motionField.isShowColorWheelLegend();
+    }
+
+    public void setShowColorWheelLegend(boolean showColorWheelLegend) {
+        motionField.setShowColorWheelLegend(showColorWheelLegend);
     }
 
 }
