@@ -58,6 +58,7 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
     protected float compressionQuality = getFloat("compressionQuality", 0.9f);
     private String[] additionalComments = null;
     private int frameRate=getInt("frameRate",30);
+    private boolean saveFramesAsIndividualImageFiles=getBoolean("saveFramesAsIndividualImageFiles",false);
 
     public AbstractAviWriter(AEChip chip) {
         super(chip);
@@ -73,6 +74,7 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
         setPropertyTooltip("compressionQuality", "In PNG or JPG format, sets compression quality; 0 is lowest quality and 1 is highest, 0.9 is default value");
         setPropertyTooltip("showFolderInDesktop", "Opens the folder containging the last-written AVI file");
         setPropertyTooltip("frameRate", "Specifies frame rate of AVI file.");
+        setPropertyTooltip("saveFramesAsIndividualImageFiles", "If selected, then the frames are saved as individual image files in the selected folder");
         chip.getSupport().addPropertyChangeListener(this);
 
     }
@@ -173,6 +175,7 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
             c.setSelectedFile(new File(newName));
         }
         lastFileName = c.getSelectedFile().toString();
+        
         if (c.getSelectedFile().exists()) {
             int r = JOptionPane.showConfirmDialog(null, "File " + c.getSelectedFile().toString() + " already exists, overwrite it?");
             if (r != JOptionPane.OK_OPTION) {
@@ -435,4 +438,19 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
         this.frameRate = frameRate;
         putInt("frameRate",frameRate);
     }
+
+//    /**
+//     * @return the saveFramesAsIndividualImageFiles
+//     */
+//    public boolean isSaveFramesAsIndividualImageFiles() {
+//        return saveFramesAsIndividualImageFiles;
+//    }
+//
+//    /**
+//     * @param saveFramesAsIndividualImageFiles the saveFramesAsIndividualImageFiles to set
+//     */
+//    public void setSaveFramesAsIndividualImageFiles(boolean saveFramesAsIndividualImageFiles) {
+//        this.saveFramesAsIndividualImageFiles = saveFramesAsIndividualImageFiles;
+//        putBoolean("saveFramesAsIndividualImageFiles",saveFramesAsIndividualImageFiles);
+//    }
 }
