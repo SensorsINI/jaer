@@ -16,6 +16,8 @@ import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.awt.GLCanvas;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.graphics.ChipCanvas;
@@ -27,7 +29,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  *
  * @author Tobi
  */
-abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements MouseListener, MouseMotionListener, FrameAnnotater {
+abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements MouseListener, MouseMotionListener, MouseWheelListener, FrameAnnotater {
 
     protected GLCanvas glCanvas;
     protected ChipCanvas chipCanvas;
@@ -118,12 +120,15 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
         if (yes) {
             glCanvas.removeMouseListener(this);
             glCanvas.removeMouseMotionListener(this);
+            glCanvas.removeMouseWheelListener(this);
             glCanvas.addMouseListener(this);
             glCanvas.addMouseMotionListener(this);
+            glCanvas.addMouseWheelListener(this);
 
         } else {
             glCanvas.removeMouseListener(this);
             glCanvas.removeMouseMotionListener(this);
+            glCanvas.removeMouseWheelListener(this);
         }
     }
 
@@ -176,4 +181,15 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
     public void mouseMoved(MouseEvent e) {
         chip.getCanvas().repaint(100);
     }
+
+    /** Handles wheel event. Empty by default
+     * 
+     * @param mwe the mouse wheel roll event
+     */
+    @Override
+    public void mouseWheelMoved(MouseWheelEvent mwe){
+        
+    }
+    
+    
 }
