@@ -48,6 +48,7 @@ import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
+import java.awt.event.MouseWheelEvent;
 import java.io.LineNumberReader;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -112,6 +113,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private long filePositionEvents = 0, fileLengthEvents = 0;
     private int filePositionTimestamp = 0;
     private boolean warnSave = true;
+    private int mouseWheelRoll=0;
 
     public TargetLabeler(AEChip chip) {
         super(chip);
@@ -187,6 +189,17 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             mousePoint = null;
         }
     }
+
+    @Override
+    public void mouseWheelMoved(MouseWheelEvent mwe) {
+        int roll=mwe.getWheelRotation();
+        int r=getTargetRadius();
+        setTargetRadius(r-roll);
+    }
+    
+    
+    
+    
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
@@ -393,7 +406,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private SimultaneouTargetLocations copyLocationsToNewTs(SimultaneouTargetLocations src, int ts, boolean useOriginalLocation) {
         SimultaneouTargetLocations s = new SimultaneouTargetLocations();
         for (TargetLocation t : src) {
-            TargetLocation tNew = new TargetLocation(t.frameNumber, ts, useOriginalLocation ? t.location : null, targetRadius, t.dimx, t.dimy);
+            TargetLocation tNew = new TargetLocation(t.frameNumber, ts, useOriginalLocation ? t.location : null, t.targetClassID, t.width, t.height);
             s.add(tNew);
         }
         return s;
@@ -490,9 +503,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     // find next saved target location that is just before this time (lowerEntry)
                     if (shiftPressed && ctlPressed && (mousePoint != null)) { // specify (additional) target present
                         // add a labeled location sample
-                        addSample(getCurrentFrameNumber(), e.timestamp, mousePoint, false);
+                        addSample(getCurrentFrameNumber(), e.timestamp, mousePoint, targetRadius*2, targetRadius*2, currentTargetTypeID, false);
                     } else if (shiftPressed && !ctlPressed) { // specify no target present now but mark recording as reviewed
-                        addSample(getCurrentFrameNumber(), e.timestamp, null, false);
+                        addSample(getCurrentFrameNumber(), e.timestamp, null, targetRadius*2, targetRadius*2, currentTargetTypeID, false);
                     }
                 }
                 if (e.timestamp < lastTimestamp) {
@@ -646,8 +659,11 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
      * @param targetRadius the targetRadius to set
      */
     public void setTargetRadius(int targetRadius) {
+        if(targetRadius<1)targetRadius=1;
+        int old=this.targetRadius;
         this.targetRadius = targetRadius;
         putInt("targetRadius", targetRadius);
+        getSupport().firePropertyChange("targetRadius", old, this.targetRadius);
     }
 
     /**
@@ -697,11 +713,11 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
      * @param point null to label target not visible
      * @param fastAdd  true during file read, to speed up and avoid memory thrashing
      */
-    private void addSample(int frame, int timestamp, Point point, boolean fastAdd) {
+    private void addSample(int frame, int timestamp, Point point, int width, int height, int ID, boolean fastAdd) {
         if (!fastAdd) {
             maybeEraseSamplesBefore(timestamp);
         }
-        TargetLocation newTargetLocation = new TargetLocation(getCurrentFrameNumber(), timestamp, point, currentTargetTypeID, targetRadius, targetRadius);
+        TargetLocation newTargetLocation = new TargetLocation(getCurrentFrameNumber(), timestamp, point, ID, width, height);
         SimultaneouTargetLocations s = targetLocations.get(timestamp);
         if (s == null) {
             s = new SimultaneouTargetLocations();
@@ -765,16 +781,16 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         int frameNumber;
         Point location; // center of target location
         int targetClassID; // class of target, i.e. car, person
-        int dimx; // dimension of target x
-        int dimy; // y
+        int width; // dimension of target x
+        int height; // y
 
-        public TargetLocation(int frameNumber, int timestamp, Point location, int targetTypeID, int dimx, int dimy) {
+        public TargetLocation(int frameNumber, int timestamp, Point location, int targetTypeID, int width, int height) {
             this.frameNumber = frameNumber;
             this.timestamp = timestamp;
             this.location = location != null ? new Point(location) : null;
             this.targetClassID = targetTypeID;
-            this.dimx = dimx;
-            this.dimy = dimy;
+            this.width = width;
+            this.height = height;
         }
 
         private void draw(GLAutoDrawable drawable, GL2 gl) {
@@ -795,7 +811,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             }
             glu.gluQuadricDrawStyle(mouseQuad, GLU.GLU_LINE);
             //glu.gluDisk(mouseQuad, getTargetRadius(), getTargetRadius(), 32, 1);
-            int maxDim = Math.max(dimx, dimy);
+            int maxDim = Math.max(width, height);
             glu.gluDisk(mouseQuad, maxDim / 2, (maxDim / 2) + 0.1, 32, 1);
             //getTargetRadius(), getTargetRadius() + 1, 32, 1);
             gl.glPopMatrix();
@@ -818,7 +834,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             for (Map.Entry<Integer, SimultaneouTargetLocations> entry : targetLocations.entrySet()) {
                 for (TargetLocation l : entry.getValue()) {
                     if (l.location != null) {
-                        writer.write(String.format("%d %d %d %d %d\n", l.frameNumber, l.timestamp, l.location.x, l.location.y, l.targetClassID, l.dimx, l.dimy));
+                        writer.write(String.format("%d %d %d %d %d\n", l.frameNumber, l.timestamp, l.location.x, l.location.y, l.targetClassID, l.width, l.height));
                     } else {
                         writer.write(String.format("%d %d -1 -1 -1\n", l.frameNumber, l.timestamp));
                     }
@@ -866,7 +882,6 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         log.info("loading " + f);
         boolean oldEraseSamples = this.eraseSamplesEnabled;
         doClearLocations();
-        TargetLocation tmpTargetLocation = null;
         try {
             setCursor(new Cursor(Cursor.WAIT_CURSOR));
             targetLocations.clear();
@@ -889,8 +904,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         int x = scanner.nextInt();
                         int y = scanner.nextInt();
                         int targetTypeID = 0;
-                        int targetdimx = targetRadius;
-                        int targetdimy = targetRadius;
+                        int width = targetRadius*2;
+                        int height = targetRadius*2;
                         // see if more tokens in this line
                         String mt = scanner.findInLine("\\d+");
                         if (mt != null) {
@@ -898,17 +913,17 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         }
                         mt = scanner.findInLine("\\d+");
                         if (mt != null) {
-                            targetdimx = Integer.parseInt(scanner.match().group());
+                            width = Integer.parseInt(scanner.match().group());
                         }
                         mt = scanner.findInLine("\\d+");
                         if (mt != null) {
-                            targetdimy = Integer.parseInt(scanner.match().group());
+                            height = Integer.parseInt(scanner.match().group());
                         }
                         Point p = null;
                         if ((x != -1) && (y != -1)) {
                             p = new Point(x, y);
                         }
-                        addSample(frame, ts, p, true);
+                        addSample(frame, ts, p, width, height, targetTypeID, true);
 
                     } catch (NoSuchElementException ex2) {
                         String l=("couldn't parse file " + f) == null ? "null" : f.toString() + ", got InputMismatchException on line: " + reader.getLineNumber();
