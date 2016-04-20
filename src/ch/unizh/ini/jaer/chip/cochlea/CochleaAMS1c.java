@@ -244,8 +244,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
 		}
         getAeViewer().removeHelpItem(helpsep);
         getAeViewer().removeHelpItem(help1);
-        getAeViewer().removeHelpItem(help2);
-        getAeViewer().removeHelpItem(help3);
+//        getAeViewer().removeHelpItem(help2);
+//        getAeViewer().removeHelpItem(help3);
          enableThisChipMenu(false);
    }
 
@@ -258,8 +258,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
        enableThisChipMenu(true);
           adcSamples = new CochleaAMS1cADCSamples(this); // need biasgen / scanner first
        helpsep=getAeViewer().addHelpItem(new JSeparator());
-        help1=getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/cochleaams1c.pdf", "CochleaAMS1c PCB design", "Protel design of board");
-        help2=getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/0_README_CochleaAMS1c.pdf", "CochleaAMS1c README", "README file for CochleaAMS1c");
+        help1=getAeViewer().addHelpURLItem("http://inilabs.com/support/hardware/das1/", "DAS User guide", "Opens Dynamic Audio Sensor user guide");
+//        help2=getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/0_README_CochleaAMS1c.pdf", "CochleaAMS1c README", "README file for CochleaAMS1c");
      }
 
     /**
