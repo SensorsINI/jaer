@@ -74,6 +74,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private boolean mousePressed = false;
     private boolean shiftPressed = false;
     private boolean ctlPressed = false;
+    private boolean altPressed = false;
     private Point mousePoint = null;
     final float labelRadius = 5f;
     private GLUquadric mouseQuad = null;
@@ -98,6 +99,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     protected int currentTargetTypeID = getInt("currentTargetTypeID", 0);
     private ArrayList<TargetLocation> currentTargets = new ArrayList(10); // currently valid targets
     protected boolean eraseSamplesEnabled = false;
+    private boolean relabelRadiusEnabled = false;
     private HashMap<String, String> mapDataFilenameToTargetFilename = new HashMap();
 
     private boolean propertyChangeListenerAdded = false;
@@ -133,7 +135,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         setPropertyTooltip("showStatistics", "shows statistics");
 //        setPropertyTooltip("maxTargets", "maximum number of simultaneous targets to label");
         setPropertyTooltip("currentTargetTypeID", "ID code of current target to be labeled, e.g., 0=dog, 1=cat, etc. User must keep track of the mapping from ID codes to target classes.");
-        setPropertyTooltip("eraseSamplesEnabled", "Use this mode erase all samples up to minTargetPointIntervalUs before current time.");
+        setPropertyTooltip("eraseSamplesEnabled", "Use this mode to erase all samples up to minTargetPointIntervalUs before current time.");
+        setPropertyTooltip("relabelRadiusEnabled", "Use this mode to resize the target bounding box to the targetRadius using the mouse wheel to change the size");
         Arrays.fill(labeledFractions, false);
         Arrays.fill(targetPresentInFractions, false);
         try {
@@ -233,17 +236,17 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             gl.glPushMatrix();
             gl.glTranslatef(p.x, p.y, 0);
             gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(0, -CURSOR_SIZE_CHIP_PIXELS / 2);
-            gl.glVertex2f(0, +CURSOR_SIZE_CHIP_PIXELS / 2);
-            gl.glVertex2f(-CURSOR_SIZE_CHIP_PIXELS / 2, 0);
-            gl.glVertex2f(+CURSOR_SIZE_CHIP_PIXELS / 2, 0);
+            gl.glVertex2f(0, -targetRadius);
+            gl.glVertex2f(0, +targetRadius);
+            gl.glVertex2f(-targetRadius, 0);
+            gl.glVertex2f(+targetRadius, 0);
             gl.glEnd();
             gl.glTranslatef(.5f, -.5f, 0);
             gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(0, -CURSOR_SIZE_CHIP_PIXELS / 2);
-            gl.glVertex2f(0, +CURSOR_SIZE_CHIP_PIXELS / 2);
-            gl.glVertex2f(-CURSOR_SIZE_CHIP_PIXELS / 2, 0);
-            gl.glVertex2f(+CURSOR_SIZE_CHIP_PIXELS / 2, 0);
+            gl.glVertex2f(0, -targetRadius);
+            gl.glVertex2f(0, +targetRadius);
+            gl.glVertex2f(-targetRadius, 0);
+            gl.glVertex2f(+targetRadius, 0);
             gl.glEnd();
 //            if (quad == null) {
 //                quad = glu.gluNewQuadric();
@@ -261,7 +264,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         MultilineAnnotationTextRenderer.setScale(.3f);
         StringBuilder sb = new StringBuilder();
         if (showHelpText) {
-            sb.append("Shift + !Ctrl + mouse position: Specify no target present\n i.e. mark data as looked at\nClt + Shift + mouse position: Specify currentTargetTypeID is present at mouse location\n");
+            sb.append("Shift+!Ctrl + mouse position: Specify no target present\nClt+Shift + mouse position: Specify currentTargetTypeID is present at mouse location\nShift+Alt: specify new radius for current targets");
             MultilineAnnotationTextRenderer.renderMultilineString(sb.toString());
         }
         if (showStatistics) {
@@ -270,10 +273,12 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     minSampleTimestamp * 1e-6f,
                     maxSampleTimestamp * 1e-6f, getCurrentFrameNumber(),
                     currentTargets.size()));
-            if (shiftPressed && !ctlPressed) {
+            if (shiftPressed && !ctlPressed && !altPressed) {
                 MultilineAnnotationTextRenderer.renderMultilineString("Specifying no target");
-            } else if (shiftPressed && ctlPressed) {
+            } else if (shiftPressed && ctlPressed && !altPressed) {
                 MultilineAnnotationTextRenderer.renderMultilineString("Specifying target location");
+            }else if (shiftPressed && altPressed && !ctlPressed) {
+                MultilineAnnotationTextRenderer.renderMultilineString("Specifying new target radius");
             } else {
                 MultilineAnnotationTextRenderer.renderMultilineString("Playing recorded target locations");
             }
@@ -394,7 +399,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         for (int i = 0; i < n; i++) {
             SimultaneouTargetLocations s = new SimultaneouTargetLocations();
             int ts = tFirstLabel + ((i + 1) * minTargetPointIntervalUs);
-            TargetLocation addedNullLabel = new TargetLocation(frameNumber, ts, null, targetRadius, -1, -1);
+            TargetLocation addedNullLabel = new TargetLocation(frameNumber, ts, null, currentTargetTypeID, -1, -1);
             s.add(addedNullLabel);
             newTargets.put(ts, s);
         }
@@ -497,15 +502,21 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 }
 
                 if (((long) e.timestamp - (long) lastTimestamp) >= minTargetPointIntervalUs) {
-                    updateCurrentlyDisplayedTargets(e);
 
                     lastTimestamp = e.timestamp;
                     // find next saved target location that is just before this time (lowerEntry)
-                    if (shiftPressed && ctlPressed && (mousePoint != null)) { // specify (additional) target present
+                    if (shiftPressed && ctlPressed && !altPressed && (mousePoint != null)) { // specify (additional) target present
                         // add a labeled location sample
                         addSample(getCurrentFrameNumber(), e.timestamp, mousePoint, targetRadius*2, targetRadius*2, currentTargetTypeID, false);
-                    } else if (shiftPressed && !ctlPressed) { // specify no target present now but mark recording as reviewed
+                    } else if (shiftPressed && !ctlPressed && !altPressed) { // specify no target present now but mark recording as reviewed
                         addSample(getCurrentFrameNumber(), e.timestamp, null, targetRadius*2, targetRadius*2, currentTargetTypeID, false);
+                    }
+                    updateCurrentlyDisplayedTargets(e);
+                    if(shiftPressed && altPressed){
+                        for(TargetLocation t:currentTargets){
+                            t.width=targetRadius*2;
+                            t.height=targetRadius*2;
+                        }
                     }
                 }
                 if (e.timestamp < lastTimestamp) {
@@ -631,6 +642,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             shiftPressed = true;
         } else if (k == KeyEvent.VK_CONTROL) {
             ctlPressed = true;
+        }else if (k == KeyEvent.VK_ALT) {
+            altPressed = true;
         } else if (k == KeyEvent.VK_E) {
             setEraseSamplesEnabled(true);
         }
@@ -643,6 +656,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             shiftPressed = false;
         } else if (k == KeyEvent.VK_CONTROL) {
             ctlPressed = false;
+        }else if (k == KeyEvent.VK_ALT) {
+            altPressed = false;
         } else if (k == KeyEvent.VK_E) {
             setEraseSamplesEnabled(false);
         }
@@ -806,13 +821,19 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             float[] compArray = new float[4];
             gl.glColor3fv(targetTypeColors[targetClassID % targetTypeColors.length].getColorComponents(compArray), 0);
 //            gl.glColor4f(0, 1, 0, .5f);
-            if (mouseQuad == null) {
-                mouseQuad = glu.gluNewQuadric();
-            }
-            glu.gluQuadricDrawStyle(mouseQuad, GLU.GLU_LINE);
-            //glu.gluDisk(mouseQuad, getTargetRadius(), getTargetRadius(), 32, 1);
-            int maxDim = Math.max(width, height);
-            glu.gluDisk(mouseQuad, maxDim / 2, (maxDim / 2) + 0.1, 32, 1);
+            gl.glBegin(GL.GL_LINE_LOOP);
+            gl.glVertex2f(-width/2, -height/2);
+            gl.glVertex2f(+width/2, -height/2);
+            gl.glVertex2f(+width/2, +height/2);
+            gl.glVertex2f(-width/2, +height/2);
+            gl.glEnd();
+//            if (mouseQuad == null) {
+//                mouseQuad = glu.gluNewQuadric();
+//            }
+//            glu.gluQuadricDrawStyle(mouseQuad, GLU.GLU_LINE);
+//            //glu.gluDisk(mouseQuad, getTargetRadius(), getTargetRadius(), 32, 1);
+//            int maxDim = Math.max(width, height);
+//            glu.gluDisk(mouseQuad, maxDim / 2, (maxDim / 2) + 0.1, 32, 1);
             //getTargetRadius(), getTargetRadius() + 1, 32, 1);
             gl.glPopMatrix();
         }
@@ -827,16 +848,17 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private void saveLocations(File f) {
         try {
             FileWriter writer = new FileWriter(f);
+            writer.write(String.format("#!TargetLocations-2.0\n"));
             writer.write(String.format("# target locations\n"));
             writer.write(String.format("# written %s\n", new Date().toString()));
 //            writer.write("# maxTargets=" + maxTargets+"\n");
-            writer.write(String.format("# frameNumber timestamp x y targetTypeID\n"));
+            writer.write(String.format("# frameNumber timestamp x y targetTypeID width height\n"));
             for (Map.Entry<Integer, SimultaneouTargetLocations> entry : targetLocations.entrySet()) {
                 for (TargetLocation l : entry.getValue()) {
                     if (l.location != null) {
-                        writer.write(String.format("%d %d %d %d %d\n", l.frameNumber, l.timestamp, l.location.x, l.location.y, l.targetClassID, l.width, l.height));
+                        writer.write(String.format("%d %d %d %d %d %d %d\n", l.frameNumber, l.timestamp, l.location.x, l.location.y, l.targetClassID, l.width, l.height));
                     } else {
-                        writer.write(String.format("%d %d -1 -1 -1\n", l.frameNumber, l.timestamp));
+                        writer.write(String.format("%d %d -1 -1 -1 -1 -1\n", l.frameNumber, l.timestamp));
                     }
                 }
             }
@@ -1123,6 +1145,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 }
                 shiftPressed = false;
                 ctlPressed = false; // disable labeling on rewind to prevent bad labels at start
+                altPressed = false; // disable labeling on rewind to prevent bad labels at start
                 if (evt.getPropertyName() == AEInputStream.EVENT_REWIND) {
                     try {
                         Thread.currentThread().sleep(1000);// time for preparing label
@@ -1172,6 +1195,20 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
      */
     public boolean isLocationsLoadedFromFile() {
         return locationsLoadedFromFile;
+    }
+
+    /**
+     * @return the relabelRadiusEnabled
+     */
+    public boolean isRelabelRadiusEnabled() {
+        return relabelRadiusEnabled;
+    }
+
+    /**
+     * @param relabelRadiusEnabled the relabelRadiusEnabled to set
+     */
+    public void setRelabelRadiusEnabled(boolean relabelRadiusEnabled) {
+        this.relabelRadiusEnabled = relabelRadiusEnabled;
     }
 
 }
