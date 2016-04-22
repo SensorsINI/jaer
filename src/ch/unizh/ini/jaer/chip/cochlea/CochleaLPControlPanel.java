@@ -37,6 +37,7 @@ import ch.unizh.ini.jaer.config.spi.SPIConfigInt;
 import ch.unizh.ini.jaer.config.spi.SPIConfigValue;
 import net.sf.jaer.biasgen.BiasgenPanel;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceControlsCF;
+import net.sf.jaer.util.ParameterControlPanel;
 
 /**
  * Control panel for CochleaLP
@@ -99,7 +100,16 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
 			}
 		}
 
-		for (final SPIConfigValue cfgVal : biasgen.chipDiagChain) {
+		for (final SPIConfigValue cfgVal : biasgen.adcControl) {
+			if (cfgVal instanceof SPIConfigBit) {
+				SPIConfigBit.makeSPIBitConfig((SPIConfigBit) cfgVal, adcPanel, configValueMap, getBiasgen());
+			}
+			else if (cfgVal instanceof SPIConfigInt) {
+				SPIConfigInt.makeSPIIntConfig((SPIConfigInt) cfgVal, adcPanel, configValueMap, getBiasgen());
+			}
+		}
+
+                for (final SPIConfigValue cfgVal : biasgen.chipDiagChain) {
 			if (cfgVal instanceof SPIConfigBit) {
 				SPIConfigBit.makeSPIBitConfig((SPIConfigBit) cfgVal, chipDiagPanel, configValueMap, getBiasgen());
 			}
@@ -741,7 +751,11 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
 		aerPanel.setLayout(new BoxLayout(aerPanel, BoxLayout.Y_AXIS));
 		addTab("AER Config", (aerPanel));
 
-		chipDiagPanel = new JPanel();
+                adcPanel = new JPanel();
+                adcPanel.setLayout(new BoxLayout(adcPanel, BoxLayout.Y_AXIS));
+                addTab("ADC", (adcPanel));
+		
+                chipDiagPanel = new JPanel();
 		chipDiagPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		chipDiagPanel.setLayout(new BoxLayout(chipDiagPanel, BoxLayout.Y_AXIS));
 		addTab("Chip Diag Config", (chipDiagPanel));
@@ -757,5 +771,6 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
 	private JPanel channelPanel;
 	private JPanel scannerPanel;
 	private JPanel aerPanel;
+	private JPanel adcPanel;
 	private JPanel chipDiagPanel;
 }

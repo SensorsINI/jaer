@@ -691,6 +691,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	public final static short FPGA_DAC = 7;
 	public final static short FPGA_SCANNER = 8;
 	public final static short FPGA_USB = 9;
+	public final static short FPGA_ADC = 10;
 
 	public class SPIConfigSequence {
 		private class SPIConfigParameter {

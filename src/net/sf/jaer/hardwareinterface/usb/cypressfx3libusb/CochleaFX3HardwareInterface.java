@@ -63,7 +63,15 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 	public static final int CHIP_COCHLEA4EAR = 12;
 	public static final int CHIP_SAMPLEPROB = 13; // Reuse Cochlea code for SampleProb chip.
 
-	/**
+       /** 
+        * Data word is tagged as AER address or ADC sample by bit 0x2000 (DATA_TYPE_MASK). Set (ADDRESS_TYPE_ADC)=ADC sample; unset (DATA_TYPE_AER_ADDRESS)=AER address. 
+        */
+        public static final int DATA_TYPE_MASK = 0x2000, //
+            DATA_TYPE_AER_ADDRESS = 0x0000,   // aer addresses don't have the bit set
+            DATA_TYPE_ADC = 0x2000,           // adc samples have this bit set
+            DATA_TYPE_ADC_CNV_START = 0x3000; // adc conversion start events also have bit 12 set.
+
+        /**
 	 * This reader understands the format of raw USB data and translates to the
 	 * AEPacketRaw
 	 */
@@ -71,6 +79,12 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 		private final int chipID;
 
 		private final int aerMaxAddress;
+                // Event Codes
+                private static final int EC_SPECIAL = 0;
+                private static final int EC_SPECIAL_RESERVED = 0;
+                private static final int EC_SPECIAL_TIMESTAMP_RESET = 1;
+                private static final int EC_SPECIAL_ADC_START_CNV = 44;
+                private static final int EC_SPECIAL_ADC_START_CNV_1US = 45;
 
 		private int wrapAdd;
 		private int lastTimestamp;
@@ -135,6 +149,9 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 				for (int i = 0; i < sBuf.limit(); i++) {
 					final short event = sBuf.get(i);
 
+                                        // General Event structure:
+                                        // [ t | ccc | 12 bit subcode+data ]
+                                        // t - type Timestamp (1) of Event (0), ccc - code of event
 					// Check if timestamp
 					if ((event & 0x8000) != 0) {
 						// Is a timestamp! Expand to 32 bits. (Tick is 1us already.)
@@ -151,19 +168,28 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 						final short data = (short) (event & 0x0FFF);
 
 						switch (code) {
-							case 0: // Special event
+							// [ 0 | 000 | data ]
+                                                        case EC_SPECIAL: // Special event
 								switch (data) {
-									case 0: // Ignore this, but log it.
+									case EC_SPECIAL_RESERVED: // Ignore this, but log it.
 										CypressFX3.log.severe("Caught special reserved event!");
 										break;
 
-									case 1: // Timetamp reset
+									case EC_SPECIAL_TIMESTAMP_RESET: // Timetamp reset
 										wrapAdd = 0;
 										lastTimestamp = 0;
 										currentTimestamp = 0;
 
 										CypressFX3.log.info("Timestamp reset event received on " + super.toString());
 										break;
+  									case EC_SPECIAL_ADC_START_CNV:     // ADC conversion start
+  									case EC_SPECIAL_ADC_START_CNV_1US: // ADC conversion start was timestamped with the delay 1us
+                                                                                // Check that the buffer has space for this event. Enlarge if needed.
+                                                                                if (ensureCapacity(buffer, eventCounter + 1)) {
+                                                                                        buffer.getAddresses()[eventCounter] = data | DATA_TYPE_ADC_CNV_START;
+                                                                                        buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+                                                                                }
+                                                                                break;
 
 									default:
 										CypressFX3.log.severe("Caught special event that can't be handled.");
@@ -171,7 +197,8 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 								}
 								break;
 
-							case 1: // AER address
+							// [ 0 | 001 | data ]
+                                                        case 1: // AER address
 								// Check range conformity.
 								if (data >= aerMaxAddress) {
 									CypressFX3.log.severe("AER: address out of range (0-" + (aerMaxAddress - 1) + "): " + data + ".");
@@ -186,7 +213,20 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 								}
 
 								break;
+                                                                
+							// [ 0 | 100 | 1 | 11 zero bits ] - start of conversion token, comes first
+                                                        // [ 0 | 100 | 1 | 2 bit ADC-channel | 9 MSB data bits ]
+                                                        // [ 0 | 100 | 0 | 2 bit ADC-channel | 9 LSB data bits ]
+                                                        case 4: // ADC sample
 
+								// Check that the buffer has space for this event. Enlarge if needed.
+								if (ensureCapacity(buffer, eventCounter + 1)) {
+									buffer.getAddresses()[eventCounter] = data | DATA_TYPE_ADC;
+									buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+								}
+
+								break;
+                                                        // [ 0 | 111 | 12 dummy bits ]
 							case 7: // Timestamp wrap
 								// Each wrap is 2^15 us (~32ms), and we have
 								// to multiply it with the wrap counter,

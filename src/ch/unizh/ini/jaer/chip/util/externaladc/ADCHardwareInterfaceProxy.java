@@ -39,8 +39,6 @@ public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements
         super(chip);
         adcChannel = getPrefs().getInt("ADCHardwareInterfaceProxy.adcChannel", 0);
         adcEnabled = getPrefs().getBoolean("ADCHardwareInterfaceProxy.adcEnabled", true);
-
-        adcEnabled = getPrefs().getBoolean("ADCHardwareInterfaceProxy.adcEnabled", true);
         trackTime = getPrefs().getInt("ADCHardwareInterfaceProxy.trackTime", 50);
         idleTime = getPrefs().getInt("ADCHardwareInterfaceProxy.idleTime", 10);
         sequencingEnabled=getPrefs().getBoolean("ADCHardwareInterfaceProxy.sequencingEnabled",false);
