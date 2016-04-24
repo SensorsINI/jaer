@@ -1470,12 +1470,22 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // read header lines from fileInputStream, not byteBuffer, since we have not mapped file yet
         // reader.mark(1); // max header line length in chars
         int c = reader.read(); // read single char
-        if (c != AEDataFile.COMMENT_CHAR) { // if it's not a comment char
+        String s = reader.readLine();
+        boolean flag = true;
+        for (int i = 0; i < s.length(); i++) {
+            char b = s.charAt(i);
+            if ((b < 32) || (b > 126)) {
+                flag = false;
+                break;
+            }
+        }
+        
+        if (c != AEDataFile.COMMENT_CHAR || flag == false) { // if it's not a comment char
             return null; // return a null header line
         }
         // reader.reset(); // reset to start of header/comment line
         // we don't push back comment char because we want to parse the file format sans this
-        String s = reader.readLine();
+        //String s = reader.readLine();
 
         StringBuilder sb = new StringBuilder(s);
 
