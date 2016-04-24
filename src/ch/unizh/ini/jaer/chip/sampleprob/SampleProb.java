@@ -109,11 +109,11 @@ public class SampleProb extends CochleaChip implements Observer {
 		final List<SPIConfigValue> chipControl = new ArrayList<>();
 
 		/**
-		 * Three DACs, 16 channels. Internal 2.5V reference is used, so VOUT in range 0-5.0V. VDD is 3.3V.
+		 * Three DACs, 16 channels. Internal 1.25V reference is used, so VOUT in range 0-2.5V. VDD is 3.3V.
 		 */
-		private final DAC dac1 = new DAC(16, 14, 0, 5.0f, 3.3f);
-		private final DAC dac2 = new DAC(16, 14, 0, 5.0f, 3.3f);
-		private final DAC dac3 = new DAC(18, 14, 0, 5.0f, 3.3f); // +2 for special random DAC upper/lower limit.
+		private final DAC dac1 = new DAC(16, 14, 0, 2.5f, 3.3f);
+		private final DAC dac2 = new DAC(16, 14, 0, 2.5f, 3.3f);
+		private final DAC dac3 = new DAC(16 + 32, 14, 0, 2.5f, 3.3f); // +32 for special random DAC upper/lower limit.
 
 		final SPIConfigBit dacRun;
 		final SPIConfigBit dacRandomRun;
@@ -191,22 +191,57 @@ public class SampleProb extends CochleaChip implements Observer {
 			// vpots.addPot(new SimpleVPot(getChip(), "NC", dac2, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 
 			// DAC3 channels (16) (SSN_DAC3)
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt04", dac3, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt00", dac3, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt01", dac3, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt02", dac3, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt03", dac3, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt04", dac3, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt05", dac3, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt06", dac3, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt08", dac3, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt12", dac3, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt07", dac3, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt08", dac3, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt09", dac3, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt10", dac3, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt11", dac3, 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt12", dac3, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt13", dac3, 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt14", dac3, 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt15", dac3, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt09", dac3, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+
+			// Special DAC configuration (random noise DAC). Kept here with other DAC-related config for convenience.
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt00RandomVMax", dac3, 16 + 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt01RandomVMax", dac3, 16 + 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt02RandomVMax", dac3, 16 + 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt03RandomVMax", dac3, 16 + 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt04RandomVMax", dac3, 16 + 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt05RandomVMax", dac3, 16 + 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt06RandomVMax", dac3, 16 + 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt07RandomVMax", dac3, 16 + 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt08RandomVMax", dac3, 16 + 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt09RandomVMax", dac3, 16 + 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt10RandomVMax", dac3, 16 + 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt11RandomVMax", dac3, 16 + 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt12RandomVMax", dac3, 16 + 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt13RandomVMax", dac3, 16 + 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt14RandomVMax", dac3, 16 + 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt15RandomVMax", dac3, 16 + 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt00RandomVMin", dac3, 32 + 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt01RandomVMin", dac3, 32 + 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt02RandomVMin", dac3, 32 + 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt03RandomVMin", dac3, 32 + 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt04RandomVMin", dac3, 32 + 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt05RandomVMin", dac3, 32 + 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt06RandomVMin", dac3, 32 + 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt07RandomVMin", dac3, 32 + 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt08RandomVMin", dac3, 32 + 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt09RandomVMin", dac3, 32 + 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt10RandomVMin", dac3, 32 + 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt11RandomVMin", dac3, 32 + 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt12RandomVMin", dac3, 32 + 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt13RandomVMin", dac3, 32 + 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt14RandomVMin", dac3, 32 + 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt15RandomVMin", dac3, 32 + 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 
 			// New logic SPI configuration values.
 			// DAC control
@@ -214,14 +249,11 @@ public class SampleProb extends CochleaChip implements Observer {
 			dacRun.addObserver(this);
 			allPreferencesList.add(dacRun);
 
-			// Special DAC configuration (random noise DAC). Kept here for convenience.
+			// Special DAC configuration (random noise DAC). Kept here with other DAC-related config for convenience.
 			dacRandomRun = new SPIConfigBit("DACRandomRun", "Send random values to DAC 3 for random noise generation.", CypressFX3.FPGA_DAC,
-				(short) 16, false, this);
+				(short) 15, false, this);
 			dacRandomRun.addObserver(this);
 			allPreferencesList.add(dacRandomRun);
-
-			vpots.addPot(new SimpleVPot(getChip(), "DACRandomLowerLimit", dac3, 16, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "DACRandomUpperLimit", dac3, 17, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 
 			// Multiplexer module
 			biasForceEnable = new SPIConfigBit("ForceBiasEnable", "Force the biases to be always ON.", CypressFX3.FPGA_MUX, (short) 3,
@@ -374,7 +406,7 @@ public class SampleProb extends CochleaChip implements Observer {
 
 						// Support for random DAC3 limits. These are handled by different SPI addresses.
 						if ((dacNumber == 2) && (vPot.getChannel() >= 16)) {
-							fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) (vPot.getChannel() + 1), vPot.getBitValue());
+							fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) vPot.getChannel(), vPot.getBitValue());
 						}
 						else {
 							final SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
