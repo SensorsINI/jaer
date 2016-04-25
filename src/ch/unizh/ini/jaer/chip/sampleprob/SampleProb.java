@@ -209,39 +209,38 @@ public class SampleProb extends CochleaChip implements Observer {
 			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt15", dac3, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 
 			// Special DAC configuration (random noise DAC). Kept here with other DAC-related config for convenience.
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt00RandomVMax", dac3, 16 + 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt01RandomVMax", dac3, 16 + 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt02RandomVMax", dac3, 16 + 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt03RandomVMax", dac3, 16 + 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt04RandomVMax", dac3, 16 + 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt05RandomVMax", dac3, 16 + 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt06RandomVMax", dac3, 16 + 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt07RandomVMax", dac3, 16 + 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt08RandomVMax", dac3, 16 + 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt09RandomVMax", dac3, 16 + 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt10RandomVMax", dac3, 16 + 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt11RandomVMax", dac3, 16 + 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt12RandomVMax", dac3, 16 + 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt13RandomVMax", dac3, 16 + 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt14RandomVMax", dac3, 16 + 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt15RandomVMax", dac3, 16 + 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt00RandomVMin", dac3, 32 + 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt01RandomVMin", dac3, 32 + 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt02RandomVMin", dac3, 32 + 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt03RandomVMin", dac3, 32 + 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt04RandomVMin", dac3, 32 + 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt05RandomVMin", dac3, 32 + 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt06RandomVMin", dac3, 32 + 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt07RandomVMin", dac3, 32 + 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt08RandomVMin", dac3, 32 + 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt09RandomVMin", dac3, 32 + 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt10RandomVMin", dac3, 32 + 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt11RandomVMin", dac3, 32 + 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt12RandomVMin", dac3, 32 + 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt13RandomVMin", dac3, 32 + 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt14RandomVMin", dac3, 32 + 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new SimpleVPot(getChip(), "VnoiseExt15RandomVMin", dac3, 32 + 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "00RandomVMax", dac3, 16 + 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "00RandomVMin", dac3, 32 + 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "01RandomVMax", dac3, 16 + 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "01RandomVMin", dac3, 32 + 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "02RandomVMax", dac3, 16 + 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "02RandomVMin", dac3, 32 + 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "03RandomVMax", dac3, 16 + 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "03RandomVMin", dac3, 32 + 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "04RandomVMax", dac3, 16 + 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "04RandomVMin", dac3, 32 + 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "05RandomVMax", dac3, 16 + 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "05RandomVMin", dac3, 32 + 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "06RandomVMax", dac3, 16 + 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "06RandomVMin", dac3, 32 + 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "07RandomVMax", dac3, 16 + 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "07RandomVMin", dac3, 32 + 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "08RandomVMax", dac3, 16 + 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "08RandomVMin", dac3, 32 + 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "09RandomVMax", dac3, 16 + 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "09RandomVMin", dac3, 32 + 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "10RandomVMax", dac3, 16 + 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "10RandomVMin", dac3, 32 + 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "11RandomVMax", dac3, 16 + 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "11RandomVMin", dac3, 32 + 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "12RandomVMax", dac3, 16 + 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "12RandomVMin", dac3, 32 + 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "13RandomVMax", dac3, 16 + 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "13RandomVMin", dac3, 32 + 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "14RandomVMax", dac3, 16 + 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "14RandomVMin", dac3, 32 + 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "15RandomVMax", dac3, 16 + 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new SimpleVPot(getChip(), "15RandomVMin", dac3, 32 + 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 
 			// New logic SPI configuration values.
 			// DAC control
