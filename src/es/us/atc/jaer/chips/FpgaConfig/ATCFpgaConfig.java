@@ -35,6 +35,7 @@ public class ATCFpgaConfig extends EventFilter2D {
     // OMC parameters
     private int IFthreshold = getInt("IFthreshold", 5);
     private int DecayTimeMs = getInt("DecayTimeMs", 2);
+    private int TauNDecay = getInt("TauNDecay_S", 20);
     private int ExcitationStrength = getInt("ExcitationStrength", 1);
     private int Saturation = getInt("Saturation", 1);
     private int InhibitionStrength = getInt("InhibitionStrength", 1);
@@ -67,6 +68,7 @@ public class ATCFpgaConfig extends EventFilter2D {
         setPropertyTooltip(omc, "ExcitationStrength", "Factor that multiplies normalised excitation");
         setPropertyTooltip(omc, "Saturation", "Saturation of subunits");
         setPropertyTooltip(omc, "InhibitionStrength", "Factor that multiplies normalised inhibition");
+        setPropertyTooltip(omc, "TauNDecay", "Neuron time constant of decay");
     }
 
     // OMC parameters
@@ -78,7 +80,16 @@ public class ATCFpgaConfig extends EventFilter2D {
     public int getIFthreshold() {
         return IFthreshold;
     }
+    
+    public void setTauNDecay(final int TauNDecay) {
+        this.TauNDecay = TauNDecay;
+        putInt("TauNDecay", TauNDecay);
+    }
 
+    public int getTauNDecay() {
+        return TauNDecay;
+    }
+    
     public static int getMinIFthreshold() {
         return 0;
     }
@@ -164,6 +175,7 @@ public class ATCFpgaConfig extends EventFilter2D {
         }
         // Convert ms time into clock cycles.
         final int sendDecayTimeMs = getInt("DecayTimeMs", 0) / (CLOCK_SPEED * 10 ^ (-6));
+        final int sendTauNDecay = getInt("TauNDecay", 0) / (CLOCK_SPEED * 10 ^ (-6));
 
         int sendExcitationStrength = 1;
         if (getInt("ExcitationStrength", 0) == 0) {
@@ -238,6 +250,10 @@ public class ATCFpgaConfig extends EventFilter2D {
             sendCommand((byte) 248, (byte) (sendExcitationStrength & 0xFF), true); //F8 248
             sendCommand((byte) 249, (byte) (sendSaturation & 0xFF), true); //F9 249
             sendCommand((byte) 250, (byte) (sendInhibitionStrength & 0xFF), true); //FA 250
+            sendCommand((byte) 251, (byte) (sendTauNDecay & 0xFF), true); //FB 251
+            sendCommand((byte) 252, (byte) ((sendTauNDecay >>> 8) & 0xFF), true); //FB 252
+            sendCommand((byte) 253, (byte) ((sendTauNDecay >>> 16) & 0xFF), true); //FB 253
+            sendCommand((byte) 254, (byte) ((sendTauNDecay >>> 24) & 0xFF), true); //FB 25
             sendCommand((byte) 0, (byte) 0, false);
             System.out.print("Sending ");
             System.out.println(i);
