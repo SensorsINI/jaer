@@ -11,12 +11,6 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen.Scanner;
-import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
-import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterfaceProxy;
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -27,6 +21,7 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
+
 import javax.swing.AbstractButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
@@ -37,6 +32,14 @@ import javax.swing.JSeparator;
 import javax.swing.JTabbedPane;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.util.gl2.GLUT;
+
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen.Scanner;
+import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
+import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterfaceProxy;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -83,7 +86,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
     final GLUT glut = new GLUT();
     /** Samples from ADC on CochleaAMS1c PCB */
     private CochleaAMS1cADCSamples adcSamples;
-    private ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen ams1cbiasgen; // used to access scanner e.g. from delegate methods
+    protected ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen ams1cbiasgen; // used to access scanner e.g. from delegate methods
     private JMenuItem syncEnabledMenuItem = null;
     private JMenu thisChipMenu = null;
 
@@ -204,7 +207,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
         }
 
     }
-    
+
        /**
      * Updates AEViewer specialized menu items according to capabilities of
      * HardwareInterface.
@@ -505,7 +508,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
         Equalizer equalizer = new Equalizer();
         BufferIPot bufferIPot = new BufferIPot();
         boolean dacPowered = getPrefs().getBoolean("CochleaAMS1c.Biasgen.DAC.powered", true);
-        private final VPot preampAGCThresholdPot; // used in Microphone preamp control panel
+        protected VPot preampAGCThresholdPot; // used in Microphone preamp control panel
         // wraps around ADC, updates come back here to send CPLD config to hardware. Proxy used in GUI.
         private ADC adcProxy;
         private Scanner scanner;
@@ -684,8 +687,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
             return offchipPreampARRatio.getArRatio();
         }
 
-  
-        
+
+
         @Override
         final public void loadPreferences() {
             super.loadPreferences();
@@ -712,8 +715,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
             super.storePreferences();
         }
 
-        JComponent expertTab, basicTab;        
-        
+        JComponent expertTab, basicTab;
+
         @Override
         public JPanel buildControlPanel() {
             JPanel panel = new JPanel();
@@ -732,7 +735,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
             });
 
                     return panel;
-                    
+
            // CochleaAMS1cControlPanel myControlPanel = new CochleaAMS1cControlPanel(CochleaAMS1c.this);
            // return myControlPanel;
         }
@@ -828,12 +831,15 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
                 log.info(sb.toString());
             }
             if (getHardwareInterface() != null) {
-                if(getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2)
-                    ((net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2) getHardwareInterface()).sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
-                else if(getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2)
-                    ((net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2) getHardwareInterface()).sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
+                if(getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2) {
+					((net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2) getHardwareInterface()).sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
+				}
+				else if(getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2)
+				 {
+					((net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2) getHardwareInterface()).sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
+				}
 
-                    
+
             }
         }
 
@@ -958,7 +964,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
                 update(c, null);
             }
             sendCPLDConfig();
-            
+
 
         }
 
@@ -2308,8 +2314,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
                 return gainkey + "." + ear.toString();
             }
         }// offchip preamp
-        
-        
+
+
     } // biasgen
 
     /** Enum for on-chip preamp gain values */
@@ -2522,15 +2528,17 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
         }
     }
 
-    public void setSyncEventEnabled(boolean yes) {
+    @Override
+	public void setSyncEventEnabled(boolean yes) {
         ams1cbiasgen.setSyncEventEnabled(yes);
     }
 
-    public boolean isSyncEventEnabled() {
+    @Override
+	public boolean isSyncEventEnabled() {
         return ams1cbiasgen.isSyncEventEnabled();
     }
-    
-    
-    
-    
+
+
+
+
 }
