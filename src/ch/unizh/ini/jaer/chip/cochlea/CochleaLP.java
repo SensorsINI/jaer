@@ -1,6 +1,5 @@
 package ch.unizh.ini.jaer.chip.cochlea;
 
-import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -24,7 +23,6 @@ import ch.unizh.ini.jaer.config.ConfigBase;
 import ch.unizh.ini.jaer.config.spi.SPIConfigBit;
 import ch.unizh.ini.jaer.config.spi.SPIConfigInt;
 import ch.unizh.ini.jaer.config.spi.SPIConfigValue;
-import java.util.prefs.PreferenceChangeListener;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -59,7 +57,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 
 	private final GLUT glut = new GLUT();
 
-        /**
+	/**
 	 * Creates a new instance of CochleaLP
 	 */
 	public CochleaLP() {
@@ -219,7 +217,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 		 */
 		private final DAC dac = new DAC(16, 12, 0, 2.5f, 2.8f);
 
-                final SPIConfigBit dacRun;
+		final SPIConfigBit dacRun;
 
 		// All bias types.
 		final SPIConfigBit biasForceEnable;
@@ -325,16 +323,17 @@ public class CochleaLP extends CochleaChip implements Observer {
 				allPreferencesList.add(cfgVal);
 			}
 
-                        // ADC
-                        adcControl.add(new SPIConfigBit("ADCEnable", "Enable external ADCs", CypressFX3.FPGA_ADC, (short) 0, false, this));
-                        adcControl.add(new SPIConfigInt("ADCChannelsEnable", "1 - Right, 2 - Left, 3 - Both", CypressFX3.FPGA_ADC, (short) 1, 2, 3, this));
-        		adcControl.add(new SPIConfigBit("ADCFrequency", "OFF - 16kHz, ON - 44.1kHz", CypressFX3.FPGA_ADC, (short) 2, false, this));
+			// ADC
+			adcControl.add(new SPIConfigBit("ADCEnable", "Enable external ADCs", CypressFX3.FPGA_ADC, (short) 0, false, this));
+			adcControl
+				.add(new SPIConfigInt("ADCChannelsEnable", "1 - Right, 2 - Left, 3 - Both", CypressFX3.FPGA_ADC, (short) 1, 2, 3, this));
+			adcControl.add(new SPIConfigBit("ADCFrequency", "OFF - 16kHz, ON - 44.1kHz", CypressFX3.FPGA_ADC, (short) 2, false, this));
 			for (final SPIConfigValue cfgVal : adcControl) {
 				cfgVal.addObserver(this);
 				allPreferencesList.add(cfgVal);
 			}
-                        
-                        // Chip diagnostic chain
+
+			// Chip diagnostic chain
 			chipDiagChain.add(new SPIConfigInt("ChipResetCapConfigADM", "Reset cap configuration in ADM.", CypressFX3.FPGA_CHIPBIAS,
 				(short) 128, 2, 0, this));
 			chipDiagChain.add(new SPIConfigInt("ChipDelayCapConfigADM", "Delay cap configuration in ADM.", CypressFX3.FPGA_CHIPBIAS,
@@ -363,8 +362,8 @@ public class CochleaLP extends CochleaChip implements Observer {
 				allPreferencesList.add(chan);
 			}
 
-                        // Preferences
-                        setBatchEditOccurring(true);
+			// Preferences
+			setBatchEditOccurring(true);
 			loadPreferences();
 			setBatchEditOccurring(false);
 
@@ -445,7 +444,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 			}
 		}
 
-                /**
+		/**
 		 * The central point for communication with HW from biasgen. All objects
 		 * in Biasgen are Observables and add Biasgen.this as Observer. They
 		 * then call notifyObservers when their state changes.
@@ -736,8 +735,8 @@ public class CochleaLP extends CochleaChip implements Observer {
 
 		@Override
 		public String toString() {
-			return String.format("CochleaChannel {configName=%s, getPreferencesKey()=%s, channelAddress=%d}", getName(), getPreferencesKey(),
-				getChannelAddress());
+			return String.format("CochleaChannel {configName=%s, getPreferencesKey()=%s, channelAddress=%d}", getName(),
+				getPreferencesKey(), getChannelAddress());
 		}
 
 		public boolean isComparatorSelfOscillationEnable() {

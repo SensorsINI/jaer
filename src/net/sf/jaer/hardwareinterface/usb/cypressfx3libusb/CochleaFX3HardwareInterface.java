@@ -67,10 +67,10 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 	 * Data word is tagged as AER address or ADC sample by bit 0x2000 (DATA_TYPE_MASK). Set (ADDRESS_TYPE_ADC)=ADC
 	 * sample; unset (DATA_TYPE_AER_ADDRESS)=AER address.
 	 */
-	public static final int DATA_TYPE_MASK = 0x2000, //
-		DATA_TYPE_AER_ADDRESS = 0x0000, // aer addresses don't have the bit set
-		DATA_TYPE_ADC = 0x2000, // adc samples have this bit set
-		DATA_TYPE_ADC_CNV_START = 0x3000; // adc conversion start events also have bit 12 set.
+	public static final int DATA_TYPE_AER_ADDRESS = 0x0000; // aer addresses don't have the bit set
+	public static final int DATA_TYPE_ADC = 0x2000; // adc samples have this bit set
+	public static final int DATA_TYPE_ADC_CNV_START = 0x3000; // adc conversion start events also have bit 12 set
+	public static final int DATA_TYPE_RANDOMDAC = 0x40000; // SampleProb only, 18 bits of space needed
 
 	/**
 	 * This reader understands the format of raw USB data and translates to the
@@ -88,9 +88,15 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 		private static final int EC_SPECIAL_ADC_START_CNV = 44;
 		private static final int EC_SPECIAL_ADC_START_CNV_1US = 45;
 
+		private static final int EC_MISC10_RANDOM_PART1 = 0;
+		private static final int EC_MISC10_RANDOM_PART2 = 1;
+
 		private int wrapAdd;
 		private int lastTimestamp;
 		private int currentTimestamp;
+
+		private int randomChannel;
+		private int randomNumber;
 
 		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
@@ -231,7 +237,28 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 							// MISC10 events, carry 2 bits type and 10 bits information.
 							// Used in SampleProb chip to send info about random DAC values.
 							case 6:
-								// TODO: implement this.
+								// Get Misc10 identifier from upper 2 bits of the 12 bits data.
+								byte misc10Code = (byte) ((data >>> 10) & 0x03);
+
+								if (misc10Code == EC_MISC10_RANDOM_PART1) {
+									// Part1: contains 8 bits of data, 4 for channel address, 4 for the upper bits of
+									// the 14 bit random number.
+									randomChannel = ((data >>> 4) & 0x0F);
+									randomNumber = ((data & 0x0F) << 10);
+								}
+								else if (misc10Code == EC_MISC10_RANDOM_PART2) {
+									// Part2: contains 10 bits of data, the lower bits of the 14 bit random number.
+									randomNumber |= (data & 0x03FF);
+
+									// Now we have all the parts and can commit the RandomDAC event.
+									if (ensureCapacity(buffer, eventCounter + 1)) {
+										buffer.getAddresses()[eventCounter] = DATA_TYPE_RANDOMDAC | (randomChannel << 14) | randomNumber;
+										buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+									}
+								}
+								else {
+									CypressFX3.log.severe("Caught Misc10 event that can't be handled.");
+								}
 								break;
 
 							// [ 0 | 111 | 12 dummy bits ]

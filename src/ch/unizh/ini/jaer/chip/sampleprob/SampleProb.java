@@ -33,10 +33,12 @@ import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.chip.TypedEventExtractor;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CochleaFX3HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3.SPIConfigSequence;
 
@@ -531,13 +533,34 @@ public class SampleProb extends CochleaChip implements Observer {
 				final int addr = addresses[i];
 				final int ts = timestamps[i];
 
+				if ((addr & BasicEvent.SPECIAL_EVENT_BIT_MASK) != 0) {
+					// Ignore special events generated from the WRAP_TS events.
+					// Those are only useful for advancing the sparse CochleaLP.
+					continue;
+				}
+
 				final CochleaAMSEvent e = outItr.nextOutput();
 
-				e.address = addr;
-				e.timestamp = ts;
-				e.x = (short) (addr & 0x0F);
-				e.y = 0;
-				e.type = 0;
+				// SampleProb has only either AER addresses, or special RandomDAC
+				// number events, which have a special code set.
+				if ((addr & CochleaFX3HardwareInterface.DATA_TYPE_RANDOMDAC) != 0) {
+					// RandomDAC event: channel address + random number
+					e.address = addr;
+					e.timestamp = ts;
+					e.x = (short) ((addr >>> 14) & 0x0F); // Channel address
+					e.y = (short) (addr & 0x3FFF); // Random number
+					e.type = 0;
+					e.setSpecial(true);
+				}
+				else {
+					// AER address 0-15 (16 in total)
+					e.address = addr;
+					e.timestamp = ts;
+					e.x = (short) (addr & 0x0F);
+					e.y = 0;
+					e.type = 0;
+					e.setSpecial(false);
+				}
 			}
 		}
 	}
