@@ -16,6 +16,8 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
+import java.beans.PropertyChangeSupport;
+import java.util.Arrays;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -37,24 +39,26 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
     private boolean hideOutput = getBoolean("hideOutput", false);
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
     private float faceDetectionThreshold = getFloat("faceDetectionThreshold", .5f);
-    private TargetLabeler targetLabeler = null;
-    private int totalDecisions = 0, correct = 0, incorrect = 0;
+//    private TargetLabeler targetLabeler = null;
+    Error error = new Error();
+    private float decisionLowPassMixingFactor = getFloat("decisionLowPassMixingFactor", .2f);
 
     public FaceDetectorConvNet(AEChip chip) {
         super(chip);
         setPropertyTooltip("showAnalogDecisionOutput", "shows face detection as analog activation of face unit in softmax of network output");
         setPropertyTooltip("hideOutput", "hides output face detection indications");
         setPropertyTooltip("faceDetectionThreshold", "threshold activation for showing face detection; increase to decrease false postives. Default 0.5f. You may need to set softmax=true for this to work.");
+        setPropertyTooltip("decisionLowPassMixingFactor", "The softmax outputs of the CNN are low pass filtered using this mixing factor; reduce decisionLowPassMixingFactor to filter more decisions");
         FilterChain chain = new FilterChain(chip);
-        targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
-        chain.add(targetLabeler);
+//        targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
+//        chain.add(targetLabeler);
         setEnclosedFilterChain(chain);
-        apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
+        apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, error);
     }
 
     @Override
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
-        targetLabeler.filterPacket(in);
+//        targetLabeler.filterPacket(in);
         EventPacket out = super.filterPacket(in);
         return out;
     }
@@ -80,33 +84,30 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
     @Override
     public void resetFilter() {
         super.resetFilter();
-        totalDecisions = 0;
-        correct = 0;
-        incorrect = 0;
-
+        error.reset();
     }
 
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
-        if (yes && !targetLabeler.hasLocations()) {
-            Runnable r = new Runnable() {
-
-                @Override
-                public void run() {
-                    targetLabeler.loadLastLocations();
-                }
-            };
-            SwingUtilities.invokeLater(r);
-        }
+//        if (yes && !targetLabeler.hasLocations()) {
+//            Runnable r = new Runnable() {
+//
+//                @Override
+//                public void run() {
+//                    targetLabeler.loadLastLocations();
+//                }
+//            };
+//            SwingUtilities.invokeLater(r);
+//        }
     }
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
-        if (targetLabeler != null) {
-            targetLabeler.annotate(drawable);
-        }
+//        if (targetLabeler != null) {
+//            targetLabeler.annotate(drawable);
+//        }
         if (hideOutput) {
             return;
         }
@@ -114,22 +115,18 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
         checkBlend(gl);
         int sy = chip.getSizeY();
         if ((apsDvsNet != null) && (apsDvsNet.outputLayer != null) && (apsDvsNet.outputLayer.activations != null)) {
-            drawDecisionOutput(gl, sy, apsDvsNet, Color.RED);
+            drawDecisionOutput(gl, sy, Color.GREEN);
         }
 
-        if (totalDecisions > 0) {
-            float errorRate = (float) incorrect / totalDecisions;
-            String s = String.format("Error rate %.2f%% (total=%d correct=%d incorrect=%d)\n", errorRate * 100, totalDecisions, correct, incorrect);
-            MultilineAnnotationTextRenderer.renderMultilineString(s);
-        }
+        error.draw(gl);
 
     }
     GLU glu = null;
     GLUquadric quad = null;
 
-    private void drawDecisionOutput(GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
+    private void drawDecisionOutput(GL2 gl, int sy, Color color) {
         // 0=left, 1=center, 2=right, 3=no target
-        float faciness = net.outputLayer.activations[0], nonfaciness = net.outputLayer.activations[1];
+        float faciness = error.lowpassFilteredOutputUnits[0], nonfaciness = error.lowpassFilteredOutputUnits[0];
         float r = color.getRed() / 255f, g = color.getGreen() / 255f, b = color.getBlue() / 255f;
         float[] cv = color.getColorComponents(null);
         if (glu == null) {
@@ -143,7 +140,7 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
         float brightness = 0.0f;
         // brightness set by showAnalogDecisionOutput
         if (showAnalogDecisionOutput) {
-            brightness = net.outputLayer.activations[0] * 1f; // brightness scale
+            brightness = error.lowpassFilteredOutputUnits[0] * 1f; // brightness scale
         } else if (faciness > faceDetectionThreshold) {
             brightness = 1;
         }
@@ -153,24 +150,6 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
         glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
         glu.gluDisk(quad, rad - rim, rad + rim, 32, 1);
         gl.glPopMatrix();
-    }
-
-    @Override
-    public synchronized void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName() != DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
-            super.propertyChange(evt);
-        } else {
-            DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
-            Boolean correctDecision = correctDescisionFromTargetLabeler(targetLabeler, net);
-            if (correctDecision != null) {
-                totalDecisions++;
-                if (correctDecision) {
-                    correct++;
-                } else {
-                    incorrect++;
-                }
-            }
-        }
     }
 
     /**
@@ -216,6 +195,101 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
     public void setFaceDetectionThreshold(float faceDetectionThreshold) {
         this.faceDetectionThreshold = faceDetectionThreshold;
         putFloat("faceDetectionThreshold", faceDetectionThreshold);
+    }
+
+    /**
+     * @return the decisionLowPassMixingFactor
+     */
+    public float getDecisionLowPassMixingFactor() {
+        return decisionLowPassMixingFactor;
+    }
+
+    /**
+     * @param decisionLowPassMixingFactor the decisionLowPassMixingFactor to set
+     */
+    public void setDecisionLowPassMixingFactor(float decisionLowPassMixingFactor) {
+        if (decisionLowPassMixingFactor > 1) {
+            decisionLowPassMixingFactor = 1;
+        }
+        this.decisionLowPassMixingFactor = decisionLowPassMixingFactor;
+        putFloat("decisionLowPassMixingFactor", decisionLowPassMixingFactor);
+    }
+
+    private class Error implements PropertyChangeListener {
+
+        final int NUM_CLASSES = 2;
+        int totalCount, totalCorrect, totalIncorrect;
+        int[] correct = new int[NUM_CLASSES], incorrect = new int[NUM_CLASSES], count = new int[NUM_CLASSES];
+        int dvsTotalCount, dvsCorrect, dvsIncorrect;
+        int apsTotalCount, apsCorrect, apsIncorrect;
+        char[] outputChars = {'F', 'N'};
+        int[] decisionCounts = new int[NUM_CLASSES];
+        final int FACE = 0, NONFACE = 1;
+        final String[] decisionStrings = {"Face", "Non-Face"};
+        float[] lowpassFilteredOutputUnits = new float[NUM_CLASSES];
+        final int HISTORY_LENGTH=10;
+        int[] decisionHistory = new int[HISTORY_LENGTH];
+        float maxActivation = Float.NEGATIVE_INFINITY;
+        int maxUnit = -1;
+
+        public Error() {
+            reset();
+        }
+
+        void reset() {
+            totalCount = 0;
+            totalCorrect = 0;
+            totalIncorrect = 0;
+            Arrays.fill(correct, 0);
+            Arrays.fill(incorrect, 0);
+            Arrays.fill(count, 0);
+            Arrays.fill(decisionCounts, 0);
+            Arrays.fill(lowpassFilteredOutputUnits, 0);
+            dvsTotalCount = 0;
+            dvsCorrect = 0;
+            dvsIncorrect = 0;
+            apsTotalCount = 0;
+            apsCorrect = 0;
+            apsIncorrect = 0;
+
+        }
+
+        @Override
+        public String toString() {
+            if (totalCount == 0) {
+                return "Error: no samples yet";
+            }
+            StringBuilder sb = new StringBuilder("Decision statistics: ");
+            for (int i = 0; i < NUM_CLASSES; i++) {
+                sb.append(String.format("%s: %d (%.1f%%)  ", decisionStrings[i], decisionCounts[i], 100 * (float) decisionCounts[i] / totalCount));
+            }
+            return sb.toString();
+        }
+
+        @Override
+        public synchronized void propertyChange(PropertyChangeEvent evt) {
+            if (evt.getPropertyName() == DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
+                DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
+                maxActivation = Float.NEGATIVE_INFINITY;
+                maxUnit = -1;
+                for (int i = 0; i < NUM_CLASSES; i++) {
+                    float output = net.outputLayer.activations[i];
+                    lowpassFilteredOutputUnits[i] = (1 - decisionLowPassMixingFactor) * lowpassFilteredOutputUnits[i] + output * decisionLowPassMixingFactor;
+                    if (lowpassFilteredOutputUnits[i] > maxActivation) {
+                        maxActivation = lowpassFilteredOutputUnits[i];
+                        maxUnit = i;
+                    }
+                }
+                decisionCounts[maxUnit]++;
+                totalCount++;
+            }
+        }
+
+        private void draw(GL2 gl) {
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(.8f * chip.getSizeY());
+            MultilineAnnotationTextRenderer.renderMultilineString(toString());
+        }
+
     }
 
 }
