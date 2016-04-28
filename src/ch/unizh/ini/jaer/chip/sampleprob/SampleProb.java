@@ -119,6 +119,7 @@ public class SampleProb extends CochleaChip implements Observer {
 
 		final SPIConfigBit dacRun;
 		final SPIConfigBit dacRandomRun;
+		final SPIConfigBit dacRandomUSBRun;
 
 		// All bias types.
 		final SPIConfigBit biasForceEnable;
@@ -255,6 +256,11 @@ public class SampleProb extends CochleaChip implements Observer {
 				(short) 15, false, this);
 			dacRandomRun.addObserver(this);
 			allPreferencesList.add(dacRandomRun);
+
+			dacRandomUSBRun = new SPIConfigBit("DACRandomUSBRun", "Send random values out via USB.", CypressFX3.FPGA_DAC, (short) 14, false,
+				this);
+			dacRandomUSBRun.addObserver(this);
+			allPreferencesList.add(dacRandomUSBRun);
 
 			// Multiplexer module
 			biasForceEnable = new SPIConfigBit("ForceBiasEnable", "Force the biases to be always ON.", CypressFX3.FPGA_MUX, (short) 3,
