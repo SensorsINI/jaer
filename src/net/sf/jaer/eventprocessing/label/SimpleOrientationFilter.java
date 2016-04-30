@@ -170,7 +170,7 @@ public class SimpleOrientationFilter extends AbstractOrientationFilter{
                     int[] dtList = new int[rfSize];
                     for ( int k = 0 ; k < rfSize ; k++ ){
                         int dt = dts[ori][k];
-                        if ( dt > dtRejectThreshold ){
+                        if ( dt<0 || dt > dtRejectThreshold ){
                             continue; // we're averaging delta times; this rejects outliers
                         }
                         oridts[ori] += dt; // average dt
