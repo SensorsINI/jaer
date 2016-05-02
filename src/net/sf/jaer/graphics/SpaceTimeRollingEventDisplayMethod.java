@@ -111,7 +111,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             return;
         }
         gl.glEnable(GL3.GL_PROGRAM_POINT_SIZE);
-        checkEventBufferAllocation(BUF_INITIAL_SIZE_EVENTS);
+        checkEventVertexBufferAllocation(BUF_INITIAL_SIZE_EVENTS);
 
         shadersInstalled = true;
         IntBuffer b = IntBuffer.allocate(8); // buffer to hold return values
@@ -185,16 +185,16 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         checkGLError(gl, "getting IDs for uniform modelview and projection matrices in shaders");
     }
 
-    private void checkEventBufferAllocation(int sizeEvents) {
+    private void checkEventVertexBufferAllocation(int sizeEvents) {
         if ((eventVertexBuffer == null) || (eventVertexBuffer.capacity() <= (sizeEvents * EVENT_SIZE_BYTES))) {
             eventVertexBuffer = ByteBuffer.allocateDirect(sizeEvents * EVENT_SIZE_BYTES);
             eventVertexBuffer.order(ByteOrder.LITTLE_ENDIAN);
         }
+    }
+
+    private void checkEventListAllocation(int sizeEvents) {
         if (eventList == null) {
             eventList = new ArrayList(sizeEvents);
-        }
-        if (eventListTmp == null) {
-            eventListTmp = new ArrayList(sizeEvents);
         }
     }
 
@@ -262,7 +262,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             if (newTimeWindowUs != timeWindowUs) {
                 regenerateAxesDisplayList = true;
                 eventVertexBuffer.clear();
-                eventList.clear();
+                if (eventList != null) {
+                    eventList.clear();
+                }
             }
             timeWindowUs = newTimeWindowUs;
             t0 = t1 - timeWindowUs;
@@ -272,14 +274,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             smax = chip.getMaxSize();
             tfac = (float) (smax * aspectRatio) / timeWindowUs;
 
-            checkEventBufferAllocation(eventList.size());
-            pruneOldEvents(t0,t1);
+            pruneOldEvents(t0, t1);
+            checkEventListAllocation((eventList!=null? eventList.size():0) + packet.getSize());
             addEventsToEventList(packet);
+            checkEventVertexBufferAllocation(eventList.size());
             eventVertexBuffer.clear(); // sets pos=0 and limit=capacity // TODO should not really clear, rather should erase old events
-//            while(eventVertexBuffer.limit()<eventVertexBuffer.capacity()){
-//                eventVertexBuffer.put((byte)0);
-//            }
-
             for (BasicEvent ev : eventList) {
                 if (ev.timestamp < t0 || ev.timestamp > t1) {
                     continue; // don't render events outside of box, no matter how they get there
@@ -307,18 +306,22 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     }
 
     private void pruneOldEvents(final int startTimeUs, final int endTimeUs) {
-        eventListTmp.clear();
+        if(eventList==null) return;
+        if (eventListTmp == null) {
+            eventListTmp = new ArrayList(eventList.size());
+        } else {
+            eventListTmp.clear();
+        }
 
         for (BasicEvent ev : eventList) {
-            if (ev.timestamp >= startTimeUs || ev.timestamp<endTimeUs) {
+            if (ev.timestamp >= startTimeUs || ev.timestamp < endTimeUs) {
                 eventListTmp.add(ev);
             }
         }
         eventList.clear();
-        ArrayList<BasicEvent> tmp=eventList;
-        eventList=eventListTmp;
-        eventListTmp=tmp;
-//        eventList.addAll(eventListTmp);
+        ArrayList<BasicEvent> tmp = eventList;
+        eventList = eventListTmp;
+        eventListTmp = tmp;
     }
 
     void renderEvents(GL2 gl, GLAutoDrawable drawable, ByteBuffer buffer, int nEvents, float dtS, float zmax) {
@@ -488,7 +491,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
         gl.glUniform1f(idt0, -zmax);
         gl.glUniform1f(idt1, 0);
-        if (largePointSizeEnabled ) {
+        if (largePointSizeEnabled) {
             pointSize = 12;
         } else {
             pointSize = 4;
