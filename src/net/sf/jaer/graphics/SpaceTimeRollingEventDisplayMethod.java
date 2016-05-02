@@ -275,7 +275,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             tfac = (float) (smax * aspectRatio) / timeWindowUs;
 
             pruneOldEvents(t0, t1);
-            checkEventListAllocation((eventList!=null? eventList.size():0) + packet.getSize());
+            checkEventListAllocation((eventList != null ? eventList.size() : 0) + packet.getSize());
             addEventsToEventList(packet);
             checkEventVertexBufferAllocation(eventList.size());
             eventVertexBuffer.clear(); // sets pos=0 and limit=capacity // TODO should not really clear, rather should erase old events
@@ -287,9 +287,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 eventVertexBuffer.putFloat(ev.y);
                 eventVertexBuffer.putFloat(tfac * (ev.timestamp - t1)); // negative z
             }
+            eventVertexBuffer.flip(); // get ready for reading by setting limit=pos and then pos=0 
             checkGLError(gl, "set uniform t0 and t1");
         }
-        eventVertexBuffer.flip(); // get ready for reading by setting limit=pos and then pos=0 
         renderEvents(gl, drawable, eventVertexBuffer, eventVertexBuffer.limit(), 1e-6f * timeWindowUs, smax * aspectRatio);
     }
 
@@ -306,7 +306,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     }
 
     private void pruneOldEvents(final int startTimeUs, final int endTimeUs) {
-        if(eventList==null) return;
+        if (eventList == null) {
+            return;
+        }
         if (eventListTmp == null) {
             eventListTmp = new ArrayList(eventList.size());
         } else {
