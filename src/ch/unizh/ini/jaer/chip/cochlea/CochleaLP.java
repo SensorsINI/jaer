@@ -51,6 +51,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 
+/** Low-power binaural AER silicon cochlea with 64 channels. Hardware interface is CochleaFX3HardwareInterface */
 @Description("Low-power binaural AER silicon cochlea with 64 channels")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class CochleaLP extends CochleaChip implements Observer {
@@ -566,6 +567,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 	public class Extractor extends TypedEventExtractor<BinauralCochleaEvent> {
 
 		private static final long serialVersionUID = -3469492271382423090L;
+                private int lastSpecialEventTimestamp=0;
 
 		public Extractor(final AEChip chip) {
 			super(chip);
@@ -633,7 +635,9 @@ public class CochleaLP extends CochleaChip implements Observer {
 				e.y = getYFromAddress(addr);
 				e.type = getTypeFromAddress(addr);
 				if ((e.address & BasicEvent.SPECIAL_EVENT_BIT_MASK) != 0) {
-					e.setSpecial(true);
+					e.setSpecial(true); // tick events for CochleaLP; every 32768 us from logic
+                                        int dt=e.timestamp-lastSpecialEventTimestamp;
+                                        lastSpecialEventTimestamp=e.timestamp;
 				}
 
 				j++;
