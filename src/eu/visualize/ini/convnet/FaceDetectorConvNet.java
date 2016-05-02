@@ -25,6 +25,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.SpikeSound;
 
 /**
  * Extends DavisDeepLearnCnnProcessor to add annotation graphics to show
@@ -38,17 +39,21 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
 
     private boolean hideOutput = getBoolean("hideOutput", false);
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
+    private boolean playSpikeSounds = getBoolean("playSpikeSounds", false);
     private float faceDetectionThreshold = getFloat("faceDetectionThreshold", .5f);
 //    private TargetLabeler targetLabeler = null;
     Error error = new Error();
     private float decisionLowPassMixingFactor = getFloat("decisionLowPassMixingFactor", .2f);
+    private SpikeSound spikeSound=null;
 
     public FaceDetectorConvNet(AEChip chip) {
         super(chip);
-        setPropertyTooltip("showAnalogDecisionOutput", "shows face detection as analog activation of face unit in softmax of network output");
-        setPropertyTooltip("hideOutput", "hides output face detection indications");
-        setPropertyTooltip("faceDetectionThreshold", "threshold activation for showing face detection; increase to decrease false postives. Default 0.5f. You may need to set softmax=true for this to work.");
-        setPropertyTooltip("decisionLowPassMixingFactor", "The softmax outputs of the CNN are low pass filtered using this mixing factor; reduce decisionLowPassMixingFactor to filter more decisions");
+        String faceDetector="Face detector";
+        setPropertyTooltip(faceDetector,"showAnalogDecisionOutput", "Shows face detection as analog activation of face unit in softmax of network output");
+        setPropertyTooltip(faceDetector,"hideOutput", "Hides output face detection indications");
+        setPropertyTooltip(faceDetector,"faceDetectionThreshold", "Threshold activation for showing face detection; increase to decrease false postives. Default 0.5f. You may need to set softmax=true for this to work.");
+        setPropertyTooltip(faceDetector,"decisionLowPassMixingFactor", "The softmax outputs of the CNN are low pass filtered using this mixing factor; reduce decisionLowPassMixingFactor to filter more decisions");
+        setPropertyTooltip(faceDetector,"playSpikeSounds", "Play a spike sound on detecting face");
         FilterChain chain = new FilterChain(chip);
 //        targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
 //        chain.add(targetLabeler);
@@ -215,6 +220,21 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
         putFloat("decisionLowPassMixingFactor", decisionLowPassMixingFactor);
     }
 
+    /**
+     * @return the playSpikeSounds
+     */
+    public boolean isPlaySpikeSounds() {
+        return playSpikeSounds;
+    }
+
+    /**
+     * @param playSpikeSounds the playSpikeSounds to set
+     */
+    public void setPlaySpikeSounds(boolean playSpikeSounds) {
+        this.playSpikeSounds = playSpikeSounds;
+        putBoolean("playSpikeSounds",playSpikeSounds);
+    }
+
     private class Error implements PropertyChangeListener {
 
         final int NUM_CLASSES = 2;
@@ -282,6 +302,12 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
                 }
                 decisionCounts[maxUnit]++;
                 totalCount++;
+                if(playSpikeSounds && maxUnit==FACE){
+                    if(spikeSound==null){
+                        spikeSound=new SpikeSound();
+                    }
+                    spikeSound.play();
+                }
             }
         }
 
