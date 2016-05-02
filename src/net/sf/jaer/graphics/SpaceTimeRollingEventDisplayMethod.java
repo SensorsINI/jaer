@@ -45,6 +45,7 @@ import java.awt.event.ActionListener;
 import java.util.prefs.Preferences;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
+import sun.awt.AWTAccessor;
 
 /**
  * Displays events in space time using a rolling view where old events are
@@ -85,7 +86,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private final FloatBuffer proj = FloatBuffer.allocate(16);
     private int idMv, idProj, idt0, idt1, idPointSize;
     private ArrayList<BasicEvent> eventList = null, eventListTmp = null;
-    private ByteBuffer eventVertexBuffer, eventVertexBufferTmp;
+    private ByteBuffer eventVertexBuffer;
     private int timeWindowUs = 100000, t0;
     private static final int EVENT_SIZE_BYTES = (Float.SIZE / 8) * 3;// size of event in shader ByteBuffer
     private int axesDisplayListId = -1;
@@ -253,26 +254,31 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             } else if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
                 newTimeWindowUs = chip.getAeViewer().getAePlayer().getTimesliceUs() * (1 << colorScale);
             } else {
-                newTimeWindowUs = 100000;
+                newTimeWindowUs = 100000; // 100ms
             }
-            if (newTimeWindowUs < 100) {
-                newTimeWindowUs = 100; // tobi - don't let time get too short for window
+            if (newTimeWindowUs < 10000) {
+                newTimeWindowUs = 10000; // tobi - don't let time get too short for window, minimum 10ms
             }
             if (newTimeWindowUs != timeWindowUs) {
                 regenerateAxesDisplayList = true;
+                eventVertexBuffer.clear();
+                eventList.clear();
             }
             timeWindowUs = newTimeWindowUs;
             t0 = t1 - timeWindowUs;
-            pruneOldEvents(t0);
 
             sx = chip.getSizeX();
             sy = chip.getSizeY();
             smax = chip.getMaxSize();
             tfac = (float) (smax * aspectRatio) / timeWindowUs;
 
-            addEventsToEventList(packet);
             checkEventBufferAllocation(eventList.size());
-            eventVertexBuffer.clear();// TODO should not really clear, rather should erase old events
+            pruneOldEvents(t0,t1);
+            addEventsToEventList(packet);
+            eventVertexBuffer.clear(); // sets pos=0 and limit=capacity // TODO should not really clear, rather should erase old events
+//            while(eventVertexBuffer.limit()<eventVertexBuffer.capacity()){
+//                eventVertexBuffer.put((byte)0);
+//            }
 
             for (BasicEvent ev : eventList) {
                 if (ev.timestamp < t0 || ev.timestamp > t1) {
@@ -282,9 +288,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 eventVertexBuffer.putFloat(ev.y);
                 eventVertexBuffer.putFloat(tfac * (ev.timestamp - t1)); // negative z
             }
-            eventVertexBuffer.flip();
             checkGLError(gl, "set uniform t0 and t1");
         }
+        eventVertexBuffer.flip(); // get ready for reading by setting limit=pos and then pos=0 
         renderEvents(gl, drawable, eventVertexBuffer, eventVertexBuffer.limit(), 1e-6f * timeWindowUs, smax * aspectRatio);
     }
 
@@ -300,19 +306,22 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
     }
 
-    private void pruneOldEvents(final int startTimeUs) {
+    private void pruneOldEvents(final int startTimeUs, final int endTimeUs) {
         eventListTmp.clear();
 
         for (BasicEvent ev : eventList) {
-            if (ev.timestamp >= startTimeUs) {
+            if (ev.timestamp >= startTimeUs || ev.timestamp<endTimeUs) {
                 eventListTmp.add(ev);
             }
         }
         eventList.clear();
-        eventList.addAll(eventListTmp);
+        ArrayList<BasicEvent> tmp=eventList;
+        eventList=eventListTmp;
+        eventListTmp=tmp;
+//        eventList.addAll(eventListTmp);
     }
 
-    void renderEvents(GL2 gl, GLAutoDrawable drawable, ByteBuffer b, int nEvents, float dtS, float zmax) {
+    void renderEvents(GL2 gl, GLAutoDrawable drawable, ByteBuffer buffer, int nEvents, float dtS, float zmax) {
         gl.glDepthMask(true);
         gl.glDepthFunc(GL.GL_GEQUAL);
         gl.glEnable(GL.GL_DEPTH_TEST);
@@ -399,7 +408,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             w = glut.glutBitmapLength(font, "t=0");
             gl.glRasterPos3f(-2 * w * modelScale, 0, 0);
             glut.glutBitmapString(font, "t=0");
-            gl.glColor3f(.5f, 0, 0);
+            gl.glColor3f(1f, 0, 0);
             String tMaxString = "t=" + engFmt.format(-dtS) + "s";
             w = glut.glutBitmapLength(font, tMaxString);
             gl.glRasterPos3f(sx * 1.05f, 0, -zmax);
@@ -418,8 +427,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -zmax * 4, zmax * 4);
         gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, zmax * 1.5f, zmax * .3f);
         gl.glTranslatef(0, 0, -1 * zmax);
-        gl.glRotatef(getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
-        gl.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
+        gl.glRotatef(-getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
+        gl.glRotatef(-getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
         gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
         gl.glTranslatef(0, 0, 1 * zmax);
 //        gl.glTranslatef(sx/2, sy/2, zmax);
@@ -435,7 +444,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glDisable(GL.GL_BLEND);
         gl.glEnable(GL2ES1.GL_POINT_SMOOTH);
         gl.glEnable(GL.GL_BLEND);
-        if (additiveColorMenuItem == null || additiveColorMenuItem.isSelected()) {
+        if (additiveColorEnabled) {
             gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
         } else {
             gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
@@ -479,19 +488,19 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
         gl.glUniform1f(idt0, -zmax);
         gl.glUniform1f(idt1, 0);
-        if (largePointsMenuItem != null && largePointsMenuItem.isSelected()) {
+        if (largePointSizeEnabled ) {
             pointSize = 12;
         } else {
             pointSize = 4;
         }
         gl.glUniform1f(idPointSize, pointSize);
-        checkGLError(gl, "setting t0 or t1 for buffer");
+        checkGLError(gl, "setting dimensionless time limits t0 or t1 for event buffer rendering");
 
         gl.glBindVertexArray(vao);
 //        gl.glEnableVertexAttribArray(polarity_vert);
         gl.glEnableVertexAttribArray(v_vert);
         gl.glBindBuffer(GL.GL_ARRAY_BUFFER, vbo);
-        gl.glBufferData(GL.GL_ARRAY_BUFFER, b.limit(), b, GL2ES2.GL_STREAM_DRAW);
+        gl.glBufferData(GL.GL_ARRAY_BUFFER, buffer.limit(), buffer, GL2ES2.GL_STREAM_DRAW);
         checkGLError(gl, "binding vertex buffers");
 
         // draw
@@ -583,8 +592,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
         displayMenu = new JMenu("3-D Display Options");
         additiveColorMenuItem = new JCheckBoxMenuItem("Enable additive color");
+        additiveColorMenuItem.setToolTipText("Use additive color rather than blending for drawing event points");
         additiveColorMenuItem.setSelected(additiveColorEnabled);
         largePointsMenuItem = new JCheckBoxMenuItem("Enable large event points");
+        largePointsMenuItem.setToolTipText("make the event points larger (12 points) rather than the default (4 points) for better visibility with sparse event stream");
         largePointsMenuItem.setSelected(largePointSizeEnabled);
 
         additiveColorMenuItem.addActionListener(new ActionListener() {
