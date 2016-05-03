@@ -11,6 +11,8 @@
  */
 package net.sf.jaer.graphics;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -19,14 +21,10 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.util.prefs.Preferences;
 
-import net.sf.jaer.Description;
-import net.sf.jaer.DevelopmentStatus;
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.graphics.ChipCanvas.ClipArea;
-import net.sf.jaer.util.EngineeringFormat;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JMenu;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -40,12 +38,13 @@ import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.util.gl2.GLUT;
 
 import eu.seebetter.ini.chips.davis.DavisDisplayConfigInterface;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.util.prefs.Preferences;
-import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JMenu;
-import sun.awt.AWTAccessor;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.graphics.ChipCanvas.ClipArea;
+import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * Displays events in space time using a rolling view where old events are
@@ -280,14 +279,14 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             checkEventVertexBufferAllocation(eventList.size());
             eventVertexBuffer.clear(); // sets pos=0 and limit=capacity // TODO should not really clear, rather should erase old events
             for (BasicEvent ev : eventList) {
-                if (ev.timestamp < t0 || ev.timestamp > t1) {
+                if ((ev.timestamp < t0) || (ev.timestamp > t1)) {
                     continue; // don't render events outside of box, no matter how they get there
                 }
                 eventVertexBuffer.putFloat(ev.x);
                 eventVertexBuffer.putFloat(ev.y);
                 eventVertexBuffer.putFloat(tfac * (ev.timestamp - t1)); // negative z
             }
-            eventVertexBuffer.flip(); // get ready for reading by setting limit=pos and then pos=0 
+            eventVertexBuffer.flip(); // get ready for reading by setting limit=pos and then pos=0
             checkGLError(gl, "set uniform t0 and t1");
         }
         renderEvents(gl, drawable, eventVertexBuffer, eventVertexBuffer.limit(), 1e-6f * timeWindowUs, smax * aspectRatio);
@@ -316,7 +315,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
 
         for (BasicEvent ev : eventList) {
-            if (ev.timestamp >= startTimeUs || ev.timestamp < endTimeUs) {
+            if ((ev.timestamp >= startTimeUs) || (ev.timestamp < endTimeUs)) {
                 eventListTmp.add(ev);
             }
         }
