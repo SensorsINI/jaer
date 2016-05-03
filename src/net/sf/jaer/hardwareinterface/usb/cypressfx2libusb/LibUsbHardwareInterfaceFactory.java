@@ -50,7 +50,14 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 		addDeviceToMap(CypressFX2.VID_BLANK, CypressFX2.PID_BLANK, CypressFX2.class);
 
 		// Initialize LibUsb.
+                try { 
 		LibUsb.init(null);
+                } catch(UnsatisfiedLinkError ule) {
+                    UnsatisfiedLinkError u = new UnsatisfiedLinkError("Failed to initialize libusb4java! Do you have noexec on your /tmp ? See jAERViewer1.5_linux.sh for a workaround.\n"+
+                            ule.getLocalizedMessage());
+                    u.setStackTrace(ule.getStackTrace());
+                    throw u;
+                }
 
 		// Build up first list of compatible devices.
 		refreshCompatibleDevicesList();
