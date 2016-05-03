@@ -305,7 +305,7 @@
     <Component class="javax.swing.JCheckBox" name="cAERDisplayEnabledCheckBox">
       <Properties>
         <Property name="text" type="java.lang.String" value="cAERDisplayEnabled"/>
-        <Property name="toolTipText" type="java.lang.String" value="Enable for cAER UDP data streams"/>
+        <Property name="toolTipText" type="java.lang.String" value="Enable for UDP streams coming from cAER, which have a 28 byte header and use the Jaer3BufferParser to parse the stream. Has no effect for AEUnicastOutput streams. "/>
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="cAERDisplayEnabledCheckBoxActionPerformed"/>

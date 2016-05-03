@@ -274,7 +274,7 @@ public class AEUnicastDialog extends javax.swing.JDialog{
         });
 
         cAERDisplayEnabledCheckBox.setText("cAERDisplayEnabled");
-        cAERDisplayEnabledCheckBox.setToolTipText("Enable for cAER UDP data streams");
+        cAERDisplayEnabledCheckBox.setToolTipText("Enable for UDP streams coming from cAER, which have a 28 byte header and use the Jaer3BufferParser to parse the stream. Has no effect for AEUnicastOutput streams. ");
         cAERDisplayEnabledCheckBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cAERDisplayEnabledCheckBoxActionPerformed(evt);

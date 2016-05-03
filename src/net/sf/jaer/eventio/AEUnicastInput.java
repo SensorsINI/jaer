@@ -60,12 +60,12 @@ import net.sf.jaer.eventio.Jaer3BufferParser.jaer3EventExtractor;
  *
  * @see #setAddressFirstEnabled
  * @see #setSequenceNumberEnabled
-
-
+ *
+ *
  */
 public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener {
 
-    private int NBUFFERS=100; // should match somehow the expected number of datagrams that come in a burst before the readPacket() method is called.
+    private int NBUFFERS = 100; // should match somehow the expected number of datagrams that come in a burst before the readPacket() method is called.
 
     // TODO If the remote host sends 16 bit timestamps, then a local unwrapping is done to extend the time range
     private static Preferences prefs = Preferences.userNodeForPackage(AEUnicastInput.class);
@@ -75,7 +75,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private boolean sequenceNumberEnabled = prefs.getBoolean("AEUnicastInput.sequenceNumberEnabled", true);
     private boolean cAERStreamEnabled = prefs.getBoolean("AEUnicastInput.cAERDisplayEnabled", true);
     private boolean addressFirstEnabled = prefs.getBoolean("AEUnicastInput.addressFirstEnabled", true);
-    private ArrayBlockingQueue<ByteBuffer> filledBufferQueue = new ArrayBlockingQueue(NBUFFERS), availableBufferQueue=new ArrayBlockingQueue(NBUFFERS);
+    private ArrayBlockingQueue<ByteBuffer> filledBufferQueue = new ArrayBlockingQueue(NBUFFERS), availableBufferQueue = new ArrayBlockingQueue(NBUFFERS);
     private AENetworkRawPacket packet = new AENetworkRawPacket();
     private static final Logger log = Logger.getLogger("AESocketStream");
     private int bufferSize = prefs.getInt("AEUnicastInput.bufferSize", AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES);
@@ -83,7 +83,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private float timestampMultiplier = prefs.getFloat("AEUnicastInput.timestampMultiplier", DEFAULT_TIMESTAMP_MULTIPLIER);
     private boolean use4ByteAddrTs = prefs.getBoolean("AEUnicastInput.use4ByteAddrTs", DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);
     private boolean localTimestampsEnabled = prefs.getBoolean("AEUnicastOutput.localTimestampsEnabled", false);
-    private boolean spinnakerProtocolEnabled=prefs.getBoolean("AEUnicastInput.spinnakerProtocolEnabled", false);
+    private boolean spinnakerProtocolEnabled = prefs.getBoolean("AEUnicastInput.spinnakerProtocolEnabled", false);
     boolean stopme = false;
     private DatagramChannel channel;
     private int datagramCounter = 0;
@@ -95,7 +95,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private Semaphore pauseSemaphore = new Semaphore(1);
     private volatile boolean paused = false;
     private Reader readingThread = null;
-    private AEChip chip=null; // needed to support cAER jaer3.0 decoding to jAER format
+    private AEChip chip = null; // needed to support cAER jaer3.0 decoding to jAER format
     private EventExtractor2D restoreEventExtractor = null; // The restore extractor
     private ByteBuffer wholePktBuffer = null;
     private int jaer3PktSize = 0, jaer3PktNum = 0;
@@ -114,7 +114,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
      *
      */
     public AEUnicastInput(AEChip chip) { // TODO basic problem here is that if port is unavailable, then we cannot construct and set port
-        this.chip=chip;
+        this.chip = chip;
         restoreEventExtractor = chip.getEventExtractor();
     }
 
@@ -129,9 +129,9 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
         setPort(port);
     }
 
-    private void allocateBufffers(){
+    private void allocateBufffers() {
         availableBufferQueue.clear();
-        for(int i=0;i<NBUFFERS;i++){
+        for (int i = 0; i < NBUFFERS; i++) {
             ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
             buffer.order(swapBytesEnabled || spinnakerProtocolEnabled ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN); //spinnaker always uses little endian
             availableBufferQueue.add(buffer);
@@ -139,7 +139,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
         filledBufferQueue.clear();
     }
 
-    private void freeBuffers(){
+    private void freeBuffers() {
         availableBufferQueue.clear();
         filledBufferQueue.clear(); // allow GC to collect these references
     }
@@ -151,12 +151,10 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             } else {
                 return 4;
             }
+        } else if (timestampsEnabled) {
+            return 4;
         } else {
-            if (timestampsEnabled) {
-                return 4;
-            } else {
-                return 2;
-            }
+            return 2;
         }
     }
 
@@ -169,19 +167,23 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
      */
     int nTmp = 0;
     int nEventCapacity = 0;
+
     public AENetworkRawPacket readPacket() {
         packet.clear();
         readingThread.maxSizeExceeded = false;
         try {
+            returnearly:
             while (filledBufferQueue.peek() != null) {
                 ByteBuffer buffer = filledBufferQueue.take();
                 // buffer.clear();
                 extractEvents(buffer, packet);
                 buffer.clear();
                 availableBufferQueue.put(buffer);
-                if(packet.getNumEvents() >= 10000) break; // Set a threshold to avoid the big dealy caused by accumulating too many events in the packet.
-             }
-                return packet;
+                if (packet.getNumEvents() >= 10000) {
+                    break returnearly; // Set a threshold to avoid the big dealy caused by accumulating too many events in the packet.
+                }
+            }
+            return packet;
         } catch (InterruptedException e) {
             log.info("Interrupted exchange of buffers in AEUnicastInput: " + e.toString());
             return null;
@@ -203,14 +205,14 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     /**
      * Receives a buffer from the UDP socket. Data is stored in internal buffer.
      *
-     * @param packet used to set number of events to 0 if there is an
-     * error and to store the source host(s) information.
+     * @param packet used to set number of events to 0 if there is an error and
+     * to store the source host(s) information.
      * @return client if successful, null if there is an IOException.
      */
     private SocketAddress receiveDatagramAndPutToExchanger(AENetworkRawPacket packet) {
         SocketAddress client = null;
         try {
-            ByteBuffer buffer=availableBufferQueue.take(); // buffer must be cleared by readPacket
+            ByteBuffer buffer = availableBufferQueue.take(); // buffer must be cleared by readPacket
 //            ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
 //            buffer.order(swapBytesEnabled ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
 
@@ -223,23 +225,21 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             }
             if (client instanceof InetSocketAddress) {
                 packet.addClientAddress((InetSocketAddress) client, packet.getNumEvents());
+            } else if (client == null) {
+                paused = true;
+                log.warning("Device not connected or wrong configured. Datagrams have to be sent to port: " + port + " .Input stream paused.");
             } else {
-                if (client == null) {
-                    paused = true;
-                    log.warning("Device not connected or wrong configured. Datagrams have to be sent to port: " + port + " .Input stream paused.");
-                } else {
-                    log.warning("unknown type of client address - should be InetSocketAddress: " + client);
-                }
+                log.warning("unknown type of client address - should be InetSocketAddress: " + client);
             }
             buffer.flip();
-            if(!spinnakerProtocolEnabled) {
-				checkSequenceNumber(buffer);
-			}
+            if (!spinnakerProtocolEnabled) {
+                checkSequenceNumber(buffer);
+            }
 //            if(exchanger.size()>10){
 //                log.info("filled queue of datagrams has "+exchanger.size()+" buffers");
 //            }
             filledBufferQueue.put(buffer); // blocks here until readPacket clears the packet
-        }catch(InterruptedException ie){
+        } catch (InterruptedException ie) {
             log.warning(ie.toString());
             return null;
         } catch (SocketTimeoutException to) {
@@ -265,19 +265,19 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
 
         return b1 << 24 | b2 << 16 | b3 << 8 | b4 << 0;
     }
-    
+
     private static ByteBuffer clone(ByteBuffer original) {
-    ByteBuffer clone = ByteBuffer.allocate(original.capacity());
-    if(clone.capacity() < 90000) { // The max length of a whole frame packet is 86464, so the capacity must be bigger than 86464, here we use 90000 for convience. 
-        clone = ByteBuffer.allocate(90000);
+        ByteBuffer clone = ByteBuffer.allocate(original.capacity());
+        if (clone.capacity() < 90000) { // The max length of a whole frame packet is 86464, so the capacity must be bigger than 86464, here we use 90000 for convience. 
+            clone = ByteBuffer.allocate(90000);
+        }
+        original.rewind(); //copy from the beginning
+        clone.put(original);
+        original.rewind();
+        // clone.flip(); // We still need to put data in the buffer, we will flip it in the end buffer, so we don't need flip at the head buffer.
+        return clone;
     }
-    original.rewind(); //copy from the beginning
-    clone.put(original);
-    original.rewind();
-    // clone.flip(); // We still need to put data in the buffer, we will flip it in the end buffer, so we don't need flip at the head buffer.
-    return clone;
-    }
-    
+
     /**
      * Extracts data from internal buffer and adds to packet, according to all
      * the option flags.
@@ -286,76 +286,71 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
      */
     private void extractEvents(ByteBuffer buffer, AENetworkRawPacket packet) {
 
-        if(isSpinnakerProtocolEnabled()) {
+        if (isSpinnakerProtocolEnabled()) {
             // Read header
-            byte byte0= buffer.get();
-            if((byte0 & 0b10000000) != 0) {
-				throw new UnsupportedOperationException("Command packets not supported yet.");
-			}
-            if(use4ByteAddrTs != ((byte0 & 0b01000000) != 0)) {
-				throw new IllegalStateException("use4ByteAddrTs conflict btw header and user setting.");
-			}
-            if((!timestampsEnabled || localTimestampsEnabled) != ((byte0 & 0b00100000) == 0)) {
-				throw new IllegalStateException("timestamp enabling conflict btw header and user setting.");
-			}
+            byte byte0 = buffer.get();
+            if ((byte0 & 0b10000000) != 0) {
+                throw new UnsupportedOperationException("Command packets not supported yet.");
+            }
+            if (use4ByteAddrTs != ((byte0 & 0b01000000) != 0)) {
+                throw new IllegalStateException("use4ByteAddrTs conflict btw header and user setting.");
+            }
+            if ((!timestampsEnabled || localTimestampsEnabled) != ((byte0 & 0b00100000) == 0)) {
+                throw new IllegalStateException("timestamp enabling conflict btw header and user setting.");
+            }
             //we ignore payloads, but need their sizes to skip them
             int payload_size; //payload size in bytes
             {
                 boolean bit1, bit0;
-                bit1= ((byte0 & 0b00010000) != 0);
-                bit0= ((byte0 & 0b00001000) != 0);
-                if(!bit0 && !bit1) {
-					payload_size= 0; //no payload
-				}
-				else if(bit0 && !bit1) {
-					payload_size= 2; //16bit
-				}
-				else if(!bit0 && bit1) {
-					payload_size= 4; //32bit
-				}
-				else {
-					payload_size= 16; //128bit
-				}
+                bit1 = ((byte0 & 0b00010000) != 0);
+                bit0 = ((byte0 & 0b00001000) != 0);
+                if (!bit0 && !bit1) {
+                    payload_size = 0; //no payload
+                } else if (bit0 && !bit1) {
+                    payload_size = 2; //16bit
+                } else if (!bit0 && bit1) {
+                    payload_size = 4; //32bit
+                } else {
+                    payload_size = 16; //128bit
+                }
             }
             //if(payload_size != 0) throw new UnsupportedOperationException("Payloads not supported.");
             //key prefix
-            if((byte0 & 0b00000100) != 0) {
-				throw new UnsupportedOperationException("Key prefixes are not supported.");
-			}
+            if ((byte0 & 0b00000100) != 0) {
+                throw new UnsupportedOperationException("Key prefixes are not supported.");
+            }
             //timestamp prefix
-            if((byte0 & 0b00000010) != 0) {
-				throw new UnsupportedOperationException("Timestamp prefixes are not supported.");
-			}
+            if ((byte0 & 0b00000010) != 0) {
+                throw new UnsupportedOperationException("Timestamp prefixes are not supported.");
+            }
             //payload prefix
-            if((byte0 & 0b00000001) != 0) {
-				throw new UnsupportedOperationException("Payload prefixes are not supported.");
-			}
+            if ((byte0 & 0b00000001) != 0) {
+                throw new UnsupportedOperationException("Payload prefixes are not supported.");
+            }
 
             //read number of events
-            int nEventsInPacket= buffer.get() & 0xff;
-            int eventSize= (2*(use4ByteAddrTs ? 4 : 2)) + payload_size;
-            int computednEventsInPacket= (buffer.limit()-4)/eventSize;
-            if(computednEventsInPacket != nEventsInPacket)
-            {
-                nEventsInPacket= Math.min(computednEventsInPacket,nEventsInPacket);
+            int nEventsInPacket = buffer.get() & 0xff;
+            int eventSize = (2 * (use4ByteAddrTs ? 4 : 2)) + payload_size;
+            int computednEventsInPacket = (buffer.limit() - 4) / eventSize;
+            if (computednEventsInPacket != nEventsInPacket) {
+                nEventsInPacket = Math.min(computednEventsInPacket, nEventsInPacket);
                 log.warning("Mismatch between number of events claimed by header and the computed one from packet size. Using smallest one.");
             }
 
             //packet counter
-            int packetNumber= buffer.get() & 0xff;
+            int packetNumber = buffer.get() & 0xff;
             if (sequenceNumberEnabled) {
                 datagramSequenceNumber = packetNumber; // swab(buffer.getInt());
-    //                log.info("recieved packet with sequence number "+packetSequenceNumber);
+                //                log.info("recieved packet with sequence number "+packetSequenceNumber);
                 if (datagramSequenceNumber != datagramCounter) {
                     log.warning(String.format("Dropped %d packets. (Incoming packet sequence number (%d) doesn't match expected packetCounter (%d), resetting packetCounter)", datagramSequenceNumber - datagramCounter, datagramSequenceNumber, datagramCounter));
                     datagramCounter = datagramSequenceNumber;
                 }
-                if(datagramCounter < 255) {
-					datagramCounter++;
-				}
-				else {
-					datagramCounter= 0;
-				}
+                if (datagramCounter < 255) {
+                    datagramCounter++;
+                } else {
+                    datagramCounter = 0;
+                }
             }
 
             //Reserved byte, just ignore it
@@ -413,12 +408,12 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                 }
 
                 //ignore payload
-                for(int tmpi=0 ; tmpi < payload_size ; tmpi++) {
-					buffer.get();
-				}
+                for (int tmpi = 0; tmpi < payload_size; tmpi++) {
+                    buffer.get();
+                }
 
                 // alternative is to directly add to arrays of packet for speed, to bypass the capacity checking
-    //            packet.addEvent(eventRaw);
+                //            packet.addEvent(eventRaw);
                 addresses[startingIndex + i] = eventRaw.address;
                 timestamps[startingIndex + i] = eventRaw.timestamp;
             }
@@ -428,7 +423,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             int seqNumLength = sequenceNumberEnabled ? Integer.SIZE / 8 : 0;
             int eventSize = eventSize();
             //log.info("event size " + eventSize);
-            int nEventsInPacket = (buffer.limit() - seqNumLength - (cAERStreamEnabled?28:0)) / eventSize;    // 28 is the byte numbers of cAER Header
+            int nEventsInPacket = (buffer.limit() - seqNumLength - (cAERStreamEnabled ? 28 : 0)) / eventSize;    // 28 is the byte numbers of cAER Header
             //log.info("nr of events " + nEventsInPacket);
             //deprecated ... int ts = !timestampsEnabled || localTimestampsEnabled ? (int)( System.nanoTime() / 1000 ) : 0; // if no timestamps coming, add system clock for all.
             int ts = !timestampsEnabled || localTimestampsEnabled ? (int) (((System.nanoTime() / 1000) << 32) >> 32) : 0; // if no timestamps coming, add system clock for all.
@@ -438,79 +433,78 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             packet.ensureCapacity(newPacketLength);
             int[] addresses = packet.getAddresses();
             int[] timestamps = packet.getTimestamps();
-            
+
 
             /*
              * All AEDAT 3.0 data extracting will just be processed in this if block.
              * If the frame events can't be displayed in jAER, please check "maxBytesPerPacket" in the UDP node of caer-config.xml. 
              * This value should be not 0 and not very big (better smaller than 90000). At the same time, this value should also be
              * bigger than maxBytesPerPacket, otherwise every jAER buffer (this value) can't copy the buffer (maxBytesPerPacket) from cAER.
-            */
-            if(cAERStreamEnabled) {
+             */
+            if (cAERStreamEnabled) {
                 try {
                     Jaer3BufferParser j3Parser = new Jaer3BufferParser(buffer, chip);
                     long nEventsNum = j3Parser.size();
-                    
-                    if(nEventsNum != 0) {  // This is a valid packet's head buffer
-                        jaer3PktSize = buffer.getInt(4);                
-                        jaer3PktNum = buffer.getInt(20); 
+
+                    if (nEventsNum != 0) {  // This is a valid packet's head buffer
+                        jaer3PktSize = buffer.getInt(4);
+                        jaer3PktNum = buffer.getInt(20);
                         jaer3EventsNum = nEventsNum;
                         wholePktBuffer = clone(buffer);
-                        
-                        if(wholePktBuffer.position() == (jaer3PktSize * jaer3PktNum + 28)) { // This is the end buffer, the packet is finished.
+
+                        if (wholePktBuffer.position() == (jaer3PktSize * jaer3PktNum + 28)) { // This is the end buffer, the packet is finished.
                             wholePktBuffer.flip();
-                            j3Parser = new Jaer3BufferParser(wholePktBuffer, chip); 
+                            j3Parser = new Jaer3BufferParser(wholePktBuffer, chip);
                         } else {
                             return;
                         }
-                    } else {              
-                        if(wholePktBuffer == null) {  // We still not get a valid buffer, return back to continue wait the valid head buffer
+                    } else {
+                        if (wholePktBuffer == null) {  // We still not get a valid buffer, return back to continue wait the valid head buffer
                             return;
                         }
                         try {
                             wholePktBuffer.put(buffer);
-                        } catch(BufferOverflowException e) {  // Sometimes the buffer's order may be wrong which will result in the bufferoverflow, so just reset the wholePktBuffer in this case
+                        } catch (BufferOverflowException e) {  // Sometimes the buffer's order may be wrong which will result in the bufferoverflow, so just reset the wholePktBuffer in this case
                             wholePktBuffer = null;
                             return;
                         }
-                        if(wholePktBuffer.position() == (jaer3PktSize * jaer3PktNum + 28)) { // This is the end buffer, the packet is finished.
+                        if (wholePktBuffer.position() == (jaer3PktSize * jaer3PktNum + 28)) { // This is the end buffer, the packet is finished.
                             wholePktBuffer.flip();
-                            j3Parser = new Jaer3BufferParser(wholePktBuffer, chip); 
+                            j3Parser = new Jaer3BufferParser(wholePktBuffer, chip);
                         } else {
                             return;
                         }
                     }
-                    
+
                     newPacketLength = (int) (startingIndex + jaer3EventsNum);
-                    packet.ensureCapacity((int) newPacketLength); 
+                    packet.ensureCapacity((int) newPacketLength);
                     EventRaw.EventType[] etypes = packet.getEventtypes(); // For jAER 3.0, no influence on jAER 2.0
                     int[] pixelDataArray = packet.getPixelDataArray();
                     addresses = packet.getAddresses();
-                    timestamps = packet.getTimestamps();                    
-                    for(int i = 0; i < jaer3EventsNum; i++) {
+                    timestamps = packet.getTimestamps();
+                    for (int i = 0; i < jaer3EventsNum; i++) {
                         ByteBuffer tmpEventBuffer = ByteBuffer.allocate(16);
                         tmpEventBuffer = j3Parser.getJaer2EventBuf();
                         int etypeValue = tmpEventBuffer.getInt();
                         eventRaw.eventtype = EventRaw.EventType.values()[etypeValue];
                         eventRaw.address = tmpEventBuffer.getInt();
-                        eventRaw.timestamp = tmpEventBuffer.getInt();   
+                        eventRaw.timestamp = tmpEventBuffer.getInt();
                         eventRaw.pixelData = tmpEventBuffer.getInt();
                         etypes[startingIndex + i] = eventRaw.eventtype;
                         addresses[startingIndex + i] = eventRaw.address;
-                        timestamps[startingIndex + i] = eventRaw.timestamp;    
-                        pixelDataArray[startingIndex + i] = eventRaw.pixelData;  
+                        timestamps[startingIndex + i] = eventRaw.timestamp;
+                        pixelDataArray[startingIndex + i] = eventRaw.pixelData;
                     }
-                    packet.setNumEvents((int) (startingIndex + jaer3EventsNum));   
+                    packet.setNumEvents((int) (startingIndex + jaer3EventsNum));
                 } catch (IOException ex) {
                     Logger.getLogger(AEUnicastInput.class.getName()).log(Level.SEVERE, null, ex);
                 }
-                return;                
+                return;
             }
-            
-            
+
             for (int i = 0; i < nEventsInPacket; i++) {
                 if (addressFirstEnabled) {
-                    if (use4ByteAddrTs) {                        
+                    if (use4ByteAddrTs) {
                         //log.info("address " + eventRaw.address);
                         //int v=buffer.getInt();
                         // if timestamps are enabled, they have to be read out even if they are not used because of local timestamps
@@ -532,7 +526,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                                 timeZero = rawTime;
                                 zeroedRawTime = 0;
                             }
-    //                        int v3 = 0xffff & v2; // TODO hack for TDS sensor which uses all 32 bits causing overflow after multiplication by multiplier and int cast
+                            //                        int v3 = 0xffff & v2; // TODO hack for TDS sensor which uses all 32 bits causing overflow after multiplication by multiplier and int cast
                             float floatFinalTime = timestampMultiplier * zeroedRawTime;
                             int finalTime;
                             if ((floatFinalTime >= Integer.MAX_VALUE) || (floatFinalTime <= Integer.MIN_VALUE)) {
@@ -551,37 +545,35 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                         }
                     } else {
                         eventRaw.address = buffer.getShort() & 0xffff; // swab(buffer.getShort()); // swapInt is switched to handle big endian event sources (like ARC camera)
-    //                    eventRaw.timestamp=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
+                        //                    eventRaw.timestamp=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
                         if (!localTimestampsEnabled && timestampsEnabled) {
                             eventRaw.timestamp = (int) (timestampMultiplier * buffer.getShort());
                         } else {
                             eventRaw.timestamp = ts;
                         }
                     }
-                } else {
-                    if (use4ByteAddrTs) {
-    //                    eventRaw.timestamp=(int) (swab(buffer.getInt()));
-    //                    eventRaw.address=swab(buffer.getInt());
-                        if (!localTimestampsEnabled && timestampsEnabled) {
-                            eventRaw.timestamp = ((buffer.getInt()));
-                        } else {
-                            eventRaw.timestamp = ts;
-                        }
-                        eventRaw.address = (buffer.getInt());
+                } else if (use4ByteAddrTs) {
+                    //                    eventRaw.timestamp=(int) (swab(buffer.getInt()));
+                    //                    eventRaw.address=swab(buffer.getInt());
+                    if (!localTimestampsEnabled && timestampsEnabled) {
+                        eventRaw.timestamp = ((buffer.getInt()));
                     } else {
-    //                    eventRaw.timestamp=(int) (swab(buffer.getShort()));
-    //                    eventRaw.address=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
-                        if (!localTimestampsEnabled && timestampsEnabled) {
-                            eventRaw.timestamp = ((buffer.getShort()));  // TODO check if need AND with 0xffff to avoid negative timestamps
-                        } else {
-                            eventRaw.timestamp = ts;
-                        }
-                        eventRaw.address = (int) (timestampMultiplier * (buffer.getShort() & 0xffff));
+                        eventRaw.timestamp = ts;
                     }
+                    eventRaw.address = (buffer.getInt());
+                } else {
+                    //                    eventRaw.timestamp=(int) (swab(buffer.getShort()));
+                    //                    eventRaw.address=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
+                    if (!localTimestampsEnabled && timestampsEnabled) {
+                        eventRaw.timestamp = ((buffer.getShort()));  // TODO check if need AND with 0xffff to avoid negative timestamps
+                    } else {
+                        eventRaw.timestamp = ts;
+                    }
+                    eventRaw.address = (int) (timestampMultiplier * (buffer.getShort() & 0xffff));
                 }
 
                 // alternative is to directly add to arrays of packet for speed, to bypass the capacity checking
-    //            packet.addEvent(eventRaw);
+                //            packet.addEvent(eventRaw);
                 addresses[startingIndex + i] = eventRaw.address;
                 timestamps[startingIndex + i] = eventRaw.timestamp;
 
@@ -631,8 +623,8 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
              * If there're still packets on the network, then jaer3BufferParser will be called again which
              * will result in the change of extractor again. 
              * So we should put the extractor restore after the datagrarSocket.close().
-            */
-            chip.setEventExtractor(restoreEventExtractor);  
+             */
+            chip.setEventExtractor(restoreEventExtractor);
         } catch (Exception e) {
             log.warning("on closing caught " + e);
         }
@@ -727,16 +719,15 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
         this.sequenceNumberEnabled = sequenceNumberEnabled;
         prefs.putBoolean("AEUnicastInput.sequenceNumberEnabled", sequenceNumberEnabled);
     }
-    
-    @Override   
+
+    @Override
     public boolean iscAERDisplayEnabled() {
         return cAERStreamEnabled;
     }
-    
-    
+
     /**
-     * If set true (default), then cAER data can be displayed
-     * the packet. Otherwise the first int32 is part of the first AE.
+     * If set true (default), then cAER data can be displayed the packet.
+     * Otherwise the first int32 is part of the first AE.
      *
      * @param cAERDisplayEnabled default true
      */
@@ -745,7 +736,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
         this.cAERStreamEnabled = cAERDisplayEnabled;
         prefs.putBoolean("AEUnicastInput.cAERDisplayEnabled", cAERDisplayEnabled);
     }
-    
+
     /**
      * @see #setAddressFirstEnabled
      */
@@ -905,7 +896,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
 
     @Override
     public void setSpinnakerProtocolEnabled(boolean yes) {
-        spinnakerProtocolEnabled=yes;
+        spinnakerProtocolEnabled = yes;
         prefs.putBoolean("AEUnicastInput.spinnakerProtocolEnabled", yes);
     }
 
