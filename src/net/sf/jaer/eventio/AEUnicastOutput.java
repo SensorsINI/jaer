@@ -24,6 +24,7 @@ import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.util.ByteSwapper;
 
 /**
@@ -145,6 +146,13 @@ public class AEUnicastOutput implements AEUnicastSettings {
         buf.put((byte) 0);
     }
 
+    
+//    //debug
+//    private AEPacketRaw debugPacket=new AEPacketRaw();
+//    private EventRaw debugEvent=new EventRaw(0, 0);
+//    {
+//        debugPacket.addEvent(debugEvent);
+//    }
     /**
      * Writes the packet out as sequence of address/timestamp's, just as they
      * came as input from the device.
@@ -167,6 +175,14 @@ public class AEUnicastOutput implements AEUnicastSettings {
      */
     synchronized public void writePacket(AEPacketRaw ae) throws IOException {
 
+//        debugEvent.timestamp++;
+//        if(debugEvent.timestamp>1<<20) debugEvent.timestamp=1<<20;
+//        debugEvent.address++;
+//        if(debugEvent.address>127)debugEvent.address=0;
+//        debugPacket.clear();
+//        debugPacket.addEvent(debugEvent);
+//        ae=debugPacket;
+        
         if (ae == null) {
             return;
         }

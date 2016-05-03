@@ -30,7 +30,6 @@
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="1" attributes="0">
                       <Group type="103" groupAlignment="1" attributes="0">
-                          <Component id="swapBytesCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
                           <Group type="102" alignment="1" attributes="0">
                               <Group type="103" groupAlignment="0" attributes="0">
                                   <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
@@ -42,18 +41,20 @@
                                   <Component id="portTextField" min="-2" pref="105" max="-2" attributes="1"/>
                               </Group>
                           </Group>
+                          <Component id="swapBytesCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
                           <Group type="102" alignment="0" attributes="0">
                               <Component id="jAERDefaultsButton" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
                               <Component id="tdsDefaultsButton" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace min="-2" pref="48" max="-2" attributes="0"/>
+                              <Component id="okButton" min="-2" pref="67" max="-2" attributes="0"/>
+                              <EmptySpace type="separate" max="-2" attributes="0"/>
+                              <Component id="applyButton" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                              <Component id="cancelButton" min="-2" max="-2" attributes="0"/>
                           </Group>
                       </Group>
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Component id="okButton" min="-2" pref="67" max="-2" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Component id="applyButton" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Component id="cancelButton" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace min="-2" pref="171" max="-2" attributes="0"/>
                   </Group>
                   <Group type="102" attributes="0">
                       <Group type="103" groupAlignment="0" attributes="0">
@@ -76,10 +77,9 @@
                           </Group>
                           <Component id="cAERDisplayEnabledCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
                       </Group>
-                      <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
+                      <EmptySpace max="32767" attributes="0"/>
                   </Group>
               </Group>
-              <EmptySpace max="-2" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -208,7 +208,7 @@
     </Component>
     <Component class="javax.swing.JCheckBox" name="addressFirstEnabledCheckBox">
       <Properties>
-        <Property name="text" type="java.lang.String" value="addressFirstEnabled"/>
+        <Property name="text" type="java.lang.String" value="addressFirstEnabled (uncheck to xmit/receive timestamp first, if enabled)"/>
         <Property name="toolTipText" type="java.lang.String" value="AEs come in address,timestamp order (default)"/>
       </Properties>
       <Events>
@@ -217,9 +217,12 @@
     </Component>
     <Component class="javax.swing.JCheckBox" name="swapBytesCheckBox">
       <Properties>
-        <Property name="text" type="java.lang.String" value="swapBytesEnabled"/>
+        <Property name="text" type="java.lang.String" value="swapBytesEnabled (check for little endian, uncheck for big endian Java order"/>
         <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Enable to swap bytes of addresses and timestamps to deal with little endian clients/servers (e.g. native intel code). &lt;br&gt;Java and jAER are big endian.&lt;/html&gt;"/>
       </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="swapBytesCheckBoxActionPerformed"/>
+      </Events>
     </Component>
     <Component class="javax.swing.JLabel" name="jLabel2">
       <Properties>
@@ -251,7 +254,7 @@
     <Component class="javax.swing.JCheckBox" name="use4ByteAddrTsCheckBox">
       <Properties>
         <Property name="text" type="java.lang.String" value="Use 4 byte addresses and timestamps (uncheck to use 2 byte addr/timestamps)"/>
-        <Property name="toolTipText" type="java.lang.String" value="jAER default is int32 addresses and timestamps  (default), but other systems can use 16 bit addresses and timestamps."/>
+        <Property name="toolTipText" type="java.lang.String" value="jAER default is int32 addresses and timestamps  (default), but other systems can use 16 bit addresses and timestamps. If 2 byte option is selected, then addressFirstEnabled option is the only possible one."/>
       </Properties>
     </Component>
     <Component class="javax.swing.JLabel" name="jLabel3">
@@ -273,7 +276,7 @@
     <Component class="javax.swing.JCheckBox" name="includeTimestampsCheckBox">
       <Properties>
         <Property name="text" type="java.lang.String" value="includeTimestamps"/>
-        <Property name="toolTipText" type="java.lang.String" value="enable to include timestamps, disable to xmt/recieve only addresses"/>
+        <Property name="toolTipText" type="java.lang.String" value="Enable to include timestamps, disable to xmt/recieve only addresses. If timestamps are not enabled, then each event is either 4 byte or 2 byte value in UDP packet."/>
       </Properties>
     </Component>
     <Component class="javax.swing.JButton" name="applyButton">

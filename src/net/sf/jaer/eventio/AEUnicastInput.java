@@ -5,6 +5,7 @@
  */
 package net.sf.jaer.eventio;
 
+import com.jogamp.opengl.util.GLDrawableUtil;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
@@ -257,13 +258,26 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
         return client;
     }
 
-    private static int swapByteOrder(int value) {
+    private int maybeSwapByteOrder(int value) {
+        if (!swapBytesEnabled) {
+            return value;
+        }
         int b1 = (value >> 0) & 0xff;
         int b2 = (value >> 8) & 0xff;
         int b3 = (value >> 16) & 0xff;
         int b4 = (value >> 24) & 0xff;
 
         return b1 << 24 | b2 << 16 | b3 << 8 | b4 << 0;
+    }
+
+    private short maybeSwapByteOrder(short value) {
+        if (!swapBytesEnabled) {
+            return value;
+        }
+        int b1 = (value >> 0) & 0xff;
+        int b2 = (value >> 8) & 0xff;
+
+        return (short) ((0xffff & (b1 << 8) | (0xffff & (b2 << 0))));
     }
 
     private static ByteBuffer clone(ByteBuffer original) {
@@ -505,11 +519,10 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             for (int i = 0; i < nEventsInPacket; i++) {
                 if (addressFirstEnabled) {
                     if (use4ByteAddrTs) {
-                        //log.info("address " + eventRaw.address);
-                        //int v=buffer.getInt();
+                        eventRaw.address = maybeSwapByteOrder(buffer.getInt());
                         // if timestamps are enabled, they have to be read out even if they are not used because of local timestamps
                         if (timestampsEnabled && !localTimestampsEnabled) {
-                            int rawTime = swapByteOrder(buffer.getInt()); //swab(v);
+                            int rawTime = maybeSwapByteOrder(buffer.getInt()); //swab(v);
                             //                  if(rawTime<lastts) {
                             //                      System.out.println("backwards timestamp at event "+i+"of "+nEventsInPacket);
                             //                  }else if(rawTime!=lastts){
@@ -536,40 +549,37 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                                 finalTime = (int) floatFinalTime;
                             }
                             eventRaw.timestamp = finalTime;
-                        } else {
+                        } else { // timestamps not enabled, using local timestamps
                             //SmartEyeTDS
-                            eventRaw.timestamp = ts;
-                            //read out buffer with timestamp
-                            buffer.getInt();
-                            //log.info("local timestamp " + ts);
+                            eventRaw.timestamp = ts; // this is local timestamp computed earlier
                         }
-                    } else {
-                        eventRaw.address = buffer.getShort() & 0xffff; // swab(buffer.getShort()); // swapInt is switched to handle big endian event sources (like ARC camera)
+                    } else { // 2 byte address and timestamp
+                        eventRaw.address = maybeSwapByteOrder(buffer.getShort()) & 0xffff; // swab(buffer.getShort()); // swapInt is switched to handle big endian event sources (like ARC camera)
                         //                    eventRaw.timestamp=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
                         if (!localTimestampsEnabled && timestampsEnabled) {
-                            eventRaw.timestamp = (int) (timestampMultiplier * buffer.getShort());
+                            eventRaw.timestamp = (int) (timestampMultiplier * maybeSwapByteOrder(buffer.getShort()));
                         } else {
                             eventRaw.timestamp = ts;
                         }
                     }
-                } else if (use4ByteAddrTs) {
+                } else if (use4ByteAddrTs) { // timestamp first option
                     //                    eventRaw.timestamp=(int) (swab(buffer.getInt()));
                     //                    eventRaw.address=swab(buffer.getInt());
                     if (!localTimestampsEnabled && timestampsEnabled) {
-                        eventRaw.timestamp = ((buffer.getInt()));
+                        eventRaw.timestamp = (maybeSwapByteOrder(buffer.getInt()));
                     } else {
                         eventRaw.timestamp = ts;
                     }
-                    eventRaw.address = (buffer.getInt());
-                } else {
+                    eventRaw.address = (maybeSwapByteOrder(buffer.getInt()));
+                } else { // 2 byte values
                     //                    eventRaw.timestamp=(int) (swab(buffer.getShort()));
                     //                    eventRaw.address=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
                     if (!localTimestampsEnabled && timestampsEnabled) {
-                        eventRaw.timestamp = ((buffer.getShort()));  // TODO check if need AND with 0xffff to avoid negative timestamps
+                        eventRaw.timestamp = (maybeSwapByteOrder(buffer.getShort()));  // TODO check if need AND with 0xffff to avoid negative timestamps
                     } else {
                         eventRaw.timestamp = ts;
                     }
-                    eventRaw.address = (int) (timestampMultiplier * (buffer.getShort() & 0xffff));
+                    eventRaw.address = (int) (timestampMultiplier * (maybeSwapByteOrder(buffer.getShort()) & 0xffff));
                 }
 
                 // alternative is to directly add to arrays of packet for speed, to bypass the capacity checking
