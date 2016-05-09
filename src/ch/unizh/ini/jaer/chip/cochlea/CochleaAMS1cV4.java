@@ -1,5 +1,5 @@
 /*
- * CochleaAMS1c.java
+ * CochleaAMS1cV4.java
  *
  * Created on November 7, 2006, 11:29 AM
  *
@@ -66,76 +66,43 @@ public class CochleaAMS1cV4 extends CochleaAMS1c {
 
 			// public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int
 			// displayPosition, String tooltipString) {
+			
 			// top dac in schem/layout, first 16 channels of 32 total
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vterm", dac, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0,
-				"Sets bias current of terminator xtor in diffusor"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vrefhres", dac, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0,
-				"Sets source of terminator xtor in diffusor"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "VthAGC", dac, 2, Pot.Type.NORMAL, Pot.Sex.P, 0, 0,
-				"Sets input to diffpair that generates VQ"));
-			vpots.addPot(
-				new VPot(CochleaAMS1cV4.this, "Vrefreadout", dac, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets reference for readout amp"));
-			// vpots.addPot(new VPot(CochleaAMS1c.this, "Vbpf2x", dac, 4, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac
-			// bias"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "BiasDACBufferNBias", dac, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0,
-				"Sets bias current of buffer in pixel DACs"));
-			// vpots.addPot(new VPot(CochleaAMS1c.this, "Vbias2x", dac, 5, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac
-			// bias"));
-			vpots.addPot(
-				new VPot(CochleaAMS1cV4.this, "Vrefract", dac, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets refractory period of neuron"));
-			// vpots.addPot(new VPot(CochleaAMS1c.this, "Vbpf1x", dac, 6, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac
-			// bias"));
-			vpots.addPot(preampAGCThresholdPot = new VPot(CochleaAMS1cV4.this, "PreampAGCThreshold (TH)", dac, 6, Pot.Type.NORMAL,
-				Pot.Sex.P, 0, 0, "Threshold for microphone preamp AGC gain reduction turn-on"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vrefpreamp", dac, 7, Pot.Type.NORMAL, Pot.Sex.P, 0, 0,
-				"Sets virtual group of microphone drain preamp"));
-			// vpots.addPot(new VPot(CochleaAMS1c.this, "Vbias1x", dac, 8, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac
-			// bias"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "NeuronRp", dac, 8, Pot.Type.NORMAL, Pot.Sex.P, 0, 0,
-				"Sets bias current of neuron comparator- overrides onchip bias"));
-			vpots.addPot(
-				new VPot(CochleaAMS1cV4.this, "Vthbpf1x", dac, 9, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets threshold for BPF neuron"));
-			vpots.addPot(
-				new VPot(CochleaAMS1cV4.this, "Vioffbpfn", dac, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets DC level for BPF input"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "NeuronVleak", dac, 11, Pot.Type.NORMAL, Pot.Sex.P, 0, 0,
-				"Sets leak current for neuron - not connected on board"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "DCOutputLevel", dac, 12, Pot.Type.NORMAL, Pot.Sex.P, 0, 0,
-				"Microphone DC output level to cochlea chip"));
-			vpots.addPot(
-				new VPot(CochleaAMS1cV4.this, "Vthbpf2x", dac, 13, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets threshold for BPF neuron"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "DACSpOut2", dac, 14, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "DACSpOut1", dac, 15, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "VcondVt", dac, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets VT of conductance neuron"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "VthAGC", dac, 1, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets input to diffpair that generates VQ"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vth4", dac, 2, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets high VT for LPF neuron"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vrefo", dac, 3, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets src for output of CM LPF"));
+			//vpots.addPot(new VPot(CochleaAMS1cV4.this, "", dac, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "")); Not used
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vrefpreamp", dac, 5, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets virtual group of microphone drain preamp"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vrefhres", dac, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets source of terminator xtor in diffusor"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vrefreadout", dac, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets reference for readout amp"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vioffbpfn", dac, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets DC level for BPF input"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "PreampAGCThreshold (TH)", dac, 9, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Threshold for microphone preamp AGC gain reduction turn-on"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vterm", dac, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets bias current of terminator xtor in diffusor"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vrefract", dac, 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets refractory period of neuron"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "NeuronVleak", dac, 12, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets leak current for neuron - not connected on board"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "NeuronRp", dac, 13, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets bias current of neuron comparator- overrides onchip bias"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "DCOutputHighLevel", dac, 14, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Microphone DC output level to cochlea chip - upper value of resistive divider"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "DCOutputLowLevel", dac, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Microphone DC output level to cochlea chip - lower value of resistive divider"));
+			
 			// bot DAC in schem/layout, 2nd 16 channels
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vth4", dac, 16, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets high VT for LPF neuron"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vcas2x", dac, 17, Pot.Type.NORMAL, Pot.Sex.N, 0, 0,
-				"Sets cascode voltage for subtraction of neighboring filter outputs"));
-			vpots
-				.addPot(new VPot(CochleaAMS1cV4.this, "Vrefo", dac, 18, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets src for output of CM LPF"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vrefn2", dac, 19, Pot.Type.NORMAL, Pot.Sex.P, 0, 0,
-				"Sets DC gain gain cascode bias in BPF"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vq", dac, 20, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets tau of feedback amp in SOS"));
-
-			vpots.addPot(
-				new VPot(CochleaAMS1cV4.this, "Vpf", dac, 21, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets bias current for scanner follower"));
-
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vgain", dac, 22, Pot.Type.NORMAL, Pot.Sex.P, 0, 0,
-				"Sets bias for differencing amp in BPF/LPF"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vrefn", dac, 23, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets cascode bias in BPF"));
-			vpots.addPot(
-				new VPot(CochleaAMS1cV4.this, "VAI0", dac, 24, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets tau of CLBT for ref current"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vdd1", dac, 25, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets up power to on-chip DAC"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vth1", dac, 26, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets low VT for LPF neuron"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vtau", dac, 16, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets tau of forward amp in SOS"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vq", dac, 17, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets tau of feedback amp in SOS"));
+			//vpots.addPot(new VPot(CochleaAMS1cV4.this, "", dac, 18, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "")); Not used
+			//vpots.addPot(new VPot(CochleaAMS1cV4.this, "", dac, 19, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "")); Not used
+			//vpots.addPot(new VPot(CochleaAMS1cV4.this, "", dac, 20, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "")); Not used
+			//vpots.addPot(new VPot(CochleaAMS1cV4.this, "", dac, 21, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "")); Not used
+			//vpots.addPot(new VPot(CochleaAMS1cV4.this, "", dac, 22, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "")); Not used
+			//vpots.addPot(new VPot(CochleaAMS1cV4.this, "", dac, 23, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "")); Not used
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vpf", dac, 24, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets bias current for scanner follower"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vrefn2", dac, 25, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets DC gain gain cascode bias in BPF"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vdd1", dac, 26, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets up power to on-chip DAC"));
 			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vref", dac, 27, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets src for input of CM LPF"));
-			vpots
-				.addPot(new VPot(CochleaAMS1cV4.this, "Vtau", dac, 28, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets tau of forward amp in SOS"));
-			vpots.addPot(
-				new VPot(CochleaAMS1cV4.this, "VcondVt", dac, 29, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets VT of conductance neuron"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vpm", dac, 30, Pot.Type.NORMAL, Pot.Sex.N, 0, 0,
-				"sets bias of horizontal element of diffusor"));
-			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vhm", dac, 31, Pot.Type.NORMAL, Pot.Sex.N, 0, 0,
-				"sets bias of horizontal element of diffusor"));
-			// Pot.setModificationTrackingEnabled(false); // don't flag all biases modified on construction
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vrefn", dac, 28, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets cascode bias in BPF"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vth1", dac, 29, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets low VT for LPF neuron"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "VAIO", dac, 30, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets tau of CLBT for ref current"));
+			vpots.addPot(new VPot(CochleaAMS1cV4.this, "Vgain", dac, 31, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets bias for differencing amp in BPF/LPF"));
+
 
 			setBatchEditOccurring(true);
 			loadPreferences();
