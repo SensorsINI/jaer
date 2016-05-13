@@ -27,8 +27,10 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
+import com.jogamp.opengl.util.gl2.GLUT;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
@@ -40,9 +42,6 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.ServoInterface;
 import net.sf.jaer.util.StateMachineStates;
-
-import com.jogamp.opengl.util.gl2.GLUT;
-import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Controls a servo motor that swings an arm in the way of a ball rolling
@@ -162,7 +161,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer {
         xYFilter.setStartY(armRows);
 
         servoArm.initFilter();
-        servoArm.setCaptureRange(0, 0, 128, armRows);
+        servoArm.setCaptureRange(0, 0, chip.getSizeX(), armRows);
         setPropertyTooltip(armCat, "useVelocityForGoalie", "uses ball velocity to calc impact position");
         setPropertyTooltip(ballCat, "minPathPointsToUseVelocity",
                 "only after path has this many points is velocity used to predict path");
