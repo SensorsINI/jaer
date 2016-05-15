@@ -322,7 +322,7 @@ public class DeepLearnCnnNetwork {
      * @return %d operations in %d ns: %s ops/sec
      */
     public String getPerformanceString() {
-        return String.format("%d operations in %d ns: %s ops/sec",
+        return String.format("%d ops in %d ns: %s ops/sec",
                 operationCounter, processingTimeNs, engFmt.format(operationCounter / (1e-9f * processingTimeNs)));
     }
 

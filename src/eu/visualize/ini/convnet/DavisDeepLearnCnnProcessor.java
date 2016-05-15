@@ -65,6 +65,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private boolean softMaxOutput = getBoolean("softMaxOutput", false);
 
     protected int lastProcessedEventTimestamp = 0;
+    private String performanceString = null; // holds string representation of processing time
 
     public DavisDeepLearnCnnProcessor(AEChip chip) {
         super(chip);
@@ -202,7 +203,8 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                         if (measurePerformance) {
                             long dt = System.nanoTime() - startTime;
                             float ms = 1e-6f * dt;
-                            log.info(String.format("DVS slice processing time: %.1fms; %s", ms, apsDvsNet.getPerformanceString()));
+                            float fps = 1e3f / ms;
+                            performanceString = String.format("Frame processing time: %.1fms (%.1f FPS); %s", ms, fps, apsDvsNet.getPerformanceString());
                         }
                     }
 
@@ -263,11 +265,13 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                 long dt = System.nanoTime() - startTime;
                 float ms = 1e-6f * dt;
                 float fps = 1e3f / ms;
-                log.info(String.format("Frame processing time: %.1fms (%.1f FPS); %s", ms, fps, apsDvsNet.getPerformanceString()));
+                performanceString = String.format("Frame processing time: %.1fms (%.1f FPS); %s", ms, fps, apsDvsNet.getPerformanceString());
             }
         }
 
     }
+
+    private String lastPerformanceString = null;
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
@@ -276,6 +280,10 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1f);
             MultilineAnnotationTextRenderer.setScale(.3f);
             MultilineAnnotationTextRenderer.renderMultilineString(apsDvsNet.netname);
+            if (performanceString != null && !performanceString.equals(lastPerformanceString)) {
+                MultilineAnnotationTextRenderer.renderMultilineString(performanceString);
+                lastPerformanceString = performanceString;
+            }
         }
         if (showActivations) {
             if (apsDvsNet != null) {
