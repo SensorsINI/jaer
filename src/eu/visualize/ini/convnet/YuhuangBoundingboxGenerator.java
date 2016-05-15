@@ -81,6 +81,8 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
         Scanner gtReader = new Scanner(f);
         int lineNumber = 0;
         boundingBoxes.clear();
+        int sx=chip.getSizeX();
+        int sy=chip.getSizeY();
         while (gtReader.hasNextLine()) {
             String line = "";
             line = gtReader.nextLine();
@@ -96,8 +98,8 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
 
                 bb.timestamp = (int) Double.parseDouble(parts[0]);
                 for (int i = 0; i < bb.N; i++) {
-                    bb.x[i] = (float) Double.parseDouble(parts[2 * i + 1]);
-                    bb.y[i] = (float) Double.parseDouble(parts[2 * i + 2]);
+                    bb.x[i] = sx-(float) Double.parseDouble(parts[2 * i + 1]);
+                    bb.y[i] = sy-(float) Double.parseDouble(parts[2 * i + 2]);
                 }
                 boundingBoxes.put(bb.timestamp, bb);
             } catch (NumberFormatException e) {
@@ -105,7 +107,7 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
                 break;
             }
         }
-        log.info("read " + boundingBoxes.size() + " bounding boxes from " + gtFilename);
+        log.info("read " + boundingBoxes.size() + " bounding boxes from " + gtFilename +" and flipped x- and y-coordinates to match jAER");
         gtReader.close();
 
     }
@@ -113,13 +115,26 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         currentBoundingBoxes.clear();
-        Entry<Integer, BoundingBox> e = boundingBoxes.lowerEntry(lastTs); // gets BB that is last in list and still with lower timestamp than last timestamp
+        lastTs=in.getFirstTimestamp();
+        BoundingBox next = null;
+        Entry<Integer, BoundingBox> entry = boundingBoxes.lowerEntry(lastTs); // gets BB that is last in list and still with lower timestamp than last timestamp
         // we do this more expensive search in case user has scrolled the file or rewound
-        if (e != null && e.getValue() != null) {
-            currentBoundingBoxes.add(e.getValue());
+        if (entry != null && entry.getValue() != null) {
+            currentBoundingBoxes.add(entry.getValue());
+            entry = boundingBoxes.higherEntry(entry.getKey());
+            if (entry != null) {
+                next = entry.getValue();
+            }
         }
         for (BasicEvent ev : in) {
-            lastTs = ev.timestamp;  // TODO should get next in list, then add to currentBoundingBoxes when timestamp reaches that value
+            lastTs = ev.timestamp;  // gets next in list, then add to currentBoundingBoxes when timestamp reaches that value
+            if (next != null && ev.timestamp > next.timestamp) {
+                currentBoundingBoxes.add(next);
+                entry = boundingBoxes.higherEntry(next.timestamp);
+                if (entry != null) {
+                    next = entry.getValue();
+                }
+            }
         }
         return in;
     }
