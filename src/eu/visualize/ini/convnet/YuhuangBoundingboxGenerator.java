@@ -113,12 +113,13 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         currentBoundingBoxes.clear();
-        Entry<Integer, BoundingBox> e = boundingBoxes.lowerEntry(lastTs);
+        Entry<Integer, BoundingBox> e = boundingBoxes.lowerEntry(lastTs); // gets BB that is last in list and still with lower timestamp than last timestamp
+        // we do this more expensive search in case user has scrolled the file or rewound
         if (e != null && e.getValue() != null) {
             currentBoundingBoxes.add(e.getValue());
         }
         for (BasicEvent ev : in) {
-            lastTs = ev.timestamp;
+            lastTs = ev.timestamp;  // TODO should get next in list, then add to currentBoundingBoxes when timestamp reaches that value
         }
         return in;
     }
