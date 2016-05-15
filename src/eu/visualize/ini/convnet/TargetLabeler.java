@@ -99,7 +99,6 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     protected int currentTargetTypeID = getInt("currentTargetTypeID", 0);
     private ArrayList<TargetLocation> currentTargets = new ArrayList(10); // currently valid targets
     protected boolean eraseSamplesEnabled = false;
-    private boolean relabelRadiusEnabled = false;
     private HashMap<String, String> mapDataFilenameToTargetFilename = new HashMap();
 
     private boolean propertyChangeListenerAdded = false;
@@ -236,17 +235,18 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             gl.glPushMatrix();
             gl.glTranslatef(p.x, p.y, 0);
             gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(0, -targetRadius);
-            gl.glVertex2f(0, +targetRadius);
-            gl.glVertex2f(-targetRadius, 0);
-            gl.glVertex2f(+targetRadius, 0);
+            int tr=getTargetRadius();
+            gl.glVertex2f(0, -tr);
+            gl.glVertex2f(0, +tr);
+            gl.glVertex2f(-tr, 0);
+            gl.glVertex2f(+tr, 0);
             gl.glEnd();
             gl.glTranslatef(.5f, -.5f, 0);
             gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(0, -targetRadius);
-            gl.glVertex2f(0, +targetRadius);
-            gl.glVertex2f(-targetRadius, 0);
-            gl.glVertex2f(+targetRadius, 0);
+            gl.glVertex2f(0, -tr);
+            gl.glVertex2f(0, +tr);
+            gl.glVertex2f(-tr, 0);
+            gl.glVertex2f(+tr, 0);
             gl.glEnd();
 //            if (quad == null) {
 //                quad = glu.gluNewQuadric();
@@ -430,6 +430,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     synchronized public void doLoadLocations() {
+        
         if (lastFileName == null) {
             lastFileName = mapDataFilenameToTargetFilename.get(lastDataFilename);
         }
@@ -1197,18 +1198,6 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         return locationsLoadedFromFile;
     }
 
-    /**
-     * @return the relabelRadiusEnabled
-     */
-    public boolean isRelabelRadiusEnabled() {
-        return relabelRadiusEnabled;
-    }
-
-    /**
-     * @param relabelRadiusEnabled the relabelRadiusEnabled to set
-     */
-    public void setRelabelRadiusEnabled(boolean relabelRadiusEnabled) {
-        this.relabelRadiusEnabled = relabelRadiusEnabled;
-    }
+   
 
 }
