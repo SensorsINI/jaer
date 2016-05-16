@@ -8,6 +8,8 @@ package eu.visualize.ini.convnet;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -27,33 +29,38 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEInputStream;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
  * Displays tracking dataset bounding boxes as described in the 2016 Frontiers
- * in Neuromorphic Engineering data report paper
+ * in Neuromorphic Engineering data report paper "DVS Benchmark Datasets for Object Tracking, Action Recognition, and Object Recognition"
  *
  * @author tobi delbruck, yuhaung hu, hongie liu
  */
 @Description("Displays tracking dataset bounding boxes as described in the Frontiers paper")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
-public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameAnnotater, Observer {
+public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameAnnotater, Observer, PropertyChangeListener {
 
     private FileReader fileReader = null;
-    private String gtFilename = getString("GTFilename", "gt.txt");
+    private String gtFilename = getString("GTFilename", "gt.txt"), gtFilenameShort=null;
     private TreeMap<Integer, BoundingBox> boundingBoxes = new TreeMap();
     private int lastTs = 0;
     private ArrayList<BoundingBox> currentBoundingBoxes = new ArrayList(10);
+    private boolean addedViewerPropertyChangeListener = false; // TODO promote these to base EventFilter class
+    private boolean showFilename = getBoolean("showFilename",true); 
 
     public YuhuangBoundingboxGenerator(AEChip chip) {
         super(chip);
-//        String deb = "3. Debug", disp = "1. Display", anal = "2. Analysis";
-
-        setPropertyTooltip("loadLocations", "loads locations from a file");
-        setPropertyTooltip("clearLocations", "clears all existing targets");
         setPropertyTooltip("loadGroundTruthFromTXT", "Load an TXT file containing grond truth");
-
+        setPropertyTooltip("clearGroundTruth", "Clears list of bounding boxes");
+        setPropertyTooltip("showFilename", "shows the ground truth filename");
     }
 
     synchronized public void doLoadGroundTruthFromTXT() {
@@ -69,6 +76,7 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
         }
         gtFilename = c.getSelectedFile().toString();
         putString("GTFilename", gtFilename);
+        gtFilenameShort=gtFilename.substring(0, 5)+"..."+gtFilename.substring(gtFilename.lastIndexOf(File.separator));
         try {
             this.loadBoundingBoxes(c.getSelectedFile());
         } catch (Exception ex) {
@@ -76,13 +84,17 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
         }
 
     }
+    
+    synchronized public void doClearGroundTruth(){
+        boundingBoxes.clear();
+    }
 
     synchronized public void loadBoundingBoxes(File f) throws IOException {
         Scanner gtReader = new Scanner(f);
         int lineNumber = 0;
         boundingBoxes.clear();
-        int sx=chip.getSizeX();
-        int sy=chip.getSizeY();
+        int sx = chip.getSizeX();
+        int sy = chip.getSizeY();
         while (gtReader.hasNextLine()) {
             String line = "";
             line = gtReader.nextLine();
@@ -98,8 +110,8 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
 
                 bb.timestamp = (int) Double.parseDouble(parts[0]);
                 for (int i = 0; i < bb.N; i++) {
-                    bb.x[i] = sx-(float) Double.parseDouble(parts[2 * i + 1]);
-                    bb.y[i] = sy-(float) Double.parseDouble(parts[2 * i + 2]);
+                    bb.x[i] = sx - (float) Double.parseDouble(parts[2 * i + 1]);
+                    bb.y[i] = sy - (float) Double.parseDouble(parts[2 * i + 2]);
                 }
                 boundingBoxes.put(bb.timestamp, bb);
             } catch (NumberFormatException e) {
@@ -107,15 +119,16 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
                 break;
             }
         }
-        log.info("read " + boundingBoxes.size() + " bounding boxes from " + gtFilename +" and flipped x- and y-coordinates to match jAER");
+        log.info("read " + boundingBoxes.size() + " bounding boxes from " + gtFilename + " and flipped x- and y-coordinates to match jAER");
         gtReader.close();
 
     }
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+        maybeAddListeners(chip);
         currentBoundingBoxes.clear();
-        lastTs=in.getFirstTimestamp();
+        lastTs = in.getFirstTimestamp();
         BoundingBox next = null;
         Entry<Integer, BoundingBox> entry = boundingBoxes.lowerEntry(lastTs); // gets BB that is last in list and still with lower timestamp than last timestamp
         // we do this more expensive search in case user has scrolled the file or rewound
@@ -151,6 +164,11 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
+        if (showFilename && !boundingBoxes.isEmpty() && gtFilename != null) {
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1f);
+            MultilineAnnotationTextRenderer.setScale(.3f);
+            MultilineAnnotationTextRenderer.renderMultilineString(String.format("BoundingBoxes from %s", gtFilenameShort));
+        }
         for (BoundingBox b : currentBoundingBoxes) {
             b.draw(gl);
         }
@@ -161,10 +179,74 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
 
     }
 
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (this.filterEnabled) {
+            switch (evt.getPropertyName()) {
+                case AEViewer.EVENT_TIMESTAMPS_RESET:
+                    resetFilter();
+                    break;
+                case AEViewer.EVENT_FILEOPEN:
+                    AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
+                    AEFileInputStream in = (player.getAEInputStream());
+                    in.getSupport().addPropertyChangeListener(this);
+                    // Treat FileOpen same as a rewind
+                    resetFilter();
+                    break;
+            }
+        }
+    }
+
+    public final void maybeAddListeners(AEChip chip) {
+        if (chip.getAeViewer() != null) {
+            if (!addedViewerPropertyChangeListener) {
+                chip.getAeViewer().addPropertyChangeListener(this);
+                addedViewerPropertyChangeListener = true;
+            }
+
+        }
+    }
+
+    /**
+     * @return the showFilename
+     */
+    public boolean isShowFilename() {
+        return showFilename;
+    }
+
+    /**
+     * @param showFilename the showFilename to set
+     */
+    public void setShowFilename(boolean showFilename) {
+        this.showFilename = showFilename;
+        putBoolean("showFilename",showFilename);
+    }
+
+    /**
+     * Returns a TreeMap of all the ground truth bounding boxes. 
+     * The map keys are the timestamp in us and the entries are the BoundingBox's.
+     * @return the boundingBoxes
+     */
+    public TreeMap<Integer, BoundingBox> getBoundingBoxes() {
+        return boundingBoxes;
+    }
+
+    /**
+     * Returns ArrayList of currently valid BoundingBox for the last packet.
+     * @return the currentBoundingBoxes
+     */
+    public ArrayList<BoundingBox> getCurrentBoundingBoxes() {
+        return currentBoundingBoxes;
+    }
+
+    /** A single bounding box */
     public class BoundingBox {
 
-        final int N = 4;
+        /** Number of vertices */
+        public final int N = 4;
+        /** List of X and Y corner coordinates in DVS pixel space */
         float[] x = new float[N], y = new float[N]; // 4 points for corners of polygon
+        /** Timestamp of bounding box in us */
         int timestamp;
 
         public void draw(GL2 gl) {
@@ -176,15 +258,6 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
             }
             gl.glEnd();
         }
-    }
-
-    public class BoundingBoxTimeComparator implements Comparator<BoundingBox> {
-
-        @Override
-        public int compare(BoundingBox t, BoundingBox t1) {
-            return t.timestamp - t1.timestamp;
-        }
-
     }
 
 }
