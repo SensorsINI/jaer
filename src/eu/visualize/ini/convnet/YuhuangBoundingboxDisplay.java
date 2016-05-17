@@ -5,16 +5,17 @@
  */
 package eu.visualize.ini.convnet;
 
+import ch.unizh.ini.jaer.projects.davis.calibration.SingleCameraCalibration;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Map.Entry;
 import java.util.Observable;
 import java.util.Observer;
@@ -30,9 +31,9 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEFileInputStream;
-import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -40,27 +41,35 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
  * Displays tracking dataset bounding boxes as described in the 2016 Frontiers
- * in Neuromorphic Engineering data report paper "DVS Benchmark Datasets for Object Tracking, Action Recognition, and Object Recognition"
+ * in Neuromorphic Engineering data report paper "DVS Benchmark Datasets for
+ * Object Tracking, Action Recognition, and Object Recognition"
  *
  * @author tobi delbruck, yuhaung hu, hongie liu
  */
 @Description("Displays tracking dataset bounding boxes as described in the Frontiers paper")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
-public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameAnnotater, Observer, PropertyChangeListener {
+public class YuhuangBoundingboxDisplay extends EventFilter2D implements FrameAnnotater, Observer, PropertyChangeListener {
 
     private FileReader fileReader = null;
-    private String gtFilename = getString("GTFilename", "gt.txt"), gtFilenameShort=null;
-    private TreeMap<Integer, BoundingBox> boundingBoxes = new TreeMap();
+    private String gtFilename = getString("GTFilename", "gt.txt"), gtFilenameShort = null;
+    private TreeMap<Integer, BoundingBox> boundingBoxes = new TreeMap(), calibratedBoundingBoxes = new TreeMap();
     private int lastTs = 0;
     private ArrayList<BoundingBox> currentBoundingBoxes = new ArrayList(10);
     private boolean addedViewerPropertyChangeListener = false; // TODO promote these to base EventFilter class
-    private boolean showFilename = getBoolean("showFilename",true); 
+    private boolean showFilename = getBoolean("showFilename", true);
+    private SingleCameraCalibration calibration = null;
 
-    public YuhuangBoundingboxGenerator(AEChip chip) {
+    public YuhuangBoundingboxDisplay(AEChip chip) {
         super(chip);
+        FilterChain chain = new FilterChain(chip);
+        calibration = new SingleCameraCalibration(chip);
+        chain.add(calibration);
+        setEnclosedFilterChain(chain);
         setPropertyTooltip("loadGroundTruthFromTXT", "Load an TXT file containing grond truth");
         setPropertyTooltip("clearGroundTruth", "Clears list of bounding boxes");
         setPropertyTooltip("showFilename", "shows the ground truth filename");
+        setPropertyTooltip("loadCalibration", "loads saved calibration files from selected folder");
+        setPropertyTooltip("clearCalibration", "clears existing calibration");
     }
 
     synchronized public void doLoadGroundTruthFromTXT() {
@@ -76,7 +85,7 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
         }
         gtFilename = c.getSelectedFile().toString();
         putString("GTFilename", gtFilename);
-        gtFilenameShort=gtFilename.substring(0, 5)+"..."+gtFilename.substring(gtFilename.lastIndexOf(File.separator));
+        gtFilenameShort = gtFilename.substring(0, 5) + "..." + gtFilename.substring(gtFilename.lastIndexOf(File.separator));
         try {
             this.loadBoundingBoxes(c.getSelectedFile());
         } catch (Exception ex) {
@@ -84,11 +93,19 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
         }
 
     }
-    
-    synchronized public void doClearGroundTruth(){
+
+    synchronized public void doClearGroundTruth() {
         boundingBoxes.clear();
+        calibratedBoundingBoxes.clear();
     }
 
+    /**
+     * Loads the bounding boxes from the file, transforming the coordinates from
+     * the wrongly flipped ones in the file to the DVS coordinates in jaer.
+     *
+     * @param f
+     * @throws IOException
+     */
     synchronized public void loadBoundingBoxes(File f) throws IOException {
         Scanner gtReader = new Scanner(f);
         int lineNumber = 0;
@@ -106,13 +123,15 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
             // not documented yet, but order is
             // timestamp in us, x,y for 4 corners of polygon in DVS coordinates (in practice a rectangle)
             BoundingBox bb = new BoundingBox();
+
             try {
 
                 bb.timestamp = (int) Double.parseDouble(parts[0]);
                 for (int i = 0; i < bb.N; i++) {
-                    bb.x[i] = sx - (float) Double.parseDouble(parts[2 * i + 1]);
-                    bb.y[i] = sy - (float) Double.parseDouble(parts[2 * i + 2]);
+                    bb.x[i] = sx - (float) Double.parseDouble(parts[2 * i + 1]); // note transform due to mistake in database labeling
+                    bb.y[i] = sy - (float) Double.parseDouble(parts[2 * i + 2]); // note transform due to mistake in database labeling
                 }
+
                 boundingBoxes.put(bb.timestamp, bb);
             } catch (NumberFormatException e) {
                 log.warning("caught " + e.toString() + " on line " + lineNumber);
@@ -122,19 +141,53 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
         log.info("read " + boundingBoxes.size() + " bounding boxes from " + gtFilename + " and flipped x- and y-coordinates to match jAER");
         gtReader.close();
 
+        if (calibration.isCalibrated()) {
+            computeCalibratedBoundingBoxes();
+        }
+
+    }
+    
+    /** makes a new treemap of undistorted boxes */
+    private void computeCalibratedBoundingBoxes() {
+        // undistorted each vertex
+        ArrayList<Point2D.Float> points = new ArrayList(boundingBoxes.size() * 4);
+        for (BoundingBox b : boundingBoxes.values()) {
+            for (int i = 0; i < b.N; i++) {
+                points.add(new Point2D.Float(b.x[i], b.y[i]));
+            }
+        }
+        calibration.undistortPoints(points);
+        calibratedBoundingBoxes.clear();
+        int i = 0;
+        for (BoundingBox b : boundingBoxes.values()) {
+            BoundingBox nb = new BoundingBox();
+            for (int j = 0; j < b.N; j++) {
+                Point2D.Float p = points.get(i++);
+                nb.x[j] = p.x;
+                nb.y[j] = p.y;
+            }
+            nb.timestamp = b.timestamp;
+            calibratedBoundingBoxes.put(nb.timestamp, nb);
+        }
+        log.info("undistorted " + boundingBoxes.size() + " boxes using camera calibration " + calibration.getCalibrationString());
     }
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+        in = getEnclosedFilterChain().filterPacket(in);
         maybeAddListeners(chip);
-        currentBoundingBoxes.clear();
+        currentBoundingBoxes.clear(); // these are displayed, and returned to caller
         lastTs = in.getFirstTimestamp();
         BoundingBox next = null;
-        Entry<Integer, BoundingBox> entry = boundingBoxes.lowerEntry(lastTs); // gets BB that is last in list and still with lower timestamp than last timestamp
+        // either use the original boxes or the undistorted ones, depending on calibration
+        TreeMap<Integer, BoundingBox> usedBounndingBoxes = null;
+        usedBounndingBoxes = calibration.isCalibrated() && calibration.isFilterEnabled() ? calibratedBoundingBoxes : boundingBoxes;
+        // gets BB that is last in list and still with lower timestamp than last timestamp
+        Entry<Integer, BoundingBox> entry = usedBounndingBoxes.lowerEntry(lastTs);
         // we do this more expensive search in case user has scrolled the file or rewound
         if (entry != null && entry.getValue() != null) {
             currentBoundingBoxes.add(entry.getValue());
-            entry = boundingBoxes.higherEntry(entry.getKey());
+            entry = usedBounndingBoxes.higherEntry(entry.getKey());
             if (entry != null) {
                 next = entry.getValue();
             }
@@ -143,7 +196,7 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
             lastTs = ev.timestamp;  // gets next in list, then add to currentBoundingBoxes when timestamp reaches that value
             if (next != null && ev.timestamp > next.timestamp) {
                 currentBoundingBoxes.add(next);
-                entry = boundingBoxes.higherEntry(next.timestamp);
+                entry = usedBounndingBoxes.higherEntry(next.timestamp);
                 if (entry != null) {
                     next = entry.getValue();
                 }
@@ -219,12 +272,13 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
      */
     public void setShowFilename(boolean showFilename) {
         this.showFilename = showFilename;
-        putBoolean("showFilename",showFilename);
+        putBoolean("showFilename", showFilename);
     }
 
     /**
-     * Returns a TreeMap of all the ground truth bounding boxes. 
-     * The map keys are the timestamp in us and the entries are the BoundingBox's.
+     * Returns a TreeMap of all the ground truth bounding boxes. The map keys
+     * are the timestamp in us and the entries are the BoundingBox's.
+     *
      * @return the boundingBoxes
      */
     public TreeMap<Integer, BoundingBox> getBoundingBoxes() {
@@ -233,20 +287,37 @@ public class YuhuangBoundingboxGenerator extends EventFilter2D implements FrameA
 
     /**
      * Returns ArrayList of currently valid BoundingBox for the last packet.
+     *
      * @return the currentBoundingBoxes
      */
     public ArrayList<BoundingBox> getCurrentBoundingBoxes() {
         return currentBoundingBoxes;
     }
 
-    /** A single bounding box */
+    public synchronized void doLoadCalibration() {
+        calibration.doLoadCalibration();
+    }
+
+    public synchronized void doClearCalibration() {
+        calibration.doClearCalibration();
+    }
+
+    /**
+     * A single bounding box
+     */
     public class BoundingBox {
 
-        /** Number of vertices */
+        /**
+         * Number of vertices
+         */
         public final int N = 4;
-        /** List of X and Y corner coordinates in DVS pixel space */
+        /**
+         * List of X and Y corner coordinates in DVS pixel space
+         */
         float[] x = new float[N], y = new float[N]; // 4 points for corners of polygon
-        /** Timestamp of bounding box in us */
+        /**
+         * Timestamp of bounding box in us
+         */
         int timestamp;
 
         public void draw(GL2 gl) {
