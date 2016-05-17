@@ -50,6 +50,8 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
+import java.nio.FloatBuffer;
+import java.util.ArrayList;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -94,7 +96,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private int rectangleHeightMm = getInt("rectangleHeightMm", 20); //height in mm
     private int rectangleWidthMm = getInt("rectangleWidthMm", 20); //width in mm
     private boolean showUndistortedFrames = getBoolean("showUndistortedFrames", false);
-    private boolean undistortDVSevents = getBoolean("undistortDVSevents", false);
+    private boolean undistortDVSevents = getBoolean("undistortDVSevents", true);
     private boolean takeImageOnTimestampReset = getBoolean("takeImageOnTimestampReset", false);
     private boolean hideStatisticsAndStatus = getBoolean("hideStatisticsAndStatus", false);
     private String fileBaseName = "";
@@ -608,7 +610,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 (float) chip.getSizeX() / 2, (float) chip.getSizeY() / 2));
         calibrationString = sb.toString();
         calibrated = true;
-        textRendererScaleSet=false;
+        textRendererScaleSet = false;
     }
     private static final String SINGLE_CAMERA_CALIBRATION_UNCALIBRATED = "SingleCameraCalibration: uncalibrated";
 
@@ -976,6 +978,40 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             return false;
         }
         return true;
+    }
+
+    /**
+     * Transforms the list of Point2D.Float by undistorting each point, in
+     * place. Returns immediately if not calibrated.
+     *
+     * @param points
+     */
+    public void undistortPoints(ArrayList<Point2D.Float> points) {
+        if (!isCalibrated()) {
+            log.warning("not calibrated, doing nothing");
+        }
+        FloatPointer fp = new FloatPointer(2 * points.size());
+        int idx = 0;
+        for (Point2D.Float p : points) {
+            fp.put(idx++, p.x);
+            fp.put(idx++, p.y);
+        }
+        Mat dst = new Mat();
+        Mat pixelArray = new Mat(1, 2*points.size(), CV_32FC2, fp); // make wide 2 channel matrix of source event x,y
+        opencv_imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
+        // get the camera matrix elements (focal lengths and principal point)
+        DoubleIndexer k = getCameraMatrix().createIndexer();
+        float fx, fy, cx, cy;
+        fx = (float) k.get(0, 0);
+        fy = (float) k.get(1, 1);
+        cx = (float) k.get(0, 2);
+        cy = (float) k.get(1, 2);
+        idx=0;
+        FloatBuffer b=dst.getFloatBuffer();
+        for (Point2D.Float p : points) {
+            p.x = ((b.get(idx++) * fx) + cx);
+            p.y = ((b.get(idx++) * fy) + cy);
+        }
     }
 
     private boolean xeob(int x) {
