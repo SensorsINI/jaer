@@ -46,8 +46,9 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  *
  * @author tobi delbruck, yuhaung hu, hongie liu
  */
-@Description("Displays tracking dataset bounding boxes as described in the Frontiers paper")
-@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
+@Description("Displays tracking dataset bounding boxes as described in the Frontiers paper \"DVS Benchmark Datasets for\n" +
+" * Object Tracking, Action Recognition, and Object Recognition\"")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class YuhuangBoundingboxDisplay extends EventFilter2D implements FrameAnnotater, Observer, PropertyChangeListener {
 
     private FileReader fileReader = null;
