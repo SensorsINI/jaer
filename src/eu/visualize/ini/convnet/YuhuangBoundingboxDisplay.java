@@ -129,8 +129,8 @@ public class YuhuangBoundingboxDisplay extends EventFilter2D implements FrameAnn
 
                 bb.timestamp = (int) Double.parseDouble(parts[0]);
                 for (int i = 0; i < bb.N; i++) {
-                    bb.x[i] = sx - (float) Double.parseDouble(parts[2 * i + 1]); // note transform due to mistake in database labeling
-                    bb.y[i] = sy - (float) Double.parseDouble(parts[2 * i + 2]); // note transform due to mistake in database labeling
+                    bb.x[i] = sx - (float) Double.parseDouble(parts[2 * i + 1]); // note transform due to mysterious flipped-in-x jaer recordings
+                    bb.y[i] = sy - (float) Double.parseDouble(parts[2 * i + 2]); // note transform due to original dataset origin in top left
                 }
 
                 boundingBoxes.put(bb.timestamp, bb);
