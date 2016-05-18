@@ -208,14 +208,15 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 		final List<CochleaChannel> cochleaChannels = new ArrayList<>();
 		final List<SPIConfigValue> aerControl = new ArrayList<>();
 		final List<SPIConfigValue> scannerControl = new ArrayList<>();
+		final List<SPIConfigValue> adcControl = new ArrayList<>();
 		final List<SPIConfigValue> chipDiagChain = new ArrayList<>();
 
 		/**
 		 * Two DACs, 16 channels. Internal 1.25V reference is used, so VOUT in
 		 * range 0-2.5V. VDD is 2.8V.
 		 */
-		private final DAC dac1 = new DAC(16, 12, 0, 2.5f, 2.8f);
-		private final DAC dac2 = new DAC(16, 12, 0, 2.5f, 2.8f);
+		private final DAC dac1 = new DAC(0, 16, 12, 0, 2.5f, 2.8f);
+		private final DAC dac2 = new DAC(1, 16, 12, 0, 2.5f, 2.8f);
 
 		final SPIConfigBit dacRun;
 
@@ -329,8 +330,8 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			ssBiases[1] = ssn;
 
 			// DAC1 channels (16)
-			vpots.addPot(new VPot(getChip(), "MICBIAS1L", dac1, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "MICBIAS1L", dac1, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			//vpots.addPot(new VPot(getChip(), "MICBIAS1L", dac1, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
+			//vpots.addPot(new VPot(getChip(), "MICBIAS1L", dac1, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
 			vpots.addPot(new VPot(getChip(), "Vrefdiff", dac1, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "Vrefdiff2", dac1, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "PreampGain1L", dac1, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
@@ -353,8 +354,8 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			vpots.addPot(new VPot(getChip(), "VbiasHF1Bn", dac2, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "VtauBn", dac2, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "PreampGain2L", dac2, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "MICBIAS2L", dac2, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "MICBIAS2R", dac2, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			//vpots.addPot(new VPot(getChip(), "MICBIAS2L", dac2, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
+			//vpots.addPot(new VPot(getChip(), "MICBIAS2R", dac2, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
 			vpots.addPot(new VPot(getChip(), "VrefpreampBpx", dac2, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "VbMicCasBpcx", dac2, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "RefADAMux3-", dac2, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
@@ -407,6 +408,15 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 				allPreferencesList.add(cfgVal);
 			}
 
+                        // ADC
+			adcControl.add(new SPIConfigBit("ADCEnable", "Enable external ADCs", CypressFX3.FPGA_ADC, (short) 0, false, this));
+			adcControl.add(new SPIConfigInt("ADCChannelsEnable", "1 - Right, 2 - Left, 3 - Both", CypressFX3.FPGA_ADC, (short) 1, 4, 3, this));
+			adcControl.add(new SPIConfigBit("ADCFrequency", "OFF - 16kHz, ON - 44.1kHz", CypressFX3.FPGA_ADC, (short) 2, false, this));
+			for (final SPIConfigValue cfgVal : adcControl) {
+				cfgVal.addObserver(this);
+				allPreferencesList.add(cfgVal);
+			}
+
 			// Chip diagnostic chain
 			chipDiagChain.add(new SPIConfigInt("ChipResetCapConfigADM", "Reset cap configuration in ADM.", CypressFX3.FPGA_CHIPBIAS,
 				(short) 128, 2, 0, this));
@@ -436,6 +446,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 				allPreferencesList.add(chan);
 			}
 
+			// Preferences
 			setBatchEditOccurring(true);
 			loadPreferences();
 			setBatchEditOccurring(false);
@@ -547,14 +558,19 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 					}
 					else if (observable instanceof VPot) {
 						final VPot vPot = (VPot) observable;
+                                                final CypressFX3.SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
 
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 2, 0x03); // Select input data register.
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 3, vPot.getChannel());
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 5, vPot.getBitValue());
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, vPot.getDacNumber()); // Select DAC.
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 2, 0x03); // Select input data register.
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 3, vPot.getChannel());
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 5, vPot.getBitValue());
 
-						// Toggle SET flag.
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 6, 1);
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 6, 0);
+                                                // Toggle SET flag.
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 1);
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 0);
+
+                                                // Commit configuration.
+                                                configSequence.sendConfigSequence();
 
 						// Wait 1ms to ensure operation is completed.
 						try {
@@ -639,6 +655,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 	public class Extractor extends TypedEventExtractor<BinauralCochleaEvent> {
 
 		private static final long serialVersionUID = -3469492271382423090L;
+                private int lastSpecialEventTimestamp=0;
 
 		public Extractor(final AEChip chip) {
 			super(chip);
@@ -707,6 +724,8 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 				e.type = getTypeFromAddress(addr);
 				if ((e.address & BasicEvent.SPECIAL_EVENT_BIT_MASK) != 0) {
 					e.setSpecial(true);
+                                        int dt=e.timestamp-lastSpecialEventTimestamp;
+                                        lastSpecialEventTimestamp=e.timestamp;
 				}
 
 				j++;

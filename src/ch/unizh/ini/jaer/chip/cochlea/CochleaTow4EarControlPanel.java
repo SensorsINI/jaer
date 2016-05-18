@@ -99,6 +99,15 @@ public final class CochleaTow4EarControlPanel extends JTabbedPane implements Obs
 			}
 		}
 
+		for (final SPIConfigValue cfgVal : biasgen.adcControl) {
+			if (cfgVal instanceof SPIConfigBit) {
+				SPIConfigBit.makeSPIBitConfig((SPIConfigBit) cfgVal, adcPanel, configValueMap, getBiasgen());
+			}
+			else if (cfgVal instanceof SPIConfigInt) {
+				SPIConfigInt.makeSPIIntConfig((SPIConfigInt) cfgVal, adcPanel, configValueMap, getBiasgen());
+			}
+		}
+
 		for (final SPIConfigValue cfgVal : biasgen.chipDiagChain) {
 			if (cfgVal instanceof SPIConfigBit) {
 				SPIConfigBit.makeSPIBitConfig((SPIConfigBit) cfgVal, chipDiagPanel, configValueMap, getBiasgen());
@@ -741,6 +750,10 @@ public final class CochleaTow4EarControlPanel extends JTabbedPane implements Obs
 		aerPanel.setLayout(new BoxLayout(aerPanel, BoxLayout.Y_AXIS));
 		addTab("AER Config", (aerPanel));
 
+                adcPanel = new JPanel();
+                adcPanel.setLayout(new BoxLayout(adcPanel, BoxLayout.Y_AXIS));
+                addTab("ADC", (adcPanel));
+		
 		chipDiagPanel = new JPanel();
 		chipDiagPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		chipDiagPanel.setLayout(new BoxLayout(chipDiagPanel, BoxLayout.Y_AXIS));
@@ -757,5 +770,6 @@ public final class CochleaTow4EarControlPanel extends JTabbedPane implements Obs
 	private JPanel channelPanel;
 	private JPanel scannerPanel;
 	private JPanel aerPanel;
+	private JPanel adcPanel;
 	private JPanel chipDiagPanel;
 }

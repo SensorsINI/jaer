@@ -30,7 +30,6 @@ public class VPot extends Pot implements RemoteControlled {
 
     /** the delta voltage to change by in increment and decrement methods */
     public static final float VOLTAGE_CHANGE_VALUE_VOLTS = 0.005f;
-    private int dacNumber = 0;
     private int channel = 0;
     private DAC dac = null;
 
@@ -114,11 +113,7 @@ public class VPot extends Pot implements RemoteControlled {
     }
 
     public int getDacNumber() {
-        return dacNumber;
-    }
-
-    public void setDacNumber(int dacNumber) {
-        this.dacNumber = dacNumber;
+        return dac.getDacNumber();
     }
 
     public int getChannel() {

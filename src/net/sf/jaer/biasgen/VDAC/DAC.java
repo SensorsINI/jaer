@@ -20,13 +20,14 @@ package net.sf.jaer.biasgen.VDAC;
  */
 public class DAC {
     
+    private int dacNumber;
     private int numChannels;
     private int resolutionBits;
     private float refMinVolts;
     private float refMaxVolts;
     private float vdd;
     
-    /** Constructs a new DAC object which represents the DAC.
+    /** Constructs a new DAC object which represents the DAC. Single DAC version, for compatibility.
      * 
      * @param numChannels number of output channels.
      * @param resolutionBits resolution of each channel in bits.
@@ -36,6 +37,26 @@ public class DAC {
      * voltage such that some counts would output a voltage larger than vdd. VPot uses this vdd to limit its displayed voltage.
      */
     public DAC(int numChannels, int resolutionBits, float refMinVolts, float refMaxVolts, float vdd){
+        dacNumber = 0;
+        this.setNumChannels(numChannels);
+        this.resolutionBits=resolutionBits;
+        this.refMinVolts=refMinVolts;
+        this.refMaxVolts=refMaxVolts;
+        this.vdd=vdd;
+    }
+
+     /** Constructs a new DAC object which represents the DAC. Use for boards with multiple DACs (up to 4)
+     * 
+     * @param dacNumber number the DAC (0 based).
+     * @param numChannels number of output channels.
+     * @param resolutionBits resolution of each channel in bits.
+     * @param refMinVolts vref miniumum in volts (same for all channels).
+     * @param refMaxVolts vref max in volts (same for all channels).
+     * @param vdd the positive supply voltage (the largest voltage the DAC could output). A DAC may use an internal or external reference
+     * voltage such that some counts would output a voltage larger than vdd. VPot uses this vdd to limit its displayed voltage.
+     */
+    public DAC(int dacNumber, int numChannels, int resolutionBits, float refMinVolts, float refMaxVolts, float vdd){
+        this.dacNumber = dacNumber;
         this.setNumChannels(numChannels);
         this.resolutionBits=resolutionBits;
         this.refMinVolts=refMinVolts;
@@ -75,6 +96,10 @@ public class DAC {
 
     public void setResolutionBits(int resolutionBits) {
         this.resolutionBits = resolutionBits;
+    }
+
+    public int getDacNumber() {
+        return dacNumber;
     }
 
     public int getNumChannels() {
