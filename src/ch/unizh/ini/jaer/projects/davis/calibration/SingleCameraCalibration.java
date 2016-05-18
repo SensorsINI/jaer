@@ -156,10 +156,11 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         setPropertyTooltip("setPath", "sets the folder and basename of saved images");
         setPropertyTooltip("saveCalibration", "saves calibration files to a selected folder");
         setPropertyTooltip("loadCalibration", "loads saved calibration files from selected folder");
-        setPropertyTooltip("clearCalibration", "clears existing calibration");
+        setPropertyTooltip("clearCalibration", "clears existing calibration, without clearing accumulated corner points (see ClearImages)");
+        setPropertyTooltip("clearImages", "clears existing image corner and object points without clearing calibration (see ClearCalibration)");
         setPropertyTooltip("takeImage", "snaps a calibration image that forms part of the calibration dataset");
         setPropertyTooltip("hideStatisticsAndStatus", "hides the status text");
-        loadCalibration();
+//        loadCalibration(); // moved from here to update method so that Chip is fully constructed with correct size, etc.
     }
 
     /**
@@ -708,6 +709,13 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         undistortedAddressLUT = null;
         isUndistortedAddressLUTgenerated = false;
     }
+    
+    synchronized public void doClearImages() {
+        imageCounter=0;
+        allImagePoints.setNull();
+        allObjectPoints.setNull();
+        generateCalibrationString();
+    }
 
     private void loadCalibration() {
         try {
@@ -1048,6 +1056,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             if (chip.getNumPixels() > 0) {
                 sx = chip.getSizeX();
                 sy = chip.getSizeY(); // might not yet have been set in constructor
+                loadCalibration();
             }
         }
     }
