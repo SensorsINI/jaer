@@ -36,8 +36,8 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  *
  * @author Tobi Delbruck
  */
-@Description("Writes out AVI movie with DVS constant-number-of-event 2D histogram slices as AVI frame images with desired output resolution")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@Description("Writes out AVI movie with DVS constant-number-of-event subsampled 2D histogram slices as AVI frame images with desired output resolution")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotater {
 
     private DvsSubsamplerToFrame dvsSubsampler = null;
