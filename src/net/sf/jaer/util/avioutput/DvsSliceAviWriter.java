@@ -92,7 +92,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                     && !chip.getAeViewer().isPaused()) {
                 if(writeDvsSliceImageOnApsFrame) newFrameAvailable=false;
                 maybeShowOutput(dvsSubsampler);
-                if (aviOutputStream != null) {
+                if (aviOutputStream != null && isWriteEnabled()) {
                     BufferedImage bi = toImage(dvsSubsampler);
                     try {
                         writeTimecode(e.timestamp);

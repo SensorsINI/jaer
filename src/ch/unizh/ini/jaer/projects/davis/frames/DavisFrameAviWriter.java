@@ -77,7 +77,7 @@ public class DavisFrameAviWriter extends AbstractAviWriter {
 
     @Override
     synchronized public void propertyChange(PropertyChangeEvent evt) {
-        if ((aviOutputStream != null)
+        if ((aviOutputStream != null && isWriteEnabled())
                 && (evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)
                 && !chip.getAeViewer().isPaused()) {
             FloatBuffer frame = ((AEFrameChipRenderer)chip.getRenderer()).getPixmap();

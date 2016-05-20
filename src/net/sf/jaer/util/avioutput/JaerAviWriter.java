@@ -37,7 +37,7 @@ public class JaerAviWriter extends AbstractAviWriter {
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        if (aviOutputStream == null) {
+        if (aviOutputStream == null && isWriteEnabled()) {
             return;
         }
         GL2 gl = drawable.getGL().getGL2();

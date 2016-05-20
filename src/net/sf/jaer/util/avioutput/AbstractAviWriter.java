@@ -11,6 +11,7 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.awt.GLCanvas;
 import java.awt.Desktop;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.beans.PropertyChangeEvent;
@@ -30,6 +31,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 
@@ -40,7 +42,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  */
 @Description("Base class for EventFilters that write out AVI files from jAER")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
+public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements FrameAnnotater, PropertyChangeListener {
 
     protected AVIOutputStream aviOutputStream = null;
     protected static String DEFAULT_FILENAME = "jAER.avi";
@@ -59,6 +61,8 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
     private String[] additionalComments = null;
     private int frameRate=getInt("frameRate",30);
     private boolean saveFramesAsIndividualImageFiles=getBoolean("saveFramesAsIndividualImageFiles",false);
+    private boolean writeOnlyWhenMousePressed=getBoolean("writeOnlyWhenMousePressed",false);
+    protected volatile boolean writeEnabled=true;
 
     public AbstractAviWriter(AEChip chip) {
         super(chip);
@@ -75,6 +79,8 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
         setPropertyTooltip("showFolderInDesktop", "Opens the folder containging the last-written AVI file");
         setPropertyTooltip("frameRate", "Specifies frame rate of AVI file.");
         setPropertyTooltip("saveFramesAsIndividualImageFiles", "If selected, then the frames are saved as individual image files in the selected folder");
+        setPropertyTooltip("writeOnlyWhenMousePressed", "If selected, then the frames are are saved only when the mouse is pressed in the AEViewer window");
+        setPropertyTooltip("writeEnabled", "Selects if writing frames is enabled. Use this to temporarily disable output, or in conjunction with writeOnlyWhenMousePressed");
         chip.getSupport().addPropertyChangeListener(this);
 
     }
@@ -283,6 +289,7 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
+        
 
     }
 
@@ -453,4 +460,41 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
 //        this.saveFramesAsIndividualImageFiles = saveFramesAsIndividualImageFiles;
 //        putBoolean("saveFramesAsIndividualImageFiles",saveFramesAsIndividualImageFiles);
 //    }
+
+    /**
+     * @return the writeOnlyWhenMousePressed
+     */
+    public boolean isWriteOnlyWhenMousePressed() {
+        return writeOnlyWhenMousePressed;
+    }
+
+    /**
+     * @param writeOnlyWhenMousePressed the writeOnlyWhenMousePressed to set
+     */
+    public void setWriteOnlyWhenMousePressed(boolean writeOnlyWhenMousePressed) {
+        this.writeOnlyWhenMousePressed = writeOnlyWhenMousePressed;
+        putBoolean("writeOnlyWhenMousePressed",writeOnlyWhenMousePressed);
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+        if(writeOnlyWhenMousePressed) setWriteEnabled(false);
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+        if(writeOnlyWhenMousePressed) setWriteEnabled(true);
+    }
+    
+    public boolean isWriteEnabled(){
+        return writeEnabled;
+    }
+    
+    public void setWriteEnabled(boolean yes){
+        boolean old=this.writeEnabled;
+        writeEnabled=yes;
+        getSupport().firePropertyChange("writeEnabled",old, yes);
+        log.info("writeEnabled="+writeEnabled);
+    }
+    
 }
