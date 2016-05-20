@@ -115,6 +115,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private int filePositionTimestamp = 0;
     private boolean warnSave = true;
     private int mouseWheelRoll=0;
+    private boolean editTargetRadius=getBoolean("editTargetRadius", false);
 
     public TargetLabeler(AEChip chip) {
         super(chip);
@@ -135,7 +136,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 //        setPropertyTooltip("maxTargets", "maximum number of simultaneous targets to label");
         setPropertyTooltip("currentTargetTypeID", "ID code of current target to be labeled, e.g., 0=dog, 1=cat, etc. User must keep track of the mapping from ID codes to target classes.");
         setPropertyTooltip("eraseSamplesEnabled", "Use this mode to erase all samples up to minTargetPointIntervalUs before current time.");
-        setPropertyTooltip("relabelRadiusEnabled", "Use this mode to resize the target bounding box to the targetRadius using the mouse wheel to change the size");
+        setPropertyTooltip("editTargetRadius", "Use this mode to resize the target bounding box to the targetRadius using the mouse wheel to change the size");
         Arrays.fill(labeledFractions, false);
         Arrays.fill(targetPresentInFractions, false);
         try {
@@ -264,7 +265,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         MultilineAnnotationTextRenderer.setScale(.3f);
         StringBuilder sb = new StringBuilder();
         if (showHelpText) {
-            sb.append("Shift+!Ctrl + mouse position: Specify no target present\nClt+Shift + mouse position: Specify currentTargetTypeID is present at mouse location\nShift+Alt: specify new radius for current targets");
+//            sb.append("Shift+!Ctrl + mouse position: Specify no target present\nClt+Shift + mouse position: Specify currentTargetTypeID is present at mouse location\nShift+Alt: specify new radius for current targets");
+            sb.append("Shift+!Ctrl + mouse position: Specify no target present\nClt+Shift + mouse position: Specify currentTargetTypeID is present at mouse location");
             MultilineAnnotationTextRenderer.renderMultilineString(sb.toString());
         }
         if (showStatistics) {
@@ -283,9 +285,11 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 MultilineAnnotationTextRenderer.renderMultilineString("Playing recorded target locations");
             }
         }
+        boolean first=true;
         for (TargetLocation t : currentTargets) {
             if (t.location != null) {
-                t.draw(drawable, gl);
+                t.draw(drawable, gl, first? 10:2);
+                first=false;
             }
         }
 
@@ -513,7 +517,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         addSample(getCurrentFrameNumber(), e.timestamp, null, targetRadius*2, targetRadius*2, currentTargetTypeID, false);
                     }
                     updateCurrentlyDisplayedTargets(e);
-                    if(shiftPressed && altPressed){
+                    if(editTargetRadius){
                         for(TargetLocation t:currentTargets){
                             t.width=targetRadius*2;
                             t.height=targetRadius*2;
@@ -809,7 +813,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             this.height = height;
         }
 
-        private void draw(GLAutoDrawable drawable, GL2 gl) {
+        private void draw(GLAutoDrawable drawable, GL2 gl, float linewidth) {
 
 //            if (getTargetLocation() != null && getTargetLocation().location == null) {
 //                textRenderer.beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
@@ -822,6 +826,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             float[] compArray = new float[4];
             gl.glColor3fv(targetTypeColors[targetClassID % targetTypeColors.length].getColorComponents(compArray), 0);
 //            gl.glColor4f(0, 1, 0, .5f);
+            gl.glLineWidth(linewidth);
             gl.glBegin(GL.GL_LINE_LOOP);
             gl.glVertex2f(-width/2, -height/2);
             gl.glVertex2f(+width/2, -height/2);
@@ -1196,6 +1201,21 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
      */
     public boolean isLocationsLoadedFromFile() {
         return locationsLoadedFromFile;
+    }
+
+    /**
+     * @return the editTargetRadius
+     */
+    public boolean isEditTargetRadius() {
+        return editTargetRadius;
+    }
+
+    /**
+     * @param editTargetRadius the editTargetRadius to set
+     */
+    public void setEditTargetRadius(boolean editTargetRadius) {
+        this.editTargetRadius = editTargetRadius;
+        putBoolean("editTargetRadius",editTargetRadius);
     }
 
    
