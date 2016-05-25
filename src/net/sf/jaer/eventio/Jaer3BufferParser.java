@@ -172,9 +172,6 @@ public class Jaer3BufferParser {
 
 		while ((in.position() <= (in.limit() - PKT_HEADER_SIZE)) && (in.position() >= 0)) {
 			int currentSearchPosition = in.position();
-                        if (currentSearchPosition <= 21291200) {
-                            int nnTmp = 0;
-                        }
 			eventTypeInt = in.getShort();
 			// By default, eventTypeInt should range from 0 to 7
 			if ((eventTypeInt > 7) || (eventTypeInt < 0)) {
@@ -235,7 +232,7 @@ public class Jaer3BufferParser {
                                 }
                             }  
 
-                            if (d.eventType == EventType.Imu6Event) {
+                            if (d.eventType == EventType.Imu9Event) {
                                 if(d.eventSize != 48) {
                                     in.position(currentSearchPosition + direction);
                                     continue;    
@@ -558,8 +555,9 @@ public class Jaer3BufferParser {
 		in.position(nextEventOffset);
 		eventFirstInt = in.getInt();
 
+                // TODO: Remove setting the ImuEvent as the invalid events.
 		// This while loop is used to exclude the invalid events
-		while (((eventFirstInt & validMask) != 1) || (currentPkt.pktHeader.eventType == EventType.Imu6Event)) {
+		while (((eventFirstInt & validMask) != 1) || (currentPkt.pktHeader.eventType == EventType.Imu6Event) || (currentPkt.pktHeader.eventType == EventType.Imu9Event)) {
 			nextEventOffset = getNextEventOffset();
 			if (-1 == nextEventOffset) {
 				log.warning("Reach the end of the buffer, can't read data!");
@@ -627,10 +625,12 @@ public class Jaer3BufferParser {
 				int jaer2FrameAddr;
 				int data;
 
+                                // TODO: The frame pixel size should be xlength * ylength * channelNumber. Here we always set the channelNumber to 1.
 				if ((translatedArrayIndex >= (xlength * ylength)) && (translatedArrayIndex <= ((2 * xlength * ylength) - 1))) {
 					jaer2FrameAddr = ((((translatedArrayIndex - (xlength * ylength)) / ylength)) << 17)
 						+ (((translatedArrayIndex - (xlength * ylength)) % ylength) << 2) + 0;
 
+                                        // TODO: 239 should be replaced by the chip width, added the code to get the current chip size.
 					// Reset Read Array
 					framePixelArrayOffset = (239 - ((translatedArrayIndex - (xlength * ylength)) / ylength))
 						+ (xlength * ((translatedArrayIndex - (xlength * ylength)) % ylength));
@@ -640,14 +640,14 @@ public class Jaer3BufferParser {
 						throw new BufferUnderflowException(); // Reach the end of the buffer
 					}
 					data = in.getShort(frameCurrentEventOffset + dataOffset);  // Reset read array
-                                        ts = in.getInt((frameCurrentEventOffset + tsOffset) - 8); // Start of Frame Capture timestamp
+                                        ts = in.getInt(frameCurrentEventOffset + 4); // Start of Frame Capture timestamp
 				}
 				else {
 					jaer2FrameAddr = ((((translatedArrayIndex) / ylength)) << 17) + (((translatedArrayIndex) % ylength) << 2) + 1;
 
 					// Signal Read Array
 					data = 0;
-                                        ts = in.getInt((frameCurrentEventOffset + tsOffset) - 4); // End of Frame Capture timestamp
+                                        ts = in.getInt(frameCurrentEventOffset + 8); // End of Frame Capture timestamp
 				}
 
 				jaer2Buffer.putInt(jaer2FrameAddr);
