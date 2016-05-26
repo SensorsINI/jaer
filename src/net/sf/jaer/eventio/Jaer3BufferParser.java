@@ -160,9 +160,9 @@ public class Jaer3BufferParser {
 
 		int eventTypeInt;
 		int currentPosition = in.position(); // store current position, guarntee the position didn't change in this function
-                
+
                 boolean successFlg = false;
-                
+
 		if ((direction != 1) && (direction != -1)) {
 			log.warning("Search direction can only be 1(forward) or -1(backward!)");
 			return null;
@@ -196,7 +196,7 @@ public class Jaer3BufferParser {
 				}
 			}
 			else if (d.eventType == EventType.FrameEvent) {
-				if (d.eventTSOffset != 12 && d.eventTSOffset != 8) {
+				if ((d.eventTSOffset != 12) && (d.eventTSOffset != 8)) {
 					in.position(currentSearchPosition + direction);
 					continue;
 				}
@@ -207,46 +207,46 @@ public class Jaer3BufferParser {
 					continue;
 				}
 			}
-                        
+
                         // This section is used to check the relationship between eventType and eventSize
                         {
-                            if (d.eventType == EventType.SpecialEvent || d.eventType == EventType.PolarityEvent 
-                                    || d.eventType == EventType.SampleEvent || d.eventType == EventType.EarEvent) {
+                            if ((d.eventType == EventType.SpecialEvent) || (d.eventType == EventType.PolarityEvent)
+                                    || (d.eventType == EventType.SampleEvent) || (d.eventType == EventType.EarEvent)) {
                                 if(d.eventSize != 8) {
                                     in.position(currentSearchPosition + direction);
-                                    continue;                                
+                                    continue;
                                 }
                             }
 
                             if (d.eventType == EventType.FrameEvent) {
                                 if(d.eventSize < 36) {
                                     in.position(currentSearchPosition + direction);
-                                    continue;    
+                                    continue;
                                 }
                             }
 
                             if (d.eventType == EventType.Imu6Event) {
                                 if(d.eventSize != 36) {
                                     in.position(currentSearchPosition + direction);
-                                    continue;    
+                                    continue;
                                 }
-                            }  
+                            }
 
                             if (d.eventType == EventType.Imu9Event) {
                                 if(d.eventSize != 48) {
                                     in.position(currentSearchPosition + direction);
-                                    continue;    
+                                    continue;
                                 }
-                            }   
+                            }
 
                             if (d.eventType == EventType.ConfigEvent) {
                                 if(d.eventSize != 10) {
                                     in.position(currentSearchPosition + direction);
-                                    continue;    
+                                    continue;
                                 }
-                            } 
+                            }
                         }
-                        
+
 			d.eventTSOverflow = in.getInt(); // eventTSOverflow
 			d.eventCapacity = in.getInt(); // eventcapacity
 
@@ -255,13 +255,13 @@ public class Jaer3BufferParser {
 				in.position(currentSearchPosition + direction);
 				continue;
 			}
-                        
+
                         // eventCapacity is always equal to eventNumber, it can only have a different value for in-memory packets.
                         // The relationship is: eventValid <= eventNumber <= eventCapacity. And eventCapacity must be at least 1.
 			if(d.eventNumber > d.eventCapacity) {
                             in.position(currentSearchPosition + direction);
                             continue;
-                        }                     
+                        }
 
 			d.eventValid = in.getInt(); // eventValid
 			if (d.eventValid < 0) {
@@ -274,8 +274,8 @@ public class Jaer3BufferParser {
 			if (d.eventNumber >= d.eventValid) {
                             successFlg = true;
                             break;
-			} 
-                        else { // Not succesful, move to the next/previous position to continue. 
+			}
+                        else { // Not succesful, move to the next/previous position to continue.
                             in.position(currentSearchPosition + direction);
                             continue;
                         }
@@ -283,9 +283,9 @@ public class Jaer3BufferParser {
 		}
 
                 // This condition is to make sure the positions that start from the position bigger than in.limit() - PKT_HEADER_SIZE will skip the while loop
-                // and return null directly. Sometimes, the header is found and in.position() also > in.limit() - PKT_HEADER_SIZE, so here we use successFlg to 
+                // and return null directly. Sometimes, the header is found and in.position() also > in.limit() - PKT_HEADER_SIZE, so here we use successFlg to
                 // distiguish them.
-		if (in.position() > (in.limit() - PKT_HEADER_SIZE) && !successFlg) {
+		if ((in.position() > (in.limit() - PKT_HEADER_SIZE)) && !successFlg) {
 			in.position(currentPosition); // restore the position, because the byteBuffer in AEFileinputStream share the
 											// position with in.
 			return null;
@@ -319,7 +319,7 @@ public class Jaer3BufferParser {
 			return pkt;
 		}
 	} // getCurrentPkt
-        
+
 	/**
 	 * Get the next packet header of the target position
 	 *
@@ -331,7 +331,7 @@ public class Jaer3BufferParser {
 	private PacketDescriptor getPreviousPkt(int targetPosition) throws IOException {
 		return searchPacketHeader(targetPosition - PKT_HEADER_SIZE, -1);
 	} // getPreviousPkt
-        
+
 	/**
 	 * Get the next packet header of the target position
 	 *
@@ -504,16 +504,16 @@ public class Jaer3BufferParser {
 		int currentPosition = in.position();
 		PacketDescriptor lastPkt = getCurrentPkt(in.limit() - PKT_HEADER_SIZE);
 		int lastTs;
-                
+
                 // Sometimes the last packet is not complete, we should use the second last packet to search the last timestamp
-                if (lastPkt.pktPosition + lastPkt.pktHeader.eventNumber*lastPkt.pktHeader.eventSize + PKT_HEADER_SIZE > in.limit()) { 
-                    lastPkt = getPreviousPkt(lastPkt.pktPosition); 
+                if ((lastPkt.pktPosition + (lastPkt.pktHeader.eventNumber*lastPkt.pktHeader.eventSize) + PKT_HEADER_SIZE) > in.limit()) {
+                    lastPkt = getPreviousPkt(lastPkt.pktPosition);
                     // Until we find the lastPkt is not null.
-                    while(lastPkt == null) {
-                        lastPkt = getPreviousPkt(lastPkt.pktPosition); 
+                    while(lastPkt != null) {
+                        lastPkt = getPreviousPkt(lastPkt.pktPosition);
                     }
                 }
-                
+
 		if (lastPkt.pktHeader.eventNumber == lastPkt.pktHeader.eventValid) { // The whole packet is a complete valid packet
 			int position = lastPkt.pktPosition + PKT_HEADER_SIZE + ((lastPkt.pktHeader.eventNumber - 1) * lastPkt.pktHeader.eventSize)
 				+ lastPkt.pktHeader.eventTSOffset;
@@ -701,11 +701,11 @@ public class Jaer3BufferParser {
 			if (pkt.pktHeader.eventType == EventType.PolarityEvent) {
                             numEvents += pkt.pktHeader.eventValid;
 			}
-                        
+
                         if (pkt.pktHeader.eventType == EventType.SpecialEvent) {
                             numEvents += pkt.pktHeader.eventValid;
                         }
-                        
+
 			if (pkt.pktHeader.eventType == EventType.FrameEvent) {
 				int xlength = in.getInt(pkt.pktPosition + PKT_HEADER_SIZE + 20);
 				int ylength = in.getInt(pkt.pktPosition + PKT_HEADER_SIZE + 24);
@@ -909,7 +909,7 @@ public class Jaer3BufferParser {
 			e.reset();
 			return e;
 		}
-                
+
 		/**
 		 * Extractor the Special events.
 		 *
@@ -923,7 +923,7 @@ public class Jaer3BufferParser {
                 protected void readSpecial(final OutputEventIterator outItr, final int data, final int timestamp){
 			final int sx1 = getChip().getSizeX() - 1;
 			final ApsDvsEvent e = nextApsDvsEvent(outItr);
-                        
+
                         e.address = data;
 			e.timestamp = timestamp;
                         int eventTypeID = (data >> 1) & 0x7f;
@@ -938,7 +938,7 @@ public class Jaer3BufferParser {
                                 break;
                         }
                 }
-                
+
 		/**
 		 * Extractor the DVS events.
 		 *
