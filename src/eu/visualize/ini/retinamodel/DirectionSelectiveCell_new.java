@@ -88,7 +88,7 @@ public class DirectionSelectiveCell_new{
     
     public void setDelayUs(float delayUs) {
         this.delayUs = delayUs;
-        putFloat("delayUs", delayUs);
+        //putFloat("delayUs", delayUs);
     }
 //------------------------------------------------------------------------------
 }
