@@ -1367,6 +1367,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             boolean old = getDavisConfig().isDisplayFrames();
             getDavisConfig().setCaptureFramesEnabled(!old);
             getDavisConfig().setDisplayFrames(!old);
+            log.info("capturing and displaying frames = " + getDavisConfig().isCaptureFramesEnabled());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1386,6 +1387,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             boolean old = getDavisConfig().isDisplayEvents();
             getDavisConfig().setCaptureEvents(!old);
             getDavisConfig().setDisplayEvents(!old);
+            log.info("capturing and displaying events = " + getDavisConfig().isCaptureEventsEnabled());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1403,6 +1405,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         @Override
         public void actionPerformed(ActionEvent e) {
             setShowImageHistogram(!isShowImageHistogram());
+            log.info("autoContrast = " + isShowImageHistogram());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1424,6 +1427,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         public void actionPerformed(ActionEvent e) {
             DavisVideoContrastController controller = ((AEFrameChipRenderer) getRenderer()).getContrastController();
             controller.setUseAutoContrast(!controller.isUseAutoContrast());
+            log.info("autoContrast = " + controller.isUseAutoContrast());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1443,6 +1447,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         @Override
         public void actionPerformed(ActionEvent e) {
             setAutoExposureEnabled(!isAutoExposureEnabled());
+            log.info("autoExposure = " + isAutoExposureEnabled());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1464,6 +1469,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         @Override
         public void actionPerformed(ActionEvent e) {
             getDavisConfig().setExposureDelayMs(getDavisConfig().getExposureDelayMs() / exposureChangeFactor);
+            log.info("set exposure delay = " + getDavisConfig().getExposureDelayMs() + " ms");
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1480,6 +1486,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         @Override
         public void actionPerformed(ActionEvent e) {
             getDavisConfig().setExposureDelayMs(getDavisConfig().getExposureDelayMs() * exposureChangeFactor);
+            log.info("set exposure delay = " + getDavisConfig().getExposureDelayMs() + " ms");
             putValue(Action.SELECTED_KEY, true);
         }
     }
