@@ -1045,6 +1045,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     imuRender(drawable, imuSampleRender);
                 }
             }
+
+            displayStatusChangeText(drawable);
         }
 
         TextRenderer imuTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
@@ -1368,6 +1370,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             getDavisConfig().setCaptureFramesEnabled(!old);
             getDavisConfig().setDisplayFrames(!old);
             log.info("capturing and displaying frames = " + getDavisConfig().isCaptureFramesEnabled());
+            davisDisplayMethod.showStatusChangeText("frames=" + getDavisConfig().isCaptureFramesEnabled());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1388,6 +1391,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             getDavisConfig().setCaptureEvents(!old);
             getDavisConfig().setDisplayEvents(!old);
             log.info("capturing and displaying events = " + getDavisConfig().isCaptureEventsEnabled());
+            davisDisplayMethod.showStatusChangeText("events=" + getDavisConfig().isCaptureEventsEnabled());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1398,7 +1402,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     final public class ToggleHistogram extends DavisMenuAction {
 
         public ToggleHistogram() {
-            super("Toggle APS Histgram display", "Toggles whether the histogram of APS levels is display", "ToggleHistogram");
+            super("Toggle APS Histogram Display", "Toggles whether the histogram of APS levels is display", "ToggleHistogram");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_H, java.awt.event.InputEvent.SHIFT_MASK));
         }
 
@@ -1428,6 +1432,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             DavisVideoContrastController controller = ((AEFrameChipRenderer) getRenderer()).getContrastController();
             controller.setUseAutoContrast(!controller.isUseAutoContrast());
             log.info("autoContrast = " + controller.isUseAutoContrast());
+            davisDisplayMethod.showStatusChangeText("autoContrast = " + controller.isUseAutoContrast());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1448,6 +1453,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         public void actionPerformed(ActionEvent e) {
             setAutoExposureEnabled(!isAutoExposureEnabled());
             log.info("autoExposure = " + isAutoExposureEnabled());
+            davisDisplayMethod.showStatusChangeText("autoExposure = " + isAutoExposureEnabled());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1505,6 +1511,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             boolean old = getDavisConfig().isImuEnabled();
             getDavisConfig().setImuEnabled(!old);
             getDavisConfig().setDisplayImu(!old);
+            davisDisplayMethod.showStatusChangeText("IMU enabled = " + getDavisConfig().isImuEnabled());
             putValue(Action.SELECTED_KEY, true);
         }
     }
