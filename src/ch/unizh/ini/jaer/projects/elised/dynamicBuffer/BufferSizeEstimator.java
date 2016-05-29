@@ -125,8 +125,9 @@ public class BufferSizeEstimator extends EventFilter2D{
         for(int i = 0; i<sampleSizeNotFiltered; i++){
             e = in.getEvent(in.size-i-1);
             if (e.isSpecial()){    
-            lastSampleSize--;  
-            continue;}
+                lastSampleSize--;  
+                continue;
+            }
             
             samplingArray[getArrayIndex(e.x, e.y)]++;
             int k = samplingArray[getArrayIndex(e.x, e.y)];
@@ -288,10 +289,12 @@ public class BufferSizeEstimator extends EventFilter2D{
         
         
             // determine number of sampling fields
-        if((sx % Math.pow(2, fieldSizeExponentX) == 0) && (sy % Math.pow(2, fieldSizeExponentY) == 0))      //will take an infinity of time, but this happens only at initialization
-            samplingArray = new int[((sx>>fieldSizeExponentX))*(sy>>fieldSizeExponentY)];
-        else {samplingArray = new int[((sx>>fieldSizeExponentX)+1)*(sy>>fieldSizeExponentY + 1)]; // shift by fieldSizeExponent once for reduction in x, once for reduction in y direction
-            helpBit = 1;}
+        if((sx % Math.pow(2, fieldSizeExponentX) == 0) && (sy % Math.pow(2, fieldSizeExponentY) == 0)){      //will take an infinity of time, but this happens only at initialization
+            samplingArray = new int[getArrayIndex(sx, sy)];
+        } else {
+            samplingArray = new int[getArrayIndex(sx, sy)]; // shift by fieldSizeExponent once for reduction in x, once for reduction in y direction
+            helpBit = 1;
+        }
         maxSampleSize = samplingArray.length;
         
         if(!simple && !(maxSampleSize==0)){  // If maxSampleSize==0, sx, sy aren't known yet. There will be another resetFilter() later.

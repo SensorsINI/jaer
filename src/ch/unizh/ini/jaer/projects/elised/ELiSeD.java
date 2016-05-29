@@ -235,7 +235,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
             //offEventrateMap = new float[resolutions.length][];
         pixelmap = new LevelLinePixel[sx*sy];
         for(int y = 0; y<sy; y++){
-                for(int x = 0; x<sy; x++){
+                for(int x = 0; x<sx; x++){
                     int idx = x + sx * y;
                     pixelmap[idx] = new LevelLinePixel(x,y);
                 }
@@ -311,7 +311,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         
         for (BasicEvent e : in) {
             PolarityEvent ev = (PolarityEvent) e;
-            if (e.isSpecial() || e.isFilteredOut()) {
+            if (e.isSpecial() || e.isFilteredOut() || e.x >= sx || e.y >= sy) {
                 continue;
             }
             latestTS = ev.timestamp;
@@ -750,6 +750,9 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
     }
     
     public int mapIndex(int x, int y) {
+        if(x >= sx || y >= sy){
+            return 0;
+        } 
         return x + sx * y;
     }
     
