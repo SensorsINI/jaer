@@ -58,7 +58,7 @@ to do at cleanup:
         
 */
 
-@Description("Event based line segment detection")
+@Description("Event based line segment detection at described in [1] C. Brandli, J. Strubel, S. Keller, D. Scaramuzza, and T. Delbruck, “ELiSeD – An Event-Based Line Segment Detector,” in IEEE Conf. on Event Based Communication, Control and Signal Processing 2016 (EBCCSP2016), Krakow, Poland, 2016, p. (accepted). ")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class ELiSeD extends EventFilter2D implements FrameAnnotater {
 
