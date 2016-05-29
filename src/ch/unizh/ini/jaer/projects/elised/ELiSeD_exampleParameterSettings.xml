@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="ch">
+      <map/>
+      <node name="unizh">
+        <map/>
+        <node name="ini">
+          <map/>
+          <node name="jaer">
+            <map/>
+            <node name="chip">
+              <map/>
+              <node name="retina">
+                <map>
+                  <entry key="FilterChain.timeLimitEnabled" value="false"/>
+                  <entry key="FilterChain.timeLimitMs" value="10"/>
+                  <entry key="XYTypeFilter.filterEnabled" value="false"/>
+                  <entry key="RotateFilter.filterEnabled" value="false"/>
+                  <entry key="RectangularClusterTracker.clusterMassDecayTauUs" value="10000"/>
+                  <entry key="RectangularClusterTracker.maxNumClusters" value="10"/>
+                  <entry key="RectangularClusterTracker.clusterSize" value="0.15f"/>
+                  <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
+                  <entry key="RectangularClusterTracker.thresholdMassForVisibleCluster" value="30"/>
+                  <entry key="RectangularClusterTracker.filterEnabled" value="false"/>
+                  <entry key="HoughLineTracker.filterEnabled" value="false"/>
+                  <entry key="ZipZapTrackFollower.filterEnabled" value="false"/>
+                  <entry key="elised.filterEnabled" value="true"/>
+                  <entry key="DVS128.IPot.cas" value="54"/>
+                  <entry key="DVS128.IPot.injGnd" value="1108364"/>
+                  <entry key="DVS128.IPot.reqPd" value="16777215"/>
+                  <entry key="DVS128.IPot.puX" value="8159221"/>
+                  <entry key="DVS128.IPot.diffOff" value="132"/>
+                  <entry key="DVS128.IPot.req" value="159147"/>
+                  <entry key="DVS128.IPot.refr" value="6"/>
+                  <entry key="DVS128.IPot.puY" value="16777215"/>
+                  <entry key="DVS128.IPot.diffOn" value="482443"/>
+                  <entry key="DVS128.IPot.diff" value="16777215"/>
+                  <entry key="DVS128.IPot.foll" value="321"/>
+                  <entry key="DVS128.IPot.Pr" value="21"/>
+                  <entry key="Masterbias.rx" value="8200.0"/>
+                  <entry key="Masterbias.rint" value="46000.0"/>
+                  <entry key="defaultPreferencesWereLoaded" value="true"/>
+                  <entry key="HoughLineDetector.filterEnabled" value="false"/>
+                  <entry key="LineTracker.favorVerticalAngleRangeDeg" value="90.0"/>
+                  <entry key="Masterbias.internalResistorUsed" value="false"/>
+                  <entry key="LineTracker.thetaResDeg" value="0.2"/>
+                  <entry key="elised.distinguishOpposingGradients" value="false"/>
+                  <entry key="elised.linesDistinguishOnAndOff" value="true"/>
+                  <entry key="elised.useResizableBuffer" value="true"/>
+                  <entry key="elised.annotate_drawOnTimestampMap" value="false"/>
+                  <entry key="elised.timePerEventLoggingActive" value="false"/>
+                  <entry key="LineTracker.rhoResPixels" value="0.5"/>
+                  <entry key="elised.segmentLoggingActive" value="false"/>
+                  <entry key="elised.annotate_writeWidth" value="false"/>
+                  <entry key="elised.addPointsOnlyIfAlignedWithLine" value="true"/>
+                  <entry key="elised.maxDistance" value="2.0"/>
+                  <entry key="elised.mergeOnlyIfLinesAligned" value="true"/>
+                  <entry key="elised.splittingActive" value="true"/>
+                  <entry key="elised.bufferSize" value="11000"/>
+                  <entry key="elised.bufferMinSize" value="1000"/>
+                  <entry key="elised.useExtendedFilter" value="false"/>
+                  <entry key="elised.annotate_paintPixelOrientation" value="false"/>
+                  <entry key="CellStatsProber.filterEnabled" value="false"/>
+                  <entry key="Info.useLocalTimeZone" value="true"/>
+                  <entry key="EventRateEstimator.eventRateTauMs" value="100.0"/>
+                  <entry key="EventRateEstimator.maxRate" value="1.0E7"/>
+                  <entry key="Info.eventRateScaleMax" value="519885.6"/>
+                  <entry key="DVS128.selectedBiasgenControlTab" value="0"/>
+                  <entry key="elised.segmentsColoredByOrientation" value="false"/>
+                  <entry key="elised.varyNormalisationInGradientCalculation" value="true"/>
+                  <entry key="EventRateEstimator.filterEnabled" value="false"/>
+                  <entry key="elised.toleranceAngle" value="20.0"/>
+                  <entry key="HoughLineDetector.detectionThreshold" value="200.0"/>
+                  <entry key="LineTracker.houghDecayFactor" value="0.4"/>
+                  <entry key="FilterChain.processingMode" value="RENDERING"/>
+                  <entry key="elised.relativeLagOfGradientCalcOn" value="false"/>
+                  <entry key="elised.lagInGradientCalc" value="false"/>
+                  <entry key="elised.absoluteLagOfGradientCalc" value="0"/>
+                  <entry key="elised.pixelRefractionTime" value="0"/>
+                  <entry key="elised.preferedWidth" value="3.1499999"/>
+                  <entry key="elised.minAccuracyOfATanTable" value="2.0"/>
+                  <entry key="elised.minPixelDensity" value="0.12562995"/>
+                  <entry key="elised.filterKernelSize" value="3"/>
+                  <entry key="RefractoryFilter.filterEnabled" value="false"/>
+                  <entry key="FilterFrame.lastFilterSelected" value="class ch.unizh.ini.jaer.projects.elised.ELiSeD"/>
+                  <entry key="SubSampler.bits" value="1"/>
+                  <entry key="TrackHistogramFilter.filterEnabled" value="false"/>
+                  <entry key="SubSampler.filterEnabled" value="false"/>
+                  <entry key="Info.filterEnabled" value="false"/>
+                  <entry key="elised.estimatedSamplingFieldOccupation" value="10"/>
+                  <entry key="elised.useResizeableBuffer" value="true"/>
+                  <entry key="elised.pixelRefractionTimeOn" value="false"/>
+                  <entry key="elised.useF_ev_criterionInstead" value="false"/>
+                  <entry key="elised.loggingForSfm" value="false"/>
+                  <entry key="elised.widthToSplit" value="12.34054"/>
+                  <entry key="Elised_alt.filterEnabled" value="false"/>
+                  <entry key="Elised_alt.annotate_drawOnTimestampMap" value="true"/>
+                  <entry key="Elised_alt.useResizeableBuffer" value="false"/>
+                  <entry key="Elised_alt.estimatedSamplingFieldOccupation" value="11"/>
+                  <entry key="Elised_alt.bufferSize" value="5000"/>
+                  <entry key="Elised_alt.annotate_paintPixelOrientation" value="false"/>
+                  <entry key="Elised_alt.lagInGradientCalc" value="false"/>
+                  <entry key="Elised_alt.loggingForSfm" value="false"/>
+                  <entry key="Elised_alt.absoluteLagOfGradientCalc" value="0"/>
+                  <entry key="Elised_alt.pixelRefractionTimeOn" value="false"/>
+                  <entry key="Elised_alt.relativeLagOfGradientCalcOn" value="false"/>
+                  <entry key="Elised_alt.maxDistance" value="2.7"/>
+                  <entry key="Elised_alt.timePerEventLoggingActive" value="false"/>
+                  <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAGdwQAAAAGdAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5YWVR5cGVGaWx0ZXJ0AC9uZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJvdGF0ZUZpbHRlcnQAO25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuQmFja2dyb3VuZEFjdGl2aXR5RmlsdGVydABDY2gudW5pemguaW5pLmphZXIucHJvamVjdHMuZWxpc2VkLmR5bmFtaWNCdWZmZXIuQnVmZmVyU2l6ZUVzdGltYXRvcnQALGNoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLmVsaXNlZC5FbGlzZWRfYWx0dAAoY2gudW5pemguaW5pLmphZXIucHJvamVjdHMuZWxpc2VkLkVMaVNlRHg="/>
+                  <entry key="ELiSeD.filterEnabled" value="true"/>
+                  <entry key="ELiSeD.segmentsColoredByOrientation" value="false"/>
+                  <entry key="ELiSeD.annotateSupport" value="true"/>
+                  <entry key="ELiSeD.minLineSupport" value="15"/>
+                  <entry key="ELiSeD.filterAllEvents" value="false"/>
+                  <entry key="ELiSeD.annotateWidth" value="false"/>
+                  <entry key="ELiSeD.annotatePixelOrientation" value="false"/>
+                  <entry key="ELiSeD.bufferSize" value="104"/>
+                  <entry key="ELiSeD.useExtendedFilter" value="true"/>
+                  <entry key="ELiSeD.extendedKernelWidth" value="3"/>
+                  <entry key="ELiSeD.filterKernelSize" value="5"/>
+                  <entry key="ELiSeD.linesDistinguishOnAndOff" value="true"/>
+                  <entry key="ELiSeD.annotateLineSegments" value="true"/>
+                  <entry key="ElisedSusi.filterEnabled" value="false"/>
+                  <entry key="ElisedSusi.bufferSize" value="4000"/>
+                  <entry key="ELiSeD.toleranceAngle" value="23.0"/>
+                  <entry key="ELiSeD.distinguishOpposingGradients" value="true"/>
+                  <entry key="ELiSeD.extendedKernelLength" value="9"/>
+                  <entry key="ElisedSusi.annotate_drawOnTimestampMap" value="false"/>
+                  <entry key="ElisedSusi.annotateSupport" value="true"/>
+                  <entry key="ElisedSusi.annotateLineSegments" value="true"/>
+                  <entry key="ELiSeD_dynamicResize.filterEnabled" value="false"/>
+                  <entry key="OuterFilter.filterEnabled" value="false"/>
+                  <entry key="ELiSeD_dynamicResize.dynamicResizeOn" value="false"/>
+                  <entry key="Elised_alt.bufferMinSize" value="181"/>
+                  <entry key="ELiSeD.loggingForSfm" value="false"/>
+                  <entry key="agcTauMs" value="1000.0"/>
+                  <entry key="ELiSeD.annotateAngles" value="false"/>
+                  <entry key="ELiSeD.blockEvents" value="false"/>
+                  <entry key="ELiSeD.renderColor" value="ID"/>
+                  <entry key="ELiSeD.renderSource" value="SEGMENTS"/>
+                  <entry key="ELiSeD.useWideSobelKernel" value="true"/>
+                  <entry key="ELiSeD.maxAgeGradientComputation" value="100000"/>
+                  <entry key="ELiSeD.splittingActive" value="true"/>
+                  <entry key="ELiSeD.widthToSplit" value="15.0"/>
+                  <entry key="ELiSeD.maxDistance" value="3.5"/>
+                  <entry key="ELiSeD.dynamicBufferOn" value="true"/>
+                  <entry key="Elised_alt.segmentsColoredByOrientation" value="false"/>
+                  <entry key="Elised_alt.toleranceAngle" value="23.0"/>
+                  <entry key="Elised_alt.useF_ev_criterionInstead" value="false"/>
+                  <entry key="Elised_alt.useExtendedFilter" value="false"/>
+                  <entry key="Elised_alt.filterKernelSize" value="5"/>
+                  <entry key="class ch.unizh.ini.jaer.chip.retina.DVS128.preferredDisplayMethod" value="net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA"/>
+                  <entry key="Elised_alt.pixelRefractionTime" value="10000"/>
+                  <entry key="Elised_alt.annotate_writeWidth" value="false"/>
+                  <entry key="ELiSeD.dynamicBuffer" value="true"/>
+                  <entry key="ELiSeD.minNeighbors" value="1"/>
+                  <entry key="ELiSeD.loggingEventCount" value="5000"/>
+                  <entry key="ELiSeD.minSupportForDensityTest" value="7"/>
+                  <entry key="ELiSeD.minDensity" value="0.9"/>
+                  <entry key="ELiSeD.mergeOnlyIfLinesAligned" value="true"/>
+                  <entry key="ELiSeD.decayFactor" value="0.9599999"/>
+                  <entry key="ELiSeD.addOnlyIfDensityHigh" value="false"/>
+                  <entry key="Elised_alt.widthToSplit" value="15.0"/>
+                  <entry key="ELiSeD.loggingEnabled" value="false"/>
+                  <entry key="ELiSeD.timestampIncludedInEachLog" value="false"/>
+                  <entry key="Elised_alt.distinguishOpposingGradients" value="true"/>
+                  <entry key="ELiSeD.useTimestampGradient" value="true"/>
+                  <entry key="Elised_alt.mergeOnlyIfLinesAligned" value="true"/>
+                  <entry key="Elised_alt.splittingActive" value="true"/>
+                  <entry key="Elised_alt.loggingForR" value="false"/>
+                  <entry key="Elised_alt.linesDistinguishOnAndOff" value="true"/>
+                  <entry key="ELiSeD.predictTimestamps" value="true"/>
+                  <entry key="ELiSeD.orAddIfDensityIncreases" value="true"/>
+                  <entry key="ELiSeD.logTimePerEvent" value="false"/>
+                  <entry key="BackgroundActivityFilter.filterEnabled" value="false"/>
+                  <entry key="BufferSizeEstimator.filterEnabled" value="false"/>
+                  <entry key="Elised_alt.densityConstraint" value="true"/>
+                  <entry key="Elised_alt.minSupportForDensityTest" value="7"/>
+                  <entry key="Elised_alt.minSupportForDecentLine" value="15"/>
+                  <entry key="Elised_alt.minDensity" value="0.85"/>
+                  <entry key="Elised_alt.annotate_writeDensity" value="false"/>
+                  <entry key="Elised_alt.maxAge" value="200000"/>
+                  <entry key="ELiSeD.maxAge" value="30000"/>
+                </map>
+                <node name="ch">
+                  <map/>
+                  <node name="unizh">
+                    <map/>
+                    <node name="ini">
+                      <map/>
+                      <node name="jaer">
+                        <map/>
+                        <node name="projects">
+                          <map/>
+                          <node name="elised">
+                            <map/>
+                            <node name="ELiSeD">
+                              <map>
+                                <entry key="BufferSizeEstimator.simple" value="true"/>
+                                <entry key="BufferSizeEstimator.storageTime" value="20000"/>
+                              </map>
+                            </node>
+                            <node name="ELiSeD_dynamicResize">
+                              <map>
+                                <entry key="ELiSeD.bufferSize" value="5355"/>
+                                <entry key="ELiSeD.annotateSupport" value="true"/>
+                                <entry key="ELiSeD.segmentsColoredByOrientation" value="false"/>
+                                <entry key="ELiSeD.annotatePixelOrientation" value="false"/>
+                                <entry key="ELiSeD.annotateLineSegments" value="true"/>
+                                <entry key="ELiSeD.minLineSupport" value="50"/>
+                              </map>
+                            </node>
+                            <node name="HoughLineDetector">
+                              <map/>
+                            </node>
+                            <node name="OuterFilter">
+                              <map/>
+                            </node>
+                            <node name="elised">
+                              <map/>
+                            </node>
+                          </node>
+                          <node name="tobi">
+                            <map/>
+                            <node name="zipzaps">
+                              <map/>
+                              <node name="ZipZapTrackFollower">
+                                <map>
+                                  <entry key="RectangularClusterTracker.clusterMassDecayTauUs" value="10000"/>
+                                  <entry key="RectangularClusterTracker.maxNumClusters" value="1"/>
+                                  <entry key="RectangularClusterTracker.clusterSize" value="0.15f"/>
+                                  <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
+                                  <entry key="RectangularClusterTracker.thresholdMassForVisibleCluster" value="30"/>
+                                  <entry key="BackgroundActivityFilter.dt" value="11532"/>
+                                  <entry key="BackgroundActivityFilter.subsampleBy" value="1"/>
+                                </map>
+                              </node>
+                            </node>
+                          </node>
+                        </node>
+                      </node>
+                    </node>
+                  </node>
+                </node>
+                <node name="net">
+                  <map/>
+                  <node name="sf">
+                    <map/>
+                    <node name="jaer">
+                      <map/>
+                      <node name="eventprocessing">
+                        <map/>
+                        <node name="filter">
+                          <map/>
+                          <node name="Info">
+                            <map/>
+                          </node>
+                        </node>
+                      </node>
+                    </node>
+                  </node>
+                </node>
+              </node>
+            </node>
+          </node>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>

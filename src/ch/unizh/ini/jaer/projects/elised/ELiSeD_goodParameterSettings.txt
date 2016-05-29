@@ -1,0 +1,64 @@
+ELiSeD - Good Parameter Settings
+********************************
+For the reworked version, v.2.:
+
+bufferSize: 		Between 2500 and 8000+, depending on the environment
+				- Choose buffer higher for tracking, lower for best quality segments
+				- buffer size estimator: see below
+
+maxAge:/maxAgeGradientCalculation: 30000 to 50000; can be chosen huge (100000) as well
+				for less good and bad segments. Maybe choose as a multiple 
+				(1x, 2x) of oldest age among buffered pixels.
+
+minLineSupport: 	12 to 15 looks ok
+
+minNeighbors: 		1 (others not tested)
+
+toleranceAngle: 	~ 23
+
+splittingActive: 	true; can be set false if density criterion on and time is important
+
+widthToSplit:		15 seems ok
+
+mergeOnlyIfLinesAligned: true; see splittingActive, time influence not tested
+
+maxDistance: 		not properly tested; 2.7 to 3.5 seems ok though
+
+decayFactor: 		0.95 to 0.97; 0.96 seemed best
+
+addOnlyIfDensityHigh: 	true (=density criterion)
+
+orAddIfDensityIncreases: true! (if density criterion on; otherwise no effect)
+
+minDensity:		0.8 to 0.95
+
+minSupportForDensityTest: 7 worked fine; not properly tested (only a few values tried)
+
+distinguishOpposingGradients: true; otherwise line quality decreases (at least they did
+				so in the one scenery tested)
+useWideSobelKernel: 	true! 
+
+useTimestampGradient:	true, as it looks right now - false if maxAge cannot be chosen well
+
+predictTimestamps:	undecided, doesn't seem to matter
+
+(timestampIncludedInEachLog: False, likely. False: logging for sfm; true: logging for my R scripts.)
+
+dynamicBuffer: 		depends on situation; try and see what is better
+
+
+BufferSizeEstimator:
+********************
+maxSize: 		big enough, 20000 sure is enough
+
+minSize: 		as small as possible, can be 0
+
+estimatedAvOccupation: 	11-13, e.g for 'walk to kripa'; 13 better for tracking.
+
+simple: 		true
+
+minResizeDifference:	as resize doesn't seem costly, can be chosen already as e.g. 0.2 (but 
+			better check for runtime differences if unsure)
+
+storageTime:		20.000 seems ok. Same as minResizeDifference. (Don't choose one too high
+			and wonder why the other parameter doesn't seem to have an influence.)
