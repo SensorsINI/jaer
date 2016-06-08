@@ -55,19 +55,20 @@ public class VPot extends Pot implements RemoteControlled {
         this.tooltipString = tooltipString;
         setName(name);
         loadPreferences();
-       if(chip.getRemoteControl()!=null){
+        if (chip.getRemoteControl()!=null){
             chip.getRemoteControl().addCommandListener(this, String.format("setv%s bitvalue",getName()), "Set the bitValue of VPot "+getName());
         }
     }
 
-    /** sets the bit value based on desired voltage, clipped the DAC's vdd.
+    /** sets the bit value based on desired voltage, clipped the DAC's Vdd or Vref.
      * Observers are notified if value changes.
      *@param voltage in volts
      *@return actual float value of voltage after resolution rounding and vdd clipping.
      */
     public float setVoltage(float voltage) {
-        if(voltage>dac.getVdd()) voltage=dac.getVdd();
-        setBitValue(Math.round(voltage * getMaxBitValue()));
+        float maxVoltagePossible = Math.min(dac.getVdd(), dac.getRefMaxVolts());
+        if (voltage > maxVoltagePossible) voltage = maxVoltagePossible;
+        setBitValue(Math.round(voltage * getMaxBitValue() / dac.getRefMaxVolts()));
         return getVoltage();
     }
 
@@ -80,8 +81,8 @@ public class VPot extends Pot implements RemoteControlled {
      * @return voltage in volts.
      */
     public float getVoltage() {
-        float v=getMinVoltage() + getVoltageResolution() * getBitValue();
-        if(v>dac.getVdd()) v=dac.getVdd();
+        float v = getMinVoltage() + getVoltageResolution() * getBitValue();
+        if (v > dac.getVdd()) v = dac.getVdd();
         return v;
     }
 

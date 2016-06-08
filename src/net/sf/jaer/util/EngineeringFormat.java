@@ -54,7 +54,8 @@ public class EngineeringFormat {
     }
     
     final public double parseDouble(String s){
-        if(s==null) return 0;
+        if (s == null) return 0;
+        if (s.length() == 0) throw new NumberFormatException("Empty input");
         try{
             return Double.parseDouble(s);
         }catch(NumberFormatException e){

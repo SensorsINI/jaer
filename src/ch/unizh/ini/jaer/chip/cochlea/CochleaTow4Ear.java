@@ -215,8 +215,8 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 		 * Two DACs, 16 channels. Internal 1.25V reference is used, so VOUT in
 		 * range 0-2.5V. VDD is 2.8V.
 		 */
-		private final DAC dac1 = new DAC(0, 16, 12, 0, 2.5f, 2.8f);
-		private final DAC dac2 = new DAC(1, 16, 12, 0, 2.5f, 2.8f);
+		private final DAC dac1 = new DAC(0, 16, 12, 0, 5.0f, 3.3f); // Ad-hoc value for Vref
+		private final DAC dac2 = new DAC(1, 16, 12, 0, 5.0f, 3.3f); // Ad-hoc value for Vref
 
 		final SPIConfigBit dacRun;
 
@@ -570,8 +570,38 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
                                                 configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 0);
 
                                                 // Commit configuration.
-                                                configSequence.sendConfigSequence();
+                                                //configSequence.sendConfigSequence();
+                                                
+                                                // Temporary fix for offset/gain default values problem
+                                                // [TODO]: Make a new panel for offset/gain control
+                                                
+                                                // Write offset reg (c)
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, vPot.getDacNumber()); // Select DAC.
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 2, 0x02); // Select offset register.
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 3, vPot.getChannel());
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 5, 0x7FE);
 
+                                                // Toggle SET flag.
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 1);
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 0);
+
+                                                // Commit configuration.
+                                                //configSequence.sendConfigSequence();
+                                                
+                                                // Write gain reg (m)
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, vPot.getDacNumber()); // Select DAC.
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 2, 0x01); // Select gain register.
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 3, vPot.getChannel());
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 5, 0xFFE);
+
+                                                // Toggle SET flag.
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 1);
+                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 0);
+
+                                                // Commit configuration.
+                                                configSequence.sendConfigSequence();
+                                                
+                                                
 						// Wait 1ms to ensure operation is completed.
 						try {
 							Thread.sleep(1);

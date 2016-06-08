@@ -39,6 +39,7 @@ public class PotPanel extends javax.swing.JPanel implements FocusListener {
     JPanel potsPanel;
     ArrayList<Pot> potList;
     ArrayList<JComponent> componentList;
+    Component selectedControl=null;
     final Border selectedBorder=new LineBorder(Color.red, 1), unselectedBorder=null; // new EmptyBorder(1,1,1,1);
     /**
      * Creates new form PotPanel
@@ -122,11 +123,7 @@ public class PotPanel extends javax.swing.JPanel implements FocusListener {
         }
 
         public boolean equals(IPot p1, IPot p2) {
-            if(p1.getDisplayPosition()==p2.getDisplayPosition()) {
-                return true;
-            } else {
-                return false;
-            }
+            return p1.getDisplayPosition() == p2.getDisplayPosition();
         }
     }
 
@@ -162,22 +159,16 @@ public class PotPanel extends javax.swing.JPanel implements FocusListener {
     public void focusGained(FocusEvent e) { // some control sends this event, color the pot control border red for that control and others blank
         Component src=e.getComponent();
 //        log.info("focus gained by "+src.getClass().getSimpleName());
-        Component potControl=null;
+        if (selectedControl != null)((JComponent)selectedControl).setBorder(unselectedBorder);
         do{
             Component parent=src.getParent();
-            if(componentList.contains(parent)) {
-                potControl=parent;
+            if (componentList.contains(parent)) {
+                ((JComponent)parent).setBorder(selectedBorder);
+                selectedControl=parent;
                 break;
             }
-            src=parent;
-        }while(src!=null);
-        for(JComponent c:componentList){
-            if(c==potControl){
-                c.setBorder(selectedBorder);
-            }else{
-                c.setBorder(unselectedBorder);
-           }
-        }
+            src = parent;
+        } while(src != null);
     }
 
     public void focusLost(FocusEvent e) {

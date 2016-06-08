@@ -1665,7 +1665,7 @@
                   <entry key="CochleaLP.VPot.Resistors2" value="820"/>
                   <entry key="CochleaLP.ForceBiasEnable" value="true"/>
                   <entry key="CochleaLP.TestAEREnable" value="false"/>
-                  <entry key="CochleaLPControlPanel.bgTabbedPaneSelectedIndex" value="4"/>
+                  <entry key="CochleaLPControlPanel.bgTabbedPaneSelectedIndex" value="1"/>
                   <entry key="ITDFilter.numOfCochleaLPs" value="64"/>
                   <entry key="ITDFilter.beamFormingITDUs" value="NaN"/>
                   <entry key="class ch.unizh.ini.jaer.chip.cochlea.CochleaLP.preferredDisplayMethod" value="net.sf.jaer.graphics.ChipRendererDisplayMethod"/>
@@ -1813,15 +1813,15 @@
                   <entry key="CochleaTow4Ear.VPot.Vrefdiff2" value="0"/>
                   <entry key="CochleaTow4Ear.VPot.PreampGain1L" value="0"/>
                   <entry key="CochleaTow4Ear.VPot.PreampGain1R" value="0"/>
-                  <entry key="CochleaTow4Ear.VPot.Vcom2" value="2702"/>
+                  <entry key="CochleaTow4Ear.VPot.Vcom2" value="1351"/>
                   <entry key="CochleaTow4Ear.VPot.VQBn" value="0"/>
-                  <entry key="CochleaTow4Ear.VPot.DCOutputLowLevel" value="0"/>
+                  <entry key="CochleaTow4Ear.VPot.DCOutputLowLevel" value="491"/>
                   <entry key="CochleaTow4Ear.VPot.DACVout10" value="0"/>
                   <entry key="CochleaTow4Ear.VPot.DACVout11" value="0"/>
                   <entry key="CochleaTow4Ear.VPot.DACVout12" value="0"/>
-                  <entry key="CochleaTow4Ear.VPot.RefADAMux0-" value="3276"/>
-                  <entry key="CochleaTow4Ear.VPot.RefADAMux1-" value="3276"/>
-                  <entry key="CochleaTow4Ear.VPot.Vth1x" value="1311"/>
+                  <entry key="CochleaTow4Ear.VPot.RefADAMux0-" value="1351"/>
+                  <entry key="CochleaTow4Ear.VPot.RefADAMux1-" value="1351"/>
+                  <entry key="CochleaTow4Ear.VPot.Vth1x" value="0"/>
                   <entry key="CochleaTow4Ear.VPot.Vth4x" value="0"/>
                   <entry key="CochleaTow4Ear.VPot.Vbias1Bn" value="0"/>
                   <entry key="CochleaTow4Ear.VPot.Vbias2Bn" value="0"/>
@@ -1833,11 +1833,11 @@
                   <entry key="CochleaTow4Ear.VPot.MICBIAS2R" value="3274"/>
                   <entry key="CochleaTow4Ear.VPot.VrefpreampBpx" value="0"/>
                   <entry key="CochleaTow4Ear.VPot.VbMicCasBpcx" value="0"/>
-                  <entry key="CochleaTow4Ear.VPot.RefADAMux3-" value="3276"/>
-                  <entry key="CochleaTow4Ear.VPot.RefADAMux2-" value="3276"/>
+                  <entry key="CochleaTow4Ear.VPot.RefADAMux3-" value="1351"/>
+                  <entry key="CochleaTow4Ear.VPot.RefADAMux2-" value="1351"/>
                   <entry key="CochleaTow4Ear.VPot.PreampGain2R" value="0"/>
-                  <entry key="CochleaTow4Ear.VPot.DCOutputHighLevel" value="4095"/>
-                  <entry key="CochleaTow4Ear.VPot.TH" value="1312"/>
+                  <entry key="CochleaTow4Ear.VPot.DCOutputHighLevel" value="2703"/>
+                  <entry key="CochleaTow4Ear.VPot.TH" value="509"/>
                   <entry key="CochleaTow4Ear.VPot.PreampA/R" value="0"/>
                   <entry key="CochleaTow4Ear.Masterbias.rx" value="8200.0"/>
                   <entry key="CochleaTow4Ear.Masterbias.rint" value="46000.0"/>
@@ -2035,7 +2035,7 @@
                   <entry key="CochleaLP.ADCEnable" value="true"/>
                   <entry key="CochleaLP.ADCFrequency" value="false"/>
                   <entry key="CochleaTow4Ear.ADCEnable" value="true"/>
-                  <entry key="CochleaTow4Ear.ADCChannelsEnable" value="3"/>
+                  <entry key="CochleaTow4Ear.ADCChannelsEnable" value="15"/>
                   <entry key="CochleaTow4Ear.ADCFrequency" value="false"/>
                 </map>
               </node>
