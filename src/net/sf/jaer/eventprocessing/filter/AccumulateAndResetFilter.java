@@ -25,7 +25,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  *
  * @author tobi
  */
-@Description("Sets accumulate mode on AEViewer display and resets at fixed DVS event count")
+@Description("Display control filter that sets accumulate mode on AEViewer display and resets at fixed DVS event count")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnnotater {
 
