@@ -311,7 +311,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         
         for (BasicEvent e : in) {
             PolarityEvent ev = (PolarityEvent) e;
-            if (e.isSpecial() || e.isFilteredOut() || e.x >= sx || e.y >= sy) {
+            if (e.isSpecial() || e.isFilteredOut() || e.x<0 || e.x >= sx || e.y<0|| e.y >= sy) {
                 continue;
             }
             latestTS = ev.timestamp;
@@ -845,7 +845,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
             }
             gl.glColor3f(0.0f, 0.0f, 0.0f);
             if (annotateLineSegments) {
-                gl.glLineWidth(2.0f);
+                gl.glLineWidth(4.0f);
                 gl.glColor3f(0.0f, 0.0f, 0.0f);
                 gl.glBegin(GL.GL_LINES);
                 gl.glVertex2f(ls.getEndpointX1(), ls.getEndpointY1());
