@@ -19,6 +19,8 @@ import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import java.beans.BeanInfo;
 import java.beans.Introspector;
@@ -289,18 +291,73 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             int numDoButtons = 0;
             // first add buttons when the method name starts with "do". These methods are by convention associated with actions.
             // these methods, e.g. "void doDisableServo()" do an action.
+            // also, a pair of methods doPressXXX and doReleaseXXX will add a button that calls the first method on press and the 2nd on release
             Insets butInsets = new Insets(0, 0, 0, 0);
             ArrayList<JButton> doButList = new ArrayList();
-            for (Method m : methods) {
-                if (m.getName().startsWith("do")
-                        && (m.getParameterTypes().length == 0)
-                        && (m.getReturnType() == void.class)) {
+            for (Method method : methods) {
+                // add a button XXX that calls doPressXXX on press and doReleaseXXX on release of button
+                if (method.getName().startsWith("doPress")
+                        && (method.getParameterTypes().length == 0)
+                        && (method.getReturnType() == void.class)) {
+
+                    for (Method releasedMethod : methods) {
+                        String suf = method.getName().substring(7);
+                        if (releasedMethod.getName().equals("doRelease" + suf)
+                                && (releasedMethod.getParameterTypes().length == 0)
+                                && (releasedMethod.getReturnType() == void.class)) {
+                            //found corresponding release method, add action listeners for press and release
+                            numDoButtons++;
+                            JButton button = new JButton(method.getName().substring(7));
+                            button.setMargin(butInsets);
+                            button.setFont(button.getFont().deriveFont(9f));
+                            final EventFilter f = filter;
+                            final Method pressedMethodFinal = method;
+                            final Method releasedMethodFinal = releasedMethod;
+                            button.addMouseListener(new MouseAdapter() {
+
+                                @Override
+                                public void mousePressed(MouseEvent e) {
+                                    try {
+                                        pressedMethodFinal.invoke(f);
+                                    } catch (IllegalArgumentException ex) {
+                                        ex.printStackTrace();
+                                    } catch (InvocationTargetException ex) {
+                                        ex.printStackTrace();
+                                    } catch (IllegalAccessException ex) {
+                                        ex.printStackTrace();
+                                    }
+                                }
+
+                                @Override
+                                public void mouseReleased(MouseEvent e) {
+                                    try {
+                                        releasedMethodFinal.invoke(f);
+                                    } catch (IllegalArgumentException ex) {
+                                        ex.printStackTrace();
+                                    } catch (InvocationTargetException ex) {
+                                        ex.printStackTrace();
+                                    } catch (IllegalAccessException ex) {
+                                        ex.printStackTrace();
+                                    }
+                                }
+                            });
+
+                            addTip(f, button);
+                            doButList.add(button);
+                            break; // don't bother with rest of methods
+                        }
+                    }
+                }
+                // add a button that calls a method XXX for method void doXXX()
+                if (method.getName().startsWith("do") && !method.getName().startsWith("doPress") && !method.getName().startsWith("doRelease")
+                        && (method.getParameterTypes().length == 0)
+                        && (method.getReturnType() == void.class)) {
                     numDoButtons++;
-                    JButton button = new JButton(m.getName().substring(2));
+                    JButton button = new JButton(method.getName().substring(2));
                     button.setMargin(butInsets);
                     button.setFont(button.getFont().deriveFont(9f));
                     final EventFilter f = filter;
-                    final Method meth = m;
+                    final Method meth = method;
                     button.addActionListener(new ActionListener() {
 
                         @Override
@@ -514,8 +571,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             log.warning("on adding controls for EventFilter " + filter + " caught " + e);
             e.printStackTrace();
         }
+
         add(Box.createHorizontalGlue());
-        setControlsVisible(false);
+        setControlsVisible(
+                false);
 //        System.out.println("added glue to "+this);
     }
 
@@ -544,6 +603,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
         label.setToolTipText(s);
         label.setForeground(Color.BLUE);
+
     }
 
     class EnumControl extends JPanel implements HasSetter {
@@ -791,17 +851,18 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     }
                 }
             });
-            
-            ic.addPropertyChangeListener(ic.PROPERTY_VALUE,new PropertyChangeListener() {
+
+            ic.addPropertyChangeListener(ic.PROPERTY_VALUE, new PropertyChangeListener() {
                 @Override
                 public void propertyChange(PropertyChangeEvent pce) {
-                    if(pce.getNewValue()==null || !(pce.getNewValue() instanceof Integer)) return;
-                    sliderDontProcess=true;
-                    slider.setValue((Integer)(pce.getNewValue()));
-                    sliderDontProcess=false;
+                    if (pce.getNewValue() == null || !(pce.getNewValue() instanceof Integer)) {
+                        return;
+                    }
+                    sliderDontProcess = true;
+                    slider.setValue((Integer) (pce.getNewValue()));
+                    sliderDontProcess = false;
                 }
             });
-            
 
         }
     }
@@ -889,7 +950,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         EventFilter filter;
         int initValue = 0, nval;
         final JTextField tf;
-        String PROPERTY_VALUE="value";
+        String PROPERTY_VALUE = "value";
 
         @Override
         public void set(Object o) {
@@ -939,7 +1000,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    Integer newValue=null;
+                    Integer newValue = null;
                     try {
                         NumberFormat format = NumberFormat.getNumberInstance();
                         Integer oldValue = null;
@@ -949,7 +1010,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             log.warning("could not read original value: " + re.toString());
                         }
                         int y = format.parse(tf.getText()).intValue();
-                        newValue=new Integer(y);
+                        newValue = new Integer(y);
                         w.invoke(filter, newValue); // write int value
                         firePropertyChange(PROPERTY_VALUE, oldValue, newValue);
                     } catch (ParseException pe) {
@@ -967,8 +1028,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
                 @Override
                 public void keyPressed(java.awt.event.KeyEvent evt) {
-                    Integer newValue=null;
-                        Integer oldValue = null;
+                    Integer newValue = null;
+                    Integer oldValue = null;
 
                     try {
                         oldValue = (Integer) r.invoke(filter);
@@ -991,7 +1052,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 } else {
                                     nval = Math.round(initValue * factor);
                                 }
-                                w.invoke(filter, newValue=new Integer(nval));
+                                w.invoke(filter, newValue = new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
@@ -1007,7 +1068,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 } else {
                                     nval = Math.round(initValue / factor);
                                 }
-                                w.invoke(filter, newValue=new Integer(nval));
+                                w.invoke(filter, newValue = new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
@@ -1017,34 +1078,36 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             }
                         }
                     } else // shifted int control just incs or decs by 1
-                    if (code == KeyEvent.VK_UP) {
-                        try {
-                            nval = initValue + 1;
-                            w.invoke(filter, newValue=new Integer(nval));
-                            tf.setText(new Integer(nval).toString());
-                            fixIntValue(tf, r);
-                        } catch (InvocationTargetException ite) {
-                            ite.printStackTrace();
-                        } catch (IllegalAccessException iae) {
-                            iae.printStackTrace();
-                        }
-                    } else if (code == KeyEvent.VK_DOWN) {
-                        try {
-                            nval = initValue - 1;
-                            w.invoke(filter, newValue=new Integer(nval));
-                            tf.setText(new Integer(nval).toString());
-                            fixIntValue(tf, r);
-                        } catch (InvocationTargetException ite) {
-                            ite.printStackTrace();
-                        } catch (IllegalAccessException iae) {
-                            iae.printStackTrace();
+                    {
+                        if (code == KeyEvent.VK_UP) {
+                            try {
+                                nval = initValue + 1;
+                                w.invoke(filter, newValue = new Integer(nval));
+                                tf.setText(new Integer(nval).toString());
+                                fixIntValue(tf, r);
+                            } catch (InvocationTargetException ite) {
+                                ite.printStackTrace();
+                            } catch (IllegalAccessException iae) {
+                                iae.printStackTrace();
+                            }
+                        } else if (code == KeyEvent.VK_DOWN) {
+                            try {
+                                nval = initValue - 1;
+                                w.invoke(filter, newValue = new Integer(nval));
+                                tf.setText(new Integer(nval).toString());
+                                fixIntValue(tf, r);
+                            } catch (InvocationTargetException ite) {
+                                ite.printStackTrace();
+                            } catch (IllegalAccessException iae) {
+                                iae.printStackTrace();
+                            }
                         }
                     }
                     if (evt.getKeyCode() == evt.VK_TAB) {
                         try {
                             NumberFormat format = NumberFormat.getNumberInstance();
                             int y = format.parse(tf.getText()).intValue();
-                            w.invoke(filter, newValue=new Integer(y)); // write int value
+                            w.invoke(filter, newValue = new Integer(y)); // write int value
                             fixIntValue(tf, r);
                         } catch (ParseException pe) {
                             //Handle exception
@@ -1068,7 +1131,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 @Override
                 public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt
                 ) {
-                    Integer oldValue=null, newValue=null;
+                    Integer oldValue = null, newValue = null;
                     try {
                         oldValue = (Integer) r.invoke(filter);
                         initValue = oldValue.intValue();
@@ -1090,7 +1153,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 } else {
                                     nval = Math.round(initValue * wheelFactor);
                                 }
-                                w.invoke(filter, newValue=new Integer(nval));
+                                w.invoke(filter, newValue = new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
@@ -1109,7 +1172,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 if (nval < 0) {
                                     nval = 0;
                                 }
-                                w.invoke(filter, newValue=new Integer(nval));
+                                w.invoke(filter, newValue = new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
