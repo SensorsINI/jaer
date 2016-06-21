@@ -222,10 +222,18 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
 		getChipCanvas().checkGLError(gl, glu, "after RollingCochleaGramDisplayMethod,clearScreen");
 	}
 
+        /** Returns the current total time width of displayed timestamps
+         * 
+         * @return the width of display, in us
+         */
 	protected float getTimeWidthUs() {
 		return timeWidthUs;
 	}
 
+        /** Returns the starting time of displayed timestamps, in us
+         * 
+         * @return starting timestamp, in us
+         */
 	protected float getStartTimeUs() {
 		return startTime;
 	}
