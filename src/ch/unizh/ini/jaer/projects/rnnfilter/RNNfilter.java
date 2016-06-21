@@ -1,4 +1,4 @@
-package ch.unizh.ini.jaer.projects.rnntidigits;
+package ch.unizh.ini.jaer.projects.rnnfilter;
 
 import java.util.Arrays;
 
@@ -47,7 +47,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  */
 @Description("Extracts binned spike features from CochleaAMS sensor and processes them through a recurrent network")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
+public class RNNfilter extends EventFilter2D implements FrameAnnotater {
 
     /**
      *  Chooses the time length for the bin, the current network is trained on 5ms data, hence the variable is initialized appropriately
@@ -98,15 +98,11 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
      */
     private boolean showPredictionOnlyIfGood = getBoolean("showPredictionOnlyIfGood",false);
     /**
-     * True if the input audio is from saved digits with start and stop impulses
+     * True if the filter intends to process RNN only when you click a button, if false it is a continuous RNN processing
      */
-    private boolean savedDigits = getBoolean("savedDigits",false);
+    private boolean clickToProcess = getBoolean("clickToProcess",true);
     /**
-     * True if the filter intends to process single digits, if false it is a continuous RNN processing
-     */
-    private boolean singleDigits = getBoolean("singleDigits",true);
-    /**
-     * If single digit recording, choose if the RNN process happens as a batch at the end or in a continuous live setting
+     * If needed to click to process RNN, choose if the RNN process happens as a batch at the end or in a continuous live setting
      */
     private boolean batchRNNProcess = getBoolean("batchRNNProcess",false);
     /**
@@ -114,7 +110,6 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
      */
     private boolean binning = getBoolean("binning", true);
     
-
 
     /**
      * Boolean variable which checks if the filter is initialized
@@ -136,15 +131,6 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
      * Number of filter types, default value of 2
      */
     private int nFilterTypes = 2;
-    /**
-     * Number of spikes to be removed at the start of saved digit files to remove impulse
-     */
-    int savedDataSpikeRemoveStart = 475;
-    /**
-     * Number of spikes to be removed at the end of saved digit files to remove impulse
-     */
-    int savedDataSpikeRemoveEnd = 470;
-
     
     
     /**
@@ -184,7 +170,7 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
      */
     private int whichFilter;
     /**
-     * Choose which type of function you want the filter to perform, 0 stands for single digit saved file, 1 stands for single digit live recording, 2 stands for continuous live recording
+     * Choose which type of function you want the filter to perform, 0 stands for continuous recording, 1 stands for click and record continuous RNN processing, 2 stands for click and record batch RNN processing
      */
     private int whichFunction = 3; 
     
@@ -199,7 +185,7 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
     //TestNumpyData testNumpyData; //debug
     //private String lastTestDataXMLFile = "ti_train_cochlea_data_nozeroslices_20_jAER_input.xml"; //debug
     
-    public RNNtidigits(AEChip chip) {
+    public RNNfilter(AEChip chip) {
         super(chip);
         String xmlnetwork = "1. XML Network", function = "2. Filter function", parameters = "3. Parameter options", display = "4. Display";
         setPropertyTooltip(xmlnetwork,"lastRNNXMLFile","The XML file containing an RNN network exported from keras/somewhere else");
@@ -210,9 +196,8 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip(parameters,"chooseNeuron","If not all neurons are to be used, which neuron should be chosen, choose a value between 0 to 4");
         setPropertyTooltip(parameters,"useBothFilterTypes","Choose whether to bin the data from both the filter types");
         setPropertyTooltip(parameters,"chooseFilterType","If binning is to be done only on one filter type, which filter type should be chosen ");
-        setPropertyTooltip(function,"savedDigits","True if the filter is processing saved digits with start and stop impulses");
-        setPropertyTooltip(function,"singleDigits","True if the filter looks to process single digits, false if a stateful RNN is being implemented; default: true");
-        setPropertyTooltip(function,"batchRNNProcess","True if you want to save the sound feature and then process the RNN in one go, false otherwise; default: false");
+        setPropertyTooltip(function,"clickToProcess","True if the filter wants to only process the features when the RunRNN filter action is kept pressed; default: false");
+        setPropertyTooltip(function,"batchRNNProcess","True if you want to save the sound feature and then process the RNN in one go when clickToProcess is true, false otherwise; default: false");
         setPropertyTooltip(function,"displayActivations","Choose whether to display the softmax activations as a bar chart");
         setPropertyTooltip(function,"displayAccuracy","Choose whether to display the softmax accuracy of the current prediction");
         setPropertyTooltip(function,"displayFeature","Choose whether to display any recorded feature once recording is completed");
@@ -234,7 +219,7 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
             }
         }
         if (this.networkOutput != null) {
-            double tmpValue = RNNtidigits.maxValue(this.networkOutput)*100;
+            double tmpValue = RNNfilter.maxValue(this.networkOutput)*100;
             tmpValue = (double)((int) tmpValue); tmpValue = tmpValue/100;
             if(!this.isShowPredictionOnlyIfGood() | (this.isShowPredictionOnlyIfGood() & (tmpValue > 0.9))) {
                 MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1f);
@@ -275,10 +260,8 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
         this.resetNetwork();
         this.resetBins();
         switch(this.getWhichFunction()) {
-            case 3:
-                this.setBinning(false); break;
             case 2:
-                this.setBinning(true); break;
+                this.setBinning(false); break;
             case 1:
                 this.setBinning(false); break;
             case 0:
@@ -310,21 +293,19 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
         if((this.getChooseFilterType() > -1) & (this.getChooseFilterType() < this.getnFilterTypes())) { this.whichFilter = this.getChooseFilterType();
         } else { this.whichFilter = (int) (Math.random() * (this.getnFilterTypes())); }
         //initializes the function of the filter from the user preferences
-        if(this.isSavedDigits()) {
+        if(!this.clickToProcess) {
             this.whichFunction = 0;
         } else {
-            if(!this.isSingleDigits()) { this.whichFunction = 2; }
-            else {
-                if(this.isBatchRNNProcess()) { this.whichFunction = 1; }
-                else { this.whichFunction = 3;}
+            if(this.isBatchRNNProcess()) {
+                this.whichFunction = 2;
+            } else {
+                this.whichFunction = 1;
             }
         }
         //sets the binning variable to either start binning right away or wait for a signal from the GUI, depending on the function
         switch(this.getWhichFunction()) {
-            case 3:
-                this.setBinning(false); break;
             case 2:
-                this.setBinning(true); break;
+                this.setBinning(false); break;
             case 1:
                 this.setBinning(false); break;
             case 0:
@@ -375,33 +356,24 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
         // makes sure that the address is ok
         if(!isAddressOk(channel, ear, neuron, filterType)) { return; }
         this.counter1++;
-        if((this.getWhichFunction() == 0) & (this.counter1 < this.savedDataSpikeRemoveStart)) { return; } //for single digit recording data, the first 470 spikes shouldn't be counted       
         if(!this.isFirstEventDone) {
             this.ifFirstEventNotDone(timeStamp, channel);
         }
         if(timeStamp < this.lastBinCompleteTime) {
             switch (this.getWhichFunction()) {
-                case 3: // corresponds to single digit live recording, but the network is processed real time and data is not saved
+                case 1:
                     log.log(Level.SEVERE, "The present timestamp is less than a previous timestamp, this isn't supposed to happen");
                     this.resetFilter();
                     break;
-                case 2: // corresponds to continuous live recording, no network trained yet for this function
+                case 0:
                     log.log(Level.SEVERE, "The present timestamp is less than a previous timestamp, this isn't supposed to happen");
                     this.resetFilter();
                     this.ifFirstEventNotDone(timeStamp, channel);
                     this.updateBin(channel);
                     break;
-                case 1: // corresponds to single digit live recording
+                case 2:
                     log.log(Level.SEVERE, "The present timestamp is less than a previous timestamp, this isn't supposed to happen");
                     this.resetFilter();
-                    break;
-                case 0: // corresponds to single digit saved files
-                    this.binnedDataList = this.removeLastZeroSlicesInSavedData();
-                    //this.binnedDataList = this.processDataListSingleDigit();
-                    if(this.displayFeature) { this.printDigit(binnedDataList); }
-                    this.processRNNList();
-                    this.resetFilter();
-                    this.counter1++;
                     break;
                 default:
                     break;
@@ -417,17 +389,14 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
         } else if (timeStamp > (this.lastBinCompleteTime + this.getBinTimeLength())) {
             // if the timestamp is more than a binTimeLength, then reset the bins to zero
             switch (this.getWhichFunction()) {
-                case 3: // corresponds to single digit live recording, but the network is processed real time and data is not saved
+                case 1:
                     this.updateBinnedDataListNoReset(timeStamp);
                     this.processRNN(timeStamp);
                     break;
-                case 2: // corresponds to continuous live recording, no network trained yet for this function
+                case 0:
                     this.processRNN(timeStamp);
                     break;
-                case 1: // corresponds to single digit live recording
-                    this.updateBinnedDataList(timeStamp);
-                    break;
-                case 0: // corresponds to single digit saved files
+                case 2:
                     this.updateBinnedDataList(timeStamp);
                     break;
                 default:
@@ -481,7 +450,7 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
         boolean removeStart = true;
         ArrayList<int[]> tmpBinnedDataList = new ArrayList<>();
         for (int[] currentList : this.binnedDataList) {
-            int sum = RNNtidigits.sumOfArray(currentList);
+            int sum = RNNfilter.sumOfArray(currentList);
             if(removeStart == true & sum != 0) {
                 removeStart = false;
             }
@@ -491,7 +460,7 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
         }
         // tmpBinnedDataList doesn't have zero frames at the beginning
         for (int i = tmpBinnedDataList.size() - 1; i > -1; i--) {
-            int sum = RNNtidigits.sumOfArray(tmpBinnedDataList.get(i));
+            int sum = RNNfilter.sumOfArray(tmpBinnedDataList.get(i));
             if (sum == 0) {
                 tmpBinnedDataList.remove(i);
             } else {
@@ -500,26 +469,7 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
         }
         return tmpBinnedDataList;
     }
-    
-    /**
-     * Remove the last few spikes(usually corresponding to impulse) from the saved data, like in the generation of the data in matlab
-     * @return 
-     */
-    public ArrayList<int[]> removeLastZeroSlicesInSavedData() {
-        if(this.binnedDataList.isEmpty()) { return this.binnedDataList; }
-        if (this.timeStampList.size() > this.savedDataSpikeRemoveEnd) {
-            int cutOffTimeStamp = this.timeStampList.get(this.timeStampList.size()-1-this.savedDataSpikeRemoveEnd);
-            if (this.lastEventTime > cutOffTimeStamp) {
-                int numberOfSlices = (int) Math.ceil((this.lastEventTime - cutOffTimeStamp)/(this.binTimeLength));
-                ArrayList<int[]> tmpBinnedDataList = new ArrayList<>(this.binnedDataList.subList(0, this.binnedDataList.size()-numberOfSlices-1));
-                return tmpBinnedDataList;
-            }
-            return this.binnedDataList;
-        }
-        log.log(Level.WARNING, "There are not enough spikes to remove the required spikes from the end, please check!");
-        return this.binnedDataList;
-    }
-    
+        
     public void resetBinnedDataList() {
         this.binnedDataList = new ArrayList<int[]>();
     }
@@ -531,10 +481,10 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
         DoubleMatrix tempOutput;
         tempOutput = DoubleMatrix.zeros(this.getnChannels());
         for (int[] currentBinnedData : this.binnedDataList) {
-            tempOutput = this.rnnetwork.output(RNNtidigits.intToDouble(currentBinnedData));
+            tempOutput = this.rnnetwork.output(RNNfilter.intToDouble(currentBinnedData));
         }
-        this.networkOutput = RNNtidigits.DMToDouble(tempOutput);
-        this.label = RNNtidigits.indexOfMaxValue(this.networkOutput);
+        this.networkOutput = RNNfilter.DMToDouble(tempOutput);
+        this.label = RNNfilter.indexOfMaxValue(this.networkOutput);
     }
     /**
      * Returns true if the channel, ear and neuron attributes of the event are ok
@@ -572,18 +522,18 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
      */
     public void processRNN(int timeStamp) {
         long now = System.nanoTime();
-        DoubleMatrix tempOutput = this.rnnetwork.output(RNNtidigits.intToDouble(this.binnedData));
+        DoubleMatrix tempOutput = this.rnnetwork.output(RNNfilter.intToDouble(this.binnedData));
         long dt = System.nanoTime() - now;
         //log.log(Level.INFO, String.format("%d nanoseconds for one frame computation", dt));
-        this.networkOutput = RNNtidigits.DMToDouble(tempOutput);
-        this.label = RNNtidigits.indexOfMaxValue(this.networkOutput);
+        this.networkOutput = RNNfilter.DMToDouble(tempOutput);
+        this.label = RNNfilter.indexOfMaxValue(this.networkOutput);
         this.lastBinCompleteTime += this.getBinTimeLength();
         this.resetBins();
         // if the present timeStamp is very far from the last time RNN was processed, that means an appropriate number of zero bins have to be sent to the network
         while (timeStamp > (this.lastBinCompleteTime + this.getBinTimeLength())) {
-            tempOutput = this.rnnetwork.output(RNNtidigits.intToDouble(this.binnedData));
-            this.networkOutput = RNNtidigits.DMToDouble(tempOutput);
-            this.label = RNNtidigits.indexOfMaxValue(this.networkOutput);
+            tempOutput = this.rnnetwork.output(RNNfilter.intToDouble(this.binnedData));
+            this.networkOutput = RNNfilter.DMToDouble(tempOutput);
+            this.label = RNNfilter.indexOfMaxValue(this.networkOutput);
             this.lastBinCompleteTime += this.getBinTimeLength();
         }
     }
@@ -691,7 +641,7 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
         int size = input.size();
         int[] output = new int[size];
         for (int i = 0;i < size;i++) {
-            output[i] = RNNtidigits.sumOfArray(input.get(i));
+            output[i] = RNNfilter.sumOfArray(input.get(i));
         }
         return output;
     }
@@ -709,8 +659,8 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
         for (int i = 0;i < xLength; i++) {
             tmpImage[i] = input.get(i);
         }
-        maxValue = RNNtidigits.maxValueIn2DArray(tmpImage);
-        int[][] tmpImageScaled = RNNtidigits.rescale2DArray(tmpImage, 255/maxValue);
+        maxValue = RNNfilter.maxValueIn2DArray(tmpImage);
+        int[][] tmpImageScaled = RNNfilter.rescale2DArray(tmpImage, 255/maxValue);
         BufferedImage newImage = new BufferedImage(xLength,yLength,BufferedImage.TYPE_INT_RGB);
         for (int x = 0;x < xLength; x++) {
             for (int y = 0;y < yLength; y++) {
@@ -786,7 +736,7 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
             gl.glBegin(GL.GL_LINE_STRIP);
             for (int i = 0; i < this.networkOutput.length; i++) {
                 double tmpOutput = this.networkOutput[i];
-                double tmpOutputMax = RNNtidigits.maxValue(this.networkOutput);
+                double tmpOutputMax = RNNfilter.maxValue(this.networkOutput);
                 float y_end = (float) (1 + (dy*tmpOutput)/tmpOutputMax); // draws the relative activations of the neurons in the layer
                 float x_start = 1 + (dx * i);
                 float x_end = x_start + dx;
@@ -798,20 +748,11 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
             gl.glEnd();
         }
     }
-    
-    
-
     /**
      * @return the nChannels
      */
     public int getnChannels() {
         return nChannels;
-    }
-    /**
-     * @param nChannels the nChannels to set
-     */
-    public void setnChannels(int nChannels) {
-        this.nChannels = nChannels;
     }
     /**
      * @return the nNeurons
@@ -820,23 +761,12 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
         return nNeurons;
     }
     /**
-     * @param nNeurons the nNeurons to set
-     */
-    public void setnNeurons(int nNeurons) {
-        this.nNeurons = nNeurons;
-    }
-    /**
      * @return the nEars
      */
     public int getnEars() {
         return nEars;
     }
-    /**
-     * @param nEars the nEars to set
-     */
-    public void setnEars(int nEars) {
-        this.nEars = nEars;
-    }
+
     /**
      * @return the binTimeLength
      */
@@ -970,13 +900,6 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
     }
 
     /**
-     * @param nFilterTypes the nFilterTypes to set
-     */
-    public void setnFilterTypes(int nFilterTypes) {
-        this.nFilterTypes = nFilterTypes;
-    }
-
-    /**
      * @return the whichFunction
      */
     public int getWhichFunction() {
@@ -1048,45 +971,24 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
     }
 
     /**
-     * @return the savedDigits
-     */
-    public boolean isSavedDigits() {
-        return savedDigits;
-    }
-    /**
-     * @param savedDigits the savedDigits to set
-     */
-    public void setSavedDigits(boolean savedDigits) {
-        putBoolean("savedDigits",savedDigits);
-        this.savedDigits = savedDigits;
-        if(savedDigits) {
-            this.whichFunction = 0;
-        } else {
-            if(!this.isSingleDigits()) { this.whichFunction = 2; }
-            else {
-                if(this.isBatchRNNProcess()) { this.whichFunction = 1; }
-                else { this.whichFunction = 3;}
-            }
-        }
-        this.resetFilter();
-    }
-    /**
      * @return the singleDigits
      */
-    public boolean isSingleDigits() {
-        return singleDigits;
+    public boolean isClickToProcess() {
+        return clickToProcess;
     }
     /**
      * @param singleDigits the singleDigits to set
      */
-    public void setSingleDigits(boolean singleDigits) {
-        putBoolean("singleDigits",singleDigits);
-        this.singleDigits = singleDigits;
-        if(!this.isSavedDigits()) {
-            if(!singleDigits) { this.whichFunction = 2;}
-            else {
-                if(this.isBatchRNNProcess()) { this.whichFunction = 1; }
-                else { this.whichFunction = 3;}
+    public void setClickToProcess(boolean clickToProcess) {
+        putBoolean("clickToProcess",clickToProcess);
+        this.clickToProcess = clickToProcess;
+        if(!clickToProcess) {
+            this.whichFunction = 0;
+        } else {
+            if(this.isBatchRNNProcess()) {
+                this.whichFunction = 2;
+            } else {
+                this.whichFunction = 1;
             }
         }
         this.resetFilter();
@@ -1103,30 +1005,25 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
     public void setBatchRNNProcess(boolean batchRNNProcess) {
         putBoolean("batchRNNProcess",batchRNNProcess);
         this.batchRNNProcess = batchRNNProcess;
-        if(!this.isSavedDigits()) {
-            if(this.isSingleDigits()) {
-                if(batchRNNProcess) { this.whichFunction = 1; }
-                else {this.whichFunction = 3; }
+        if(this.clickToProcess) {
+            if(batchRNNProcess) {
+                this.whichFunction = 2;
+            } else {
+                this.whichFunction = 1;
             }
         }
         this.resetFilter();
     }
 
     /**
-     * Creates a button which runs the initFilter() method
-     */
-    public void doInitFilter() {
-        initFilter();
-    }
-    /**
      * Implements a toggleBinning function which would be used to build the button with the same name
      * @throws IOException 
      */
     synchronized public void toggleBinning() throws IOException {
-        if(this.getWhichFunction()==1 & this.isBinning()==false) { 
+        if(this.getWhichFunction()==2 & this.isBinning()==false) { 
             this.resetNetwork();
             this.setBinning(true); 
-        } else if(this.getWhichFunction()==1 & this.isBinning()==true) { // if the filter was binning the events before, then stop binning and process the digit recorded
+        } else if(this.getWhichFunction()==2 & this.isBinning()==true) { // if the filter was binning the events before, then stop binning and process the digit recorded
             this.setBinning(false);
             if (this.displayFeature) { this.printDigit(binnedDataList); }
             this.processRNNList();
@@ -1137,10 +1034,10 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
             this.counter1 = 0;
             this.isFirstEventDone = false;
         }
-        if(this.getWhichFunction() == 3 & this.isBinning() ==  false) {
+        if(this.getWhichFunction() == 1 & this.isBinning() ==  false) {
             this.resetNetwork();
             this.setBinning(true);
-        } else if(this.getWhichFunction() == 3 & this.isBinning() == true) {
+        } else if(this.getWhichFunction() == 1 & this.isBinning() == true) {
             this.setBinning(false);
             if(this.displayFeature) { this.printDigit(binnedDataList); }
             this.resetBins();
@@ -1163,7 +1060,7 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
      */
     public void doPressRunRNN() {
         log.info("RunRNN button pressed");
-        if(this.getWhichFunction() == 1 | this.getWhichFunction() == 3) {
+        if(this.getWhichFunction() == 1 | this.getWhichFunction() == 2) {
             this.resetNetwork();
             this.setBinning(true);            
         }
@@ -1174,10 +1071,10 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
      */
     public void doReleaseRunRNN() throws IOException {
         log.info("RunRNN button released");
-        if(this.getWhichFunction() == 1 | this.getWhichFunction() == 3) {
+        if(this.getWhichFunction() == 1 | this.getWhichFunction() == 2) {
             this.setBinning(false);
             if(this.displayFeature) { this.printDigit(binnedDataList); }
-            if(this.getWhichFunction() == 1) { this.processRNNList(); }
+            if(this.getWhichFunction() == 2) { this.processRNNList(); }
             this.resetBins();
             this.timeStampList = new ArrayList<>();
             this.binnedDataList = new ArrayList<>();
@@ -1186,12 +1083,7 @@ public class RNNtidigits extends EventFilter2D implements FrameAnnotater {
             this.isFirstEventDone = false;
         }
     }
-    /**
-     * Implements a button which stops binning
-     */
-    public void doStopBinning() {
-        this.setBinning(false);
-    }
+
     /**
      * Implements the loadFromXML function as a button
      */

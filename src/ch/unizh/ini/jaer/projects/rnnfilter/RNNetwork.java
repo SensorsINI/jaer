@@ -1,4 +1,4 @@
-package ch.unizh.ini.jaer.projects.rnntidigits;
+package ch.unizh.ini.jaer.projects.rnnfilter;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;

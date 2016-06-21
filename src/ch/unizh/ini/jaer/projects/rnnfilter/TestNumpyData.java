@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.jaer.projects.rnntidigits;
+package ch.unizh.ini.jaer.projects.rnnfilter;
 
 import eu.visualize.ini.convnet.EasyXMLReader;
 import java.io.File;
