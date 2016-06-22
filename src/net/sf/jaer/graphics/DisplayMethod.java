@@ -24,6 +24,7 @@ import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
+import java.beans.PropertyChangeSupport;
 
 /**
  * A abstract class that displays AE data in a ChipCanvas using OpenGL.
@@ -43,6 +44,8 @@ public abstract class DisplayMethod {
     private String statusChangeString = null;
     private long statusChangeStartTimeMillis = 0;
     private final long statusChangeDisplayTimeMillis = 750;
+    /** Provides PropertyChangeSupport for all DisplayMethods */
+    private PropertyChangeSupport support=new PropertyChangeSupport(this);
 
     /**
      * Creates a new instance of DisplayMethod
@@ -212,5 +215,13 @@ public abstract class DisplayMethod {
     public void showStatusChangeText(String text) {
         statusChangeStartTimeMillis = System.currentTimeMillis();
         statusChangeString = text;
+    }
+
+    /**
+     * PropertyChangeSupport for all DisplayMethods.
+     * @return the support
+     */
+    public PropertyChangeSupport getSupport() {
+        return support;
     }
 }
