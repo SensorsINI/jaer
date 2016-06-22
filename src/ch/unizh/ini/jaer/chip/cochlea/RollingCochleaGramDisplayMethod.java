@@ -33,6 +33,8 @@ import com.jogamp.opengl.util.gl2.GLUT;
  */
 public class RollingCochleaGramDisplayMethod extends DisplayMethod implements DisplayMethod2D, HasSelectedCochleaChannel {
 
+        public static final String EVENT_SCREEN_CLEARED="RollingCochleaGramDisplayMethod.EVENT_SCREEN_CLEARED";
+
 	/**
 	 * Creates a new instance of CochleaGramDisplayMethod
 	 *
@@ -129,6 +131,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
 			clearScreen(gl);
 			clearScreenEnabled = false;
 			startTime = t0;
+                        getSupport().firePropertyChange(RollingCochleaGramDisplayMethod.EVENT_SCREEN_CLEARED, 0, startTime);
 		}
 
 		// draw time axis with label of total raster time
