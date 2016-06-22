@@ -9,6 +9,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent.Ear;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent.FilterType;
+import ch.unizh.ini.jaer.chip.cochlea.RollingCochleaGramDisplayMethod;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import java.awt.FlowLayout;
@@ -16,6 +17,8 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
@@ -47,7 +50,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  */
 @Description("Extracts binned spike features from CochleaAMS sensor and processes them through a recurrent network")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class RNNfilter extends EventFilter2D implements FrameAnnotater {
+public class RNNfilter extends EventFilter2D implements FrameAnnotater , PropertyChangeListener{
 
     /**
      *  Chooses the time length for the bin, the current network is trained on 5ms data, hence the variable is initialized appropriately
@@ -181,6 +184,8 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater {
     private int lastEventTime;
     private int firstEventTime;
     private ArrayList<Integer> timeStampList;
+    private boolean addedDisplayMethodPropertyChangeListener=false;
+    private boolean screenCleared=false; // set by RollingCochleaGramDisplayMethod 
 
     //TestNumpyData testNumpyData; //debug
     //private String lastTestDataXMLFile = "ti_train_cochlea_data_nozeroslices_20_jAER_input.xml"; //debug
@@ -526,6 +531,18 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater {
         long dt = System.nanoTime() - now;
         //log.log(Level.INFO, String.format("%d nanoseconds for one frame computation", dt));
         this.networkOutput = RNNfilter.DMToDouble(tempOutput);
+        if(chip.getCanvas().getDisplayMethod() instanceof RollingCochleaGramDisplayMethod){
+            if(!addedDisplayMethodPropertyChangeListener){
+                chip.getCanvas().getDisplayMethod().getSupport().addPropertyChangeListener(this);
+                addedDisplayMethodPropertyChangeListener=true;
+            }
+            // save outputs for rendering
+            if(screenCleared){
+                // reset memory
+            }
+            // save results
+            
+        }
         this.label = RNNfilter.indexOfMaxValue(this.networkOutput);
         this.lastBinCompleteTime += this.getBinTimeLength();
         this.resetBins();
@@ -674,6 +691,13 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater {
         frame.add(scaledImage);
         frame.setVisible(true);
 
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent pce) {
+       if(pce.getPropertyName()==RollingCochleaGramDisplayMethod.EVENT_SCREEN_CLEARED){
+           screenCleared=true;
+       }
     }
     /**
      * A class which helps scale the image to fit the size of the JFrame
