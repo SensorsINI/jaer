@@ -1472,13 +1472,17 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         int c = reader.read(); // read single char
         String s = reader.readLine();
         boolean flag = true;
-        for (int i = 0; i < s.length(); i++) {
-            char b = s.charAt(i);
-            if ((b < 32) || (b > 126)) {
-                flag = false;
-                break;
-            }
-        }
+        // code below is wrong because it means that any header line with non alpha char 
+        // (such as device with binary serial number) will terminate header
+        // and cause header to be treated as data (tobi)
+        // header non alpha are converted to alpha below in any case.
+//        for (int i = 0; i < s.length(); i++) {
+//            char b = s.charAt(i);
+//            if ((b < 32) || (b > 126)) {
+//                flag = false;
+//                break;
+//            }
+//        }
         
         if (c != AEDataFile.COMMENT_CHAR || flag == false) { // if it's not a comment char
             return null; // return a null header line
