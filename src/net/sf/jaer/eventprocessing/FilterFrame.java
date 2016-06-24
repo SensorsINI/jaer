@@ -5,6 +5,7 @@
  */
 package net.sf.jaer.eventprocessing;
 
+import java.awt.Color;
 import java.awt.Desktop;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -23,12 +24,14 @@ import javax.swing.AbstractAction;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.border.Border;
+import javax.swing.border.LineBorder;
+import javax.swing.border.TitledBorder;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.JAERWindowUtilities;
 import net.sf.jaer.util.RecentFiles;
-import net.sf.jaer.util.WindowSaver;
 import net.sf.jaer.util.XMLFileFilter;
 
 /**
@@ -40,6 +43,7 @@ import net.sf.jaer.util.XMLFileFilter;
  * @author tobi
  */
 public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFrame implements PropertyChangeListener/*, WindowSaver.DontResize*/ {
+
     // tobi commented out DontResize because the filter frame was extending below the bottom of screen, making it awkward to control properties for deep implementations
     final int MAX_ROWS = 10; // max rows of filters, then wraps back to top
     static Preferences prefs = Preferences.userNodeForPackage(FilterFrame.class);
@@ -56,6 +60,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
      */
     public static final String LAST_FILTER_SELECTED_KEY = "FilterFrame.lastFilterSelected";
     private JButton resetStatisticsButton = null;
+    private Border selectedBorder = new LineBorder(Color.red);
 
     /**
      * Creates new form FilterFrame
@@ -75,7 +80,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             public void actionPerformed(ActionEvent e) {
             }
         });
-         scrollPane.getActionMap().put("unitScrollUp", new AbstractAction() {
+        scrollPane.getActionMap().put("unitScrollUp", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
             }
@@ -97,7 +102,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         if (filterChain != null) {
             filterChain.setMeasurePerformanceEnabled(measurePerformanceCheckBoxMenuItem.isSelected());
         }
-		// recent files tracks recently used files *and* folders. recentFiles adds the anonymous listener
+        // recent files tracks recently used files *and* folders. recentFiles adds the anonymous listener
         // built here to open the selected file
         recentFiles = new RecentFiles(prefs, fileMenu, new ActionListener() {
 
@@ -125,7 +130,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
             for (EventFilter f : filterChain) {
                 f.setPreferredEnabledState();
-				//                boolean yes=prefs.getBoolean(f.prefsEnabledKey(),false);
+                //                boolean yes=prefs.getBoolean(f.prefsEnabledKey(),false);
                 //                if(yes) log.info("enabling "+f);
                 //                f.setFilterEnabled(yes);
             }
@@ -162,10 +167,10 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         return String.format("Set time limit. (Currently %d ms)", filterChain.getTimeLimitMs());
     }
 
-    private void prefsEditorMenuItemActionPerformed(ActionEvent evt){
+    private void prefsEditorMenuItemActionPerformed(ActionEvent evt) {
         // only added to handle leftover prefs editor that was removed by Luca without removing from netbeans FORM
     }
-    
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -184,6 +189,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         jLabel1 = new javax.swing.JLabel();
         scrollPane = new javax.swing.JScrollPane();
         filtersPanel = new javax.swing.JPanel();
+        searchTF = new javax.swing.JTextField();
         mainMenuBar = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
         loadMenuItem = new javax.swing.JMenuItem();
@@ -267,6 +273,24 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         filtersPanel.setMinimumSize(new java.awt.Dimension(100, 300));
         filtersPanel.setLayout(new javax.swing.BoxLayout(filtersPanel, javax.swing.BoxLayout.Y_AXIS));
         scrollPane.setViewportView(filtersPanel);
+
+        searchTF.setText("search...");
+        searchTF.setToolTipText("search for  filter in the list of loaded filters");
+        searchTF.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                searchTFFocusGained(evt);
+            }
+        });
+        searchTF.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                searchTFActionPerformed(evt);
+            }
+        });
+        searchTF.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                searchTFKeyTyped(evt);
+            }
+        });
 
         fileMenu.setMnemonic('f');
         fileMenu.setText("File");
@@ -425,7 +449,9 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(searchTF)
+                .addContainerGap())
             .addComponent(scrollPane)
             .addGroup(layout.createSequentialGroup()
                 .addComponent(toolBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -436,7 +462,9 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             .addGroup(layout.createSequentialGroup()
                 .addComponent(toolBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(searchTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(scrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 499, Short.MAX_VALUE)
                 .addGap(0, 0, 0))
@@ -500,14 +528,12 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             filterChain.setMeasurePerformanceEnabled(measurePerformanceCheckBoxMenuItem.isSelected());
             if (measurePerformanceCheckBoxMenuItem.isSelected()) {
                 if (resetStatisticsButton == null) {
-                     resetStatisticsButton=new JButton(new ResetPerformanceStatisticsAction());
+                    resetStatisticsButton = new JButton(new ResetPerformanceStatisticsAction());
                 }
-                     toolBar1.add(resetStatisticsButton);
-            }else{
-                if(resetStatisticsButton!=null) {
-                    toolBar1.remove(resetStatisticsButton);
-                    validate();
-                }
+                toolBar1.add(resetStatisticsButton);
+            } else if (resetStatisticsButton != null) {
+                toolBar1.remove(resetStatisticsButton);
+                validate();
             }
 	}//GEN-LAST:event_measurePerformanceCheckBoxMenuItemActionPerformed
 
@@ -541,7 +567,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         filtersPanel.removeAll();
         int n = 0;
         int w = 100, h = 30;
-		//        log.info("rebuilding FilterFrame for chip="+chip);
+        //        log.info("rebuilding FilterFrame for chip="+chip);
         //        if(true){ //(filterChain.size()<=MAX_ROWS){
         //            filtersPanel.setLayout(new BoxLayout(filtersPanel,BoxLayout.Y_AXIS));
         //            filtersPanel.removeAll();
@@ -555,7 +581,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         }
         //            pack();
         pack();
-		//        else{
+        //        else{
         //            // multi column layout
         //            scrollPane.removeAll();
         //            scrollPane.setLayout(new BoxLayout(scrollPane, BoxLayout.X_AXIS));
@@ -630,7 +656,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
             fileChooser.setDialogTitle("Save filter settings to");
             fileChooser.setMultiSelectionEnabled(false);
-		//            if(lastImageFile==null){
+            //            if(lastImageFile==null){
             //                lastImageFile=new File("snapshot.png");
             //            }
             //            fileChooser.setSelectedFile(lastImageFile);
@@ -643,7 +669,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                         suffix = ".xml";
                     }
                     file = new File(file.getPath() + suffix);
-				// examine prefs for filters
+                    // examine prefs for filters
                     //                String path=null;
                     //                for(EventFilter f:filterChain){
                     //                    Preferences p=f.getPrefs();
@@ -703,6 +729,24 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             filterChain.resetResetPerformanceMeasurementStatistics();
         }
     }//GEN-LAST:event_resetPerformanceMeasurementMIActionPerformed
+
+    private void searchTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchTFActionPerformed
+        // search for and highlight filter starting with string
+
+    }//GEN-LAST:event_searchTFActionPerformed
+
+    private void searchTFKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_searchTFKeyTyped
+        // incremental search
+        String s = searchTF.getText();
+        if (s == null || s.isEmpty()) {
+            return;
+        }
+        selectFilter(s);
+    }//GEN-LAST:event_searchTFKeyTyped
+
+    private void searchTFFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_searchTFFocusGained
+        searchTF.setText(null);
+    }//GEN-LAST:event_searchTFFocusGained
 
     private void filterVisibleBiases(String string) {
         if ((string == null) || string.isEmpty()) {
@@ -775,6 +819,26 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         }
     }
 
+    private EventFilter highlightedFilter = null;
+
+    private void selectFilter(String s) {
+        for (EventFilter f : filterChain) {
+            if (f.getClass().getSimpleName().toLowerCase().startsWith(s.toLowerCase())) {
+                if (highlightedFilter != null) {
+                    final FilterPanel filterPanelForFilter = getFilterPanelForFilter(highlightedFilter);
+                    TitledBorder b = (TitledBorder) filterPanelForFilter.getBorder();
+                    b.setTitleColor(Color.black);
+                    filterPanelForFilter.repaint();
+                }
+                TitledBorder b = (TitledBorder) getFilterPanelForFilter(f).getBorder();
+                b.setTitleColor(Color.red);
+                highlightedFilter = f;
+                getFilterPanelForFilter(f).repaint();
+                
+            }
+        }
+    }
+
     class ResetPerformanceStatisticsAction extends AbstractAction {
 
         public ResetPerformanceStatisticsAction() {
@@ -784,7 +848,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         }
 
         @Override
-		public void actionPerformed(ActionEvent e) {
+        public void actionPerformed(ActionEvent e) {
             if (filterChain != null) {
                 filterChain.resetResetPerformanceMeasurementStatistics();
             }
@@ -819,6 +883,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JCheckBoxMenuItem restoreFilterEnabledStateCheckBoxMenuItem;
     private javax.swing.JMenuItem saveAsMenuItem;
     private javax.swing.JScrollPane scrollPane;
+    private javax.swing.JTextField searchTF;
     private javax.swing.JMenuItem setTimeLimitMenuItem;
     private javax.swing.JToolBar toolBar1;
     private javax.swing.JTextField updateIntervalField;
