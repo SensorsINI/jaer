@@ -377,6 +377,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         if (targetLocations.size() == 0) {
             log.warning("no locations labeled  - will label entire recording with no visible targets");
         }
+        int before=targetLocations.size();
         Map.Entry<Integer, SimultaneouTargetLocations> prevTargets = targetLocations.firstEntry();
         TreeMap<Integer, SimultaneouTargetLocations> newTargets = new TreeMap();
         if (prevTargets != null) {
@@ -409,6 +410,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         }
         targetLocations.putAll(newTargets);
         fixLabeledFraction();
+        int after=targetLocations.size();
+        log.info(String.format("resampling went from %d to %d labeled locations",before,after));
 
     }
 
@@ -547,7 +550,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     private void updateCurrentlyDisplayedTargets(BasicEvent e) {
         // if at least minTargetPointIntervalUs has passed by maybe add new labels
-        Map.Entry<Integer, SimultaneouTargetLocations> mostRecentTargetsBeforeThisEvent = targetLocations.lowerEntry(e.timestamp);
+        Map.Entry<Integer, SimultaneouTargetLocations> mostRecentTargetsBeforeThisEvent = targetLocations.floorEntry(e.timestamp);
         if (mostRecentTargetsBeforeThisEvent != null) {
             for (TargetLocation t : mostRecentTargetsBeforeThisEvent.getValue()) {
                 if ((t == null) || ((t != null) && ((e.timestamp - t.timestamp) > maxTimeLastTargetLocationValidUs))) {
@@ -574,7 +577,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             }
             targetLocations.remove(nextBack.getKey());
 //            log.info("removed " + nextBack.getKey());
-            nextBack = targetLocations.lowerEntry(nextBack.getKey());
+            nextBack = targetLocations.floorEntry(nextBack.getKey());
         }
         fixLabeledFraction();
     }
@@ -1136,7 +1139,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         return;
                     }
                     int timestamp = chip.getAeInputStream().getMostRecentTimestamp();
-                    Map.Entry<Integer, SimultaneouTargetLocations> targetsBeforeRewind = targetLocations.lowerEntry(timestamp);
+                    Map.Entry<Integer, SimultaneouTargetLocations> targetsBeforeRewind = targetLocations.floorEntry(timestamp);
                     if (targetsBeforeRewind != null) {
                         currentFrameNumber = targetsBeforeRewind.getValue().get(0).frameNumber;
                         lastFrameNumber = getCurrentFrameNumber() - 1;
