@@ -175,6 +175,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         davisMenu.add(new JMenuItem(new ToggleAutoContrast()));
         davisMenu.add(new JMenuItem(new ToggleHistogram()));
         davisMenu.add(new JSeparator());
+        davisMenu.add(new JMenuItem(new ToggleGlobalRollingShutter()));
+        davisMenu.add(new JSeparator());
         davisMenu.add(new JMenuItem(new ToggleAutoExposure()));
         davisMenu.add(new JMenuItem(new IncreaseAPSExposure()));
         davisMenu.add(new JMenuItem(new DecreaseExposureAction()));
@@ -1436,7 +1438,29 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             putValue(Action.SELECTED_KEY, true);
         }
     }
+    
+       /**
+     * Adds event capture/display option
+     */
+    final public class ToggleGlobalRollingShutter extends DavisMenuAction {
 
+        public ToggleGlobalRollingShutter() {
+            super("Toggle Global/Rolling shutter mode",
+                    "<html>Toggles global vs. rolling shutter mode. See <i>User Friendly Controls</i> or <i>APS Config</i> tab in HW configuration panel for full control",
+                    "ToggleGlobalRollingShutter");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_G, java.awt.event.InputEvent.SHIFT_MASK));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            getDavisConfig().setGlobalShutter(!getDavisConfig().isGlobalShutter());
+            log.info("globalShutter = " + getDavisConfig().isGlobalShutter());
+            davisDisplayMethod.showStatusChangeText("globalShutter = " + getDavisConfig().isGlobalShutter());
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+    
+    
     /**
      * Adds event capture/display option
      */
