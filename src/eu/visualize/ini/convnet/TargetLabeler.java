@@ -176,6 +176,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     @Override
     public void mousePressed(MouseEvent e) {
         mouseMoved(e);
+        mousePressed=true;
     }
 
     @Override
@@ -197,7 +198,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     public void mouseWheelMoved(MouseWheelEvent mwe) {
         int roll=mwe.getWheelRotation();
         int r=getTargetRadius();
-        setTargetRadius(r-roll);
+        setTargetRadius(Math.round(getTargetRadius()*(float)Math.pow(1.1,-roll)));
     }
     
     
@@ -520,7 +521,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         addSample(getCurrentFrameNumber(), e.timestamp, null, targetRadius*2, targetRadius*2, currentTargetTypeID, false);
                     }
                     updateCurrentlyDisplayedTargets(e);
-                    if(editTargetRadius){
+                    if(editTargetRadius && mousePoint!=null){
                         for(TargetLocation t:currentTargets){
                             t.width=targetRadius*2;
                             t.height=targetRadius*2;
