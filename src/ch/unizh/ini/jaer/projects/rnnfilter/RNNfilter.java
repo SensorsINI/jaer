@@ -56,7 +56,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
     /**
      *  Chooses the time length for the bin, the current network is trained on 5ms data, hence the variable is initialized appropriately
      */
-    private int binTimeLength = getInt("binTimeLength", 5000); // default value set to 5 ms
+    private int binTimeLength = getPrefs().getInt("binTimeLength", 5000); // default value set to 5 ms
     /**
      *  Choose whether to bin the data from both ears, when false the chooseEar variable chooses which ear to bin from
      */
@@ -64,7 +64,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
     /**
      * If data from only one ear is chosen, this variable gets the preference from the user
      */
-    private int chooseEar = getInt("chooseEar", 0); // 0 corresponds to left, 1 corresponds to right
+    private int chooseEar = getPrefs().getInt("chooseEar", 0); // 0 corresponds to left, 1 corresponds to right
     /**
      *  Choose whether to bin the data from all the neurons, when false the chooseNeuron variable chooses the appropriate neuron
      */
@@ -72,7 +72,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
     /**
      * If data from only one neuron is chosen, this variable gets the preference from the user
      */
-    private int chooseNeuron = getInt("chooseNeuron", 0); // choose a value between 0 and 3, otherwise a random value will be chosen
+    private int chooseNeuron = getPrefs().getInt("chooseNeuron", 0); // choose a value between 0 and 3, otherwise a random value will be chosen
     /**
      * Choose whether to bin data from both the filter types, when false the chooseFilterType chooses the appropriate filter type
      */
@@ -80,7 +80,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
     /**
      * If data from only one filter type is to be binned, this variable gets the preference from the user
      */
-    private int chooseFilterType = getInt("chooseFilterType", 1); // 0 corresponds to LPF, 1 corresponds to BPF
+    private int chooseFilterType = getPrefs().getInt("chooseFilterType", 1); // 0 corresponds to LPF, 1 corresponds to BPF
     /**
      *  The XML file to load the RNN network from
      */
@@ -112,7 +112,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
     /**
      * Is the filter binning the events
      */
-    private boolean binning = getBoolean("binning", true);
+    private boolean processingEnabled = getBoolean("processingEnabled", true);
     
 
     /**
@@ -195,20 +195,24 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
     public RNNfilter(AEChip chip) {
         super(chip);
         String xmlnetwork = "1. XML Network", function = "2. Filter function", parameters = "3. Parameter options", display = "4. Display";
+        setPropertyTooltip("loadFromXML","Load an XML file containing the network in an appropriate format");
+        setPropertyTooltip("runRNN","If clickToProcess is set to true, the filter will process events when this button is kept pressed, also the network will be reset when you press the button. So press the button and hold it, speak and release the button when you want the filter to stop processing.");
+        setPropertyTooltip("toggleBinning","If clickToProcess is set to true, this button will toggle the boolean variable - processingEnabled - which enables the events to be processed. So when processingEnabled is false, clicking on the button will make the filter start processing the events and when processingEnabled is true, clicking the button will make the filter stop processing events.");
         setPropertyTooltip(xmlnetwork,"lastRNNXMLFile","The XML file containing an RNN network exported from keras/somewhere else");
-        setPropertyTooltip(parameters,"binTimeLength","Choose the time length for the binning of the data, choose the network appropriately");
-        setPropertyTooltip(parameters,"useBothEars","Choose whether to bin the data from both ears");
-        setPropertyTooltip(parameters,"chooseEar","If binning is done on only one ear, choose which ear to bin from, 0 for left and 1 for right");
-        setPropertyTooltip(parameters,"useAllNeurons","Choose whether to bin the data from all the neurons");
-        setPropertyTooltip(parameters,"chooseNeuron","If not all neurons are to be used, which neuron should be chosen, choose a value between 0 to 4");
-        setPropertyTooltip(parameters,"useBothFilterTypes","Choose whether to bin the data from both the filter types");
-        setPropertyTooltip(parameters,"chooseFilterType","If binning is to be done only on one filter type, which filter type should be chosen ");
-        setPropertyTooltip(function,"clickToProcess","True if the filter wants to only process the features when the RunRNN filter action is kept pressed; default: false");
+        setPropertyTooltip(parameters,"binTimeLength","Choose the bin size (in micro seconds) for the binning of the data, choose a network appropriately");
+        setPropertyTooltip(parameters,"useBothEars","Choose whether to use the events from both ears");
+        setPropertyTooltip(parameters,"chooseEar","If processing events from only one ear, choose which ear to process them from, 0 for left and 1 for right");
+        setPropertyTooltip(parameters,"useAllNeurons","Choose whether to process the events from all the neurons");
+        setPropertyTooltip(parameters,"chooseNeuron","If events from all neurons are not to be processed, which neuron's events should be chosen, choose a value in {0,1,2,3}");
+        setPropertyTooltip(parameters,"useBothFilterTypes","Choose whether to process the events from both the filter types");
+        setPropertyTooltip(parameters,"chooseFilterType","If processing is to be done only on one filter type, which filter type should be chosen; 0 for low pass and 1 for band pass");
+        setPropertyTooltip(function,"clickToProcess","True if the filter wants to only process the events when the RunRNN filter action is kept pressed; default: false");
         setPropertyTooltip(function,"batchRNNProcess","True if you want to save the sound feature and then process the RNN in one go when clickToProcess is true, false otherwise; default: false");
         setPropertyTooltip(function,"displayActivations","Choose whether to display the softmax activations as a bar chart");
         setPropertyTooltip(function,"displayAccuracy","Choose whether to display the softmax accuracy of the current prediction");
         setPropertyTooltip(function,"displayFeature","Choose whether to display any recorded feature once recording is completed");
         setPropertyTooltip(function,"showPredictionOnlyIfGood","Show the output prediction only if the prediction is good (>0.9)");
+        setPropertyTooltip("processingEnabled","The boolean variable which enables the events to be processed");
         initFilter();
     }
 
@@ -222,7 +226,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
         if ((this.rnnetwork != null) & (this.rnnetwork.netname != null)) {
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .1f);
             MultilineAnnotationTextRenderer.setScale(.1f);
-            if(this.isBinning()) {
+            if(this.isProcessingEnabled()) {
                 int timeElapsed = this.lastEventTime - this.firstEventTime;
                 timeElapsed = (int) timeElapsed/1000;
                 MultilineAnnotationTextRenderer.renderMultilineString(String.join("", this.rnnetwork.netname,"  ;  ","Time elapsed:",Double.toString(timeElapsed),"ms"));
@@ -263,7 +267,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
                 int neuron = cochleaAMSEvent.getThreshold(); // returns the index corresponding to the ganglion cell threshold level
                 int timeStamp = e.timestamp; // the timestamp of the event
                 int channel = e.x; // the channel address (0-63) of the event
-                if ((this.rnnetwork.initialized) & this.isBinning()) { processEvent(timeStamp, channel, ear, neuron, filterType); }// updates the bin data and performs additional computation as and when required
+                if ((this.rnnetwork.initialized) & this.isProcessingEnabled()) { processEvent(timeStamp, channel, ear, neuron, filterType); }// updates the bin data and performs additional computation as and when required
             } catch (Exception e1) { log.log(Level.WARNING, "In for-loop in filterPacket caught exception {0}", e1); }
         }
         return in;
@@ -275,11 +279,11 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
         this.resetBins();
         switch(this.getWhichFunction()) {
             case 2:
-                this.setBinning(false); break;
+                this.setProcessingEnabled(false); break;
             case 1:
-                this.setBinning(false); break;
+                this.setProcessingEnabled(false); break;
             case 0:
-                this.setBinning(true); break;
+                this.setProcessingEnabled(true); break;
             default:
                 break;
         }
@@ -320,11 +324,11 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
         //sets the binning variable to either start binning right away or wait for a signal from the GUI, depending on the function
         switch(this.getWhichFunction()) {
             case 2:
-                this.setBinning(false); break;
+                this.setProcessingEnabled(false); break;
             case 1:
-                this.setBinning(false); break;
+                this.setProcessingEnabled(false); break;
             case 0:
-                this.setBinning(true); break;
+                this.setProcessingEnabled(true); break;
             default:
                 break;
         }
@@ -341,7 +345,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
     }
     
     synchronized public void loadFromXML() {
-        this.setBinning(false);
+        this.setProcessingEnabled(false);
         JFileChooser c = new JFileChooser(this.getLastRNNXMLFile());
         FileFilter filter = new FileNameExtensionFilter("XML File", "xml");
         c.addChoosableFileFilter(filter);
@@ -812,7 +816,8 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
      * @param binTimeLength1 the binTimeLength to set
      */
     public void setBinTimeLength(int binTimeLength1) {
-        putInt("binTimeLength",binTimeLength1);
+        getPrefs().putInt("binTimeLength",binTimeLength1);
+        getSupport().firePropertyChange("binTimeLength", this.binTimeLength, binTimeLength1);
         this.binTimeLength = binTimeLength1;
     }
     /**
@@ -838,8 +843,11 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
      * @param chooseEar1 the chooseEar to set
      */
     public void setChooseEar(int chooseEar1) {
-        putInt("chooseEar",chooseEar1);
+        getPrefs().putInt("chooseEar",chooseEar1);
+        getSupport().firePropertyChange("chooseEar", this.chooseEar, chooseEar1);
         this.chooseEar = chooseEar1;
+        if((this.getChooseEar() > -1) & (this.getChooseEar() < this.getnEars())) { this.whichEar = this.getChooseEar();
+        } else { this.whichEar = (int) (Math.random() * (this.getnEars())); }
     }
     /**
      * @return the useAllNeurons
@@ -864,8 +872,11 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
      * @param chooseNeuron1 the chooseNeuron to set
      */
     public void setChooseNeuron(int chooseNeuron1) {
-        putInt("chooseNeuron", chooseNeuron1);
+        getPrefs().putInt("chooseNeuron", chooseNeuron1);
+        getSupport().firePropertyChange("chooseNeuron", this.chooseNeuron, chooseNeuron1);
         this.chooseNeuron = chooseNeuron1;
+        if((this.getChooseNeuron() > -1) & (this.getChooseNeuron() < this.getnNeurons())) { this.whichNeuron = this.getChooseNeuron();
+        } else { this.whichNeuron = (int) (Math.random() * (this.getnNeurons())); }
     }
     /**
      * @return the lastRNNXMLFile
@@ -883,18 +894,18 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
     /**
      * @return the binning
      */
-    public boolean isBinning() {
-        return binning;
+    public boolean isProcessingEnabled() {
+        return processingEnabled;
     }
 
     /**
      * @param binning1 the binning to set
      */
-    public void setBinning(boolean binning1) {
-        putBoolean("binning", binning1);
-        boolean oldBinning = this.binning;
-        this.binning = binning1;
-        support.firePropertyChange("binning", oldBinning, binning1);
+    public void setProcessingEnabled(boolean binning1) {
+        putBoolean("processingEnabled", binning1);
+        boolean oldBinning = this.processingEnabled;
+        this.processingEnabled = binning1;
+        support.firePropertyChange("processingEnabled", oldBinning, binning1);
     }
 
     /**
@@ -923,8 +934,12 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
      * @param chooseFilterType1 the chooseFilterType to set
      */
     public void setChooseFilterType(int chooseFilterType1) {
-        putInt("chooseFilterType", chooseFilterType1);
+        getPrefs().putInt("chooseFilterType", chooseFilterType1);
+        getSupport().firePropertyChange("chooseFilterType", this.chooseFilterType, chooseFilterType1);
         this.chooseFilterType = chooseFilterType1;
+        if((this.getChooseFilterType() > -1) & (this.getChooseFilterType() < this.getnFilterTypes())) { this.whichFilter = this.getChooseFilterType();
+        } else { this.whichFilter = (int) (Math.random() * (this.getnFilterTypes())); }
+        
     }
 
     /**
@@ -1055,11 +1070,11 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
      * @throws IOException 
      */
     synchronized public void toggleBinning() throws IOException {
-        if(this.getWhichFunction()==2 & this.isBinning()==false) { 
+        if(this.getWhichFunction()==2 & this.isProcessingEnabled()==false) { 
             this.resetNetwork();
-            this.setBinning(true); 
-        } else if(this.getWhichFunction()==2 & this.isBinning()==true) { // if the filter was binning the events before, then stop binning and process the digit recorded
-            this.setBinning(false);
+            this.setProcessingEnabled(true); 
+        } else if(this.getWhichFunction()==2 & this.isProcessingEnabled()==true) { // if the filter was binning the events before, then stop binning and process the digit recorded
+            this.setProcessingEnabled(false);
             if (this.displayFeature) { this.printDigit(binnedDataList); }
             this.processRNNList();
             this.resetBins();
@@ -1070,11 +1085,11 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
             this.counter1 = 0;
             this.isFirstEventDone = false;
         }
-        if(this.getWhichFunction() == 1 & this.isBinning() ==  false) {
+        if(this.getWhichFunction() == 1 & this.isProcessingEnabled() ==  false) {
             this.resetNetwork();
-            this.setBinning(true);
-        } else if(this.getWhichFunction() == 1 & this.isBinning() == true) {
-            this.setBinning(false);
+            this.setProcessingEnabled(true);
+        } else if(this.getWhichFunction() == 1 & this.isProcessingEnabled() == true) {
+            this.setProcessingEnabled(false);
             if(this.displayFeature) { this.printDigit(binnedDataList); }
             this.resetBins();
             this.rnnProcessTimeStampList = new ArrayList<>();
@@ -1099,7 +1114,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
         log.info("RunRNN button pressed");
         if(this.getWhichFunction() == 1 | this.getWhichFunction() == 2) {
             this.resetNetwork();
-            this.setBinning(true);            
+            this.setProcessingEnabled(true);            
         }
     }
     /**
@@ -1109,7 +1124,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
     public void doReleaseRunRNN() throws IOException {
         log.info("RunRNN button released");
         if(this.getWhichFunction() == 1 | this.getWhichFunction() == 2) {
-            this.setBinning(false);
+            this.setProcessingEnabled(false);
             if(this.displayFeature) { this.printDigit(binnedDataList); }
             if(this.getWhichFunction() == 2) { this.processRNNList(); }
             this.resetBins();
