@@ -97,7 +97,7 @@ public class MotionFlowStatistics {
      * @param vyGT
      * @param vGT GT speed in pixels per second
      */
-    protected void update(float vx, float vy, float v, float vxGT, float vyGT, float vGT) {
+    public void update(float vx, float vy, float v, float vxGT, float vyGT, float vGT) {
         if (warmupCounter > 0) {
             warmupCounter--;
             return;
@@ -107,7 +107,7 @@ public class MotionFlowStatistics {
         endpointErrorRel.update(vx,vy,v,vxGT,vyGT,vGT);
     }
     
-    protected void updatePacket(int countIn, int countOut) {
+    public void updatePacket(int countIn, int countOut) {
         eventDensity.update(countIn,countOut);
         if (measureProcessingTime) processingTime.update();
         if (measureGlobalMotion) globalMotion.bufferMean();

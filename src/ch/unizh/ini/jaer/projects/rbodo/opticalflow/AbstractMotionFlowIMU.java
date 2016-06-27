@@ -57,15 +57,15 @@ import org.bytedeco.javacpp.indexer.DoubleIndexer;
 abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Observer, FrameAnnotater, PropertyChangeListener {
 
     // Observed motion flow.
-    static float vx, vy, v;
+    public static float vx, vy, v;
 
     int numInputTypes;
 
     // Basic event information.
-    int x, y, ts, type, lastTs;
+    public int x, y, ts, type, lastTs;
 
     // (Subsampled) chip sizes.
-    int sizex, sizey, subSizeX, subSizeY;
+    public int sizex, sizey, subSizeX, subSizeY;
 
     // Subsampling
     int subSampleShift = getInt("subSampleShift", 0);
@@ -130,13 +130,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     // Performing statistics and logging results. lastLoggingFolder starts off 
     // at user.dir which is startup folder "host/java" where .exe launcher lives
     private String loggingFolder = getPrefs().get("DataLogger.loggingFolder", System.getProperty("user.dir"));
-    boolean measureAccuracy = getBoolean("measureAccuracy", false);
+    public boolean measureAccuracy = getBoolean("measureAccuracy", false);
     boolean measureProcessingTime = getBoolean("measureProcessingTime", false);
-    int countIn, countOut;
+    public int countIn, countOut;
     protected MotionFlowStatistics motionFlowStatistics;
 
     double[][] vxGTframe, vyGTframe, tsGTframe;
-    float vxGT, vyGT, vGT;
+    public float vxGT, vyGT, vGT;
     private boolean importedGTfromMatlab;
 
     // Discard events that are considerably faster than average
@@ -178,7 +178,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     private double[][] vxOut = null;
     private double[][] vyOut = null;
 
-    Iterator inItr;
+    public Iterator inItr;
 
     protected static String dispTT = "Display";
     protected static String imuTT = "IMU";
@@ -345,7 +345,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     // This function is called for every event to assign the local ground truth
     // (vxGT,vyGT) at location (x,y) a value from the imported ground truth field
     // (vxGTframe,vyGTframe).
-    void setGroundTruth() {
+    public void setGroundTruth() {
         if (importedGTfromMatlab) {
             if (ts >= tsGTframe[0][0] && ts < tsGTframe[0][1]) {
                 vxGT = (float) vxGTframe[y][x];
@@ -513,7 +513,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
          *
          * @param pe PolarityEvent
          */
-        protected void calculateImuFlow(ApsDvsEvent pe) {
+        public void calculateImuFlow(ApsDvsEvent pe) {
             if (pe.isImuSample()) {
                 updateTransform(pe.getImuSample());
             }
@@ -821,7 +821,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         return true;
     }
 
-    synchronized void writeOutputEvent() {
+    synchronized public void writeOutputEvent() {
         // Copy the input event to a new output event and add the computed optical flow properties
         eout = (ApsDvsMotionOrientationEvent) outItr.nextOutput();
         eout.copyFrom(e);
@@ -844,7 +844,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         motionField.update(ts, x, y, vx, vy, v);
     }
 
-    synchronized boolean accuracyTests() {
+    synchronized public boolean accuracyTests() {
         // 1.) Filter out events with speed high above average.
         // 2.) Filter out events whose velocity deviates from IMU estimate by a 
         // certain degree.
