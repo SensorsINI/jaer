@@ -41,6 +41,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
@@ -183,7 +184,8 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
     private int counter1 = 0; //counts total number of processed events
     private int lastEventTime;
     private int firstEventTime;
-    private ArrayList<Integer> timeStampList;
+    private ArrayList<Integer> rnnProcessTimeStampList;
+    private ArrayList<double[]> rnnOutputList;
     private boolean addedDisplayMethodPropertyChangeListener=false;
     private boolean screenCleared=false; // set by RollingCochleaGramDisplayMethod 
 
@@ -212,6 +214,11 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
+        GL2 gl = drawable.getGL().getGL2();
+        if(chip.getCanvas().getDisplayMethod() instanceof RollingCochleaGramDisplayMethod ) {
+            // what to display on rolling cochlea gram display
+            return;
+        }
         if ((this.rnnetwork != null) & (this.rnnetwork.netname != null)) {
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .1f);
             MultilineAnnotationTextRenderer.setScale(.1f);
@@ -230,13 +237,14 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
                 MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1f);
                 MultilineAnnotationTextRenderer.setScale(.1f);
                 if(this.isDisplayAccuracy()) {
-                    MultilineAnnotationTextRenderer.renderMultilineString(String.join("", Integer.toString(this.label + 1),";",Double.toString(tmpValue)));            
+//                    MultilineAnnotationTextRenderer.renderMultilineString(String.join("", Integer.toString(this.label + 1),";",Double.toString(tmpValue)));            
+                    MultilineAnnotationTextRenderer.renderMultilineString(String.join("", Integer.toString(this.label),";",Double.toString(tmpValue)));            
                 } else {
-                    MultilineAnnotationTextRenderer.renderMultilineString(Integer.toString(this.label + 1));                
+//                    MultilineAnnotationTextRenderer.renderMultilineString(Integer.toString(this.label + 1));                
+                    MultilineAnnotationTextRenderer.renderMultilineString(Integer.toString(this.label));                
                 }
             }
         }
-        GL2 gl = drawable.getGL().getGL2();
         if(this.networkOutput != null & this.isDisplayActivations()) {
             this.showActivations(gl, chip.getSizeX(), chip.getSizeY());
         }
@@ -249,6 +257,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
             try {                
                 if(!this.isInitialized) { initFilter();	} // making sure the filter is initialized
                 CochleaAMSEvent cochleaAMSEvent = ((CochleaAMSEvent) e);
+                //int tmpByte = e.getType();
                 int ear; if (cochleaAMSEvent.getEar() == Ear.LEFT) { ear = 0; } else { ear = 1; }// sets the ear variable to 0 if from left ear, 1 if right ear
                 int filterType; if (cochleaAMSEvent.getFilterType() == FilterType.LPF) { filterType = 0; } else { filterType = 1; }// sets the filterType variable to 0 if from low pass, 1 if from band pass
                 int neuron = cochleaAMSEvent.getThreshold(); // returns the index corresponding to the ganglion cell threshold level
@@ -274,7 +283,8 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
             default:
                 break;
         }
-        this.timeStampList = new ArrayList<>();
+        this.rnnProcessTimeStampList = new ArrayList<>();
+        this.rnnOutputList = new ArrayList<>();
         this.binnedDataList = new ArrayList<>();
         this.counter = 0;
         this.counter1 = 0;
@@ -320,7 +330,8 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
         }
         //this.loadTestDataFromXML(); //debug
         //this.testNumpyData.testingNetwork(); //debug
-        this.timeStampList = new ArrayList<>();
+        this.rnnProcessTimeStampList = new ArrayList<>();
+        this.rnnOutputList = new ArrayList<>();
         this.binnedDataList = new ArrayList<>();
         this.label = 12;
         this.isInitialized = true;
@@ -386,7 +397,6 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
             return;
         } else {
             this.lastEventTime = timeStamp;
-            this.timeStampList.add(timeStamp);
         }
         // if the present spike's timestamp is within a binTimeLength of the last binned data, we update the bin
         if ((timeStamp > this.lastBinCompleteTime)&(timeStamp < (this.lastBinCompleteTime + this.getBinTimeLength()))) {
@@ -550,6 +560,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
         while (timeStamp > (this.lastBinCompleteTime + this.getBinTimeLength())) {
             tempOutput = this.rnnetwork.output(RNNfilter.intToDouble(this.binnedData));
             this.networkOutput = RNNfilter.DMToDouble(tempOutput);
+            this.rnnOutputList.add(this.networkOutput);
             this.label = RNNfilter.indexOfMaxValue(this.networkOutput);
             this.lastBinCompleteTime += this.getBinTimeLength();
         }
@@ -1052,7 +1063,8 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
             if (this.displayFeature) { this.printDigit(binnedDataList); }
             this.processRNNList();
             this.resetBins();
-            this.timeStampList = new ArrayList<>();
+            this.rnnProcessTimeStampList = new ArrayList<>();
+            this.rnnOutputList = new ArrayList<>();
             this.binnedDataList = new ArrayList<>();
             this.counter = 0;
             this.counter1 = 0;
@@ -1065,7 +1077,8 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
             this.setBinning(false);
             if(this.displayFeature) { this.printDigit(binnedDataList); }
             this.resetBins();
-            this.timeStampList = new ArrayList<>();
+            this.rnnProcessTimeStampList = new ArrayList<>();
+            this.rnnOutputList = new ArrayList<>();
             this.binnedDataList = new ArrayList<>();
             this.counter = 0;
             this.counter1 = 0;
@@ -1100,7 +1113,8 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
             if(this.displayFeature) { this.printDigit(binnedDataList); }
             if(this.getWhichFunction() == 2) { this.processRNNList(); }
             this.resetBins();
-            this.timeStampList = new ArrayList<>();
+            this.rnnProcessTimeStampList = new ArrayList<>();
+            this.rnnOutputList = new ArrayList<>();
             this.binnedDataList = new ArrayList<>();
             this.counter = 0;
             this.counter1 = 0;
