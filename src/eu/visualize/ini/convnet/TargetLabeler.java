@@ -776,7 +776,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         if (!fastAdd) {
             maybeEraseSamplesBefore(timestamp);
         }
-        TargetLocation newTargetLocation = new TargetLocation(getCurrentFrameNumber(), timestamp, point, ID, width, height);
+        TargetLocation newTargetLocation = new TargetLocation(frame, timestamp, point, ID, width, height);
         SimultaneouTargetLocations s = targetLocations.get(timestamp);
         if (s == null) {
             s = new SimultaneouTargetLocations();
