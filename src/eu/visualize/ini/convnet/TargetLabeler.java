@@ -14,7 +14,6 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -50,6 +49,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
 import java.awt.event.MouseWheelEvent;
 import java.io.LineNumberReader;
+import java.util.Iterator;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -98,7 +98,6 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 //    protected int maxTargets = getInt("maxTargets", 8);
     protected int currentTargetTypeID = getInt("currentTargetTypeID", 0);
     private ArrayList<TargetLocation> currentTargets = new ArrayList(10); // currently valid targets
-    protected boolean eraseSamplesEnabled = false;
     private HashMap<String, String> mapDataFilenameToTargetFilename = new HashMap();
 
     private boolean propertyChangeListenerAdded = false;
@@ -114,8 +113,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private long filePositionEvents = 0, fileLengthEvents = 0;
     private int filePositionTimestamp = 0;
     private boolean warnSave = true;
-    private int mouseWheelRoll=0;
-    private boolean editTargetRadius=getBoolean("editTargetRadius", false);
+    
+    protected boolean eraseSamplesEnabled = false;
+    private boolean editTargetRadius = false; // default to false to avoid editing by mistake
 
     public TargetLabeler(AEChip chip) {
         super(chip);
@@ -176,7 +176,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     @Override
     public void mousePressed(MouseEvent e) {
         mouseMoved(e);
-        mousePressed=true;
+        mousePressed = true;
     }
 
     @Override
@@ -196,14 +196,16 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     @Override
     public void mouseWheelMoved(MouseWheelEvent mwe) {
-        int roll=mwe.getWheelRotation();
-        int r=getTargetRadius();
-        setTargetRadius(Math.round(getTargetRadius()*(float)Math.pow(1.1,-roll)));
+        int roll = mwe.getWheelRotation();
+        int r = getTargetRadius();
+        int newr=Math.round(r * (float) Math.pow(1.1, -roll));
+        if(roll<0){
+            if(newr==r) newr=r+1;
+        }else{
+            if(newr==r) newr=r-1;
+        }
+        setTargetRadius(newr);
     }
-    
-    
-    
-    
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
@@ -237,7 +239,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             gl.glPushMatrix();
             gl.glTranslatef(p.x, p.y, 0);
             gl.glBegin(GL.GL_LINES);
-            int tr=getTargetRadius();
+            int tr = getTargetRadius();
             gl.glVertex2f(0, -tr);
             gl.glVertex2f(0, +tr);
             gl.glVertex2f(-tr, 0);
@@ -280,17 +282,17 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 MultilineAnnotationTextRenderer.renderMultilineString("Specifying no target");
             } else if (shiftPressed && ctlPressed && !altPressed) {
                 MultilineAnnotationTextRenderer.renderMultilineString("Specifying target location");
-            }else if (shiftPressed && altPressed && !ctlPressed) {
+            } else if (shiftPressed && altPressed && !ctlPressed) {
                 MultilineAnnotationTextRenderer.renderMultilineString("Specifying new target radius");
             } else {
                 MultilineAnnotationTextRenderer.renderMultilineString("Playing recorded target locations");
             }
         }
-        boolean first=true;
+        boolean first = true;
         for (TargetLocation t : currentTargets) {
             if (t.location != null) {
-                t.draw(drawable, gl, first? 10:2);
-                first=false;
+                t.draw(drawable, gl, first ? 10 : 2);
+                first = false;
             }
         }
 
@@ -378,22 +380,32 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         if (targetLocations.size() == 0) {
             log.warning("no locations labeled  - will label entire recording with no visible targets");
         }
-        int before=targetLocations.size();
+        int before = targetLocations.size();
         Map.Entry<Integer, SimultaneouTargetLocations> prevTargets = targetLocations.firstEntry();
         TreeMap<Integer, SimultaneouTargetLocations> newTargets = new TreeMap();
 //        TreeMap<Integer, SimultaneouTargetLocations> removeTargets = new TreeMap();
         if (prevTargets != null) {
-            for (Map.Entry<Integer, SimultaneouTargetLocations> nextTargets : targetLocations.entrySet()) { // for each existing set of targets by timestamp key list
+            // starting from first entry, iterate forwards, adding in labels if there are too few and removing if there are too many
+            Iterator<Map.Entry<Integer, SimultaneouTargetLocations>> itr = targetLocations.entrySet().iterator();
+            int nSamplesSinceLast=0;
+            while (itr.hasNext()) {
+                Map.Entry<Integer, SimultaneouTargetLocations> nextTargets = itr.next();
+                final int dt = nextTargets.getKey() - prevTargets.getKey();
+                nSamplesSinceLast++;
+//            for (Map.Entry<Integer, SimultaneouTargetLocations> nextTargets : targetLocations.entrySet()) { // for each existing set of targets by timestamp key list
                 // if no label at all for minTargetPointIntervalUs, then add copy of last labels up to maxTimeLastTargetLocationValidUs,
                 // then add null labels after that
                 // if multiple labels since last labels during this interval, then keep only last one
-                if ((nextTargets.getKey() - prevTargets.getKey()) > minTargetPointIntervalUs) {
-                    int n = (nextTargets.getKey() - prevTargets.getKey()) / minTargetPointIntervalUs;  // add this many total
+                if (dt > minTargetPointIntervalUs) {
+                    int n = dt / minTargetPointIntervalUs;  // add this many total
                     int tCopy = prevTargets.getKey() + maxTimeLastTargetLocationValidUs;  // add this many total
                     for (int i = 0; i < n; i++) {
                         int ts = prevTargets.getKey() + ((i + 1) * minTargetPointIntervalUs);
                         newTargets.put(ts, copyLocationsToNewTs(prevTargets.getValue(), ts, ts <= tCopy));
                     }
+                }else if(nSamplesSinceLast>1){
+                    itr.remove(); // if there is an excell label that is before the next interval, remove it from the map.
+                    nSamplesSinceLast=0;
                 }
                 prevTargets = nextTargets;
             }
@@ -413,8 +425,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         }
         targetLocations.putAll(newTargets);
         fixLabeledFraction();
-        int after=targetLocations.size();
-        log.info(String.format("resampling went from %d to %d labeled locations",before,after));
+        int after = targetLocations.size();
+        log.info(String.format("resampling went from %d to %d labeled locations", before, after));
 
     }
 
@@ -440,7 +452,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     synchronized public void doLoadLocations() {
-        
+
         if (lastFileName == null) {
             lastFileName = mapDataFilenameToTargetFilename.get(lastDataFilename);
         }
@@ -494,6 +506,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         }
         int nCurrentTargets = currentTargets.size();
 //        currentTargets.clear();
+        boolean addedSample=false;
         for (BasicEvent e : in) {
             if (e.isSpecial()) {
                 continue;
@@ -518,15 +531,16 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     // find next saved target location that is just before this time (lowerEntry)
                     if (shiftPressed && ctlPressed && !altPressed && (mousePoint != null)) { // specify (additional) target present
                         // add a labeled location sample
-                        addSample(getCurrentFrameNumber(), e.timestamp, mousePoint, targetRadius*2, targetRadius*2, currentTargetTypeID, false);
+                        addSample(getCurrentFrameNumber(), e.timestamp, mousePoint, targetRadius * 2, targetRadius * 2, currentTargetTypeID, false);
+                        addedSample=true;
                     } else if (shiftPressed && !ctlPressed && !altPressed) { // specify no target present now but mark recording as reviewed
-                        addSample(getCurrentFrameNumber(), e.timestamp, null, targetRadius*2, targetRadius*2, currentTargetTypeID, false);
+                        addSample(getCurrentFrameNumber(), e.timestamp, null, targetRadius * 2, targetRadius * 2, currentTargetTypeID, false);
+                        addedSample=true;
                     }
-                    updateCurrentlyDisplayedTargets(e);
-                    if(editTargetRadius && mousePoint!=null){
-                        for(TargetLocation t:currentTargets){
-                            t.width=targetRadius*2;
-                            t.height=targetRadius*2;
+                    if (editTargetRadius && mousePoint != null) {
+                        for (TargetLocation t : currentTargets) {
+                            t.width = targetRadius * 2;
+                            t.height = targetRadius * 2;
                         }
                     }
                 }
@@ -537,6 +551,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             }
         }
 
+        updateCurrentlyDisplayedTargets(lastTimestamp);
         //prune list of current targets to their valid lifetime, and remove leftover targets in the future
         ArrayList<TargetLocation> removeList = new ArrayList();
         for (TargetLocation t : currentTargets) {
@@ -545,21 +560,26 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             }
         }
         currentTargets.removeAll(removeList);
-        if (currentTargets.size() != nCurrentTargets) {
+        if (addedSample) {
             fixLabeledFraction();
         }
         return in;
     }
 
-    /** updates list of labels that are before the event e timestamp and within maxTimeLastTargetLocationValidUs
-     * 
-     * @param e 
+    /**
+     * updates list of labels that are before the event e timestamp and within
+     * maxTimeLastTargetLocationValidUs
+     *
+     * @param e
      */
-    private void updateCurrentlyDisplayedTargets(BasicEvent e) {
-        Map.Entry<Integer, SimultaneouTargetLocations> mostRecentTargetsBeforeThisEvent = targetLocations.floorEntry(e.timestamp);
-        while (mostRecentTargetsBeforeThisEvent != null && mostRecentTargetsBeforeThisEvent.getKey()>=(e.timestamp-maxTimeLastTargetLocationValidUs)) {
+    private void updateCurrentlyDisplayedTargets(int timestamp) {
+        currentTargets.clear();
+        // start at the label that has max timestamp equal to or less than event timestamp
+        Map.Entry<Integer, SimultaneouTargetLocations> mostRecentTargetsBeforeThisEvent = targetLocations.floorEntry(timestamp);
+        while (mostRecentTargetsBeforeThisEvent != null && mostRecentTargetsBeforeThisEvent.getKey() >= (timestamp - maxTimeLastTargetLocationValidUs)) {
+            // as long as the labels are within maxTimeLastTargetLocationValidUs, then add them to current targets
             for (TargetLocation t : mostRecentTargetsBeforeThisEvent.getValue()) {
-                if ((t == null) || ((t != null) && ((e.timestamp - t.timestamp) >= maxTimeLastTargetLocationValidUs))) {
+                if ((t == null) || ((t != null) && ((timestamp - t.timestamp) >= maxTimeLastTargetLocationValidUs))) {
                     targetLocation = null;
                 } else /*if (targetLocation != t)*/ {
                     targetLocation = t;
@@ -568,7 +588,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 }
             }
             // find the previous set of SimultaneouTargetLocations just before mostRecentTargetsBeforeThisEvent
-            Map.Entry<Integer, SimultaneouTargetLocations> before=targetLocations.lowerEntry(mostRecentTargetsBeforeThisEvent.getKey());
+            Map.Entry<Integer, SimultaneouTargetLocations> before = targetLocations.lowerEntry(mostRecentTargetsBeforeThisEvent.getKey());
             mostRecentTargetsBeforeThisEvent = before; // get next earlier set of labels
         }
     }
@@ -659,7 +679,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             shiftPressed = true;
         } else if (k == KeyEvent.VK_CONTROL) {
             ctlPressed = true;
-        }else if (k == KeyEvent.VK_ALT) {
+        } else if (k == KeyEvent.VK_ALT) {
             altPressed = true;
         } else if (k == KeyEvent.VK_E) {
             setEraseSamplesEnabled(true);
@@ -673,7 +693,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             shiftPressed = false;
         } else if (k == KeyEvent.VK_CONTROL) {
             ctlPressed = false;
-        }else if (k == KeyEvent.VK_ALT) {
+        } else if (k == KeyEvent.VK_ALT) {
             altPressed = false;
         } else if (k == KeyEvent.VK_E) {
             setEraseSamplesEnabled(false);
@@ -691,8 +711,10 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
      * @param targetRadius the targetRadius to set
      */
     public void setTargetRadius(int targetRadius) {
-        if(targetRadius<1)targetRadius=1;
-        int old=this.targetRadius;
+        if (targetRadius < 1) {
+            targetRadius = 1;
+        }
+        int old = this.targetRadius;
         this.targetRadius = targetRadius;
         putInt("targetRadius", targetRadius);
         getSupport().firePropertyChange("targetRadius", old, this.targetRadius);
@@ -710,7 +732,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
      * maxTimeLastTargetLocationValidUs to set
      */
     public void setMaxTimeLastTargetLocationValidUs(int maxTimeLastTargetLocationValidUs) {
-        int old=this.maxTimeLastTargetLocationValidUs;
+        int old = this.maxTimeLastTargetLocationValidUs;
         if (maxTimeLastTargetLocationValidUs < minTargetPointIntervalUs) {
             maxTimeLastTargetLocationValidUs = minTargetPointIntervalUs;
         }
@@ -740,11 +762,13 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         return targetLocation;
     }
 
-    /** Add a new label
-     * 
+    /**
+     * Add a new label
+     *
      * @param timestamp
      * @param point null to label target not visible
-     * @param fastAdd  true during file read, to speed up and avoid memory thrashing
+     * @param fastAdd true during file read, to speed up and avoid memory
+     * thrashing
      */
     private void addSample(int frame, int timestamp, Point point, int width, int height, int ID, boolean fastAdd) {
         if (!fastAdd) {
@@ -841,10 +865,10 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 //            gl.glColor4f(0, 1, 0, .5f);
             gl.glLineWidth(linewidth);
             gl.glBegin(GL.GL_LINE_LOOP);
-            gl.glVertex2f(-width/2, -height/2);
-            gl.glVertex2f(+width/2, -height/2);
-            gl.glVertex2f(+width/2, +height/2);
-            gl.glVertex2f(-width/2, +height/2);
+            gl.glVertex2f(-width / 2, -height / 2);
+            gl.glVertex2f(+width / 2, -height / 2);
+            gl.glVertex2f(+width / 2, +height / 2);
+            gl.glVertex2f(-width / 2, +height / 2);
             gl.glEnd();
 //            if (mouseQuad == null) {
 //                mouseQuad = glu.gluNewQuadric();
@@ -945,8 +969,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         int x = scanner.nextInt();
                         int y = scanner.nextInt();
                         int targetTypeID = 0;
-                        int width = targetRadius*2;
-                        int height = targetRadius*2;
+                        int width = targetRadius * 2;
+                        int height = targetRadius * 2;
                         // see if more tokens in this line
                         String mt = scanner.findInLine("\\d+");
                         if (mt != null) {
@@ -967,7 +991,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         addSample(frame, ts, p, width, height, targetTypeID, true);
 
                     } catch (NoSuchElementException ex2) {
-                        String l=("couldn't parse file " + f) == null ? "null" : f.toString() + ", got InputMismatchException on line: " + reader.getLineNumber();
+                        String l = ("couldn't parse file " + f) == null ? "null" : f.toString() + ", got InputMismatchException on line: " + reader.getLineNumber();
                         log.warning(l);
                         throw new IOException(l);
                     }
@@ -1129,7 +1153,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if(!isFilterEnabled()) return;
+        if (!isFilterEnabled()) {
+            return;
+        }
         switch (evt.getPropertyName()) {
             case AEInputStream.EVENT_POSITION:
                 filePositionEvents = (long) evt.getNewValue();
@@ -1228,9 +1254,6 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
      */
     public void setEditTargetRadius(boolean editTargetRadius) {
         this.editTargetRadius = editTargetRadius;
-        putBoolean("editTargetRadius",editTargetRadius);
     }
-
-   
 
 }
