@@ -1500,8 +1500,13 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            getDavisConfig().setExposureDelayMs(getDavisConfig().getExposureDelayMs() / exposureChangeFactor);
-            log.info("set exposure delay = " + getDavisConfig().getExposureDelayMs() + " ms");
+            try {
+                getDavisConfig().setExposureDelayMs(getDavisConfig().getExposureDelayMs() / exposureChangeFactor);
+            } catch (IllegalArgumentException ex) {
+            }
+            final String s = "set exposure delay = " + getDavisConfig().getExposureDelayMs() + " ms";
+            log.info(s);
+            davisDisplayMethod.showStatusChangeText(s);
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1517,8 +1522,13 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            getDavisConfig().setExposureDelayMs(getDavisConfig().getExposureDelayMs() * exposureChangeFactor);
-            log.info("set exposure delay = " + getDavisConfig().getExposureDelayMs() + " ms");
+            try {
+                getDavisConfig().setExposureDelayMs(getDavisConfig().getExposureDelayMs() * exposureChangeFactor);
+            } catch (IllegalArgumentException ex) {
+            }
+            final String s = "set exposure delay = " + getDavisConfig().getExposureDelayMs() + " ms";
+            log.info(s);
+            davisDisplayMethod.showStatusChangeText(s);
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1537,8 +1547,16 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            getDavisConfig().setFrameDelayMs(getDavisConfig().getFrameDelayMs() * exposureChangeFactor);
-            log.info("set frame delay = " + getDavisConfig().getExposureDelayMs() + " ms");
+            try {
+                float d = getDavisConfig().getFrameDelayMs() * exposureChangeFactor;
+                if(d<.1f)d=.1f;
+                getDavisConfig().setFrameDelayMs(d);
+            } catch (IllegalArgumentException ex) {
+
+            }
+            final String s = "set frame delay = " + getDavisConfig().getFrameDelayMs() + " ms";
+            log.info(s);
+            davisDisplayMethod.showStatusChangeText(s);
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1557,8 +1575,13 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            getDavisConfig().setFrameDelayMs(getDavisConfig().getFrameDelayMs() / exposureChangeFactor);
-            log.info("set frame delay = " + getDavisConfig().getExposureDelayMs() + " ms");
+            try {
+                getDavisConfig().setFrameDelayMs(getDavisConfig().getFrameDelayMs() / exposureChangeFactor);
+            } catch (IllegalArgumentException ex) {
+            }
+            final String s = "set frame delay = " + getDavisConfig().getFrameDelayMs() + " ms";
+            log.info(s);
+            davisDisplayMethod.showStatusChangeText(s);
             putValue(Action.SELECTED_KEY, true);
         }
     }
