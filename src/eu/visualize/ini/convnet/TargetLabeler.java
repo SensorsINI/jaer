@@ -366,7 +366,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         warnSave = false;
     }
 
-    public void doResampleLabeling() {
+    synchronized public void doResampleLabeling() {
         if (targetLocations == null) {
             log.warning("null targetLocations - nothing to resample");
             return;
@@ -381,10 +381,12 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         int before=targetLocations.size();
         Map.Entry<Integer, SimultaneouTargetLocations> prevTargets = targetLocations.firstEntry();
         TreeMap<Integer, SimultaneouTargetLocations> newTargets = new TreeMap();
+//        TreeMap<Integer, SimultaneouTargetLocations> removeTargets = new TreeMap();
         if (prevTargets != null) {
             for (Map.Entry<Integer, SimultaneouTargetLocations> nextTargets : targetLocations.entrySet()) { // for each existing set of targets by timestamp key list
                 // if no label at all for minTargetPointIntervalUs, then add copy of last labels up to maxTimeLastTargetLocationValidUs,
                 // then add null labels after that
+                // if multiple labels since last labels during this interval, then keep only last one
                 if ((nextTargets.getKey() - prevTargets.getKey()) > minTargetPointIntervalUs) {
                     int n = (nextTargets.getKey() - prevTargets.getKey()) / minTargetPointIntervalUs;  // add this many total
                     int tCopy = prevTargets.getKey() + maxTimeLastTargetLocationValidUs;  // add this many total
