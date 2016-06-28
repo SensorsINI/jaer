@@ -181,6 +181,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         davisMenu.add(new JMenuItem(new IncreaseAPSExposure()));
         davisMenu.add(new JMenuItem(new DecreaseExposureAction()));
         davisMenu.add(new JSeparator());
+        davisMenu.add(new JMenuItem(new IncreaseFrameRateAction()));
+        davisMenu.add(new JMenuItem(new DecreaseFrameRateAction()));
+        davisMenu.add(new JSeparator());
         davisMenu.add(new JMenuItem(new ToggleIMU()));
         getAeViewer().addMenu(davisMenu);
     }
@@ -1438,8 +1441,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             putValue(Action.SELECTED_KEY, true);
         }
     }
-    
-       /**
+
+    /**
      * Adds event capture/display option
      */
     final public class ToggleGlobalRollingShutter extends DavisMenuAction {
@@ -1459,8 +1462,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             putValue(Action.SELECTED_KEY, true);
         }
     }
-    
-    
+
     /**
      * Adds event capture/display option
      */
@@ -1517,6 +1519,46 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         public void actionPerformed(ActionEvent e) {
             getDavisConfig().setExposureDelayMs(getDavisConfig().getExposureDelayMs() * exposureChangeFactor);
             log.info("set exposure delay = " + getDavisConfig().getExposureDelayMs() + " ms");
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
+    /**
+     * Adds event capture/display option
+     */
+    final public class DecreaseFrameRateAction extends DavisMenuAction {
+
+        public DecreaseFrameRateAction() {
+            super("Decrease APS frame rate",
+                    "<html>Decreases APS rate by increasing frame delay<p>See <i>User-Friendly Controls</i> tab in HW configuration panel for more control",
+                    "DecreaseFrameRate");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, java.awt.event.InputEvent.SHIFT_MASK));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            getDavisConfig().setFrameDelayMs(getDavisConfig().getFrameDelayMs() * exposureChangeFactor);
+            log.info("set frame delay = " + getDavisConfig().getExposureDelayMs() + " ms");
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
+    /**
+     * Adds event capture/display option
+     */
+    final public class IncreaseFrameRateAction extends DavisMenuAction {
+
+        public IncreaseFrameRateAction() {
+            super("Increase APS frame rate",
+                    "<html>Increases APS rate by descrasing frame delay<p>See <i>User-Friendly Controls</i> tab in HW configuration panel for more control",
+                    "IncreaseFrameRate");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, java.awt.event.InputEvent.SHIFT_MASK));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            getDavisConfig().setFrameDelayMs(getDavisConfig().getFrameDelayMs() / exposureChangeFactor);
+            log.info("set frame delay = " + getDavisConfig().getExposureDelayMs() + " ms");
             putValue(Action.SELECTED_KEY, true);
         }
     }
