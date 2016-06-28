@@ -549,19 +549,25 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         return in;
     }
 
+    /** updates list of labels that are before the event e timestamp and within maxTimeLastTargetLocationValidUs
+     * 
+     * @param e 
+     */
     private void updateCurrentlyDisplayedTargets(BasicEvent e) {
-        // if at least minTargetPointIntervalUs has passed by maybe add new labels
         Map.Entry<Integer, SimultaneouTargetLocations> mostRecentTargetsBeforeThisEvent = targetLocations.floorEntry(e.timestamp);
-        if (mostRecentTargetsBeforeThisEvent != null) {
+        while (mostRecentTargetsBeforeThisEvent != null && mostRecentTargetsBeforeThisEvent.getKey()>=(e.timestamp-maxTimeLastTargetLocationValidUs)) {
             for (TargetLocation t : mostRecentTargetsBeforeThisEvent.getValue()) {
-                if ((t == null) || ((t != null) && ((e.timestamp - t.timestamp) > maxTimeLastTargetLocationValidUs))) {
+                if ((t == null) || ((t != null) && ((e.timestamp - t.timestamp) >= maxTimeLastTargetLocationValidUs))) {
                     targetLocation = null;
-                } else if (targetLocation != t) {
+                } else /*if (targetLocation != t)*/ {
                     targetLocation = t;
                     currentTargets.add(targetLocation);
                     markDataHasTarget(targetLocation.timestamp, targetLocation.location != null);
                 }
             }
+            // find the previous set of SimultaneouTargetLocations just before mostRecentTargetsBeforeThisEvent
+            Map.Entry<Integer, SimultaneouTargetLocations> before=targetLocations.lowerEntry(mostRecentTargetsBeforeThisEvent.getKey());
+            mostRecentTargetsBeforeThisEvent = before; // get next earlier set of labels
         }
     }
 
@@ -702,12 +708,13 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
      * maxTimeLastTargetLocationValidUs to set
      */
     public void setMaxTimeLastTargetLocationValidUs(int maxTimeLastTargetLocationValidUs) {
+        int old=this.maxTimeLastTargetLocationValidUs;
         if (maxTimeLastTargetLocationValidUs < minTargetPointIntervalUs) {
             maxTimeLastTargetLocationValidUs = minTargetPointIntervalUs;
         }
         this.maxTimeLastTargetLocationValidUs = maxTimeLastTargetLocationValidUs;
         putInt("maxTimeLastTargetLocationValidUs", maxTimeLastTargetLocationValidUs);
-
+        getSupport().firePropertyChange("maxTimeLastTargetLocationValidUs", old, this.maxTimeLastTargetLocationValidUs);
     }
 
     /**
