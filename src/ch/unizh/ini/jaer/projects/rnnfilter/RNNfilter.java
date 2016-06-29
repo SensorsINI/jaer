@@ -2,7 +2,7 @@ package ch.unizh.ini.jaer.projects.rnnfilter;
 
 import java.util.Arrays;
 
-import org.jblas.DoubleMatrix;
+import org.jblas.FloatMatrix;
 
 import com.jogamp.opengl.GLAutoDrawable;
 
@@ -156,7 +156,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
     /**
      * Output of the network;
      */
-    private double[] networkOutput;
+    private float[] networkOutput;
     /**
      * Corresponding label given the network output
      */
@@ -185,7 +185,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
     private int lastEventTime;
     private int firstEventTime;
     private ArrayList<Integer> rnnProcessTimeStampList;
-    private ArrayList<double[]> rnnOutputList;
+    private ArrayList<float[]> rnnOutputList;
     private boolean addedDisplayMethodPropertyChangeListener=false;
     private boolean screenCleared=false; // set by RollingCochleaGramDisplayMethod 
 
@@ -229,20 +229,20 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
             if(this.isProcessingEnabled()) {
                 int timeElapsed = this.lastEventTime - this.firstEventTime;
                 timeElapsed = (int) timeElapsed/1000;
-                MultilineAnnotationTextRenderer.renderMultilineString(String.join("", this.rnnetwork.netname,"  ;  ","Time elapsed:",Double.toString(timeElapsed),"ms"));
+                MultilineAnnotationTextRenderer.renderMultilineString(String.join("", this.rnnetwork.netname,"  ;  ","Time elapsed:",Float.toString(timeElapsed),"ms"));
             } else {
                 MultilineAnnotationTextRenderer.renderMultilineString(this.rnnetwork.netname);                
             }
         }
         if (this.networkOutput != null) {
-            double tmpValue = RNNfilter.maxValue(this.networkOutput)*100;
-            tmpValue = (double)((int) tmpValue); tmpValue = tmpValue/100;
+            float tmpValue = RNNfilter.maxValue(this.networkOutput)*100;
+            tmpValue = (float)((int) tmpValue); tmpValue = tmpValue/100;
             if(!this.isShowPredictionOnlyIfGood() | (this.isShowPredictionOnlyIfGood() & (tmpValue > 0.9))) {
                 MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1f);
                 MultilineAnnotationTextRenderer.setScale(.1f);
                 if(this.isDisplayAccuracy()) {
-//                    MultilineAnnotationTextRenderer.renderMultilineString(String.join("", Integer.toString(this.label + 1),";",Double.toString(tmpValue)));            
-                    MultilineAnnotationTextRenderer.renderMultilineString(String.join("", Integer.toString(this.label),";",Double.toString(tmpValue)));            
+//                    MultilineAnnotationTextRenderer.renderMultilineString(String.join("", Integer.toString(this.label + 1),";",Float.toString(tmpValue)));            
+                    MultilineAnnotationTextRenderer.renderMultilineString(String.join("", Integer.toString(this.label),";",Float.toString(tmpValue)));            
                 } else {
 //                    MultilineAnnotationTextRenderer.renderMultilineString(Integer.toString(this.label + 1));                
                     MultilineAnnotationTextRenderer.renderMultilineString(Integer.toString(this.label));                
@@ -497,12 +497,12 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
      */
     public void processRNNList() {
         if(this.binnedDataList.isEmpty()) { return; }
-        DoubleMatrix tempOutput;
-        tempOutput = DoubleMatrix.zeros(this.getnChannels());
+        FloatMatrix tempOutput;
+        tempOutput = FloatMatrix.zeros(this.getnChannels());
         for (int[] currentBinnedData : this.binnedDataList) {
-            tempOutput = this.rnnetwork.output(RNNfilter.intToDouble(currentBinnedData));
+            tempOutput = this.rnnetwork.output(RNNfilter.intToFloat(currentBinnedData));
         }
-        this.networkOutput = RNNfilter.DMToDouble(tempOutput);
+        this.networkOutput = RNNfilter.DMToFloat(tempOutput);
         this.label = RNNfilter.indexOfMaxValue(this.networkOutput);
     }
     /**
@@ -541,10 +541,10 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
      */
     public void processRNN(int timeStamp) {
         long now = System.nanoTime();
-        DoubleMatrix tempOutput = this.rnnetwork.output(RNNfilter.intToDouble(this.binnedData));
+        FloatMatrix tempOutput = this.rnnetwork.output(RNNfilter.intToFloat(this.binnedData));
         long dt = System.nanoTime() - now;
         //log.log(Level.INFO, String.format("%d nanoseconds for one frame computation", dt));
-        this.networkOutput = RNNfilter.DMToDouble(tempOutput);
+        this.networkOutput = RNNfilter.DMToFloat(tempOutput);
         if(chip.getCanvas().getDisplayMethod() instanceof RollingCochleaGramDisplayMethod){
             if(!addedDisplayMethodPropertyChangeListener){
                 chip.getCanvas().getDisplayMethod().getSupport().addPropertyChangeListener(this);
@@ -562,8 +562,8 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
         this.resetBins();
         // if the present timeStamp is very far from the last time RNN was processed, that means an appropriate number of zero bins have to be sent to the network
         while (timeStamp > (this.lastBinCompleteTime + this.getBinTimeLength())) {
-            tempOutput = this.rnnetwork.output(RNNfilter.intToDouble(this.binnedData));
-            this.networkOutput = RNNfilter.DMToDouble(tempOutput);
+            tempOutput = this.rnnetwork.output(RNNfilter.intToFloat(this.binnedData));
+            this.networkOutput = RNNfilter.DMToFloat(tempOutput);
             this.rnnOutputList.add(this.networkOutput);
             this.label = RNNfilter.indexOfMaxValue(this.networkOutput);
             this.lastBinCompleteTime += this.getBinTimeLength();
@@ -582,38 +582,38 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
         this.rnnetwork.resetNetworkLayers();
     }
     /**
-     * Copies int array to a double array
+     * Copies int array to a float array
      * @param intArray - 1 dimensional int array
-     * @return doubleArray - 1 dimensional double array
+     * @return floatArray - 1 dimensional float array
      */
-    public static double[] intToDouble(int[] intArray) {
-        double[] doubleArray = new double[intArray.length];
+    public static float[] intToFloat(int[] intArray) {
+        float[] floatArray = new float[intArray.length];
         for(int i=0; i<intArray.length; i++) {
-            doubleArray[i] = intArray[i];
+            floatArray[i] = intArray[i];
         }
-        return doubleArray;
+        return floatArray;
     }
     /**
-     * Copies a 1 dimensional DoubleMatrix (jblas) into a 1 dimensional double array
-     * @param doubleMatrix - 1 dimensional double matrix, there is no check make sure the input is indeed 1 dimensional
-     * @return 1 dimensional double array
+     * Copies a 1 dimensional FloatMatrix (jblas) into a 1 dimensional float array
+     * @param floatMatrix - 1 dimensional float matrix, there is no check make sure the input is indeed 1 dimensional
+     * @return 1 dimensional float array
      */
-    public static double[] DMToDouble(DoubleMatrix doubleMatrix) {
-        int length = doubleMatrix.length;
-        double[] doubleArray = new double[length];
+    public static float[] DMToFloat(FloatMatrix floatMatrix) {
+        int length = floatMatrix.length;
+        float[] floatArray = new float[length];
         for (int i = 0;i<length;i++) {
-            doubleArray[i] = doubleMatrix.get(i);
+            floatArray[i] = floatMatrix.get(i);
         }
-        return doubleArray;
+        return floatArray;
     }
     /**
      * Returns the index of the maximum value in the array
      * @param input
      * @return 
      */
-    public static int indexOfMaxValue (double[] input) {
+    public static int indexOfMaxValue (float[] input) {
         int index = 0;
-        double tmpMax = input[0];
+        float tmpMax = input[0];
         for (int i = 1; i<input.length; i++) {
             if (input[i] > tmpMax) {
                 tmpMax = input[i];
@@ -627,8 +627,8 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
      * @param input
      * @return 
      */
-    public static double maxValue (double[] input) {
-        double tmpMax = input[0];
+    public static float maxValue (float[] input) {
+        float tmpMax = input[0];
         for (int i = 1; i<input.length; i++) {
             if (input[i] > tmpMax) {
                 tmpMax = input[i];
@@ -749,7 +749,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
      * @param scale
      * @return 
      */
-    public static int[][] rescale2DArray (int[][] input, double scale) {
+    public static int[][] rescale2DArray (int[][] input, float scale) {
         int xLength = input.length;
         int yLength = input[0].length;
         int[][] output = new int[xLength][yLength];
@@ -774,8 +774,8 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
 
             gl.glBegin(GL.GL_LINE_STRIP);
             for (int i = 0; i < this.networkOutput.length; i++) {
-                double tmpOutput = this.networkOutput[i];
-                double tmpOutputMax = RNNfilter.maxValue(this.networkOutput);
+                float tmpOutput = this.networkOutput[i];
+                float tmpOutputMax = RNNfilter.maxValue(this.networkOutput);
                 float y_end = (float) (1 + (dy*tmpOutput)/tmpOutputMax); // draws the relative activations of the neurons in the layer
                 float x_start = 1 + (dx * i);
                 float x_end = x_start + dx;
