@@ -455,14 +455,13 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     synchronized public void doLoadLocations() {
-
-        if (lastFileName == null) {
+        if(lastDataFileFolder!=null && lastDataFileFolder.exists()){
+            lastFileName=lastDataFileFolder.getPath();
+        }else if (lastFileName == null) {
             lastFileName = mapDataFilenameToTargetFilename.get(lastDataFilename);
-        }
-        if (lastFileName == null) {
+        }else if (lastFileName == null) {
             lastFileName = DEFAULT_FILENAME;
-        }
-        if ((lastFileName != null) && lastFileName.equals(DEFAULT_FILENAME)) {
+        } else if ((lastFileName != null) && lastFileName.equals(DEFAULT_FILENAME)) {
             File f = chip.getAeViewer().getRecentFiles().getMostRecentFile();
             if (f == null) {
                 lastFileName = DEFAULT_FILENAME;
