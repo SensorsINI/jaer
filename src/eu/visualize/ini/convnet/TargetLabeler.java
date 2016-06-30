@@ -117,6 +117,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     protected boolean eraseSamplesEnabled = false;
     private boolean editTargetRadius = false; // default to false to avoid editing by mistake
+    private boolean fixFrameNumbers = false; // default to false to avoid editing by mistake
 
     public TargetLabeler(AEChip chip) {
         super(chip);
@@ -138,6 +139,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         setPropertyTooltip("currentTargetTypeID", "ID code of current target to be labeled, e.g., 0=dog, 1=cat, etc. User must keep track of the mapping from ID codes to target classes.");
         setPropertyTooltip("eraseSamplesEnabled", "Use this mode to erase all samples up to minTargetPointIntervalUs before current time.");
         setPropertyTooltip("editTargetRadius", "Use this mode to resize the target bounding box to the targetRadius using the mouse wheel to change the size");
+        setPropertyTooltip("fixFrameNumbers", "<html>Use this mode to replace the label frame numbers on existing labels during playback. <p>Make sure minTargetPointIntervalUs is not too large when using this mode. <p>This mode added to correct data that was incorrectly loaded from files in previous versions of TargetLabeler");
         Arrays.fill(labeledFractions, false);
         Arrays.fill(targetPresentInFractions, false);
         try {
@@ -552,6 +554,11 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             for (TargetLocation t : currentTargets) {
                 t.width = targetRadius * 2;
                 t.height = targetRadius * 2;
+            }
+        }
+        if(fixFrameNumbers){
+            for (TargetLocation t : currentTargets) {
+                t.frameNumber=currentFrameNumber;
             }
         }
         //prune list of current targets to their valid lifetime, and remove leftover targets in the future
@@ -1256,6 +1263,20 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
      */
     public void setEditTargetRadius(boolean editTargetRadius) {
         this.editTargetRadius = editTargetRadius;
+    }
+
+    /**
+     * @return the fixFrameNumbers
+     */
+    public boolean isFixFrameNumbers() {
+        return fixFrameNumbers;
+    }
+
+    /**
+     * @param fixFrameNumbers the fixFrameNumbers to set
+     */
+    public void setFixFrameNumbers(boolean fixFrameNumbers) {
+        this.fixFrameNumbers = fixFrameNumbers;
     }
 
 }
