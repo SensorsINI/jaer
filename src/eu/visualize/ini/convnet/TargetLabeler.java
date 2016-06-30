@@ -352,12 +352,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         // end filename with -targets.txt
         File f = c.getSelectedFile();
         String s = f.getPath();
-        if (!s.endsWith("-targets.txt")) {
-            int idxdot = s.lastIndexOf('.');
-            if (idxdot > 0) {
-                s = s.substring(0, idxdot);
-            }
-            s = s + "-targets.txt";
+        if (!s.endsWith(".txt")) {
+            s = s + ".txt";
             f = new File(s);
         }
         if (f.exists()) {
