@@ -160,7 +160,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
     /**
      * Corresponding label given the network output
      */
-    private int label = 12;
+    private int label = -1;
     /**
      *  The ear to choose the events from, 0 for left and 1 for right
      */
@@ -337,7 +337,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater , Propert
         this.rnnProcessTimeStampList = new ArrayList<>();
         this.rnnOutputList = new ArrayList<>();
         this.binnedDataList = new ArrayList<>();
-        this.label = 12;
+        this.label = -1;
         this.isInitialized = true;
         this.isFirstEventDone = false;
         this.counter = 0;

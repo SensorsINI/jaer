@@ -96,7 +96,7 @@ public class RNNetwork {
         }
         this.layers = new Layer[this.nLayers];
         for(int i = 0;i < this.nLayers;i++) {
-            log.log(Level.INFO, "Loading the layer {0}", i);
+            //log.log(Level.INFO, "Loading the layer {0}", i);
             EasyXMLReader layerReader = networkReader.getNode("Layer", i);
             int index = layerReader.getInt("index");
             String type = layerReader.getRaw("type");
@@ -237,7 +237,7 @@ public class RNNetwork {
                 default:
                     throw new IOException("An unknown layer type \"" + type + "\"");
             }
-
+            log.log(Level.INFO, "Succesfully loaded the layer {0}", i);
         }
         this.setXmlFileName(f.toString());
         this.initialized = true;
