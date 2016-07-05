@@ -46,7 +46,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  *
  * @author tobi
  */
-@Description("Collects and displays APS noise statistics for a selected range of pixels. ")
+@Description("Collects and displays APS noise statistics for a selected range of pixels, including PTC (photon transfer characteristics) and temporal noise caused by kTC, 1/f or other noise. ")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements FrameAnnotater, Observer, PropertyChangeListener {
 
