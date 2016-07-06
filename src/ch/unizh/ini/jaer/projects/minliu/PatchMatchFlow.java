@@ -24,6 +24,16 @@ import net.sf.jaer.event.EventPacket;
 @Description("Computes true flow events with speed and vector direction using binary feature patch matching.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
+    
+    // These const values are for the fast implementation of the hamming weight calculation
+    private final long m1  = 0x5555555555555555L; //binary: 0101...
+    private final long m2  = 0x3333333333333333L; //binary: 00110011..
+    private final long m4  = 0x0f0f0f0f0f0f0f0fL; //binary:  4 zeros,  4 ones ...
+    private final long m8  = 0x00ff00ff00ff00ffL; //binary:  8 zeros,  8 ones ...
+    private final long m16 = 0x0000ffff0000ffffL; //binary: 16 zeros, 16 ones ...
+    private final long m32 = 0x00000000ffffffffL; //binary: 32 zeros, 32 ones
+    private final long hff = 0xffffffffffffffffL; //binary: all ones
+    private final long h01 = 0x0101010101010101L; //the sum of 256 to the power of 0,1,2,3...
 
     private int[][][] histograms = null;
     private int numSlices = 3;
@@ -297,5 +307,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         this.sliceEventCount = sliceEventCount;
         putInt("sliceEventCount", sliceEventCount);
     }
-
+    
+    //This uses fewer arithmetic operations than any other known  
+    //implementation on machines with fast multiplication.
+    //It uses 12 arithmetic operations, one of which is a multiply.
+    public long popcount_3(long x) {
+        x -= (x >> 1) & m1;             //put count of each 2 bits into those 2 bits
+        x = (x & m2) + ((x >> 2) & m2); //put count of each 4 bits into those 4 bits 
+        x = (x + (x >> 4)) & m4;        //put count of each 8 bits into those 8 bits 
+        return (x * h01)>>56;  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ... 
+    }
+    
 }
