@@ -22,7 +22,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.AEViewer;
-import net.sf.jaer.graphics.BinocularRenderer;
+import net.sf.jaer.graphics.BinocularDVSRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
@@ -55,7 +55,7 @@ public class DVS128StereoPair extends DVS128 implements StereoChipInterface{
         right = new DVS128();
 
         setEventClass(BinocularEvent.class);
-        setRenderer(new BinocularRenderer(this));
+        setRenderer(new BinocularDVSRenderer(this));
 //        setCanvas(new RetinaCanvas(this)); // we make this canvas so that the sizes of the chip are correctly set
         setEventExtractor(new Extractor(this));
         setBiasgen(new Biasgen(this));

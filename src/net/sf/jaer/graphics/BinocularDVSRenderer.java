@@ -1,5 +1,5 @@
 /*
- * BinocularRenderer.java
+ * BinocularDVSRenderer.java
  *
  * Created on December 23, 2005, 2:43 AM
  *
@@ -20,7 +20,7 @@ import net.sf.jaer.event.EventPacket;
  *
  * @author tobi
  */
-public class BinocularRenderer extends AEChipRenderer{
+public class BinocularDVSRenderer extends AEFrameChipRenderer{
     protected float disparityColors[][];
     protected int NOF_DISPARITY_COLORS = 32;
     protected int minValue = Integer.MAX_VALUE;
@@ -45,7 +45,7 @@ public class BinocularRenderer extends AEChipRenderer{
      *
      * @param chip the chip we're rendering for
      */
-    public BinocularRenderer (AEChip chip){
+    public BinocularDVSRenderer (AEChip chip){
         super(chip);
         createDisparityColors();
     }

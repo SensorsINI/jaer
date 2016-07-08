@@ -18,7 +18,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.AEViewer;
-import net.sf.jaer.graphics.BinocularRenderer;
+import net.sf.jaer.graphics.BinocularDVSRenderer;
 import net.sf.jaer.stereopsis.StereoChipInterface;
 import net.sf.jaer.stereopsis.Stereopsis;
 import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
@@ -38,7 +38,7 @@ public class Tmpdiff128StereoBoard extends Tmpdiff128 implements StereoChipInter
     /** Creates a new instance of Tmpdiff128StereoBoard */
     public Tmpdiff128StereoBoard() {
         setEventClass(BinocularEvent.class);
-        setRenderer(new BinocularRenderer(this));
+        setRenderer(new BinocularDVSRenderer(this));
         setEventExtractor(new Extractor(this));
     }
     

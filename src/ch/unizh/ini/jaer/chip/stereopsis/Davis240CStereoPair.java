@@ -1,13 +1,13 @@
 /*
  * Tmpdiff128StereoPair.java
  *
- * Created on March 18, 2006, 2:11 PM
+ * Created on 7.7.16, 2:11 PM
  *
  * To change this template, choose Tools | Template Manager
  * and open the template in the editor.
  *
  *
- *Copyright March 18, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
+ *Copyright March 18, 2016 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 package ch.unizh.ini.jaer.chip.stereopsis;
 import java.util.ArrayList;
@@ -16,7 +16,6 @@ import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
-import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BinocularEvent;
 import net.sf.jaer.event.EventPacket;
@@ -27,27 +26,37 @@ import net.sf.jaer.graphics.BinocularDVSRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface;
 import net.sf.jaer.stereopsis.StereoBiasgenHardwareInterface;
 import net.sf.jaer.stereopsis.StereoChipInterface;
 import net.sf.jaer.stereopsis.Stereopsis;
-import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
+import ch.unizh.ini.jaer.chip.retina.DVS128;
+import eu.seebetter.ini.chips.davis.DAVIS240BaseCamera;
+import eu.seebetter.ini.chips.davis.DAVIS240C;
+import eu.seebetter.ini.chips.davis.DavisBaseCamera;
+import eu.seebetter.ini.chips.davis.DavisConfig;
+import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.graphics.ChipRendererDisplayMethod;
+import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
+import net.sf.jaer.graphics.DisplayMethod;
 /**
- * A stereo pair of Tmpdiff128 retinas each with its own separate but time-sychronized hardware interface. 
+ * A stereo pair of Davis cameras each with its own separate but time-synchronized hardware interface. 
  * Differs from the usual AEChip object in that it also overrides #getHardwareInterface and #setHardwareInterface
-to supply StereoHardwareInterface which is a pair of Tmpdiff128 hardware interfaces.
+to supply StereoHardwareInterface which is a pair of Davis hardware interfaces.
  * @author tobi
  * @see net.sf.jaer.stereopsis.StereoHardwareInterface
  * @see net.sf.jaer.stereopsis.StereoBiasgenHardwareInterface
  */
-@Description("A stereo pair of Tmpdiff128 retinas (DVS128) each on it's own USB interface")
-public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterface{
+@Description("A stereo pair of Davis240 cameras each with its own USB interface")
+@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
+public class Davis240CStereoPair extends DavisBaseCamera implements StereoChipInterface{
     private AEChip left, right;
 
     /** Creates a new instance of Tmpdiff128StereoPair */
-    public Tmpdiff128StereoPair (){
+    public Davis240CStereoPair (){
         super();
-        left = new Tmpdiff128();
-        right = new Tmpdiff128();
+        left = new DAVIS240C();
+        right = new DAVIS240C();
 
         setEventClass(BinocularEvent.class);
         setRenderer(new BinocularDVSRenderer(this));
@@ -56,6 +65,17 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
         setBiasgen(new Biasgen(this));
         setLeft(left);
         setRight(right);
+        ArrayList<DisplayMethod> ms=getCanvas().getDisplayMethods();
+        DisplayMethod rgbaDm=null;
+        for(DisplayMethod m:ms){
+            if(m instanceof ChipRendererDisplayMethodRGBA) rgbaDm=m;
+        }
+        if(rgbaDm!=null) getCanvas().removeDisplayMethod(rgbaDm);
+        DisplayMethod m = new ChipRendererDisplayMethod(this.getCanvas()); // remove method that is incompatible with renderer
+        getCanvas().addDisplayMethod(m);
+        getCanvas().setDisplayMethod(m);
+        setSizeX(240);
+        setSizeY(180);
 
 //        getFilterChain().add(new StereoTranslateRotate(this));
 //        getFilterChain().add(new StereoVergenceFilter(this));
@@ -109,9 +129,9 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
      * it adds getNumCellTypes to each type to signal
      * a right event (as opposed to a left event)
      */
-    public class Extractor extends Tmpdiff128.Extractor{
-        public Extractor (Tmpdiff128StereoPair chip){
-            super(new Tmpdiff128()); // they are the same type
+    public class Extractor extends DavisBaseCamera.DavisEventExtractor{
+        public Extractor (Davis240CStereoPair chip){
+            super(new DAVIS240C()); // they are the same type
         }
 
         /** extracts the meaning of the raw events and returns EventPacket containing BinocularEvent.
@@ -219,7 +239,7 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
         ArrayList<HardwareInterface> hws = new ArrayList();
         for ( int i = 0 ; i < n ; i++ ){
             HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(i);
-            if ( hw instanceof AEMonitorInterface && hw instanceof BiasgenHardwareInterface ){
+            if ( hw instanceof AEMonitorInterface && hw instanceof CypressFX2DVS128HardwareInterface ){
                 log.info("found AEMonitorInterface && BiasgenHardwareInterface " + hw);
                 hws.add(hw);
             }
@@ -265,7 +285,13 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
         try{
             hardwareInterface = new StereoBiasgenHardwareInterface((AEMonitorInterface)hw0,(AEMonitorInterface)hw1);
             ( (StereoBiasgenHardwareInterface)hardwareInterface ).setChip(this);
+            CypressFX2DVS128HardwareInterface hwi = (CypressFX2DVS128HardwareInterface) hw0;
+            hwi.setSyncEventEnabled(true);
+            hwi = (CypressFX2DVS128HardwareInterface) hw1;
+            hwi.setSyncEventEnabled(false);
+            log.info("Left DVS is set to timestamp master");
             hardwareInterface.close(); // will be opened later on by user
+
         } catch ( ClassCastException e ){
             log.warning("couldn't build correct stereo hardware interface: " + e.getMessage());
             return null;
@@ -277,13 +303,13 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
      * A paired biasgen for this stereo combination of Tmpdiff128. The biases are simultaneously controlled.
      * @author tobi
      */
-    public class Biasgen extends Tmpdiff128.Biasgen{
+    public class Biasgen extends DavisConfig{
         /** Creates a new instance of Biasgen for Tmpdiff128 with a given hardware interface
          *@param chip the hardware interface on this chip is used
          */
         public Biasgen (net.sf.jaer.chip.Chip chip){
             super(chip);
-            setName("Tmpdiff128StereoPair");
+            setName("Davis240CStereoPair");
         }
     }
 }

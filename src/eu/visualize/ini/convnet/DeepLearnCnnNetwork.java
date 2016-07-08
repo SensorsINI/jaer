@@ -722,13 +722,13 @@ public class DeepLearnCnnNetwork {
                 for (int i = 0; i < n; i++) {
                     activations[i] = (activations[i] - mean_png_gray);
                 }
-                for (int i = 0; i < n; i++) {
-                    if (activations[i] > sig * 3.0f) {
-                        activations[i] = sig * 3.0f;
-                    } else if (activations[i] < -sig * 3.0f) {
-                        activations[i] = -sig * 3.0f;
-                    }
-                }
+//                for (int i = 0; i < n; i++) {
+//                    if (activations[i] > sig * 3.0f) {
+//                        activations[i] = sig * 3.0f;
+//                    } else if (activations[i] < -sig * 3.0f) {
+//                        activations[i] = -sig * 3.0f;
+//                    }
+//                }
                 float range = ((3.f * sig) - (-3.f * sig));
                 float rangenew = (1 - 0);
                 for (int i = 0; i < n; i++) {
