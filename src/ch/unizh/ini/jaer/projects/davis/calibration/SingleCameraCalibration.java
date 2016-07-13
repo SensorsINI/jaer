@@ -21,6 +21,8 @@ import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.nio.FloatBuffer;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Observable;
@@ -50,8 +52,6 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
-import java.nio.FloatBuffer;
-import java.util.ArrayList;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -417,7 +417,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
         }
 
-        if (!hideStatisticsAndStatus && calibrationString != null) {
+        if (!hideStatisticsAndStatus && (calibrationString != null)) {
             // render once to set the scale using the same TextRenderer
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .15f);
             MultilineAnnotationTextRenderer.setColor(Color.green);
@@ -591,8 +591,12 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
         DoubleBufferIndexer cameraMatrixIndexer = cameraMatrix.createIndexer();
 
-        focalLengthPixels = (float) (cameraMatrixIndexer.get(0, 0) + cameraMatrixIndexer.get(0, 0)) / 2;
+        // Average focal lengths for X and Y axis (fx, fy).
+        focalLengthPixels = (float) (cameraMatrixIndexer.get(0, 0) + cameraMatrixIndexer.get(1, 1)) / 2;
+
+        // Go from pixels to millimeters, by multiplying by pixel size (in mm).
         focalLengthMm = chip.getPixelWidthUm() * 1e-3f * focalLengthPixels;
+
         principlePoint = new Point2D.Float((float) cameraMatrixIndexer.get(0, 2), (float) cameraMatrixIndexer.get(1, 2));
         StringBuilder sb = new StringBuilder();
         if (imageCounter > 0) {
@@ -709,7 +713,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         undistortedAddressLUT = null;
         isUndistortedAddressLUTgenerated = false;
     }
-    
+
     synchronized public void doClearImages() {
         imageCounter=0;
         allImagePoints.setNull();
