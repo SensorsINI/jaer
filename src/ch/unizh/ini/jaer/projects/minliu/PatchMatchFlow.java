@@ -86,7 +86,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 continue;
             }
 
-            writeOutputEvent();
+            // writeOutputEvent();
             if (measureAccuracy) {
                 motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);
             }
@@ -215,8 +215,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             return 0;
         }
         int sad = 0;
-        for (int xx = x - searchDistance; xx < x + searchDistance; x++) {
-            for (int yy = y - searchDistance; yy < y + searchDistance; y++) {
+        for (int xx = x - searchDistance; xx < x + searchDistance; xx++) {
+            for (int yy = y - searchDistance; yy < y + searchDistance; yy++) {
                 int d = prevSlice[xx + dx][yy + dy] - curSlice[xx][yy];
                 if (d < 0) {
                     d = -d;
@@ -238,8 +238,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     }
     
     private class SADResult {
-
-        float dx, dy;
+ 
+       float dx, dy;
         float sadValue;
 
         public SADResult(float dx, float dy, float sadValue) {
