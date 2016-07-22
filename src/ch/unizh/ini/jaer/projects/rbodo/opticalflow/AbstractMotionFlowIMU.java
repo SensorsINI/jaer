@@ -746,7 +746,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     }
 
-    synchronized void setupFilter(EventPacket in) {
+    synchronized public void setupFilter(EventPacket in) {
         maybeAddListeners(chip);
         inItr = in.iterator();
         outItr = dirPacket.outputIterator();

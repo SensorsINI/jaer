@@ -65,9 +65,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
     @Override
     public EventPacket filterPacket(EventPacket in) {
+        setupFilter(in);
         for (Object ein : in) {
             extractEventInfo(ein);
-            inItr = in.inputIterator;
+            // inItr = in.inputIterator;
             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                 imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
                 setGroundTruth();
@@ -84,15 +85,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             accumulateEvent();
             SADResult sadResult=minSad(x, y, tMinus2Slice, tMinus1Slice);
             
-            this.vx = sadResult.dx;
-            this.vy = sadResult.dy;
-
+            vx = sadResult.dx * 5;
+            vy = sadResult.dy * 5;
+            v = (float) Math.sqrt(vx * vx + vy * vy);
             // reject values that are unreasonable
             if (accuracyTests()) {
                 continue;
             }
 
-            outItr = this.dirPacket.getOutputIterator();
             writeOutputEvent();
             if (measureAccuracy) {
                 motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);
