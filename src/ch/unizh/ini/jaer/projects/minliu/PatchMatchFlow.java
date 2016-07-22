@@ -14,6 +14,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
 
 /**
  * Uses patch matching to measure local optical flow. <b>Not</b> gradient based,
@@ -50,7 +51,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     };
     private SliceMethod sliceMethod = SliceMethod.valueOf(getString("sliceMethod", SliceMethod.ConstantDuration.toString()));
     private int eventCounter = 0;
-    private int sliceLastTs = Integer.MIN_VALUE;
+    // private int sliceLastTs = Integer.MIN_VALUE;
+    private int sliceLastTs = 0;
 
     public PatchMatchFlow(AEChip chip) {
         super(chip);
@@ -65,6 +67,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     public EventPacket filterPacket(EventPacket in) {
         for (Object ein : in) {
             extractEventInfo(ein);
+            inItr = in.inputIterator;
             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                 imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
                 setGroundTruth();
@@ -80,13 +83,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             maybeRotateSlices();
             accumulateEvent();
             SADResult sadResult=minSad(x, y, tMinus2Slice, tMinus1Slice);
+            
+            this.vx = sadResult.dx;
+            this.vy = sadResult.dy;
 
             // reject values that are unreasonable
             if (accuracyTests()) {
                 continue;
             }
 
-            // writeOutputEvent();
+            outItr = this.dirPacket.getOutputIterator();
+            writeOutputEvent();
             if (measureAccuracy) {
                 motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);
             }
@@ -192,6 +199,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     minSad = sad;
                     sadResult.dx = dx;
                     sadResult.dy = dy;
+                    sadResult.sadValue = minSad;
                 }
             }
         }
