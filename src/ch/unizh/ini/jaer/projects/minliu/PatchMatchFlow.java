@@ -221,9 +221,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      * @return SAD value
      */
     private int sad(int x, int y, int dx, int dy, int[][] prevSlice, int[][] curSlice) {
-        if (x < searchDistance || x > subSizeX - searchDistance || y < searchDistance || y > subSizeY - searchDistance) {
+        // Make sure 0<=xx+dx<subSizeX and 0<=yy+dy<subSizeY, or there'll be arrayIndexOutOfBoundary exception.
+        if (x < searchDistance - dx || x > subSizeX - searchDistance - dx || y < searchDistance - dy || y > subSizeY - searchDistance - dy) {
             return 0;
         }
+        
         int sad = 0;
         for (int xx = x - searchDistance; xx < x + searchDistance; xx++) {
             for (int yy = y - searchDistance; yy < y + searchDistance; yy++) {
