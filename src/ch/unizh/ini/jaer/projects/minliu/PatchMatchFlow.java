@@ -45,6 +45,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int sliceDurationUs = getInt("sliceDurationUs", 1000);
     private int sliceEventCount = getInt("sliceEventCount", 1000);
     private String patchTT = "Patch matching";
+    private float sadSum = 0;
+    private boolean rewindFlg = false; // The flag to indicate the rewind event.
 
     public enum SliceMethod {
         ConstantDuration, ConstantEventNumber
@@ -66,6 +68,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     @Override
     public EventPacket filterPacket(EventPacket in) {
         setupFilter(in);
+        sadSum = 0;
         for (Object ein : in) {
             extractEventInfo(ein);
             // inItr = in.inputIterator;
@@ -83,8 +86,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             // compute flow
             maybeRotateSlices();
             accumulateEvent();
-            SADResult sadResult=minSad(x, y, tMinus2Slice, tMinus1Slice);
-            
+            SADResult sadResult = minSad(x, y, tMinus2Slice, tMinus1Slice);
+         
+            sadSum += sadResult.sadValue * sadResult.sadValue;
             vx = sadResult.dx * 5;
             vy = sadResult.dy * 5;
             v = (float) Math.sqrt(vx * vx + vy * vy);
@@ -97,6 +101,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             if (measureAccuracy) {
                 motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);
             }
+        }
+        
+        // After the rewind event, restore sliceLastTs to 0 and rewindFlg to false.
+        if(rewindFlg) {
+            rewindFlg = false;
+            sliceLastTs = 0;
         }
         motionFlowStatistics.updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket;
@@ -121,8 +131,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         tMinus1SliceIdx = 1;
         tMinus2SliceIdx = 2;
         assignSliceReferences();
-        
+                            
         sliceLastTs = 0;
+        rewindFlg = true;
     }
 
     private void assignSliceReferences() {
@@ -149,6 +160,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         switch (sliceMethod) {
             case ConstantDuration:
                 int dt = ts - sliceLastTs;
+                if(rewindFlg) {
+                    return;
+                }
                 if (dt < sliceDurationUs && dt < 0) {
                     return;
                 }
