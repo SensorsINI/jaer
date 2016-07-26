@@ -121,6 +121,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         tMinus1SliceIdx = 1;
         tMinus2SliceIdx = 2;
         assignSliceReferences();
+        
+        sliceLastTs = 0;
     }
 
     private void assignSliceReferences() {
