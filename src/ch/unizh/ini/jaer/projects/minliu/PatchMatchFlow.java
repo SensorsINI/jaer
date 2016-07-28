@@ -6,7 +6,9 @@
 package ch.unizh.ini.jaer.projects.minliu;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
+import com.sun.mail.iap.ByteArray;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Observable;
 import java.util.Observer;
 import net.sf.jaer.Description;
@@ -41,6 +43,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int sx, sy;
     private int currentSliceIdx = 0, tMinus1SliceIdx = 1, tMinus2SliceIdx = 2;
     private int[][] currentSlice = null, tMinus1Slice = null, tMinus2Slice = null;
+    private BitSet currentSli = null, tMinus1Sli = null, tMinus2Sli = null;
     private int patchDimension = getInt("patchDimension", 8);
     private int sliceDurationUs = getInt("sliceDurationUs", 1000);
     private int sliceEventCount = getInt("sliceEventCount", 1000);
@@ -92,6 +95,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             vx = sadResult.dx * 5;
             vy = sadResult.dy * 5;
             v = (float) Math.sqrt(vx * vx + vy * vy);
+            
+            
+            long test = popcount_3((long) sadSum);
+            
+            currentSli.set((x + 1) + y * subSizeX, type == 1);
+            byte[] testByteArray = currentSli.toByteArray();
             // reject values that are unreasonable
             if (accuracyTests()) {
                 continue;
@@ -127,6 +136,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 Arrays.fill(b, 0);
             }
         }
+        
+        if(currentSli == null || currentSli.size() != subSizeX*subSizeY) {
+            currentSli = new BitSet(subSizeX*subSizeY);            
+        }
+        
+        if(tMinus1Sli == null || tMinus1Sli.size() != subSizeX*subSizeY) {
+            tMinus1Sli = new BitSet(subSizeX*subSizeY);            
+        }
+        
+        if(tMinus2Sli == null || tMinus2Sli.size() != subSizeX*subSizeY) {
+            tMinus2Sli = new BitSet(subSizeX*subSizeY);            
+        }       
+        
         currentSliceIdx = 0;
         tMinus1SliceIdx = 1;
         tMinus2SliceIdx = 2;
