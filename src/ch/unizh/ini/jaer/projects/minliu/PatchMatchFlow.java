@@ -43,6 +43,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int sx, sy;
     private int currentSliceIdx = 0, tMinus1SliceIdx = 1, tMinus2SliceIdx = 2;
     private int[][] currentSlice = null, tMinus1Slice = null, tMinus2Slice = null;
+    private BitSet[] histogramsBitSet = null;
     private BitSet currentSli = null, tMinus1Sli = null, tMinus2Sli = null;
     private int patchDimension = getInt("patchDimension", 8);
     private int sliceDurationUs = getInt("sliceDurationUs", 1000);
@@ -99,14 +100,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             
             long test = popcount_3((long) sadSum);
             
-            currentSli.set((x + 1) + y * subSizeX, type == 1);
-            byte[] testByteArray = currentSli.toByteArray();
             // reject values that are unreasonable
             if (accuracyTests()) {
                 continue;
             }
 
-            writeOutputEvent();
+            // writeOutputEvent();
             if (measureAccuracy) {
                 motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);
             }
@@ -136,18 +135,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 Arrays.fill(b, 0);
             }
         }
-        
-        if(currentSli == null || currentSli.size() != subSizeX*subSizeY) {
-            currentSli = new BitSet(subSizeX*subSizeY);            
+        if (histogramsBitSet == null) {
+            histogramsBitSet = new BitSet[numSlices];
         }
         
-        if(tMinus1Sli == null || tMinus1Sli.size() != subSizeX*subSizeY) {
-            tMinus1Sli = new BitSet(subSizeX*subSizeY);            
-        }
-        
-        if(tMinus2Sli == null || tMinus2Sli.size() != subSizeX*subSizeY) {
-            tMinus2Sli = new BitSet(subSizeX*subSizeY);            
-        }       
+        for(int ii = 0; ii < numSlices; ii ++) {
+            histogramsBitSet[ii] = new BitSet(subSizeX*subSizeY);
+        }  
         
         currentSliceIdx = 0;
         tMinus1SliceIdx = 1;
@@ -162,6 +156,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         currentSlice = histograms[currentSliceIdx];
         tMinus1Slice = histograms[tMinus1SliceIdx];
         tMinus2Slice = histograms[tMinus2SliceIdx];
+        
+        currentSli = histogramsBitSet[currentSliceIdx];
+        tMinus1Sli = histogramsBitSet[tMinus1SliceIdx];
+        tMinus2Sli = histogramsBitSet[tMinus2SliceIdx];    
     }
 
     @Override
@@ -207,6 +205,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      */
     private void accumulateEvent() {
         currentSlice[x][y] += e.getPolaritySignum();
+        currentSli.set((x + 1) + y * subSizeX);
+        byte[] testByteArray = currentSli.toByteArray();
     }
 
     private void clearSlice(int idx) {
