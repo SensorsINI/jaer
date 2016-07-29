@@ -107,7 +107,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 continue;
             }
 
-            // writeOutputEvent();
+            writeOutputEvent();
             if (measureAccuracy) {
                 motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);
             }
@@ -185,7 +185,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 if(rewindFlg) {
                     return;
                 }
-                if (dt < sliceDurationUs && dt < 0) {
+                if (dt < sliceDurationUs || dt < 0) {
                     return;
                 }
                 break;
