@@ -97,8 +97,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             vy = sadResult.dy * 5;
             v = (float) Math.sqrt(vx * vx + vy * vy);
             
-            
-            long test = popcount_3((long) sadSum);
+            long[] testByteArray1 = tMinus1Sli.toLongArray();
+            long[] testByteArray2 = tMinus2Sli.toLongArray();
+
+            long test1 = popcount_3((long) sadSum);
             
             // reject values that are unreasonable
             if (accuracyTests()) {
@@ -205,8 +207,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      */
     private void accumulateEvent() {
         currentSlice[x][y] += e.getPolaritySignum();
-        currentSli.set((x + 1) + y * subSizeX);
-        byte[] testByteArray = currentSli.toByteArray();
+        currentSli.set((x + 1) + y * subSizeX);  // All evnets wheather 0 or 1 will be set in the BitSet Slice.
     }
 
     private void clearSlice(int idx) {
