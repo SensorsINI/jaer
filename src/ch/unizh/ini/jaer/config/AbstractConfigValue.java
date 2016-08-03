@@ -13,7 +13,7 @@ import net.sf.jaer.chip.AEChip;
 public abstract class AbstractConfigValue extends Observable implements PreferenceChangeListener, HasPreference {
 
 	private final String configName, toolTip, prefKey;
-	private final AEChip chip;
+	protected final AEChip chip;
 
 	public AbstractConfigValue(final String configName, final String toolTip, final AEChip chip) {
 		this.configName = configName;
@@ -39,6 +39,7 @@ public abstract class AbstractConfigValue extends Observable implements Preferen
 		return String.format("AbstractConfigValue {configName=%s, prefKey=%s}", getName(), getPreferencesKey());
 	}
 
+	// Modify accessibility level from private to public 
 	@Override
 	public synchronized void setChanged() {
 		super.setChanged();

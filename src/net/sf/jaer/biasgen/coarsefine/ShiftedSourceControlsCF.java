@@ -74,11 +74,11 @@ public class ShiftedSourceControlsCF extends javax.swing.JPanel implements Obser
     public ShiftedSourceControlsCF(ShiftedSourceBiasCF pot) {
         this.pot = pot;
         initComponents(); // this has unfortunate byproduect of resetting pot value to 0... don't know how to prevent stateChanged event
-        dontProcessRegBiasSlider=true;
-         regBiasSlider.setMaximum(pot.maxRegBitValue - 1); // TODO replace with getter,  needed to prevent extraneous callbacks
-        dontProcessRefSlider=true;
-         refBiasSlider.setMaximum(pot.maxRefBitValue - 1);
-       operatingModeComboBox.setModel(new DefaultComboBoxModel(OperatingMode.values()));
+        dontProcessRegBiasSlider = true;
+        regBiasSlider.setMaximum(pot.maxRegBitValue - 1); // TODO replace with getter,  needed to prevent extraneous callbacks
+        dontProcessRefSlider = true;
+        refBiasSlider.setMaximum(pot.maxRefBitValue - 1);
+        operatingModeComboBox.setModel(new DefaultComboBoxModel(OperatingMode.values()));
         voltageLevelComboBox.setModel(new DefaultComboBoxModel(VoltageLevel.values()));
         if (pot != null) {
             nameLabel.setText(pot.getName()); // the name of the bias
@@ -93,6 +93,7 @@ public class ShiftedSourceControlsCF extends javax.swing.JPanel implements Obser
             pot.loadPreferences(); // to get around slider value change
             pot.addObserver(this); // when pot changes, so does this gui control view
         }
+        setAlignmentX(LEFT_ALIGNMENT);
         updateAppearance();  // set controls up with values from ipot
         allInstances.add(this);
         setBitViewEnabled(true);

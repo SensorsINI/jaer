@@ -32,12 +32,9 @@ import javax.swing.undo.UndoableEditSupport;
 
 import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.Biasgen;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.CochleaChannel;
-import ch.unizh.ini.jaer.config.spi.SPIConfigBit;
-import ch.unizh.ini.jaer.config.spi.SPIConfigInt;
 import ch.unizh.ini.jaer.config.spi.SPIConfigValue;
 import net.sf.jaer.biasgen.BiasgenPanel;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceControlsCF;
-import net.sf.jaer.util.ParameterControlPanel;
 
 /**
  * Control panel for CochleaLP
@@ -68,55 +65,24 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
 			}
 		});
 
-		SPIConfigBit.makeSPIBitConfig(biasgen.biasForceEnable, onchipBiasgenPanel, configValueMap, getBiasgen());
-
+		onchipBiasgenPanel.add(biasgen.biasForceEnable.makeGUIControl(configValueMap, biasgen));
 		onchipBiasgenPanel.add(new ShiftedSourceControlsCF(biasgen.ssBiases[0]));
 		onchipBiasgenPanel.add(new ShiftedSourceControlsCF(biasgen.ssBiases[1]));
+
 		biasgen.setPotArray(biasgen.ipots);
 		onchipBiasgenPanel.add(new BiasgenPanel(getBiasgen()));
 
 		onchipBiasgenPanel.add(Box.createVerticalGlue()); // push up to prevent expansion of PotPanel
 
-		SPIConfigBit.makeSPIBitConfig(biasgen.dacRun, offchipDACPanel, configValueMap, getBiasgen());
+		offchipDACPanel.add(biasgen.dacRun.makeGUIControl(configValueMap, biasgen));
 
 		biasgen.setPotArray(biasgen.vpots);
 		offchipDACPanel.add(new BiasgenPanel(getBiasgen()));
 
-		for (final SPIConfigValue cfgVal : biasgen.scannerControl) {
-			if (cfgVal instanceof SPIConfigBit) {
-				SPIConfigBit.makeSPIBitConfig((SPIConfigBit) cfgVal, scannerPanel, configValueMap, getBiasgen());
-			}
-			else if (cfgVal instanceof SPIConfigInt) {
-				SPIConfigInt.makeSPIIntConfig((SPIConfigInt) cfgVal, scannerPanel, configValueMap, getBiasgen());
-			}
-		}
-
-		for (final SPIConfigValue cfgVal : biasgen.aerControl) {
-			if (cfgVal instanceof SPIConfigBit) {
-				SPIConfigBit.makeSPIBitConfig((SPIConfigBit) cfgVal, aerPanel, configValueMap, getBiasgen());
-			}
-			else if (cfgVal instanceof SPIConfigInt) {
-				SPIConfigInt.makeSPIIntConfig((SPIConfigInt) cfgVal, aerPanel, configValueMap, getBiasgen());
-			}
-		}
-
-		for (final SPIConfigValue cfgVal : biasgen.adcControl) {
-			if (cfgVal instanceof SPIConfigBit) {
-				SPIConfigBit.makeSPIBitConfig((SPIConfigBit) cfgVal, adcPanel, configValueMap, getBiasgen());
-			}
-			else if (cfgVal instanceof SPIConfigInt) {
-				SPIConfigInt.makeSPIIntConfig((SPIConfigInt) cfgVal, adcPanel, configValueMap, getBiasgen());
-			}
-		}
-
-                for (final SPIConfigValue cfgVal : biasgen.chipDiagChain) {
-			if (cfgVal instanceof SPIConfigBit) {
-				SPIConfigBit.makeSPIBitConfig((SPIConfigBit) cfgVal, chipDiagPanel, configValueMap, getBiasgen());
-			}
-			else if (cfgVal instanceof SPIConfigInt) {
-				SPIConfigInt.makeSPIIntConfig((SPIConfigInt) cfgVal, chipDiagPanel, configValueMap, getBiasgen());
-			}
-		}
+		SPIConfigValue.addGUIControls(scannerPanel, biasgen.scannerControl, configValueMap, biasgen);
+		SPIConfigValue.addGUIControls(aerPanel, biasgen.aerControl, configValueMap, biasgen);
+		SPIConfigValue.addGUIControls(adcPanel, biasgen.adcControl, configValueMap, biasgen);
+		SPIConfigValue.addGUIControls(chipDiagPanel, biasgen.chipDiagChain, configValueMap, biasgen);
 
 		// Add cochlea channel configuration GUI.
 		final int CHAN_PER_COL = 32;
@@ -166,21 +132,9 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
 	@Override
 	public synchronized void update(final Observable observable, final Object object) {
 		try {
-			if (observable instanceof SPIConfigBit) {
-				final SPIConfigBit cfgBit = (SPIConfigBit) observable;
-
-				// Ensure GUI is up-to-date.
-				if (configValueMap.containsKey(cfgBit)) {
-					((JRadioButton) configValueMap.get(cfgBit)).setSelected(cfgBit.isSet());
-				}
-			}
-			else if (observable instanceof SPIConfigInt) {
-				final SPIConfigInt cfgInt = (SPIConfigInt) observable;
-
-				// Ensure GUI is up-to-date.
-				if (configValueMap.containsKey(cfgInt)) {
-					((JTextField) configValueMap.get(cfgInt)).setText(Integer.toString(cfgInt.get()));
-				}
+			// Ensure GUI is up-to-date.
+			if (observable instanceof SPIConfigValue) {
+				((SPIConfigValue) observable).updateControl(configValueMap);
 			}
 			else if (observable instanceof CochleaChannel) {
 				final CochleaChannel c = (CochleaChannel) observable;
@@ -751,15 +705,14 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
 		aerPanel.setLayout(new BoxLayout(aerPanel, BoxLayout.Y_AXIS));
 		addTab("AER Config", (aerPanel));
 
-                adcPanel = new JPanel();
-                adcPanel.setLayout(new BoxLayout(adcPanel, BoxLayout.Y_AXIS));
-                addTab("ADC", (adcPanel));
-		
-                chipDiagPanel = new JPanel();
+		adcPanel = new JPanel();
+		adcPanel.setLayout(new BoxLayout(adcPanel, BoxLayout.Y_AXIS));
+		addTab("ADC", (adcPanel));
+
+		chipDiagPanel = new JPanel();
 		chipDiagPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		chipDiagPanel.setLayout(new BoxLayout(chipDiagPanel, BoxLayout.Y_AXIS));
 		addTab("Chip Diag Config", (chipDiagPanel));
-
 	}
 
 	protected void tabbedPaneMouseClicked(final MouseEvent evt) {

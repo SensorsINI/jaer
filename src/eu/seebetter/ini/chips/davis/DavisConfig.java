@@ -455,43 +455,19 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		final JPanel muxPanel = new JPanel();
 		muxPanel.setLayout(new BoxLayout(muxPanel, BoxLayout.Y_AXIS));
 		configTabbedPane.addTab("Multiplexer Config", muxPanel);
-
-		for (final SPIConfigValue cfgVal : muxControl) {
-			if (cfgVal instanceof SPIConfigBit) {
-				SPIConfigBit.makeSPIBitConfig((SPIConfigBit) cfgVal, muxPanel, configValueMap, this);
-			}
-			else if (cfgVal instanceof SPIConfigInt) {
-				SPIConfigInt.makeSPIIntConfig((SPIConfigInt) cfgVal, muxPanel, configValueMap, this);
-			}
-		}
+		SPIConfigValue.addGUIControls(muxPanel, muxControl, configValueMap, this);
 
 		// DVS
 		final JPanel dvsPanel = new JPanel();
 		dvsPanel.setLayout(new BoxLayout(dvsPanel, BoxLayout.Y_AXIS));
 		configTabbedPane.addTab("DVS Config", dvsPanel);
-
-		for (final SPIConfigValue cfgVal : dvsControl) {
-			if (cfgVal instanceof SPIConfigBit) {
-				SPIConfigBit.makeSPIBitConfig((SPIConfigBit) cfgVal, dvsPanel, configValueMap, this);
-			}
-			else if (cfgVal instanceof SPIConfigInt) {
-				SPIConfigInt.makeSPIIntConfig((SPIConfigInt) cfgVal, dvsPanel, configValueMap, this);
-			}
-		}
+		SPIConfigValue.addGUIControls(dvsPanel, dvsControl, configValueMap, this);
 
 		// APS
 		final JPanel apsPanel = new JPanel();
 		apsPanel.setLayout(new BoxLayout(apsPanel, BoxLayout.Y_AXIS));
 		configTabbedPane.addTab("APS Config", apsPanel);
-
-		for (final SPIConfigValue cfgVal : apsControl) {
-			if (cfgVal instanceof SPIConfigBit) {
-				SPIConfigBit.makeSPIBitConfig((SPIConfigBit) cfgVal, apsPanel, configValueMap, this);
-			}
-			else if (cfgVal instanceof SPIConfigInt) {
-				SPIConfigInt.makeSPIIntConfig((SPIConfigInt) cfgVal, apsPanel, configValueMap, this);
-			}
-		}
+		SPIConfigValue.addGUIControls(apsPanel, apsControl, configValueMap, this);
 
 		// IMU
 		final JPanel imuControlPanel = new JPanel();
@@ -504,29 +480,13 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		final JPanel extPanel = new JPanel();
 		extPanel.setLayout(new BoxLayout(extPanel, BoxLayout.Y_AXIS));
 		configTabbedPane.addTab("External Input Config", extPanel);
-
-		for (final SPIConfigValue cfgVal : extInControl) {
-			if (cfgVal instanceof SPIConfigBit) {
-				SPIConfigBit.makeSPIBitConfig((SPIConfigBit) cfgVal, extPanel, configValueMap, this);
-			}
-			else if (cfgVal instanceof SPIConfigInt) {
-				SPIConfigInt.makeSPIIntConfig((SPIConfigInt) cfgVal, extPanel, configValueMap, this);
-			}
-		}
+		SPIConfigValue.addGUIControls(extPanel, extInControl, configValueMap, this);
 
 		// Chip config
 		final JPanel chipPanel = new JPanel();
 		chipPanel.setLayout(new BoxLayout(chipPanel, BoxLayout.Y_AXIS));
 		configTabbedPane.addTab("Chip Config", chipPanel);
-
-		for (final SPIConfigValue cfgVal : chipControl) {
-			if (cfgVal instanceof SPIConfigBit) {
-				SPIConfigBit.makeSPIBitConfig((SPIConfigBit) cfgVal, chipPanel, configValueMap, this);
-			}
-			else if (cfgVal instanceof SPIConfigInt) {
-				SPIConfigInt.makeSPIIntConfig((SPIConfigInt) cfgVal, chipPanel, configValueMap, this);
-			}
-		}
+		SPIConfigValue.addGUIControls(chipPanel, chipControl, configValueMap, this);
 
 		// Autoexposure
 		if (getChip() instanceof DavisBaseCamera) {

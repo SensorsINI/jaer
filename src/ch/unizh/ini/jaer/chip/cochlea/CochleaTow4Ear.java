@@ -144,9 +144,9 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			super.checkTypeColors(numCellTypes);
 			final Color[] colors = { Color.green, Color.green, Color.red, Color.red };
 			for (int type = 0; type < 4; type++) {
-				colors[type].getRGBColorComponents(typeColorRGBComponents[type]); // fill the typeColorRGBComponents
-                                                                                                  // array for this type from the
-                                                                                                  // color for this type
+				// fill the typeColorRGBComponents array for this type from the color for this type
+                // TODO: Output of getRGBColorComponents() is not used. Check why we have it here at all.
+				colors[type].getRGBColorComponents(typeColorRGBComponents[type]);
 			}
 		}
 	}
@@ -209,7 +209,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 		final List<SPIConfigValue> aerControl = new ArrayList<>();
 		final List<SPIConfigValue> scannerControl = new ArrayList<>();
 		final List<SPIConfigValue> adcControl = new ArrayList<>();
-		final List<SPIConfigValue> chipDiagChain = new ArrayList<>();
+		final List<SPIConfigValue> chipControl = new ArrayList<>();
 
 		/**
 		 * Two DACs, 16 channels. Internal 1.25V reference is used, so VOUT in
@@ -330,8 +330,8 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			ssBiases[1] = ssn;
 
 			// DAC1 channels (16)
-			//vpots.addPot(new VPot(getChip(), "MICBIAS1L", dac1, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
-			//vpots.addPot(new VPot(getChip(), "MICBIAS1L", dac1, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
+			vpots.addPot(new VPot(getChip(), "MICBIAS1L", dac1, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
+			vpots.addPot(new VPot(getChip(), "MICBIAS1L", dac1, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
 			vpots.addPot(new VPot(getChip(), "Vrefdiff", dac1, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "Vrefdiff2", dac1, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "PreampGain1L", dac1, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
@@ -354,8 +354,8 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			vpots.addPot(new VPot(getChip(), "VbiasHF1Bn", dac2, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "VtauBn", dac2, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "PreampGain2L", dac2, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			//vpots.addPot(new VPot(getChip(), "MICBIAS2L", dac2, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
-			//vpots.addPot(new VPot(getChip(), "MICBIAS2R", dac2, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
+			vpots.addPot(new VPot(getChip(), "MICBIAS2L", dac2, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
+			vpots.addPot(new VPot(getChip(), "MICBIAS2R", dac2, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
 			vpots.addPot(new VPot(getChip(), "VrefpreampBpx", dac2, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "VbMicCasBpcx", dac2, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "RefADAMux3-", dac2, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
@@ -418,20 +418,20 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			}
 
 			// Chip diagnostic chain
-			chipDiagChain.add(new SPIConfigInt("ChipResetCapConfigADM", "Reset cap configuration in ADM.", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigInt("ChipResetCapConfigADM", "Reset cap configuration in ADM.", CypressFX3.FPGA_CHIPBIAS,
 				(short) 128, 2, 0, this));
-			chipDiagChain.add(new SPIConfigInt("ChipDelayCapConfigADM", "Delay cap configuration in ADM.", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigInt("ChipDelayCapConfigADM", "Delay cap configuration in ADM.", CypressFX3.FPGA_CHIPBIAS,
 				(short) 129, 3, 0, this));
-			chipDiagChain.add(new SPIConfigBit("ChipComparatorSelfOsc", "Comparator self-oscillation enable.", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("ChipComparatorSelfOsc", "Comparator self-oscillation enable.", CypressFX3.FPGA_CHIPBIAS,
 				(short) 130, false, this));
-			chipDiagChain
+			chipControl
 				.add(new SPIConfigInt("ChipLNAGainConfig", "LNA gain configuration.", CypressFX3.FPGA_CHIPBIAS, (short) 131, 3, 0, this));
-			chipDiagChain.add(new SPIConfigBit("ChipLNADoubleInputSelect", "LNA double or single input selection.",
+			chipControl.add(new SPIConfigBit("ChipLNADoubleInputSelect", "LNA double or single input selection.",
 				CypressFX3.FPGA_CHIPBIAS, (short) 132, false, this));
-			chipDiagChain.add(
+			chipControl.add(
 				new SPIConfigBit("ChipTestScannerBias", "Test scanner bias enable.", CypressFX3.FPGA_CHIPBIAS, (short) 133, false, this));
 
-			for (final SPIConfigValue cfgVal : chipDiagChain) {
+			for (final SPIConfigValue cfgVal : chipControl) {
 				cfgVal.addObserver(this);
 				allPreferencesList.add(cfgVal);
 			}
@@ -558,49 +558,48 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 					}
 					else if (observable instanceof VPot) {
 						final VPot vPot = (VPot) observable;
-                                                final CypressFX3.SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
+						final CypressFX3.SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
 
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, vPot.getDacNumber()); // Select DAC.
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 2, 0x03); // Select input data register.
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 3, vPot.getChannel());
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 5, vPot.getBitValue());
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, vPot.getDacNumber()); // Select DAC.
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 2, 0x03); // Select input data register.
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 3, vPot.getChannel());
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 5, vPot.getBitValue());
 
-                                                // Toggle SET flag.
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 1);
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 0);
+						// Toggle SET flag.
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 1);
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 0);
 
-                                                // Commit configuration.
-                                                //configSequence.sendConfigSequence();
-                                                
-                                                // Temporary fix for offset/gain default values problem
-                                                // [TODO]: Make a new panel for offset/gain control
-                                                
-                                                // Write offset reg (c)
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, vPot.getDacNumber()); // Select DAC.
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 2, 0x02); // Select offset register.
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 3, vPot.getChannel());
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 5, 0x7FE);
+						// Commit configuration.
+						//configSequence.sendConfigSequence();
 
-                                                // Toggle SET flag.
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 1);
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 0);
+						// Temporary fix for offset/gain default values problem
+						// [TODO]: Make a new panel for offset/gain control
 
-                                                // Commit configuration.
-                                                //configSequence.sendConfigSequence();
-                                                
-                                                // Write gain reg (m)
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, vPot.getDacNumber()); // Select DAC.
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 2, 0x01); // Select gain register.
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 3, vPot.getChannel());
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 5, 0xFFE);
+						// Write offset reg (c)
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, vPot.getDacNumber()); // Select DAC.
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 2, 0x02); // Select offset register.
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 3, vPot.getChannel());
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 5, 0x7FE);
 
-                                                // Toggle SET flag.
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 1);
-                                                configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 0);
+						// Toggle SET flag.
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 1);
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 0);
 
-                                                // Commit configuration.
-                                                configSequence.sendConfigSequence();
-                                                
+						// Commit configuration.
+						//configSequence.sendConfigSequence();
+
+						// Write gain reg (m)
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, vPot.getDacNumber()); // Select DAC.
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 2, 0x01); // Select gain register.
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 3, vPot.getChannel());
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 5, 0xFFE);
+
+						// Toggle SET flag.
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 1);
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 0);
+
+						// Commit configuration.
+						configSequence.sendConfigSequence();
                                                 
 						// Wait 1ms to ensure operation is completed.
 						try {

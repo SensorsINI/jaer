@@ -23,14 +23,10 @@ import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JRadioButton;
 import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-import ch.unizh.ini.jaer.config.spi.SPIConfigBit;
-import ch.unizh.ini.jaer.config.spi.SPIConfigInt;
 import ch.unizh.ini.jaer.config.spi.SPIConfigValue;
 import net.sf.jaer.biasgen.BiasgenPanel;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -38,6 +34,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3.SPIConfigSequence;
 
 public final class SampleProbControlPanel extends JTabbedPane implements Observer {
+//public final class SampleProbControlPanel extends JTabbedPane {
 
 	private static final long serialVersionUID = -7435419921722582550L;
 
@@ -61,37 +58,22 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 			}
 		});
 
-		SPIConfigBit.makeSPIBitConfig(biasgen.biasForceEnable, onchipBiasgenPanel, configValueMap, getBiasgen());
+		onchipBiasgenPanel.add(biasgen.biasForceEnable.makeGUIControl(configValueMap, biasgen));
 
 		biasgen.setPotArray(biasgen.ipots);
 		onchipBiasgenPanel.add(new BiasgenPanel(getBiasgen()));
 
 		onchipBiasgenPanel.add(Box.createVerticalGlue()); // push up to prevent expansion of PotPanel
 
-		SPIConfigBit.makeSPIBitConfig(biasgen.dacRun, offchipDACPanel, configValueMap, getBiasgen());
-		SPIConfigBit.makeSPIBitConfig(biasgen.dacRandomRun, offchipDACPanel, configValueMap, getBiasgen());
-		SPIConfigBit.makeSPIBitConfig(biasgen.dacRandomUSBRun, offchipDACPanel, configValueMap, getBiasgen());
+		offchipDACPanel.add(biasgen.dacRun.makeGUIControl(configValueMap, biasgen));
+		offchipDACPanel.add(biasgen.dacRandomRun.makeGUIControl(configValueMap, biasgen));
+		offchipDACPanel.add(biasgen.dacRandomUSBRun.makeGUIControl(configValueMap, biasgen));
 
 		biasgen.setPotArray(biasgen.vpots);
 		offchipDACPanel.add(new BiasgenPanel(getBiasgen()));
 
-		for (final SPIConfigValue cfgVal : biasgen.aerControl) {
-			if (cfgVal instanceof SPIConfigBit) {
-				SPIConfigBit.makeSPIBitConfig((SPIConfigBit) cfgVal, aerPanel, configValueMap, getBiasgen());
-			}
-			else if (cfgVal instanceof SPIConfigInt) {
-				SPIConfigInt.makeSPIIntConfig((SPIConfigInt) cfgVal, aerPanel, configValueMap, getBiasgen());
-			}
-		}
-
-		for (final SPIConfigValue cfgVal : biasgen.chipControl) {
-			if (cfgVal instanceof SPIConfigBit) {
-				SPIConfigBit.makeSPIBitConfig((SPIConfigBit) cfgVal, chipDiagPanel, configValueMap, getBiasgen());
-			}
-			else if (cfgVal instanceof SPIConfigInt) {
-				SPIConfigInt.makeSPIIntConfig((SPIConfigInt) cfgVal, chipDiagPanel, configValueMap, getBiasgen());
-			}
-		}
+		SPIConfigValue.addGUIControls(aerPanel, biasgen.aerControl, configValueMap, biasgen);
+		SPIConfigValue.addGUIControls(chipDiagPanel, biasgen.chipControl, configValueMap, biasgen);
 
 		inputDataLoadButton();
 
@@ -141,24 +123,13 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 	 * Handles updates to GUI controls from any source, including preference
 	 * changes
 	 */
+/**/
 	@Override
 	public synchronized void update(final Observable observable, final Object object) {
 		try {
-			if (observable instanceof SPIConfigBit) {
-				final SPIConfigBit cfgBit = (SPIConfigBit) observable;
-
-				// Ensure GUI is up-to-date.
-				if (configValueMap.containsKey(cfgBit)) {
-					((JRadioButton) configValueMap.get(cfgBit)).setSelected(cfgBit.isSet());
-				}
-			}
-			else if (observable instanceof SPIConfigInt) {
-				final SPIConfigInt cfgInt = (SPIConfigInt) observable;
-
-				// Ensure GUI is up-to-date.
-				if (configValueMap.containsKey(cfgInt)) {
-					((JTextField) configValueMap.get(cfgInt)).setText(Integer.toString(cfgInt.get()));
-				}
+			// Ensure GUI is up-to-date.
+			if (observable instanceof SPIConfigValue) {
+				((SPIConfigValue) observable).updateControl(configValueMap);
 			}
 			else {
 				log.warning("unknown observable " + observable + " , not sending anything");
@@ -168,7 +139,7 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 			log.warning(e.toString());
 		}
 	}
-
+/**/
 	private void inputDataLoad(final String inputDataFile) {
 		if (chip.getHardwareInterface() != null) {
 			final CypressFX3 fx3HwIntf = (CypressFX3) chip.getHardwareInterface();
