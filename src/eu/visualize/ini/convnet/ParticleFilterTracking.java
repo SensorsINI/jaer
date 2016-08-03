@@ -32,6 +32,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTrackerEvent;
@@ -41,6 +42,7 @@ import net.sf.jaer.util.filter.ParticleFilter.MeasurmentEvaluator;
 import net.sf.jaer.util.filter.ParticleFilter.ParticleFilter;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.util.filter.ParticleFilter.AverageEvaluator;
 import net.sf.jaer.util.filter.ParticleFilter.Particle;
 import net.sf.jaer.util.filter.ParticleFilter.SimpleParticle;
@@ -74,6 +76,8 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     private boolean displayParticles = getBoolean("displayParticles", false);
     private int eventsNumToProcess = getInt("eventsNumToProcess", 10);
 
+    private boolean addedViewerPropertyChangeListener = false; // TODO promote these to base EventFilter class
+    private boolean addTimeStampsResetPropertyChangeListener = false;
 
     FilterChain trackingFilterChain;
     private RectangularClusterTracker tracker;
@@ -90,22 +94,12 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     public ParticleFilterTracking(AEChip chip) {
         super(chip);
         
-        this.outputX = getStartPositionX();
-        this.outputY = getStartPositionY();
+        outputX = getStartPositionX();
+        outputY = getStartPositionY();
         
         dynamic = new DynamicEvaluator(noise);
         measurement = new MeasurmentEvaluator();
         average = new AverageEvaluator();
-        filter = new ParticleFilter(dynamic, measurement, average);
-        
-        Random r = new Random();
-        for(int i = 0; i < particlesCount; i++) {
-//                double x = (chip.getSizeX()/2) * (r.nextDouble()*2 - 1) + chip.getSizeX()/2;
-//                double y = (chip.getSizeX()/2) * (r.nextDouble()*2 - 1) + chip.getSizeX()/2;
-                double x = r.nextGaussian() + getStartPositionX();
-                double y = r.nextGaussian() + getStartPositionY();
-                filter.addParticle(new SimpleParticle(x, y));
-        }
 
         tracker = new RectangularClusterTracker(chip);
         heatMapCNN = new HeatMapCNN(chip);
@@ -154,7 +148,8 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
                 checkOutputPacketEventType(RectangularClusterTrackerEvent.class);
         }
 
-           
+        maybeAddListeners(chip); // Add listeners for the AEChip's Events (such as REWIND)
+
         // updated at every income event, notice: compuatation very expensive.
         if(UsePureEvents) {
             // Clear the measurement list first
@@ -184,6 +179,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
 
                 outputX = filter.getAverageX();
                 outputY = filter.getAverageY();
+                /* If particles are outside, then they will be reset to the center point. */
                 if(outputX > 240 || outputY > 180 || outputX < 0 || outputY < 0) {
                     for(int i = 0; i < filter.getParticleCount(); i++) {
                         filter.get(i).setX(120 + 50 * (r.nextDouble() * 2 - 1));
@@ -244,6 +240,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
    
         outputX = filter.getAverageX();
         outputY = filter.getAverageY();
+        /* If particles are outside, then they will be reset to the center point. */
         if(outputX > 240 || outputY > 180 || outputX < 0 || outputY < 0) {
             for(i = 0; i < filter.getParticleCount(); i++) {
                 filter.get(i).setX(120 + 50 * (r.nextDouble() * 2 - 1));
@@ -264,9 +261,21 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         return in;
     }
 
+    /* The rewind event will revoke this function to init the filter and the particles.
+       TODO: The content of this function should be moved to a new function, such as SetupFilter(); 
+    */
     @Override
     public void resetFilter() {
-    
+        filter = new ParticleFilter(dynamic, measurement, average);
+        
+        Random r = new Random();
+        for(int i = 0; i < particlesCount; i++) {
+//                double x = (chip.getSizeX()/2) * (r.nextDouble()*2 - 1) + chip.getSizeX()/2;
+//                double y = (chip.getSizeX()/2) * (r.nextDouble()*2 - 1) + chip.getSizeX()/2;
+                double x = r.nextGaussian() + startPositionX;
+                double y = r.nextGaussian() + startPositionY;
+                filter.addParticle(new SimpleParticle(x, y));
+        }    
     }
 
     @Override
@@ -308,8 +317,25 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
                 measurementWeight.set(clustersNum, 1.0);
             }          
         }
+        
+        if(evt.getPropertyName().equals(AEInputStream.EVENT_REWIND)) {
+            resetFilter();
+        }
     }
 
+    public final void maybeAddListeners(AEChip chip) {
+        if (chip.getAeViewer() != null) {
+            if (!addedViewerPropertyChangeListener) {
+                chip.getAeViewer().addPropertyChangeListener(this);
+                addedViewerPropertyChangeListener = true;
+            }
+            if (!addTimeStampsResetPropertyChangeListener) {
+                chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
+                addTimeStampsResetPropertyChangeListener = true;
+            }
+        }
+    }
+        
     @Override
     public void annotate(GLAutoDrawable drawable) {
         final GL2 gl = drawable.getGL().getGL2();
