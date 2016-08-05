@@ -92,7 +92,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         setupFilter(in);
         sadSum = 0;
 
-        
+        lastTransform = new TransformAtTime(ts,
+        new Point2D.Float(
+                (float)(10),
+                (float)(0)),
+                0);
         for (Object ein : in) {
             extractEventInfo(ein);
             // inItr = in.inputIterator;
@@ -100,9 +104,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
                 setGroundTruth();
             }
-            if (isInvalidAddress(searchDistance)) {
-                continue;
-            }
+
             if (xyFilter()) {
                 continue;
             }
@@ -122,6 +124,18 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
             long test1 = popcount_3((long) sadSum);
             
+            int nx = e.x - 120, ny = e.y - 90;
+            e.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + 120);
+            e.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + 90);
+            e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
+            
+            if ((e.x > 239) || (e.x < 0) || (e.y > 279) || (e.y < 0)) {
+                e.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them outputPacket in the reused packet.
+                continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
+            } else {
+                e.setFilteredOut(false);
+            }
+            
             // reject values that are unreasonable
             if (accuracyTests()) {
                 continue;
@@ -131,18 +145,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             if (measureAccuracy) {
                 motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);
             }
-            
-            int nx = e.x - 120, ny = e.y - 90;
-            e.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + 120);
-            e.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + 90);
-            e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
         }
         
-        lastTransform = new TransformAtTime(ts,
-                new Point2D.Float(
-                        (float)(10),
-                        (float)(0)),
-                        0);
 //        if(cameraMotion.getLastTransform() != null) {
 //            lastTransform = cameraMotion.getLastTransform();
 //        }
@@ -294,8 +298,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      * @return SAD value
      */
     private int sad(int x, int y, int dx, int dy, int[][] prevSlice, int[][] curSlice) {
-        // Make sure 0<=xx+dx<subSizeX and 0<=yy+dy<subSizeY, or there'll be arrayIndexOutOfBoundary exception.
-        if (x < searchDistance - dx || x > subSizeX - searchDistance - dx || y < searchDistance - dy || y > subSizeY - searchDistance - dy) {
+        // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
+        if (x < searchDistance - dx || x > subSizeX - searchDistance - dx || x < searchDistance || x > subSizeX - searchDistance
+                || y < searchDistance - dy || y > subSizeY - searchDistance - dy || y < searchDistance || y > subSizeY - searchDistance) {
             return 0;
         }
         
