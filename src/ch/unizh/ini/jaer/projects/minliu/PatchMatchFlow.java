@@ -7,6 +7,7 @@ package ch.unizh.ini.jaer.projects.minliu;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import com.sun.mail.iap.ByteArray;
+import java.awt.geom.Point2D;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Observable;
@@ -15,8 +16,13 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.filter.Steadicam;
+import net.sf.jaer.eventprocessing.filter.TransformAtTime;
+import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 
 /**
  * Uses patch matching to measure local optical flow. <b>Not</b> gradient based,
@@ -51,7 +57,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private String patchTT = "Patch matching";
     private float sadSum = 0;
     private boolean rewindFlg = false; // The flag to indicate the rewind event.
-
+    private TransformAtTime lastTransform = null, imageTransform = null;
+    private FilterChain filterChain;
+    private Steadicam cameraMotion;
+    
     public enum SliceMethod {
         ConstantDuration, ConstantEventNumber
     };
@@ -62,6 +71,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
     public PatchMatchFlow(AEChip chip) {
         super(chip);
+        
+        filterChain = new FilterChain(chip);
+        cameraMotion = new Steadicam(chip);
+        cameraMotion.setFilterEnabled(true);
+        cameraMotion.setDisableRotation(true);
+        cameraMotion.setDisableTranslation(true);
+        filterChain.add(cameraMotion);
+        setEnclosedFilterChain(filterChain);
+        
         chip.addObserver(this); // to allocate memory once chip size is known
         setPropertyTooltip(patchTT, "patchDimension", "linear dimenion of patches to match, in pixels");
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
@@ -73,6 +91,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     public EventPacket filterPacket(EventPacket in) {
         setupFilter(in);
         sadSum = 0;
+
+        
         for (Object ein : in) {
             extractEventInfo(ein);
             // inItr = in.inputIterator;
@@ -107,20 +127,36 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 continue;
             }
 
-            writeOutputEvent();
+            // writeOutputEvent();
             if (measureAccuracy) {
                 motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);
             }
+            
+            int nx = e.x - 120, ny = e.y - 90;
+            e.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + 120);
+            e.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + 90);
+            e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
         }
         
-        // After the rewind event, restore sliceLastTs to 0 and rewindFlg to false.
+        lastTransform = new TransformAtTime(ts,
+                new Point2D.Float(
+                        (float)(10),
+                        (float)(0)),
+                        0);
+//        if(cameraMotion.getLastTransform() != null) {
+//            lastTransform = cameraMotion.getLastTransform();
+//        }
+//        ChipRendererDisplayMethodRGBA displayMethod = (ChipRendererDisplayMethodRGBA) chip.getCanvas().getDisplayMethod();        // After the rewind event, restore sliceLastTs to 0 and rewindFlg to false.
+//        displayMethod.getImageTransform();
+//        displayMethod.setImageTransform(lastTransform.translationPixels, lastTransform.rotationRad);          
+
+        
         if(rewindFlg) {
             rewindFlg = false;
             sliceLastTs = 0;
         }
         motionFlowStatistics.updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket;
-
     }
 
     @Override
