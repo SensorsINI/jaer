@@ -6,6 +6,9 @@
 package ch.unizh.ini.jaer.projects.minliu;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import com.sun.mail.iap.ByteArray;
 import java.awt.geom.Point2D;
 import java.util.Arrays;
@@ -60,6 +63,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private TransformAtTime lastTransform = null, imageTransform = null;
     private FilterChain filterChain;
     private Steadicam cameraMotion;
+    private int packetNum;
+    private int sx2;
+    private int sy2;
     
     public enum SliceMethod {
         ConstantDuration, ConstantEventNumber
@@ -77,7 +83,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         cameraMotion.setFilterEnabled(true);
         cameraMotion.setDisableRotation(true);
         cameraMotion.setDisableTranslation(true);
-        filterChain.add(cameraMotion);
+        // filterChain.add(cameraMotion);
         setEnclosedFilterChain(filterChain);
         
         chip.addObserver(this); // to allocate memory once chip size is known
@@ -88,15 +94,68 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     }
 
     @Override
+    public void annotate(GLAutoDrawable drawable) {
+        GL2 gl = null;
+        gl = drawable.getGL().getGL2();
+
+        if (gl == null) {
+            return;
+        }
+        // draw transform
+        gl.glPushMatrix();
+
+        gl.glLineWidth(1f);
+        gl.glColor3f(1, 0, 0);
+        
+        if(chip != null) {
+            sx2 = chip.getSizeX() / 2;
+            sy2 = chip.getSizeY() / 2;
+        } else {
+            sx2 = 0;
+            sy2 = 0;
+        }
+        // translate and rotate
+        if(lastTransform != null) {
+            gl.glTranslatef(lastTransform.translationPixels.x + sx2, lastTransform.translationPixels.y + sy2, 0);
+            gl.glRotatef((float) ((lastTransform.rotationRad * 180) / Math.PI), 0, 0, 1);            
+            
+            // draw xhairs on frame to help show locations of objects and if they have moved.
+           gl.glBegin(GL.GL_LINES); // sequence of individual segments, in pairs of vertices
+           gl.glVertex2f(0, 0);  // start at origin
+           gl.glVertex2f(sx2, 0);  // outputPacket to right
+           gl.glVertex2f(0, 0);  // origin
+           gl.glVertex2f(-sx2, 0); // outputPacket to left
+           gl.glVertex2f(0, 0);  // origin
+           gl.glVertex2f(0, sy2); // up
+           gl.glVertex2f(0, 0);  // origin
+           gl.glVertex2f(0, -sy2); // down
+           gl.glEnd();
+
+           // rectangle around transform
+           gl.glTranslatef(-sx2, -sy2, 0); // lower left corner
+           gl.glBegin(GL.GL_LINE_LOOP); // loop of vertices
+           gl.glVertex2f(0, 0); // lower left corner
+           gl.glVertex2f(sx2 * 2, 0); // lower right
+           gl.glVertex2f(2 * sx2, 2 * sy2); // upper right
+           gl.glVertex2f(0, 2 * sy2); // upper left
+           gl.glVertex2f(0, 0); // back of lower left
+           gl.glEnd();
+           gl.glPopMatrix();
+        }      
+    }
+
+    @Override
     public EventPacket filterPacket(EventPacket in) {
         setupFilter(in);
         sadSum = 0;
 
         lastTransform = new TransformAtTime(ts,
         new Point2D.Float(
-                (float)(10),
+                (float)(0),
                 (float)(0)),
-                0);
+                (float) (-0.7 * packetNum * Math.PI/180));
+        packetNum++;
+
         for (Object ein : in) {
             extractEventInfo(ein);
             // inItr = in.inputIterator;
@@ -124,17 +183,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
             long test1 = popcount_3((long) sadSum);
             
-            int nx = e.x - 120, ny = e.y - 90;
-            e.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + 120);
-            e.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + 90);
-            e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
-            
-            if ((e.x > 239) || (e.x < 0) || (e.y > 279) || (e.y < 0)) {
-                e.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them outputPacket in the reused packet.
-                continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
-            } else {
-                e.setFilteredOut(false);
-            }
+//            int nx = e.x - 120, ny = e.y - 90;
+//            e.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + 120);
+//            e.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + 90);
+//            e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
+//            
+//            if ((e.x > 239) || (e.x < 0) || (e.y > 279) || (e.y < 0)) {
+//                e.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them outputPacket in the reused packet.
+//                continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
+//            } else {
+//                e.setFilteredOut(false);
+//            }
             
             // reject values that are unreasonable
             if (accuracyTests()) {
@@ -191,6 +250,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         assignSliceReferences();
                             
         sliceLastTs = 0;
+        packetNum = 0;
         rewindFlg = true;
     }
 
