@@ -71,6 +71,8 @@ import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotater, Observer, PropertyChangeListener {
 
+    private boolean rewindFlg;
+
     /**
      * Classes that compute camera rotationRad estimate based on scene shift and
      * maybe rotationRad around the center of the scene.
@@ -342,6 +344,11 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
 //                ChipRendererDisplayMethodRGBA displayMethod=(ChipRendererDisplayMethodRGBA)chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
 //                displayMethod.setImageTransform(lastTransform.translationPixels,lastTransform.rotationRad);
 //            }
+
+        if(rewindFlg) {
+            initialized = false;
+            rewindFlg = false;
+        }
         } // electronicStabilizationEnabled
 
         if (isPanTiltEnabled()) { // mechanical pantilt
@@ -748,7 +755,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             }
         }
         eventQueue.clear();
-        initialized = false;
+        rewindFlg = true;
     }
 
     @Override
