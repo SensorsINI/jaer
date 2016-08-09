@@ -29,7 +29,7 @@ import sun.awt.AWTAccessor;
 public class FlexTimePlayer extends EventFilter2D {
 
     private int nEventsPerPacket = getInt("nEventsPerPacket", 10000);
-    private ApsDvsEventPacket out = new ApsDvsEventPacket(ApsDvsEvent.class);
+    private ApsDvsEventPacket<ApsDvsEvent> out = new ApsDvsEventPacket(ApsDvsEvent.class), leftOverEvents=new ApsDvsEventPacket<ApsDvsEvent>(ApsDvsEvent.class);
     OutputEventIterator<ApsDvsEvent> outItr = out.outputIterator();
     private int nEventsCollected = 0;
     private boolean resetPacket = true;
@@ -46,16 +46,30 @@ public class FlexTimePlayer extends EventFilter2D {
         Iterator<ApsDvsEvent> i = in2.fullIterator();
         if (resetPacket) {
             outItr = out.outputIterator();
+            resetPacket=false;
         }
+        Iterator<ApsDvsEvent> leftOverIterator=leftOverEvents.fullIterator();
+        while(leftOverIterator.hasNext()){
+            ApsDvsEvent e=leftOverIterator.next();
+            ApsDvsEvent eout = outItr.nextOutput();
+            eout.copyFrom(e);
+        }
+        leftOverEvents.clear();
         while (i.hasNext()) {
             ApsDvsEvent e = i.next();
             ApsDvsEvent eout = outItr.nextOutput();
             eout.copyFrom(e);
             if (e.isDVSEvent()) {
                 nEventsCollected++;
-                if (nEventsCollected >= getnEventsPerPacket()) {
+                if (nEventsCollected >= nEventsPerPacket) {
                     resetPacket = true;
                     nEventsCollected = 0;
+                    OutputEventIterator<ApsDvsEvent> iLeftOver=leftOverEvents.outputIterator();
+                    while(i.hasNext()){
+                        ApsDvsEvent eLeftOver=i.next();
+                        ApsDvsEvent outputLeftOverEvent=iLeftOver.nextOutput();
+                        outputLeftOverEvent.copyFrom(eLeftOver);
+                    }
                     return out;
                 }
             }
