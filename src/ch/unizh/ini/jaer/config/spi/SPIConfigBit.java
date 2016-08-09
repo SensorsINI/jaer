@@ -4,11 +4,12 @@ import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Map;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.Preferences;
 
 import javax.swing.JComponent;
-import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 
 import ch.unizh.ini.jaer.config.ConfigBit;
@@ -35,12 +36,13 @@ public class SPIConfigBit extends SPIConfigValue implements ConfigBit {
 		loadPreference();
 		sprefs.addPreferenceChangeListener(this);
 	}
-//<editor-fold defaultstate="collapsed" desc="ConfigBit interface implementation">
+
+	// <editor-fold defaultstate="collapsed" desc="ConfigBit interface implementation">
 	@Override
 	public boolean isSet() {
 		return value;
 	}
-	
+
 	@Override
 	public void set(final boolean value) {
 		if (this.value != value) {
@@ -49,8 +51,8 @@ public class SPIConfigBit extends SPIConfigValue implements ConfigBit {
 			notifyObservers();
 		}
 	}
-//</editor-fold>
-	
+	// </editor-fold>
+
 	@Override
 	public String toString() {
 		return String.format("SPIConfigBit {configName=%s, prefKey=%s, moduleAddr=%d, paramAddr=%d, numBits=%d, default=%b}", getName(),
@@ -80,9 +82,9 @@ public class SPIConfigBit extends SPIConfigValue implements ConfigBit {
 		sprefs.putBoolean(getPreferencesKey(), isSet());
 	}
 
-    @Override
+	@Override
 	public JRadioButton makeGUIControl(final Map<SPIConfigValue, JComponent> configValueMap, final Biasgen biasgen) {
-		
+
 		final JRadioButton but = new JRadioButton("<html>" + getName() + ": " + getDescription());
 		but.setToolTipText("<html>" + toString() + "<br>Select to set bit, clear to clear bit.");
 		but.setSelected(value);
@@ -91,15 +93,22 @@ public class SPIConfigBit extends SPIConfigValue implements ConfigBit {
 
 		configValueMap.put(this, but);
 		addObserver(biasgen);
+		addObserver(new Observer() {
+			@Override
+			public void update(Observable o, Object arg) {
+				((SPIConfigBit) o).updateControl(configValueMap);
+
+			}
+		});
 		return but;
 	}
-    
-    @Override
-    public void updateControl(final Map<SPIConfigValue, JComponent> configValueMap) {
-        if (configValueMap.containsKey(this)) {
-            ((JRadioButton) configValueMap.get(this)).setSelected(value);
-        }
-    }
+
+	@Override
+	public void updateControl(final Map<SPIConfigValue, JComponent> configValueMap) {
+		if (configValueMap.containsKey(this)) {
+			((JRadioButton) configValueMap.get(this)).setSelected(value);
+		}
+	}
 
 	private static class SPIConfigBitAction implements ActionListener {
 
