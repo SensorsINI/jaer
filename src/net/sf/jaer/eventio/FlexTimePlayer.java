@@ -6,6 +6,7 @@
 package net.sf.jaer.eventio;
 
 import java.util.Iterator;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -14,9 +15,7 @@ import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.graphics.AEPlayer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
-import sun.awt.AWTAccessor;
 
 /**
  * Plays DAVIS recordings with APS frames at constant DVS event number per
@@ -99,7 +98,7 @@ public class FlexTimePlayer extends EventFilter2D {
         this.nEventsPerPacket = nEventsPerPacket;
         putInt("nEventsPerPacket", nEventsPerPacket);
         out.allocate(nEventsPerPacket);
-        if (isFilterEnabled() && chip.getAeViewer() != null && chip.getAeViewer().getAePlayer() != null) {
+        if (isFilterEnabled() && (chip.getAeViewer() != null) && (chip.getAeViewer().getAePlayer() != null)) {
             AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
             player.setFlexTimeEnabled();
             player.setPacketSizeEvents(nEventsPerPacket); // ensure that we don't get more DVS events than can be returned in one of our out packets
@@ -110,7 +109,7 @@ public class FlexTimePlayer extends EventFilter2D {
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
-        if (chip.getAeViewer() != null && chip.getAeViewer().getAePlayer() != null) {
+        if ((chip.getAeViewer() != null) && (chip.getAeViewer().getAePlayer() != null)) {
             AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
             if (yes) {
                 player.setFlexTimeEnabled();
