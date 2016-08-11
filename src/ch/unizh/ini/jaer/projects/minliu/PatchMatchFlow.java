@@ -408,7 +408,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 new Point2D.Float(
                         (float) ((Math.PI / 180) * panTranslationDeg/radValPerPixel),
                         (float) ((Math.PI / 180) * tiltTranslationDeg/radValPerPixel)),
-                (rollDeg * (float) Math.PI) / 180);
+                (-rollDeg * (float) Math.PI) / 180);
         return tr;
     }    
     
