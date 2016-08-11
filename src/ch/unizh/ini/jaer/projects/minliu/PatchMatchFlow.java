@@ -9,7 +9,9 @@ import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.util.awt.TextRenderer;
 import com.sun.mail.iap.ByteArray;
+import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.geom.Point2D;
 import java.util.Arrays;
@@ -28,6 +30,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.Steadicam;
 import net.sf.jaer.eventprocessing.filter.TransformAtTime;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
+import net.sf.jaer.util.filter.HighpassFilter;
 
 /**
  * Uses patch matching to measure local optical flow. <b>Not</b> gradient based,
@@ -75,7 +78,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private float panRate = 0, tiltRate = 0, rollRate = 0; // in deg/sec
     private float panOffset = getFloat("panOffset", 0), tiltOffset = getFloat("tiltOffset", 0), rollOffset = getFloat("rollOffset", 0);
     private float panDC = 0, tiltDC = 0, rollDC = 0;
-
+    private boolean showTransformRectangle = getBoolean("showTransformRectangle", true);
+ // calibration
+    private boolean calibrating = false; // used to flag calibration state
+    private int calibrationSampleCount = 0;
+    private int NUM_CALIBRATION_SAMPLES_DEFAULT = 800; // 400 samples /sec
+    protected int numCalibrationSamples = getInt("numCalibrationSamples", NUM_CALIBRATION_SAMPLES_DEFAULT);
+    private CalibrationFilter panCalibrator, tiltCalibrator, rollCalibrator;
+    TextRenderer imuTextRenderer = null;
+    private boolean showGrid = getBoolean("showGrid", true);
     public enum SliceMethod {
         ConstantDuration, ConstantEventNumber
     };
@@ -83,6 +94,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int eventCounter = 0;
     // private int sliceLastTs = Integer.MIN_VALUE;
     private int sliceLastTs = 0;
+    HighpassFilter panTranslationFilter = new HighpassFilter();
+    HighpassFilter tiltTranslationFilter = new HighpassFilter();
+    HighpassFilter rollFilter = new HighpassFilter();
+    private float highpassTauMsTranslation = getFloat("highpassTauMsTranslation", 1000);
+    private float highpassTauMsRotation = getFloat("highpassTauMsRotation", 1000);
+    private boolean highPassFilterEn = getBoolean("highPassFilterEn", false);
+
 
     public PatchMatchFlow(AEChip chip) {
         super(chip);
@@ -95,74 +113,39 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         // filterChain.add(cameraMotion);
         setEnclosedFilterChain(filterChain);
         
+        String imu = "IMU";
+
         chip.addObserver(this); // to allocate memory once chip size is known
         setPropertyTooltip(patchTT, "patchDimension", "linear dimenion of patches to match, in pixels");
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
         setPropertyTooltip(patchTT, "timesliceDurationUs", "duration of patches in us");
         setPropertyTooltip(patchTT, "sliceEventNumber", "number of collected events in each bitmap");
-    }
+        setPropertyTooltip(dispTT, "highpassTauMsTranslation", "highpass filter time constant in ms to relax transform back to zero for translation (pan, tilt) components");
+        setPropertyTooltip(dispTT, "highpassTauMsRotation", "highpass filter time constant in ms to relax transform back to zero for rotation (roll) component");
+        setPropertyTooltip(dispTT, "highPassFilterEn", "enable the high pass filter or not");
+        setPropertyTooltip(dispTT, "showTransformRectangle", "Disable to not show the red transform square and red cross hairs");
+        setPropertyTooltip(imu, "zeroGyro", "zeros the gyro output. Sensor should be stationary for period of 1-2 seconds during zeroing");
+        setPropertyTooltip(imu, "eraseGyroZero", "Erases the gyro zero values");
 
-//    @Override
-//    public void annotate(GLAutoDrawable drawable) {
-//        GL2 gl = null;
-//        gl = drawable.getGL().getGL2();
-//
-//        if (gl == null) {
-//            return;
-//        }
-//        // draw transform
-//        gl.glPushMatrix();
-//
-//        gl.glLineWidth(1f);
-//        gl.glColor3f(1, 0, 0);
-//        
-//        if(chip != null) {
-//            sx2 = chip.getSizeX() / 2;
-//            sy2 = chip.getSizeY() / 2;
-//        } else {
-//            sx2 = 0;
-//            sy2 = 0;
-//        }
-//        // translate and rotate
-//        if(lastTransform != null) {
-//            gl.glTranslatef(lastTransform.translationPixels.x + sx2, lastTransform.translationPixels.y + sy2, 0);
-//            gl.glRotatef((float) ((lastTransform.rotationRad * 180) / Math.PI), 0, 0, 1);            
-//            
-//            // draw xhairs on frame to help show locations of objects and if they have moved.
-//           gl.glBegin(GL.GL_LINES); // sequence of individual segments, in pairs of vertices
-//           gl.glVertex2f(0, 0);  // start at origin
-//           gl.glVertex2f(sx2, 0);  // outputPacket to right
-//           gl.glVertex2f(0, 0);  // origin
-//           gl.glVertex2f(-sx2, 0); // outputPacket to left
-//           gl.glVertex2f(0, 0);  // origin
-//           gl.glVertex2f(0, sy2); // up
-//           gl.glVertex2f(0, 0);  // origin
-//           gl.glVertex2f(0, -sy2); // down
-//           gl.glEnd();
-//
-//           // rectangle around transform
-//           gl.glTranslatef(-sx2, -sy2, 0); // lower left corner
-//           gl.glBegin(GL.GL_LINE_LOOP); // loop of vertices
-//           gl.glVertex2f(0, 0); // lower left corner
-//           gl.glVertex2f(sx2 * 2, 0); // lower right
-//           gl.glVertex2f(2 * sx2, 2 * sy2); // upper right
-//           gl.glVertex2f(0, 2 * sy2); // upper left
-//           gl.glVertex2f(0, 0); // back of lower left
-//           gl.glEnd();
-//           gl.glPopMatrix();
-//        }      
-//    }
+        panCalibrator = new CalibrationFilter();
+        tiltCalibrator = new CalibrationFilter();
+        rollCalibrator = new CalibrationFilter();
+        rollFilter.setTauMs(highpassTauMsRotation);
+        panTranslationFilter.setTauMs(highpassTauMsTranslation);
+        tiltTranslationFilter.setTauMs(highpassTauMsTranslation);
+        
+        lastTransform = new TransformAtTime(ts,
+        new Point2D.Float(
+                (float)(0),
+                (float)(0)),
+                (float) (0));
+    }
 
     @Override
     public EventPacket filterPacket(EventPacket in) {
         setupFilter(in);
         sadSum = 0;
 
-        lastTransform = new TransformAtTime(ts,
-        new Point2D.Float(
-                (float)(0),
-                (float)(0)),
-                (float) (-0.7 * packetNum * Math.PI/180));
         packetNum++;
 
         ApsDvsEventPacket in2 = (ApsDvsEventPacket) in;
@@ -191,32 +174,40 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             }
             countIn++;
             // compute flow
-            maybeRotateSlices();
-            accumulateEvent();
-            SADResult sadResult = minSad(x, y, tMinus2Slice, tMinus1Slice);
-
-            sadSum += sadResult.sadValue * sadResult.sadValue;
-            vx = sadResult.dx * 5;
-            vy = sadResult.dy * 5;
-            v = (float) Math.sqrt(vx * vx + vy * vy);
+//            maybeRotateSlices();
+//            accumulateEvent();
+//            SADResult sadResult = minSad(x, y, tMinus2Slice, tMinus1Slice);
+//
+//            sadSum += sadResult.sadValue * sadResult.sadValue;
+//            vx = sadResult.dx * 5;
+//            vy = sadResult.dy * 5;
+//            v = (float) Math.sqrt(vx * vx + vy * vy);
 
             long[] testByteArray1 = tMinus1Sli.toLongArray();
             long[] testByteArray2 = tMinus2Sli.toLongArray();
 
             long test1 = popcount_3((long) sadSum);
 
-                int nx = e.x - 120, ny = e.y - 90;
-                e.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + 120);
-                e.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + 90);
-                e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
-                
-                if ((e.x > 239) || (e.x < 0) || (e.y > 179) || (e.y < 0)) {
-                    e.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them outputPacket in the reused packet.
-                    continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
-                } else {
-                    e.setFilteredOut(false);
-                }
+            int nx = e.x - 120, ny = e.y - 90;
+            e.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + 120);
+            e.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + 90);
+            e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
 
+            if ((e.x > 239) || (e.x < 0) || (e.y > 179) || (e.y < 0)) {
+                e.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them outputPacket in the reused packet.
+                continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
+            } else {
+                e.setFilteredOut(false);
+            }
+//                DavisChip apsDvsChip = (DavisChip) chip;
+//                int frameStartTimestamp = apsDvsChip.getFrameExposureStartTimestampUs();
+//                int frameEndTimestamp = apsDvsChip.getFrameExposureEndTimestampUs();
+//                int frameCounter = apsDvsChip.getFrameCount();
+//                // if a frame has been read outputPacket, then save the last transform to apply to rendering this frame
+//                imageTransform = lastTransform;
+//                ChipRendererDisplayMethodRGBA displayMethod = (ChipRendererDisplayMethodRGBA) chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
+//                displayMethod.setImageTransform(lastTransform.translationPixels, lastTransform.rotationRad);
+                                    
             // reject values that are unreasonable
             if (accuracyTests()) {
                 continue;
@@ -292,6 +283,59 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     }
 
     @Override
+    public void annotate(GLAutoDrawable drawable) {
+        GL2 gl = null;
+        if (showTransformRectangle) {
+            gl = drawable.getGL().getGL2();
+        }
+
+        if (gl == null) {
+            return;
+        }
+        // draw transform
+        gl.glPushMatrix();
+
+        gl.glLineWidth(1f);
+        gl.glColor3f(1, 0, 0);
+        
+        if(chip != null) {
+            sx2 = chip.getSizeX() / 2;
+            sy2 = chip.getSizeY() / 2;
+        } else {
+            sx2 = 0;
+            sy2 = 0;
+        }
+        // translate and rotate
+        if(lastTransform != null) {
+            gl.glTranslatef(lastTransform.translationPixels.x + sx2, lastTransform.translationPixels.y + sy2, 0);
+            gl.glRotatef((float) ((lastTransform.rotationRad * 180) / Math.PI), 0, 0, 1);            
+            
+            // draw xhairs on frame to help show locations of objects and if they have moved.
+           gl.glBegin(GL.GL_LINES); // sequence of individual segments, in pairs of vertices
+           gl.glVertex2f(0, 0);  // start at origin
+           gl.glVertex2f(sx2, 0);  // outputPacket to right
+           gl.glVertex2f(0, 0);  // origin
+           gl.glVertex2f(-sx2, 0); // outputPacket to left
+           gl.glVertex2f(0, 0);  // origin
+           gl.glVertex2f(0, sy2); // up
+           gl.glVertex2f(0, 0);  // origin
+           gl.glVertex2f(0, -sy2); // down
+           gl.glEnd();
+
+           // rectangle around transform
+           gl.glTranslatef(-sx2, -sy2, 0); // lower left corner
+           gl.glBegin(GL.GL_LINE_LOOP); // loop of vertices
+           gl.glVertex2f(0, 0); // lower left corner
+           gl.glVertex2f(sx2 * 2, 0); // lower right
+           gl.glVertex2f(2 * sx2, 2 * sy2); // upper right
+           gl.glVertex2f(0, 2 * sy2); // upper left
+           gl.glVertex2f(0, 0); // back of lower left
+           gl.glEnd();
+           gl.glPopMatrix();
+        }      
+    }
+    
+    @Override
     public void update(Observable o, Object arg) {
         super.update(o, arg);
         if (!isFilterEnabled()) {
@@ -316,18 +360,74 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         panRate = imuSample.getGyroYawY();
         tiltRate = imuSample.getGyroTiltX();
         rollRate = imuSample.getGyroRollZ();
+        if (calibrating) {
+            calibrationSampleCount++;
+            if (calibrationSampleCount > numCalibrationSamples) {
+                calibrating = false;
+                panOffset = panCalibrator.computeAverage();
+                tiltOffset = tiltCalibrator.computeAverage();
+                rollOffset = rollCalibrator.computeAverage();
+                panDC = 0;
+                tiltDC = 0;
+                rollDC = 0;
+                putFloat("panOffset", panOffset);
+                putFloat("tiltOffset", tiltOffset);
+                putFloat("rollOffset", rollOffset);
+                log.info(String.format("calibration finished. %d samples averaged to (pan,tilt,roll)=(%.3f,%.3f,%.3f)", numCalibrationSamples, panOffset, tiltOffset, rollOffset));
+            } else {
+                panCalibrator.addSample(panRate);
+                tiltCalibrator.addSample(tiltRate);
+                rollCalibrator.addSample(rollRate);
+            }
+            return new TransformAtTime(ts,
+                                new Point2D.Float( (float)(0),(float)(0)),
+                                (float) (0));
+        }       
         
         panDC += getPanRate() * dtS;
         tiltDC += getTiltRate() * dtS;
         rollDC += getRollRate() * dtS;
+        
+        if(highPassFilterEn) {
+        panTranslationDeg = panTranslationFilter.filter(panDC, timestamp);
+        tiltTranslationDeg = tiltTranslationFilter.filter(tiltDC, timestamp);
+        rollDeg = rollFilter.filter(rollDC, timestamp);            
+        } else {
+            panTranslationDeg = panDC;
+            tiltTranslationDeg = tiltDC;
+            rollDeg = rollDC;
+        }
+
+        
         // Use the lens focal length and camera resolution.
         TransformAtTime tr = new TransformAtTime(timestamp,
                 new Point2D.Float(
-                        (float) ((Math.PI / 180) * -panDC),
-                        (float) ((Math.PI / 180) * -tiltDC)),
-                (-rollDC * (float) Math.PI) / 180);
+                        (float) ((Math.PI / 180) * -panTranslationDeg),
+                        (float) ((Math.PI / 180) * -tiltTranslationDeg)),
+                (-rollDeg * (float) Math.PI) / 180);
         return tr;
     }    
+    
+    
+    private class CalibrationFilter {
+
+        int count = 0;
+        float sum = 0;
+
+        void reset() {
+            count = 0;
+            sum = 0;
+        }
+
+        void addSample(float sample) {
+            sum += sample;
+            count++;
+        }
+
+        float computeAverage() {
+            return sum / count;
+        }
+    }
     
     /**
      * @return the panRate
@@ -389,6 +489,29 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         for (int[] a : histograms[idx]) {
             Arrays.fill(a, 0);
         }
+    }
+    
+    synchronized public void doEraseGyroZero() {
+        panOffset = 0;
+        tiltOffset = 0;
+        rollOffset = 0;
+        putFloat("panOffset", 0);
+        putFloat("tiltOffset", 0);
+        putFloat("rollOffset", 0);
+        log.info("calibration erased");
+    }
+    
+    synchronized public void doZeroGyro() {
+        calibrating = true;
+        calibrationSampleCount = 0;
+        panCalibrator.reset();
+        tiltCalibrator.reset();
+        rollCalibrator.reset();
+        log.info("calibration started");
+
+//        panOffset = panRate; // TODO offsets should really be some average over some samples
+//        tiltOffset = tiltRate;
+//        rollOffset = rollRate;
     }
 
     
@@ -525,6 +648,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         putInt("sliceDurationUs", sliceDurationUs);
     }
 
+    public boolean isShowTransformRectangle() {
+        return showTransformRectangle;
+    }
+
+    public void setShowTransformRectangle(boolean showTransformRectangle) {
+        this.showTransformRectangle = showTransformRectangle;
+    }
+
     /**
      * @return the sliceEventCount
      */
@@ -538,5 +669,36 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     public void setSliceEventCount(int sliceEventCount) {
         this.sliceEventCount = sliceEventCount;
         putInt("sliceEventCount", sliceEventCount);
-    }    
+    }   
+
+    public float getHighpassTauMsTranslation() {
+        return highpassTauMsTranslation;
+    }
+
+    public void setHighpassTauMsTranslation(float highpassTauMs) {
+        this.highpassTauMsTranslation = highpassTauMs;
+        putFloat("highpassTauMsTranslation", highpassTauMs);
+        panTranslationFilter.setTauMs(highpassTauMs);
+        tiltTranslationFilter.setTauMs(highpassTauMs);   
+    }
+
+    public float getHighpassTauMsRotation() {
+        return highpassTauMsRotation;
+    }
+
+    public void setHighpassTauMsRotation(float highpassTauMs) {
+        this.highpassTauMsRotation = highpassTauMs;
+        putFloat("highpassTauMsRotation", highpassTauMs);
+        rollFilter.setTauMs(highpassTauMs);    
+    }
+
+    public boolean isHighPassFilterEn() {
+        return highPassFilterEn;
+    }
+
+    public void setHighPassFilterEn(boolean highPassFilterEn) {
+        this.highPassFilterEn = highPassFilterEn;
+        putBoolean("highPassFilterEn", highPassFilterEn);
+    }
+    
 }
