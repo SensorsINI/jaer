@@ -294,7 +294,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         }
         // draw transform
         gl.glPushMatrix();
-
+        
+        // Use this blur rectangle to indicate where is the zero point position.
+        gl.glColor4f(.1f, .1f, 1f, .25f);
+        gl.glRectf(0, 0, 10, 10);
+        
         gl.glLineWidth(1f);
         gl.glColor3f(1, 0, 0);
         
@@ -397,14 +401,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             tiltTranslationDeg = tiltDC;
             rollDeg = rollDC;
         }
-
+        float radValPerPixel = (float) Math.atan(chip.getPixelWidthUm() / (1000 * getLensFocalLengthMm()));
         
         // Use the lens focal length and camera resolution.
         TransformAtTime tr = new TransformAtTime(timestamp,
                 new Point2D.Float(
-                        (float) ((Math.PI / 180) * -panTranslationDeg),
-                        (float) ((Math.PI / 180) * -tiltTranslationDeg)),
-                (-rollDeg * (float) Math.PI) / 180);
+                        (float) ((Math.PI / 180) * panTranslationDeg/radValPerPixel),
+                        (float) ((Math.PI / 180) * tiltTranslationDeg/radValPerPixel)),
+                (rollDeg * (float) Math.PI) / 180);
         return tr;
     }    
     
