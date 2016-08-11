@@ -10,9 +10,11 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.sun.mail.iap.ByteArray;
+import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.geom.Point2D;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Iterator;
 import java.util.Observable;
 import java.util.Observer;
 import net.sf.jaer.Description;
@@ -66,7 +68,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int packetNum;
     private int sx2;
     private int sy2;
-    
+    private double panTranslationDeg;
+    private double tiltTranslationDeg;
+    private float rollDeg;
+    private int lastImuTimestamp = 0;
+    private float panRate = 0, tiltRate = 0, rollRate = 0; // in deg/sec
+    private float panOffset = getFloat("panOffset", 0), tiltOffset = getFloat("tiltOffset", 0), rollOffset = getFloat("rollOffset", 0);
+    private float panDC = 0, tiltDC = 0, rollDC = 0;
+
     public enum SliceMethod {
         ConstantDuration, ConstantEventNumber
     };
@@ -93,56 +102,56 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         setPropertyTooltip(patchTT, "sliceEventNumber", "number of collected events in each bitmap");
     }
 
-    @Override
-    public void annotate(GLAutoDrawable drawable) {
-        GL2 gl = null;
-        gl = drawable.getGL().getGL2();
-
-        if (gl == null) {
-            return;
-        }
-        // draw transform
-        gl.glPushMatrix();
-
-        gl.glLineWidth(1f);
-        gl.glColor3f(1, 0, 0);
-        
-        if(chip != null) {
-            sx2 = chip.getSizeX() / 2;
-            sy2 = chip.getSizeY() / 2;
-        } else {
-            sx2 = 0;
-            sy2 = 0;
-        }
-        // translate and rotate
-        if(lastTransform != null) {
-            gl.glTranslatef(lastTransform.translationPixels.x + sx2, lastTransform.translationPixels.y + sy2, 0);
-            gl.glRotatef((float) ((lastTransform.rotationRad * 180) / Math.PI), 0, 0, 1);            
-            
-            // draw xhairs on frame to help show locations of objects and if they have moved.
-           gl.glBegin(GL.GL_LINES); // sequence of individual segments, in pairs of vertices
-           gl.glVertex2f(0, 0);  // start at origin
-           gl.glVertex2f(sx2, 0);  // outputPacket to right
-           gl.glVertex2f(0, 0);  // origin
-           gl.glVertex2f(-sx2, 0); // outputPacket to left
-           gl.glVertex2f(0, 0);  // origin
-           gl.glVertex2f(0, sy2); // up
-           gl.glVertex2f(0, 0);  // origin
-           gl.glVertex2f(0, -sy2); // down
-           gl.glEnd();
-
-           // rectangle around transform
-           gl.glTranslatef(-sx2, -sy2, 0); // lower left corner
-           gl.glBegin(GL.GL_LINE_LOOP); // loop of vertices
-           gl.glVertex2f(0, 0); // lower left corner
-           gl.glVertex2f(sx2 * 2, 0); // lower right
-           gl.glVertex2f(2 * sx2, 2 * sy2); // upper right
-           gl.glVertex2f(0, 2 * sy2); // upper left
-           gl.glVertex2f(0, 0); // back of lower left
-           gl.glEnd();
-           gl.glPopMatrix();
-        }      
-    }
+//    @Override
+//    public void annotate(GLAutoDrawable drawable) {
+//        GL2 gl = null;
+//        gl = drawable.getGL().getGL2();
+//
+//        if (gl == null) {
+//            return;
+//        }
+//        // draw transform
+//        gl.glPushMatrix();
+//
+//        gl.glLineWidth(1f);
+//        gl.glColor3f(1, 0, 0);
+//        
+//        if(chip != null) {
+//            sx2 = chip.getSizeX() / 2;
+//            sy2 = chip.getSizeY() / 2;
+//        } else {
+//            sx2 = 0;
+//            sy2 = 0;
+//        }
+//        // translate and rotate
+//        if(lastTransform != null) {
+//            gl.glTranslatef(lastTransform.translationPixels.x + sx2, lastTransform.translationPixels.y + sy2, 0);
+//            gl.glRotatef((float) ((lastTransform.rotationRad * 180) / Math.PI), 0, 0, 1);            
+//            
+//            // draw xhairs on frame to help show locations of objects and if they have moved.
+//           gl.glBegin(GL.GL_LINES); // sequence of individual segments, in pairs of vertices
+//           gl.glVertex2f(0, 0);  // start at origin
+//           gl.glVertex2f(sx2, 0);  // outputPacket to right
+//           gl.glVertex2f(0, 0);  // origin
+//           gl.glVertex2f(-sx2, 0); // outputPacket to left
+//           gl.glVertex2f(0, 0);  // origin
+//           gl.glVertex2f(0, sy2); // up
+//           gl.glVertex2f(0, 0);  // origin
+//           gl.glVertex2f(0, -sy2); // down
+//           gl.glEnd();
+//
+//           // rectangle around transform
+//           gl.glTranslatef(-sx2, -sy2, 0); // lower left corner
+//           gl.glBegin(GL.GL_LINE_LOOP); // loop of vertices
+//           gl.glVertex2f(0, 0); // lower left corner
+//           gl.glVertex2f(sx2 * 2, 0); // lower right
+//           gl.glVertex2f(2 * sx2, 2 * sy2); // upper right
+//           gl.glVertex2f(0, 2 * sy2); // upper left
+//           gl.glVertex2f(0, 0); // back of lower left
+//           gl.glEnd();
+//           gl.glPopMatrix();
+//        }      
+//    }
 
     @Override
     public EventPacket filterPacket(EventPacket in) {
@@ -156,8 +165,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 (float) (-0.7 * packetNum * Math.PI/180));
         packetNum++;
 
-        for (Object ein : in) {
+        ApsDvsEventPacket in2 = (ApsDvsEventPacket) in;
+        Iterator itr = in2.fullIterator();   // We also need IMU data, so here we use the full iterator. 
+        while (itr.hasNext()) {
+            Object ein = itr.next();
+            if (ein == null) {
+                log.warning("null event passed in, returning input packet");
+                return in;
+            }
+            
             extractEventInfo(ein);
+            ApsDvsEvent apsDvsEvent = (ApsDvsEvent) ein;
+            if (apsDvsEvent.isImuSample()) {
+                IMUSample s = apsDvsEvent.getImuSample();
+                lastTransform = updateTransform(s);
+            }
             // inItr = in.inputIterator;
             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                 imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
@@ -172,29 +194,29 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             maybeRotateSlices();
             accumulateEvent();
             SADResult sadResult = minSad(x, y, tMinus2Slice, tMinus1Slice);
-         
+
             sadSum += sadResult.sadValue * sadResult.sadValue;
             vx = sadResult.dx * 5;
             vy = sadResult.dy * 5;
             v = (float) Math.sqrt(vx * vx + vy * vy);
-            
+
             long[] testByteArray1 = tMinus1Sli.toLongArray();
             long[] testByteArray2 = tMinus2Sli.toLongArray();
 
             long test1 = popcount_3((long) sadSum);
-            
-//            int nx = e.x - 120, ny = e.y - 90;
-//            e.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + 120);
-//            e.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + 90);
-//            e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
-//            
-//            if ((e.x > 239) || (e.x < 0) || (e.y > 279) || (e.y < 0)) {
-//                e.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them outputPacket in the reused packet.
-//                continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
-//            } else {
-//                e.setFilteredOut(false);
-//            }
-            
+
+                int nx = e.x - 120, ny = e.y - 90;
+                e.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + 120);
+                e.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + 90);
+                e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
+                
+                if ((e.x > 239) || (e.x < 0) || (e.y > 179) || (e.y < 0)) {
+                    e.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them outputPacket in the reused packet.
+                    continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
+                } else {
+                    e.setFilteredOut(false);
+                }
+
             // reject values that are unreasonable
             if (accuracyTests()) {
                 continue;
@@ -217,6 +239,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         if(rewindFlg) {
             rewindFlg = false;
             sliceLastTs = 0;
+            lastImuTimestamp = 0;
+            
+            panDC = 0;
+            tiltDC = 0;
+            rollDC = 0;
         }
         motionFlowStatistics.updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket;
@@ -274,7 +301,55 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             resetFilter();
         }
     }
+    /**
+     * Computes transform using current gyro outputs based on timestamp supplied
+     * and returns a TransformAtTime object. 
+     *
+     * @param timestamp the timestamp in us.
+     * @return the transform object representing the camera rotationRad
+     */
+    synchronized public TransformAtTime updateTransform(IMUSample imuSample) {
+        int timestamp = imuSample.getTimestampUs();
+        float dtS = (timestamp - lastImuTimestamp) * 1e-6f;
+        lastImuTimestamp = timestamp;
+        
+        panRate = imuSample.getGyroYawY();
+        tiltRate = imuSample.getGyroTiltX();
+        rollRate = imuSample.getGyroRollZ();
+        
+        panDC += getPanRate() * dtS;
+        tiltDC += getTiltRate() * dtS;
+        rollDC += getRollRate() * dtS;
+        // Use the lens focal length and camera resolution.
+        TransformAtTime tr = new TransformAtTime(timestamp,
+                new Point2D.Float(
+                        (float) ((Math.PI / 180) * -panDC),
+                        (float) ((Math.PI / 180) * -tiltDC)),
+                (-rollDC * (float) Math.PI) / 180);
+        return tr;
+    }    
+    
+    /**
+     * @return the panRate
+     */
+    public float getPanRate() {
+        return panRate - panOffset;
+    }
 
+    /**
+     * @return the tiltRate
+     */
+    public float getTiltRate() {
+        return tiltRate - tiltOffset;
+    }
+
+    /**
+     * @return the rollRate
+     */
+    public float getRollRate() {
+        return rollRate - rollOffset;
+    }
+    
     /**
      * uses the current event to maybe rotate the slices
      */
