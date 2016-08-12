@@ -87,6 +87,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private CalibrationFilter panCalibrator, tiltCalibrator, rollCalibrator;
     TextRenderer imuTextRenderer = null;
     private boolean showGrid = getBoolean("showGrid", true);
+    private int flushCounter = 0;
     public enum SliceMethod {
         ConstantDuration, ConstantEventNumber
     };
@@ -230,7 +231,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         if(rewindFlg) {
             rewindFlg = false;
             sliceLastTs = 0;
-            lastImuTimestamp = 0;
+            flushCounter = 10;
             
             panDC = 0;
             tiltDC = 0;
@@ -360,6 +361,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         int timestamp = imuSample.getTimestampUs();
         float dtS = (timestamp - lastImuTimestamp) * 1e-6f;
         lastImuTimestamp = timestamp;
+        
+        if (flushCounter-- >= 0) {
+            return new TransformAtTime(ts,
+                    new Point2D.Float( (float)(0),(float)(0)),
+                    (float) (0));  // flush some samples if the timestamps have been reset and we need to discard some samples here
+        }
         
         panRate = imuSample.getGyroYawY();
         tiltRate = imuSample.getGyroTiltX();
