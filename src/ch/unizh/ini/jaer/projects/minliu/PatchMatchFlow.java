@@ -174,9 +174,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 continue;
             }
             countIn++;
-            // compute flow
-//            maybeRotateSlices();
-//            accumulateEvent();
+
 //            SADResult sadResult = minSad(x, y, tMinus2Slice, tMinus1Slice);
 //
 //            sadSum += sadResult.sadValue * sadResult.sadValue;
@@ -184,22 +182,28 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 //            vy = sadResult.dy * 5;
 //            v = (float) Math.sqrt(vx * vx + vy * vy);
 
-            long[] testByteArray1 = tMinus1Sli.toLongArray();
-            long[] testByteArray2 = tMinus2Sli.toLongArray();
-
-            long test1 = popcount_3((long) sadSum);
-
             int nx = e.x - 120, ny = e.y - 90;
             e.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + 120);
             e.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + 90);
             e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
-
             if ((e.x > 239) || (e.x < 0) || (e.y > 179) || (e.y < 0)) {
                 e.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them outputPacket in the reused packet.
                 continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
             } else {
                 e.setFilteredOut(false);
             }
+            extractEventInfo(e); // Update x, y, ts and type
+            
+            // compute flow
+            maybeRotateSlices();
+            accumulateEvent();
+            
+//            long[] testByteArray1 = tMinus1Sli.toLongArray();
+//            long[] testByteArray2 = tMinus2Sli.toLongArray();
+//            tMinus1Sli.andNot(tMinus2Sli);
+
+//            long test1 = popcount_3((long) sadSum);
+            
 //                DavisChip apsDvsChip = (DavisChip) chip;
 //                int frameStartTimestamp = apsDvsChip.getFrameExposureStartTimestampUs();
 //                int frameEndTimestamp = apsDvsChip.getFrameExposureEndTimestampUs();
@@ -271,16 +275,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         sliceLastTs = 0;
         packetNum = 0;
         rewindFlg = true;
-    }
-
-    private void assignSliceReferences() {
-        currentSlice = histograms[currentSliceIdx];
-        tMinus1Slice = histograms[tMinus1SliceIdx];
-        tMinus2Slice = histograms[tMinus2SliceIdx];
-        
-        currentSli = histogramsBitSet[currentSliceIdx];
-        tMinus1Sli = histogramsBitSet[tMinus1SliceIdx];
-        tMinus2Sli = histogramsBitSet[tMinus2SliceIdx];    
     }
 
     @Override
@@ -488,6 +482,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         assignSliceReferences();
     }
 
+    private void assignSliceReferences() {
+        currentSlice = histograms[currentSliceIdx];
+        tMinus1Slice = histograms[tMinus1SliceIdx];
+        tMinus2Slice = histograms[tMinus2SliceIdx];
+        
+        currentSli = histogramsBitSet[currentSliceIdx];
+        tMinus1Sli = histogramsBitSet[tMinus1SliceIdx];
+        tMinus2Sli = histogramsBitSet[tMinus2SliceIdx];    
+    }
     /**
      * Accumulates the current event to the current slice
      */
