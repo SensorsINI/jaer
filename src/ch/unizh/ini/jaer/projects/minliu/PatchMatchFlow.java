@@ -79,6 +79,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private float panOffset = getFloat("panOffset", 0), tiltOffset = getFloat("tiltOffset", 0), rollOffset = getFloat("rollOffset", 0);
     private float panDC = 0, tiltDC = 0, rollDC = 0;
     private boolean showTransformRectangle = getBoolean("showTransformRectangle", true);
+    private boolean removeCameraMotion = getBoolean("removeCameraMotion", true);
+
  // calibration
     private boolean calibrating = false; // used to flag calibration state
     private int calibrationSampleCount = 0;
@@ -125,6 +127,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         setPropertyTooltip(dispTT, "highpassTauMsRotation", "highpass filter time constant in ms to relax transform back to zero for rotation (roll) component");
         setPropertyTooltip(dispTT, "highPassFilterEn", "enable the high pass filter or not");
         setPropertyTooltip(dispTT, "showTransformRectangle", "Disable to not show the red transform square and red cross hairs");
+        setPropertyTooltip(imu, "removeCameraMotion", "Remove the camera motion");
         setPropertyTooltip(imu, "zeroGyro", "zeros the gyro output. Sensor should be stationary for period of 1-2 seconds during zeroing");
         setPropertyTooltip(imu, "eraseGyroZero", "Erases the gyro zero values");
 
@@ -182,17 +185,23 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 //            vy = sadResult.dy * 5;
 //            v = (float) Math.sqrt(vx * vx + vy * vy);
 
-            int nx = e.x - 120, ny = e.y - 90;
-            e.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + 120);
-            e.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + 90);
-            e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
-            if ((e.x > 239) || (e.x < 0) || (e.y > 179) || (e.y < 0)) {
-                e.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them outputPacket in the reused packet.
-                continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
+            if(removeCameraMotion) {
+                showTransformRectangle = true;
+                int nx = e.x - 120, ny = e.y - 90;
+                e.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + 120);
+                e.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + 90);
+                e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
+                if ((e.x > 239) || (e.x < 0) || (e.y > 179) || (e.y < 0)) {
+                    e.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them outputPacket in the reused packet.
+                    continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
+                } else {
+                    e.setFilteredOut(false);
+                }
+                extractEventInfo(e); // Update x, y, ts and type    
             } else {
-                e.setFilteredOut(false);
+                showTransformRectangle = false;
             }
-            extractEventInfo(e); // Update x, y, ts and type
+
             
             // compute flow
             maybeRotateSlices();
@@ -668,6 +677,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
     public void setShowTransformRectangle(boolean showTransformRectangle) {
         this.showTransformRectangle = showTransformRectangle;
+    }
+
+    public boolean isRemoveCameraMotion() {
+        return removeCameraMotion;
+    }
+
+    public void setRemoveCameraMotion(boolean removeCameraMotion) {
+        this.removeCameraMotion = removeCameraMotion;
     }
 
     /**
