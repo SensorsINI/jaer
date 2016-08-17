@@ -1,11 +1,9 @@
 package ch.unizh.ini.jaer.config.spi;
 
 import ch.unizh.ini.jaer.config.AbstractConfigValue;
-import java.util.Map;
 import java.util.List;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
-import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.chip.AEChip;
 
 public abstract class SPIConfigValue extends AbstractConfigValue {
@@ -34,20 +32,20 @@ public abstract class SPIConfigValue extends AbstractConfigValue {
 		return numBits;
 	}
 
+	// Get value
+	public abstract int get();
+
 	@Override
 	public String toString() {
 		return String.format("SPIConfigValue {configName=%s, prefKey=%s, moduleAddr=%d, paramAddr=%d, numBits=%d}", getName(),
 			getPreferencesKey(), getModuleAddr(), getParamAddr(), getNumBits());
 	}
-    
-    public abstract JComponent makeGUIControl(final Map<SPIConfigValue, JComponent> configValueMap, final Biasgen biasgen);
-    public abstract void updateControl(final Map<SPIConfigValue, JComponent> configValueMap);
-    
-    public static void addGUIControls(final JPanel panel, final List<SPIConfigValue> values, 
-                                            final Map<SPIConfigValue, JComponent> configValueMap, final Biasgen biasgen) {
-        
-        for (final SPIConfigValue cfgVal : values) {
-            panel.add(cfgVal.makeGUIControl(configValueMap, biasgen));
-        }
-    }
+
+	public abstract JComponent makeGUIControl();
+
+	public static void addGUIControls(final JPanel panel, final List<SPIConfigValue> values) {
+		for (final SPIConfigValue cfgVal : values) {
+			panel.add(cfgVal.makeGUIControl());
+		}
+	}
 }

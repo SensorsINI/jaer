@@ -270,16 +270,16 @@ public class SampleProb extends CochleaChip implements Observer {
 
 			// Generic AER from chip
 			aerControl.add(new SPIConfigBit("AERRun", "Run the main AER state machine.", CypressFX3.FPGA_DVS, (short) 3, false, this));
-			aerControl
-				.add(new SPIConfigInt("AERAckDelay", "Delay AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 4, 12, 0, this));
-			aerControl.add(
-				new SPIConfigInt("AERAckExtension", "Extend AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 6, 12, 0, this));
+			aerControl.add(new SPIConfigInt("AERAckDelay", "Delay AER ACK by this many cycles.", 
+				CypressFX3.FPGA_DVS, (short) 4, 12, 0, this));
+			aerControl.add(new SPIConfigInt("AERAckExtension", "Extend AER ACK by this many cycles.",
+				CypressFX3.FPGA_DVS, (short) 6, 12, 0, this));
 			aerControl.add(new SPIConfigBit("AERWaitOnTransferStall",
 				"Whether the AER state machine should wait,<br> or continue servicing the AER bus when the FIFOs are full.",
 				CypressFX3.FPGA_DVS, (short) 8, false, this));
 			aerControl.add(new SPIConfigBit("AERExternalAERControl",
-				"Do not control/ACK the AER bus anymore, <br>but let it be done by an external device.", CypressFX3.FPGA_DVS, (short) 10,
-				false, this));
+				"Do not control/ACK the AER bus anymore, <br>but let it be done by an external device.",
+				CypressFX3.FPGA_DVS, (short) 10, false, this));
 
 			for (final SPIConfigValue cfgVal : aerControl) {
 				cfgVal.addObserver(this);
@@ -292,13 +292,13 @@ public class SampleProb extends CochleaChip implements Observer {
 			chipControl.add(new SPIConfigInt("SelHazardIV", "", CypressFX3.FPGA_CHIPBIAS, (short) 2, 8, 0, this));
 			chipControl.add(new SPIConfigBit("SelCH", "", CypressFX3.FPGA_CHIPBIAS, (short) 3, false, this));
 			chipControl.add(new SPIConfigBit("SelNS", "", CypressFX3.FPGA_CHIPBIAS, (short) 4, false, this));
-			chipControl.add(
-				new SPIConfigBit("ClockEnable", "Enable clock generation for RNG.", CypressFX3.FPGA_CHIPBIAS, (short) 40, false, this));
-			chipControl.add(new SPIConfigInt("ClockPeriod", "Period of RNG clock in cycles at 120MHz.", CypressFX3.FPGA_CHIPBIAS,
-				(short) 41, 20, 0, this));
-			chipControl.add(
-				new SPIConfigBit("UseLandscapeSamplingVerilog", "Use Verilog LandscapeSampling module instead of externally loaded values.",
-					CypressFX3.FPGA_CHIPBIAS, (short) 42, false, this));
+			chipControl.add(new SPIConfigBit("ClockEnable", "Enable clock generation for RNG.", 
+				CypressFX3.FPGA_CHIPBIAS, (short) 40, false, this));
+			chipControl.add(new SPIConfigInt("ClockPeriod", "Period of RNG clock in cycles at 120MHz.", 
+				CypressFX3.FPGA_CHIPBIAS, (short) 41, 20, 0, this));
+			chipControl.add(new SPIConfigBit("UseLandscapeSamplingVerilog",
+				"Use Verilog LandscapeSampling module instead of externally loaded values.",
+				CypressFX3.FPGA_CHIPBIAS, (short) 42, false, this));
 
 			for (final SPIConfigValue cfgVal : chipControl) {
 				cfgVal.addObserver(this);
@@ -441,15 +441,10 @@ public class SampleProb extends CochleaChip implements Observer {
 							// Nothing to do here.
 						}
 					}
-					else if (observable instanceof SPIConfigBit) {
-						final SPIConfigBit cfgBit = (SPIConfigBit) observable;
+					else if (observable instanceof SPIConfigValue) {
+						final SPIConfigValue cfgVal = (SPIConfigValue) observable;
 
-						fx3HwIntf.spiConfigSend(cfgBit.getModuleAddr(), cfgBit.getParamAddr(), (cfgBit.isSet()) ? (1) : (0));
-					}
-					else if (observable instanceof SPIConfigInt) {
-						final SPIConfigInt cfgInt = (SPIConfigInt) observable;
-
-						fx3HwIntf.spiConfigSend(cfgInt.getModuleAddr(), cfgInt.getParamAddr(), cfgInt.get());
+						fx3HwIntf.spiConfigSend(cfgVal.getModuleAddr(), cfgVal.getParamAddr(), cfgVal.get());
 					}
 					else {
 						super.update(observable, object); // super (Biasgen) handles others, e.g. masterbias

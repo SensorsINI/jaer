@@ -1,5 +1,7 @@
 package ch.unizh.ini.jaer.chip.cochlea;
 
+import ch.unizh.ini.jaer.config.MultiBitConfigRegister;
+import ch.unizh.ini.jaer.config.MultiBitValue;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -51,7 +53,8 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 
-@Description("Low-power 4-ear AER silicon cochlea with 64 channels")
+/** Low-power binaural AER silicon cochlea with 64 channels. Hardware interface is CochleaFX3HardwareInterface */
+@Description("Low-power binaural AER silicon cochlea with 64 channels")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class CochleaTow4Ear extends CochleaChip implements Observer {
 
@@ -62,7 +65,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 	 */
 	public CochleaTow4Ear() {
 		super();
-		addObserver(this);
+		addObserver(this); // TODO: Why?
 
 		setName("CochleaTow4Ear");
 		setEventClass(CochleaTow4EarEvent.class);
@@ -200,20 +203,19 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 	}
 
 	public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements net.sf.jaer.biasgen.ChipControlPanel {
+
 		// All preferences, excluding biases.
-
 		private final List<AbstractConfigValue> allPreferencesList = new ArrayList<>();
-
+		
 		// Preferences by category.
-		final List<CochleaChannel> cochleaChannels = new ArrayList<>();
+		final List<CochleaChannelConfig>[] cochleaChannels = new ArrayList[4];
 		final List<SPIConfigValue> aerControl = new ArrayList<>();
 		final List<SPIConfigValue> scannerControl = new ArrayList<>();
 		final List<SPIConfigValue> adcControl = new ArrayList<>();
 		final List<SPIConfigValue> chipControl = new ArrayList<>();
 
 		/**
-		 * Two DACs, 16 channels. Internal 1.25V reference is used, so VOUT in
-		 * range 0-2.5V. VDD is 2.8V.
+		 * Two DACs, 16 channels. Internal 1.25V reference is used, so VOUT in range 0-2.5V. VDD is 2.8V.
 		 */
 		private final DAC dac1 = new DAC(0, 16, 12, 0, 5.0f, 3.3f); // Ad-hoc value for Vref
 		private final DAC dac2 = new DAC(1, 16, 12, 0, 5.0f, 3.3f); // Ad-hoc value for Vref
@@ -228,10 +230,16 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 
 		public Biasgen(final Chip chip) {
 			super(chip);
+
+			// Chip Specific Initialization further on
 			setName("CochleaTow4Ear.Biasgen");
 
+			for (int i = 0; i < 4; ++i) {
+				cochleaChannels[i] = new ArrayList<>();
+			}
+			
 			// VDAC (6-bit voltage DAC)
-                        ipots.addPot(new AddressedIPotCF(this, "VrefpreampBp", 0, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
+			ipots.addPot(new AddressedIPotCF(this, "VrefpreampBp", 0, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
 				AddressedIPotCF.maxFineBitValue, 1, "preamp"));
 			ipots.addPot(new AddressedIPotCF(this, "Vth1", 1, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
 				AddressedIPotCF.maxFineBitValue, 2, "neuron"));
@@ -248,8 +256,8 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			ipots.addPot(new AddressedIPotCF(this, "Vrefdiff2", 7, Type.NORMAL, Sex.na, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
 				AddressedIPotCF.maxFineBitValue, 8, "diff"));
 
-                        // BIASES (IPOTS, current DACs)
-                        ipots.addPot(new AddressedIPotCF(this, "LocalBufBn", 8, Type.NORMAL, Sex.N, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
+			// BIASES (IPOTS, current DACs)
+			ipots.addPot(new AddressedIPotCF(this, "LocalBufBn", 8, Type.NORMAL, Sex.N, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
 				AddressedIPotCF.maxFineBitValue, 9, "Buffer Test-pixel"));
 			ipots.addPot(new AddressedIPotCF(this, "VtauBn", 9, Type.NORMAL, Sex.na, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
 				AddressedIPotCF.maxFineBitValue, 10, "SOS"));
@@ -269,7 +277,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 				AddressedIPotCF.maxFineBitValue, 17, "fb Diff"));
 			ipots.addPot(new AddressedIPotCF(this, "VneuronLeakExtBp", 17, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
 				AddressedIPotCF.maxFineBitValue, 18, "neuron"));
-                        ipots.addPot(new AddressedIPotCF(this, "VpulseAERExtdBn", 18, Type.NORMAL, Sex.N, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
+			ipots.addPot(new AddressedIPotCF(this, "VpulseAERExtdBn", 18, Type.NORMAL, Sex.N, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
 				AddressedIPotCF.maxFineBitValue, 19, "fb Diff"));
 			ipots.addPot(new AddressedIPotCF(this, "VwideampBp", 19, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
 				AddressedIPotCF.maxFineBitValue, 20, "wideamp Diff"));
@@ -289,7 +297,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 				AddressedIPotCF.maxFineBitValue, 27, "SOS"));
 			ipots.addPot(new AddressedIPotCF(this, "VclbtcasBnc", 27, Type.NORMAL, Sex.N, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
 				AddressedIPotCF.maxFineBitValue, 28, "SOS"));
-                        ipots.addPot(new AddressedIPotCF(this, "Ibias20pOTA", 28, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
+			ipots.addPot(new AddressedIPotCF(this, "Ibias20pOTA", 28, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
 				AddressedIPotCF.maxFineBitValue, 29, "preamp"));
 			ipots.addPot(new AddressedIPotCF(this, "Ibias40pOTA", 29, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
 				AddressedIPotCF.maxFineBitValue, 30, "preamp"));
@@ -307,9 +315,8 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 				AddressedIPotCF.maxFineBitValue, 36, "bg"));
 			ipots.addPot(new AddressedIPotCF(this, "SSN", 36, Type.NORMAL, Sex.N, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
 				AddressedIPotCF.maxFineBitValue, 37, "bg"));
-                       
-                        
-                        setPotArray(ipots);
+
+			setPotArray(ipots);
 
 			// shifted sources
 			final ShiftedSourceBiasCF ssp = new ShiftedSourceBiasCF(this);
@@ -364,13 +371,13 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			vpots.addPot(new VPot(getChip(), "DCOutputHighLevel", dac2, 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "TH", dac2, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "PreampA/R", dac2, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-                        
+
 			// New logic SPI configuration values.
 			// Scanner module
-			scannerControl
-				.add(new SPIConfigBit("ScannerEnable", "Enable scanner output.", CypressFX3.FPGA_SCANNER, (short) 0, false, this));
-			scannerControl
-				.add(new SPIConfigInt("ScannerChannel", "Which channel to scan out.", CypressFX3.FPGA_SCANNER, (short) 1, 7, 0, this));
+			scannerControl.add(new SPIConfigBit("ScannerEnable", "Enable scanner output.", CypressFX3.FPGA_SCANNER, 
+				(short) 0, false, this));
+			scannerControl.add(new SPIConfigInt("ScannerChannel", "Which channel to scan out.", CypressFX3.FPGA_SCANNER,
+				(short) 1, 7, 0, this));
 
 			for (final SPIConfigValue cfgVal : scannerControl) {
 				cfgVal.addObserver(this);
@@ -383,8 +390,8 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			allPreferencesList.add(dacRun);
 
 			// Multiplexer module
-			biasForceEnable = new SPIConfigBit("ForceBiasEnable", "Force the biases to be always ON.", CypressFX3.FPGA_MUX, (short) 3,
-				false, this);
+			biasForceEnable = new SPIConfigBit("ForceBiasEnable", "Force the biases to be always ON.", CypressFX3.FPGA_MUX, 
+				(short) 3, false, this);
 			biasForceEnable.addObserver(this);
 			allPreferencesList.add(biasForceEnable);
 
@@ -392,23 +399,23 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			aerControl.add(new SPIConfigBit("TestAEREnable", "Enable Test AER output instead of normal AER.", CypressFX3.FPGA_SCANNER,
 				(short) 2, false, this)); // In scanner module for convenience.
 			aerControl.add(new SPIConfigBit("AERRun", "Run the main AER state machine.", CypressFX3.FPGA_DVS, (short) 3, false, this));
-			aerControl
-				.add(new SPIConfigInt("AERAckDelay", "Delay AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 4, 12, 0, this));
-			aerControl.add(
-				new SPIConfigInt("AERAckExtension", "Extend AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 6, 12, 0, this));
+			aerControl.add(new SPIConfigInt("AERAckDelay", "Delay AER ACK by this many cycles.", CypressFX3.FPGA_DVS, 
+				(short) 4, 12, 0, this));
+			aerControl.add(new SPIConfigInt("AERAckExtension", "Extend AER ACK by this many cycles.", CypressFX3.FPGA_DVS,
+				(short) 6, 12, 0, this));
 			aerControl.add(new SPIConfigBit("AERWaitOnTransferStall",
-				"Whether the AER state machine should wait,<br> or continue servicing the AER bus when the FIFOs are full.",
-				CypressFX3.FPGA_DVS, (short) 8, false, this));
+				"Whether the AER state machine should wait,<br> or continue servicing the AER bus when the FIFOs are full.", CypressFX3.FPGA_DVS,
+				(short) 8, false, this));
 			aerControl.add(new SPIConfigBit("AERExternalAERControl",
-				"Do not control/ACK the AER bus anymore, <br>but let it be done by an external device.", CypressFX3.FPGA_DVS, (short) 10,
-				false, this));
+				"Do not control/ACK the AER bus anymore, <br>but let it be done by an external device.", CypressFX3.FPGA_DVS,
+				(short) 10, false, this));
 
 			for (final SPIConfigValue cfgVal : aerControl) {
 				cfgVal.addObserver(this);
 				allPreferencesList.add(cfgVal);
 			}
 
-                        // ADC
+			// ADC
 			adcControl.add(new SPIConfigBit("ADCEnable", "Enable external ADCs", CypressFX3.FPGA_ADC, (short) 0, false, this));
 			adcControl.add(new SPIConfigInt("ADCChannelsEnable", "1 - Right, 2 - Left, 3 - Both", CypressFX3.FPGA_ADC, (short) 1, 4, 3, this));
 			adcControl.add(new SPIConfigBit("ADCFrequency", "OFF - 16kHz, ON - 44.1kHz", CypressFX3.FPGA_ADC, (short) 2, false, this));
@@ -436,16 +443,25 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 				allPreferencesList.add(cfgVal);
 			}
 
-			// Create the 64 cochlea channels.
+			// Create the 128 cochlea channels for L/R ear pair.
+			for (int i = 0; i < 64; ++i) {
+				cochleaChannels[0].add(new CochleaTow4EarChannelConfig("Channel_L" + i, "Left ear channel " + i + " configuration.", 2*i, (AEChip)chip));
+				cochleaChannels[1].add(new CochleaTow4EarChannelConfig("Channel_R" + i, "Right ear channel " + i + " configuration.", 2*i + 1, (AEChip)chip));
+			}
+
+			// Create the 128 cochlea channels for T/B ear pair.
 			for (int i = 0; i < 64; i++) {
-				cochleaChannels.add(new CochleaChannel("Channel " + i, "Cochlea channel " + i + " configuration.", i, this));
+				cochleaChannels[2].add(new CochleaTow4EarChannelConfig("Channel_T" + i, "Top ear channel " + i + " configuration.", 128 + 2*i, (AEChip)chip));
+				cochleaChannels[3].add(new CochleaTow4EarChannelConfig("Channel_B" + i, "Bottom ear channel " + i + " configuration.", 129 + 2*i, (AEChip)chip));
 			}
-
-			for (final CochleaChannel chan : cochleaChannels) {
-				chan.addObserver(this);
-				allPreferencesList.add(chan);
+			
+			for (int i = 0; i < 4; ++i) {
+				for (final CochleaChannelConfig chan : cochleaChannels[i]) {
+					chan.addObserver(this);
+					allPreferencesList.add(chan);
+				}
 			}
-
+			
 			// Preferences
 			setBatchEditOccurring(true);
 			loadPreferences();
@@ -513,18 +529,14 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 
 		@Override
 		public void setHardwareInterface(final BiasgenHardwareInterface hw) {
-			if (hw == null) {
-				hardwareInterface = null;
-				return;
-			}
-
 			hardwareInterface = hw;
-
-			try {
-				sendConfiguration();
-			}
-			catch (final HardwareInterfaceException ex) {
-				net.sf.jaer.biasgen.Biasgen.log.warning(ex.toString());
+			if (hardwareInterface != null) {
+				try {
+					sendConfiguration();
+				}
+				catch (final HardwareInterfaceException ex) {
+					net.sf.jaer.biasgen.Biasgen.log.warning(ex.toString());
+				}
 			}
 		}
 
@@ -541,9 +553,9 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 		@Override
 		public synchronized void update(final Observable observable, final Object object) {
 			log.fine("update from observable=" + observable.toString() + " with object=" + object);
-			if (getHardwareInterface() != null) {
-				final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
-
+			if ((hardwareInterface != null) && (hardwareInterface instanceof CypressFX3)) {
+				final CypressFX3 fx3HwIntf = (CypressFX3) hardwareInterface;
+				
 				try {
 					if (observable instanceof AddressedIPotCF) {
 						final AddressedIPotCF iPot = (AddressedIPotCF) observable;
@@ -600,7 +612,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 
 						// Commit configuration.
 						configSequence.sendConfigSequence();
-                                                
+
 						// Wait 1ms to ensure operation is completed.
 						try {
 							Thread.sleep(1);
@@ -609,18 +621,12 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 							// Nothing to do here.
 						}
 					}
-					else if (observable instanceof SPIConfigBit) {
-						final SPIConfigBit cfgBit = (SPIConfigBit) observable;
-
-						fx3HwIntf.spiConfigSend(cfgBit.getModuleAddr(), cfgBit.getParamAddr(), (cfgBit.isSet()) ? (1) : (0));
+					else if (observable instanceof SPIConfigValue) {
+						final SPIConfigValue cfgVal = (SPIConfigValue) observable;
+						fx3HwIntf.spiConfigSend(cfgVal.getModuleAddr(), cfgVal.getParamAddr(), cfgVal.get());
 					}
-					else if (observable instanceof SPIConfigInt) {
-						final SPIConfigInt cfgInt = (SPIConfigInt) observable;
-
-						fx3HwIntf.spiConfigSend(cfgInt.getModuleAddr(), cfgInt.getParamAddr(), cfgInt.get());
-					}
-					else if (observable instanceof CochleaChannel) {
-						final CochleaChannel chan = (CochleaChannel) observable;
+					else if (observable instanceof CochleaChannelConfig) {
+						final CochleaChannelConfig chan = (CochleaChannelConfig) observable;
 
 						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 160, chan.getChannelAddress());
 						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 162, chan.computeBinaryRepresentation());
@@ -684,7 +690,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 	public class Extractor extends TypedEventExtractor<BinauralCochleaEvent> {
 
 		private static final long serialVersionUID = -3469492271382423090L;
-                private int lastSpecialEventTimestamp=0;
+		private int lastSpecialEventTimestamp = 0;
 
 		public Extractor(final AEChip chip) {
 			super(chip);
@@ -742,19 +748,17 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 
 			for (int i = 0; i < n; i += skipBy) {
 				final int addr = addresses[i];
-				final int ts = timestamps[i];
-
 				final BinauralCochleaEvent e = outItr.nextOutput();
 
 				e.address = addr;
-				e.timestamp = ts;
+				e.timestamp = timestamps[i];
 				e.x = getXFromAddress(addr);
 				e.y = getYFromAddress(addr);
 				e.type = getTypeFromAddress(addr);
 				if ((e.address & BasicEvent.SPECIAL_EVENT_BIT_MASK) != 0) {
-					e.setSpecial(true);
-                                        int dt=e.timestamp-lastSpecialEventTimestamp;
-                                        lastSpecialEventTimestamp=e.timestamp;
+					e.setSpecial(true); // tick events for CochleaTow4Ear; every 32768 us from logic
+					//int dt = e.timestamp - lastSpecialEventTimestamp;
+					lastSpecialEventTimestamp = e.timestamp;
 				}
 
 				j++;
@@ -804,242 +808,6 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 		@Override
 		public byte getTypeFromAddress(final int addr) {
 			return (byte) getYFromAddress(addr);
-		}
-	}
-
-	public class CochleaChannel extends AbstractConfigValue implements ConfigBase {
-
-		private final Biasgen bgen;
-		private final int channelAddress;
-
-		private int configValue;
-		private final int configValueLength = 20;
-
-		private boolean comparatorSelfOscillationEnable;
-		private final int comparatorSelfOscillationEnablePosition = 19;
-
-		private int delayCapConfigADM;
-		private final int delayCapConfigADMLength = 3;
-		private final int delayCapConfigADMPosition = 16;
-
-		private int resetCapConfigADM;
-		private final int resetCapConfigADMLength = 2;
-		private final int resetCapConfigADMPosition = 14;
-
-		private int lnaGainConfig;
-		private final int lnaGainConfigLength = 3;
-		private final int lnaGainConfigPosition = 11;
-
-		private int attenuatorConfig;
-		private final int attenuatorConfigLength = 3;
-		private final int attenuatorConfigPosition = 8;
-
-		private int qTuning;
-		private final int qTuningLength = 8;
-		private final int qTuningPosition = 0;
-
-		private CochleaTow4EarControlPanel.CochleaChannelControlPanel controlPanel = null;
-
-		public CochleaChannel(final String configName, final String toolTip, final int channelAddr, final Biasgen biasgen) {
-			super(configName, toolTip, (AEChip) biasgen.getChip());
-
-			channelAddress = channelAddr;
-			bgen = biasgen;
-
-			loadPreference();
-			getPrefs().addPreferenceChangeListener(this);
-		}
-
-		public int getChannelAddress() {
-			return channelAddress;
-		}
-
-		@Override
-		public String toString() {
-			return String.format("CochleaChannel {configName=%s, prefKey=%s, channelAddress=%d}", getName(), getPreferencesKey(),
-				getChannelAddress());
-		}
-
-		public boolean isComparatorSelfOscillationEnable() {
-			return comparatorSelfOscillationEnable;
-		}
-
-		public void setComparatorSelfOscillationEnable(final boolean comparatorSelfOscillationEnable) {
-			this.comparatorSelfOscillationEnable = comparatorSelfOscillationEnable;
-
-			// Update main backing value.
-			setFullValueComponents(comparatorSelfOscillationEnable, getDelayCapConfigADM(), getResetCapConfigADM(), getLnaGainConfig(),
-				getAttenuatorConfig(), getqTuning());
-		}
-
-		public int getDelayCapConfigADM() {
-			return delayCapConfigADM;
-		}
-
-		public void setDelayCapConfigADM(final int delayCapConfigADM) {
-			checkValueLimits(delayCapConfigADM, delayCapConfigADMLength);
-
-			this.delayCapConfigADM = delayCapConfigADM;
-
-			// Update main backing value.
-			setFullValueComponents(isComparatorSelfOscillationEnable(), delayCapConfigADM, getResetCapConfigADM(), getLnaGainConfig(),
-				getAttenuatorConfig(), getqTuning());
-		}
-
-		public int getResetCapConfigADM() {
-			return resetCapConfigADM;
-		}
-
-		public void setResetCapConfigADM(final int resetCapConfigADM) {
-			checkValueLimits(resetCapConfigADM, resetCapConfigADMLength);
-
-			this.resetCapConfigADM = resetCapConfigADM;
-
-			// Update main backing value.
-			setFullValueComponents(isComparatorSelfOscillationEnable(), getDelayCapConfigADM(), resetCapConfigADM, getLnaGainConfig(),
-				getAttenuatorConfig(), getqTuning());
-		}
-
-		public int getLnaGainConfig() {
-			return lnaGainConfig;
-		}
-
-		public void setLnaGainConfig(final int lnaGainConfig) {
-			checkValueLimits(lnaGainConfig, lnaGainConfigLength);
-
-			this.lnaGainConfig = lnaGainConfig;
-
-			// Update main backing value.
-			setFullValueComponents(isComparatorSelfOscillationEnable(), getDelayCapConfigADM(), getResetCapConfigADM(), lnaGainConfig,
-				getAttenuatorConfig(), getqTuning());
-		}
-
-		public int getAttenuatorConfig() {
-			return attenuatorConfig;
-		}
-
-		public void setAttenuatorConfig(final int attenuatorConfig) {
-			checkValueLimits(attenuatorConfig, attenuatorConfigLength);
-
-			this.attenuatorConfig = attenuatorConfig;
-
-			// Update main backing value.
-			setFullValueComponents(isComparatorSelfOscillationEnable(), getDelayCapConfigADM(), getResetCapConfigADM(), getLnaGainConfig(),
-				attenuatorConfig, getqTuning());
-		}
-
-		public int getqTuning() {
-			return qTuning;
-		}
-
-		public void setqTuning(final int qTuning) {
-			checkValueLimits(qTuning, qTuningLength);
-
-			this.qTuning = qTuning;
-
-			// Update main backing value.
-			setFullValueComponents(isComparatorSelfOscillationEnable(), getDelayCapConfigADM(), getResetCapConfigADM(), getLnaGainConfig(),
-				getAttenuatorConfig(), qTuning);
-		}
-
-		/**
-		 * Returns binary encoded full state value
-		 *
-		 * @return
-		 */
-		public synchronized int getFullValue() {
-			return configValue;
-		}
-
-		/**
-		 * Sets binary encoded full state value, and calls Observers if value is
-		 * changed.
-		 *
-		 * @param fullValue
-		 */
-		public synchronized void setFullValue(final int fullValue) {
-			checkValueLimits(fullValue, configValueLength);
-
-			if (configValue != fullValue) {
-				log.fine("binary full value of " + this.toString() + " changed from " + configValue + " to " + fullValue
-					+ ", notifying observers");
-				setChanged();
-			}
-
-			configValue = fullValue; // TODO set individual fields from full value without calling back here!
-			// Also update the various components of the full config value on preference load.
-			comparatorSelfOscillationEnable = ((configValue >>> comparatorSelfOscillationEnablePosition) == 1) ? (true) : (false);
-			delayCapConfigADM = (configValue >>> delayCapConfigADMPosition) & ((1 << delayCapConfigADMLength) - 1);
-			resetCapConfigADM = (configValue >>> resetCapConfigADMPosition) & ((1 << resetCapConfigADMLength) - 1);
-			lnaGainConfig = (configValue >>> lnaGainConfigPosition) & ((1 << lnaGainConfigLength) - 1);
-			attenuatorConfig = (configValue >>> attenuatorConfigPosition) & ((1 << attenuatorConfigLength) - 1);
-			qTuning = (configValue >>> qTuningPosition) & ((1 << qTuningLength) - 1);
-
-			notifyObservers();
-		}
-
-		private void setFullValueComponents(final boolean compSelfOsc, final int delayADM, final int resetADM, final int lnaGain,
-			final int attenuator, final int qTuning) {
-			int value = 0;
-
-			value |= (compSelfOsc) ? (1 << comparatorSelfOscillationEnablePosition) : (0);
-			value |= (delayADM << delayCapConfigADMPosition);
-			value |= (resetADM << resetCapConfigADMPosition);
-			value |= (lnaGain << lnaGainConfigPosition);
-			value |= (attenuator << attenuatorConfigPosition);
-			value |= (qTuning << qTuningPosition);
-
-			setFullValue(value);
-		}
-
-		private void checkValueLimits(final int value, final int maxLength) {
-			if ((value < 0) || (value >= (1 << maxLength))) {
-				throw new IllegalArgumentException("Attempted to store value=" + value
-					+ ", which is larger than the maximum permitted value of " + ((1 << maxLength) - 1) + " or is negative, in " + this);
-			}
-		}
-
-		public int computeBinaryRepresentation() {
-			return getFullValue();
-		}
-
-		@Override
-		public void preferenceChange(final PreferenceChangeEvent e) {
-			if (e.getKey().equals(getPreferencesKey())) {
-				final int newVal = Integer.parseInt(e.getNewValue());
-				setFullValue(newVal);
-			}
-		}
-
-		@Override
-		public String getPreferencesKey() {
-			return bgen.getChip().getClass().getSimpleName() + "." + getName();
-		}
-
-		@Override
-		public void loadPreference() {
-			setFullValue(getPrefs().getInt(getPreferencesKey(), 0));
-
-		}
-
-		@Override
-		public void storePreference() {
-			getPrefs().putInt(getPreferencesKey(), getFullValue());
-		}
-
-		/**
-		 * @return the controlPanel
-		 */
-		public CochleaTow4EarControlPanel.CochleaChannelControlPanel getControlPanel() {
-			return controlPanel;
-		}
-
-		/**
-		 * @param controlPanel
-		 *            the controlPanel to set
-		 */
-		public void setControlPanel(final CochleaTow4EarControlPanel.CochleaChannelControlPanel controlPanel) {
-			this.controlPanel = controlPanel;
 		}
 	}
 }

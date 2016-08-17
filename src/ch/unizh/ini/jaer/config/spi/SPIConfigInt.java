@@ -9,7 +9,6 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseWheelEvent;
-import java.util.Map;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Logger;
@@ -83,11 +82,6 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 	}
 
 	@Override
-	public String getPreferencesKey() {
-		return biasgen.getChip().getClass().getSimpleName() + "." + getName();
-	}
-
-	@Override
 	public void loadPreference() {
 		set(sprefs.getInt(getPreferencesKey(), defaultValue));
 	}
@@ -107,7 +101,7 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 	private static final Dimension maxDimensions = new Dimension(SPIConfigInt.TF_MAX_WIDTH, SPIConfigInt.TF_MAX_HEIGHT);
 
 	@Override
-	public JComponent makeGUIControl(final Map<SPIConfigValue, JComponent> configValueMap, final Biasgen biasgen) {
+	public JComponent makeGUIControl() {
 
 		final JPanel pan = new JPanel();
 		pan.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -126,23 +120,20 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 		tf.addKeyListener(new SPIConfigIntKeyAction(this));
 		tf.addMouseWheelListener(new SPIConfigIntMouseWheelAction(this));
 		pan.add(tf);
-
-		configValueMap.put(this, tf);
+		setControl(tf);
 		addObserver(biasgen);
 		addObserver(new Observer() {
 			@Override
 			public void update(Observable o, Object arg) {
-				((SPIConfigInt) o).updateControl(configValueMap);
-
+				((SPIConfigInt) o).updateControl();
 			}
 		});
 		return pan;
 	}
 
-	@Override
-	public void updateControl(final Map<SPIConfigValue, JComponent> configValueMap) {
-		if (configValueMap.containsKey(this)) {
-			((JTextField) configValueMap.get(this)).setText(Integer.toString(value));
+	public void updateControl() {
+		if (control != null) {
+			((JTextField) control).setText(Integer.toString(value));
 		}
 	}
 

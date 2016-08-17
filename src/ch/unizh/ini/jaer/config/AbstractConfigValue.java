@@ -6,6 +6,7 @@ package ch.unizh.ini.jaer.config;
 
 import java.util.Observable;
 import java.util.prefs.PreferenceChangeListener;
+import javax.swing.JComponent;
 
 import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.AEChip;
@@ -14,12 +15,23 @@ public abstract class AbstractConfigValue extends Observable implements Preferen
 
 	private final String configName, toolTip, prefKey;
 	protected final AEChip chip;
+	protected JComponent control = null;
 
 	public AbstractConfigValue(final String configName, final String toolTip, final AEChip chip) {
 		this.configName = configName;
 		this.toolTip = toolTip;
-		prefKey = getClass().getSimpleName() + "." + configName;
+		prefKey = chip.getClass().getSimpleName() + "." + configName;
 		this.chip = chip;
+	}
+
+	public abstract void updateControl();
+
+	protected void setControl(JComponent control) {
+		this.control = control;
+	}
+
+	public JComponent getControl() {
+		return control;
 	}
 
 	public String getName() {

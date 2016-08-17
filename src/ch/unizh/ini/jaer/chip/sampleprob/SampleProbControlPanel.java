@@ -43,8 +43,6 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 	private final SampleProb chip;
 	private final SampleProb.Biasgen biasgen;
 
-	private final Map<SPIConfigValue, JComponent> configValueMap = new HashMap<>();
-
 	public SampleProbControlPanel(final SampleProb chip) {
 		this.chip = chip;
 		biasgen = (SampleProb.Biasgen) chip.getBiasgen();
@@ -58,22 +56,22 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 			}
 		});
 
-		onchipBiasgenPanel.add(biasgen.biasForceEnable.makeGUIControl(configValueMap, biasgen));
+		onchipBiasgenPanel.add(biasgen.biasForceEnable.makeGUIControl());
 
 		biasgen.setPotArray(biasgen.ipots);
 		onchipBiasgenPanel.add(new BiasgenPanel(getBiasgen()));
 
 		onchipBiasgenPanel.add(Box.createVerticalGlue()); // push up to prevent expansion of PotPanel
 
-		offchipDACPanel.add(biasgen.dacRun.makeGUIControl(configValueMap, biasgen));
-		offchipDACPanel.add(biasgen.dacRandomRun.makeGUIControl(configValueMap, biasgen));
-		offchipDACPanel.add(biasgen.dacRandomUSBRun.makeGUIControl(configValueMap, biasgen));
+		offchipDACPanel.add(biasgen.dacRun.makeGUIControl());
+		offchipDACPanel.add(biasgen.dacRandomRun.makeGUIControl());
+		offchipDACPanel.add(biasgen.dacRandomUSBRun.makeGUIControl());
 
 		biasgen.setPotArray(biasgen.vpots);
 		offchipDACPanel.add(new BiasgenPanel(getBiasgen()));
 
-		SPIConfigValue.addGUIControls(aerPanel, biasgen.aerControl, configValueMap, biasgen);
-		SPIConfigValue.addGUIControls(chipDiagPanel, biasgen.chipControl, configValueMap, biasgen);
+		SPIConfigValue.addGUIControls(aerPanel, biasgen.aerControl);
+		SPIConfigValue.addGUIControls(chipDiagPanel, biasgen.chipControl);
 
 		inputDataLoadButton();
 
@@ -129,7 +127,7 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 		try {
 			// Ensure GUI is up-to-date.
 			if (observable instanceof SPIConfigValue) {
-				((SPIConfigValue) observable).updateControl(configValueMap);
+				((SPIConfigValue) observable).updateControl();
 			}
 			else {
 				log.warning("unknown observable " + observable + " , not sending anything");

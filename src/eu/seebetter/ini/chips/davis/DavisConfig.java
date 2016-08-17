@@ -11,23 +11,19 @@ import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeSupport;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 
 import javax.swing.BoxLayout;
-import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JRadioButton;
 import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
 
 import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
+import ch.unizh.ini.jaer.config.AbstractConfigValue;
 import ch.unizh.ini.jaer.config.spi.SPIConfigBit;
 import ch.unizh.ini.jaer.config.spi.SPIConfigInt;
 import ch.unizh.ini.jaer.config.spi.SPIConfigValue;
@@ -59,8 +55,6 @@ import net.sf.jaer.util.PropertyTooltipSupport;
 public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface, DavisTweaks, ChipControlPanel {
 	// All preferences, excluding biases.
 	protected final List<SPIConfigValue> allPreferencesList = new ArrayList<>();
-
-	private final Map<SPIConfigValue, JComponent> configValueMap = new HashMap<>();
 
 	// Preferences by category.
 	protected final List<SPIConfigValue> muxControl = new ArrayList<>();
@@ -455,19 +449,19 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		final JPanel muxPanel = new JPanel();
 		muxPanel.setLayout(new BoxLayout(muxPanel, BoxLayout.Y_AXIS));
 		configTabbedPane.addTab("Multiplexer Config", muxPanel);
-		SPIConfigValue.addGUIControls(muxPanel, muxControl, configValueMap, this);
+		SPIConfigValue.addGUIControls(muxPanel, muxControl);
 
 		// DVS
 		final JPanel dvsPanel = new JPanel();
 		dvsPanel.setLayout(new BoxLayout(dvsPanel, BoxLayout.Y_AXIS));
 		configTabbedPane.addTab("DVS Config", dvsPanel);
-		SPIConfigValue.addGUIControls(dvsPanel, dvsControl, configValueMap, this);
+		SPIConfigValue.addGUIControls(dvsPanel, dvsControl);
 
 		// APS
 		final JPanel apsPanel = new JPanel();
 		apsPanel.setLayout(new BoxLayout(apsPanel, BoxLayout.Y_AXIS));
 		configTabbedPane.addTab("APS Config", apsPanel);
-		SPIConfigValue.addGUIControls(apsPanel, apsControl, configValueMap, this);
+		SPIConfigValue.addGUIControls(apsPanel, apsControl);
 
 		// IMU
 		final JPanel imuControlPanel = new JPanel();
@@ -480,13 +474,13 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		final JPanel extPanel = new JPanel();
 		extPanel.setLayout(new BoxLayout(extPanel, BoxLayout.Y_AXIS));
 		configTabbedPane.addTab("External Input Config", extPanel);
-		SPIConfigValue.addGUIControls(extPanel, extInControl, configValueMap, this);
+		SPIConfigValue.addGUIControls(extPanel, extInControl);
 
 		// Chip config
 		final JPanel chipPanel = new JPanel();
 		chipPanel.setLayout(new BoxLayout(chipPanel, BoxLayout.Y_AXIS));
 		configTabbedPane.addTab("Chip Config", chipPanel);
-		SPIConfigValue.addGUIControls(chipPanel, chipControl, configValueMap, this);
+		SPIConfigValue.addGUIControls(chipPanel, chipControl);
 
 		// Autoexposure
 		if (getChip() instanceof DavisBaseCamera) {
@@ -860,15 +854,10 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 
 					fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getAddress(), iPot.computeBinaryRepresentation());
 				}
-				else if (observable instanceof SPIConfigBit) {
-					final SPIConfigBit cfgBit = (SPIConfigBit) observable;
+				else if (observable instanceof SPIConfigValue) {
+					final SPIConfigValue cfgVal = (SPIConfigValue) observable;
 
-					fx3HwIntf.spiConfigSend(cfgBit.getModuleAddr(), cfgBit.getParamAddr(), (cfgBit.isSet()) ? (1) : (0));
-				}
-				else if (observable instanceof SPIConfigInt) {
-					final SPIConfigInt cfgInt = (SPIConfigInt) observable;
-
-					fx3HwIntf.spiConfigSend(cfgInt.getModuleAddr(), cfgInt.getParamAddr(), cfgInt.get());
+					fx3HwIntf.spiConfigSend(cfgVal.getModuleAddr(), cfgVal.getParamAddr(), cfgVal.get());
 				}
 			}
 			catch (final HardwareInterfaceException e) {
@@ -877,21 +866,11 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		}
 
 		// Always update GUI components, even if no HW present.
-		if (observable instanceof SPIConfigBit) {
-			final SPIConfigBit cfgBit = (SPIConfigBit) observable;
-
-			// Ensure GUI is up-to-date.
-			if (configValueMap.containsKey(cfgBit)) {
-				((JRadioButton) configValueMap.get(cfgBit)).setSelected(cfgBit.isSet());
-			}
+		if (observable instanceof AbstractConfigValue) {
+			((AbstractConfigValue) observable).updateControl();
 		}
-		else if (observable instanceof SPIConfigInt) {
-			final SPIConfigInt cfgInt = (SPIConfigInt) observable;
-
-			// Ensure GUI is up-to-date.
-			if (configValueMap.containsKey(cfgInt)) {
-				((JTextField) configValueMap.get(cfgInt)).setText(Integer.toString(cfgInt.get()));
-			}
+		else {
+			log.warning("unknown observable " + observable + " , not sending anything");
 		}
 	}
 
