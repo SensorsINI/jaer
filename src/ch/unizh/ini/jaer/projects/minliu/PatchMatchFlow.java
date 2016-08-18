@@ -185,7 +185,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 //            vy = sadResult.dy * 5;
 //            v = (float) Math.sqrt(vx * vx + vy * vy);
 
-            if(removeCameraMotion) {
+            if(!removeCameraMotion) {
                 showTransformRectangle = true;
                 int nx = e.x - 120, ny = e.y - 90;
                 e.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + 120);
@@ -206,7 +206,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             // compute flow
             maybeRotateSlices();
             accumulateEvent();
-            
+            SADResult sadResult = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
+            vx = sadResult.dx * 5;
+            vy = sadResult.dy * 5;
+            v = (float) Math.sqrt(vx * vx + vy * vy);
 //            long[] testByteArray1 = tMinus1Sli.toLongArray();
 //            long[] testByteArray2 = tMinus2Sli.toLongArray();
 //            tMinus1Sli.andNot(tMinus2Sli);
@@ -227,7 +230,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 continue;
             }
 
-            // writeOutputEvent();
+            writeOutputEvent();
             if (measureAccuracy) {
                 motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);
             }
@@ -286,62 +289,62 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         rewindFlg = true;
     }
 
-    @Override
-    public void annotate(GLAutoDrawable drawable) {
-        GL2 gl = null;
-        if (showTransformRectangle) {
-            gl = drawable.getGL().getGL2();
-        }
-
-        if (gl == null) {
-            return;
-        }
-        // draw transform
-        gl.glPushMatrix();
-        
-        // Use this blur rectangle to indicate where is the zero point position.
-        gl.glColor4f(.1f, .1f, 1f, .25f);
-        gl.glRectf(0, 0, 10, 10);
-        
-        gl.glLineWidth(1f);
-        gl.glColor3f(1, 0, 0);
-        
-        if(chip != null) {
-            sx2 = chip.getSizeX() / 2;
-            sy2 = chip.getSizeY() / 2;
-        } else {
-            sx2 = 0;
-            sy2 = 0;
-        }
-        // translate and rotate
-        if(lastTransform != null) {
-            gl.glTranslatef(lastTransform.translationPixels.x + sx2, lastTransform.translationPixels.y + sy2, 0);
-            gl.glRotatef((float) ((lastTransform.rotationRad * 180) / Math.PI), 0, 0, 1);            
-            
-            // draw xhairs on frame to help show locations of objects and if they have moved.
-           gl.glBegin(GL.GL_LINES); // sequence of individual segments, in pairs of vertices
-           gl.glVertex2f(0, 0);  // start at origin
-           gl.glVertex2f(sx2, 0);  // outputPacket to right
-           gl.glVertex2f(0, 0);  // origin
-           gl.glVertex2f(-sx2, 0); // outputPacket to left
-           gl.glVertex2f(0, 0);  // origin
-           gl.glVertex2f(0, sy2); // up
-           gl.glVertex2f(0, 0);  // origin
-           gl.glVertex2f(0, -sy2); // down
-           gl.glEnd();
-
-           // rectangle around transform
-           gl.glTranslatef(-sx2, -sy2, 0); // lower left corner
-           gl.glBegin(GL.GL_LINE_LOOP); // loop of vertices
-           gl.glVertex2f(0, 0); // lower left corner
-           gl.glVertex2f(sx2 * 2, 0); // lower right
-           gl.glVertex2f(2 * sx2, 2 * sy2); // upper right
-           gl.glVertex2f(0, 2 * sy2); // upper left
-           gl.glVertex2f(0, 0); // back of lower left
-           gl.glEnd();
-           gl.glPopMatrix();
-        }      
-    }
+//    @Override
+//    public void annotate(GLAutoDrawable drawable) {
+//        GL2 gl = null;
+//        if (showTransformRectangle) {
+//            gl = drawable.getGL().getGL2();
+//        }
+//
+//        if (gl == null) {
+//            return;
+//        }
+//        // draw transform
+//        gl.glPushMatrix();
+//        
+//        // Use this blur rectangle to indicate where is the zero point position.
+//        gl.glColor4f(.1f, .1f, 1f, .25f);
+//        gl.glRectf(0, 0, 10, 10);
+//        
+//        gl.glLineWidth(1f);
+//        gl.glColor3f(1, 0, 0);
+//        
+//        if(chip != null) {
+//            sx2 = chip.getSizeX() / 2;
+//            sy2 = chip.getSizeY() / 2;
+//        } else {
+//            sx2 = 0;
+//            sy2 = 0;
+//        }
+//        // translate and rotate
+//        if(lastTransform != null) {
+//            gl.glTranslatef(lastTransform.translationPixels.x + sx2, lastTransform.translationPixels.y + sy2, 0);
+//            gl.glRotatef((float) ((lastTransform.rotationRad * 180) / Math.PI), 0, 0, 1);            
+//            
+//            // draw xhairs on frame to help show locations of objects and if they have moved.
+//           gl.glBegin(GL.GL_LINES); // sequence of individual segments, in pairs of vertices
+//           gl.glVertex2f(0, 0);  // start at origin
+//           gl.glVertex2f(sx2, 0);  // outputPacket to right
+//           gl.glVertex2f(0, 0);  // origin
+//           gl.glVertex2f(-sx2, 0); // outputPacket to left
+//           gl.glVertex2f(0, 0);  // origin
+//           gl.glVertex2f(0, sy2); // up
+//           gl.glVertex2f(0, 0);  // origin
+//           gl.glVertex2f(0, -sy2); // down
+//           gl.glEnd();
+//
+//           // rectangle around transform
+//           gl.glTranslatef(-sx2, -sy2, 0); // lower left corner
+//           gl.glBegin(GL.GL_LINE_LOOP); // loop of vertices
+//           gl.glVertex2f(0, 0); // lower left corner
+//           gl.glVertex2f(sx2 * 2, 0); // lower right
+//           gl.glVertex2f(2 * sx2, 2 * sy2); // upper right
+//           gl.glVertex2f(0, 2 * sy2); // upper left
+//           gl.glVertex2f(0, 0); // back of lower left
+//           gl.glEnd();
+//           gl.glPopMatrix();
+//        }      
+//    }
     
     @Override
     public void update(Observable o, Object arg) {
@@ -545,6 +548,62 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 //        rollOffset = rollRate;
     }
 
+    /**
+     * Computes hamming eight around point x,y using patchDimension and
+     * searchDistance
+     *
+     * @param x coordinate in subsampled space
+     * @param y
+     * @param prevSlice
+     * @param curSlice
+     * @return SADResult that provides the shift and SAD value
+     */
+    private SADResult minHammingDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
+        int minSum = Integer.MAX_VALUE, sum = 0;
+        SADResult sadResult = new SADResult(0, 0, 0);
+        for (int dx = -searchDistance; dx < searchDistance; dx++) {
+            for (int dy = -searchDistance; dy < searchDistance; dy++) {                
+                sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
+                if(sum < minSum) {
+                    minSum = sum;
+                    sadResult.dx = dx;
+                    sadResult.dy = dy;
+                    sadResult.sadValue = minSum;
+                }
+            }
+        }
+        return sadResult;
+    }
+    
+    /**
+     * computes Hamming distance centered on x,y with patch of patchSize for prevSliceIdx
+     * relative to curSliceIdx patch.
+     *
+     * @param x coordinate in subSampled space
+     * @param y
+     * @param patchSize
+     * @param prevSliceIdx
+     * @param curSliceIdx
+     * @return SAD value
+     */
+    private int hammingDistance(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
+        int retVal = 0;
+        
+        // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
+        if (x < searchDistance - dx || x > subSizeX - searchDistance - dx || x < searchDistance || x > subSizeX - searchDistance
+                || y < searchDistance - dy || y > subSizeY - searchDistance - dy || y < searchDistance || y > subSizeY - searchDistance) {
+            return 0;
+        }
+        
+        for (int xx = x - searchDistance; xx < x + searchDistance; xx++) {
+            for (int yy = y - searchDistance; yy < y + searchDistance; yy++) {
+                if(curSlice.get((xx + 1 + dx) + (yy + dy) * subSizeX) != prevSlice.get((xx + 1) + (yy) * subSizeX)) {
+                    retVal += 1;
+                }   
+            }
+        }
+        return retVal;
+    }
     
     /**
      * Computes min SAD shift around point x,y using patchDimension and
