@@ -55,7 +55,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int[][][] histograms = null;
     private int numSlices = 3;
     private int sx, sy;
-    private int currentSliceIdx = 0, tMinus1SliceIdx = 1, tMinus2SliceIdx = 2;
+    private int tMinus2SliceIdx = 0, tMinus1SliceIdx = 1, currentSliceIdx = 2;
     private int[][] currentSlice = null, tMinus1Slice = null, tMinus2Slice = null;
     private BitSet[] histogramsBitSet = null;
     private BitSet currentSli = null, tMinus1Sli = null, tMinus2Sli = null;
@@ -176,7 +176,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             if (xyFilter()) {
                 continue;
             }
-            countIn++;
+            countIn++;           
 
 //            SADResult sadResult = minSad(x, y, tMinus2Slice, tMinus1Slice);
 //
@@ -276,9 +276,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             histogramsBitSet[ii] = new BitSet(subSizeX*subSizeY);
         }  
         
-        currentSliceIdx = 0;
+        tMinus2SliceIdx = 0;
         tMinus1SliceIdx = 1;
-        tMinus2SliceIdx = 2;
+        currentSliceIdx = 2;
         assignSliceReferences();
                             
         sliceLastTs = 0;
@@ -483,11 +483,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     return;
                 }
         }
+        
+        /* The index cycle is " current idx -> t1 idx -> t2 idx -> current idx".
+           Change the index, the change should like this:
+           next t2 = previous t1 = histogram(previous t2 idx + 1);
+           next t1 = previous current = histogram(previous t1 idx + 1);
+        */
         currentSliceIdx = (currentSliceIdx + 1) % numSlices;
         tMinus1SliceIdx = (tMinus1SliceIdx + 1) % numSlices;
-        tMinus2SliceIdx = (tMinus2SliceIdx + 1) % numSlices;
+        tMinus2SliceIdx = (tMinus2SliceIdx + 1) % numSlices;        
         sliceEventCount = 0;
-        sliceLastTs = ts;
+        sliceLastTs = ts;      
         assignSliceReferences();
     }
 
@@ -498,7 +504,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         
         currentSli = histogramsBitSet[currentSliceIdx];
         tMinus1Sli = histogramsBitSet[tMinus1SliceIdx];
-        tMinus2Sli = histogramsBitSet[tMinus2SliceIdx];    
+        tMinus2Sli = histogramsBitSet[tMinus2SliceIdx];       
+        
+        currentSli.clear();
     }
     /**
      * Accumulates the current event to the current slice
