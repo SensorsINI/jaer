@@ -90,13 +90,8 @@ public class SPIConfigBit extends SPIConfigValue implements ConfigBit {
 		but.setAlignmentX(Component.LEFT_ALIGNMENT);
 		but.addActionListener(new SPIConfigBitAction(this));
 		setControl(but);
-		addObserver(biasgen);
-		addObserver(new Observer() {
-			@Override
-			public void update(Observable o, Object arg) {
-				((SPIConfigBit) o).updateControl();
-			}
-		});
+		addObserver(biasgen);	// This observer is responsible for sending data to hardware
+		addObserver(this);		// This observer is responsible for GUI update. It calls the updateControl() method
 		return but;
 	}
 

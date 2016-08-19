@@ -10,8 +10,6 @@ package ch.unizh.ini.jaer.config;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.Observable;
-import java.util.Observer;
 import java.util.logging.Logger;
 
 import javax.swing.JTabbedPane;
@@ -19,7 +17,7 @@ import javax.swing.JTabbedPane;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.biasgen.Biasgen;
 
-public abstract class AbstractChipControlPanel extends JTabbedPane implements Observer {
+public abstract class AbstractChipControlPanel extends JTabbedPane {
 
 	protected final String panelName;
 	protected final Logger log;
@@ -41,6 +39,8 @@ public abstract class AbstractChipControlPanel extends JTabbedPane implements Ob
 				chip.getPrefs().putInt(prefNameSelectedTab, getSelectedIndex());
 			}
 		});
+		
+		setToolTipText("Select a tab to configure an aspect of the device.");
 	}
 
 	/**
@@ -52,25 +52,5 @@ public abstract class AbstractChipControlPanel extends JTabbedPane implements Ob
 
 	protected Logger getLogger(){
 		return log;
-	}
-
-	/**
-	 * Handles updates to GUI controls from any source, including preference changes
-	 */
-	
-	@Override
-	public synchronized void update(final Observable observable, final Object object) {
-		try {
-			// Ensure GUI is up-to-date.
-			if (observable instanceof AbstractConfigValue) {
-				((AbstractConfigValue) observable).updateControl();
-			}
-			else {
-				log.warning("unknown observable " + observable + " , not sending anything");
-			}
-		}
-		catch (final Exception e) {
-			log.warning(e.toString());
-		}
 	}
 }

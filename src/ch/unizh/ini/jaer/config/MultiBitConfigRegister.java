@@ -34,6 +34,7 @@ public class MultiBitConfigRegister extends AbstractConfigValue implements Confi
 		configWordLength = regLength;
 		//loadPreference();
 		chip.getPrefs().addPreferenceChangeListener(this);
+		addObserver(this);		// Self observer for the GUI update
 	}
 
 	/**

@@ -17,11 +17,9 @@ public class CochleaLPChannelCP extends AbstractMultiBitRegisterCP {
 	 *
 	 * @param chan,
 	 *     the channel, or null to control all channels
-	 * @param observingPanel
-	 *     the panel which has the observer for the MultiBitRegister
 	 */
-	public CochleaLPChannelCP(final CochleaLPChannelConfig chan, final AbstractChipControlPanel observingPanel) {
-		super((MultiBitConfigRegister) chan, observingPanel, new AbstractMultiBitRegisterCP.ActionsCollection(CochleaLPChannelConfig.getFieldsLengths()));
+	public CochleaLPChannelCP(final CochleaLPChannelConfig chan) {
+		super((MultiBitConfigRegister) chan, new AbstractMultiBitRegisterCP.ActionsCollection(CochleaLPChannelConfig.getFieldsLengths()));
 
 		label.setText(reg.getName());
 		label.setToolTipText("<html>" + reg.toString() + "<br>" + reg.getDescription() + "<br>Enter value or use mouse wheel or arrow keys to change value.");

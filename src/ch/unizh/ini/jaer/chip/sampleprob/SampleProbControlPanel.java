@@ -10,16 +10,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Observable;
-import java.util.Observer;
 import java.util.logging.Logger;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -33,7 +28,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3.SPIConfigSequence;
 
-public final class SampleProbControlPanel extends JTabbedPane implements Observer {
+public final class SampleProbControlPanel extends JTabbedPane {
 //public final class SampleProbControlPanel extends JTabbedPane {
 
 	private static final long serialVersionUID = -7435419921722582550L;
@@ -117,27 +112,6 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 		return biasgen;
 	}
 
-	/**
-	 * Handles updates to GUI controls from any source, including preference
-	 * changes
-	 */
-/**/
-	@Override
-	public synchronized void update(final Observable observable, final Object object) {
-		try {
-			// Ensure GUI is up-to-date.
-			if (observable instanceof SPIConfigValue) {
-				((SPIConfigValue) observable).updateControl();
-			}
-			else {
-				log.warning("unknown observable " + observable + " , not sending anything");
-			}
-		}
-		catch (final Exception e) {
-			log.warning(e.toString());
-		}
-	}
-/**/
 	private void inputDataLoad(final String inputDataFile) {
 		if (chip.getHardwareInterface() != null) {
 			final CypressFX3 fx3HwIntf = (CypressFX3) chip.getHardwareInterface();

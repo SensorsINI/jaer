@@ -1,8 +1,8 @@
 package ch.unizh.ini.jaer.chip.cochlea;
 
-import java.awt.Component;
+import static java.awt.Component.TOP_ALIGNMENT;
+import static java.awt.Component.LEFT_ALIGNMENT;
 import java.awt.Dimension;
-import java.util.Observer;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -12,8 +12,8 @@ import javax.swing.JTabbedPane;
 import ch.unizh.ini.jaer.chip.cochlea.gui.CochleaTow4EarChannelCP;
 import ch.unizh.ini.jaer.config.AbstractChipControlPanel;
 import ch.unizh.ini.jaer.config.spi.SPIConfigValue;
-import static java.awt.Component.TOP_ALIGNMENT;
 import java.util.List;
+import javax.swing.border.EtchedBorder;
 import javax.swing.border.TitledBorder;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.biasgen.BiasgenPanel;
@@ -32,12 +32,11 @@ public final class CochleaTow4EarControlPanel extends AbstractChipControlPanel {
 
 	public CochleaTow4EarControlPanel(final CochleaTow4Ear chip) {
 		super((Chip) chip);
-		setToolTipText("Select a tab to configure an aspect of the device.");
 
 		// Biasgen panel
 		JPanel onchipBiasgenPanel = new JPanel();
 		onchipBiasgenPanel.setLayout(new BoxLayout(onchipBiasgenPanel, BoxLayout.Y_AXIS));
-		onchipBiasgenPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+		onchipBiasgenPanel.setAlignmentX(LEFT_ALIGNMENT);
 		addTab("On-chip biases (biasgen)", (onchipBiasgenPanel));
 
 		onchipBiasgenPanel.add(getBiasgen().biasForceEnable.makeGUIControl());
@@ -85,7 +84,7 @@ public final class CochleaTow4EarControlPanel extends AbstractChipControlPanel {
 		
 		// Chip Control
 		JPanel chipControlPanel = new JPanel();
-		chipControlPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+		chipControlPanel.setAlignmentX(LEFT_ALIGNMENT);
 		chipControlPanel.setLayout(new BoxLayout(chipControlPanel, BoxLayout.Y_AXIS));
 		addTab("Chip Diag Config", (chipControlPanel));
 		SPIConfigValue.addGUIControls(chipControlPanel, getBiasgen().chipControl);
@@ -118,20 +117,22 @@ public final class CochleaTow4EarControlPanel extends AbstractChipControlPanel {
 		// Global control for all channels
 		CochleaTow4EarChannelGroupConfig globalChanControl = new CochleaTow4EarChannelGroupConfig("Global", 
 			"Global control for all " + title + " cochlea channels", channels, (AEChip)chip);
-		final CochleaTow4EarChannelCP gPan = new CochleaTow4EarChannelCP((CochleaTow4EarChannelConfig)globalChanControl, this);
+		final CochleaTow4EarChannelCP gPan = new CochleaTow4EarChannelCP((CochleaTow4EarChannelConfig)globalChanControl);
+		gPan.setAlignmentX(LEFT_ALIGNMENT);
+		gPan.setAlignmentY(TOP_ALIGNMENT);
 		channelGroupPanel.add(gPan);
-
-
+		
 		// A panel for a channel group
 		JPanel channelsPanel = new JPanel();
 		channelsPanel.setLayout(new BoxLayout(channelsPanel, BoxLayout.X_AXIS));
-		channelsPanel.setAlignmentY(0); // puts panel at top
+		channelsPanel.setAlignmentX(LEFT_ALIGNMENT);	// Should have the same alignment as the gPan
+		channelsPanel.setAlignmentY(TOP_ALIGNMENT);
 		channelGroupPanel.add(channelsPanel);
 
 		// A panel for a column of channels
 		JPanel colPan = new JPanel();
 		colPan.setLayout(new BoxLayout(colPan, BoxLayout.Y_AXIS));
-		colPan.setAlignmentY(0); // puts panel at top
+		colPan.setAlignmentY(TOP_ALIGNMENT);
 		channelsPanel.add(colPan);
 
 		int chanCount = 0;
@@ -142,7 +143,7 @@ public final class CochleaTow4EarControlPanel extends AbstractChipControlPanel {
 
 			// TODO add undo/redo support for channels
 
-			final CochleaTow4EarChannelCP cPan = new CochleaTow4EarChannelCP((CochleaTow4EarChannelConfig)chan, this);
+			final CochleaTow4EarChannelCP cPan = new CochleaTow4EarChannelCP((CochleaTow4EarChannelConfig)chan);
 			colPan.add(cPan);
 			chanCount++;
 			if ((chanCount % CHAN_PER_COL) == 0) {
@@ -150,7 +151,7 @@ public final class CochleaTow4EarControlPanel extends AbstractChipControlPanel {
 				if (chanCount < channels.size()) {
 					colPan = new JPanel();
 					colPan.setLayout(new BoxLayout(colPan, BoxLayout.Y_AXIS));
-					colPan.setAlignmentY(0);
+					colPan.setAlignmentY(TOP_ALIGNMENT);
 				}
 			}
 		}

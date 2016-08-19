@@ -204,6 +204,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 
 	public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements net.sf.jaer.biasgen.ChipControlPanel {
 
+		private CypressFX3.SPIConfigSequence configSequence;
 		// All preferences, excluding biases.
 		private final List<AbstractConfigValue> allPreferencesList = new ArrayList<>();
 		
@@ -531,6 +532,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 		public void setHardwareInterface(final BiasgenHardwareInterface hw) {
 			hardwareInterface = hw;
 			if (hardwareInterface != null) {
+				configSequence = ((CypressFX3) hardwareInterface).new SPIConfigSequence();
 				try {
 					sendConfiguration();
 				}
@@ -570,7 +572,6 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 					}
 					else if (observable instanceof VPot) {
 						final VPot vPot = (VPot) observable;
-						final CypressFX3.SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
 
 						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, vPot.getDacNumber()); // Select DAC.
 						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 2, 0x03); // Select input data register.
@@ -628,12 +629,17 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 					else if (observable instanceof CochleaChannelConfig) {
 						final CochleaChannelConfig chan = (CochleaChannelConfig) observable;
 
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 160, chan.getChannelAddress());
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 162, chan.computeBinaryRepresentation());
+						configSequence.addConfig(CypressFX3.FPGA_CHIPBIAS, (short) 160, chan.getChannelAddress());
+						configSequence.addConfig(CypressFX3.FPGA_CHIPBIAS, (short) 162, chan.computeBinaryRepresentation());
 
 						// Toggle SET flag.
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 163, 1);
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 163, 0);
+						configSequence.addConfig(CypressFX3.FPGA_CHIPBIAS, (short) 163, 1);
+						configSequence.addConfig(CypressFX3.FPGA_CHIPBIAS, (short) 163, 0);
+
+						// Commit configuration.
+						configSequence.sendConfigSequence();
+						
+						//log.info(chan.getName() + " is configured with the value " + chan.getFullValue());
 
 						// Wait 2ms to ensure operation is completed.
 						try {

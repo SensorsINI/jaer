@@ -17,11 +17,9 @@ public class CochleaTow4EarChannelCP extends AbstractMultiBitRegisterCP {
 	 *
 	 * @param chan,
 	 *     the channel, or null to control all channels
-	 * @param observingPanel
-	 *     the panel which has the observer for the MultiBitRegister
 	 */
-	public CochleaTow4EarChannelCP(final CochleaTow4EarChannelConfig chan, final AbstractChipControlPanel observingPanel) {
-		super((MultiBitConfigRegister) chan, observingPanel, new AbstractMultiBitRegisterCP.ActionsCollection(CochleaTow4EarChannelConfig.getFieldsLengths()));
+	public CochleaTow4EarChannelCP(final CochleaTow4EarChannelConfig chan) {
+		super((MultiBitConfigRegister) chan, new AbstractMultiBitRegisterCP.ActionsCollection(CochleaTow4EarChannelConfig.getFieldsLengths()));
 
 		label.setText(reg.getName());
 		label.setToolTipText("<html>" + reg.toString() + "<br>" + reg.getDescription() + "<br>Enter value or use mouse wheel or arrow keys to change value.");

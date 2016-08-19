@@ -2,12 +2,14 @@ package ch.unizh.ini.jaer.config.spi;
 
 import ch.unizh.ini.jaer.config.AbstractConfigValue;
 import java.util.List;
+import java.util.logging.Logger;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import net.sf.jaer.chip.AEChip;
 
 public abstract class SPIConfigValue extends AbstractConfigValue {
 
+	protected static final Logger log = Logger.getLogger("SPIConfigValue");
 	private final short moduleAddr, paramAddr;
 	private final int numBits;
 

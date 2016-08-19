@@ -14,10 +14,11 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
-import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseWheelListener;
 import java.util.Hashtable;
+import java.util.logging.Logger;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -42,6 +43,7 @@ public abstract class AbstractMultiBitRegisterCP extends JPanel implements State
 	private static final Dimension tfMinimumSize = new Dimension(TF_MIN_W, TF_HEIGHT);
 	private static final Dimension tfPreferredSize = new Dimension(TF_PREF_W, TF_HEIGHT);
 	private static final Dimension tfMaxSize = new Dimension(TF_MAX_W, TF_MAX_HEIGHT);
+	private static final Logger log = Logger.getLogger("MultiBitRegisterCP");
 
 	private final JComponent[] controls;
 	protected final MultiBitConfigRegister reg;
@@ -49,36 +51,30 @@ public abstract class AbstractMultiBitRegisterCP extends JPanel implements State
 	private StateEdit edit = null;
 	private final UndoableEditSupport editSupport = new UndoableEditSupport();
 	private boolean addedUndoListener = false;
-	private final AbstractChipControlPanel observingPanel;
-
 	/**
 	 * Construct control for one channel
 	 *
 	 * @param reg,
 	 *     the multi-bit config register
-	 * @param observingPanel
-	 *     the panel which has the observer for the MultiBitRegister
 	 * @param actionsCollection
 	 *     Collection of Arrays of action listeners for MultiBitConfigRegister components
 	 */
 	
-	public AbstractMultiBitRegisterCP(final MultiBitConfigRegister reg, final AbstractChipControlPanel observingPanel, final ActionsCollection actionsCollection) {
+	public AbstractMultiBitRegisterCP(final MultiBitConfigRegister reg, final ActionsCollection actionsCollection) {
 
 		if (reg == null) throw new IllegalArgumentException("Attempted to create a control panel for a non-existent register.");
 		if (actionsCollection == null) throw new IllegalArgumentException("Attempted to create a control panel with not defined action listeners.");
 		final int nFields = reg.fieldsNumber();
-		boolean parametersMatch = (nFields == actionsCollection.SIMPLE_ACTIONS.length);
+		boolean parametersMatch = (nFields == actionsCollection.ACTIONS.length);
 		
 		for (int i = 0; parametersMatch && (i < nFields); ++i) {
-			parametersMatch = (actionsCollection.SIMPLE_ACTIONS[i] instanceof SingleBitAction) && (reg.fieldConfig(i).length == 1);
-			parametersMatch |= (actionsCollection.SIMPLE_ACTIONS[i] instanceof MultiBitAction) && (reg.fieldConfig(i).length > 1);
+			parametersMatch = (actionsCollection.ACTIONS[i] instanceof SingleBitAction) && (reg.fieldConfig(i).length == 1);
+			parametersMatch |= (actionsCollection.ACTIONS[i] instanceof MultiBitActions) && (reg.fieldConfig(i).length > 1);
 		}
 		if (!parametersMatch) throw new IllegalArgumentException("Configurations of the register (" + reg + ") and the actions listeners (" 
 			+ actionsCollection + ") do not match.");
 		
 		this.reg = reg;
-		this.observingPanel = observingPanel;
-
 		controls = new JComponent[nFields];
 
 		setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
@@ -92,7 +88,7 @@ public abstract class AbstractMultiBitRegisterCP extends JPanel implements State
 				but.setToolTipText(reg.fieldConfig(i).getToolTip());
 				but.setSelected(reg.getPartialValue(i) != 0);
 				but.setAlignmentX(LEFT_ALIGNMENT);
-				but.addActionListener(actionsCollection.SIMPLE_ACTIONS[i]);
+				but.addActionListener(actionsCollection.ACTIONS[i]);
 				controls[i] = but;
 				add(but);
 			} else {
@@ -103,17 +99,16 @@ public abstract class AbstractMultiBitRegisterCP extends JPanel implements State
 				tf.setMinimumSize(tfMinimumSize);
 				tf.setPreferredSize(tfPreferredSize);
 				tf.setMaximumSize(tfMaxSize);
-				tf.addActionListener(actionsCollection.SIMPLE_ACTIONS[i]);
-				tf.addFocusListener(actionsCollection.FOCUS_ACTIONS[i]);
-				tf.addKeyListener(actionsCollection.KEY_PRESS_ACTIONS[i]);
-				tf.addMouseWheelListener(actionsCollection.MOUSE_WHEEL_ACTIONS[i]);
+				tf.addActionListener(actionsCollection.ACTIONS[i]);
+				tf.addFocusListener((FocusListener) actionsCollection.ACTIONS[i]);
+				tf.addKeyListener((KeyListener) actionsCollection.ACTIONS[i]);
+				tf.addMouseWheelListener((MouseWheelListener) actionsCollection.ACTIONS[i]);
 				controls[i] = tf;
 				add(tf);
 			}
 		}
 
 		reg.setControlPanel(this);
-		reg.addObserver(observingPanel);
 
 		addAncestorListener(new javax.swing.event.AncestorListener() {
 			@Override
@@ -161,58 +156,28 @@ public abstract class AbstractMultiBitRegisterCP extends JPanel implements State
 		}
 	}
 
-	private static void onEnterDataAction(final JTextField tf, final int componentID) {
-		final AbstractMultiBitRegisterCP embeddingCP = (AbstractMultiBitRegisterCP) tf.getParent();
-		embeddingCP.startEdit();
-		try {
-			embeddingCP.reg.setPartialValue(componentID, Integer.parseInt(tf.getText()));
-			embeddingCP.reg.setFileModified();
-			tf.setBackground(Color.white);
-		}
-		catch (final Exception ex) {
-			tf.selectAll();
-			tf.setBackground(Color.red);
-			embeddingCP.observingPanel.getLogger().warning(ex.toString());
-		}
-		embeddingCP.endEdit();
-	}
-
 	protected static class ActionsCollection {
-		public final SimpleAction[] SIMPLE_ACTIONS;
-		public final FocusAction[] FOCUS_ACTIONS;
-		public final KeyPressAction[] KEY_PRESS_ACTIONS;
-		public final MouseWheelAction[] MOUSE_WHEEL_ACTIONS;
+		public final AbstractAction[] ACTIONS;
 
 		public ActionsCollection(final int[] fieldsLengths) {
 			final int N_FIELDS = fieldsLengths.length;
-
-			SIMPLE_ACTIONS = new SimpleAction[N_FIELDS];
-			FOCUS_ACTIONS = new FocusAction[N_FIELDS];
-			KEY_PRESS_ACTIONS = new KeyPressAction[N_FIELDS];
-			MOUSE_WHEEL_ACTIONS = new MouseWheelAction[N_FIELDS];
+			ACTIONS = new AbstractAction[N_FIELDS];
 
 			for (int i = 0; i < N_FIELDS; ++i) {
-				if (fieldsLengths[i] == 1) {
-					SIMPLE_ACTIONS[i] = new SingleBitAction(i);
-				} else {
-					SIMPLE_ACTIONS[i] = new MultiBitAction(i);
-					FOCUS_ACTIONS[i] = new FocusAction(i);
-					KEY_PRESS_ACTIONS[i] = new KeyPressAction(i);
-					MOUSE_WHEEL_ACTIONS[i] = new MouseWheelAction(i);
-				}
+				ACTIONS[i] = (fieldsLengths[i] == 1) ? new SingleBitAction(i) : new MultiBitActions(i);
 			}
 		}
 	}
 
-	protected static abstract class SimpleAction implements ActionListener {
+	protected static abstract class AbstractAction implements ActionListener {
 		protected final int componentID;
 
-		public SimpleAction(final int component) {
+		public AbstractAction(final int component) {
 			componentID = component;
 		}
 	}
 	
-	protected static class SingleBitAction extends SimpleAction {
+	protected static class SingleBitAction extends AbstractAction {
 
 		public SingleBitAction(final int component) {
 			super(component);
@@ -226,92 +191,38 @@ public abstract class AbstractMultiBitRegisterCP extends JPanel implements State
 		}
 	}
 
-	protected static class MultiBitAction extends SimpleAction {
-
-		public MultiBitAction(final int component) {
-			super(component);
-		}
-
-		@Override
-		public void actionPerformed(final ActionEvent e) {
-			onEnterDataAction((JTextField) e.getSource(), componentID);
-		}
-	}
-
-	protected static class FocusAction implements FocusListener {
-		private final int componentID;
-
-		public FocusAction(final int component) {
-			componentID = component;
-		}
-
-		@Override
-		public void focusGained(final FocusEvent e) {}
-
-		@Override
-		public void focusLost(final FocusEvent e) {
-			onEnterDataAction((JTextField) e.getSource(), componentID);
-		}
-	}
-
-	protected static class KeyPressAction extends KeyAdapter {
-		private final int componentID;
-
-		public KeyPressAction(final int component) {
-			componentID = component;
-		}
-
-		/**
-		 * Invoked when a key has been pressed.
-		 */
-		public void keyPressed(final KeyEvent e) {
-
-			if ((e.getKeyCode() == KeyEvent.VK_UP) || (e.getKeyCode() == KeyEvent.VK_DOWN)) {
-		
-				final JTextField tf = (JTextField) e.getSource();
-				final AbstractMultiBitRegisterCP embeddingCP = (AbstractMultiBitRegisterCP) tf.getParent();
-
-				final int inc = (e.getKeyCode() == KeyEvent.VK_UP) ? 1 : -1;
-				embeddingCP.startEdit();
-				try {
-					embeddingCP.reg.setPartialValue(componentID, embeddingCP.reg.getPartialValue(componentID) + inc);
-					embeddingCP.reg.setFileModified();
-					tf.setBackground(Color.white);
-				}
-				catch (final Exception ex) {
-					embeddingCP.observingPanel.getLogger().warning(ex.toString());
-				}
-				embeddingCP.endEdit();
-			}
-		}
-	}
-
-	protected static class MouseWheelAction implements MouseWheelListener {
-		private final int componentID;
+	protected static class MultiBitActions extends AbstractAction implements FocusListener, KeyListener, MouseWheelListener {
+	
+		private static int clicksSum = 0;
 		private static long lastMouseWheelMovementTime = 0;
 		private final long minDtMsForWheelEditPost = 500;
 
-		public MouseWheelAction(final int component) {
-			componentID = component;
+		public MultiBitActions(final int component) {
+			super(component);
 		}
 
-		@Override
-		public void mouseWheelMoved(final java.awt.event.MouseWheelEvent evt) {
-			final int clicks = evt.getWheelRotation();
-			final JTextField tf = (JTextField) evt.getSource();
+		private void setValueFromGUI(final JTextField tf) {
 			final AbstractMultiBitRegisterCP embeddingCP = (AbstractMultiBitRegisterCP) tf.getParent();
-			// startEdit();
-			final long t = System.currentTimeMillis();
-			if ((t - lastMouseWheelMovementTime) > minDtMsForWheelEditPost) {
+
+			embeddingCP.startEdit();
+			try {
+				embeddingCP.reg.setPartialValue(componentID, Integer.parseInt(tf.getText()));
+				embeddingCP.reg.setFileModified();
+				tf.setBackground(Color.white);
+			}
+			catch (final Exception ex) {
+				tf.selectAll();
+				tf.setBackground(Color.red);
+				log.warning(ex.toString());
+			}
+			finally {
 				embeddingCP.endEdit();
 			}
-			lastMouseWheelMovementTime = t;
+		}
 
-			final int inc = -clicks;
-			if (clicks == 0) {
-				return;
-			}
-			
+		private void incValueAndUpdateGUI(int inc, final JTextField tf) {
+			final AbstractMultiBitRegisterCP embeddingCP = (AbstractMultiBitRegisterCP) tf.getParent();
+
 			embeddingCP.startEdit();
 			try {
 				embeddingCP.reg.setPartialValue(componentID, embeddingCP.reg.getPartialValue(componentID) + inc);
@@ -319,29 +230,65 @@ public abstract class AbstractMultiBitRegisterCP extends JPanel implements State
 				tf.setBackground(Color.white);
 			}
 			catch (final Exception ex) {
-				embeddingCP.observingPanel.getLogger().warning(ex.toString());
+				tf.selectAll();
+				tf.setBackground(Color.red);
+				log.warning(ex.toString());
 			}
 			finally {
 				embeddingCP.endEdit();
 			}
+		}
+		
+		// ActionListener interface
+		@Override
+		public void actionPerformed(final ActionEvent e) {
+			setValueFromGUI((JTextField) e.getSource());
+		}
+
+		// FocusListener interface
+		@Override
+		public void focusGained(final FocusEvent e) {}
+
+		@Override
+		public void focusLost(final FocusEvent e) {
+			setValueFromGUI((JTextField) e.getSource());
+		}
+
+		// KeyListener interface
+		@Override
+		public void keyTyped(KeyEvent e) {}
+
+		@Override
+		public void keyPressed(final KeyEvent e) {
+			final boolean up = (e.getKeyCode() == KeyEvent.VK_UP);
+			final boolean down = (e.getKeyCode() == KeyEvent.VK_DOWN);
+
+			if (up || down) {
+				incValueAndUpdateGUI(up ? 1 : -1, (JTextField) e.getSource());
+			}
+		}
+
+		@Override
+		public void keyReleased(KeyEvent e) {}
+
+		// MouseWheelListener interface
+		@Override
+		public void mouseWheelMoved(final java.awt.event.MouseWheelEvent e) {
+			incValueAndUpdateGUI(-e.getWheelRotation(), (JTextField) e.getSource());
 		}
 	}
 
 	private int oldValue = 0;
 
 	private void startEdit() {
-		if (edit != null) return;
-		if (reg == null) return;
-
-		edit = new MyStateEdit(this, "pot change");
-		oldValue = reg.getFullValue();
+		if (edit == null) {
+			edit = new MyStateEdit(this, "pot change");
+			oldValue = reg.getFullValue();
+		}
 	}
 
 	private void endEdit() {
-		if (reg == null) return;
-		if (oldValue == reg.getFullValue()) return;
-
-		if (edit != null) {
+		if ((reg.getFullValue() != oldValue) && (edit != null)) {
 			edit.end();
 			editSupport.postEdit(edit);
 			edit = null;
@@ -353,10 +300,9 @@ public abstract class AbstractMultiBitRegisterCP extends JPanel implements State
 	@Override
 	public void storeState(final Hashtable<Object, Object> hashtable) {
 		// System.out.println(" storeState "+pot);
-		if (reg == null) {
-			return;
+		if (reg != null) {
+			hashtable.put(STATE_KEY, new Integer(reg.getFullValue()));
 		}
-		hashtable.put(STATE_KEY, new Integer(reg.getFullValue()));
 	}
 
 	@Override
@@ -366,7 +312,7 @@ public abstract class AbstractMultiBitRegisterCP extends JPanel implements State
 			throw new RuntimeException("null hashtable; can't restore state");
 		}
 		if (hashtable.get(STATE_KEY) == null) {
-			observingPanel.getLogger().warning("channel " + reg + " not in hashtable " + hashtable + " with size=" + hashtable.size());
+			log.warning("channel " + reg + " not in hashtable " + hashtable + " with size=" + hashtable.size());
 			return;
 		}
 		final int v = (Integer) hashtable.get(STATE_KEY);

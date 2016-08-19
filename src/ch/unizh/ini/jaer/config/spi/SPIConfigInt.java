@@ -9,9 +9,6 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseWheelEvent;
-import java.util.Observable;
-import java.util.Observer;
-import java.util.logging.Logger;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.Preferences;
 
@@ -22,6 +19,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 
 import ch.unizh.ini.jaer.config.ConfigInt;
+import java.awt.event.MouseWheelListener;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.chip.AEChip;
 
@@ -116,60 +114,44 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 		tf.setText(Integer.toString(get()));
 		tf.setPreferredSize(prefDimensions);
 		tf.setMaximumSize(maxDimensions);
-		tf.addActionListener(new SPIConfigIntAction(this));
-		tf.addKeyListener(new SPIConfigIntKeyAction(this));
-		tf.addMouseWheelListener(new SPIConfigIntMouseWheelAction(this));
+		SPIConfigIntActions actionListeners = new SPIConfigIntActions(this);
+		tf.addActionListener(actionListeners);
+		tf.addKeyListener(actionListeners);
+		tf.addMouseWheelListener(actionListeners);
 		pan.add(tf);
 		setControl(tf);
-		addObserver(biasgen);
-		addObserver(new Observer() {
-			@Override
-			public void update(Observable o, Object arg) {
-				((SPIConfigInt) o).updateControl();
-			}
-		});
+		addObserver(biasgen);	// This observer is responsible for sending data to hardware
+		addObserver(this);		// This observer is responsible for GUI update. It calls the updateControl() method
 		return pan;
 	}
 
+	@Override
 	public void updateControl() {
 		if (control != null) {
 			((JTextField) control).setText(Integer.toString(value));
 		}
 	}
 
-	private static class SPIConfigIntAction implements ActionListener {
+	private static class SPIConfigIntActions extends KeyAdapter implements ActionListener, MouseWheelListener {
 
 		private final SPIConfigInt intConfig;
 
-		SPIConfigIntAction(final SPIConfigInt intCfg) {
+		SPIConfigIntActions(final SPIConfigInt intCfg) {
 			intConfig = intCfg;
 		}
 
-		@Override
-		public void actionPerformed(final ActionEvent e) {
-			final JTextField tf = (JTextField) e.getSource();
-
+		private void setValueAndUpdateGUI(int val) {
+			JTextField tf = (JTextField) intConfig.control;
 			try {
-				intConfig.set(Integer.parseInt(tf.getText())); // TODO add undo
+				intConfig.set(val);
 				intConfig.setFileModified();
-
 				tf.setBackground(Color.white);
 			}
 			catch (final Exception ex) {
 				tf.selectAll();
 				tf.setBackground(Color.red);
-
-				Logger.getLogger("SPIConfigIntAction").warning(ex.toString());
+				log.warning(ex.toString());
 			}
-		}
-	}
-
-	private static class SPIConfigIntKeyAction extends KeyAdapter {
-
-		private final SPIConfigInt intConfig;
-
-		SPIConfigIntKeyAction(final SPIConfigInt intCfg) {
-			intConfig = intCfg;
 		}
 
 		@Override
@@ -177,44 +159,22 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 			final boolean up = (e.getKeyCode() == KeyEvent.VK_UP);
 			final boolean down = (e.getKeyCode() == KeyEvent.VK_DOWN);
 
-			if (!up && !down) {
-				return;
-			}
-
-			final int inc = up ? 1 : -1;
-
-			int val = intConfig.get() + inc;
-
-			if (val >= 0) {
-				intConfig.set(val);
-				intConfig.setFileModified();
+			if (up || down) {
+				setValueAndUpdateGUI(intConfig.get() + (up ? 1 : -1));
 			}
 		}
-	}
 
-	private static class SPIConfigIntMouseWheelAction extends MouseAdapter {
-
-		private final SPIConfigInt intConfig;
-
-		SPIConfigIntMouseWheelAction(final SPIConfigInt intCfg) {
-			intConfig = intCfg;
+		@Override
+		public void actionPerformed(final ActionEvent e) {
+			setValueAndUpdateGUI(Integer.parseInt(((JTextField) intConfig.control).getText()));
 		}
 
 		@Override
 		public void mouseWheelMoved(final MouseWheelEvent evt) {
 			final int clicks = evt.getWheelRotation();
 
-			if (clicks == 0) {
-				return;
-			}
-
-			final int inc = -clicks;
-
-			int val = intConfig.get() + inc;
-
-			if (val >= 0) {
-				intConfig.set(val);
-				intConfig.setFileModified();
+			if (clicks != 0) {
+				setValueAndUpdateGUI(intConfig.get() - clicks);
 			}
 		}
 	}

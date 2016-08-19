@@ -864,14 +864,6 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 				net.sf.jaer.biasgen.Biasgen.log.warning("On update() caught " + e.toString());
 			}
 		}
-
-		// Always update GUI components, even if no HW present.
-		if (observable instanceof AbstractConfigValue) {
-			((AbstractConfigValue) observable).updateControl();
-		}
-		else {
-			log.warning("unknown observable " + observable + " , not sending anything");
-		}
 	}
 
 	// sends complete configuration information to multiple shift registers and off chip DACs
