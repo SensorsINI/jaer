@@ -161,6 +161,64 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 			idx3 = getPixMapIndex(e.x + 1, e.y + 1);
 		}
 
+		// Change colors of DVS if SeparatyAPSByColor is selected: instead of Red/Green
+		// for all, each quarter has its own color based on the pixel color.
+		if (!isDVSQuarterOfAPS && isSeparateAPSByColor()) {
+			switch (((ApsDvsEvent) e).getColorFilter()) {
+				case R:
+					// Red
+					onColor[0] = 1.0f;
+					onColor[1] = 0.0f;
+					onColor[2] = 0.0f;
+
+					// Lighter Red
+					offColor[0] = 1.0f;
+					offColor[1] = 0.6f;
+					offColor[2] = 0.6f;
+
+					break;
+
+				case G:
+					// Green
+					onColor[0] = 0.0f;
+					onColor[1] = 1.0f;
+					onColor[2] = 0.0f;
+
+					// Lighter Green
+					offColor[0] = 0.6f;
+					offColor[1] = 1.0f;
+					offColor[2] = 0.6f;
+
+					break;
+
+				case B:
+					// Blue
+					onColor[0] = 0.0f;
+					onColor[1] = 0.0f;
+					onColor[2] = 1.0f;
+
+					// Lighter Blue
+					offColor[0] = 0.6f;
+					offColor[1] = 0.6f;
+					offColor[2] = 1.0f;
+
+					break;
+
+				case W:
+					// White
+					onColor[0] = 1.0f;
+					onColor[1] = 1.0f;
+					onColor[2] = 1.0f;
+
+					// Grey
+					offColor[0] = 0.6f;
+					offColor[1] = 0.6f;
+					offColor[2] = 0.6f;
+
+					break;
+			}
+		}
+
 		if (packet.getNumCellTypes() > 2) {
 			checkTypeColors(packet.getNumCellTypes());
 
