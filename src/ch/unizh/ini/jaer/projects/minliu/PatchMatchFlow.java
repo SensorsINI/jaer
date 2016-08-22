@@ -6,12 +6,7 @@
 package ch.unizh.ini.jaer.projects.minliu;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
-import com.jogamp.opengl.GL;
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
-import com.sun.mail.iap.ByteArray;
-import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.geom.Point2D;
 import java.util.Arrays;
@@ -25,11 +20,9 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.Steadicam;
 import net.sf.jaer.eventprocessing.filter.TransformAtTime;
-import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.util.filter.HighpassFilter;
 
 /**
@@ -60,6 +53,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private BitSet[] histogramsBitSet = null;
     private BitSet currentSli = null, tMinus1Sli = null, tMinus2Sli = null;
     private int patchDimension = getInt("patchDimension", 8);
+    public enum PatchCompareMethod {
+        HammingDistance, SAD
+    };
+    private PatchCompareMethod patchCompareMethod = PatchCompareMethod.valueOf(getString("patchCompareMethod", PatchCompareMethod.HammingDistance.toString()));
+
     private int sliceDurationUs = getInt("sliceDurationUs", 1000);
     private int sliceEventCount = getInt("sliceEventCount", 1000);
     private String patchTT = "Patch matching";
@@ -121,8 +119,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         chip.addObserver(this); // to allocate memory once chip size is known
         setPropertyTooltip(patchTT, "patchDimension", "linear dimenion of patches to match, in pixels");
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
-        setPropertyTooltip(patchTT, "timesliceDurationUs", "duration of patches in us");
-        setPropertyTooltip(patchTT, "sliceEventNumber", "number of collected events in each bitmap");
+        setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");
+        setPropertyTooltip(patchTT, "sliceDurationUs", "duration of patches in us");
+        setPropertyTooltip(patchTT, "sliceEventCount", "number of collected events in each bitmap");
         setPropertyTooltip(dispTT, "highpassTauMsTranslation", "highpass filter time constant in ms to relax transform back to zero for translation (pan, tilt) components");
         setPropertyTooltip(dispTT, "highpassTauMsRotation", "highpass filter time constant in ms to relax transform back to zero for rotation (roll) component");
         setPropertyTooltip(dispTT, "highPassFilterEn", "enable the high pass filter or not");
@@ -178,13 +177,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             }
             countIn++;           
 
-//            SADResult sadResult = minSad(x, y, tMinus2Slice, tMinus1Slice);
-//
-//            sadSum += sadResult.sadValue * sadResult.sadValue;
-//            vx = sadResult.dx * 5;
-//            vy = sadResult.dy * 5;
-//            v = (float) Math.sqrt(vx * vx + vy * vy);
-
             if(!removeCameraMotion) {
                 showTransformRectangle = true;
                 int nx = e.x - 120, ny = e.y - 90;
@@ -201,15 +193,23 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             } else {
                 showTransformRectangle = false;
             }
-
             
             // compute flow
             maybeRotateSlices();
             accumulateEvent();
-            SADResult sadResult = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
-            vx = sadResult.dx * 5;
-            vy = sadResult.dy * 5;
+            SADResult result = new SADResult(0,0,0);
+            switch(patchCompareMethod) {
+                case HammingDistance: 
+                    result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
+                    break;
+                case SAD:
+                    result = minSad(x, y, tMinus2Slice, tMinus1Slice);
+                    break;
+            }            
+            vx = result.dx * 5;
+            vy = result.dy * 5;
             v = (float) Math.sqrt(vx * vx + vy * vy);
+            
 //            long[] testByteArray1 = tMinus1Sli.toLongArray();
 //            long[] testByteArray2 = tMinus2Sli.toLongArray();
 //            tMinus1Sli.andNot(tMinus2Sli);
@@ -721,6 +721,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     public void setSliceMethod(SliceMethod sliceMethod) {
         this.sliceMethod = sliceMethod;
         putString("sliceMethod", sliceMethod.toString());
+    }
+
+    public PatchCompareMethod getPatchCompareMethod() {
+        return patchCompareMethod;
+    }
+
+    public void setPatchCompareMethod(PatchCompareMethod patchCompareMethod) {
+        this.patchCompareMethod = patchCompareMethod;
+        putString("patchCompareMethod", patchCompareMethod.toString());
     }
 
     /**
