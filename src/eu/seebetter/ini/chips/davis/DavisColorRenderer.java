@@ -172,9 +172,9 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 					onColor[2] = 0.0f;
 
 					// Lighter Red
-					offColor[0] = 1.0f;
-					offColor[1] = 0.6f;
-					offColor[2] = 0.6f;
+					offColor[0] = 0.0f;
+					offColor[1] = 0.0f;
+					offColor[2] = 0.0f;
 
 					break;
 
@@ -185,9 +185,9 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 					onColor[2] = 0.0f;
 
 					// Lighter Green
-					offColor[0] = 0.6f;
-					offColor[1] = 1.0f;
-					offColor[2] = 0.6f;
+					offColor[0] = 0.0f;
+					offColor[1] = 0.0f;
+					offColor[2] = 0.0f;
 
 					break;
 
@@ -198,9 +198,9 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 					onColor[2] = 1.0f;
 
 					// Lighter Blue
-					offColor[0] = 0.6f;
-					offColor[1] = 0.6f;
-					offColor[2] = 1.0f;
+					offColor[0] = 0.0f;
+					offColor[1] = 0.0f;
+					offColor[2] = 0.0f;
 
 					break;
 
@@ -211,9 +211,9 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 					onColor[2] = 1.0f;
 
 					// Grey
-					offColor[0] = 0.6f;
-					offColor[1] = 0.6f;
-					offColor[2] = 0.6f;
+					offColor[0] = 0.0f;
+					offColor[1] = 0.0f;
+					offColor[2] = 0.0f;
 
 					break;
 			}
