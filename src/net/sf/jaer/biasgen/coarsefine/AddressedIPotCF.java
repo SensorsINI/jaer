@@ -498,7 +498,7 @@ public class AddressedIPotCF extends AddressedIPot {
         return ret;
     }
 
-    protected int computeInverseBinaryRepresentation(){
+    public int computeInverseBinaryRepresentation(){
         int length = 16;
         int ret=computeBinaryRepresentation();
         int out=0;

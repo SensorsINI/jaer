@@ -25,6 +25,7 @@ import ch.unizh.ini.jaer.config.ConfigBase;
 import ch.unizh.ini.jaer.config.spi.SPIConfigBit;
 import ch.unizh.ini.jaer.config.spi.SPIConfigInt;
 import ch.unizh.ini.jaer.config.spi.SPIConfigValue;
+import eu.seebetter.ini.chips.davis.TowerOnChip6BitVDAC;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -562,8 +563,9 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 					if (observable instanceof AddressedIPotCF) {
 						final AddressedIPotCF iPot = (AddressedIPotCF) observable;
 
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getAddress(),
-							iPot.computeCleanBinaryRepresentation());
+						//fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getAddress(), iPot.computeCleanBinaryRepresentation());
+						//fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getAddress(), iPot.computeBinaryRepresentation());
+						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getAddress(), iPot.computeInverseBinaryRepresentation());
 					}
 					else if (observable instanceof ShiftedSourceBiasCF) {
 						final ShiftedSourceBiasCF iPot = (ShiftedSourceBiasCF) observable;

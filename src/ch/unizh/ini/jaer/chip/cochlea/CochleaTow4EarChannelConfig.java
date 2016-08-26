@@ -19,18 +19,18 @@ public class CochleaTow4EarChannelConfig extends CochleaChannelConfig {
 	// Create the structure of the cochlea channel
 	static {
 		CHANNEL_FIELDS = new MultiBitValue[12];
-		// Leak current for second two neurons (L/R)
+		// Leak current for neurons 0-1
 		CHANNEL_FIELDS[0] = new MultiBitValue(1, 19, 
-			"Clear = Double leak current for second two neurons (B/T)");
-		// Current Gain for first two neurons (L/R)
+			"Clear = Double leak current for neurons 0-1");
+		// Current Gain for neurons 0-1
 		CHANNEL_FIELDS[1] = new MultiBitValue(3, 16, 
-			"PGA gain control for second two neurons (B/T), 3 bits, effectively 4 levels, uses only values 0,1,3,7. 0 is highest gain, 7 is lowest");
-		// Leak current for first two neurons (B/T)
+			"PGA gain control for neurons 0-1, 3 bits, effectively 4 levels, uses only values 0,1,3,7. 0 is highest gain, 7 is lowest");
+		// Leak current for neurons 2-3
 		CHANNEL_FIELDS[2] = new MultiBitValue(1, 15, 
-			"Clear = Double leak current for first two neurons (B/T)");
-		// Current Gain for first two neurons (B/T)
+			"Clear = Double leak current for neurons 2-3");
+		// Current Gain for neurons 2-3
 		CHANNEL_FIELDS[3] = new MultiBitValue(3, 12, 
-			"PGA gain control for first two neurons (B/T), 3 bits, effectively 4 levels, uses only values 0,1,3,7. 0 is highest gain, 7 is lowest");
+			"PGA gain control for neurons 2-3, 3 bits, effectively 4 levels, uses only values 0,1,3,7. 0 is highest gain, 7 is lowest");
 		// Double leak current
 		CHANNEL_FIELDS[4] = new MultiBitValue(1, 11, 
 			"Double leak current for all 4 neurons. nQ3=0 adds one more NeuronVleak branch to neuron");
