@@ -5,6 +5,8 @@
  */
 package net.sf.jaer.eventio;
 
+import com.jogamp.opengl.GLAutoDrawable;
+import java.awt.Color;
 import java.util.Iterator;
 
 import net.sf.jaer.Description;
@@ -16,6 +18,9 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.AbstractAEPlayer;
+import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import sun.awt.AWTAccessor;
 
 /**
  * Plays DAVIS recordings with APS frames at constant DVS event number per
@@ -25,10 +30,10 @@ import net.sf.jaer.graphics.AbstractAEPlayer;
  */
 @Description("Plays DAVIS recordings with APS frames at constant DVS event number per returned packet")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
-public class FlexTimePlayer extends EventFilter2D {
+public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
 
     private int nEventsPerPacket = getInt("nEventsPerPacket", 10000);
-    private ApsDvsEventPacket<ApsDvsEvent> out = new ApsDvsEventPacket(ApsDvsEvent.class), leftOverEvents=new ApsDvsEventPacket<ApsDvsEvent>(ApsDvsEvent.class);
+    private ApsDvsEventPacket<ApsDvsEvent> out = new ApsDvsEventPacket(ApsDvsEvent.class), leftOverEvents = new ApsDvsEventPacket<ApsDvsEvent>(ApsDvsEvent.class);
     OutputEventIterator<ApsDvsEvent> outItr = out.outputIterator();
     private int nEventsCollected = 0;
     private boolean resetPacket = true;
@@ -45,11 +50,11 @@ public class FlexTimePlayer extends EventFilter2D {
         Iterator<ApsDvsEvent> i = in2.fullIterator();
         if (resetPacket) {
             outItr = out.outputIterator();
-            resetPacket=false;
+            resetPacket = false;
         }
-        Iterator<ApsDvsEvent> leftOverIterator=leftOverEvents.fullIterator();
-        while(leftOverIterator.hasNext()){
-            ApsDvsEvent e=leftOverIterator.next();
+        Iterator<ApsDvsEvent> leftOverIterator = leftOverEvents.fullIterator();
+        while (leftOverIterator.hasNext()) {
+            ApsDvsEvent e = leftOverIterator.next();
             ApsDvsEvent eout = outItr.nextOutput();
             eout.copyFrom(e);
         }
@@ -63,10 +68,10 @@ public class FlexTimePlayer extends EventFilter2D {
                 if (nEventsCollected >= nEventsPerPacket) {
                     resetPacket = true;
                     nEventsCollected = 0;
-                    OutputEventIterator<ApsDvsEvent> iLeftOver=leftOverEvents.outputIterator();
-                    while(i.hasNext()){
-                        ApsDvsEvent eLeftOver=i.next();
-                        ApsDvsEvent outputLeftOverEvent=iLeftOver.nextOutput();
+                    OutputEventIterator<ApsDvsEvent> iLeftOver = leftOverEvents.outputIterator();
+                    while (i.hasNext()) {
+                        ApsDvsEvent eLeftOver = i.next();
+                        ApsDvsEvent outputLeftOverEvent = iLeftOver.nextOutput();
                         outputLeftOverEvent.copyFrom(eLeftOver);
                     }
                     return out;
@@ -115,10 +120,22 @@ public class FlexTimePlayer extends EventFilter2D {
                 player.setFlexTimeEnabled();
                 player.setPacketSizeEvents(nEventsPerPacket); // ensure that we don't get more DVS events than can be returned in one of our out packets
                 log.info("set player to flex time mode and set packet size to match nEventsPerPacket");
-           } else {
+            } else {
                 player.setFixedTimesliceEnabled();
             }
         }
+    }
+
+    @Override
+    public void annotate(GLAutoDrawable drawable) {
+        if (!isFilterEnabled()) {
+            return;
+        }
+        MultilineAnnotationTextRenderer.setColor(Color.CYAN);
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
+        MultilineAnnotationTextRenderer.setScale(.3f);
+        MultilineAnnotationTextRenderer.renderMultilineString(String.format("%d events/slice", nEventsPerPacket));
+
     }
 
 }
