@@ -746,25 +746,32 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			for (int i = 0; i < n; ++i) {
 				final int addr = addresses[i];
 				if (((addr & 0x200) != 0) && ((addr & BasicEvent.SPECIAL_EVENT_BIT_MASK) == 0)) {		// XSelect
-					if ((chanEv == null) || (timestamps[i] != chanEv.timestamp)) {
-						log.log(Level.WARNING, "Incontiguous event sequence. Neuron address event {0} is dropped", addr);
+					if (chanEv == null) {
+						//log.log(Level.WARNING, "Incontiguous event sequence. Neuron address event {0} is dropped", (addr & 0x1FF) >> 1);
 					} else {
+						if (timestamps[i] != chanEv.timestamp) {
+							//log.log(Level.WARNING, "Incongruent timestapms between channel and neuron events. Delta {0}", timestamps[i] - chanEv.timestamp);
+						} 
 						BinauralCochleaEvent neuronEv = outItr.nextOutput();
 						neuronEv.copyFrom(chanEv);
 						neuronEv.y += (short) (((addr >>> 1) & 0x03));
 					}
 				} else {
-					chanEv = new CochleaTow4EarEvent();
-					chanEv.address = addr;
-					chanEv.timestamp = timestamps[i];
-					chanEv.x = getXFromAddress(addr);
-					chanEv.y = getYFromAddress(addr);
-					chanEv.type = getTypeFromAddress(addr);
-					if ((chanEv.address & BasicEvent.SPECIAL_EVENT_BIT_MASK) != 0) {
-						chanEv.setSpecial(true); // tick events for CochleaTow4Ear; every 32768 us from logic
+					if ((addr & BasicEvent.SPECIAL_EVENT_BIT_MASK) != 0) {
+						CochleaTow4EarEvent specEv = new CochleaTow4EarEvent();
+						specEv.address = addr;
+						specEv.timestamp = timestamps[i];
+						specEv.setSpecial(true); // tick events for CochleaTow4Ear; every 32768 us from logic
 						//int dt = e.timestamp - lastSpecialEventTimestamp;
-						lastSpecialEventTimestamp = chanEv.timestamp;
-						outItr.writeToNextOutput(chanEv);
+						lastSpecialEventTimestamp = specEv.timestamp;
+						outItr.writeToNextOutput(specEv);
+					} else {
+						chanEv = new CochleaTow4EarEvent();
+						chanEv.address = addr;
+						chanEv.timestamp = timestamps[i];
+						chanEv.x = getXFromAddress(addr);
+						chanEv.y = getYFromAddress(addr);
+						chanEv.type = getTypeFromAddress(addr);
 					} 
 				}
 			}
