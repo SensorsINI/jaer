@@ -305,10 +305,6 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 				AddressedIPotCF.maxFineBitValue, 34, "SOS"));
 			ipots.addPot(new AddressedIPotCF(this, "BiasBuffer", 34, Type.NORMAL, Sex.na, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
 				AddressedIPotCF.maxFineBitValue, 35, "BufferN=VcascodeBnc, BufferP=VneuronRpBp"));
-			ipots.addPot(new AddressedIPotCF(this, "SSP", 35, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 36, "bg"));
-			ipots.addPot(new AddressedIPotCF(this, "SSN", 36, Type.NORMAL, Sex.N, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 37, "bg"));
 
 			setPotArray(ipots);
 
@@ -317,14 +313,14 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			ssp.setSex(Pot.Sex.P);
 			ssp.setName("SSP");
 			ssp.setTooltipString("p-type shifted source that generates a regulated voltage near Vdd");
-			ssp.setAddress(20);
+			ssp.setAddress(35);
 			ssp.addObserver(this);
 
 			final ShiftedSourceBiasCF ssn = new ShiftedSourceBiasCF(this);
 			ssn.setSex(Pot.Sex.N);
 			ssn.setName("SSN");
 			ssn.setTooltipString("n-type shifted source that generates a regulated voltage near ground");
-			ssn.setAddress(21);
+			ssn.setAddress(36);
 			ssn.addObserver(this);
 
 			ssBiases[0] = ssp;
@@ -788,7 +784,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 		 */
 		@Override
 		public short getXFromAddress(final int addr) {
-			return (short) ((addr & 0x7E) >>> 2);
+			return (short) ((addr & 0x7E) >>> 1);
 		}
 
 		/**
