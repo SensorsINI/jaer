@@ -14,7 +14,7 @@ public class CochleaTow4EarEvent extends BinauralCochleaEvent {
 
 	@Override
 	public Ear getEar() {
-		if ((address & 2) != 0) {
+		if ((address & 1) != 0) {
 			return Ear.LEFT;
 		}
 		else {
@@ -24,12 +24,12 @@ public class CochleaTow4EarEvent extends BinauralCochleaEvent {
 
 	@Override
 	public int getNumCellTypes() {
-		return 4; // on|off * left|right
+		return 1;
 	}
 
 	@Override
 	public int getType() {
-		return address & 3; // To change body of generated methods, choose Tools | Templates.
+		return 0;
 	}
 
 }

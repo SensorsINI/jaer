@@ -54,8 +54,8 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 
-/** Low-power binaural AER silicon cochlea with 64 channels. Hardware interface is CochleaFX3HardwareInterface */
-@Description("Low-power binaural AER silicon cochlea with 64 channels")
+/** 4-Ear AER silicon cochlea with 64 channels per ear. Hardware interface is CochleaFX3HardwareInterface */
+@Description("4-Ear AER silicon cochlea with 64 channels per ear.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class CochleaTow4Ear extends CochleaChip implements Observer {
 
@@ -72,8 +72,8 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 		setEventClass(CochleaTow4EarEvent.class);
 
 		setSizeX(64); // 64 frequency channels
-		setSizeY(4); // total four, ON/OFF for each ear
-		setNumCellTypes(4); // ON/OFF ADM output from each ear's channel
+		setSizeY(16); // total four, ON/OFF for each ear
+		setNumCellTypes(1); // ON/OFF ADM output from each ear's channel
 
 		setRenderer(new Renderer(this));
 		setBiasgen(new CochleaTow4Ear.Biasgen(this));
@@ -241,22 +241,14 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			}
 			
 			// VDAC (6-bit voltage DAC)
-			ipots.addPot(new AddressedIPotCF(this, "VrefpreampBp", 0, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 1, "preamp"));
-			ipots.addPot(new AddressedIPotCF(this, "Vth1", 1, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 2, "neuron"));
-			ipots.addPot(new AddressedIPotCF(this, "Vth2", 2, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 3, "neuron"));
-			ipots.addPot(new AddressedIPotCF(this, "VbMicCasBpc", 3, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 4, "preamp"));
-			ipots.addPot(new AddressedIPotCF(this, "VbiasHF2Bn", 4, Type.NORMAL, Sex.na, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 5, "SOS"));
-			ipots.addPot(new AddressedIPotCF(this, "Vbias2n", 5, Type.NORMAL, Sex.na, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 6, "SOS"));
-			ipots.addPot(new AddressedIPotCF(this, "Vrefdiff", 6, Type.NORMAL, Sex.na, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 7, "diff"));
-			ipots.addPot(new AddressedIPotCF(this, "Vrefdiff2", 7, Type.NORMAL, Sex.na, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 8, "diff"));
+			ipots.addPot(new TowerOnChip6BitVDAC(this, "VrefpreampBp", 0, 1, "preamp"));
+			ipots.addPot(new TowerOnChip6BitVDAC(this, "Vth1", 1, 2, "neuron"));
+			ipots.addPot(new TowerOnChip6BitVDAC(this, "Vth2", 2, 3, "neuron"));
+			ipots.addPot(new TowerOnChip6BitVDAC(this, "VbMicCasBpc", 3, 4, "preamp"));
+			ipots.addPot(new TowerOnChip6BitVDAC(this, "VbiasHF2Bn", 4, 5, "SOS"));
+			ipots.addPot(new TowerOnChip6BitVDAC(this, "Vbias2n", 5, 6, "SOS"));
+			ipots.addPot(new TowerOnChip6BitVDAC(this, "Vrefdiff", 6, 7, "diff"));
+			ipots.addPot(new TowerOnChip6BitVDAC(this, "Vrefdiff2", 7, 8, "diff"));
 
 			// BIASES (IPOTS, current DACs)
 			ipots.addPot(new AddressedIPotCF(this, "LocalBufBn", 8, Type.NORMAL, Sex.N, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
@@ -560,12 +552,15 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 				final CypressFX3 fx3HwIntf = (CypressFX3) hardwareInterface;
 				
 				try {
+					if (observable instanceof TowerOnChip6BitVDAC) {
+						final TowerOnChip6BitVDAC iPot = (TowerOnChip6BitVDAC) observable;
+
+						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getAddress(), iPot.computeBinaryRepresentation());
+					}
 					if (observable instanceof AddressedIPotCF) {
 						final AddressedIPotCF iPot = (AddressedIPotCF) observable;
 
-						//fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getAddress(), iPot.computeCleanBinaryRepresentation());
-						//fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getAddress(), iPot.computeBinaryRepresentation());
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getAddress(), iPot.computeInverseBinaryRepresentation());
+						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getAddress(), iPot.computeCleanBinaryRepresentation());
 					}
 					else if (observable instanceof ShiftedSourceBiasCF) {
 						final ShiftedSourceBiasCF iPot = (ShiftedSourceBiasCF) observable;
@@ -737,42 +732,40 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 
 			final int n = in.getNumEvents();
 
-			int skipBy = 1, incEach = 0, j = 0;
-
+			// [TODO] Implement subsampling
 			if (isSubSamplingEnabled()) {
-				skipBy = n / getSubsampleThresholdEventCount();
-				incEach = getSubsampleThresholdEventCount() / (n % getSubsampleThresholdEventCount());
-			}
-
-			if (skipBy == 0) {
-				incEach = 0;
-				skipBy = 1;
+				log.log(Level.WARNING, "Subsampling is not implemented yet in {0}", this);
 			}
 
 			final int[] addresses = in.getAddresses();
 			final int[] timestamps = in.getTimestamps();
 
+			BinauralCochleaEvent chanEv = null;
 			final OutputEventIterator<BinauralCochleaEvent> outItr = out.outputIterator();
 
-			for (int i = 0; i < n; i += skipBy) {
+			for (int i = 0; i < n; ++i) {
 				final int addr = addresses[i];
-				final BinauralCochleaEvent e = outItr.nextOutput();
-
-				e.address = addr;
-				e.timestamp = timestamps[i];
-				e.x = getXFromAddress(addr);
-				e.y = getYFromAddress(addr);
-				e.type = getTypeFromAddress(addr);
-				if ((e.address & BasicEvent.SPECIAL_EVENT_BIT_MASK) != 0) {
-					e.setSpecial(true); // tick events for CochleaTow4Ear; every 32768 us from logic
-					//int dt = e.timestamp - lastSpecialEventTimestamp;
-					lastSpecialEventTimestamp = e.timestamp;
-				}
-
-				j++;
-				if (j == incEach) {
-					j = 0;
-					i++;
+				if (((addr & 0x200) != 0) && ((addr & BasicEvent.SPECIAL_EVENT_BIT_MASK) == 0)) {		// XSelect
+					if ((chanEv == null) || (timestamps[i] != chanEv.timestamp)) {
+						log.log(Level.WARNING, "Incontiguous event sequence. Neuron address event {0} is dropped", addr);
+					} else {
+						BinauralCochleaEvent neuronEv = outItr.nextOutput();
+						neuronEv.copyFrom(chanEv);
+						neuronEv.y += (short) (((addr >>> 1) & 0x03));
+					}
+				} else {
+					chanEv = new CochleaTow4EarEvent();
+					chanEv.address = addr;
+					chanEv.timestamp = timestamps[i];
+					chanEv.x = getXFromAddress(addr);
+					chanEv.y = getYFromAddress(addr);
+					chanEv.type = getTypeFromAddress(addr);
+					if ((chanEv.address & BasicEvent.SPECIAL_EVENT_BIT_MASK) != 0) {
+						chanEv.setSpecial(true); // tick events for CochleaTow4Ear; every 32768 us from logic
+						//int dt = e.timestamp - lastSpecialEventTimestamp;
+						lastSpecialEventTimestamp = chanEv.timestamp;
+						outItr.writeToNextOutput(chanEv);
+					} 
 				}
 			}
 		}
@@ -788,7 +781,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 		 */
 		@Override
 		public short getXFromAddress(final int addr) {
-			return (short) ((addr & 0xFC) >>> 2);
+			return (short) ((addr & 0x7E) >>> 2);
 		}
 
 		/**
@@ -802,7 +795,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 		 */
 		@Override
 		public short getYFromAddress(final int addr) {
-			return (short) (addr & 0x03);
+			return (short) ((((addr >>> 6) & 0x02) | (addr & 0x01)) << 2); // Concatenate bits 7 (T/B) and 0 (L/R)
 		}
 
 		/**
@@ -815,7 +808,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 		 */
 		@Override
 		public byte getTypeFromAddress(final int addr) {
-			return (byte) getYFromAddress(addr);
+			return 0;
 		}
 	}
 }

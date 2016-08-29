@@ -175,7 +175,7 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 * operating mode config bits, buffer bias current code bits, voltage level
 	 * config bits, voltage level code bits.
 	 */
-	protected int computeBinaryRepresentation() {
+	public int computeBinaryRepresentation() {
 		final int ret = ((bufferBitMask & (bufferBitValue << Integer.numberOfTrailingZeros(bufferBitMask)))
 			| (vdacBitMask & (vdacBitValue << Integer.numberOfTrailingZeros(vdacBitMask)))) & 0xFFFF;
 
