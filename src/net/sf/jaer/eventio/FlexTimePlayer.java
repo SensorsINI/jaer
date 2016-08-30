@@ -5,9 +5,10 @@
  */
 package net.sf.jaer.eventio;
 
-import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.Color;
 import java.util.Iterator;
+
+import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -20,7 +21,6 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
-import sun.awt.AWTAccessor;
 
 /**
  * Plays DAVIS recordings with APS frames at constant DVS event number per
