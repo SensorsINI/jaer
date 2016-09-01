@@ -53,6 +53,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private BitSet[] histogramsBitSet = null;
     private BitSet currentSli = null, tMinus1Sli = null, tMinus2Sli = null;
     private int patchDimension = getInt("patchDimension", 8);
+    protected boolean measurePerformance = getBoolean("measurePerformance", false);
     public enum PatchCompareMethod {
         HammingDistance, SAD
     };
@@ -194,6 +195,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 showTransformRectangle = false;
             }
             
+            long startTime = 0;
+            if (measurePerformance) {
+                    startTime = System.nanoTime();
+            }
             // compute flow
             maybeRotateSlices();
             accumulateEvent();
@@ -210,6 +215,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             vy = result.dy * 5;
             v = (float) Math.sqrt(vx * vx + vy * vy);
             
+            if (measurePerformance) {
+                long dt = System.nanoTime() - startTime;
+                float us = 1e-3f * dt;
+                log.info(String.format("Per event processing time: %.1fus", us));
+            }
 //            long[] testByteArray1 = tMinus1Sli.toLongArray();
 //            long[] testByteArray2 = tMinus2Sli.toLongArray();
 //            tMinus1Sli.andNot(tMinus2Sli);
@@ -806,6 +816,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     public void setHighPassFilterEn(boolean highPassFilterEn) {
         this.highPassFilterEn = highPassFilterEn;
         putBoolean("highPassFilterEn", highPassFilterEn);
+    }
+
+    public boolean isMeasurePerformance() {
+        return measurePerformance;
+    }
+
+    public void setMeasurePerformance(boolean measurePerformance) {
+        this.measurePerformance = measurePerformance;
+        putBoolean("measurePerformance", measurePerformance);
     }
     
 }
