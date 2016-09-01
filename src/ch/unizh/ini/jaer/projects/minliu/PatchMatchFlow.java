@@ -561,8 +561,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private SADResult minHammingDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
         int minSum = Integer.MAX_VALUE, sum = 0;
         SADResult sadResult = new SADResult(0, 0, 0);
-        for (int dx = -searchDistance; dx < searchDistance; dx++) {
-            for (int dy = -searchDistance; dy < searchDistance; dy++) {                
+        for (int dx = -searchDistance; dx <= searchDistance; dx++) {
+            for (int dy = -searchDistance; dy <= searchDistance; dy++) {                
                 sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
                 if(sum < minSum) {
                     minSum = sum;
@@ -590,13 +590,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         int retVal = 0;
         
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
-        if (x < searchDistance - dx || x > subSizeX - searchDistance - dx || x < searchDistance || x > subSizeX - searchDistance
-                || y < searchDistance - dy || y > subSizeY - searchDistance - dy || y < searchDistance || y > subSizeY - searchDistance) {
+        if (x < patchDimension - dx || x >= subSizeX - patchDimension - dx || x < patchDimension || x >= subSizeX - patchDimension
+                || y < patchDimension - dy || y >= subSizeY - patchDimension - dy || y < patchDimension || y >= subSizeY - patchDimension) {
             return 0;
         }
         
-        for (int xx = x - searchDistance; xx < x + searchDistance; xx++) {
-            for (int yy = y - searchDistance; yy < y + searchDistance; yy++) {
+        for (int xx = x - patchDimension; xx <= x + patchDimension; xx++) {
+            for (int yy = y - patchDimension; yy <= y + patchDimension; yy++) {
                 if(curSlice.get((xx + 1 + dx) + (yy + dy) * subSizeX) != prevSlice.get((xx + 1) + (yy) * subSizeX)) {
                     retVal += 1;
                 }   
@@ -619,8 +619,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         // for now just do exhaustive search over all shifts up to +/-searchDistance
         SADResult sadResult = new SADResult(0, 0, 0);
         int minSad = Integer.MAX_VALUE, minDx = 0, minDy = 0;
-        for (int dx = -searchDistance; dx < searchDistance; dx++) {
-            for (int dy = -searchDistance; dy < searchDistance; dy++) {
+        for (int dx = -searchDistance; dx <= searchDistance; dx++) {
+            for (int dy = -searchDistance; dy <= searchDistance; dy++) {
                 int sad = sad(x, y, dx, dy, prevSlice, curSlice);
                 if (sad <= minSad) {
                     minSad = sad;
@@ -647,14 +647,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      */
     private int sad(int x, int y, int dx, int dy, int[][] prevSlice, int[][] curSlice) {
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
-        if (x < searchDistance - dx || x > subSizeX - searchDistance - dx || x < searchDistance || x > subSizeX - searchDistance
-                || y < searchDistance - dy || y > subSizeY - searchDistance - dy || y < searchDistance || y > subSizeY - searchDistance) {
+        if (x < patchDimension - dx || x >= subSizeX - patchDimension - dx || x < patchDimension || x >= subSizeX - patchDimension
+                || y < patchDimension - dy || y >= subSizeY - patchDimension - dy || y < patchDimension || y >= subSizeY - patchDimension) {
             return 0;
         }
         
         int sad = 0;
-        for (int xx = x - searchDistance; xx < x + searchDistance; xx++) {
-            for (int yy = y - searchDistance; yy < y + searchDistance; yy++) {
+        for (int xx = x - patchDimension; xx <= x + patchDimension; xx++) {
+            for (int yy = y - patchDimension; yy <= y + patchDimension; yy++) {
                 int d = prevSlice[xx + dx][yy + dy] - curSlice[xx][yy];
                 if (d < 0) {
                     d = -d;
