@@ -54,6 +54,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private BitSet currentSli = null, tMinus1Sli = null, tMinus2Sli = null;
     private int patchDimension = getInt("patchDimension", 8);
     protected boolean measurePerformance = getBoolean("measurePerformance", false);
+    private boolean displayOutputVectors = getBoolean("displayOutputVectors", true);
     public enum PatchCompareMethod {
         HammingDistance, SAD
     };
@@ -127,6 +128,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         setPropertyTooltip(dispTT, "highpassTauMsRotation", "highpass filter time constant in ms to relax transform back to zero for rotation (roll) component");
         setPropertyTooltip(dispTT, "highPassFilterEn", "enable the high pass filter or not");
         setPropertyTooltip(dispTT, "showTransformRectangle", "Disable to not show the red transform square and red cross hairs");
+        setPropertyTooltip(dispTT, "displayOutputVectors", "display the output motion vectors or not");
         setPropertyTooltip(imu, "removeCameraMotion", "Remove the camera motion");
         setPropertyTooltip(imu, "zeroGyro", "zeros the gyro output. Sensor should be stationary for period of 1-2 seconds during zeroing");
         setPropertyTooltip(imu, "eraseGyroZero", "Erases the gyro zero values");
@@ -240,7 +242,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 continue;
             }
 
-            writeOutputEvent();
+            if(displayOutputVectors) {
+                writeOutputEvent();
+            }
             if (measureAccuracy) {
                 motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);
             }
@@ -582,6 +586,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 }
             }
         }
+        if(sadResult.dx != 1 || sadResult.dy != 1) {
+            int tmp = 0;
+        }
         return sadResult;
     }
     
@@ -825,6 +832,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     public void setMeasurePerformance(boolean measurePerformance) {
         this.measurePerformance = measurePerformance;
         putBoolean("measurePerformance", measurePerformance);
+    }
+
+    public boolean isDisplayOutputVectors() {
+        return displayOutputVectors;
+    }
+
+    public void setDisplayOutputVectors(boolean displayOutputVectors) {
+        this.displayOutputVectors = displayOutputVectors;
+        putBoolean("displayOutputVectors", measurePerformance);
+
     }
     
 }
