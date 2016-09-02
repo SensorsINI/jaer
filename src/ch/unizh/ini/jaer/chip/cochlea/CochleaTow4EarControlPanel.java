@@ -45,6 +45,7 @@ public final class CochleaTow4EarControlPanel extends AbstractChipControlPanel {
 
 		biasgen.setPotArray(getBiasgen().ipots);
 		onchipBiasgenPanel.add(new BiasgenPanel(getBiasgen()));
+		onchipBiasgenPanel.add(getBiasgen().SelResSW.makeGUIControl());
 		onchipBiasgenPanel.add(Box.createVerticalGlue()); // push up to prevent expansion of PotPanel
 
 		// DAC

@@ -222,6 +222,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 		private final DAC dac1 = new DAC(0, 16, 12, 0, 5.0f, 3.3f); // Ad-hoc value for Vref
 		private final DAC dac2 = new DAC(1, 16, 12, 0, 5.0f, 3.3f); // Ad-hoc value for Vref
 
+		final SPIConfigBit SelResSW;
 		final SPIConfigBit dacRun;
 
 		// All bias types.
@@ -325,6 +326,10 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 
 			ssBiases[0] = ssp;
 			ssBiases[1] = ssn;
+			
+			SelResSW = new SPIConfigBit("SelResSW", "In diff1 cell, if SelResSW=1, gate of resistor is tied to SSP, otherwise to Vdd.", CypressFX3.FPGA_CHIPBIAS, (short) 156, false, this);
+			SelResSW.addObserver(this);
+			allPreferencesList.add(SelResSW);
 
 			// DAC1 channels (16)
 			vpots.addPot(new VPot(getChip(), "MICBIAS1L", dac1, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
@@ -415,18 +420,62 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			}
 
 			// Chip diagnostic chain
-			chipControl.add(new SPIConfigInt("ChipResetCapConfigADM", "Reset cap configuration in ADM.", CypressFX3.FPGA_CHIPBIAS,
-				(short) 128, 2, 0, this));
-			chipControl.add(new SPIConfigInt("ChipDelayCapConfigADM", "Delay cap configuration in ADM.", CypressFX3.FPGA_CHIPBIAS,
-				(short) 129, 3, 0, this));
-			chipControl.add(new SPIConfigBit("ChipComparatorSelfOsc", "Comparator self-oscillation enable.", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigInt("AnalogMux0", "MSB First", CypressFX3.FPGA_CHIPBIAS,
+				(short) 128, 4, 0, this));
+			chipControl.add(new SPIConfigInt("PreampGain", "MSB First", CypressFX3.FPGA_CHIPBIAS,
+				(short) 129, 2, 0, this));
+			chipControl.add(new SPIConfigBit("Seln1", "?", CypressFX3.FPGA_CHIPBIAS,
 				(short) 130, false, this));
-			chipControl
-				.add(new SPIConfigInt("ChipLNAGainConfig", "LNA gain configuration.", CypressFX3.FPGA_CHIPBIAS, (short) 131, 3, 0, this));
-			chipControl.add(new SPIConfigBit("ChipLNADoubleInputSelect", "LNA double or single input selection.",
-				CypressFX3.FPGA_CHIPBIAS, (short) 132, false, this));
-			chipControl.add(
-				new SPIConfigBit("ChipTestScannerBias", "Test scanner bias enable.", CypressFX3.FPGA_CHIPBIAS, (short) 133, false, this));
+			chipControl.add(new SPIConfigBit("Seln2", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 131, false, this));
+			chipControl.add(new SPIConfigBit("SMconfigArow", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 132, false, this));
+			chipControl.add(new SPIConfigBit("DC5", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 133, false, this));
+			chipControl.add(new SPIConfigBit("SelBot", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 134, false, this));
+			chipControl.add(new SPIConfigBit("SelTop", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 135, false, this));
+			chipControl.add(new SPIConfigBit("DC8", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 136, false, this));
+			chipControl.add(new SPIConfigBit("DC9", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 137, false, this));
+			chipControl.add(new SPIConfigBit("DC10", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 138, false, this));
+			chipControl.add(new SPIConfigBit("DC11", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 139, false, this));
+			chipControl.add(new SPIConfigBit("DC12", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 140, false, this));
+			chipControl.add(new SPIConfigBit("DC13", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 141, false, this));
+			chipControl.add(new SPIConfigBit("DC14", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 142, false, this));
+			chipControl.add(new SPIConfigBit("DC15", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 143, false, this));
+			chipControl.add(new SPIConfigBit("DC16", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 144, false, this));
+			chipControl.add(new SPIConfigBit("DC17", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 145, false, this));
+			chipControl.add(new SPIConfigBit("DC18", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 146, false, this));
+			chipControl.add(new SPIConfigBit("BitTestLatch", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 147, false, this));
+			chipControl.add(new SPIConfigBit("DC20", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 148, false, this));
+			chipControl.add(new SPIConfigBit("DC21", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 149, false, this));
+			chipControl.add(new SPIConfigBit("DC22", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 150, false, this));
+			chipControl.add(new SPIConfigBit("DC23", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 151, false, this));
+			chipControl.add(new SPIConfigInt("DigitalMux0", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 152, 4, 0, this));
+			chipControl.add(new SPIConfigInt("DigitalMux1", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 153, 4, 0, this));
+			chipControl.add(new SPIConfigInt("DigitalMux2", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 154, 4, 0, this));
+			chipControl.add(new SPIConfigInt("DigitalMux3", "?", CypressFX3.FPGA_CHIPBIAS,
+				(short) 155, 4, 0, this));
 
 			for (final SPIConfigValue cfgVal : chipControl) {
 				cfgVal.addObserver(this);

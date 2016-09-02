@@ -682,11 +682,11 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	}
 
 	public final static short FPGA_MUX = 0;
-	public final static short FPGA_DVS = 1;
+	public final static short FPGA_DVS = 1;			// GenericAERConfig, DVSAERConfig, AERKillConfig
 	public final static short FPGA_APS = 2;
 	public final static short FPGA_IMU = 3;
 	public final static short FPGA_EXTINPUT = 4;
-	public final static short FPGA_CHIPBIAS = 5;
+	public final static short FPGA_CHIPBIAS = 5;	// Biases, Chip Config, Channel Config
 	public final static short FPGA_SYSINFO = 6;
 	public final static short FPGA_DAC = 7;
 	public final static short FPGA_SCANNER = 8;
