@@ -578,7 +578,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         for (int dx = -searchDistance; dx <= searchDistance; dx++) {
             for (int dy = -searchDistance; dy <= searchDistance; dy++) {                
                 sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
-                if(sum < minSum) {
+                if(sum <= minSum) {
                     minSum = sum;
                     sadResult.dx = dx;
                     sadResult.dy = dy;
@@ -586,9 +586,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 }
             }
         }
-        if(sadResult.dx != 1 || sadResult.dy != 1) {
-            int tmp = 0;
-        }
+
         return sadResult;
     }
     
@@ -607,14 +605,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         int retVal = 0;
         
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
-        if (x < patchDimension - dx || x >= subSizeX - patchDimension - dx || x < patchDimension || x >= subSizeX - patchDimension
-                || y < patchDimension - dy || y >= subSizeY - patchDimension - dy || y < patchDimension || y >= subSizeY - patchDimension) {
+        if (x < patchDimension + dx || x >= subSizeX - patchDimension + dx || x < patchDimension || x >= subSizeX - patchDimension
+                || y < patchDimension + dy || y >= subSizeY - patchDimension + dy || y < patchDimension || y >= subSizeY - patchDimension) {
             return 0;
         }
         
         for (int xx = x - patchDimension; xx <= x + patchDimension; xx++) {
             for (int yy = y - patchDimension; yy <= y + patchDimension; yy++) {
-                if(curSlice.get((xx + 1 + dx) + (yy + dy) * subSizeX) != prevSlice.get((xx + 1) + (yy) * subSizeX)) {
+                if(curSlice.get((xx + 1) + (yy) * subSizeX) != prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX)) {
                     retVal += 1;
                 }   
             }
@@ -664,16 +662,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      */
     private int sad(int x, int y, int dx, int dy, int[][] prevSlice, int[][] curSlice) {
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
-        if (x < patchDimension - dx || x >= subSizeX - patchDimension - dx || x < patchDimension || x >= subSizeX - patchDimension
-                || y < patchDimension - dy || y >= subSizeY - patchDimension - dy || y < patchDimension || y >= subSizeY - patchDimension) {
+        if (x < patchDimension + dx || x >= subSizeX - patchDimension + dx || x < patchDimension || x >= subSizeX - patchDimension
+                || y < patchDimension + dy || y >= subSizeY - patchDimension + dy || y < patchDimension || y >= subSizeY - patchDimension) {
             return 0;
         }
         
         int sad = 0;
         for (int xx = x - patchDimension; xx <= x + patchDimension; xx++) {
             for (int yy = y - patchDimension; yy <= y + patchDimension; yy++) {
-                int d = prevSlice[xx + dx][yy + dy] - curSlice[xx][yy];
-                if (d < 0) {
+                int d = prevSlice[xx][yy] - curSlice[xx + dx][yy + dy];
+                if (d <= 0) {
                     d = -d;
                 }
                 sad += d;
