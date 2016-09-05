@@ -14,6 +14,7 @@ import java.util.BitSet;
 import java.util.Iterator;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.Random;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -59,7 +60,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         HammingDistance, SAD
     };
     private PatchCompareMethod patchCompareMethod = PatchCompareMethod.valueOf(getString("patchCompareMethod", PatchCompareMethod.HammingDistance.toString()));
-
+    
+    private float variance = getFloat("variance", 1);
     private int sliceDurationUs = getInt("sliceDurationUs", 1000);
     private int sliceEventCount = getInt("sliceEventCount", 1000);
     private String patchTT = "Patch matching";
@@ -122,6 +124,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         setPropertyTooltip(patchTT, "patchDimension", "linear dimenion of patches to match, in pixels");
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");
+        setPropertyTooltip(patchTT, "variance", "Varicance of the noise");
         setPropertyTooltip(patchTT, "sliceDurationUs", "duration of patches in us");
         setPropertyTooltip(patchTT, "sliceEventCount", "number of collected events in each bitmap");
         setPropertyTooltip(dispTT, "highpassTauMsTranslation", "highpass filter time constant in ms to relax transform back to zero for translation (pan, tilt) components");
@@ -573,7 +576,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      * @return SADResult that provides the shift and SAD value
      */
     private SADResult minHammingDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
-        int minSum = Integer.MAX_VALUE, sum = 0;
+        double minSum = Integer.MAX_VALUE, sum = 0;
         SADResult sadResult = new SADResult(0, 0, 0);
         for (int dx = -searchDistance; dx <= searchDistance; dx++) {
             for (int dy = -searchDistance; dy <= searchDistance; dy++) {                
@@ -582,7 +585,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     minSum = sum;
                     sadResult.dx = dx;
                     sadResult.dy = dy;
-                    sadResult.sadValue = minSum;
+                    sadResult.sadValue = (int)minSum;
                 }
             }
         }
@@ -601,8 +604,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      * @param curSliceIdx
      * @return SAD value
      */
-    private int hammingDistance(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
-        int retVal = 0;
+    private double hammingDistance(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
+        double retVal = 0;
+        int nSlice1Cnt = 0, nSlice2Cnt = 0;
         
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
         if (x < patchDimension + dx || x >= subSizeX - patchDimension + dx || x < patchDimension || x >= subSizeX - patchDimension
@@ -612,12 +616,18 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         
         for (int xx = x - patchDimension; xx <= x + patchDimension; xx++) {
             for (int yy = y - patchDimension; yy <= y + patchDimension; yy++) {
-                if(curSlice.get((xx + 1) + (yy) * subSizeX) != prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX)) {
-                    retVal += 1;
-                }   
+                if(curSlice.get((xx + 1) + (yy) * subSizeX)) {
+                    nSlice1Cnt += 1;
+                }
+                if(prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX)) {
+                    nSlice2Cnt += 1;
+                }                
             }
         }
-        return retVal;
+        int a = Math.abs(nSlice1Cnt - nSlice2Cnt);
+        Random r = new Random();
+        retVal = Math.sqrt(variance)*r.nextGaussian() + a; 
+        return Math.abs(retVal);
     }
     
     /**
@@ -745,6 +755,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     public void setPatchCompareMethod(PatchCompareMethod patchCompareMethod) {
         this.patchCompareMethod = patchCompareMethod;
         putString("patchCompareMethod", patchCompareMethod.toString());
+    }
+
+    public float getVariance() {
+        return variance;
+    }
+
+    public void setVariance(float variance) {
+        this.variance = variance;
+        putFloat("variance", variance);
+
     }
 
     /**
