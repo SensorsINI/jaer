@@ -610,7 +610,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
         if (x < patchDimension + dx || x >= subSizeX - patchDimension + dx || x < patchDimension || x >= subSizeX - patchDimension
                 || y < patchDimension + dy || y >= subSizeY - patchDimension + dy || y < patchDimension || y >= subSizeY - patchDimension) {
-            return 0;
+            return Integer.MAX_VALUE;
         }
         
         for (int xx = x - patchDimension; xx <= x + patchDimension; xx++) {
@@ -669,7 +669,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
         if (x < patchDimension + dx || x >= subSizeX - patchDimension + dx || x < patchDimension || x >= subSizeX - patchDimension
                 || y < patchDimension + dy || y >= subSizeY - patchDimension + dy || y < patchDimension || y >= subSizeY - patchDimension) {
-            return 0;
+            return Integer.MAX_VALUE;
         }
         
         for (int xx = x - patchDimension; xx <= x + patchDimension; xx++) {
@@ -738,13 +738,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
         if (x < patchDimension + dx || x >= subSizeX - patchDimension + dx || x < patchDimension || x >= subSizeX - patchDimension
                 || y < patchDimension + dy || y >= subSizeY - patchDimension + dy || y < patchDimension || y >= subSizeY - patchDimension) {
-            return 0;
+            return Integer.MAX_VALUE;
         }
         
         int sad = 0;
         for (int xx = x - patchDimension; xx <= x + patchDimension; xx++) {
             for (int yy = y - patchDimension; yy <= y + patchDimension; yy++) {
-                int d = prevSlice[xx][yy] - curSlice[xx + dx][yy + dy];
+                int d = curSlice[xx][yy] - prevSlice[xx - dx][yy - dy];
                 if (d <= 0) {
                     d = -d;
                 }
