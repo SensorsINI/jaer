@@ -83,11 +83,11 @@ public final class CochleaTow4EarControlPanel extends AbstractChipControlPanel {
 		addTab("ADC", (adcPanel));
 		SPIConfigValue.addGUIControls(adcPanel, getBiasgen().adcControl);
 		
-		// Chip Control
+		// Chip Config
 		JPanel chipControlPanel = new JPanel();
 		chipControlPanel.setAlignmentX(LEFT_ALIGNMENT);
 		chipControlPanel.setLayout(new BoxLayout(chipControlPanel, BoxLayout.Y_AXIS));
-		addTab("Chip Diag Config", (chipControlPanel));
+		addTab("Chip Config", (chipControlPanel));
 		SPIConfigValue.addGUIControls(chipControlPanel, getBiasgen().chipControl);
 
 		setTabLayoutPolicy(JTabbedPane.WRAP_TAB_LAYOUT);

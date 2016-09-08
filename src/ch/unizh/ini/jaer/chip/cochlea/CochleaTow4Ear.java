@@ -432,10 +432,10 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 				(short) 132, false, this));
 			chipControl.add(new SPIConfigBit("DC5", "?", CypressFX3.FPGA_CHIPBIAS,
 				(short) 133, false, this));
-			chipControl.add(new SPIConfigBit("SelBot", "?", CypressFX3.FPGA_CHIPBIAS,
-				(short) 134, false, this));
-			chipControl.add(new SPIConfigBit("SelTop", "?", CypressFX3.FPGA_CHIPBIAS,
-				(short) 135, false, this));
+			chipControl.add(new SPIConfigBit("SelBot", "Set this bit to 1 to enable Neuron Kill mechanism for neurons 0, 2", CypressFX3.FPGA_CHIPBIAS,
+				(short) 134, true, this));
+			chipControl.add(new SPIConfigBit("SelTop", "Set this bit to 1 to enable Neuron Kill mechanism for neurons 1, 3", CypressFX3.FPGA_CHIPBIAS,
+				(short) 135, true, this));
 			chipControl.add(new SPIConfigBit("DC8", "?", CypressFX3.FPGA_CHIPBIAS,
 				(short) 136, false, this));
 			chipControl.add(new SPIConfigBit("DC9", "?", CypressFX3.FPGA_CHIPBIAS,
@@ -476,7 +476,17 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 				(short) 154, 4, 0, this));
 			chipControl.add(new SPIConfigInt("DigitalMux3", "?", CypressFX3.FPGA_CHIPBIAS,
 				(short) 155, 4, 0, this));
-
+			chipControl.add(new SPIConfigBit("VresetBn", "If VresetBn_S = 1, all AER local request signals (from neurons) are reset", CypressFX3.FPGA_CHIPBIAS,
+				(short) 157, false, this));
+			chipControl.add(new SPIConfigInt("KillSignalDuration", "In 100MHz clock cycles", CypressFX3.FPGA_CHIPBIAS,
+				(short) 164, 10, 200, this));
+			chipControl.add(new SPIConfigInt("KillChannel", "Select the channel to kill neurons in", CypressFX3.FPGA_CHIPBIAS,
+				(short) 160, 8, 0, this));
+			chipControl.add(new SPIConfigBit("KillNeurons02", "Toggle this bit to kill neurons 0, 2 of the channel selected above", CypressFX3.FPGA_CHIPBIAS,
+				(short) 165, false, this));
+			chipControl.add(new SPIConfigBit("KillNeurons13", "Toggle this bit to kill neurons 1, 3 of the channel selected above", CypressFX3.FPGA_CHIPBIAS,
+				(short) 166, false, this));
+			
 			for (final SPIConfigValue cfgVal : chipControl) {
 				cfgVal.addObserver(this);
 				allPreferencesList.add(cfgVal);
