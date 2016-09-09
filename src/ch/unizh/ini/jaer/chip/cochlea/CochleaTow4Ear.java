@@ -334,38 +334,38 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			// DAC1 channels (16)
 			vpots.addPot(new VPot(getChip(), "MICBIAS1L", dac1, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
 			vpots.addPot(new VPot(getChip(), "MICBIAS1L", dac1, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
-			vpots.addPot(new VPot(getChip(), "Vrefdiff", dac1, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "Vrefdiff2", dac1, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "PreampGain1L", dac1, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "PreampGain1R", dac1, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "Vrefdiff", dac1, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Bias for differentiator"));
+			vpots.addPot(new VPot(getChip(), "Vrefdiff2", dac1, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Bias for differentiator"));
+			vpots.addPot(new VPot(getChip(), "PreampGain1L", dac1, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Preamp gain for offchip preamp 1"));
+			vpots.addPot(new VPot(getChip(), "PreampGain1R", dac1, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Preamp gain for offchip preamp 2"));
 			vpots.addPot(new VPot(getChip(), "Vcom2", dac1, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VQBn", dac1, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "DCOutputLowLevel", dac1, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "DACVout10", dac1, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VQBn", dac1, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets Q of filter"));
+			vpots.addPot(new VPot(getChip(), "DCOutputLowLevel", dac1, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets DC level of input to cochlea"));
+			vpots.addPot(new VPot(getChip(), "DACVout10", dac1, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Used for VextBn"));
 			vpots.addPot(new VPot(getChip(), "DACVout11", dac1, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "DACVout12", dac1, 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "RefADAMux0-", dac1, 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "RefADAMux1-", dac1, 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "Vth1x", dac1, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "Vth4x", dac1, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "RefADAMux0-", dac1, 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Ref for Mux0"));
+			vpots.addPot(new VPot(getChip(), "RefADAMux1-", dac1, 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Ref for Mux1"));
+			vpots.addPot(new VPot(getChip(), "Vth1x", dac1, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Low Threshold for Neuron"));
+			vpots.addPot(new VPot(getChip(), "Vth4x", dac1, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "High Threshold for Neuron"));
 
 			// DAC2 channels (16)
-			vpots.addPot(new VPot(getChip(), "Vbias1Bn", dac2, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "Vbias2Bn", dac2, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VbiasLF1Bn", dac2, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VbiasHF1Bn", dac2, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VtauBn", dac2, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "PreampGain2L", dac2, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "Vbias1Bn", dac2, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Bias to set HF corner of last stage of L/R"));
+			vpots.addPot(new VPot(getChip(), "Vbias2Bn", dac2, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Bias to set LF corner of last stage of T/B"));
+			vpots.addPot(new VPot(getChip(), "VbiasLF1Bn", dac2, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Bias to set LF corner of last stage of L/R"));
+			vpots.addPot(new VPot(getChip(), "VbiasHF1Bn", dac2, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Bias to set HF corner of last stage of T/B"));
+			vpots.addPot(new VPot(getChip(), "VtauBn", dac2, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets CF of filter and Q"));
+			vpots.addPot(new VPot(getChip(), "PreampGain2L", dac2, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Preamp gain for offchip preamp 3"));
 			vpots.addPot(new VPot(getChip(), "MICBIAS2L", dac2, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
 			vpots.addPot(new VPot(getChip(), "MICBIAS2R", dac2, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
-			vpots.addPot(new VPot(getChip(), "VrefpreampBpx", dac2, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VbMicCasBpcx", dac2, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "RefADAMux3-", dac2, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "RefADAMux2-", dac2, 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "PreampGain2R", dac2, 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "DCOutputHighLevel", dac2, 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "TH", dac2, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "PreampA/R", dac2, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VrefpreampBpx", dac2, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets Ref to On-Chip Preamp"));
+			vpots.addPot(new VPot(getChip(), "VbMicCasBpcx", dac2, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets Cascode voltage for On-Chip Preamp"));
+			vpots.addPot(new VPot(getChip(), "RefADAMux3-", dac2, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Ref for Mux3"));
+			vpots.addPot(new VPot(getChip(), "RefADAMux2-", dac2, 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Ref for Mux2"));
+			vpots.addPot(new VPot(getChip(), "PreampGain2R", dac2, 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Preamp gain for offchip preamp 4"));
+			vpots.addPot(new VPot(getChip(), "DCOutputHighLevel", dac2, 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Set to Gnd"));
+			vpots.addPot(new VPot(getChip(), "TH", dac2, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Threshold for Offchip Preamp"));
+			vpots.addPot(new VPot(getChip(), "PreampA/R", dac2, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets gain for Offchip preamp"));
 
 			// New logic SPI configuration values.
 			// Scanner module
@@ -424,49 +424,49 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 				(short) 128, 4, 0, this));
 			chipControl.add(new SPIConfigInt("PreampGain", "MSB First", CypressFX3.FPGA_CHIPBIAS,
 				(short) 129, 2, 0, this));
-			chipControl.add(new SPIConfigBit("Seln1", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("Seln1", "Set to 0 for parallel architecture, Set to 1 for cascaded architecture, settings for LR pair", CypressFX3.FPGA_CHIPBIAS,
 				(short) 130, false, this));
-			chipControl.add(new SPIConfigBit("Seln2", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("Seln2", "Set to 0 for parallel architecture, Set to 1 for cascaded architecture, settings for LR pair", CypressFX3.FPGA_CHIPBIAS,
 				(short) 131, false, this));
-			chipControl.add(new SPIConfigBit("SMconfigArow", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("SMconfigArow", "Used in On-chip Arbiter", CypressFX3.FPGA_CHIPBIAS,
 				(short) 132, false, this));
-			chipControl.add(new SPIConfigBit("DC5", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("DC5", "Not Used", CypressFX3.FPGA_CHIPBIAS,
 				(short) 133, false, this));
-			chipControl.add(new SPIConfigBit("SelBot", "Set this bit to 1 to enable Neuron Kill mechanism for neurons 0, 2", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("SelBot", "Set this bit to 1 to disable Neuron Kill mechanism for neurons 0, 2 when AERKillBit is set to 1 and channel is selected", CypressFX3.FPGA_CHIPBIAS,
 				(short) 134, true, this));
-			chipControl.add(new SPIConfigBit("SelTop", "Set this bit to 1 to enable Neuron Kill mechanism for neurons 1, 3", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("SelTop", "Set this bit to 1 to disable Neuron Kill mechanism for neurons 1, 3 when AERKillBit is set to 1 and channel is selected", CypressFX3.FPGA_CHIPBIAS,
 				(short) 135, true, this));
-			chipControl.add(new SPIConfigBit("DC8", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("DC8", "nB0 for Test SOS", CypressFX3.FPGA_CHIPBIAS,
 				(short) 136, false, this));
-			chipControl.add(new SPIConfigBit("DC9", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("DC9", "nB1 for Test SOS", CypressFX3.FPGA_CHIPBIAS,
 				(short) 137, false, this));
-			chipControl.add(new SPIConfigBit("DC10", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("DC10", "nB2 for Test SOS", CypressFX3.FPGA_CHIPBIAS,
 				(short) 138, false, this));
-			chipControl.add(new SPIConfigBit("DC11", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("DC11", "nB3 for Test SOS", CypressFX3.FPGA_CHIPBIAS,
 				(short) 139, false, this));
-			chipControl.add(new SPIConfigBit("DC12", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("DC12", "nB4 for Test SOS", CypressFX3.FPGA_CHIPBIAS,
 				(short) 140, false, this));
-			chipControl.add(new SPIConfigBit("DC13", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("DC13", "B5 for Test SOS", CypressFX3.FPGA_CHIPBIAS,
 				(short) 141, false, this));
-			chipControl.add(new SPIConfigBit("DC14", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("DC14", "B6 for Test SOS", CypressFX3.FPGA_CHIPBIAS,
 				(short) 142, false, this));
-			chipControl.add(new SPIConfigBit("DC15", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("DC15", "B7 for Test SOS", CypressFX3.FPGA_CHIPBIAS,
 				(short) 143, false, this));
-			chipControl.add(new SPIConfigBit("DC16", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("DC16", "B8 for Test Diff", CypressFX3.FPGA_CHIPBIAS,
 				(short) 144, false, this));
-			chipControl.add(new SPIConfigBit("DC17", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("DC17", "B9 for Test Diff", CypressFX3.FPGA_CHIPBIAS,
 				(short) 145, false, this));
-			chipControl.add(new SPIConfigBit("DC18", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("DC18", "B10 for Test Diff", CypressFX3.FPGA_CHIPBIAS,
 				(short) 146, false, this));
-			chipControl.add(new SPIConfigBit("BitTestLatch", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("BitTestLatch", "Set to 1 to enable followers of test signals to pad", CypressFX3.FPGA_CHIPBIAS,
 				(short) 147, false, this));
-			chipControl.add(new SPIConfigBit("DC20", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("DC20", "Bit set to 1 if more Leak Current is needed on Test Neuron", CypressFX3.FPGA_CHIPBIAS,
 				(short) 148, false, this));
-			chipControl.add(new SPIConfigBit("DC21", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("DC21", "Not Used", CypressFX3.FPGA_CHIPBIAS,
 				(short) 149, false, this));
-			chipControl.add(new SPIConfigBit("DC22", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("DC22", "Not Used", CypressFX3.FPGA_CHIPBIAS,
 				(short) 150, false, this));
-			chipControl.add(new SPIConfigBit("DC23", "?", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("DC23", "Not Used", CypressFX3.FPGA_CHIPBIAS,
 				(short) 151, false, this));
 			chipControl.add(new SPIConfigInt("DigitalMux0", "?", CypressFX3.FPGA_CHIPBIAS,
 				(short) 152, 4, 0, this));
@@ -476,7 +476,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 				(short) 154, 4, 0, this));
 			chipControl.add(new SPIConfigInt("DigitalMux3", "?", CypressFX3.FPGA_CHIPBIAS,
 				(short) 155, 4, 0, this));
-			chipControl.add(new SPIConfigBit("VresetBn", "If VresetBn_S = 1, all AER local request signals (from neurons) are reset", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("VresetBn", "If VresetBn_S = 1, all local latched AER KillBits in the neuron are cleared, that is neurons can send AER spikes", CypressFX3.FPGA_CHIPBIAS,
 				(short) 157, false, this));
 			chipControl.add(new SPIConfigInt("KillSignalDuration", "In 100MHz clock cycles", CypressFX3.FPGA_CHIPBIAS,
 				(short) 164, 10, 200, this));
