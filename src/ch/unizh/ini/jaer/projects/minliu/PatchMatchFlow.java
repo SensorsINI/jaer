@@ -55,6 +55,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int patchDimension = getInt("patchDimension", 8);
     protected boolean measurePerformance = getBoolean("measurePerformance", false);
     private boolean displayOutputVectors = getBoolean("displayOutputVectors", true);
+
     public enum PatchCompareMethod {
         JaccardDistance, HammingDistance, SAD
     };
@@ -91,7 +92,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private boolean showGrid = getBoolean("showGrid", true);
     private int flushCounter = 0;
     public enum SliceMethod {
-        ConstantDuration, ConstantEventNumber
+        ConstantDuration, ConstantEventNumber, AdaptationDuration
     };
     private SliceMethod sliceMethod = SliceMethod.valueOf(getString("sliceMethod", SliceMethod.ConstantDuration.toString()));
     private int eventCounter = 0;
@@ -488,9 +489,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      * uses the current event to maybe rotate the slices
      */
     private void maybeRotateSlices() {
+        int dt = ts - sliceLastTs;
+
         switch (sliceMethod) {
             case ConstantDuration:
-                int dt = ts - sliceLastTs;
                 if(rewindFlg) {
                     return;
                 }
@@ -502,7 +504,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 if (eventCounter++ < sliceEventCount) {
                     return;
                 }
-        }
+            case AdaptationDuration:
+                break;       
+        }        
         
         /* The index cycle is " current idx -> t1 idx -> t2 idx -> current idx".
            Change the index, the change should like this:
@@ -517,6 +521,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         assignSliceReferences();
     }
 
+    private int updateAdaptDuration() {
+        return 1000;
+    }
+    
     private void assignSliceReferences() {
         currentSlice = histograms[currentSliceIdx];
         tMinus1Slice = histograms[tMinus1SliceIdx];
