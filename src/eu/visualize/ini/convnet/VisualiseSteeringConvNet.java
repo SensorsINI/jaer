@@ -45,8 +45,10 @@ import java.awt.Font;
 public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor implements PropertyChangeListener {
 
     private static final int LEFT = 0, CENTER = 1, RIGHT = 2, INVISIBLE = 3; // define output cell types
+    private static final int LEFTS = 0, LEFTM = 1, LEFTXL = 2, CENTERS = 3, CENTERM = 4, CENTERXL = 5, RIGHTS = 6, RIGHTM = 7, RIGHTXL = 8, INVISIBLESIZE = 9; // define output cell types
     volatile private boolean hideSteeringOutput = getBoolean("hideOutput", false);
     volatile private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
+    volatile private boolean networkWithDistance = getBoolean("networkWithDistance", false);
     volatile private boolean showStatistics = getBoolean("showStatistics", true);
     private TargetLabeler targetLabeler = null;
     private Error error = new Error();
@@ -74,8 +76,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private int[] decisionLowPassArray = new int[3];
     private int savedDecision = -1;
     private int counterD = 0;
-    private static Color colorBehavior=Color.RED;
+    private static Color colorBehavior = Color.RED;
     private float[] LCRNstate = new float[]{0.5f, 0.5f, 0.5f, 0.5f};
+    private float[] SMXLstate = new float[]{0.5f, 0.5f, 0.5f};
     private boolean flagBehavior = false;
     volatile private int renderingCyclesDecision = getInt("renderingCyclesDecision", 3);
     volatile private boolean apply_LR_RL_constraint = getBoolean("apply_LR_RL_constraint", false);
@@ -91,6 +94,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         String deb = "3. Debug", disp = "1. Display", anal = "2. Analysis";
         String udp = "UDP messages";
         setPropertyTooltip(disp, "showAnalogDecisionOutput", "Shows output units as analog shading rather than binary. If LCRNstep=1, then the analog CNN output is shown. Otherwise, the lowpass filtered LCRN states are shown.");
+        setPropertyTooltip(disp, "networkWithDistance", "Choose whether the network is trained on distance estimation as well.");
         setPropertyTooltip(disp, "hideSteeringOutput", "hides steering output unit rendering as shading over sensor image. If the prey is invisible no rectangle is rendered when showAnalogDecisionOutput is deselected.");
         setPropertyTooltip(anal, "pixelErrorAllowedForSteering", "If ground truth location is within this many pixels of closest border then the descision is still counted as corret");
         setPropertyTooltip(disp, "showStatistics", "shows statistics of DVS frame rate and error rate (when ground truth TargetLabeler file is loaded)");
@@ -109,7 +113,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(udp, "startLoggingUDPMessages", "start logging UDP messages to a text log file");
         setPropertyTooltip(udp, "stopLoggingUDPMessages", "stop logging UDP messages");
         setPropertyTooltip(disp, "renderingCyclesDecision", "Display robot behavior for these many rendering cycles");
-        
+
         FilterChain chain = new FilterChain(chip);
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
         chain.add(targetLabeler);
@@ -208,6 +212,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         MultilineAnnotationTextRenderer.setScale(.3f);
         if (showStatistics) {
             MultilineAnnotationTextRenderer.renderMultilineString(String.format("LCRN states: [L=%6.1f]  [C=%6.1f]  [R%6.1f]  [N=%6.1f]", LCRNstate[0], LCRNstate[1], LCRNstate[2], LCRNstate[3]));
+            if (LCRNstate[3] < LCRNstate[0] || LCRNstate[3] < LCRNstate[1] || LCRNstate[3] < LCRNstate[2]) { // Only if visible
+                MultilineAnnotationTextRenderer.renderMultilineString(String.format("SMXL states: [S=%6.1f]  [M=%6.1f]  [XL%6.1f] ", SMXLstate[0], SMXLstate[1], SMXLstate[2]));
+            }
             MultilineAnnotationTextRenderer.setScale(.3f);
             if (dvsSubsampler != null) {
                 MultilineAnnotationTextRenderer.renderMultilineString(String.format("DVS subsampler, %d events, inst/avg interval %6.1f/%6.1f ms", getDvsMinEvents(), dvsSubsampler.getLastSubsamplerFrameIntervalUs() * 1e-3f, dvsSubsampler.getFilteredSubsamplerIntervalUs() * 1e-3f));
@@ -233,10 +240,10 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             if (currentBehavior == 7) {
                 MultilineAnnotationTextRenderer.renderMultilineString(String.format("Chasing"));
             }
-            countRender = countRender+1;
-            if(countRender > getRenderingCyclesDecision()){
-            flagBehavior = false;
-            countRender = 0;
+            countRender = countRender + 1;
+            if (countRender > getRenderingCyclesDecision()) {
+                flagBehavior = false;
+                countRender = 0;
             }
         }
         //        if (totalDecisions > 0) {
@@ -265,12 +272,58 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             gl.glColor3f((shade * r), (shade * g), (shade * b));
             gl.glRecti(0, 0, chip.getSizeX(), sy / 8);
 
-        } else if (decision != INVISIBLE) {
-            int x0 = third * decision;
-            int x1 = x0 + third;
-            float shade = .5f;
-            gl.glColor3f((shade * r), (shade * g), (shade * b));
-            gl.glRecti(x0, 0, x1, sy);
+        } else if (decision != INVISIBLE || decision != INVISIBLESIZE) {
+            if (!networkWithDistance) {
+                int x0 = third * decision;
+                int x1 = x0 + third;
+                float shade = .5f;
+                gl.glColor3f((shade * r), (shade * g), (shade * b));
+                gl.glRecti(x0, 0, x1, sy);
+            } else {
+                int bottomS = (int) Math.floor(sy * (3f / 5f));
+                int topS = (int) Math.floor(sy * (4f / 5f));
+                int bottomM = (int) Math.floor(sy / 3f);
+                int topM = (int) Math.floor(sy * (4f / 5f));
+                int bottomXL = (int) Math.floor(0);
+                int topXL = (int) Math.floor(sy);
+                if (decision == 0 || decision == 1 || decision == 2) { // L
+                    int x0 = third * 0;
+                    int x1 = x0 + third;
+                    float shade = .5f;
+                    gl.glColor3f((shade * r), (shade * g), (shade * b));
+                    if (decision == 0) { // S
+                        gl.glRecti(x0, bottomS, x1, topS);
+                    } else if (decision == 1) { // M
+                        gl.glRecti(x0, bottomM, x1, topM);
+                    } else if (decision == 2) { // XL
+                        gl.glRecti(x0, bottomXL, x1, topXL);
+                    }
+                } else if (decision == 3 || decision == 4 || decision == 5) { // C
+                    int x0 = third * 1;
+                    int x1 = x0 + third;
+                    float shade = .5f;
+                    gl.glColor3f((shade * r), (shade * g), (shade * b));
+                    if (decision == 3) { // S
+                        gl.glRecti(x0, bottomS, x1, topS);
+                    } else if (decision == 4) { // M
+                        gl.glRecti(x0, bottomM, x1, topM);
+                    } else if (decision == 5) { // XL
+                        gl.glRecti(x0, bottomXL, x1, topXL);
+                    }
+                } else if (decision == 6 || decision == 7 || decision == 8) { // R
+                    int x0 = third * 2;
+                    int x1 = x0 + third;
+                    float shade = .5f;
+                    gl.glColor3f((shade * r), (shade * g), (shade * b));
+                    if (decision == 6) { // S
+                        gl.glRecti(x0, bottomS, x1, topS);
+                    } else if (decision == 7) { // M
+                        gl.glRecti(x0, bottomM, x1, topM);
+                    } else if (decision == 8) { // XL
+                        gl.glRecti(x0, bottomXL, x1, topXL);
+                    }
+                }
+            }
         }
     }
 
@@ -286,29 +339,206 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     public void applyConstraints(DeepLearnCnnNetwork net) {
         int currentDecision = net.outputLayer.maxActivatedUnit;
         float maxLCRN = 0;
+        float maxSMXL = 0;
         int maxLCRNindex = -1;
-        for (int i = 0; i < 4; i++) {
-            if (i == currentDecision) {
-                LCRNstate[i] = LCRNstate[i] + LCRNstep;
-                if (LCRNstate[i] > 1) {
-                    LCRNstate[i] = 1;
-                }
-                if (LCRNstate[i] > maxLCRN) {
-                    maxLCRN = LCRNstate[i];
-                    maxLCRNindex = i;
-                }
-            } else {
-                LCRNstate[i] = LCRNstate[i] - LCRNstep;
-                if (LCRNstate[i] < 0) {
-                    LCRNstate[i] = 0;
-                }
-                if (LCRNstate[i] > maxLCRN) {
-                    maxLCRN = LCRNstate[i];
-                    maxLCRNindex = i;
+        int maxSMXLindex = -1;
+        int decisionOverwrite = -1;
+        if (!networkWithDistance) {
+            for (int i = 0; i < 4; i++) {
+                if (i == currentDecision) {
+                    LCRNstate[i] = LCRNstate[i] + LCRNstep;
+                    if (LCRNstate[i] > 1) {
+                        LCRNstate[i] = 1;
+                    }
+                    if (LCRNstate[i] > maxLCRN) {
+                        maxLCRN = LCRNstate[i];
+                        maxLCRNindex = i;
+                    }
+                } else {
+                    LCRNstate[i] = LCRNstate[i] - LCRNstep;
+                    if (LCRNstate[i] < 0) {
+                        LCRNstate[i] = 0;
+                    }
+                    if (LCRNstate[i] > maxLCRN) {
+                        maxLCRN = LCRNstate[i];
+                        maxLCRNindex = i;
+                    }
                 }
             }
+            net.outputLayer.maxActivatedUnit = maxLCRNindex;
+        } else {
+            //LCRN
+
+            if (currentDecision == 0 || currentDecision == 1 || currentDecision == 2) {//L
+                LCRNstate[0] = LCRNstate[0] + LCRNstep;
+                if (LCRNstate[0] > 1) {
+                    LCRNstate[0] = 1;
+                }
+                LCRNstate[1] = LCRNstate[1] - LCRNstep;
+                if (LCRNstate[1] < 0) {
+                    LCRNstate[1] = 0;
+                }
+                LCRNstate[2] = LCRNstate[2] - LCRNstep;
+                if (LCRNstate[2] < 0) {
+                    LCRNstate[2] = 0;
+                }
+                LCRNstate[3] = LCRNstate[3] - LCRNstep;
+                if (LCRNstate[3] < 0) {
+                    LCRNstate[3] = 0;
+                }
+                if (LCRNstate[0] > maxLCRN) {
+                    maxLCRN = LCRNstate[0];
+                    maxLCRNindex = 0;
+                }
+            } else if (currentDecision == 3 || currentDecision == 4 || currentDecision == 5) {//C
+                LCRNstate[0] = LCRNstate[0] - LCRNstep;
+                if (LCRNstate[0] < 0) {
+                    LCRNstate[0] = 0;
+                }
+                LCRNstate[1] = LCRNstate[1] + LCRNstep;
+                if (LCRNstate[1] > 1) {
+                    LCRNstate[1] = 1;
+                }
+                LCRNstate[2] = LCRNstate[2] - LCRNstep;
+                if (LCRNstate[2] < 0) {
+                    LCRNstate[2] = 0;
+                }
+                LCRNstate[3] = LCRNstate[3] - LCRNstep;
+                if (LCRNstate[3] < 0) {
+                    LCRNstate[3] = 0;
+                }
+                if (LCRNstate[1] > maxLCRN) {
+                    maxLCRN = LCRNstate[1];
+                    maxLCRNindex = 1;
+                }
+            } else if (currentDecision == 6 || currentDecision == 7 || currentDecision == 8) {//R
+                LCRNstate[0] = LCRNstate[0] - LCRNstep;
+                if (LCRNstate[0] < 0) {
+                    LCRNstate[0] = 0;
+                }
+                LCRNstate[1] = LCRNstate[1] - LCRNstep;
+                if (LCRNstate[1] < 0) {
+                    LCRNstate[1] = 0;
+                }
+                LCRNstate[2] = LCRNstate[2] + LCRNstep;
+                if (LCRNstate[2] > 1) {
+                    LCRNstate[2] = 1;
+                }
+                LCRNstate[3] = LCRNstate[3] - LCRNstep;
+                if (LCRNstate[3] < 0) {
+                    LCRNstate[3] = 0;
+                }
+                if (LCRNstate[2] > maxLCRN) {
+                    maxLCRN = LCRNstate[2];
+                    maxLCRNindex = 2;
+                }
+            } else if (currentDecision == 9) {//N
+                LCRNstate[0] = LCRNstate[0] - LCRNstep;
+                if (LCRNstate[0] < 0) {
+                    LCRNstate[0] = 0;
+                }
+                LCRNstate[1] = LCRNstate[1] - LCRNstep;
+                if (LCRNstate[1] < 0) {
+                    LCRNstate[1] = 0;
+                }
+                LCRNstate[2] = LCRNstate[2] - LCRNstep;
+                if (LCRNstate[2] < 0) {
+                    LCRNstate[2] = 0;
+                }
+                LCRNstate[3] = LCRNstate[3] + LCRNstep;
+                if (LCRNstate[3] > 1) {
+                    LCRNstate[3] = 1;
+                }
+                if (LCRNstate[3] > maxLCRN) {
+                    maxLCRN = LCRNstate[3];
+                    maxLCRNindex = 3;
+                }
+            }
+
+            //SMXL
+            if (currentDecision != 9) {
+                if (currentDecision == 0 || currentDecision == 3 || currentDecision == 6) {//S
+                    SMXLstate[0] = SMXLstate[0] + LCRNstep;
+                    if (SMXLstate[0] > 1) {
+                        SMXLstate[0] = 1;
+                    }
+                    SMXLstate[1] = SMXLstate[1] - LCRNstep;
+                    if (SMXLstate[1] < 0) {
+                        SMXLstate[1] = 0;
+                    }
+                    SMXLstate[2] = SMXLstate[2] - LCRNstep;
+                    if (SMXLstate[2] < 0) {
+                        SMXLstate[2] = 0;
+                    }
+                    if (SMXLstate[0] > maxSMXL) {
+                        maxSMXL = SMXLstate[0];
+                        maxSMXLindex = 0;
+                    }
+                } else if (currentDecision == 1 || currentDecision == 4 || currentDecision == 7) {//M
+                    SMXLstate[0] = SMXLstate[0] - LCRNstep;
+                    if (SMXLstate[0] < 0) {
+                        SMXLstate[0] = 0;
+                    }
+                    SMXLstate[1] = SMXLstate[1] + LCRNstep;
+                    if (SMXLstate[1] > 1) {
+                        SMXLstate[1] = 1;
+                    }
+                    SMXLstate[2] = SMXLstate[2] - LCRNstep;
+                    if (SMXLstate[2] < 0) {
+                        SMXLstate[2] = 0;
+                    }
+                    if (SMXLstate[1] > maxSMXL) {
+                        maxSMXL = SMXLstate[1];
+                        maxSMXLindex = 1;
+                    }
+                } else if (currentDecision == 2 || currentDecision == 5 || currentDecision == 8) {//XL
+                    SMXLstate[0] = SMXLstate[0] - LCRNstep;
+                    if (SMXLstate[0] < 0) {
+                        SMXLstate[0] = 0;
+                    }
+                    SMXLstate[1] = SMXLstate[1] - LCRNstep;
+                    if (SMXLstate[1] < 0) {
+                        SMXLstate[1] = 0;
+                    }
+                    SMXLstate[2] = SMXLstate[2] + LCRNstep;
+                    if (SMXLstate[2] > 1) {
+                        SMXLstate[2] = 1;
+                    }
+                    if (SMXLstate[2] > maxSMXL) {
+                        maxSMXL = SMXLstate[2];
+                        maxSMXLindex = 2;
+                    }
+                }
+
+            }
+            if (maxLCRNindex == 0 && maxSMXLindex == 0) {
+                decisionOverwrite = 0;
+            } else if (maxLCRNindex == 0 && maxSMXLindex == 1) {
+                decisionOverwrite = 1;
+            } else if (maxLCRNindex == 0 && maxSMXLindex == 2) {
+                decisionOverwrite = 2;
+            } else if (maxLCRNindex == 1 && maxSMXLindex == 0) {
+                decisionOverwrite = 3;
+            } else if (maxLCRNindex == 1 && maxSMXLindex == 1) {
+                decisionOverwrite = 4;
+            } else if (maxLCRNindex == 1 && maxSMXLindex == 2) {
+                decisionOverwrite = 5;
+            } else if (maxLCRNindex == 2 && maxSMXLindex == 0) {
+                decisionOverwrite = 6;
+            } else if (maxLCRNindex == 2 && maxSMXLindex == 1) {
+                decisionOverwrite = 7;
+            } else if (maxLCRNindex == 2 && maxSMXLindex == 2) {
+                decisionOverwrite = 8;
+            } else if (maxLCRNindex == 3) {
+                decisionOverwrite = 9;
+            }
+            System.out.println();
+            System.out.println(currentDecision);
+            System.out.println(maxLCRNindex);
+            System.out.println(maxSMXLindex);
+            System.out.println(decisionOverwrite);
+            net.outputLayer.maxActivatedUnit = decisionOverwrite;
         }
-        net.outputLayer.maxActivatedUnit = maxLCRNindex;
 
         if (apply_CN_NC_constraint) {// Cannot switch from C to N and viceversa
             if (currentDecision == 1 && decisionArray[1] == 3) {
@@ -383,6 +613,21 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         putBoolean("showAnalogDecisionOutput", showAnalogDecisionOutput);
     }
 
+    /**
+     * @return the networkWithDistance
+     */
+    public boolean isNetworkWithDistance() {
+        return networkWithDistance;
+    }
+
+    /**
+     * @param networkWithDistance the networkWithDistance to set
+     */
+    public void setNetworkWithDistance(boolean networkWithDistance) {
+        this.networkWithDistance = networkWithDistance;
+        putBoolean("networkWithDistance", networkWithDistance);
+    }
+
     @Override
     synchronized public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName() != DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
@@ -393,7 +638,10 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             if (targetLabeler.isLocationsLoadedFromFile()) {
                 error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit, net.isLastInputTypeProcessedWasApsFrame());
             }
+            //if (!networkWithDistance) {
             applyConstraints(net);
+            //}
+
             if (sendUDPSteeringMessages) {
                 if (checkClient()) { // if client not there, just continue - maybe it comes back
                     byte msg = (byte) (forceNetworkOutpout ? forcedNetworkOutputValue : net.outputLayer.maxActivatedUnit);
@@ -484,6 +732,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     public void setRemotePort(int remotePort) {
         this.remotePort = remotePort;
         putInt("remotePort", remotePort);
+
     }
 
     private class Error {
@@ -675,8 +924,10 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         if (channel != null) {
             try {
                 channel.close();
+
             } catch (IOException ex) {
-                Logger.getLogger(VisualiseSteeringConvNet.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(VisualiseSteeringConvNet.class
+                        .getName()).log(Level.SEVERE, null, ex);
             }
             channel = null;
         }
@@ -861,6 +1112,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         this.renderingCyclesDecision = renderingCyclesDecision;
         putInt("renderingCyclesDecision", renderingCyclesDecision);
     }
+
     /**
      * @return the sendOnlyNovelSteeringMessages
      */
@@ -875,6 +1127,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     public void setSendOnlyNovelSteeringMessages(boolean sendOnlyNovelSteeringMessages) {
         this.sendOnlyNovelSteeringMessages = sendOnlyNovelSteeringMessages;
         putBoolean("sendOnlyNovelSteeringMessages", sendOnlyNovelSteeringMessages);
+
     }
 
     private class BehaviorLoggingThread extends Thread {
