@@ -82,6 +82,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private boolean flagBehavior = false;
     volatile private int renderingCyclesDecision = getInt("renderingCyclesDecision", 3);
     volatile private boolean apply_LR_RL_constraint = getBoolean("apply_LR_RL_constraint", false);
+    volatile private boolean apply_SXL_XLS_constraint = getBoolean("apply_SXL_XLS_constraint", false);
     volatile private boolean apply_LNR_RNL_constraint = getBoolean("apply_LNR_RNL_constraint", false);
     volatile private boolean apply_CN_NC_constraint = getBoolean("apply_CN_NC_constraint", false);
     volatile private float LCRNstep = getFloat("LCRNstep", 1f);
@@ -107,6 +108,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(udp, "forcedNetworkOutputValue", "forced value of network output sent to client (0=left, 1=middle, 2=right, 3=invisible)");
         setPropertyTooltip(udp, "forceNetworkOutpout", "force (override) network output classification to forcedNetworkOutputValue");
         setPropertyTooltip(udp, "apply_LR_RL_constraint", "force (override) network output classification to make sure there is no switching from L to R or viceversa directly");
+        setPropertyTooltip(udp, "apply_SXL_XLS_constraint", "force (override) network output classification to make sure there is no switching from S to XL or viceversa directly");
         setPropertyTooltip(udp, "apply_LNR_RNL_constraint", "force (override) network output classification to make sure there is no switching from L to N and to R or viceversa, since the predator will see the prey back from the same last seen steering output (it spins in the last seen direction)");
         setPropertyTooltip(udp, "apply_CN_NC_constraint", "force (override) network output classification to make sure there is no switching from C to N or viceversa directly");
         setPropertyTooltip(udp, "LCRNstep", "mixture of decisicion outputs over time (LCR or N) to another (if 1, no lowpass filtering, if lower, then slower transitions)");
@@ -386,10 +388,6 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 if (LCRNstate[3] < 0) {
                     LCRNstate[3] = 0;
                 }
-                if (LCRNstate[0] > maxLCRN) {
-                    maxLCRN = LCRNstate[0];
-                    maxLCRNindex = 0;
-                }
             } else if (currentDecision == 3 || currentDecision == 4 || currentDecision == 5) {//C
                 LCRNstate[0] = LCRNstate[0] - LCRNstep;
                 if (LCRNstate[0] < 0) {
@@ -406,10 +404,6 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 LCRNstate[3] = LCRNstate[3] - LCRNstep;
                 if (LCRNstate[3] < 0) {
                     LCRNstate[3] = 0;
-                }
-                if (LCRNstate[1] > maxLCRN) {
-                    maxLCRN = LCRNstate[1];
-                    maxLCRNindex = 1;
                 }
             } else if (currentDecision == 6 || currentDecision == 7 || currentDecision == 8) {//R
                 LCRNstate[0] = LCRNstate[0] - LCRNstep;
@@ -428,10 +422,6 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 if (LCRNstate[3] < 0) {
                     LCRNstate[3] = 0;
                 }
-                if (LCRNstate[2] > maxLCRN) {
-                    maxLCRN = LCRNstate[2];
-                    maxLCRNindex = 2;
-                }
             } else if (currentDecision == 9) {//N
                 LCRNstate[0] = LCRNstate[0] - LCRNstep;
                 if (LCRNstate[0] < 0) {
@@ -449,10 +439,22 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 if (LCRNstate[3] > 1) {
                     LCRNstate[3] = 1;
                 }
-                if (LCRNstate[3] > maxLCRN) {
-                    maxLCRN = LCRNstate[3];
-                    maxLCRNindex = 3;
-                }
+            }// check who wins
+            if (LCRNstate[0] > maxLCRN) {
+                maxLCRN = LCRNstate[0];
+                maxLCRNindex = 0;
+            }
+            if (LCRNstate[1] > maxLCRN) {
+                maxLCRN = LCRNstate[1];
+                maxLCRNindex = 1;
+            }
+            if (LCRNstate[2] > maxLCRN) {
+                maxLCRN = LCRNstate[2];
+                maxLCRNindex = 2;
+            }
+            if (LCRNstate[3] > maxLCRN) {
+                maxLCRN = LCRNstate[3];
+                maxLCRNindex = 3;
             }
 
             //SMXL
@@ -470,10 +472,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                     if (SMXLstate[2] < 0) {
                         SMXLstate[2] = 0;
                     }
-                    if (SMXLstate[0] > maxSMXL) {
-                        maxSMXL = SMXLstate[0];
-                        maxSMXLindex = 0;
-                    }
+
                 } else if (currentDecision == 1 || currentDecision == 4 || currentDecision == 7) {//M
                     SMXLstate[0] = SMXLstate[0] - LCRNstep;
                     if (SMXLstate[0] < 0) {
@@ -486,10 +485,6 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                     SMXLstate[2] = SMXLstate[2] - LCRNstep;
                     if (SMXLstate[2] < 0) {
                         SMXLstate[2] = 0;
-                    }
-                    if (SMXLstate[1] > maxSMXL) {
-                        maxSMXL = SMXLstate[1];
-                        maxSMXLindex = 1;
                     }
                 } else if (currentDecision == 2 || currentDecision == 5 || currentDecision == 8) {//XL
                     SMXLstate[0] = SMXLstate[0] - LCRNstep;
@@ -504,10 +499,18 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                     if (SMXLstate[2] > 1) {
                         SMXLstate[2] = 1;
                     }
-                    if (SMXLstate[2] > maxSMXL) {
-                        maxSMXL = SMXLstate[2];
-                        maxSMXLindex = 2;
-                    }
+                }// check who wins
+                if (SMXLstate[0] > maxSMXL) {
+                    maxSMXL = SMXLstate[0];
+                    maxSMXLindex = 0;
+                }
+                if (SMXLstate[1] > maxSMXL) {
+                    maxSMXL = SMXLstate[1];
+                    maxSMXLindex = 1;
+                }
+                if (SMXLstate[2] > maxSMXL) {
+                    maxSMXL = SMXLstate[2];
+                    maxSMXLindex = 2;
                 }
 
             }
@@ -532,50 +535,95 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             } else if (maxLCRNindex == 3) {
                 decisionOverwrite = 9;
             }
-            System.out.println();
-            System.out.println(currentDecision);
-            System.out.println(maxLCRNindex);
-            System.out.println(maxSMXLindex);
-            System.out.println(decisionOverwrite);
             net.outputLayer.maxActivatedUnit = decisionOverwrite;
         }
 
         if (apply_CN_NC_constraint) {// Cannot switch from C to N and viceversa
-            if (currentDecision == 1 && decisionArray[1] == 3) {
-                net.outputLayer.maxActivatedUnit = 3;
-            } else if (currentDecision == 3 && decisionArray[1] == 1) {
-                net.outputLayer.maxActivatedUnit = 1;
+            if (!networkWithDistance) {
+                if (currentDecision == 1 && decisionArray[1] == 3) {
+                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                } else if (currentDecision == 3 && decisionArray[1] == 1) {
+                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                }
+            } else {
+                if ((currentDecision == 3 || currentDecision == 4 || currentDecision == 5) && (decisionArray[1] == 9)) {
+                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                } else if ((currentDecision == 9) && (decisionArray[1] == 3 || decisionArray[1] == 4 || decisionArray[1] == 5)) {
+                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                }
             }
         }
         if (apply_LNR_RNL_constraint) { //Remember last position before going to N, the robot will reappear from there
-            // Possible transition to N (RN or LN)
-            if (currentDecision == 3 && decisionArray[1] == 0) {
-                savedDecision = 0;
-            } else if (currentDecision == 3 && decisionArray[1] == 2) {
-                savedDecision = 2;
-            }
-            // Possible transition back from N (NR or LN)
-            if (savedDecision >= 0) {//Real value saved
-                if (currentDecision == 0 && decisionArray[1] == 3) {
-                    if (currentDecision != savedDecision) {
-                        net.outputLayer.maxActivatedUnit = 3;
-                    } else {
-                        savedDecision = -1;
+            if (!networkWithDistance) {
+                // Possible transition to N (RN or LN)
+                if (currentDecision == 3 && decisionArray[1] == 0) {
+                    savedDecision = decisionArray[1];// keep it, don't change
+                } else if (currentDecision == 3 && decisionArray[1] == 2) {
+                    savedDecision = decisionArray[1];// keep it, don't change
+                }
+                // Possible transition back from N (NR or LN)
+                if (savedDecision >= 0) {//Real value saved
+                    if (currentDecision == 0 && decisionArray[1] == 3) {
+                        if (currentDecision != savedDecision) {
+                            net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                        } else {
+                            savedDecision = -1;
+                        }
+                    } else if (currentDecision == 2 && decisionArray[1] == 3) {
+                        if (currentDecision != savedDecision) {
+                            net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                        } else {
+                            savedDecision = -1;
+                        }
                     }
-                } else if (currentDecision == 2 && decisionArray[1] == 3) {
-                    if (currentDecision != savedDecision) {
-                        net.outputLayer.maxActivatedUnit = 3;
-                    } else {
-                        savedDecision = -1;
+                }
+            } else {
+                // Possible transition to N (RN or LN)
+                if (currentDecision == 9 && (decisionArray[1] == 0 || decisionArray[1] == 1 || decisionArray[1] == 2)) {
+                    savedDecision = decisionArray[1];// keep it, don't change
+                } else if (currentDecision == 9 && (decisionArray[1] == 6 || decisionArray[1] == 7 || decisionArray[1] == 8)) {
+                    savedDecision = decisionArray[1];// keep it, don't change
+                }
+                // Possible transition back from N (NR or LN)
+                if (savedDecision >= 0) {//Real value saved
+                    if ((currentDecision == 0 || currentDecision == 1 || currentDecision == 2) && decisionArray[1] == 9) {
+                        if (currentDecision != savedDecision) {
+                            net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                        } else {
+                            savedDecision = -1;
+                        }
+                    } else if ((currentDecision == 6 || currentDecision == 7 || currentDecision == 8) && decisionArray[1] == 9) {
+                        if (currentDecision != savedDecision) {
+                            net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                        } else {
+                            savedDecision = -1;
+                        }
                     }
                 }
             }
         }
         if (apply_LR_RL_constraint) {// Cannot switch from R to L and viceversa
-            if (currentDecision == 0 && decisionArray[1] == 2) {
-                net.outputLayer.maxActivatedUnit = 2;
-            } else if (currentDecision == 2 && decisionArray[1] == 0) {
-                net.outputLayer.maxActivatedUnit = 0;
+            if (!networkWithDistance) {
+                if (currentDecision == 0 && decisionArray[1] == 2) {
+                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                } else if (currentDecision == 2 && decisionArray[1] == 0) {
+                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                }
+            } else {
+                if ((currentDecision == 0 || currentDecision == 1 || currentDecision == 2) && (decisionArray[1] == 6 || decisionArray[1] == 7 || decisionArray[1] == 8)) {
+                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                } else if ((currentDecision == 6 || currentDecision == 7 || currentDecision == 8) && (decisionArray[1] == 0 || decisionArray[1] == 1 || decisionArray[1] == 2)) {
+                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                }
+            }
+        }
+        if (!networkWithDistance) {
+            if (apply_SXL_XLS_constraint) {// Cannot switch from S to XL and viceversa
+                if ((currentDecision == 0 || currentDecision == 3 || currentDecision == 6) && (decisionArray[1] == 2 || decisionArray[1] == 5 || decisionArray[1] == 8)) {
+                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                } else if ((currentDecision == 2 || currentDecision == 5 || currentDecision == 8) && (decisionArray[1] == 0 || decisionArray[1] == 3 || decisionArray[1] == 6)) {
+                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                }
             }
         }
         //Update decision
@@ -1046,6 +1094,21 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     public void setApply_LR_RL_constraint(boolean apply_LR_RL_constraint) {
         this.apply_LR_RL_constraint = apply_LR_RL_constraint;
         putBoolean("apply_LR_RL_constraint", apply_LR_RL_constraint);
+    }
+
+    /**
+     * @return the apply_SXL_XLS_constraint
+     */
+    public boolean isApply_SXL_XLS_constraint() {
+        return apply_SXL_XLS_constraint;
+    }
+
+    /**
+     * @param apply_SXL_XLS_constraint the apply_SXL_XLS_constraint to set
+     */
+    public void setApply_SXL_XLS_constraint(boolean apply_SXL_XLS_constraint) {
+        this.apply_SXL_XLS_constraint = apply_SXL_XLS_constraint;
+        putBoolean("apply_SXL_XLS_constraint", apply_SXL_XLS_constraint);
     }
 
     public void doStartLoggingUDPMessages() {
