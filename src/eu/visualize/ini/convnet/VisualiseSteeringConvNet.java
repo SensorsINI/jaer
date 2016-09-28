@@ -34,6 +34,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Font;
+import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
  * Extends DavisDeepLearnCnnProcessor to add annotation graphics to show
@@ -88,9 +89,15 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     volatile private boolean apply_LNR_RNL_constraint = getBoolean("apply_LNR_RNL_constraint", false);
     volatile private boolean apply_CN_NC_constraint = getBoolean("apply_CN_NC_constraint", false);
     volatile private float LCRNstep = getFloat("LCRNstep", 1f);
-    volatile private float arrowScaling = getFloat("arrowScaling", 1f);
+    private int rememberLast = getInt("rememberLast", 5);
     private final TobiLogger descisionLogger = new TobiLogger("Decisions", "Decisions of CNN sent to Predator robot Summit XL");
     private final TobiLogger behaviorLogger = new TobiLogger("Behavior", "Behavior of robots as sent back by Predator robot Summit XL");
+    private final LowpassFilter Lowpass = new LowpassFilter(300);
+    private float[] lastProjectionX; // save the last values
+    private float[] lastProjectionY; // save the last values
+    private float[] lastTipX; // save the last values
+    private float[] lastTipY; // save the last values
+    private int counter = 0;
     BehaviorLoggingThread behaviorLoggingThread = new BehaviorLoggingThread();
 
     public VisualiseSteeringConvNet(AEChip chip) {
@@ -100,7 +107,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(disp, "showAnalogDecisionOutput", "Shows output units as analog shading rather than binary. If LCRNstep=1, then the analog CNN output is shown. Otherwise, the lowpass filtered LCRN states are shown.");
         setPropertyTooltip(disp, "networkWithDistance", "Choose whether the network is trained on distance estimation as well.");
         setPropertyTooltip(disp, "showArrow", "Show analog arrow.");
-        setPropertyTooltip(disp, "arrowScaling", "Scale arrow size.");
+        setPropertyTooltip(disp, "rememberLast", "Averaging of last n remembered outputs.");
         setPropertyTooltip(disp, "hideSteeringOutput", "hides steering output unit rendering as shading over sensor image. If the prey is invisible no rectangle is rendered when showAnalogDecisionOutput is deselected.");
         setPropertyTooltip(anal, "pixelErrorAllowedForSteering", "If ground truth location is within this many pixels of closest border then the descision is still counted as corret");
         setPropertyTooltip(disp, "showStatistics", "shows statistics of DVS frame rate and error rate (when ground truth TargetLabeler file is loaded)");
@@ -129,6 +136,10 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         descisionLogger.setNanotimeEnabled(false);
         behaviorLogger.setAbsoluteTimeEnabled(true);
         behaviorLogger.setNanotimeEnabled(false);
+        this.lastProjectionX = new float[getRememberLast()];
+        this.lastProjectionY = new float[getRememberLast()];
+        this.lastTipX = new float[getRememberLast()];
+        this.lastTipY = new float[getRememberLast()];
 //        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
     }
 
@@ -269,14 +280,34 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 gl.glPushMatrix();
                 gl.glColor4f(1, 1, 0, 1f);
                 gl.glLineWidth(10);
-                float projectionX = ((net.outputLayer.activations[6] + net.outputLayer.activations[7] + net.outputLayer.activations[8]) / 3 - (net.outputLayer.activations[0] + net.outputLayer.activations[1] + net.outputLayer.activations[2]) / 3);
-                float projectionY = ((net.outputLayer.activations[3] + net.outputLayer.activations[4] + net.outputLayer.activations[5]) / 3 - net.outputLayer.activations[9]);
+                //float projectionX = Lowpass.filter((net.outputLayer.activations[6] + net.outputLayer.activations[7] + net.outputLayer.activations[8]) / 3,lastProcessedEventTimestamp) - Lowpass.filter((net.outputLayer.activations[0] + net.outputLayer.activations[1] + net.outputLayer.activations[2]) / 3,lastProcessedEventTimestamp);
+                //float projectionY = Lowpass.filter((net.outputLayer.activations[3] + net.outputLayer.activations[4] + net.outputLayer.activations[5]) / 3,lastProcessedEventTimestamp) - Lowpass.filter(net.outputLayer.activations[9],lastProcessedEventTimestamp);
+                float projectionX = (net.outputLayer.activations[6] + net.outputLayer.activations[7] + net.outputLayer.activations[8]) / 3 - (net.outputLayer.activations[0] + net.outputLayer.activations[1] + net.outputLayer.activations[2]) / 3;
+                float projectionY = (net.outputLayer.activations[3] + net.outputLayer.activations[4] + net.outputLayer.activations[5]) / 3 - (net.outputLayer.activations[9]);
                 float sizeS = (net.outputLayer.activations[0] + net.outputLayer.activations[3] + net.outputLayer.activations[6]) / 3;
                 float sizeM = (net.outputLayer.activations[1] + net.outputLayer.activations[4] + net.outputLayer.activations[7]) / 3;
                 float sizeXL = (net.outputLayer.activations[2] + net.outputLayer.activations[5] + net.outputLayer.activations[8]) / 3;
-                float overallSize = sizeS*(chip.getSizeX()) + sizeM*(chip.getSizeX()/2) + sizeXL*(chip.getSizeX()/3);
-                float tipX = projectionX * overallSize;//* getArrowScaling();
-                float tipY = projectionY * overallSize;//* getArrowScaling();
+                float overallSize = Lowpass.filter(sizeS * (chip.getSizeX()) + sizeM * (chip.getSizeX() / 2) + sizeXL * (chip.getSizeX() / 3), lastProcessedEventTimestamp);
+
+                if (counter < (getRememberLast() - 1)) {
+                    counter++;
+                } else {
+                    counter = 0;
+                }
+                lastProjectionX[counter] = projectionX;
+                lastProjectionY[counter] = projectionY;
+                float averageProjectionX = 0;
+                float averageProjectionY = 0;
+                for (int i = 0; i < getRememberLast(); i++) {
+                    averageProjectionX = averageProjectionX + lastProjectionX[i];
+                    averageProjectionY = averageProjectionY + lastProjectionY[i];
+                }
+                averageProjectionX = averageProjectionX / getRememberLast();
+                averageProjectionY = averageProjectionY / getRememberLast();
+
+                float tipX = averageProjectionX * overallSize * 5;
+                float tipY = averageProjectionY * overallSize * 5;
+
                 DrawGL.drawVector(gl, chip.getSizeX() / 2,
                         chip.getSizeY() / 2,
                         tipX,
@@ -852,6 +883,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             apsTotalCount = 0;
             apsCorrect = 0;
             apsIncorrect = 0;
+            //Lowpass.reset();
         }
 
         void addSample(TargetLabeler.TargetLocation gtTargetLocation, int descision, boolean apsType) {
@@ -1093,21 +1125,18 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         this.LCRNstep = LCRNstep;
         putFloat("LCRNstep", LCRNstep);
     }
-    
-    /**
-     * @return the arrowScaling
-     */
-    public float getArrowScaling() {
-        return arrowScaling;
+
+    // @return the rememberLast
+    public int getRememberLast() {
+        return rememberLast;
     }
 
-    /**
-     * @param arrowScaling the arrowScaling to set
-     */
-    public void setArrowScaling(float arrowScaling) {
-        this.arrowScaling = arrowScaling;
-        putFloat("arrowScaling", arrowScaling);
+    // @param rememberLast the rememberLast to set
+    public void SetRememberLast(int rememberLast) {
+        this.rememberLast = rememberLast;
+        putInt("rememberLast", rememberLast);
     }
+
     /**
      * @return the apply_CN_NC_constraint
      */
