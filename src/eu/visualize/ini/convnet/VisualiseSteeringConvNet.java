@@ -5,6 +5,7 @@
  */
 package eu.visualize.ini.convnet;
 
+import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.TobiLogger;
 import java.awt.Color;
 import java.beans.PropertyChangeEvent;
@@ -49,6 +50,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     volatile private boolean hideSteeringOutput = getBoolean("hideOutput", false);
     volatile private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
     volatile private boolean networkWithDistance = getBoolean("networkWithDistance", false);
+    volatile private boolean showArrow = getBoolean("showArrow", false);
     volatile private boolean showStatistics = getBoolean("showStatistics", true);
     private TargetLabeler targetLabeler = null;
     private Error error = new Error();
@@ -86,6 +88,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     volatile private boolean apply_LNR_RNL_constraint = getBoolean("apply_LNR_RNL_constraint", false);
     volatile private boolean apply_CN_NC_constraint = getBoolean("apply_CN_NC_constraint", false);
     volatile private float LCRNstep = getFloat("LCRNstep", 1f);
+    volatile private float arrowScaling = getFloat("arrowScaling", 1f);
     private final TobiLogger descisionLogger = new TobiLogger("Decisions", "Decisions of CNN sent to Predator robot Summit XL");
     private final TobiLogger behaviorLogger = new TobiLogger("Behavior", "Behavior of robots as sent back by Predator robot Summit XL");
     BehaviorLoggingThread behaviorLoggingThread = new BehaviorLoggingThread();
@@ -96,6 +99,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         String udp = "UDP messages";
         setPropertyTooltip(disp, "showAnalogDecisionOutput", "Shows output units as analog shading rather than binary. If LCRNstep=1, then the analog CNN output is shown. Otherwise, the lowpass filtered LCRN states are shown.");
         setPropertyTooltip(disp, "networkWithDistance", "Choose whether the network is trained on distance estimation as well.");
+        setPropertyTooltip(disp, "showArrow", "Show analog arrow.");
+        setPropertyTooltip(disp, "arrowScaling", "Scale arrow size.");
         setPropertyTooltip(disp, "hideSteeringOutput", "hides steering output unit rendering as shading over sensor image. If the prey is invisible no rectangle is rendered when showAnalogDecisionOutput is deselected.");
         setPropertyTooltip(anal, "pixelErrorAllowedForSteering", "If ground truth location is within this many pixels of closest border then the descision is still counted as corret");
         setPropertyTooltip(disp, "showStatistics", "shows statistics of DVS frame rate and error rate (when ground truth TargetLabeler file is loaded)");
@@ -104,7 +109,6 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(udp, "host", "hostname or IP address to send UDP messages to, e.g. localhost");
         setPropertyTooltip(udp, "remotePort", "destination UDP port address to send UDP messages to, e.g. 13331");
         setPropertyTooltip(udp, "localPort", "our UDP port address to recieve UDP messages from robot, e.g. 15555");
-
         setPropertyTooltip(udp, "forcedNetworkOutputValue", "forced value of network output sent to client (0=left, 1=middle, 2=right, 3=invisible)");
         setPropertyTooltip(udp, "forceNetworkOutpout", "force (override) network output classification to forcedNetworkOutputValue");
         setPropertyTooltip(udp, "apply_LR_RL_constraint", "force (override) network output classification to make sure there is no switching from L to R or viceversa directly");
@@ -213,9 +217,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .5f);
         MultilineAnnotationTextRenderer.setScale(.3f);
         if (showStatistics) {
-            MultilineAnnotationTextRenderer.renderMultilineString(String.format("LCRN states: [L=%6.1f]  [C=%6.1f]  [R%6.1f]  [N=%6.1f]", LCRNstate[0], LCRNstate[1], LCRNstate[2], LCRNstate[3]));
+            MultilineAnnotationTextRenderer.renderMultilineString(String.format("LCRN states: [L=%6.1f]  [C=%6.1f]  [R=%6.1f]  [N=%6.1f]", LCRNstate[0], LCRNstate[1], LCRNstate[2], LCRNstate[3]));
             if (LCRNstate[3] < LCRNstate[0] || LCRNstate[3] < LCRNstate[1] || LCRNstate[3] < LCRNstate[2]) { // Only if visible
-                MultilineAnnotationTextRenderer.renderMultilineString(String.format("SMXL states: [S=%6.1f]  [M=%6.1f]  [XL%6.1f] ", SMXLstate[0], SMXLstate[1], SMXLstate[2]));
+                MultilineAnnotationTextRenderer.renderMultilineString(String.format("SMXL states: [S=%6.1f]  [M=%6.1f]  [XL=%6.1f] ", SMXLstate[0], SMXLstate[1], SMXLstate[2]));
             }
             MultilineAnnotationTextRenderer.setScale(.3f);
             if (dvsSubsampler != null) {
@@ -258,6 +262,30 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
         // 0=left, 1=center, 2=right, 3=no target
         int decision = net.outputLayer.maxActivatedUnit;
+
+        if (networkWithDistance) {
+            if (showArrow) {
+                //Render Arrow
+                gl.glPushMatrix();
+                gl.glColor4f(1, 1, 0, 1f);
+                gl.glLineWidth(10);
+                float projectionX = ((net.outputLayer.activations[6] + net.outputLayer.activations[7] + net.outputLayer.activations[8]) / 3 - (net.outputLayer.activations[0] + net.outputLayer.activations[1] + net.outputLayer.activations[2]) / 3);
+                float projectionY = ((net.outputLayer.activations[3] + net.outputLayer.activations[4] + net.outputLayer.activations[5]) / 3 - net.outputLayer.activations[9]);
+                float sizeS = (net.outputLayer.activations[0] + net.outputLayer.activations[3] + net.outputLayer.activations[6]) / 3;
+                float sizeM = (net.outputLayer.activations[1] + net.outputLayer.activations[4] + net.outputLayer.activations[7]) / 3;
+                float sizeXL = (net.outputLayer.activations[2] + net.outputLayer.activations[5] + net.outputLayer.activations[8]) / 3;
+                float overallSize = sizeS*(chip.getSizeX()) + sizeM*(chip.getSizeX()/2) + sizeXL*(chip.getSizeX()/3);
+                float tipX = projectionX * overallSize;//* getArrowScaling();
+                float tipY = projectionY * overallSize;//* getArrowScaling();
+                DrawGL.drawVector(gl, chip.getSizeX() / 2,
+                        chip.getSizeY() / 2,
+                        tipX,
+                        tipY,
+                        1 << 3, 1);
+                gl.glPopMatrix();
+            }
+        }
+
         float r = color.getRed() / 255f, g = color.getGreen() / 255f, b = color.getBlue() / 255f;
         float[] cv = color.getColorComponents(null);
         if (showAnalogDecisionOutput) {
@@ -676,6 +704,21 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         putBoolean("networkWithDistance", networkWithDistance);
     }
 
+    /**
+     * @return the showArrow
+     */
+    public boolean isShowArrow() {
+        return showArrow;
+    }
+
+    /**
+     * @param showArrow the showArrow to set
+     */
+    public void setShowArrow(boolean showArrow) {
+        this.showArrow = showArrow;
+        putBoolean("showArrow", showArrow);
+    }
+
     @Override
     synchronized public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName() != DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
@@ -1050,7 +1093,21 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         this.LCRNstep = LCRNstep;
         putFloat("LCRNstep", LCRNstep);
     }
+    
+    /**
+     * @return the arrowScaling
+     */
+    public float getArrowScaling() {
+        return arrowScaling;
+    }
 
+    /**
+     * @param arrowScaling the arrowScaling to set
+     */
+    public void setArrowScaling(float arrowScaling) {
+        this.arrowScaling = arrowScaling;
+        putFloat("arrowScaling", arrowScaling);
+    }
     /**
      * @return the apply_CN_NC_constraint
      */
