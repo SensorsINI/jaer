@@ -12,7 +12,6 @@ import static org.bytedeco.javacpp.opencv_core.CV_8UC3;
 import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_EPS;
 import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_ITER;
 import static org.bytedeco.javacpp.opencv_imgproc.CV_GRAY2RGB;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 
 import java.awt.Color;
 import java.awt.Component;
@@ -52,6 +51,10 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
+import java.awt.Cursor;
+import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -64,6 +67,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.TextRendererScale;
+import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 
 /**
  * Calibrates a single camera using DAVIS frames and OpenCV calibration methods.
@@ -97,7 +101,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private int rectangleWidthMm = getInt("rectangleWidthMm", 20); //width in mm
     private boolean showUndistortedFrames = getBoolean("showUndistortedFrames", false);
     private boolean undistortDVSevents = getBoolean("undistortDVSevents", true);
-    private boolean takeImageOnTimestampReset = getBoolean("takeImageOnTimestampReset", false);
     private boolean hideStatisticsAndStatus = getBoolean("hideStatisticsAndStatus", false);
     private String fileBaseName = "";
 
@@ -123,9 +126,13 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private int imageCounter = 0;
     private boolean calibrated = false;
 
-    private boolean actionTriggered = false;
+    private boolean captureTriggered = false;
     private int nAcqFrames = 0;
-    private int nMaxAcqFrames = 1;
+    private int numAutoCaptureFrames = getInt("numAutoCaptureFrames", 10);
+
+    private boolean autocaptureCalibrationFramesEnabled = false;
+    private int autocaptureCalibrationFrameDelayMs = getInt("autocaptureCalibrationFrameDelayMs", 1500);
+    private long lastAutocaptureTimeMs = 0;
 
     private final ApsFrameExtractor frameExtractor;
     private final FilterChain filterChain;
@@ -149,7 +156,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         setPropertyTooltip("rectangleHeightMm", "height of square rectangles of calibration pattern in mm");
         setPropertyTooltip("showUndistortedFrames", "shows the undistorted frame in the ApsFrameExtractor display, if calibration has been completed");
         setPropertyTooltip("undistortDVSevents", "applies LUT undistortion to DVS event address if calibration has been completed; events outside AEChip address space are filtered out");
-        setPropertyTooltip("takeImageOnTimestampReset", "??");
         setPropertyTooltip("cornerSubPixRefinement", "refine corner locations to subpixel resolution");
         setPropertyTooltip("calibrate", "run the camera calibration on collected frame data and print results to console");
         setPropertyTooltip("depthViewer", "shows the depth or color image viewer if a Kinect device is connected via NI2 interface");
@@ -158,8 +164,11 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         setPropertyTooltip("loadCalibration", "loads saved calibration files from selected folder");
         setPropertyTooltip("clearCalibration", "clears existing calibration, without clearing accumulated corner points (see ClearImages)");
         setPropertyTooltip("clearImages", "clears existing image corner and object points without clearing calibration (see ClearCalibration)");
-        setPropertyTooltip("takeImage", "snaps a calibration image that forms part of the calibration dataset");
+        setPropertyTooltip("captureSingleFrame", "snaps a single calibration image that forms part of the calibration dataset");
+        setPropertyTooltip("triggerAutocapture", "starts automatically capturing calibration frames with delay specified by autocaptureCalibrationFrameDelayMs");
         setPropertyTooltip("hideStatisticsAndStatus", "hides the status text");
+        setPropertyTooltip("numAutoCaptureFrames", "Number of frames to automatically capture with min delay autocaptureCalibrationFrameDelayMs between frames");
+        setPropertyTooltip("autocaptureCalibrationFrameDelayMs", "Delay after capturing automatic calibration frame");
 //        loadCalibration(); // moved from here to update method so that Chip is fully constructed with correct size, etc.
     }
 
@@ -188,34 +197,34 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 //                continue;
 //            }
 
-            //trigger action (on ts reset)
-            if ((e.timestamp < lastTimestamp) && (e.timestamp < 100000) && takeImageOnTimestampReset) {
-                log.info("timestamp reset action trigggered");
-                actionTriggered = true;
-                nAcqFrames = 0;
-            }
-
             //acquire new frame
             if (frameExtractor.hasNewFrame()) {
                 lastFrame = frameExtractor.getNewFrame();
 
                 //process frame
-                if (realtimePatternDetectionEnabled) {
-                    patternFound = findCurrentCorners(false);
+                if (realtimePatternDetectionEnabled || autocaptureCalibrationFramesEnabled) {
+                    patternFound = findCurrentCorners(false); // false just checks if there are corners detected
                 }
 
-                //iterate
-                if (actionTriggered && (nAcqFrames < nMaxAcqFrames)) {
+                if (patternFound
+                        && (captureTriggered
+                        || (autocaptureCalibrationFramesEnabled
+                        && System.currentTimeMillis() - lastAutocaptureTimeMs > autocaptureCalibrationFrameDelayMs
+                        && nAcqFrames < numAutoCaptureFrames))) {
                     nAcqFrames++;
-                    generateCalibrationString();
-                }
-                //take action
-                if (actionTriggered && (nAcqFrames == nMaxAcqFrames)) {
-                    patternFound = findCurrentCorners(true);
-                    //reset action
-                    actionTriggered = false;
+                    findCurrentCorners(true); // true again find the corner points and saves them
+                    captureTriggered = false;
+                    lastAutocaptureTimeMs = System.currentTimeMillis();
+                    if (nAcqFrames >= numAutoCaptureFrames) {
+                        autocaptureCalibrationFramesEnabled = false;
+                        log.info("finished autocapturing " + nAcqFrames + " acquired. Starting calibration in background....");
+                        (new CalibrationWorker()).execute();
+                    } else {
+                        log.info("captured frame " + nAcqFrames);
+                    }
                 }
 
+                // undistort and show results
                 if (calibrated && showUndistortedFrames && frameExtractor.isShowAPSFrameDisplay()) {
                     float[] outFrame = undistortFrame(lastFrame);
                     frameExtractor.setDisplayFrameRGB(outFrame);
@@ -238,6 +247,25 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         }
 
         return in;
+    }
+
+    private class CalibrationWorker extends SwingWorker<String, Object> {
+
+        @Override
+        protected String doInBackground() throws Exception {
+            calibrationString = "calibration is currently being computed";
+            doCalibrate();
+            return "done";
+        }
+
+        @Override
+        protected void done() {
+            try {
+                generateCalibrationString();
+            } catch (Exception ignore) {
+                log.warning(ignore.toString());
+            }
+        }
     }
 
     /**
@@ -315,7 +343,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                     }
                 }
                 //store image points
-                if (imageCounter == 0) {
+                if (imageCounter == 0 || allObjectPoints == null || allImagePoints == null) {
                     allImagePoints = new MatVector(100);
                     allObjectPoints = new MatVector(100);
                 }
@@ -404,25 +432,46 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             }
             gl.glEnd();
         }
-/**The geometry and mathematics of the pinhole camera[edit]
-
-The geometry of a pinhole camera
-NOTE: The x1x2x3 coordinate system in the figure is left-handed, that is the direction of the OZ axis is in reverse to the system the reader may be used to.
-
-The geometry related to the mapping of a pinhole camera is illustrated in the figure. The figure contains the following basic objects:
-
-A 3D orthogonal coordinate system with its origin at O. This is also where the camera aperture is located. The three axes of the coordinate system are referred to as X1, X2, X3. 
-* Axis X3 is pointing in the viewing direction of the camera and is referred to as the optical axis, principal axis, or principal ray.
-* The 3D plane which intersects with axes X1 and X2 is the front side of the camera, or principal plane.
-Animage plane where the 3D world is projected through the aperture of the camera. The image plane is parallel to axes X1 and X2 and is located at distance {\displaystyle f} f from the origin O in the negative direction of the X3 axis. 
-* A practical implementation of a pinhole camera implies that the image plane is located such that it intersects the X3 axis at coordinate -f where f > 0. f is also referred to as the focal length[citation needed] of the pinhole camera.
-A point R at the intersection of the optical axis and the image plane. This point is referred to as the principal point or image center.
-A point P somewhere in the world at coordinate {\displaystyle (x_{1},x_{2},x_{3})}  (x_1, x_2, x_3)  relative to the axes X1,X2,X3.
-The projection line of point P into the camera. This is the green line which passes through point P and the point O.
-The projection of point P onto the image plane, denoted Q. This point is given by the intersection of the projection line (green) and the image plane. 
-In any practical situation we can assume that {\displaystyle x_{3}} x_{3} > 0 which means that the intersection point is well defined.
-There is also a 2D coordinate system in the image plane, with origin at R and with axes Y1 and Y2 which are parallel to X1 and X2, respectively. 
-* The coordinates of point Q relative to this coordinate system is {\displaystyle (y_{1},y_{2})}  (y_1, y_2) .**/
+        /**
+         * The geometry and mathematics of the pinhole camera[edit]
+         *
+         * The geometry of a pinhole camera NOTE: The x1x2x3 coordinate system
+         * in the figure is left-handed, that is the direction of the OZ axis is
+         * in reverse to the system the reader may be used to.
+         *
+         * The geometry related to the mapping of a pinhole camera is
+         * illustrated in the figure. The figure contains the following basic
+         * objects:
+         *
+         * A 3D orthogonal coordinate system with its origin at O. This is also
+         * where the camera aperture is located. The three axes of the
+         * coordinate system are referred to as X1, X2, X3. Axis X3 is pointing
+         * in the viewing direction of the camera and is referred to as the
+         * optical axis, principal axis, or principal ray. The 3D plane which
+         * intersects with axes X1 and X2 is the front side of the camera, or
+         * principal plane. Animage plane where the 3D world is projected
+         * through the aperture of the camera. The image plane is parallel to
+         * axes X1 and X2 and is located at distance {\displaystyle f} f from
+         * the origin O in the negative direction of the X3 axis. A practical
+         * implementation of a pinhole camera implies that the image plane is
+         * located such that it intersects the X3 axis at coordinate -f where f
+         * > 0. f is also referred to as the focal length[citation needed] of
+         * the pinhole camera. A point R at the intersection of the optical axis
+         * and the image plane. This point is referred to as the principal point
+         * or image center. A point P somewhere in the world at coordinate
+         * {\displaystyle (x_{1},x_{2},x_{3})} (x_1, x_2, x_3) relative to the
+         * axes X1,X2,X3. The projection line of point P into the camera. This
+         * is the green line which passes through point P and the point O. The
+         * projection of point P onto the image plane, denoted Q. This point is
+         * given by the intersection of the projection line (green) and the
+         * image plane. In any practical situation we can assume that
+         * {\displaystyle x_{3}} x_{3} > 0 which means that the intersection
+         * point is well defined. There is also a 2D coordinate system in the
+         * image plane, with origin at R and with axes Y1 and Y2 which are
+         * parallel to X1 and X2, respectively. The coordinates of point Q
+         * relative to this coordinate system is {\displaystyle (y_{1},y_{2})}
+         * (y_1, y_2) .*
+         */
         if (principlePoint != null) {
             gl.glLineWidth(3f);
             gl.glColor3f(0, 1, 0);
@@ -464,6 +513,8 @@ There is also a 2D coordinate system in the image plane, with origin at R and wi
         patternFound = false;
         imageCounter = 0;
         principlePoint = null;
+        autocaptureCalibrationFramesEnabled = false;
+        nAcqFrames = 0;
     }
 
     @Override
@@ -522,9 +573,22 @@ There is also a 2D coordinate system in the image plane, with origin at R and wi
         putString("dirPath", dirPath);
     }
 
-    synchronized public void doCalibrate() {
+    /**
+     * Does the calibration based on collected points.
+     *
+     */
+    public void doCalibrate() {
+        if (allImagePoints == null || allObjectPoints == null) {
+            log.warning("allImagePoints==null || allObjectPoints==null, cannot calibrate. Collect some images first.");
+            return;
+        }
         //init
         Size imgSize = new Size(sx, sy);
+        // make local references to hold results while thread is processing
+        Mat cameraMatrix;
+        Mat distortionCoefs;
+        MatVector rotationVectors;
+        MatVector translationVectors;
         cameraMatrix = new Mat();
         distortionCoefs = new Mat();
         rotationVectors = new MatVector();
@@ -535,6 +599,7 @@ There is also a 2D coordinate system in the image plane, with origin at R and wi
         log.info(String.format("calibrating based on %d images sized %d x %d", allObjectPoints.size(), imgSize.width(), imgSize.height()));
         //calibrate
         try {
+            setCursor(new Cursor(Cursor.WAIT_CURSOR));
             opencv_calib3d.calibrateCamera(allObjectPoints, allImagePoints, imgSize, cameraMatrix, distortionCoefs, rotationVectors, translationVectors);
             generateCalibrationString();
             log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html \n"
@@ -546,8 +611,15 @@ There is also a 2D coordinate system in the image plane, with origin at R and wi
         } finally {
             allImagePoints.resize(100);
             allObjectPoints.resize(100);
+            setCursor(Cursor.getDefaultCursor());
         }
         calibrated = true;
+        synchronized (this) {
+            this.cameraMatrix = cameraMatrix;
+            this.distortionCoefs = distortionCoefs;
+            this.rotationVectors = rotationVectors;
+            this.translationVectors = translationVectors;
+        }
         getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
     }
 
@@ -733,7 +805,7 @@ There is also a 2D coordinate system in the image plane, with origin at R and wi
     }
 
     synchronized public void doClearImages() {
-        imageCounter=0;
+        imageCounter = 0;
         allImagePoints.setNull();
         allObjectPoints.setNull();
         generateCalibrationString();
@@ -786,10 +858,15 @@ There is also a 2D coordinate system in the image plane, with origin at R and wi
         return mat;
     }
 
-    synchronized public void doTakeImage() {
-        actionTriggered = true;
+    synchronized public void doCaptureSingleFrame() {
+        captureTriggered = true;
+        saved = false;
+    }
+
+    synchronized public void doTriggerAutocapture() {
         nAcqFrames = 0;
         saved = false;
+        autocaptureCalibrationFramesEnabled = true;
     }
 
     private String printMatD(Mat M) {
@@ -878,21 +955,6 @@ There is also a 2D coordinate system in the image plane, with origin at R and wi
     public void setShowUndistortedFrames(boolean showUndistortedFrames) {
         this.showUndistortedFrames = showUndistortedFrames;
         putBoolean("showUndistortedFrames", showUndistortedFrames);
-    }
-
-    /**
-     * @return the takeImageOnTimestampReset
-     */
-    public boolean isTakeImageOnTimestampReset() {
-        return takeImageOnTimestampReset;
-    }
-
-    /**
-     * @param takeImageOnTimestampReset the takeImageOnTimestampReset to set
-     */
-    public void setTakeImageOnTimestampReset(boolean takeImageOnTimestampReset) {
-        this.takeImageOnTimestampReset = takeImageOnTimestampReset;
-        putBoolean("takeImageOnTimestampReset", takeImageOnTimestampReset);
     }
 
     public void doDepthViewer() {
@@ -1027,7 +1089,7 @@ There is also a 2D coordinate system in the image plane, with origin at R and wi
             fp.put(idx++, p.y);
         }
         Mat dst = new Mat();
-        Mat pixelArray = new Mat(1, 2*points.size(), CV_32FC2, fp); // make wide 2 channel matrix of source event x,y
+        Mat pixelArray = new Mat(1, 2 * points.size(), CV_32FC2, fp); // make wide 2 channel matrix of source event x,y
         opencv_imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
         // get the camera matrix elements (focal lengths and principal point)
         DoubleIndexer k = getCameraMatrix().createIndexer();
@@ -1036,8 +1098,8 @@ There is also a 2D coordinate system in the image plane, with origin at R and wi
         fy = (float) k.get(1, 1);
         cx = (float) k.get(0, 2);
         cy = (float) k.get(1, 2);
-        idx=0;
-        FloatBuffer b=dst.getFloatBuffer();
+        idx = 0;
+        FloatBuffer b = dst.getFloatBuffer();
         for (Point2D.Float p : points) {
             p.x = ((b.get(idx++) * fx) + cx);
             p.y = ((b.get(idx++) * fy) + cy);
@@ -1096,6 +1158,37 @@ There is also a 2D coordinate system in the image plane, with origin at R and wi
     public void setHideStatisticsAndStatus(boolean hideStatisticsAndStatus) {
         this.hideStatisticsAndStatus = hideStatisticsAndStatus;
         putBoolean("hideStatisticsAndStatus", hideStatisticsAndStatus);
+    }
+
+    /**
+     * @return the autocaptureCalibrationFrameDelayMs
+     */
+    public int getAutocaptureCalibrationFrameDelayMs() {
+        return autocaptureCalibrationFrameDelayMs;
+    }
+
+    /**
+     * @param autocaptureCalibrationFrameDelayMs the
+     * autocaptureCalibrationFrameDelayMs to set
+     */
+    public void setAutocaptureCalibrationFrameDelayMs(int autocaptureCalibrationFrameDelayMs) {
+        this.autocaptureCalibrationFrameDelayMs = autocaptureCalibrationFrameDelayMs;
+        putInt("autocaptureCalibrationFrameDelayMs", autocaptureCalibrationFrameDelayMs);
+    }
+
+    /**
+     * @return the numAutoCaptureFrames
+     */
+    public int getNumAutoCaptureFrames() {
+        return numAutoCaptureFrames;
+    }
+
+    /**
+     * @param numAutoCaptureFrames the numAutoCaptureFrames to set
+     */
+    public void setNumAutoCaptureFrames(int numAutoCaptureFrames) {
+        this.numAutoCaptureFrames = numAutoCaptureFrames;
+        putInt("numAutoCaptureFrames", numAutoCaptureFrames);
     }
 
 }
