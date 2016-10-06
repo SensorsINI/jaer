@@ -12,6 +12,8 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.glu.GLU;
+import com.jogamp.opengl.glu.GLUquadric;
 import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -52,6 +54,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     volatile private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
     volatile private boolean networkWithDistance = getBoolean("networkWithDistance", false);
     volatile private boolean showArrow = getBoolean("showArrow", false);
+    volatile private boolean showAngleOnly = getBoolean("showAngleOnly", true);
     volatile private boolean showStatistics = getBoolean("showStatistics", true);
     private TargetLabeler targetLabeler = null;
     private Error error = new Error();
@@ -99,6 +102,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private float[] lastTipY; // save the last values
     private int counter = 0;
     BehaviorLoggingThread behaviorLoggingThread = new BehaviorLoggingThread();
+    GLU glu = null;
+    GLUquadric quad = null;
 
     public VisualiseSteeringConvNet(AEChip chip) {
         super(chip);
@@ -107,6 +112,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(disp, "showAnalogDecisionOutput", "Shows output units as analog shading rather than binary. If LCRNstep=1, then the analog CNN output is shown. Otherwise, the lowpass filtered LCRN states are shown.");
         setPropertyTooltip(disp, "networkWithDistance", "Choose whether the network is trained on distance estimation as well.");
         setPropertyTooltip(disp, "showArrow", "Show analog arrow.");
+        setPropertyTooltip(disp, "showAngleOnly", "Show analog arrow.");
         setPropertyTooltip(disp, "rememberLast", "Averaging of last n remembered outputs.");
         setPropertyTooltip(disp, "hideSteeringOutput", "hides steering output unit rendering as shading over sensor image. If the prey is invisible no rectangle is rendered when showAnalogDecisionOutput is deselected.");
         setPropertyTooltip(anal, "pixelErrorAllowedForSteering", "If ground truth location is within this many pixels of closest border then the descision is still counted as corret");
@@ -211,6 +217,10 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
+        if (glu == null) {
+            glu = new GLU();
+            quad = glu.gluNewQuadric();
+        }
         targetLabeler.annotate(drawable);
         if (hideSteeringOutput) {
             return;
@@ -283,7 +293,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 //float projectionX = Lowpass.filter((net.outputLayer.activations[6] + net.outputLayer.activations[7] + net.outputLayer.activations[8]) / 3,lastProcessedEventTimestamp) - Lowpass.filter((net.outputLayer.activations[0] + net.outputLayer.activations[1] + net.outputLayer.activations[2]) / 3,lastProcessedEventTimestamp);
                 //float projectionY = Lowpass.filter((net.outputLayer.activations[3] + net.outputLayer.activations[4] + net.outputLayer.activations[5]) / 3,lastProcessedEventTimestamp) - Lowpass.filter(net.outputLayer.activations[9],lastProcessedEventTimestamp);
                 float projectionX = (net.outputLayer.activations[6] + net.outputLayer.activations[7] + net.outputLayer.activations[8]) / 3 - (net.outputLayer.activations[0] + net.outputLayer.activations[1] + net.outputLayer.activations[2]) / 3;
-                float projectionY = (net.outputLayer.activations[3] + net.outputLayer.activations[4] + net.outputLayer.activations[5]) / 3 - (net.outputLayer.activations[9]);
+                float projectionY = (net.outputLayer.activations[3] + net.outputLayer.activations[4] + net.outputLayer.activations[5]) / 3 - (net.outputLayer.activations[9] / 5);
                 float sizeS = (net.outputLayer.activations[0] + net.outputLayer.activations[3] + net.outputLayer.activations[6]) / 3;
                 float sizeM = (net.outputLayer.activations[1] + net.outputLayer.activations[4] + net.outputLayer.activations[7]) / 3;
                 float sizeXL = (net.outputLayer.activations[2] + net.outputLayer.activations[5] + net.outputLayer.activations[8]) / 3;
@@ -305,8 +315,29 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 averageProjectionX = averageProjectionX / getRememberLast();
                 averageProjectionY = averageProjectionY / getRememberLast();
 
-                float tipX = averageProjectionX * overallSize * 5;
-                float tipY = averageProjectionY * overallSize * 5;
+                float tipX = 0;
+                float tipY = 0;
+                float normalizationFactor = (float) (1 / (Math.sqrt(averageProjectionX * averageProjectionX + averageProjectionY * averageProjectionY)));
+
+                if (!showAngleOnly) {
+                    tipX = averageProjectionX * normalizationFactor * overallSize * 2;
+                    tipY = averageProjectionY * normalizationFactor * overallSize * 2;
+                    if (tipY > chip.getSizeY() / 2) {
+                        tipY = chip.getSizeY() / 2;
+                    }
+                    if (tipX > chip.getSizeX() / 2) {
+                        tipX = chip.getSizeX() / 2;
+                    }
+                    if (tipY < -chip.getSizeY() / 2) {
+                        tipY = -chip.getSizeY() / 2;
+                    }
+                    if (tipX < -chip.getSizeX() / 2) {
+                        tipX = -chip.getSizeX() / 2;
+                    }
+                } else {
+                    tipX = averageProjectionX * normalizationFactor * chip.getMinSize() / 4;
+                    tipY = averageProjectionY * normalizationFactor * chip.getMinSize() / 4;
+                }
 
                 DrawGL.drawVector(gl, chip.getSizeX() / 2,
                         chip.getSizeY() / 2,
@@ -314,6 +345,29 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                         tipY,
                         1 << 3, 1);
                 gl.glPopMatrix();
+
+                gl.glPushMatrix();
+                gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 5);
+                if (tipY > 0) {
+                    gl.glColor4f(0, 1, 0, 0.2f);
+                } else {
+                    gl.glColor4f(1, 0, 0, 0.2f);
+                }
+                glu.gluDisk(quad, chip.getMinSize() * 0.95f / 4, chip.getMinSize() / 4, 32, 1);
+                gl.glPopMatrix();
+                float distance = 1/overallSize;
+                float angleRad = (float) Math.atan(tipX/tipY);
+                float angleDeg = -angleRad*180f/3.14f;
+                if (tipX > 0 && tipY > 0) {
+                    angleDeg = +angleDeg;
+                } else if(tipX < 0 && tipY > 0) {
+                    angleDeg = +angleDeg;
+                } else if(tipX > 0 && tipY < 0) {
+                    angleDeg = 90-angleDeg;
+                } else if(tipX < 0 && tipY < 0) {
+                    angleDeg = 90-angleDeg;
+                }
+                MultilineAnnotationTextRenderer.renderMultilineString(String.format("Angle: %6.1f   Distance: %6.1f m", angleDeg, distance));
             }
         }
 
@@ -748,6 +802,21 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     public void setShowArrow(boolean showArrow) {
         this.showArrow = showArrow;
         putBoolean("showArrow", showArrow);
+    }
+
+    /**
+     * @return the showAngleOnly
+     */
+    public boolean isShowAngleOnly() {
+        return showAngleOnly;
+    }
+
+    /**
+     * @param showAngleOnly the showAngleOnly to set
+     */
+    public void setShowAngleOnly(boolean showAngleOnly) {
+        this.showAngleOnly = showAngleOnly;
+        putBoolean("showAngleOnly", showAngleOnly);
     }
 
     @Override
