@@ -355,7 +355,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 }
                 glu.gluDisk(quad, chip.getMinSize() * 0.95f / 4, chip.getMinSize() / 4, 32, 1);
                 gl.glPopMatrix();
-                float distance = 1/overallSize;
+                float distance = overallSize/10;
                 float angleRad = (float) Math.atan(tipX/tipY);
                 float angleDeg = -angleRad*180f/3.14f +90f;
                 if (tipX > 0 && tipY > 0) {
