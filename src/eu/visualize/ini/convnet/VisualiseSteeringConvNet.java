@@ -357,16 +357,21 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 gl.glPopMatrix();
                 float distance = 1/overallSize;
                 float angleRad = (float) Math.atan(tipX/tipY);
-                float angleDeg = -angleRad*180f/3.14f;
+                float angleDeg = -angleRad*180f/3.14f +90f;
                 if (tipX > 0 && tipY > 0) {
-                    angleDeg = +angleDeg;
+                    angleDeg = angleDeg;
                 } else if(tipX < 0 && tipY > 0) {
-                    angleDeg = +angleDeg;
+                    angleDeg = angleDeg;
                 } else if(tipX > 0 && tipY < 0) {
-                    angleDeg = 90-angleDeg;
+                    angleDeg = angleDeg+180;
                 } else if(tipX < 0 && tipY < 0) {
-                    angleDeg = 90-angleDeg;
+                    angleDeg = angleDeg+180;
                 }
+                gl.glColor4f(0, 0, 1, 0.2f);
+                gl.glPushMatrix();
+                gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 5);
+                glu.gluPartialDisk(quad,5,15,32,1,+90,-angleDeg);
+                gl.glPopMatrix();
                 MultilineAnnotationTextRenderer.renderMultilineString(String.format("Angle: %6.1f   Distance: %6.1f m", angleDeg, distance));
             }
         }
