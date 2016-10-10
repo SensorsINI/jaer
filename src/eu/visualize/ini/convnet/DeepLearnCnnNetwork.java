@@ -956,7 +956,7 @@ public class DeepLearnCnnNetwork {
                 endy = inputMapDim + halfKernelDim;
                 for (int xi = halfKernelDim; xi <= inputMapDim - halfKernelDim; xi++) { // index to outputMap
                     for (int yi = halfKernelDim; yi <= inputMapDim - halfKernelDim; yi++) {
-                        newInputArray[xi][xi] = inputLayer.a(inputMap, xi - halfKernelDim, xi - halfKernelDim);
+                        newInputArray[xi][xi] = inputLayer.a(inputMap, xi - halfKernelDim, yi - halfKernelDim);
                     }
                 }
             }
