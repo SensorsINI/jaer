@@ -358,9 +358,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 float distance = overallSize/10;
                 float angleRad = (float) Math.atan(tipX/tipY);
                 float angleDeg = -angleRad*180f/3.14f +90f;
-                if(tipX > 0 && tipY < 0) {
-                    angleDeg = angleDeg+180;
-                } else if(tipX < 0 && tipY < 0) {
+                if(tipY < 0) {
                     angleDeg = angleDeg+180;
                 }
                 gl.glColor4f(0, 0, 1, 0.2f);
