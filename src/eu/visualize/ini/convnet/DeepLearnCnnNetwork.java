@@ -30,8 +30,8 @@ import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * Simple convolutional neural network (CNN) data structure to hold CNN from
- * Matlab DeepLearnToolbox or Caffe. Replicates the computation in matlab function
- * cnnff.m, which is as follows:
+ * Matlab DeepLearnToolbox or Caffe. Replicates the computation in matlab
+ * function cnnff.m, which is as follows:
  * <pre>
  *
  * function net = cnnff(net, x)
@@ -101,6 +101,7 @@ public class DeepLearnCnnNetwork {
     private long startProcessingTimeNs = 0;
     private long processingTimeNs;
     private boolean softMaxOutput = false;
+    private boolean zeroPadding = false;
 
     /**
      * This flag is set true once the network has run once. Some constants are
@@ -487,7 +488,7 @@ public class DeepLearnCnnNetwork {
                     final int yfloor = (int) Math.floor(y);
                     v = renderer.getApsGrayValueAtPixel(xfloor, yfloor);
                     v = debugNet(v, xo, yo);  // TODO remove only for debug
-                    activations[o(xo, dimy - yo - 1)] = v; 
+                    activations[o(xo, dimy - yo - 1)] = v;
                     xo++;
                     operationCounter += 4;
                 }
@@ -527,9 +528,9 @@ public class DeepLearnCnnNetwork {
 
                     v = renderer.getApsGrayValueAtPixel((int) Math.floor(x), (int) Math.floor(y));
                     // v = debugNet(v, x, y);  // TODO remove only for debug
-                    
+
                     activations[o(x - (xOffset - dimx2), dimy - (y - (yOffset - dimy2)) - 1)] = v * 1024;
-                    
+
                     // activations[o(dimy - y % dimy- 1, x % dimx )] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
                 }
             }
@@ -562,7 +563,7 @@ public class DeepLearnCnnNetwork {
                 for (int x = 0; x < dimy; x++) {  // take every xstride, ystride pixels as output
                     float v = subsampler.getValueAtPixel(x, y);
                     v = debugNet(v, x, y);
-                    activations[o(x,dimy - y - 1)] = v; 
+                    activations[o(x, dimy - y - 1)] = v;
                 }
             }
             normalizeInputFrame(activations, false);
@@ -620,7 +621,7 @@ public class DeepLearnCnnNetwork {
             }
             for (int x = 0; x < dimx; x++) {
                 for (int y = 0; y < dimy; y++) {
-                    imageDisplay.setPixmapGray(x ,dimx - y - 1, (a(0, x, y))); // try to fit mean 0 std 1 into 0-1 range nicely by offset and gain of .5
+                    imageDisplay.setPixmapGray(x, dimx - y - 1, (a(0, x, y))); // try to fit mean 0 std 1 into 0-1 range nicely by offset and gain of .5
                 }
             }
             imageDisplay.repaint();
@@ -687,8 +688,8 @@ public class DeepLearnCnnNetwork {
                 }
                 var = (var / n);
                 float sig = (float) Math.sqrt(var);
-                if (sig < 0.1f/ 255.0f) {
-                    sig = 0.1f/ 255.0f;
+                if (sig < 0.1f / 255.0f) {
+                    sig = 0.1f / 255.0f;
                 }
                 for (int i = 0; i < n; i++) {
                     activations[i] = (activations[i] - mean) / sig;
@@ -915,7 +916,11 @@ public class DeepLearnCnnNetwork {
             }
             nKernels = nInputMaps * nOutputMaps;
             inputMapDim = (int) sqrtInputMapLength;
-            outputMapDim = (inputMapDim - kernelDim) + 1;
+            if (!zeroPadding) {
+                outputMapDim = (inputMapDim - kernelDim) + 1;
+            } else {
+                outputMapDim = inputMapDim;
+            }
             outputMapLength = outputMapDim * outputMapDim;
             activationsLength = outputMapLength * nOutputMaps;
             kernelWeightsPerOutputMap = singleKernelLength * nOutputMaps;
@@ -942,12 +947,30 @@ public class DeepLearnCnnNetwork {
         // convolves a given kernel over the inputMap and accumulates output to activations
         private void conv(Layer inputLayer, int outputMap, int inputMap) {
             int startx = halfKernelDim, starty = halfKernelDim, endx = inputMapDim - halfKernelDim, endy = inputMapDim - halfKernelDim;
+            float[][] newInputArray;
+            newInputArray = new float[inputMapDim + 2 * halfKernelDim][inputMapDim + 2 * halfKernelDim];
+            if (zeroPadding) {
+                startx = halfKernelDim;
+                starty = halfKernelDim;
+                endx = inputMapDim + halfKernelDim;
+                endy = inputMapDim + halfKernelDim;
+                for (int xi = halfKernelDim; xi < inputMapDim - halfKernelDim; xi++) { // index to outputMap
+                    for (int yi = halfKernelDim; yi < inputMapDim - halfKernelDim; yi++) {
+                        newInputArray[xi][xi] = inputLayer.a(inputMap, xi - halfKernelDim, xi - halfKernelDim);
+                    }
+                }
+            }
+
             int xo = 0, yo;
             for (int xi = startx; xi < endx; xi++) { // index to outputMap
                 yo = 0;
                 for (int yi = starty; yi < endy; yi++) {
                     int outidx = o(outputMap, xo, yo);
-                    activations[outidx] += convsingle(inputLayer, outputMap, inputMap, xi, yi);
+                    if (!zeroPadding) {
+                        activations[outidx] += convsingle(inputLayer, outputMap, inputMap, xi, yi);
+                    } else {
+                        activations[outidx] += convsingle_zp(newInputArray, outputMap, inputMap, xi, yi);
+                    }
                     yo++;
                 }
                 xo++;
@@ -968,10 +991,7 @@ public class DeepLearnCnnNetwork {
                         int iny = (yincenter + yy) - halfKernelDim; // iny is input coordinate
 //                    sum += 1;
 //                    sum += input.a(inputMap, inx, iny);
-                        sum += kernels[k(inputMap, outputMap, xx,  yy)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
-//                        sum += kernels[k(inputMap, outputMap, kernelDim - xx - 1, yy)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
-//                        sum += kernels[k(inputMap, outputMap, kernelDim - xx - 1, kernelDim - yy - 1)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
-//                        sum += kernels[k(inputMap, outputMap, xx, yy)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
+                        sum += kernels[k(inputMap, outputMap, xx, yy)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
                         operationCounter += 2;
 //                    iny++;
 //                    nterms++;
@@ -995,6 +1015,19 @@ public class DeepLearnCnnNetwork {
             }
 //            return 1; //1; // debug
             return sum; //1; // debug
+        }
+
+        private float convsingle_zp(float[][] input, int outputMap, int inputMap, int xincenter, int yincenter) {
+            float sum = 0;
+            for (int xx = 0; xx < kernelDim; xx++) { // kernel coordinate
+                int inx = (xincenter + xx) - halfKernelDim; // input coordinate
+                for (int yy = 0; yy < kernelDim; yy++) { //yy is kernel coordinate
+                    int iny = (yincenter + yy) - halfKernelDim; // iny is input coordinate
+                    sum += kernels[k(inputMap, outputMap, xx, yy)] * input[inx][iny]; // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
+                    operationCounter += 2;
+                }
+            }
+            return sum;
         }
 
         private void applyBiasAndNonlinearity() {
@@ -1243,7 +1276,7 @@ public class DeepLearnCnnNetwork {
             for (int map = 0; map < nOutputMaps; map++) {
                 for (int x = 0; x < outputMapDim; x++) {
                     for (int y = 0; y < outputMapDim; y++) {
-                        activationDisplays[map].setPixmapGray(y, outputMapDim-x-1, activations[o(map, x, y)]);
+                        activationDisplays[map].setPixmapGray(y, outputMapDim - x - 1, activations[o(map, x, y)]);
                     }
                 }
                 activationDisplays[map].display();
