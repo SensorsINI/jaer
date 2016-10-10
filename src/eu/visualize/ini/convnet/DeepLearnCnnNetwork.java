@@ -92,7 +92,7 @@ public class DeepLearnCnnNetwork {
     private boolean hideSubsamplingLayers = true;
     private boolean normalizeKernelDisplayWeightsGlobally = true;
     private boolean normalizeActivationDisplayGlobally = true;
-    private boolean hideConvLayers = true;
+    private boolean hideConvLayers = false;
     private String xmlFilename = null;
     private boolean printActivations = false;
     private boolean printWeights = false;
@@ -101,7 +101,7 @@ public class DeepLearnCnnNetwork {
     private long startProcessingTimeNs = 0;
     private long processingTimeNs;
     private boolean softMaxOutput = false;
-    private boolean zeroPadding = false;
+    private boolean zeroPadding = true;
 
     /**
      * This flag is set true once the network has run once. Some constants are
@@ -954,8 +954,8 @@ public class DeepLearnCnnNetwork {
                 starty = halfKernelDim;
                 endx = inputMapDim + halfKernelDim;
                 endy = inputMapDim + halfKernelDim;
-                for (int xi = halfKernelDim; xi < inputMapDim - halfKernelDim; xi++) { // index to outputMap
-                    for (int yi = halfKernelDim; yi < inputMapDim - halfKernelDim; yi++) {
+                for (int xi = halfKernelDim; xi <= inputMapDim - halfKernelDim; xi++) { // index to outputMap
+                    for (int yi = halfKernelDim; yi <= inputMapDim - halfKernelDim; yi++) {
                         newInputArray[xi][xi] = inputLayer.a(inputMap, xi - halfKernelDim, xi - halfKernelDim);
                     }
                 }
