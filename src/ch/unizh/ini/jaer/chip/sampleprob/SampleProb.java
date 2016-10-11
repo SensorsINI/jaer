@@ -270,7 +270,7 @@ public class SampleProb extends CochleaChip implements Observer {
 
 			// Generic AER from chip
 			aerControl.add(new SPIConfigBit("AERRun", "Run the main AER state machine.", CypressFX3.FPGA_DVS, (short) 3, false, this));
-			aerControl.add(new SPIConfigInt("AERAckDelay", "Delay AER ACK by this many cycles.", 
+			aerControl.add(new SPIConfigInt("AERAckDelay", "Delay AER ACK by this many cycles.",
 				CypressFX3.FPGA_DVS, (short) 4, 12, 0, this));
 			aerControl.add(new SPIConfigInt("AERAckExtension", "Extend AER ACK by this many cycles.",
 				CypressFX3.FPGA_DVS, (short) 6, 12, 0, this));
@@ -292,9 +292,9 @@ public class SampleProb extends CochleaChip implements Observer {
 			chipControl.add(new SPIConfigInt("SelHazardIV", "", CypressFX3.FPGA_CHIPBIAS, (short) 2, 8, 0, this));
 			chipControl.add(new SPIConfigBit("SelCH", "", CypressFX3.FPGA_CHIPBIAS, (short) 3, false, this));
 			chipControl.add(new SPIConfigBit("SelNS", "", CypressFX3.FPGA_CHIPBIAS, (short) 4, false, this));
-			chipControl.add(new SPIConfigBit("ClockEnable", "Enable clock generation for RNG.", 
+			chipControl.add(new SPIConfigBit("ClockEnable", "Enable clock generation for RNG.",
 				CypressFX3.FPGA_CHIPBIAS, (short) 40, false, this));
-			chipControl.add(new SPIConfigInt("ClockPeriod", "Period of RNG clock in cycles at 120MHz.", 
+			chipControl.add(new SPIConfigInt("ClockPeriod", "Period of RNG clock in cycles at 120MHz.",
 				CypressFX3.FPGA_CHIPBIAS, (short) 41, 20, 0, this));
 			chipControl.add(new SPIConfigBit("UseLandscapeSamplingVerilog",
 				"Use Verilog LandscapeSampling module instead of externally loaded values.",
@@ -554,11 +554,11 @@ public class SampleProb extends CochleaChip implements Observer {
 					e.setSpecial(true);
 				}
 				else {
-					// AER address 0-15 (16 in total)
+					// AER address 0-15 (16 in total). Plus 16-31 as extra.
 					e.address = addr;
 					e.timestamp = ts;
 					e.x = (short) (addr & 0x0F);
-					e.y = 0;
+					e.y = (short) ((addr >>> 4) & 0x01);
 					e.type = 0;
 					e.setSpecial(false);
 				}
