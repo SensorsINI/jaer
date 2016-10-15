@@ -478,17 +478,22 @@ public class DeepLearnCnnNetwork {
                 r.setSeed(0);
             }
             float xstride = (float) frameWidth / dimx, ystride = (float) frameHeight / dimy;
-            int xo, yo = 0;
+            int xo=0, yo = 0;
             loop:
-            for (float y = 0; y < frameHeight; y += ystride) {
+            for (float y = 0; Math.ceil(y) < frameHeight; y += ystride) {
                 xo = 0;
-                for (float x = 0; x < frameWidth; x += xstride) {  // take every xstride, ystride pixels as output
+                for (float x = 0; Math.ceil(x) < frameWidth; x += xstride) {  // take every xstride, ystride pixels as output
                     float v = 0;
                     final int xfloor = (int) Math.floor(x);
                     final int yfloor = (int) Math.floor(y);
                     v = renderer.getApsGrayValueAtPixel(xfloor, yfloor);
                     v = debugNet(v, xo, yo);  // TODO remove only for debug
-                    activations[o(xo, dimy - yo - 1)] = v;
+                    final int o = o(xo, dimy - yo - 1);
+//                    System.out.println(String.format("x=%9.3f y=%9.3f xfloor=%9d yfloor=%9d xo=%6d yo=%6d",x,y,xfloor,yfloor,xo,yo));
+//                    if(o>=activations.length){
+//                        log.warning("out of bounds exception indexing to activations array. Place a breakpoint here to debug");
+//                    }
+                    activations[o] = v;
                     xo++;
                     operationCounter += 4;
                 }
@@ -574,7 +579,7 @@ public class DeepLearnCnnNetwork {
             if (((dimy * x) + y) < 0) {
                 System.out.print("a");
             }
-            return (dimy * x) + y;  // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
+            return (int)((dimy * x) + y);  // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
         }
 
         @Override
