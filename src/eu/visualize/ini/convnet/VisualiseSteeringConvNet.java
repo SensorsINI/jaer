@@ -52,7 +52,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private static final int LEFTS = 0, LEFTM = 1, LEFTXL = 2, CENTERS = 3, CENTERM = 4, CENTERXL = 5, RIGHTS = 6, RIGHTM = 7, RIGHTXL = 8, INVISIBLESIZE = 9; // define output cell types
     volatile private boolean hideSteeringOutput = getBoolean("hideOutput", false);
     volatile private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
-    volatile private boolean networkWithDistance = getBoolean("networkWithDistance", false);
+    volatile private boolean networkWithDistance = getBoolean("networkWithDistance", true);
     volatile private boolean showArrow = getBoolean("showArrow", false);
     volatile private boolean showAngleOnly = getBoolean("showAngleOnly", true);
     volatile private boolean showStatistics = getBoolean("showStatistics", true);
@@ -110,10 +110,10 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         String deb = "3. Debug", disp = "1. Display", anal = "2. Analysis";
         String udp = "UDP messages";
         setPropertyTooltip(disp, "showAnalogDecisionOutput", "Shows output units as analog shading rather than binary. If LCRNstep=1, then the analog CNN output is shown. Otherwise, the lowpass filtered LCRN states are shown.");
-        setPropertyTooltip(disp, "networkWithDistance", "Choose whether the network is trained on distance estimation as well.");
-        setPropertyTooltip(disp, "showArrow", "Show analog arrow.");
-        setPropertyTooltip(disp, "showAngleOnly", "Show analog arrow.");
-        setPropertyTooltip(disp, "rememberLast", "Averaging of last n remembered outputs.");
+        setPropertyTooltip(disp, "networkWithDistance", "Specify whether the network is trained on distance estimation (using size of prey) as well as the steering angle.");
+        setPropertyTooltip(disp, "showArrow", "Show analog arrow that is built from weighted mixture of angle output units.");
+        setPropertyTooltip(disp, "showAngleOnly", "Show only the analog arrow (not distance as well) that is built from weighted mixture of angle output units");
+        setPropertyTooltip(disp, "rememberLast", "Use averaging of this many last outputs.");
         setPropertyTooltip(disp, "hideSteeringOutput", "hides steering output unit rendering as shading over sensor image. If the prey is invisible no rectangle is rendered when showAnalogDecisionOutput is deselected.");
         setPropertyTooltip(anal, "pixelErrorAllowedForSteering", "If ground truth location is within this many pixels of closest border then the descision is still counted as corret");
         setPropertyTooltip(disp, "showStatistics", "shows statistics of DVS frame rate and error rate (when ground truth TargetLabeler file is loaded)");
