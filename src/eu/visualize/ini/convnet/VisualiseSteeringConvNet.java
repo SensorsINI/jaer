@@ -285,6 +285,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         int decision = net.outputLayer.maxActivatedUnit;
 
         if (networkWithDistance) {
+            // 10 output units are ordered like this
+            // FL FC FR ML MC MR NL NC NR N
+            // N=near, M=middle, F=far, LCR are left, center, right, N=nonvisible
             if (showArrow) {
                 //Render Arrow
                 gl.glPushMatrix();
