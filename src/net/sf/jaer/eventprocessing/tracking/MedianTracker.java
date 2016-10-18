@@ -45,6 +45,7 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
     LowpassFilter xStdFilter = new LowpassFilter(), yStdFilter = new LowpassFilter();
     LowpassFilter xMeanFilter = new LowpassFilter(), yMeanFilter = new LowpassFilter();
     int tauUs =getInt("tauUs", 1000);
+    private float numStdDevsForBoundingBox =getFloat("numStdDevsForBoundingBox", 1f);
     float alpha = 1, beta = 0; // alpha is current weighting, beta is past value weighting
 
     /**
@@ -59,6 +60,7 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
         xMeanFilter.setTauMs(tauUs / 1000f);
         yMeanFilter.setTauMs(tauUs / 1000f);
         setPropertyTooltip("tauUs", "Time constant in us (microseonds) of median location lowpass filter, 0 for instantaneous");
+        setPropertyTooltip("numStdDevsForBoundingBox", "Multiplier for number of std deviations of x and y distances from median for drawing and returning bounding box");
     }
 
     @Override
@@ -72,6 +74,10 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
         return this.medianPoint;
     }
 
+    /** Returns a 2D point defining the x and y std deviations times the numStdDevsForBoundingBox
+     * 
+     * @return the 2D value
+     */
     public Point2D getStdPoint() {
         return this.stdPoint;
     }
@@ -165,7 +171,7 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
 
         medianPoint.setLocation(xmedian, ymedian);
         meanPoint.setLocation(xmean, ymean);
-        stdPoint.setLocation(xstd, ystd);
+        stdPoint.setLocation(xstd*numStdDevsForBoundingBox, ystd*numStdDevsForBoundingBox);
 
         return in; // xs and ys will now be sorted, output will be bs because time will not be sorted like addresses
     }
@@ -192,5 +198,20 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
         gl.glVertex2d(p.getX() - s.getX(), p.getY() + s.getY());
         gl.glEnd();
         gl.glPopMatrix();
+    }
+
+    /**
+     * @return the numStdDevsForBoundingBox
+     */
+    public float getNumStdDevsForBoundingBox() {
+        return numStdDevsForBoundingBox;
+    }
+
+    /**
+     * @param numStdDevsForBoundingBox the numStdDevsForBoundingBox to set
+     */
+    public void setNumStdDevsForBoundingBox(float numStdDevsForBoundingBox) {
+        this.numStdDevsForBoundingBox = numStdDevsForBoundingBox;
+        putFloat("numStdDevsForBoundingBox",numStdDevsForBoundingBox);
     }
 }
