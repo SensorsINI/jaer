@@ -29,6 +29,7 @@ import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
  * Writes out AVI movie with DVS time or event slices as AVI frame images with
@@ -43,14 +44,18 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     private DvsSubsamplerToFrame dvsSubsampler = null;
     private int dimx, dimy, grayScale;
     private int dvsMinEvents = getInt("dvsMinEvents", 10000);
+    private float frameRateEstimatorTimeConstantMs = getFloat("frameRateEstimatorTimeConstantMs", 10f);
     private JFrame frame = null;
     public ImageDisplay display;
     private boolean showOutput;
     private volatile boolean newFrameAvailable = false;
-    private int endOfFrameTimestamp=0, lastTimestamp=0;
+    private int endOfFrameTimestamp = 0, lastTimestamp = 0;
     protected boolean writeDvsSliceImageOnApsFrame = getBoolean("writeDvsSliceImageOnApsFrame", false);
-    private boolean rendererPropertyChangeListenerAdded=false;
-    private AEFrameChipRenderer renderer=null;
+    private boolean rendererPropertyChangeListenerAdded = false;
+    private AEFrameChipRenderer renderer = null;
+    private LowpassFilter lowpassFilter = new LowpassFilter(frameRateEstimatorTimeConstantMs);
+    private int lastDvsFrameTimestamp = 0;
+    private float avgDvsFrameIntervalMs=0;
 
     public DvsSliceAviWriter(AEChip chip) {
         super(chip);
@@ -64,6 +69,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         setPropertyTooltip("dimy", "height of AVI frame");
         setPropertyTooltip("showOutput", "shows output in JFrame/ImageDisplay");
         setPropertyTooltip("dvsMinEvents", "minimum number of events to run net on DVS timeslice (only if writeDvsSliceImageOnApsFrame is false)");
+        setPropertyTooltip("frameRateEstimatorTimeConstantMs", "time constant of lowpass filter that shows average DVS slice frame rate");
         setPropertyTooltip("writeDvsSliceImageOnApsFrame", "<html>write DVS slice image for each APS frame end event (dvsMinEvents ignored).<br>The frame is written at the end of frame APS event.<br><b>Warning: to capture all frames, ensure that playback time slices are slow enough that all frames are rendered</b>");
     }
 
@@ -72,12 +78,12 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
 //        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsNet on each frame in PropertyChangeListener
         // send DVS timeslice to convnet
         super.filterPacket(in);
-       if(!rendererPropertyChangeListenerAdded){
-            rendererPropertyChangeListenerAdded=true;
-            renderer=(AEFrameChipRenderer)chip.getRenderer();
+        if (!rendererPropertyChangeListenerAdded) {
+            rendererPropertyChangeListenerAdded = true;
+            renderer = (AEFrameChipRenderer) chip.getRenderer();
             renderer.getSupport().addPropertyChangeListener(this);
         }
-       final int sizeX = chip.getSizeX();
+        final int sizeX = chip.getSizeX();
         final int sizeY = chip.getSizeY();
         checkSubsampler();
         for (BasicEvent e : in) {
@@ -85,12 +91,14 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 continue;
             }
             PolarityEvent p = (PolarityEvent) e;
-            lastTimestamp=e.timestamp;
+            lastTimestamp = e.timestamp;
             dvsSubsampler.addEvent(p, sizeX, sizeY);
-            if ((writeDvsSliceImageOnApsFrame && newFrameAvailable && e.timestamp>=endOfFrameTimestamp)
+            if ((writeDvsSliceImageOnApsFrame && newFrameAvailable && e.timestamp >= endOfFrameTimestamp)
                     || (!writeDvsSliceImageOnApsFrame && dvsSubsampler.getAccumulatedEventCount() > dvsMinEvents)
                     && !chip.getAeViewer().isPaused()) {
-                if(writeDvsSliceImageOnApsFrame) newFrameAvailable=false;
+                if (writeDvsSliceImageOnApsFrame) {
+                    newFrameAvailable = false;
+                }
                 maybeShowOutput(dvsSubsampler);
                 if (aviOutputStream != null && isWriteEnabled()) {
                     BufferedImage bi = toImage(dvsSubsampler);
@@ -105,9 +113,14 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                     }
                 }
                 dvsSubsampler.clear();
+                if (lastDvsFrameTimestamp != 0) {
+                    int lastFrameInterval = lastTimestamp - lastDvsFrameTimestamp;
+                    avgDvsFrameIntervalMs = 1e-3f * lowpassFilter.filter(lastFrameInterval, lastTimestamp);
+                }
+                lastDvsFrameTimestamp = lastTimestamp;
             }
         }
-        if(writeDvsSliceImageOnApsFrame && lastTimestamp-endOfFrameTimestamp>1000000){
+        if (writeDvsSliceImageOnApsFrame && lastTimestamp - endOfFrameTimestamp > 1000000) {
             log.warning("last frame event was received more than 1s ago; maybe you need to enable Display Frames in the User Control Panel?");
         }
         return in;
@@ -120,7 +133,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         }
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);
         MultilineAnnotationTextRenderer.setScale(.3f);
-        String s = String.format("mostOffCount=%d\n mostOnCount=%d", dvsSubsampler.getMostOffCount(), dvsSubsampler.getMostOnCount());
+        float avgFrameRate=avgDvsFrameIntervalMs==0? Float.NaN: 1000/avgDvsFrameIntervalMs;
+        String s = String.format("mostOffCount=%d\n mostOnCount=%d\navg frame rate=%.1f", dvsSubsampler.getMostOffCount(), dvsSubsampler.getMostOnCount(),avgFrameRate);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 
@@ -150,9 +164,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 int b = (int) (255 * subSampler.getValueAtPixel(x, y));
                 int g = b;
                 int r = b;
-                int idx=(dimy - y - 1) * dimx + x;
-                if(idx>=bd.length){
-                    throw new RuntimeException(String.format("index %d out of bounds for x=%d y=%d",idx,x,y));
+                int idx = (dimy - y - 1) * dimx + x;
+                if (idx >= bd.length) {
+                    throw new RuntimeException(String.format("index %d out of bounds for x=%d y=%d", idx, x, y));
                 }
                 bd[idx] = (b << 16) | (g << 8) | r | 0xFF000000;
             }
@@ -284,8 +298,6 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         }
     }
 
-  
-
     /**
      * @return the writeDvsSliceImageOnApsFrame
      */
@@ -302,14 +314,31 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         putBoolean("writeDvsSliceImageOnApsFrame", writeDvsSliceImageOnApsFrame);
     }
 
-      @Override
+    @Override
     public void propertyChange(PropertyChangeEvent evt) {
         if ((evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)) {
-            AEFrameChipRenderer renderer=(AEFrameChipRenderer)evt.getNewValue();
-            endOfFrameTimestamp=renderer.getTimestampFrameEnd();
+            AEFrameChipRenderer renderer = (AEFrameChipRenderer) evt.getNewValue();
+            endOfFrameTimestamp = renderer.getTimestampFrameEnd();
             newFrameAvailable = true;
         } else if (isCloseOnRewind() && evt.getPropertyName() == AEInputStream.EVENT_REWIND) {
             doCloseFile();
         }
+    }
+
+    /**
+     * @return the frameRateEstimatorTimeConstantMs
+     */
+    public float getFrameRateEstimatorTimeConstantMs() {
+        return frameRateEstimatorTimeConstantMs;
+    }
+
+    /**
+     * @param frameRateEstimatorTimeConstantMs the
+     * frameRateEstimatorTimeConstantMs to set
+     */
+    public void setFrameRateEstimatorTimeConstantMs(float frameRateEstimatorTimeConstantMs) {
+        this.frameRateEstimatorTimeConstantMs = frameRateEstimatorTimeConstantMs;
+        lowpassFilter.setTauMs(frameRateEstimatorTimeConstantMs);
+        putFloat("frameRateEstimatorTimeConstantMs", frameRateEstimatorTimeConstantMs);
     }
 }
