@@ -517,7 +517,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         }
         boolean initialized = false;
         float instantaneousRate = 0, filteredRate = 0;
-        int count = 0;
+        int count = 0; // last update event count
         private HashMap<Integer, ISIHist> histMap = new HashMap();
         ISIHist globalHist = new ISIHist(-1);
         ISIHist[] averageTypeHistograms = null;
@@ -798,7 +798,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 
         @Override
         public String toString() {
-            return String.format("%10d events, %15s eps average", count, engFmt.format(filteredRate));
+            return String.format("Selected region %6d pixels, total %10d events, %15s eps/pixel", nPixels, count, engFmt.format(filteredRate));
         }
 
         /**
