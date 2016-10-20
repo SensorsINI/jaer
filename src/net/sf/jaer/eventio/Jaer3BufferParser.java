@@ -536,7 +536,7 @@ public class Jaer3BufferParser {
 	} // getLastTimeStamp
 
 	/**
-	 * This function is used to find the next valid event offset, because not all the events are valid, we should skip
+	 * This function is used to find the offset to the next valid event, because not all the events are valid, we should skip
 	 * the invalid events.
 	 *
 	 * @return the next valid event offset.
