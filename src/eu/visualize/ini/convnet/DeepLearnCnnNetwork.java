@@ -2009,4 +2009,20 @@ public class DeepLearnCnnNetwork {
         this.softMaxOutput = softMaxOutput;
     }
 
+    /**
+     * @return the zeroPadding
+     */
+    public boolean isZeroPadding() {
+        return zeroPadding;
+    }
+
+    /**
+     * Must be set properly according to the loaded CNN!
+     * 
+     * @param zeroPadding the zeroPadding to set
+     */
+    public void setZeroPadding(boolean zeroPadding) {
+        this.zeroPadding = zeroPadding;
+    }
+
 }

@@ -63,6 +63,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     protected DvsSubsamplerToFrame dvsSubsampler = null;
     private int dvsColorScale = getInt("dvsColorScale", 200); // 1/dvsColorScale is amount each event color the timeslice in subsampled timeslice input
     private boolean softMaxOutput = getBoolean("softMaxOutput", false);
+    private boolean zeroPadding = getBoolean("zeroPadding", true);
 
     protected int lastProcessedEventTimestamp = 0;
     private String performanceString = null; // holds string representation of processing time
@@ -80,17 +81,18 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setPropertyTooltip(disp, "hideConvLayers", "hides conv layers");
         setPropertyTooltip(disp, "normalizeActivationDisplayGlobally", "normalizes the activations of layers globally across features");
         setPropertyTooltip(disp, "normalizeKernelDisplayWeightsGlobally", "normalizes the weights globally across layer");
-        setPropertyTooltip(disp, "softMaxOutput", "normalizes the final outputs using softmax; use for ReLu final layer to display output in 0-1 range");
+        setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame along with estimated operations count (MAC=2OPS)");
         setPropertyTooltip(deb, "inputClampedTo1", "clamps network input image to fixed value (1) for debugging");
         setPropertyTooltip(deb, "inputClampedToIncreasingIntegers", "clamps network input image to idx of matrix, increasing integers, for debugging");
         setPropertyTooltip(deb, "printActivations", "prints out activations of CNN layers for debugging; by default shows input and output; combine with hideConvLayers and hideSubsamplingLayers to show more layers");
         setPropertyTooltip(deb, "printWeights", "prints out weights of APS net layers for debugging");
-        setPropertyTooltip(anal, "measurePerformance", "Measures and logs time in ms to process each frame along with estimated operations count (MAC=2OPS)");
+        setPropertyTooltip(anal, "softMaxOutput", "normalizes the final outputs using softmax; use for ReLu final layer to display output in 0-1 range");
         setPropertyTooltip(anal, "processAPSFrames", "sends APS frames to convnet");
         setPropertyTooltip(anal, "processDVSTimeSlices", "sends DVS time slices to convnet");
         setPropertyTooltip(anal, "processAPSDVSTogetherInAPSNet", "sends APS frames and DVS time slices to single convnet");
         setPropertyTooltip(anal, "dvsColorScale", "1/dvsColorScale is the amount by which each DVS event is added to time slice 2D gray-level histogram");
         setPropertyTooltip(anal, "dvsMinEvents", "minimum number of events to run net on DVS timeslice");
+        setPropertyTooltip(anal, "zeroPadding", "CNN uses zero padding; must be set properly according to CNN to run CNN");
         initFilter();
     }
 
@@ -231,6 +233,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                 try {
                     apsDvsNet.loadFromXMLFile(f);
                     apsDvsNet.setSoftMaxOutput(softMaxOutput); // must set manually since net doesn't know option kept here.
+                    apsDvsNet.setZeroPadding(zeroPadding); // must set manually since net doesn't know option kept here.
                     dvsSubsampler = new DvsSubsamplerToFrame(apsDvsNet.inputLayer.dimx, apsDvsNet.inputLayer.dimy, getDvsColorScale());
                 } catch (IOException ex) {
                     Logger.getLogger(DavisDeepLearnCnnProcessor.class.getName()).log(Level.SEVERE, null, ex);
@@ -587,4 +590,23 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         }
         apsDvsNet.setSoftMaxOutput(softMaxOutput);
     }
+
+    /**
+     * @return the zeroPadding
+     */
+    public boolean isZeroPadding() {
+        return zeroPadding;
+    }
+
+    /**
+     * @param zeroPadding the zeroPadding to set
+     */
+    public void setZeroPadding(boolean zeroPadding) {
+        this.zeroPadding = zeroPadding;
+          putBoolean("zeroPadding", zeroPadding);
+        if (apsDvsNet == null) {
+            return;
+        }
+        apsDvsNet.setZeroPadding(zeroPadding);
+ }
 }
