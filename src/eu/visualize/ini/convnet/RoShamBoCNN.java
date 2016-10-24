@@ -243,7 +243,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                 }
                 decisionCounts[maxUnit]++;
                 totalCount++;
-                if(playSpikeSounds && maxUnit!=lastOutput )
+                if(playSpikeSounds && maxUnit!=lastOutput ){
                     if(spikeSound==null){
                         spikeSound=new SpikeSound();
                     }
