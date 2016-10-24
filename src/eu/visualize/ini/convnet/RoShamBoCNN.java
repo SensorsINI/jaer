@@ -8,11 +8,11 @@ package eu.visualize.ini.convnet;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 
-
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Font;
+import java.awt.geom.Rectangle2D;
 import java.util.Arrays;
 
 import net.sf.jaer.Description;
@@ -39,19 +39,21 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
 //    private TargetLabeler targetLabeler = null;
     Error error = new Error();
     private float decisionLowPassMixingFactor = getFloat("decisionLowPassMixingFactor", .2f);
-    private SpikeSound spikeSound=null;
+    private SpikeSound spikeSound = null;
 
-    /** output units */
-    private static final int DECISION_PAPER=0, DECISION_SCISSORS=1, DECISION_ROCK=2; 
-    private static final String[] DECISION_STRINGS={"Paper", "Scissors", "Rock"}; 
-    
+    /**
+     * output units
+     */
+    private static final int DECISION_PAPER = 0, DECISION_SCISSORS = 1, DECISION_ROCK = 2;
+    private static final String[] DECISION_STRINGS = {"Paper", "Scissors", "Rock"};
+
     public RoShamBoCNN(AEChip chip) {
         super(chip);
-        String faceDetector="Face detector";
-        setPropertyTooltip(faceDetector,"showAnalogDecisionOutput", "Shows face detection as analog activation of face unit in softmax of network output");
-        setPropertyTooltip(faceDetector,"hideOutput", "Hides output face detection indications");
-        setPropertyTooltip(faceDetector,"decisionLowPassMixingFactor", "The softmax outputs of the CNN are low pass filtered using this mixing factor; reduce decisionLowPassMixingFactor to filter more decisions");
-        setPropertyTooltip(faceDetector,"playSpikeSounds", "Play a spike sound on change of network output decision");
+        String faceDetector = "Face detector";
+        setPropertyTooltip(faceDetector, "showAnalogDecisionOutput", "Shows face detection as analog activation of face unit in softmax of network output");
+        setPropertyTooltip(faceDetector, "hideOutput", "Hides output face detection indications");
+        setPropertyTooltip(faceDetector, "decisionLowPassMixingFactor", "The softmax outputs of the CNN are low pass filtered using this mixing factor; reduce decisionLowPassMixingFactor to filter more decisions");
+        setPropertyTooltip(faceDetector, "playSpikeSounds", "Play a spike sound on change of network output decision");
         FilterChain chain = new FilterChain(chip);
         setEnclosedFilterChain(chain);
         apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, error);
@@ -89,11 +91,11 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         error.draw(gl);
 
     }
-    
-    private TextRenderer textRenderer=null;
+
+    private TextRenderer textRenderer = null;
 
     private void drawDecisionOutput(GL2 gl, int width, int height) {
-        
+
         float brightness = 0.0f;
         if (showAnalogDecisionOutput) {
             brightness = error.maxActivation; // brightness scale
@@ -103,16 +105,17 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         gl.glColor3f(0.0f, brightness, brightness);
 //        gl.glPushMatrix();
 //        gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
-        if(textRenderer==null){
-            textRenderer=textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
+        if (textRenderer == null) {
+            textRenderer = textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 72),true,false);
         }
-        textRenderer.setColor(brightness, brightness, brightness,1);
+        textRenderer.setColor(brightness, brightness, brightness, 1);
         textRenderer.beginRendering(width, height);
-        textRenderer.draw(DECISION_STRINGS[error.maxUnit],chip.getSizeX() / 2, chip.getSizeY() / 2);
+        Rectangle2D r=textRenderer.getBounds(DECISION_STRINGS[error.maxUnit]);
+        textRenderer.draw(DECISION_STRINGS[error.maxUnit], width/2-(int)r.getWidth()/2, height/2);
         textRenderer.endRendering();
 //        gl.glPopMatrix();
     }
-    
+
     /**
      * @return the hideOutput
      */
@@ -173,7 +176,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
      */
     public void setPlaySpikeSounds(boolean playSpikeSounds) {
         this.playSpikeSounds = playSpikeSounds;
-        putBoolean("playSpikeSounds",playSpikeSounds);
+        putBoolean("playSpikeSounds", playSpikeSounds);
     }
 
     private class Error implements PropertyChangeListener {
@@ -187,7 +190,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         final int FACE = 0, NONFACE = 1;
         final String[] decisionStrings = {"Face", "Non-Face"};
         float[] lowpassFilteredOutputUnits = new float[NUM_CLASSES];
-        final int HISTORY_LENGTH=10;
+        final int HISTORY_LENGTH = 10;
         int[] decisionHistory = new int[HISTORY_LENGTH];
         float maxActivation = Float.NEGATIVE_INFINITY;
         int maxUnit = -1;
@@ -220,8 +223,12 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                 return "Error: no samples yet";
             }
             StringBuilder sb = new StringBuilder("Decision statistics: ");
-            for (int i = 0; i < NUM_CLASSES; i++) {
-                sb.append(String.format("%s: %d (%.1f%%)  ", decisionStrings[i], decisionCounts[i], 100 * (float) decisionCounts[i] / totalCount));
+            try {
+                for (int i = 0; i < NUM_CLASSES; i++) {
+                    sb.append(String.format("%s: %d (%.1f%%)  ", decisionStrings[i], decisionCounts[i], 100 * (float) decisionCounts[i] / totalCount));
+                }
+            } catch (ArrayIndexOutOfBoundsException e) {
+                sb.append(" out of bounds exception; did you load valid CNN?");
             }
             return sb.toString();
         }
@@ -229,23 +236,28 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         @Override
         public synchronized void propertyChange(PropertyChangeEvent evt) {
             if (evt.getPropertyName() == DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
-                int lastOutput=maxUnit;
+                int lastOutput = maxUnit;
                 DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
                 maxActivation = Float.NEGATIVE_INFINITY;
                 maxUnit = -1;
-                for (int i = 0; i < NUM_CLASSES; i++) {
-                    float output = net.outputLayer.activations[i];
-                    lowpassFilteredOutputUnits[i] = (1 - decisionLowPassMixingFactor) * lowpassFilteredOutputUnits[i] + output * decisionLowPassMixingFactor;
-                    if (lowpassFilteredOutputUnits[i] > maxActivation) {
-                        maxActivation = lowpassFilteredOutputUnits[i];
-                        maxUnit = i;
+                try {
+                    for (int i = 0; i < NUM_CLASSES; i++) {
+                        float output = net.outputLayer.activations[i];
+                        lowpassFilteredOutputUnits[i] = (1 - decisionLowPassMixingFactor) * lowpassFilteredOutputUnits[i] + output * decisionLowPassMixingFactor;
+                        if (lowpassFilteredOutputUnits[i] > maxActivation) {
+                            maxActivation = lowpassFilteredOutputUnits[i];
+                            maxUnit = i;
+                        }
                     }
+                } catch (ArrayIndexOutOfBoundsException e) {
+                    log.warning("Array index out of bounds in rendering output. Did you load a valid CNN with 3 (or more) output units?");
+
                 }
                 decisionCounts[maxUnit]++;
                 totalCount++;
-                if(playSpikeSounds && maxUnit!=lastOutput ){
-                    if(spikeSound==null){
-                        spikeSound=new SpikeSound();
+                if (playSpikeSounds && maxUnit != lastOutput) {
+                    if (spikeSound == null) {
+                        spikeSound = new SpikeSound();
                     }
                     spikeSound.play();
                 }
