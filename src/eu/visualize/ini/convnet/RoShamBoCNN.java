@@ -229,6 +229,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         @Override
         public synchronized void propertyChange(PropertyChangeEvent evt) {
             if (evt.getPropertyName() == DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
+                int lastOutput=maxUnit;
                 DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
                 maxActivation = Float.NEGATIVE_INFINITY;
                 maxUnit = -1;
@@ -242,7 +243,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                 }
                 decisionCounts[maxUnit]++;
                 totalCount++;
-                if(playSpikeSounds && maxUnit==FACE){
+                if(playSpikeSounds && maxUnit!=lastOutput )
                     if(spikeSound==null){
                         spikeSound=new SpikeSound();
                     }
