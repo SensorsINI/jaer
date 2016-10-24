@@ -558,7 +558,7 @@ public class SampleProb extends CochleaChip implements Observer {
 					e.address = addr;
 					e.timestamp = ts;
 					e.x = (short) (addr & 0x0F);
-					e.y = (short) ((addr >>> 4) & 0x01);
+					e.y = (short) ((addr >>> 4) & 0x7F);
 					e.type = 0;
 					e.setSpecial(false);
 				}
