@@ -14,7 +14,7 @@ public class Davis208PixelParadeColor extends DavisBaseCamera {
 
 	public static final short WIDTH_PIXELS = 208;
 	public static final short HEIGHT_PIXELS = 192;
-	public static final ColorFilter[] COLOR_FILTER = { ColorFilter.W, ColorFilter.B, ColorFilter.G, ColorFilter.R };
+	public static final ColorFilter[] COLOR_FILTER = { ColorFilter.B, ColorFilter.W, ColorFilter.R, ColorFilter.G };
 	public static final float[][] COLOR_CORRECTION = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 } };
 
 	public Davis208PixelParadeColor() {
