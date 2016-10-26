@@ -51,6 +51,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int sx, sy;
     private int tMinus2SliceIdx = 0, tMinus1SliceIdx = 1, currentSliceIdx = 2;
     private int[][] currentSlice = null, tMinus1Slice = null, tMinus2Slice = null;
+    private ArrayList[][] spikeTrans = null;
     private ArrayList<int[][]>[] histogramsAL = null;
     private ArrayList<int[][]> currentAL = null, previousAL = null, previousMinus1AL = null; // One is for current, the second is for previous, the third is for the one before previous one
     private BitSet[] histogramsBitSet = null;
@@ -172,6 +173,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             if (apsDvsEvent.isImuSample()) {
                 IMUSample s = apsDvsEvent.getImuSample();
                 lastTransform = updateTransform(s);
+                continue;
             }
             // inItr = in.inputIterator;
             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
@@ -206,21 +208,33 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     startTime = System.nanoTime();
             }
             // compute flow
-            maybeRotateSlices();
-            accumulateEvent();
             SADResult result = new SADResult(0,0,0);
             switch(patchCompareMethod) {
                 case HammingDistance: 
+                    maybeRotateSlices();
+                    accumulateEvent();
                     result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
                     break;
                 case SAD:
+                    maybeRotateSlices();
+                    accumulateEvent();
                     result = minSad(x, y, tMinus2Slice, tMinus1Slice);
                     break;
                 case JaccardDistance:
+                    maybeRotateSlices();
+                    accumulateEvent();
                     result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
                     break;
                 case EventSqeDistance:
-                    result = minVicPurDistance(x, y);
+                    int blockLocX = x/3;
+                    int blockLocY = y/3;
+                    
+                    // Build the spike trains of every block, every block is consist of 3*3 pixels.
+                    if(spikeTrans[blockLocX][blockLocY] == null) {
+                        spikeTrans[blockLocX][blockLocY] = new ArrayList();
+                    }
+                    spikeTrans[blockLocX][blockLocY].add(ts);
+                    // result = minVicPurDistance(x, y);
                     break;
             }            
             vx = result.dx * 5;
@@ -299,6 +313,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             histogramsBitSet = new BitSet[numSlices];
         }
         
+      
         for(int ii = 0; ii < numSlices; ii ++) {
             histogramsBitSet[ii] = new BitSet(subSizeX*subSizeY);
         }  
@@ -308,6 +323,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             histogramsAL = new ArrayList[3];
         }
         
+        if (spikeTrans == null & subSizeX != 0 & subSizeY != 0) {
+            spikeTrans = new ArrayList[subSizeX][subSizeY];
+        }        
+
+          
         int colPatchCnt = subSizeX/patchDimension; 
         int rowPatchCnt = subSizeY/patchDimension;
         
