@@ -14,7 +14,7 @@ public class Davis128Color extends DavisBaseCamera {
 
 	public static final short WIDTH_PIXELS = 128;
 	public static final short HEIGHT_PIXELS = 128;
-	public static final ColorFilter[] COLOR_FILTER = { ColorFilter.B, ColorFilter.G, ColorFilter.R, ColorFilter.B };
+	public static final ColorFilter[] COLOR_FILTER = { ColorFilter.B, ColorFilter.G, ColorFilter.R, ColorFilter.G };
 	public static final float[][] COLOR_CORRECTION = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 } };
 
 	public Davis128Color() {
