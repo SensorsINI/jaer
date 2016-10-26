@@ -1137,9 +1137,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             // color annotation to show what is being rendered
             imuTextRenderer.begin3DRendering();
             imuTextRenderer.setColor(1, 1, 1, trans);
-            final String ratestr = String.format("IMU: timestamp=%-+9.3fs last dtMs=%-6.1fms  avg dtMs=%-6.1fms",
+            final String ratestr = String.format("IMU: timestamp=%+9.3fs last dtMs=%6.1fms  avg dtMs=%6.1fms deg C=%5.1fC",
                     1e-6f * imuSampleRender.getTimestampUs(), imuSampleRender.getDeltaTimeUs() * .001f,
-                    IMUSample.getAverageSampleIntervalUs() / 1000);
+                    IMUSample.getAverageSampleIntervalUs() / 1000, imuSampleRender.getTemperature());
             final Rectangle2D raterect = imuTextRenderer.getBounds(ratestr);
             imuTextRenderer.draw3D(ratestr, -(float) raterect.getWidth() * textScale * 0.5f * .7f, -12, 0, textScale * .7f); // x,y,z,
             // scale
