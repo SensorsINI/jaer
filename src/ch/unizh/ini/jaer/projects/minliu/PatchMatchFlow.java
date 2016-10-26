@@ -9,6 +9,7 @@ import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.geom.Point2D;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
@@ -50,6 +51,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int sx, sy;
     private int tMinus2SliceIdx = 0, tMinus1SliceIdx = 1, currentSliceIdx = 2;
     private int[][] currentSlice = null, tMinus1Slice = null, tMinus2Slice = null;
+    private ArrayList<int[][]>[] histogramsAL = null;
+    private ArrayList<int[][]> currentAL = null, previousAL = null, previousMinus1AL = null; // One is for current, the second is for previous, the third is for the one before previous one
     private BitSet[] histogramsBitSet = null;
     private BitSet currentSli = null, tMinus1Sli = null, tMinus2Sli = null;
     private int patchDimension = getInt("patchDimension", 8);
@@ -57,7 +60,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private boolean displayOutputVectors = getBoolean("displayOutputVectors", true);
 
     public enum PatchCompareMethod {
-        JaccardDistance, HammingDistance, SAD
+        JaccardDistance, HammingDistance, SAD, EventSqeDistance
     };
     private PatchCompareMethod patchCompareMethod = PatchCompareMethod.valueOf(getString("patchCompareMethod", PatchCompareMethod.HammingDistance.toString()));
 
@@ -216,6 +219,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 case JaccardDistance:
                     result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
                     break;
+                case EventSqeDistance:
+                    result = minVicPurDistance(x, y);
+                    break;
             }            
             vx = result.dx * 5;
             vy = result.dy * 5;
@@ -295,6 +301,22 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         
         for(int ii = 0; ii < numSlices; ii ++) {
             histogramsBitSet[ii] = new BitSet(subSizeX*subSizeY);
+        }  
+        
+        // Initialize 3 ArrayList's histogram, every pixel has three patches: current, previous and previous-1
+        if(histogramsAL == null){
+            histogramsAL = new ArrayList[3];
+        }
+        
+        int colPatchCnt = subSizeX/patchDimension; 
+        int rowPatchCnt = subSizeY/patchDimension;
+        
+        for(int ii = 0; ii < numSlices; ii ++) {
+            histogramsAL[ii] = new ArrayList();
+            for(int jj = 0; jj < colPatchCnt*rowPatchCnt; jj ++) {
+                int[][] patch = new int[patchDimension][patchDimension];
+                histogramsAL[ii].add(patch);
+            }
         }  
         
         tMinus2SliceIdx = 0;
@@ -505,6 +527,29 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     return;
                 }
             case AdaptationDuration:
+                int x = e.x;
+                int y = e.y;
+                
+                if(x < patchDimension || y < patchDimension || x > subSizeX - patchDimension || y > subSizeY - patchDimension) {
+                    return;
+                }
+                
+                int positionX = x%(patchDimension + 1);
+                int positionY = y%(patchDimension + 1);
+                int centerX = x + (patchDimension - positionX);
+                int centerY = y + (patchDimension - positionY);
+
+
+                int count = 0;
+                for (int row = -patchDimension; row <= patchDimension; row ++) {
+                    BitSet tmpRow = currentSli.get((centerX - patchDimension) + (centerY + row) * subSizeX, (centerX + patchDimension) + (centerY + row) * subSizeX);
+                    count += tmpRow.cardinality();
+                }
+                                
+                if(count <= (patchDimension * 2 + 1) * (patchDimension * 2 + 1) / 2) {
+                    return;
+                }
+                int timestamp = e.timestamp;
                 break;       
         }        
         
@@ -700,6 +745,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         }
         retVal = 1 - retVal;
         return retVal;
+    }
+    
+    private SADResult minVicPurDistance(int x, int y) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
     
     /**
