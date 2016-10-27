@@ -298,7 +298,7 @@ public class DvsSubsamplerToFrame {
             if (eventSum[i] == 0) {
                 pixmap[i] = mean_png_gray;
             } else {
-                float f = (eventSum[i] - mean_png_gray - (-halfRange)) * rangenew / range;
+                float f = (eventSum[i] - (-halfRange)) * rangenew / range;
                 if (f > 1) {
                     f = 1;
                 } else if (f < 0) {
