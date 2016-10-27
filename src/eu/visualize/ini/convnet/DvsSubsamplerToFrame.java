@@ -294,11 +294,13 @@ public class DvsSubsamplerToFrame {
         float mean_png_gray = 127f / 255;  // pixels with count zero should end up with this 0-1 range value so that they come out to 127 in PNG file range of 0-255
         float range = 6 * sig, halfRange = 3 * sig;
         float rangenew = 1;
+        //Now pixels with zero count go to 127/255, pixels with -3sigma or larger negative count go to 0, 
+        // and pixels with +3sigma or larger go to 1. each count contributes 1/6sigma + or 0 to pix map.
         for (int i = 0; i < n; i++) {
             if (eventSum[i] == 0) {
                 pixmap[i] = mean_png_gray;
             } else {
-                float f = (eventSum[i] - (-halfRange)) * rangenew / range;
+                float f = (eventSum[i] - (-halfRange)) * rangenew / range; 
                 if (f > 1) {
                     f = 1;
                 } else if (f < 0) {
