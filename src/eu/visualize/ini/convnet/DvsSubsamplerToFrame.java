@@ -35,6 +35,7 @@ public class DvsSubsamplerToFrame {
     private int startTimestamp = 0;
     private boolean cleared = true;
     private int lastIntervalUs = 0;
+    private float sparsity = 1;  // computed when frame is normalized
 
     /**
      * Makes a new DvsSubsamplingTimesliceConvNetInput
@@ -294,13 +295,15 @@ public class DvsSubsamplerToFrame {
         float mean_png_gray = 127f / 255;  // pixels with count zero should end up with this 0-1 range value so that they come out to 127 in PNG file range of 0-255
         float range = 6 * sig, halfRange = 3 * sig;
         float rangenew = 1;
+        int nonZeroCount=0;
         //Now pixels with zero count go to 127/255, pixels with -3sigma or larger negative count go to 0, 
-        // and pixels with +3sigma or larger go to 1. each count contributes +/- 1/6sigma to pixmap.
+        // and pixels with +3sigma or larger positive count go to 1. each count contributes +/- 1/6sigma to pixmap.
         for (int i = 0; i < n; i++) {
             if (eventSum[i] == 0) {
                 pixmap[i] = mean_png_gray;
             } else {
-                float f = (eventSum[i] - (-halfRange)) * rangenew / range; 
+                nonZeroCount++;
+                float f = (eventSum[i] - (-halfRange)) * rangenew / range;
                 if (f > 1) {
                     f = 1;
                 } else if (f < 0) {
@@ -309,6 +312,17 @@ public class DvsSubsamplerToFrame {
                 pixmap[i] = f;
             }
         }
+        sparsity=(float)(n-nonZeroCount)/n;
     }
+
+    /**
+     * Returns the computed sparsity (fraction of nonzero pixels) if normalizeFrame is called beforehand.
+     * @return the sparsity
+     */
+    public float getSparsity() {
+        return sparsity;
+    }
+
+    
 
 }
