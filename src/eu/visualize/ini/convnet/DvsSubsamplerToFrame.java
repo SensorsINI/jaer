@@ -295,7 +295,7 @@ public class DvsSubsamplerToFrame {
         float range = 6 * sig, halfRange = 3 * sig;
         float rangenew = 1;
         //Now pixels with zero count go to 127/255, pixels with -3sigma or larger negative count go to 0, 
-        // and pixels with +3sigma or larger go to 1. each count contributes 1/6sigma + or 0 to pix map.
+        // and pixels with +3sigma or larger go to 1. each count contributes +/- 1/6sigma to pixmap.
         for (int i = 0; i < n; i++) {
             if (eventSum[i] == 0) {
                 pixmap[i] = mean_png_gray;
