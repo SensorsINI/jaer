@@ -64,6 +64,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private int dvsColorScale = getInt("dvsColorScale", 200); // 1/dvsColorScale is amount each event color the timeslice in subsampled timeslice input
     private boolean softMaxOutput = getBoolean("softMaxOutput", false);
     private boolean zeroPadding = getBoolean("zeroPadding", true);
+    private boolean normalizeDVSForZsNullhop = getBoolean("normalizeDVSForZsNullhop", false); // uses DvsSubsamplerToFrame normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1
 
     protected int lastProcessedEventTimestamp = 0;
     private String performanceString = null; // holds string representation of processing time
@@ -93,6 +94,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setPropertyTooltip(anal, "dvsColorScale", "1/dvsColorScale is the amount by which each DVS event is added to time slice 2D gray-level histogram");
         setPropertyTooltip(anal, "dvsMinEvents", "minimum number of events to run net on DVS timeslice");
         setPropertyTooltip(anal, "zeroPadding", "CNN uses zero padding; must be set properly according to CNN to run CNN");
+        setPropertyTooltip(anal, "normalizeDVSForZsNullhop", "uses DvsSubsamplerToFrame normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1\n");
         initFilter();
     }
 
@@ -234,6 +236,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                     apsDvsNet.loadFromXMLFile(f);
                     apsDvsNet.setSoftMaxOutput(softMaxOutput); // must set manually since net doesn't know option kept here.
                     apsDvsNet.setZeroPadding(zeroPadding); // must set manually since net doesn't know option kept here.
+                    apsDvsNet.setNormalizeDVSForZsNullhop(normalizeDVSForZsNullhop); // must set manually since net doesn't know option kept here.
                     dvsSubsampler = new DvsSubsamplerToFrame(apsDvsNet.inputLayer.dimx, apsDvsNet.inputLayer.dimy, getDvsColorScale());
                 } catch (IOException ex) {
                     Logger.getLogger(DavisDeepLearnCnnProcessor.class.getName()).log(Level.SEVERE, null, ex);
@@ -603,10 +606,29 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
      */
     public void setZeroPadding(boolean zeroPadding) {
         this.zeroPadding = zeroPadding;
-          putBoolean("zeroPadding", zeroPadding);
+        putBoolean("zeroPadding", zeroPadding);
         if (apsDvsNet == null) {
             return;
         }
         apsDvsNet.setZeroPadding(zeroPadding);
- }
+    }
+
+    /**
+     * @return the normalizeDVSForZsNullhop
+     */
+    public boolean isNormalizeDVSForZsNullhop() {
+        return normalizeDVSForZsNullhop;
+    }
+
+    /**
+     * @param normalizeDVSForZsNullhop the normalizeDVSForZsNullhop to set
+     */
+    public void setNormalizeDVSForZsNullhop(boolean normalizeDVSForZsNullhop) {
+        this.normalizeDVSForZsNullhop = normalizeDVSForZsNullhop;
+        putBoolean("normalizeDVSForZsNullhop",normalizeDVSForZsNullhop);
+        if (apsDvsNet == null) {
+            return;
+        }
+        apsDvsNet.setNormalizeDVSForZsNullhop(normalizeDVSForZsNullhop); // must set manually since net doesn't know option kept here.
+    }
 }

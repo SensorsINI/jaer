@@ -102,6 +102,7 @@ public class DeepLearnCnnNetwork {
     private long processingTimeNs;
     private boolean softMaxOutput = false;
     private boolean zeroPadding = true;
+    private boolean normalizeDVSForZsNullhop = false; // uses DvsSubsamplerToFrame normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1
 
     /**
      * This flag is set true once the network has run once. Some constants are
@@ -478,7 +479,7 @@ public class DeepLearnCnnNetwork {
                 r.setSeed(0);
             }
             float xstride = (float) frameWidth / dimx, ystride = (float) frameHeight / dimy;
-            int xo=0, yo = 0;
+            int xo = 0, yo = 0;
             loop:
             for (float y = 0; Math.ceil(y) < frameHeight; y += ystride) {
                 xo = 0;
@@ -564,14 +565,27 @@ public class DeepLearnCnnNetwork {
                 return activations;
             }
 
-            for (int y = 0; y < dimy; y++) {
-                for (int x = 0; x < dimy; x++) {  // take every xstride, ystride pixels as output
-                    float v = subsampler.getValueAtPixel(x, y);
-                    v = debugNet(v, x, y);
-                    activations[o(x, dimy - y - 1)] = v;
+            if (normalizeDVSForZsNullhop) {
+                subsampler.normalizeFrame(); // this option uses the same normalization to 0-1 range as in DvsSliceAVIWriter
+                final float zeroValue=127f/255, fullscale=1-zeroValue;
+                for (int y = 0; y < dimy; y++) {
+                    for (int x = 0; x < dimy; x++) {
+                        // range is 0-1 in subsampler after normalization; move it to range -1 to 1. Zero count pixels have value 127/255.
+                        float v = (subsampler.getValueAtPixel(x, y)-zeroValue)/fullscale;
+                        v = debugNet(v, x, y);
+                        activations[o(x, dimy - y - 1)] = v;
+                    }
                 }
+            } else {
+                for (int y = 0; y < dimy; y++) {
+                    for (int x = 0; x < dimy; x++) {
+                        float v = subsampler.getValueAtPixel(x, y);
+                        v = debugNet(v, x, y);
+                        activations[o(x, dimy - y - 1)] = v;
+                    }
+                }
+                normalizeInputFrame(activations, false); // this option uses the original (slightly incorrect) DVS normalization
             }
-            normalizeInputFrame(activations, false);
             return activations;
         }
 
@@ -579,7 +593,7 @@ public class DeepLearnCnnNetwork {
             if (((dimy * x) + y) < 0) {
                 System.out.print("a");
             }
-            return (int)((dimy * x) + y);  // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
+            return (int) ((dimy * x) + y);  // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
         }
 
         @Override
@@ -714,7 +728,7 @@ public class DeepLearnCnnNetwork {
                     activations[i] = (((activations[i])) - min) * rangenew / range;
                     operationCounter += 4;
                 }
-            } else {
+            } else {// note that DVS histograme frame normalization may be done by DvsSubsamplerToFrame if normalizeDVSForZsNullhop is set
                 float mean_png_gray = 127.0f / 255.0f;
                 for (int i = 0; i < n; i++) {
                     vari = (float) Math.pow((activations[i] - mean), 2);
@@ -726,7 +740,7 @@ public class DeepLearnCnnNetwork {
                     sig = 0.1f / 255.0f;
                 }
                 for (int i = 0; i < n; i++) {
-                    activations[i] = (activations[i] - mean_png_gray);
+                    activations[i] = (activations[i] - mean_png_gray); // note that pixels with zero count are NOT left at mean_png_gray!
                 }
 //                for (int i = 0; i < n; i++) {
 //                    if (activations[i] > sig * 3.0f) {
@@ -738,7 +752,7 @@ public class DeepLearnCnnNetwork {
                 float range = ((3.f * sig) - (-3.f * sig));
                 float rangenew = (1 - 0);
                 for (int i = 0; i < n; i++) {
-                    activations[i] = (((activations[i])) - (-3.0f * sig)) * rangenew / range;
+                    activations[i] = (((activations[i])) - (-3.0f * sig)) * rangenew / range; // note that outliers are NOT clipped to 0-1 range!
                     operationCounter += 4;
                 }
             }
@@ -2018,11 +2032,25 @@ public class DeepLearnCnnNetwork {
 
     /**
      * Must be set properly according to the loaded CNN!
-     * 
+     *
      * @param zeroPadding the zeroPadding to set
      */
     public void setZeroPadding(boolean zeroPadding) {
         this.zeroPadding = zeroPadding;
+    }
+
+    /**
+     * @return the normalizeDVSForZsNullhop
+     */
+    public boolean isNormalizeDVSForZsNullhop() {
+        return normalizeDVSForZsNullhop;
+    }
+
+    /**
+     * @param normalizeDVSForZsNullhop the normalizeDVSForZsNullhop to set
+     */
+    public void setNormalizeDVSForZsNullhop(boolean normalizeDVSForZsNullhop) {
+        this.normalizeDVSForZsNullhop = normalizeDVSForZsNullhop;
     }
 
 }
