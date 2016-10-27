@@ -101,7 +101,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 if (writeDvsSliceImageOnApsFrame) {
                     newFrameAvailable = false;
                 }
-                if(normalizeFrame){
+                if (normalizeFrame) {
                     dvsSubsampler.normalizeFrame();
                 }
                 maybeShowOutput(dvsSubsampler);
@@ -139,7 +139,12 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);
         MultilineAnnotationTextRenderer.setScale(.3f);
         float avgFrameRate = avgDvsFrameIntervalMs == 0 ? Float.NaN : 1000 / avgDvsFrameIntervalMs;
-        String s = String.format("mostOffCount=%d\n mostOnCount=%d\navg frame rate=%.1f", dvsSubsampler.getMostOffCount(), dvsSubsampler.getMostOnCount(), avgFrameRate);
+        String s = null;
+        if (normalizeFrame) {
+            s = String.format("mostOffCount=%d\n mostOnCount=%d\navg frame rate=%.1f\nsparsity=%.2f%%", dvsSubsampler.getMostOffCount(), dvsSubsampler.getMostOnCount(), avgFrameRate, 100*dvsSubsampler.getSparsity());
+        } else {
+            s = String.format("mostOffCount=%d\n mostOnCount=%d\navg frame rate=%.1f", dvsSubsampler.getMostOffCount(), dvsSubsampler.getMostOnCount(), avgFrameRate);
+        }
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 
@@ -359,9 +364,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
      */
     public void setNormalizeFrame(boolean normalizeFrame) {
         this.normalizeFrame = normalizeFrame;
-        putBoolean("normalizeFrame",normalizeFrame);
+        putBoolean("normalizeFrame", normalizeFrame);
     }
-
-  
 
 }
