@@ -45,6 +45,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     private int dimx, dimy, grayScale;
     private int dvsMinEvents = getInt("dvsMinEvents", 10000);
     private float frameRateEstimatorTimeConstantMs = getFloat("frameRateEstimatorTimeConstantMs", 10f);
+    private boolean normalizeFrame = getBoolean("normalizeFrame", true);
     private JFrame frame = null;
     public ImageDisplay display;
     private boolean showOutput;
@@ -55,7 +56,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     private AEFrameChipRenderer renderer = null;
     private LowpassFilter lowpassFilter = new LowpassFilter(frameRateEstimatorTimeConstantMs);
     private int lastDvsFrameTimestamp = 0;
-    private float avgDvsFrameIntervalMs=0;
+    private float avgDvsFrameIntervalMs = 0;
 
     public DvsSliceAviWriter(AEChip chip) {
         super(chip);
@@ -71,6 +72,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         setPropertyTooltip("dvsMinEvents", "minimum number of events to run net on DVS timeslice (only if writeDvsSliceImageOnApsFrame is false)");
         setPropertyTooltip("frameRateEstimatorTimeConstantMs", "time constant of lowpass filter that shows average DVS slice frame rate");
         setPropertyTooltip("writeDvsSliceImageOnApsFrame", "<html>write DVS slice image for each APS frame end event (dvsMinEvents ignored).<br>The frame is written at the end of frame APS event.<br><b>Warning: to capture all frames, ensure that playback time slices are slow enough that all frames are rendered</b>");
+        setPropertyTooltip("normalizeFrame", "<html>Normalize the frame so that the 3-sigma range of original values fills the full output range of 0-1 values (0-255 in PNG file)<br>This normalization is the same as that used in DeepLearnCnnNetwork.");
     }
 
     @Override
@@ -98,6 +100,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                     && !chip.getAeViewer().isPaused()) {
                 if (writeDvsSliceImageOnApsFrame) {
                     newFrameAvailable = false;
+                }
+                if(normalizeFrame){
+                    dvsSubsampler.normalizeFrame();
                 }
                 maybeShowOutput(dvsSubsampler);
                 if (aviOutputStream != null && isWriteEnabled()) {
@@ -133,8 +138,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         }
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);
         MultilineAnnotationTextRenderer.setScale(.3f);
-        float avgFrameRate=avgDvsFrameIntervalMs==0? Float.NaN: 1000/avgDvsFrameIntervalMs;
-        String s = String.format("mostOffCount=%d\n mostOnCount=%d\navg frame rate=%.1f", dvsSubsampler.getMostOffCount(), dvsSubsampler.getMostOnCount(),avgFrameRate);
+        float avgFrameRate = avgDvsFrameIntervalMs == 0 ? Float.NaN : 1000 / avgDvsFrameIntervalMs;
+        String s = String.format("mostOffCount=%d\n mostOnCount=%d\navg frame rate=%.1f", dvsSubsampler.getMostOffCount(), dvsSubsampler.getMostOnCount(), avgFrameRate);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 
@@ -341,4 +346,22 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         lowpassFilter.setTauMs(frameRateEstimatorTimeConstantMs);
         putFloat("frameRateEstimatorTimeConstantMs", frameRateEstimatorTimeConstantMs);
     }
+
+    /**
+     * @return the normalizeFrame
+     */
+    public boolean isNormalizeFrame() {
+        return normalizeFrame;
+    }
+
+    /**
+     * @param normalizeFrame the normalizeFrame to set
+     */
+    public void setNormalizeFrame(boolean normalizeFrame) {
+        this.normalizeFrame = normalizeFrame;
+        putBoolean("normalizeFrame",normalizeFrame);
+    }
+
+  
+
 }
