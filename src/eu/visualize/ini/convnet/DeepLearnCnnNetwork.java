@@ -567,11 +567,11 @@ public class DeepLearnCnnNetwork {
 
             if (normalizeDVSForZsNullhop) {
                 subsampler.normalizeFrame(); // this option uses the same normalization to 0-1 range as in DvsSliceAVIWriter
-                final float zeroValue=127f/255, fullscale=1-zeroValue;
+                final float zeroValue = 127f / 255, fullscale = 1 - zeroValue;
                 for (int y = 0; y < dimy; y++) {
                     for (int x = 0; x < dimy; x++) {
                         // range is 0-1 in subsampler after normalization; move it to range -1 to 1. Zero count pixels have value 127/255.
-                        float v = (subsampler.getValueAtPixel(x, y)-zeroValue)/fullscale;
+                        float v = (subsampler.getValueAtPixel(x, y) - zeroValue) / fullscale;
                         v = debugNet(v, x, y);
                         activations[o(x, dimy - y - 1)] = v;
                     }
@@ -1370,14 +1370,19 @@ public class DeepLearnCnnNetwork {
             } else {
                 Arrays.fill(activations, 0);
             }
-            int aidx = 0;
-            for (int unit = 0; unit < biases.length; unit++) {  // for each output unit
-                for (int w = 0; w < input.activations.length; w++) { // simply MAC the weight times the input activation
-                    activations[unit] += input.activations[aidx] * weight(unit, biases.length, w);
-                    aidx++; // the input activations are stored in the feature maps of last layer, column, row, map order
-                    operationCounter += 2;
+            try {
+                int aidx = 0;
+                for (int unit = 0; unit < biases.length; unit++) {  // for each output unit
+                    for (int w = 0; w < input.activations.length; w++) { // simply MAC the weight times the input activation
+                        activations[unit] += input.activations[aidx] * weight(unit, biases.length, w);
+                        aidx++; // the input activations are stored in the feature maps of last layer, column, row, map order
+                        operationCounter += 2;
+                    }
+                    aidx = 0;
                 }
-                aidx = 0;
+            } catch (ArrayIndexOutOfBoundsException e) {
+                log.warning("ArrayIndexOutOfBoundsException while computing fully connected or output layer. Could you have an incorrect zeroPadding setting? "+e.toString());
+                throw new ArrayIndexOutOfBoundsException(e.toString());
             }
 
             maxActivation = Float.NEGATIVE_INFINITY;
