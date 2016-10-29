@@ -1381,7 +1381,7 @@ public class DeepLearnCnnNetwork {
                     aidx = 0;
                 }
             } catch (ArrayIndexOutOfBoundsException e) {
-                log.warning("ArrayIndexOutOfBoundsException while computing fully connected or output layer. Could you have an incorrect zeroPadding setting? "+e.toString());
+                log.warning("ArrayIndexOutOfBoundsException while computing fully connected or output layer. Could you have an incorrect zeroPadding setting? " + e.toString());
                 throw new ArrayIndexOutOfBoundsException(e.toString());
             }
 
@@ -1503,6 +1503,9 @@ public class DeepLearnCnnNetwork {
             float sum = 0;
             for (int k = 0; k < activations.length; k++) { // simply MAC the weight times the input activation
                 float f = (float) Math.exp(activations[k]);
+                if (Float.isInfinite(f)) {
+                    f = Float.MAX_VALUE; // handle exponential overflow
+                }
                 sum += f;
                 activations[k] = f;
                 operationCounter += 2;
