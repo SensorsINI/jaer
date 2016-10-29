@@ -106,12 +106,14 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
 //        gl.glPushMatrix();
 //        gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
         if (textRenderer == null) {
-            textRenderer = textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 72),true,false);
+            textRenderer = textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 72), true, false);
         }
         textRenderer.setColor(brightness, brightness, brightness, 1);
         textRenderer.beginRendering(width, height);
-        Rectangle2D r=textRenderer.getBounds(DECISION_STRINGS[error.maxUnit]);
-        textRenderer.draw(DECISION_STRINGS[error.maxUnit], width/2-(int)r.getWidth()/2, height/2);
+        if (error.maxUnit >= 0 && error.maxUnit < DECISION_STRINGS.length) {
+            Rectangle2D r = textRenderer.getBounds(DECISION_STRINGS[error.maxUnit]);
+            textRenderer.draw(DECISION_STRINGS[error.maxUnit], width / 2 - (int) r.getWidth() / 2, height / 2);
+        }
         textRenderer.endRendering();
 //        gl.glPopMatrix();
     }
@@ -187,8 +189,6 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         int dvsTotalCount, dvsCorrect, dvsIncorrect;
         int apsTotalCount, apsCorrect, apsIncorrect;
         int[] decisionCounts = new int[NUM_CLASSES];
-        final int FACE = 0, NONFACE = 1;
-        final String[] decisionStrings = {"Face", "Non-Face"};
         float[] lowpassFilteredOutputUnits = new float[NUM_CLASSES];
         final int HISTORY_LENGTH = 10;
         int[] decisionHistory = new int[HISTORY_LENGTH];
@@ -225,7 +225,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
             StringBuilder sb = new StringBuilder("Decision statistics: ");
             try {
                 for (int i = 0; i < NUM_CLASSES; i++) {
-                    sb.append(String.format("%s: %d (%.1f%%)  ", decisionStrings[i], decisionCounts[i], 100 * (float) decisionCounts[i] / totalCount));
+                    sb.append(String.format("%s: %d (%.1f%%)  ", DECISION_STRINGS[i], decisionCounts[i], 100 * (float) decisionCounts[i] / totalCount));
                 }
             } catch (ArrayIndexOutOfBoundsException e) {
                 sb.append(" out of bounds exception; did you load valid CNN?");
