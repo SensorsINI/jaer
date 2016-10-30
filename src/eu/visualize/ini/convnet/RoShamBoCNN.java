@@ -11,9 +11,18 @@ import java.beans.PropertyChangeListener;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
+import gnu.io.NRSerialPort;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.comm.CommPortIdentifier;
+import javax.comm.SerialPort;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -37,9 +46,16 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
     private boolean playSpikeSounds = getBoolean("playSpikeSounds", false);
 //    private TargetLabeler targetLabeler = null;
-    Error error = new Error();
+    Statistics statistics = new Statistics();
     private float decisionLowPassMixingFactor = getFloat("decisionLowPassMixingFactor", .2f);
     private SpikeSound spikeSound = null;
+    // for arduino robot (code in F:\Dropbox\NPP roshambo robot training data\arduino\RoShamBoHandControl)
+    NRSerialPort serialPort = null;
+    private String serialPortName = getString("serialPortName", "COM3");
+    private boolean serialPortCommandsEnabled = getBoolean("serialPortCommandsEnabled", false);
+    private int serialBaudRate=getInt("serialBaudRate",115200);
+    private DataOutputStream serialPortOutputStream = null;
+    private Enumeration portList = null;
 
     /**
      * output units
@@ -49,14 +65,17 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
 
     public RoShamBoCNN(AEChip chip) {
         super(chip);
-        String faceDetector = "Face detector";
-        setPropertyTooltip(faceDetector, "showAnalogDecisionOutput", "Shows face detection as analog activation of face unit in softmax of network output");
-        setPropertyTooltip(faceDetector, "hideOutput", "Hides output face detection indications");
-        setPropertyTooltip(faceDetector, "decisionLowPassMixingFactor", "The softmax outputs of the CNN are low pass filtered using this mixing factor; reduce decisionLowPassMixingFactor to filter more decisions");
-        setPropertyTooltip(faceDetector, "playSpikeSounds", "Play a spike sound on change of network output decision");
+        String roshambo = "RoShamBo";
+        setPropertyTooltip(roshambo, "showAnalogDecisionOutput", "Shows face detection as analog activation of face unit in softmax of network output");
+        setPropertyTooltip(roshambo, "hideOutput", "Hides output face detection indications");
+        setPropertyTooltip(roshambo, "decisionLowPassMixingFactor", "The softmax outputs of the CNN are low pass filtered using this mixing factor; reduce decisionLowPassMixingFactor to filter more decisions");
+        setPropertyTooltip(roshambo, "playSpikeSounds", "Play a spike sound on change of network output decision");
+        setPropertyTooltip(roshambo, "serialPortName", "Name of serial port to send robot commands to");
+        setPropertyTooltip(roshambo, "serialPortCommandsEnabled", "Send commands to serial port for Arduino Nano hand robot");
+        setPropertyTooltip(roshambo, "serialBaudRate", "Baud rate (default 115200), upper limit 12000000");
         FilterChain chain = new FilterChain(chip);
         setEnclosedFilterChain(chain);
-        apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, error);
+        apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, statistics);
     }
 
     @Override
@@ -68,7 +87,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     @Override
     public void resetFilter() {
         super.resetFilter();
-        error.reset();
+        statistics.reset();
     }
 
     @Override
@@ -87,9 +106,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         if ((apsDvsNet != null) && (apsDvsNet.outputLayer != null) && (apsDvsNet.outputLayer.activations != null)) {
             drawDecisionOutput(gl, drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
         }
-
-        error.draw(gl);
-
+        statistics.draw(gl);
     }
 
     private TextRenderer textRenderer = null;
@@ -98,7 +115,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
 
         float brightness = 0.0f;
         if (showAnalogDecisionOutput) {
-            brightness = error.maxActivation; // brightness scale
+            brightness = statistics.maxActivation; // brightness scale
         } else {
             brightness = 1;
         }
@@ -110,9 +127,9 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         }
         textRenderer.setColor(brightness, brightness, brightness, 1);
         textRenderer.beginRendering(width, height);
-        if (error.maxUnit >= 0 && error.maxUnit < DECISION_STRINGS.length) {
-            Rectangle2D r = textRenderer.getBounds(DECISION_STRINGS[error.maxUnit]);
-            textRenderer.draw(DECISION_STRINGS[error.maxUnit], width / 2 - (int) r.getWidth() / 2, height / 2);
+        if (statistics.maxUnit >= 0 && statistics.maxUnit < DECISION_STRINGS.length) {
+            Rectangle2D r = textRenderer.getBounds(DECISION_STRINGS[statistics.maxUnit]);
+            textRenderer.draw(DECISION_STRINGS[statistics.maxUnit], width / 2 - (int) r.getWidth() / 2, height / 2);
         }
         textRenderer.endRendering();
 //        gl.glPopMatrix();
@@ -181,7 +198,101 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         putBoolean("playSpikeSounds", playSpikeSounds);
     }
 
-    private class Error implements PropertyChangeListener {
+    /**
+     * @return the serialPortName
+     */
+    public String getSerialPortName() {
+        return serialPortName;
+    }
+
+    /**
+     * @param serialPortName the serialPortName to set
+     */
+    public void setSerialPortName(String serialPortName) {
+        try {
+            this.serialPortName = serialPortName;
+            putString("serialPortName", serialPortName);
+            openSerial();
+        } catch (IOException ex) {
+            Logger.getLogger(RoShamBoCNN.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    /**
+     * @return the serialPortCommandsEnabled
+     */
+    public boolean isSerialPortCommandsEnabled() {
+        return serialPortCommandsEnabled;
+    }
+
+    /**
+     * @param serialPortCommandsEnabled the serialPortCommandsEnabled to set
+     */
+    public void setSerialPortCommandsEnabled(boolean serialPortCommandsEnabled) {
+        this.serialPortCommandsEnabled = serialPortCommandsEnabled;
+        if (!serialPortCommandsEnabled) {
+            closeSerial();
+            return;
+        }
+        // come here to open port
+        try {
+            openSerial();
+        } catch (IOException e) {
+            log.warning("caught exception on serial port " + serialPortName + ": " + e.toString());
+        }
+    }
+
+    private void openSerial() throws IOException{
+        if(serialPort!=null) closeSerial();
+        StringBuilder sb = new StringBuilder("Serial ports: ");
+        for (String s : NRSerialPort.getAvailableSerialPorts()) {
+            sb.append(s).append(", ");
+        }
+        log.info(sb.toString());
+        
+        serialPort = new NRSerialPort(serialPortName, serialBaudRate);
+        serialPort.connect();
+        serialPortOutputStream = new DataOutputStream(serialPort.getOutputStream());
+        log.info("opened serial port "+serialPortName+" with baud rate="+serialBaudRate);
+    }
+
+    private void closeSerial() {
+        if(serialPortOutputStream!=null){
+            try {
+                serialPortOutputStream.close();
+            } catch (IOException ex) {
+                Logger.getLogger(RoShamBoCNN.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            serialPortOutputStream=null;
+        }
+        if (serialPort != null && serialPort.isConnected()) {
+            serialPort.disconnect();
+            serialPort=null;
+        }
+        log.info("closed serial port");
+    }
+
+    /**
+     * @return the serialBaudRate
+     */
+    public int getSerialBaudRate() {
+        return serialBaudRate;
+    }
+
+    /**
+     * @param serialBaudRate the serialBaudRate to set
+     */
+    public void setSerialBaudRate(int serialBaudRate) {
+        try {
+            this.serialBaudRate = serialBaudRate;
+            putInt("serialBaudRate",serialBaudRate);
+            openSerial();
+        } catch (IOException ex) {
+            Logger.getLogger(RoShamBoCNN.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private class Statistics implements PropertyChangeListener {
 
         final int NUM_CLASSES = 3;
         int totalCount, totalCorrect, totalIncorrect;
@@ -195,7 +306,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         float maxActivation = Float.NEGATIVE_INFINITY;
         int maxUnit = -1;
 
-        public Error() {
+        public Statistics() {
             reset();
         }
 
@@ -260,6 +371,27 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                         spikeSound = new SpikeSound();
                     }
                     spikeSound.play();
+                }
+                if (isSerialPortCommandsEnabled() && serialPortOutputStream != null) {
+                    char cmd=0;
+                    switch(maxUnit){
+                        case DECISION_ROCK:
+                            cmd='1';
+                            break;
+                        case DECISION_SCISSORS:
+                            cmd='2';
+                            break;
+                        case DECISION_PAPER:
+                            cmd='3';
+                            break;
+                        default:
+                            log.warning("maxUnit="+maxUnit+" is not a valid network output state");
+                    }
+                    try {
+                        serialPortOutputStream.write((byte) cmd);
+                    } catch (IOException ex) {
+                        log.warning(ex.toString());
+                    }
                 }
             }
         }
