@@ -53,7 +53,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     NRSerialPort serialPort = null;
     private String serialPortName = getString("serialPortName", "COM3");
     private boolean serialPortCommandsEnabled = getBoolean("serialPortCommandsEnabled", false);
-    private int serialBaudRate=getInt("serialBaudRate",115200);
+    private int serialBaudRate = getInt("serialBaudRate", 115200);
     private DataOutputStream serialPortOutputStream = null;
     private Enumeration portList = null;
 
@@ -93,6 +93,15 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
+        if (!yes) {
+            closeSerial();
+        } else {
+            try {
+                openSerial();
+            } catch (IOException ex) {
+                log.warning("caught exception enabling serial port when filter was enabled: "+ex.toString());
+            }
+        }
     }
 
     @Override
@@ -230,6 +239,8 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
      */
     public void setSerialPortCommandsEnabled(boolean serialPortCommandsEnabled) {
         this.serialPortCommandsEnabled = serialPortCommandsEnabled;
+        putBoolean("serialPortCommandsEnabled", serialPortCommandsEnabled);
+        if(!isFilterEnabled()) return;
         if (!serialPortCommandsEnabled) {
             closeSerial();
             return;
@@ -242,32 +253,35 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         }
     }
 
-    private void openSerial() throws IOException{
-        if(serialPort!=null) closeSerial();
+    private void openSerial() throws IOException {
+        if (serialPort != null) {
+            closeSerial();
+        }
         StringBuilder sb = new StringBuilder("Serial ports: ");
         for (String s : NRSerialPort.getAvailableSerialPorts()) {
             sb.append(s).append(", ");
         }
         log.info(sb.toString());
-        
+
         serialPort = new NRSerialPort(serialPortName, serialBaudRate);
         serialPort.connect();
         serialPortOutputStream = new DataOutputStream(serialPort.getOutputStream());
-        log.info("opened serial port "+serialPortName+" with baud rate="+serialBaudRate);
+        log.info("opened serial port " + serialPortName + " with baud rate=" + serialBaudRate);
     }
 
     private void closeSerial() {
-        if(serialPortOutputStream!=null){
+        if (serialPortOutputStream != null) {
             try {
+                serialPortOutputStream.write((byte) '0'); // rest; turn off servos
                 serialPortOutputStream.close();
             } catch (IOException ex) {
                 Logger.getLogger(RoShamBoCNN.class.getName()).log(Level.SEVERE, null, ex);
             }
-            serialPortOutputStream=null;
+            serialPortOutputStream = null;
         }
         if (serialPort != null && serialPort.isConnected()) {
             serialPort.disconnect();
-            serialPort=null;
+            serialPort = null;
         }
         log.info("closed serial port");
     }
@@ -285,7 +299,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     public void setSerialBaudRate(int serialBaudRate) {
         try {
             this.serialBaudRate = serialBaudRate;
-            putInt("serialBaudRate",serialBaudRate);
+            putInt("serialBaudRate", serialBaudRate);
             openSerial();
         } catch (IOException ex) {
             Logger.getLogger(RoShamBoCNN.class.getName()).log(Level.SEVERE, null, ex);
@@ -373,19 +387,19 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                     spikeSound.play();
                 }
                 if (isSerialPortCommandsEnabled() && serialPortOutputStream != null) {
-                    char cmd=0;
-                    switch(maxUnit){
+                    char cmd = 0;
+                    switch (maxUnit) {
                         case DECISION_ROCK:
-                            cmd='1';
+                            cmd = '1';
                             break;
                         case DECISION_SCISSORS:
-                            cmd='2';
+                            cmd = '2';
                             break;
                         case DECISION_PAPER:
-                            cmd='3';
+                            cmd = '3';
                             break;
                         default:
-                            log.warning("maxUnit="+maxUnit+" is not a valid network output state");
+                            log.warning("maxUnit=" + maxUnit + " is not a valid network output state");
                     }
                     try {
                         serialPortOutputStream.write((byte) cmd);
