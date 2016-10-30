@@ -832,6 +832,7 @@ public class DeepLearnCnnNetwork {
         private int activationsLength;
         private ImageDisplay[] activationDisplays = null;
         private ImageDisplay[][] kernelDisplays = null;
+        private int warningCountMax=1000;
 
         private ActivationFunction activationFunction = ActivationFunction.Undefined; // default is the sigmoid, the only choice in DeepLearnToolbox
 
@@ -925,12 +926,12 @@ public class DeepLearnCnnNetwork {
                 log.warning("input.activations==null");
                 return;
             }
-            if ((inputLayer.activations.length % nInputMaps) != 0) {
+            if ((inputLayer.activations.length % nInputMaps) != 0  && warningCountMax-->0) {
                 log.warning("input.activations.length=" + inputLayer.activations.length + " which is not divisible by nInputMaps=" + nInputMaps);
             }
             inputMapLength = inputLayer.activations.length / nInputMaps; // for computing indexing to input
             double sqrtInputMapLength = Math.sqrt(inputMapLength);
-            if (Math.IEEEremainder(sqrtInputMapLength, 1) != 0) {
+            if (Math.IEEEremainder(sqrtInputMapLength, 1) != 0 && warningCountMax-->0) {
                 log.warning("input map is not square; Math.rint(sqrtInputMapLength)=" + Math.rint(sqrtInputMapLength));
             }
             nKernels = nInputMaps * nOutputMaps;
@@ -944,7 +945,7 @@ public class DeepLearnCnnNetwork {
             activationsLength = outputMapLength * nOutputMaps;
             kernelWeightsPerOutputMap = singleKernelLength * nOutputMaps;
 
-            if (nOutputMaps != biases.length) {
+            if (nOutputMaps != biases.length && warningCountMax-->0) {
                 log.warning("nOutputMaps!=biases.length: " + nOutputMaps + "!=" + biases.length);
             }
 
