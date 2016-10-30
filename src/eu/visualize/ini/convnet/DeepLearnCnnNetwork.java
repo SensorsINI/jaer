@@ -832,7 +832,7 @@ public class DeepLearnCnnNetwork {
         private int activationsLength;
         private ImageDisplay[] activationDisplays = null;
         private ImageDisplay[][] kernelDisplays = null;
-        private int warningCountMax=1000;
+        private int warningCountMax=10;
 
         private ActivationFunction activationFunction = ActivationFunction.Undefined; // default is the sigmoid, the only choice in DeepLearnToolbox
 
