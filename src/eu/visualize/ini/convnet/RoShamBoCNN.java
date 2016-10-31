@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.comm.CommPortIdentifier;
@@ -98,7 +99,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         } else {
             try {
                 openSerial();
-            } catch (IOException ex) {
+            } catch (Exception ex) {
                 log.warning("caught exception enabling serial port when filter was enabled: "+ex.toString());
             }
         }
@@ -257,13 +258,22 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         if (serialPort != null) {
             closeSerial();
         }
-        StringBuilder sb = new StringBuilder("Serial ports: ");
-        for (String s : NRSerialPort.getAvailableSerialPorts()) {
-            sb.append(s).append(", ");
+        StringBuilder sb = new StringBuilder("serial ports: ");
+        final Set<String> availableSerialPorts = NRSerialPort.getAvailableSerialPorts();
+        for (String s : availableSerialPorts) {
+            sb.append(s).append(" ");
         }
         log.info(sb.toString());
+        if(!availableSerialPorts.contains(serialPortName)){
+            log.warning(serialPortName+" is not in avaiable "+sb.toString());
+            return;
+        }
 
         serialPort = new NRSerialPort(serialPortName, serialBaudRate);
+        if(serialPort==null){
+            log.warning("null serial port returned when trying to open "+serialPortName+"; available "+sb.toString());
+            return;
+        }
         serialPort.connect();
         serialPortOutputStream = new DataOutputStream(serialPort.getOutputStream());
         log.info("opened serial port " + serialPortName + " with baud rate=" + serialBaudRate);
