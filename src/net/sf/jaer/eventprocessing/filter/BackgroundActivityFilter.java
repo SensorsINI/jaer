@@ -15,11 +15,13 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
-
-/** An AE background that filters slow background activity by only passing
- * inPacket that are supported by another event in the past {@link #setDt dt}
- * in the immediate spatial neighborhood, defined by a subsampling bit shift.
- * @author tobi */
+/**
+ * An AE background that filters slow background activity by only passing
+ * inPacket that are supported by another event in the past {@link #setDt dt} in
+ * the immediate spatial neighborhood, defined by a subsampling bit shift.
+ *
+ * @author tobi
+ */
 @Description("Filters out uncorrelated background activity noise")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class BackgroundActivityFilter extends EventFilter2D implements Observer {
@@ -27,15 +29,19 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
     final int MAX_DT = 100000, MIN_DT = 10;
     final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
 
-    /** the time in timestamp ticks (1us at present) that a spike
-     * needs to be supported by a prior event in the neighborhood by to pass through */
+    /**
+     * the time in timestamp ticks (1us at present) that a spike needs to be
+     * supported by a prior event in the neighborhood by to pass through
+     */
     protected int dt = getInt("dt", 30000);
+    private boolean letFirstEventThrough = getBoolean("letFirstEventThrough", true);
 
-    /** the amount to subsample x and y event location by in bit shifts when
-     * writing to past event times map.
-     * This effectively increases the range of support.
-     * E.g. setting subSamplingShift to 1 quadruples range because both x and
-     * y are shifted right by one bit */
+    /**
+     * the amount to subsample x and y event location by in bit shifts when
+     * writing to past event times map. This effectively increases the range of
+     * support. E.g. setting subSamplingShift to 1 quadruples range because both
+     * x and y are shifted right by one bit
+     */
     private int subsampleBy = getInt("subsampleBy", 0);
 
     int[][] lastTimesMap;
@@ -49,40 +55,44 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
         initFilter();
         setPropertyTooltip("dt", "Events with less than this delta time in us to neighbors pass through");
         setPropertyTooltip("subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
-   }
+        setPropertyTooltip("letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
+    }
 
-    /** filters in to out. if filtering is enabled, the number of out may be
-     * less than the number putString in
+    /**
+     * filters in to out. if filtering is enabled, the number of out may be less
+     * than the number putString in
+     *
      * @param in input events can be null or empty.
-     * @return the processed events, may be fewer in number.
-     *         filtering may occur in place in the in packet. */
+     * @return the processed events, may be fewer in number. filtering may occur
+     * in place in the in packet.
+     */
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
         if (lastTimesMap == null) {
-			allocateMaps(chip);
-		}
+            allocateMaps(chip);
+        }
 
         // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
         for (Object eIn : in) {
-            if(eIn == null)
-			 {
-				break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
-			}
+            if (eIn == null) {
+                break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
+            }
             BasicEvent e = (BasicEvent) eIn;
             if (e.isSpecial()) {
-				continue;
-			}
+                continue;
+            }
 
             short x = (short) (e.x >>> subsampleBy), y = (short) (e.y >>> subsampleBy);
             if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
-				continue;
-			}
+                continue;
+            }
 
             ts = e.timestamp;
             int lastT = lastTimesMap[x][y];
             int deltaT = (ts - lastT);
-            if (!((deltaT < dt) && (lastT != DEFAULT_TIMESTAMP))) {
+            
+            if (!((deltaT < dt) && (lastT != DEFAULT_TIMESTAMP)) && !(letFirstEventThrough && lastT==DEFAULT_TIMESTAMP)) {
                 e.setFilteredOut(true);
             }
 
@@ -91,11 +101,11 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
             // Don't write to ourselves, we need support from neighbor for
             // next event.
             // Bounds checking here to avoid throwing expensive exceptions.
-            if( ((x > 0) && (x < sx)) && ((y > 0) && (y < sy)) ) {
-                lastTimesMap[x - 1][y]     = ts;
-                lastTimesMap[x + 1][y]     = ts;
-                lastTimesMap[x]    [y - 1] = ts;
-                lastTimesMap[x]    [y + 1] = ts;
+            if (((x > 0) && (x < sx)) && ((y > 0) && (y < sy))) {
+                lastTimesMap[x - 1][y] = ts;
+                lastTimesMap[x + 1][y] = ts;
+                lastTimesMap[x][y - 1] = ts;
+                lastTimesMap[x][y + 1] = ts;
                 lastTimesMap[x - 1][y - 1] = ts;
                 lastTimesMap[x + 1][y + 1] = ts;
                 lastTimesMap[x - 1][y + 1] = ts;
@@ -139,27 +149,32 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
     }
 
     // <editor-fold defaultstate="collapsed" desc="getter-setter / Min-Max for --Dt--">
-    /**gets the background allowed delay in us
-     * @return delay allowed for spike since last in neighborhood to pass (us) */
+    /**
+     * gets the background allowed delay in us
+     *
+     * @return delay allowed for spike since last in neighborhood to pass (us)
+     */
     public int getDt() {
         return this.dt;
     }
 
-    /** sets the background delay in us.
-     * If param is larger then getMaxDt() or smaller getMinDt() the boundary
-     * value are used instead of param.
+    /**
+     * sets the background delay in us. If param is larger then getMaxDt() or
+     * smaller getMinDt() the boundary value are used instead of param.
      * <p>
      * Fires a PropertyChangeEvent "dt"
+     *
      * @see #getDt
-     * @param dt delay in us */
+     * @param dt delay in us
+     */
     public void setDt(final int dt) {
         int setValue = dt;
-        if(dt < getMinDt()) {
-			setValue = getMinDt();
-		}
-        if(dt > getMaxDt()) {
-			setValue = getMaxDt();
-		}
+        if (dt < getMinDt()) {
+            setValue = getMinDt();
+        }
+        if (dt > getMaxDt()) {
+            setValue = getMaxDt();
+        }
 
         putInt("dt", setValue);
         getSupport().firePropertyChange("dt", this.dt, setValue);
@@ -180,13 +195,15 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
         return subsampleBy;
     }
 
-    /** Sets the number of bits to subsample by when storing events into the
-     * map of past events.
-     * Increasing this value will increase the number of events that pass
-     * through and will also allow passing events from small sources that
-     * do not stimulate every pixel.
-     * @param subsampleBy the number of bits, 0 means no subsampling,
-     *        1 means cut event time map resolution by a factor of two in x and in y */
+    /**
+     * Sets the number of bits to subsample by when storing events into the map
+     * of past events. Increasing this value will increase the number of events
+     * that pass through and will also allow passing events from small sources
+     * that do not stimulate every pixel.
+     *
+     * @param subsampleBy the number of bits, 0 means no subsampling, 1 means
+     * cut event time map resolution by a factor of two in x and in y
+     */
     public void setSubsampleBy(int subsampleBy) {
         if (subsampleBy < 0) {
             subsampleBy = 0;
@@ -197,5 +214,20 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
         putInt("subsampleBy", subsampleBy);
     }
     // </editor-fold>
+
+    /**
+     * @return the letFirstEventThrough
+     */
+    public boolean isLetFirstEventThrough() {
+        return letFirstEventThrough;
+    }
+
+    /**
+     * @param letFirstEventThrough the letFirstEventThrough to set
+     */
+    public void setLetFirstEventThrough(boolean letFirstEventThrough) {
+        this.letFirstEventThrough = letFirstEventThrough;
+        putBoolean("letFirstEventThrough", letFirstEventThrough);
+    }
 
 }
