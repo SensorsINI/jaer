@@ -5,26 +5,23 @@
  */
 package eu.visualize.ini.convnet;
 
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.util.awt.TextRenderer;
-import gnu.io.NRSerialPort;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.comm.CommPortIdentifier;
-import javax.comm.SerialPort;
 
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.util.awt.TextRenderer;
+
+import gnu.io.NRSerialPort;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -133,13 +130,13 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
 //        gl.glPushMatrix();
 //        gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
         if (textRenderer == null) {
-            textRenderer = textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 72), true, false);
+            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 72), true, false);
         }
         textRenderer.setColor(brightness, brightness, brightness, 1);
         textRenderer.beginRendering(width, height);
-        if (statistics.maxUnit >= 0 && statistics.maxUnit < DECISION_STRINGS.length) {
+        if ((statistics.maxUnit >= 0) && (statistics.maxUnit < DECISION_STRINGS.length)) {
             Rectangle2D r = textRenderer.getBounds(DECISION_STRINGS[statistics.maxUnit]);
-            textRenderer.draw(DECISION_STRINGS[statistics.maxUnit], width / 2 - (int) r.getWidth() / 2, height / 2);
+            textRenderer.draw(DECISION_STRINGS[statistics.maxUnit], (width / 2) - ((int) r.getWidth() / 2), height / 2);
         }
         textRenderer.endRendering();
 //        gl.glPopMatrix();
@@ -241,7 +238,9 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     public void setSerialPortCommandsEnabled(boolean serialPortCommandsEnabled) {
         this.serialPortCommandsEnabled = serialPortCommandsEnabled;
         putBoolean("serialPortCommandsEnabled", serialPortCommandsEnabled);
-        if(!isFilterEnabled()) return;
+        if(!isFilterEnabled()) {
+			return;
+		}
         if (!serialPortCommandsEnabled) {
             closeSerial();
             return;
@@ -289,7 +288,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
             }
             serialPortOutputStream = null;
         }
-        if (serialPort != null && serialPort.isConnected()) {
+        if ((serialPort != null) && serialPort.isConnected()) {
             serialPort.disconnect();
             serialPort = null;
         }
@@ -360,7 +359,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
             StringBuilder sb = new StringBuilder("Decision statistics: ");
             try {
                 for (int i = 0; i < NUM_CLASSES; i++) {
-                    sb.append(String.format("%s: %d (%.1f%%)  ", DECISION_STRINGS[i], decisionCounts[i], 100 * (float) decisionCounts[i] / totalCount));
+                    sb.append(String.format("%s: %d (%.1f%%)  ", DECISION_STRINGS[i], decisionCounts[i], (100 * (float) decisionCounts[i]) / totalCount));
                 }
             } catch (ArrayIndexOutOfBoundsException e) {
                 sb.append(" out of bounds exception; did you load valid CNN?");
@@ -378,7 +377,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                 try {
                     for (int i = 0; i < NUM_CLASSES; i++) {
                         float output = net.outputLayer.activations[i];
-                        lowpassFilteredOutputUnits[i] = (1 - decisionLowPassMixingFactor) * lowpassFilteredOutputUnits[i] + output * decisionLowPassMixingFactor;
+                        lowpassFilteredOutputUnits[i] = ((1 - decisionLowPassMixingFactor) * lowpassFilteredOutputUnits[i]) + (output * decisionLowPassMixingFactor);
                         if (lowpassFilteredOutputUnits[i] > maxActivation) {
                             maxActivation = lowpassFilteredOutputUnits[i];
                             maxUnit = i;
@@ -390,13 +389,13 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                 }
                 decisionCounts[maxUnit]++;
                 totalCount++;
-                if (playSpikeSounds && maxUnit != lastOutput) {
+                if (playSpikeSounds && (maxUnit != lastOutput)) {
                     if (spikeSound == null) {
                         spikeSound = new SpikeSound();
                     }
                     spikeSound.play();
                 }
-                if (isSerialPortCommandsEnabled() && serialPortOutputStream != null) {
+                if (isSerialPortCommandsEnabled() && (serialPortOutputStream != null)) {
                     char cmd = 0;
                     switch (maxUnit) {
                         case DECISION_ROCK:
