@@ -51,7 +51,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int sx, sy;
     private int tMinus2SliceIdx = 0, tMinus1SliceIdx = 1, currentSliceIdx = 2;
     private int[][] currentSlice = null, tMinus1Slice = null, tMinus2Slice = null;
-    private ArrayList[][] spikeTrans = null;
+    private ArrayList<Integer[]> [][] spikeTrans = null;
     private ArrayList<int[][]>[] histogramsAL = null;
     private ArrayList<int[][]> currentAL = null, previousAL = null, previousMinus1AL = null; // One is for current, the second is for previous, the third is for the one before previous one
     private BitSet[] histogramsBitSet = null;
@@ -59,6 +59,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int patchDimension = getInt("patchDimension", 8);
     protected boolean measurePerformance = getBoolean("measurePerformance", false);
     private boolean displayOutputVectors = getBoolean("displayOutputVectors", true);
+    private int eventPatchDimension = getInt("eventPatchDimension", 3);
+    private int forwardEventNum = getInt("forwardEventNum", 10);
+    private float cost = getFloat("cost", 0.001f);
+    private int thresholdTime = getInt("thresholdTime", 1000000);
+    private int[][] lastFireIndex = new int[240][240];
+    private int[][] eventSeqStartTs = new int[240][240];
+
 
     public enum PatchCompareMethod {
         JaccardDistance, HammingDistance, SAD, EventSqeDistance
@@ -129,6 +136,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");
         setPropertyTooltip(patchTT, "sliceDurationUs", "duration of patches in us");
         setPropertyTooltip(patchTT, "sliceEventCount", "number of collected events in each bitmap");
+        setPropertyTooltip(patchTT, "eventPatchDimension", "linear dimenion of patches to match, in pixels");
+        setPropertyTooltip(patchTT, "forwardEventNum", "forward events number");
+        setPropertyTooltip(patchTT, "cost", "The cost to translation one event to the other position");
+        setPropertyTooltip(patchTT, "thresholdTime", "The threshold value of interval time between the first event and the last event");        
         setPropertyTooltip(dispTT, "highpassTauMsTranslation", "highpass filter time constant in ms to relax transform back to zero for translation (pan, tilt) components");
         setPropertyTooltip(dispTT, "highpassTauMsRotation", "highpass filter time constant in ms to relax transform back to zero for rotation (roll) component");
         setPropertyTooltip(dispTT, "highPassFilterEn", "enable the high pass filter or not");
@@ -160,7 +171,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         packetNum++;
 
         ApsDvsEventPacket in2 = (ApsDvsEventPacket) in;
-        Iterator itr = in2.fullIterator();   // We also need IMU data, so here we use the full iterator. 
+        Iterator itr = in2.fullIterator();   // Wfffsfe also need IMU data, so here we use the full iterator. 
         while (itr.hasNext()) {
             Object ein = itr.next();
             if (ein == null) {
@@ -209,32 +220,107 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             }
             // compute flow
             SADResult result = new SADResult(0,0,0);
+            
+            int blockLocX = x/eventPatchDimension;
+            int blockLocY = y/eventPatchDimension;
+                    
+            // Build the spike trains of every block, every block is consist of 3*3 pixels.
+            if(spikeTrans[blockLocX][blockLocY] == null) {
+                spikeTrans[blockLocX][blockLocY] = new ArrayList();
+            }
+            int spikeBlokcLength = spikeTrans[blockLocX][blockLocY].size();
+            int previousTsInterval = 0;
+            if(spikeBlokcLength == 0) {
+                previousTsInterval = ts;
+            } else {
+                previousTsInterval = ts - spikeTrans[blockLocX][blockLocY].get(spikeBlokcLength - 1)[0];
+            }
+            spikeTrans[blockLocX][blockLocY].add(new Integer[]{ts, type});
+
+
             switch(patchCompareMethod) {
                 case HammingDistance: 
                     maybeRotateSlices();
                     accumulateEvent();
-                    result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
+                    
+                    // There're enough events fire on the specific block now.
+                    if(spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum ) {
+                            result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);                          }                     
+                    
                     break;
                 case SAD:
                     maybeRotateSlices();
                     accumulateEvent();
-                    result = minSad(x, y, tMinus2Slice, tMinus1Slice);
+                    // There're enough events fire on the specific block now
+                    if(spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum ) {
+                        result = minSad(x, y, tMinus2Slice, tMinus1Slice);
+                    }
                     break;
                 case JaccardDistance:
                     maybeRotateSlices();
                     accumulateEvent();
-                    result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
-                    break;
-                case EventSqeDistance:
-                    int blockLocX = x/3;
-                    int blockLocY = y/3;
-                    
-                    // Build the spike trains of every block, every block is consist of 3*3 pixels.
-                    if(spikeTrans[blockLocX][blockLocY] == null) {
-                        spikeTrans[blockLocX][blockLocY] = new ArrayList();
+                    // There're enough events fire on the specific block now
+                    if(spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum ) {
+                        result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
                     }
-                    spikeTrans[blockLocX][blockLocY].add(ts);
-                    // result = minVicPurDistance(x, y);
+                    break;
+                case EventSqeDistance:                
+                    if(previousTsInterval < 0) {
+                        spikeTrans[blockLocX][blockLocY].remove(spikeTrans[blockLocX][blockLocY].size() - 1);
+                        continue;
+                    }
+                    
+                    if(previousTsInterval >= thresholdTime ) {
+                        if(blockLocX == 70 && blockLocY == 26) {
+                            int tmp = 0;
+                        }    
+                        float maxDt = 0;
+                        float[][] dataPoint = new float[9][2];
+                        if(blockLocX >= 1 && blockLocY >= 1 && blockLocX <= 238 && blockLocY <= 178 ) {
+                            for(int ii = -1; ii < 2; ii++) {
+                                for(int jj = -1; jj < 2; jj++) {
+                                    float dt = ts - eventSeqStartTs[blockLocX + ii][blockLocY + jj];
+
+                                    // Remove the seq1 itself                             
+                                    if(0 == ii && 0 == jj){
+                                        // continue;
+                                        dt = 0;
+                                    }
+//                                    if(dt > 50000) {
+//                                        continue;
+//                                    }
+                                    dataPoint[(ii + 1)*3 + (jj + 1)][0] = dt;
+                                    if(dt > maxDt) {
+                                        maxDt = dt;
+                                        result.dx = -ii/dt * 1000000 * 0.2f * eventPatchDimension;
+                                        result.dy = -jj/dt * 1000000 * 0.2f * eventPatchDimension;
+                                    }
+                                }
+                            }                            
+                        }
+                        // result = minVicPurDistance(blockLocX, blockLocY);  
+
+
+                        eventSeqStartTs[blockLocX][blockLocY] = ts;
+                        KMeans cluster = new KMeans();    
+                        boolean allZeroFlg = true;
+                        for(int mm = 0; mm < 9; mm ++) {
+                            for(int nn = 0; nn < 1; nn++) {
+                                if(dataPoint[mm][nn] != 0) {
+                                    allZeroFlg = false;
+                                }
+                            }
+                        }
+                        if(allZeroFlg) {
+                            continue;
+                        }
+                        cluster.setData(dataPoint);                        
+                        cluster.cluster();
+                        ArrayList<ArrayList<Integer>> kmeansResult = cluster.getResult();
+                        float[][] classData = cluster.getClassData();
+
+                        int tmp = 0;
+                    } 
                     break;
             }            
             vx = result.dx * 5;
@@ -290,6 +376,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             panDC = 0;
             tiltDC = 0;
             rollDC = 0;
+            
+            for(int i = 0; i < 240; i++) {
+                for(int j = 0; j < 180; j++) {
+                    if(spikeTrans[i][j] != null) {
+                        spikeTrans[i][j] = null;
+                    }
+                    if(lastFireIndex != null) {
+                        lastFireIndex[i][j] = 0;
+                    }
+                    eventSeqStartTs[i][j] = 0;
+                }
+            }
+            
         }
         motionFlowStatistics.updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket;
@@ -326,8 +425,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         if (spikeTrans == null & subSizeX != 0 & subSizeY != 0) {
             spikeTrans = new ArrayList[subSizeX][subSizeY];
         }        
-
-          
+        
         int colPatchCnt = subSizeX/patchDimension; 
         int rowPatchCnt = subSizeY/patchDimension;
         
@@ -767,10 +865,105 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         return retVal;
     }
     
-    private SADResult minVicPurDistance(int x, int y) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    private SADResult minVicPurDistance(int blockX, int blockY) {
+        ArrayList<Integer[]> seq1 = new ArrayList(1); 
+        SADResult sadResult = new SADResult(0, 0, 0);
+
+        int size = spikeTrans[blockX][blockY].size();
+        int lastTs = spikeTrans[blockX][blockY].get(size - forwardEventNum)[0];
+        for(int i = size - forwardEventNum; i < size; i++) {
+            seq1.add(spikeTrans[blockX][blockY].get(i));
+        }
+        
+//        if(seq1.get(2)[0] - seq1.get(0)[0] > thresholdTime) {
+//            return sadResult;
+//        }
+        
+        double minium = Integer.MAX_VALUE;
+        for(int i = -1; i < 2; i++){
+            for(int j = -1;  j < 2; j++){
+                // Remove the seq1 itself
+                if(0 == i && 0 == j){
+                    continue;
+                }
+                ArrayList<Integer[]> seq2 = new ArrayList(1);
+
+                if(blockX >= 2 && blockY >=2) {
+                    ArrayList<Integer[]> tmpSpikes = spikeTrans[blockX + i][blockY + j];
+                    if(tmpSpikes != null) {
+                        for(int index = 0; index < tmpSpikes.size(); index++) {
+                            if(tmpSpikes.get(index)[0] >= lastTs) {
+                                seq2.add(tmpSpikes.get(index));
+                            }
+                        }                      
+                        
+                        double dis = vicPurDistance(seq1, seq2);             
+                        if(dis < minium) {
+                            minium = dis;
+                            sadResult.dx = -i;
+                            sadResult.dy = -j;
+                            
+                        }                  
+                    }
+                  
+                }
+
+            }
+        }
+        lastFireIndex[blockX][blockY] = spikeTrans[blockX][blockY].size() - 1;
+        if(sadResult.dx != 1 || sadResult.dy != 0) {
+            // sadResult = new SADResult(0, 0, 0);
+        }
+        return sadResult;
     }
     
+    private double vicPurDistance(ArrayList<Integer[]> seq1, ArrayList<Integer[]> seq2) {
+        int sum1Plus = 0, sum1Minus = 0, sum2Plus = 0, sum2Minus = 0;
+        Iterator itr1 = seq1.iterator();
+        Iterator itr2 = seq2.iterator();
+        int length1 = seq1.size();
+        int length2 = seq2.size();
+        double[][]  distanceMatrix = new double[length1 + 1][length2 + 1];
+        
+        for(int h = 0; h <= length1; h++) {
+            for(int k = 0; k <= length2; k++) {                
+                if(h == 0) {
+                    distanceMatrix[h][k] = k;   
+                    continue;
+                }
+                if(k == 0) {
+                    distanceMatrix[h][k] = h;
+                    continue;
+                }
+                
+                double tmpMin = Math.min(distanceMatrix[h][k - 1] + 1, distanceMatrix[h - 1][k] + 1);
+                double event1 = seq1.get(h - 1)[0] - seq1.get(0)[0];
+                double event2 = seq2.get(k - 1)[0] - seq2.get(0)[0];
+                distanceMatrix[h][k] = Math.min(tmpMin, distanceMatrix[h - 1][k - 1] + cost*Math.abs(event1 - event2));
+            }
+        }
+        
+        while(itr1.hasNext()){
+            Integer[] ii = (Integer[]) itr1.next();
+            if(ii[1] == 1) {
+                sum1Plus += 1;
+            } else{
+                sum1Minus += 1;
+            }
+        }
+
+        while(itr2.hasNext()){
+            Integer[] ii = (Integer[]) itr2.next();
+            if(ii[1] == 1) {
+                sum2Plus += 1;
+            } else{
+                sum2Minus += 1;
+            }
+        }
+        
+        // return Math.abs(sum1Plus - sum2Plus) + Math.abs(sum1Minus - sum2Minus);
+        return distanceMatrix[length1][length2];
+    }
     /**
      * Computes min SAD shift around point x,y using patchDimension and
      * searchDistance
@@ -872,6 +1065,43 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     public void setPatchDimension(int patchDimension) {
         this.patchDimension = patchDimension;
         putInt("patchDimension", patchDimension);
+    }
+
+    public int getEventPatchDimension() {
+        return eventPatchDimension;
+    }
+
+    public void setEventPatchDimension(int eventPatchDimension) {
+        this.eventPatchDimension = eventPatchDimension;
+        putInt("eventPatchDimension", eventPatchDimension);
+
+    }
+
+    public int getForwardEventNum() {
+        return forwardEventNum;
+    }
+
+    public void setForwardEventNum(int forwardEventNum) {
+        this.forwardEventNum = forwardEventNum;
+        putInt("forwardEventNum", forwardEventNum);
+    }
+
+    public float getCost() {
+        return cost;
+    }
+
+    public void setCost(float cost) {
+        this.cost = cost;
+        putFloat("cost", cost);        
+    }
+
+    public int getThresholdTime() {
+        return thresholdTime;
+    }
+
+    public void setThresholdTime(int thresholdTime) {
+        this.thresholdTime = thresholdTime;
+        putInt("thresholdTime", thresholdTime);
     }
 
     /**
