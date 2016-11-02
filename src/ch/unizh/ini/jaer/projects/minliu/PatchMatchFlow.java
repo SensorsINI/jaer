@@ -271,7 +271,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     }
                     
                     if(previousTsInterval >= thresholdTime ) {
-                        if(blockLocX == 70 && blockLocY == 26) {
+                        if(blockLocX == 55 && blockLocY == 35) {
                             int tmp = 0;
                         }    
                         float maxDt = 0;
@@ -291,9 +291,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 //                                    }
                                     dataPoint[(ii + 1)*3 + (jj + 1)][0] = dt;
                                     if(dt > maxDt) {
-                                        maxDt = dt;
-                                        result.dx = -ii/dt * 1000000 * 0.2f * eventPatchDimension;
-                                        result.dy = -jj/dt * 1000000 * 0.2f * eventPatchDimension;
+//                                        maxDt = dt;
+//                                        result.dx = -ii/dt * 1000000 * 0.2f * eventPatchDimension;
+//                                        result.dy = -jj/dt * 1000000 * 0.2f * eventPatchDimension;
                                     }
                                 }
                             }                            
@@ -302,7 +302,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
 
                         eventSeqStartTs[blockLocX][blockLocY] = ts;
-                        KMeans cluster = new KMeans();    
                         boolean allZeroFlg = true;
                         for(int mm = 0; mm < 9; mm ++) {
                             for(int nn = 0; nn < 1; nn++) {
@@ -314,12 +313,44 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                         if(allZeroFlg) {
                             continue;
                         }
-                        cluster.setData(dataPoint);                        
+                        KMeans cluster = new KMeans(); 
+                        cluster.setData(dataPoint); 
+                        int[] initialValue = new int[3];
+                        initialValue[0] = 0;
+                        initialValue[1] = 4;
+                        initialValue[2] = 8;
+                        cluster.setInitialByUser(initialValue);
                         cluster.cluster();
                         ArrayList<ArrayList<Integer>> kmeansResult = cluster.getResult();
                         float[][] classData = cluster.getClassData();
-
-                        int tmp = 0;
+                        int firstClusterIdx = -1, secondClusterIdx = -1, thirdClusterIdx = -1;
+                        for(int i = 0; i < 3; i ++) {
+                            if(kmeansResult.get(i).contains(0)) {
+                                firstClusterIdx = i;
+                            }
+                            if(kmeansResult.get(i).contains(4)) {
+                                secondClusterIdx = i;
+                            }
+                            if(kmeansResult.get(i).contains(8)) {
+                                thirdClusterIdx = i;
+                            }
+                        }
+                        if(kmeansResult.get(firstClusterIdx).size() == 3 &&
+                           kmeansResult.get(firstClusterIdx).size() == 3 &&
+                           kmeansResult.get(firstClusterIdx).size() == 3 &&
+                           kmeansResult.get(firstClusterIdx).contains(1) &&
+                           kmeansResult.get(firstClusterIdx).contains(2)){
+                            result.dx = -1/(classData[secondClusterIdx][0] - classData[firstClusterIdx][0]) * 1000000* 0.2f * eventPatchDimension;;
+                            result.dy = 0;
+                        }
+                        if(kmeansResult.get(firstClusterIdx).size() == 3 &&
+                           kmeansResult.get(firstClusterIdx).size() == 3 &&
+                           kmeansResult.get(firstClusterIdx).size() == 3 &&
+                           kmeansResult.get(thirdClusterIdx).contains(2) &&
+                           kmeansResult.get(thirdClusterIdx).contains(5)){
+                            result.dy = -1/(classData[thirdClusterIdx][0] - classData[secondClusterIdx][0]) * 1000000* 0.2f * eventPatchDimension;;
+                            result.dx = 0;
+                        }
                     } 
                     break;
             }            
@@ -367,7 +398,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 //        displayMethod.getImageTransform();
 //        displayMethod.setImageTransform(lastTransform.translationPixels, lastTransform.rotationRad);          
 
-        
         if(rewindFlg) {
             rewindFlg = false;
             sliceLastTs = 0;

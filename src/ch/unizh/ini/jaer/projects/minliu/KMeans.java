@@ -39,6 +39,7 @@ public class KMeans {
 	
 	private ArrayList<ArrayList<Integer>> result;
 	private float[] maxPerRow = null;
+        private int[] initialByUser = null;
 
 
 	public KMeans()
@@ -49,8 +50,8 @@ public class KMeans {
 		result = new ArrayList<ArrayList<Integer>>(ClassCount);
 		noises = new ArrayList<Integer>();
                 maxPerRow = new float[FieldCount];
-	}	
-	
+	}		
+
 	/**
 	 * The cluster process:
 	 * 1. Find the initial values, two options: Maximum distance and random choose.
@@ -66,28 +67,39 @@ public class KMeans {
 		
 		// Iteration times
 		int times = 1;
-		// Find the initials.
-		while(needUpdataInitials)
-		{
-			needUpdataInitials = false;
-			result.clear();
-			// System.out.println("Find Initials Iteration " + (times++) + " time(s) ");
-			
-                        // findInitials(); // Using the maxium distance to generate the initial center value.
-                        
-                        randomInitials();  // Generate the random initial center value
+                
+                if(getInitialByUser() != null) {
+                    
+                    for(int i = 0; i < 3; i++) {
+                        classData[i] = data[initialByUser[i]]; 
+                        ArrayList<Integer> rslt = new ArrayList<Integer>();
+                        rslt.add(initialByUser[i]);
+                        result.add(rslt);                         
+                    }
+                   
+                } else {
+                    // Find the initials.
+                    while(needUpdataInitials)
+                    {
+                            needUpdataInitials = false;
+                            result.clear();
+                            // System.out.println("Find Initials Iteration " + (times++) + " time(s) ");
 
-			firstClassify();
-			
-			// 如果某个分类的数目小于特定的阈值、则认为这个分类中的所有样本都是噪声点
-			// 需要重新找初始点
-			for(int i = 0; i < result.size();i++){
-				if(result.get(i).size() < InstanseNumber / Math.pow(ClassCount, t)){
-					needUpdataInitials = true;
-					noises.addAll(result.get(i));
-				}
-			}
-		}
+                            // findInitials(); // Using the maxium distance to generate the initial center value.
+
+                            randomInitials();  // Generate the random initial center value
+
+                            firstClassify();
+
+                            // Nosies
+                            for(int i = 0; i < result.size();i++){
+                                    if(result.get(i).size() < InstanseNumber / Math.pow(ClassCount, t)){
+                                            needUpdataInitials = true;
+                                            noises.addAll(result.get(i));
+                                    }
+                            }
+                    }                    
+                }
 		
 		// Adjust until the center doesn't move.
 		Adjust();
@@ -194,13 +206,11 @@ public class KMeans {
 		}
 		
 		
-		//将前两个初始点记录下来
 		initials.add(a);
 		initials.add(b);
 		classData[0] = data[a];
 		classData[1] = data[b];
 		
-		//在结果中新建存放某类样本索引的对象，并把初始点添加进去
 		ArrayList<Integer> resultOne = new ArrayList<Integer>();
 		ArrayList<Integer> resultTwo = new ArrayList<Integer>();
 		resultOne.add(a);
@@ -209,20 +219,17 @@ public class KMeans {
 		result.add(resultTwo);
 		
 		
-		 //找到剩余的几个初始点
 		while( alreadyCls < ClassCount){
 			i = j = 0;
 			float maxMin = 0;
 			int newClass = -1;
 			
-			//找最小值中的最大值
 			for(;i < InstanseNumber;i++){
 				float min = 0;
 				float newMin = 0;
-				//找和已有类的最小值
 				if(initials.contains(i))
 					continue;
-				//噪声点去除
+				// Remove the noises
 				if(noises.contains(i))
 					continue;
 				for(j = 0;j < alreadyCls;j++){
@@ -232,7 +239,6 @@ public class KMeans {
                                         }
                                     }
 			
-				//新最小距离较大
 				if(min > maxMin)
 				{
 					maxMin = min;
@@ -241,7 +247,6 @@ public class KMeans {
 					
 			}                  
 
-			//添加到均值集合和结果集合中
 			//System.out.println("NewClass " + newClass);
 			initials.add(newClass);
 
@@ -255,11 +260,10 @@ public class KMeans {
 	}
 	
 	/**
-	 * 第一次分类
+	 *  The first attempt to classfy
 	 */
 	public void firstClassify()
 	{
-		//根据初始向量分类
 		for(int i = 0; i < InstanseNumber;i++)
 		{
 			float min = 0f;
@@ -287,25 +291,24 @@ public class KMeans {
 	 */
 	public void Adjust()
 	{
-		//记录是否发生变化
+		// The change flag
 		boolean change = true;
 		
-		//循环的次数
 		int times = 1;
 		while(change){
-			//复位
+			// Reset
 			change = false;
 			// System.out.println("Adjust Iteration " + (times++) + " time(s) ");
 			
-			//重新计算每个类的均值
+			// Calculate the mean again
 			for(int i = 0;i < ClassCount; i++){
-				//原有的数据
+				// Origin data
 				ArrayList<Integer> cls = result.get(i);
 				
-				//新的均值
+				// New mean value
 				float[] newMean = new float[FieldCount];
 				
-				//计算均值
+				// Mean value calculation
 				for(Integer index:cls){
 					for(int j = 0;j < FieldCount ;j++)
 						newMean[j] += data[index][j];
@@ -317,11 +320,11 @@ public class KMeans {
 					change = true;
 				}
 			}
-			//清空之前的数据
+			// Clear the previous result
 			for(ArrayList<Integer> cls:result)
 				cls.clear();
 			
-			//重新分配
+			// Using the new class center data.
 			for(int i = 0;i < InstanseNumber;i++)
 			{
 				float min = 0f;
@@ -335,21 +338,7 @@ public class KMeans {
 				}
 				data[i][FieldCount] = clsId;
 				result.get(clsId).add(i);
-			}
-			
-			//测试聚类效果(训练集)
-//			for(int i = 0;i < ClassCount;i++){
-//				int positives = 0;
-//				int negatives = 0;
-//				ArrayList<Integer> cls = result.get(i);
-//				for(Integer instance:cls)
-//					if (data[instance][FieldCount - 1] == 1f)
-//						positives ++;
-//					else
-//						negatives ++;
-//				System.out.println(" " + i + " Positive: " + positives + " Negatives: " + negatives);
-//			}
-//			System.out.println();
+			}			
 		}
 		
 		
@@ -417,6 +406,14 @@ public class KMeans {
 
         public void setClassData(float[][] classData) {
             this.classData = classData;
+        }
+
+        public int[] getInitialByUser() {
+            return initialByUser;
+        }
+
+        public void setInitialByUser(int[] initialByUser) {
+            this.initialByUser = initialByUser;
         }
         
         
