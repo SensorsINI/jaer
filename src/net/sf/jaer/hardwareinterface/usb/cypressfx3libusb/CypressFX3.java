@@ -953,7 +953,15 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 				new ProcessAEData(), getNumBuffers(), getFifoSize(), null, null, new Runnable() {
 					@Override
 					public void run() {
-						monitor.close();
+						final SwingWorker<Void, Void> shutdownWorker = new SwingWorker<Void, Void>() {
+							@Override
+							public Void doInBackground() {
+								monitor.close();
+
+								return (null);
+							}
+						};
+						shutdownWorker.execute();
 					}
 				});
 			usbTransfer.setName("AEReaderThread");
