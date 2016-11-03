@@ -1124,15 +1124,23 @@ two interfaces). otherwise force user choice.
             //        log.infox("AEViewer.setAeChipClass("+deviceClass+")");
             try {
                     if (filterFrame != null) {
-                            filterFrame.dispose();
-                            filterFrame = null;
-                    }
-                    filterFrameBuilt = false;
-                    filtersToggleButton.setVisible(false);
-                    viewFiltersMenuItem.setEnabled(false);
-                    showBiasgen(false);
-                    cleanup(); // close sockets so they can be reused
-                    Constructor<AEChip> constructor = deviceClass.getConstructor();
+                    filterFrame.dispose();
+                    filterFrame = null;
+                }
+                filterFrameBuilt = false;
+                filtersToggleButton.setVisible(false);
+                viewFiltersMenuItem.setEnabled(false);
+                showBiasgen(false);
+                cleanup(); // close sockets so they can be reused
+                if (chip != null && chip.getHardwareInterface() != null) {
+                    chip.getHardwareInterface().close();
+                }
+                if (chip != null) {
+                    chip.setHardwareInterface(null);
+                }
+                // force null interface
+                nullInterface = true;
+                Constructor<AEChip> constructor = deviceClass.getConstructor();
                     if (constructor == null) {
                             log.warning("null chip constructer, need to select valid chip class");
                             return;
