@@ -245,7 +245,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     
                     // There're enough events fire on the specific block now.
                     if(spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum ) {
-                            result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);                          }                     
+                        lastFireIndex[blockLocX][blockLocY] = spikeTrans[blockLocX][blockLocY].size() - 1;      
+                        result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);                          
+                    }                     
                     
                     break;
                 case SAD:
@@ -253,6 +255,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     accumulateEvent();
                     // There're enough events fire on the specific block now
                     if(spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum ) {
+                        lastFireIndex[blockLocX][blockLocY] = spikeTrans[blockLocX][blockLocY].size() - 1;      
                         result = minSad(x, y, tMinus2Slice, tMinus1Slice);
                     }
                     break;
@@ -261,6 +264,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     accumulateEvent();
                     // There're enough events fire on the specific block now
                     if(spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum ) {
+                        lastFireIndex[blockLocX][blockLocY] = spikeTrans[blockLocX][blockLocY].size() - 1;      
                         result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
                     }
                     break;
