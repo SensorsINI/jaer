@@ -240,7 +240,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
 				int timeElapsed = this.lastEventTime - this.firstEventTime;
 				timeElapsed = timeElapsed / 1000;
 				MultilineAnnotationTextRenderer.renderMultilineString(
-					StringUtils.join("", this.rnnetwork.netname, "  ;  ", "Time elapsed:", Float.toString(timeElapsed), "ms"));
+					StringUtils.join("Network: ", this.rnnetwork.netname, "  ;  ", "Time elapsed:", Float.toString(timeElapsed), "ms"));
 			}
 			else {
 				MultilineAnnotationTextRenderer.renderMultilineString(this.rnnetwork.netname);
@@ -257,7 +257,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
 					// MultilineAnnotationTextRenderer.renderMultilineString(String.join("", Integer.toString(this.label
 					// + 1),";",Float.toString(tmpValue)));
 					MultilineAnnotationTextRenderer
-						.renderMultilineString(StringUtils.join("", Integer.toString(this.label), ";", Float.toString(tmpValue)));
+						.renderMultilineString(StringUtils.join("Recognized digit ", Integer.toString(this.label), "; Probability ", Float.toString(tmpValue)));
 				}
 				else {
 					// MultilineAnnotationTextRenderer.renderMultilineString(Integer.toString(this.label + 1));
