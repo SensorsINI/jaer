@@ -44,11 +44,11 @@ import net.sf.jaer.graphics.FrameAnnotater;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements FrameAnnotater, PropertyChangeListener {
 
+    protected final int LOG_EVERY_THIS_MANY_FRAMES = 100; // for logging concole messages
     protected AVIOutputStream aviOutputStream = null;
     protected static String DEFAULT_FILENAME = "jAER.avi";
     protected String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
     protected int framesWritten = 0;
-    protected final int logEveryThisManyFrames = 30;
     protected boolean writeTimecodeFile = getBoolean("writeTimecodeFile", true);
     protected static final String TIMECODE_SUFFIX = "-timecode.txt";
     protected File timecodeFile = null;
@@ -201,6 +201,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
                     log.info("Closed timecode file " + timecodeFile.toString());
                     timecodeWriter = null;
                 }
+                setWriteEnabled(false);
                 log.info("Closed " + lastFileName + " in format " + format + " with " + framesWritten + " frames");
             } catch (Exception ex) {
                 log.warning(ex.toString());
@@ -219,7 +220,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      * file, Comment header characters are added if not supplied.
      *
      */
-    private void openAVIOutputStream(File f, String[] additionalComments) {
+    public void openAVIOutputStream(File f, String[] additionalComments) {
         try {
             aviOutputStream = new AVIOutputStream(f, format);
 //            aviOutputStream.setFrameRate(chip.getAeViewer().getFrameRate());
@@ -331,7 +332,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     protected void incrementFramecountAndMaybeCloseOutput() {
-        if (++framesWritten % logEveryThisManyFrames == 0) {
+        if (++framesWritten % LOG_EVERY_THIS_MANY_FRAMES == 0) {
             log.info(String.format("wrote %d frames", framesWritten));
         }
         getSupport().firePropertyChange("framesWritten", null, framesWritten);
