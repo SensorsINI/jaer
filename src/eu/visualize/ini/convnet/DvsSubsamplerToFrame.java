@@ -36,6 +36,7 @@ public class DvsSubsamplerToFrame {
     private boolean cleared = true;
     private int lastIntervalUs = 0;
     private float sparsity = 1;  // computed when frame is normalized
+    private boolean fullRectifyOutput=false;
 
     /**
      * Makes a new DvsSubsamplingTimesliceConvNetInput
@@ -58,7 +59,7 @@ public class DvsSubsamplerToFrame {
 
     public void clear() {
         Arrays.fill(eventSum, 0);
-        Arrays.fill(pixmap, GRAY_LEVEL);
+        Arrays.fill(pixmap, fullRectifyOutput?0:GRAY_LEVEL);
         accumulatedEventCount = 0;
         mostOffCount = Integer.MAX_VALUE;
         mostOnCount = Integer.MIN_VALUE;
@@ -130,14 +131,14 @@ public class DvsSubsamplerToFrame {
             throw new RuntimeException("index out of bounds for event " + e.toString() + " with srcWidth=" + srcWidth + " srcHeight=" + srcHeight);
         }
         int sum = eventSum[k];
-        sum += (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
+        sum += fullRectifyOutput? 1: (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
         if (sum > mostOnCount) {
             mostOnCount = sum;
         } else if (sum < mostOffCount) {
             mostOffCount = sum;
         }
         eventSum[k] = sum; // eventSum contains raw integer signed event count
-        float pmv = .5f + ((sum * colorScaleRecip) / 2);
+        float pmv = (fullRectifyOutput?0:GRAY_LEVEL) + ((sum * colorScaleRecip) / 2);
         if (pmv > 1) {
             pmv = 1;
         } else if (pmv < 0) {
@@ -321,6 +322,23 @@ public class DvsSubsamplerToFrame {
      */
     public float getSparsity() {
         return sparsity;
+    }
+
+    /**
+     * @return the fullRectifyOutput
+     */
+    public boolean isFullRectifyOutput() {
+        return fullRectifyOutput;
+    }
+
+    /**
+     * True: Events of both ON and OFF type produce positive pixel values; starting frame is set to 0. 
+     * <br>
+     * False: Events produce negative (for OFF events) and positive (for ON events); starting frame is set to 0.5.
+     * @param fullRectifyOutput the fullRectifyOutput to set
+     */
+    public void setFullRectifyOutput(boolean fullRectifyOutput) {
+        this.fullRectifyOutput = fullRectifyOutput;
     }
 
     
