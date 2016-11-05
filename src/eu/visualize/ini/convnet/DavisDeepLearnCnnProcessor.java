@@ -56,6 +56,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private boolean processDVSTimeSlices = getBoolean("processDVSTimeSlices", true);
     protected boolean addedPropertyChangeListener = false;  // must do lazy add of us as listener to chip because renderer is not there yet when this is constructed
     private int dvsMinEvents = getInt("dvsMinEvents", 10000);
+    private boolean rectifyPolarities=getBoolean("rectifyPolarities",false);
 
     private JFrame imageDisplayFrame = null;
     public ImageDisplay inputImageDisplay;
@@ -95,6 +96,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setPropertyTooltip(anal, "dvsMinEvents", "minimum number of events to run net on DVS timeslice");
         setPropertyTooltip(anal, "zeroPadding", "CNN uses zero padding; must be set properly according to CNN to run CNN");
         setPropertyTooltip(anal, "normalizeDVSForZsNullhop", "uses DvsSubsamplerToFrame normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1\n");
+        setPropertyTooltip(anal, "rectifyPolarities", "Rectifies DVS ON and OFF event polarities to ON polarities; discards the sign of the brightness changes, which could improve lighting tolerance");
         initFilter();
     }
 
@@ -191,6 +193,11 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             for (BasicEvent e : in) {
                 lastProcessedEventTimestamp = e.getTimestamp();
                 PolarityEvent p = (PolarityEvent) e;
+                if(rectifyPolarities){
+                    if(p.polarity==PolarityEvent.Polarity.Off){
+                        p.polarity=PolarityEvent.Polarity.On;
+                    }
+                }
                 if (dvsSubsampler != null) {
                     dvsSubsampler.addEvent(p, sizeX, sizeY);
                 }
@@ -630,5 +637,20 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             return;
         }
         apsDvsNet.setNormalizeDVSForZsNullhop(normalizeDVSForZsNullhop); // must set manually since net doesn't know option kept here.
+    }
+
+    /**
+     * @return the rectifyPolarities
+     */
+    public boolean isRectifyPolarities() {
+        return rectifyPolarities;
+    }
+
+    /**
+     * @param rectifyPolarities the rectifyPolarities to set
+     */
+    public void setRectifyPolarities(boolean rectifyPolarities) {
+        this.rectifyPolarities = rectifyPolarities;
+        putBoolean("rectifyPolarities",rectifyPolarities);
     }
 }
