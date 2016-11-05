@@ -12,6 +12,8 @@ import eu.seebetter.ini.chips.davis.DAVIS240C;
 import java.beans.PropertyChangeEvent;
 import java.io.EOFException;
 import java.io.File;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BoxLayout;
@@ -32,6 +34,8 @@ import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
+import static net.sf.jaer.graphics.AEViewer.DEFAULT_CHIP_CLASS;
+import static net.sf.jaer.graphics.AEViewer.prefs;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
@@ -396,19 +400,19 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         putBoolean("fullRectifyOutput", fullRectifyOutput);
     }
 
-    public static final String USAGE = "java DvsSliceAviWriter [-aechip=aechipclassname] "
+    public static final String USAGE = "java DvsSliceAviWriter [-aechip=aechipclassname (fully qualified class name, e.g. eu.seebetter.ini.chips.davis.DAVIS240C)] "
             + "[-dimx=36] [-dimy=36] [-quality=.9] [-format=PNG|JPG|RLE|RAW] [-framerate=30] [-grayscale=200] "
             + "[-writedvssliceonapsframe=false] [-writetimecodefile=true] "
             + "[-numevents=2000] [-rectify=false] [-normalize=true] [-showoutput=true]  "
-            + "inputFile.aedat outputfile.avi";
+            + "inputFile.aedat [outputfile.avi]"
+            + ""
+            + "If outputfile is not provided its name is generated from the input file with appended .avi";
 
     public static void main(String[] args) {
         // command line
         // uses last settings of everything
         // java DvsSliceAviWriter inputFile.aedat outputfile.avi
-        // TODO
-        // 
-        Options opt = new Options(args, 2);
+        Options opt = new Options(args, 1, 2);
         opt.getSet().addOption("aechip", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("dimx", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("dimy", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
@@ -426,122 +430,152 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             System.out.println(USAGE);
             System.exit(1);
         }
-        // Normal processing
-//        if (opt.getSet().isSet("a")) {
-//            // React to option -a
-//        }
-//        if (opt.getSet().isSet("log")) {
-//            // React to option -log
-//            String logfile = opt.getSet().getOption("log").getResultValue(0);
-//        }
         String inpfilename = opt.getSet().getData().get(0);
-        String outfilename = opt.getSet().getData().get(1);
-        AEChip chip = null;
-        if (opt.getSet().isSet("aechip")) {
-            String chipname = opt.getSet().getOption("aechip").getResultValue(0);
-            log.warning("aechip option not yet implemented. Default chip class is DAVIS240C; modify code to change.");
-            System.exit(1);
+        String outfilename = null;
+        if (opt.getSet().getData().size() == 2) {
+            outfilename = opt.getSet().getData().get(1);
         } else {
-            log.info("constructing default AEChip");
-            chip = new DAVIS240C();
+            outfilename = inpfilename.substring(0, inpfilename.lastIndexOf(".")) + ".avi";
+            System.out.println("Writing to output file " + outfilename);
         }
+
+        AEChip chip = null;
+        String chipname = null;
+        if (opt.getSet().isSet("aechip")) {
+            chipname = opt.getSet().getOption("aechip").getResultValue(0);
+        } else {
+            chipname = prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
+        }
+        try {
+            System.out.println("constructing AEChip " + chipname);
+            Class chipClass = Class.forName(chipname);
+            Constructor<AEChip> constructor = chipClass.getConstructor();
+            chip = constructor.newInstance((java.lang.Object[]) null);
+        } catch (Exception ex) {
+            log.warning(ex.toString());
+            System.exit(1);
+        }
+
         AEFileInputStream ais = null;
         File inpfile = new File(inpfilename);
         File outfile = new File(outfilename);
         AEPacketRaw aeRaw = null;
         DvsSliceAviWriter writer = new DvsSliceAviWriter(chip);
-        writer.setCloseOnRewind(true);
-        writer.getSupport().addPropertyChangeListener(writer);
+
+        writer.setCloseOnRewind(
+                true);
+        writer.getSupport()
+                .addPropertyChangeListener(writer);
         // handle options
-        if (opt.getSet().isSet("dimx")) {
+        if (opt.getSet()
+                .isSet("dimx")) {
             try {
                 int n = Integer.parseInt(opt.getSet().getOption("dimx").getResultValue(0));
                 writer.setDimx(n);
             } catch (NumberFormatException e) {
-                log.warning("Bad dimx argument: " + e.toString());
-                System.exit(1);
-            }
-        }
-        if (opt.getSet().isSet("dimy")) {
-            try {
-                int n = Integer.parseInt(opt.getSet().getOption("dimy").getResultValue(0));
-                writer.setDimy(n);
-            } catch (NumberFormatException e) {
-                log.warning("Bad dimy argument: " + e.toString());
+                System.err.println("Bad dimx argument: " + e.toString());
                 System.exit(1);
             }
         }
 
-        if (opt.getSet().isSet("quality")) {
+        if (opt.getSet()
+                .isSet("dimy")) {
+            try {
+                int n = Integer.parseInt(opt.getSet().getOption("dimy").getResultValue(0));
+                writer.setDimy(n);
+            } catch (NumberFormatException e) {
+                System.err.println("Bad dimy argument: " + e.toString());
+                System.exit(1);
+            }
+        }
+
+        if (opt.getSet()
+                .isSet("quality")) {
             try {
                 float f = Float.parseFloat(opt.getSet().getOption("quality").getResultValue(0));
                 writer.setCompressionQuality(f);
             } catch (NumberFormatException e) {
-                log.warning("Bad quality argument: " + e.toString());
+                System.err.println("Bad quality argument: " + e.toString());
                 System.exit(1);
             }
         }
-        if (opt.getSet().isSet("format")) {
+
+        if (opt.getSet()
+                .isSet("format")) {
             try {
                 String type = (opt.getSet().getOption("format").getResultValue(0));
                 VideoFormat format = VideoFormat.valueOf(type.toUpperCase());
                 writer.setFormat(format);
             } catch (IllegalArgumentException e) {
-                log.warning("Bad format argument: " + e.toString() + "; use PNG, JPG, RAW, or RLE");
+                System.err.println("Bad format argument: " + e.toString() + "; use PNG, JPG, RAW, or RLE");
             }
         }
-        if (opt.getSet().isSet("framerate")) {
+
+        if (opt.getSet()
+                .isSet("framerate")) {
             try {
                 int n = Integer.parseInt(opt.getSet().getOption("framerate").getResultValue(0));
                 writer.setFrameRate(n);
             } catch (NumberFormatException e) {
-                log.warning("Bad framerate argument: " + e.toString());
+                System.err.println("Bad framerate argument: " + e.toString());
                 System.exit(1);
             }
         }
-        if (opt.getSet().isSet("grayscale")) {
+
+        if (opt.getSet()
+                .isSet("grayscale")) {
             try {
                 int n = Integer.parseInt(opt.getSet().getOption("grayscale").getResultValue(0));
                 writer.setGrayScale(n);
             } catch (NumberFormatException e) {
-                log.warning("Bad grayscale argument: " + e.toString());
+                System.err.println("Bad grayscale argument: " + e.toString());
                 System.exit(1);
             }
         }
-        if (opt.getSet().isSet("writedvssliceonapsframe")) {
-                boolean b = Boolean.parseBoolean(opt.getSet().getOption("writedvssliceonapsframe").getResultValue(0));
-                writer.setWriteDvsSliceImageOnApsFrame(b);
-        }
-        if (opt.getSet().isSet("writetimecodefile")) {
-                boolean b = Boolean.parseBoolean(opt.getSet().getOption("writetimecodefile").getResultValue(0));
-                writer.setWriteDvsSliceImageOnApsFrame(b);
+
+        if (opt.getSet()
+                .isSet("writedvssliceonapsframe")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writedvssliceonapsframe").getResultValue(0));
+            writer.setWriteDvsSliceImageOnApsFrame(b);
         }
 
-        if (opt.getSet().isSet("numevents")) {
+        if (opt.getSet()
+                .isSet("writetimecodefile")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writetimecodefile").getResultValue(0));
+            writer.setWriteDvsSliceImageOnApsFrame(b);
+        }
+
+        if (opt.getSet()
+                .isSet("numevents")) {
             try {
                 int n = Integer.parseInt(opt.getSet().getOption("numevents").getResultValue(0));
                 writer.setDvsMinEvents(n);
             } catch (NumberFormatException e) {
-                log.warning("Bad numevents argument: " + e.toString());
+                System.err.println("Bad numevents argument: " + e.toString());
                 System.exit(1);
             }
         }
-        if (opt.getSet().isSet("rectify")) {
-                boolean b = Boolean.parseBoolean(opt.getSet().getOption("rectify").getResultValue(0));
-                writer.setFullRectifyOutput(b);
+
+        if (opt.getSet()
+                .isSet("rectify")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("rectify").getResultValue(0));
+            writer.setFullRectifyOutput(b);
         }
 
-        if (opt.getSet().isSet("normalize")) {
-                boolean b = Boolean.parseBoolean(opt.getSet().getOption("normalize").getResultValue(0));
-                writer.setNormalizeFrame(b);
+        if (opt.getSet()
+                .isSet("normalize")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("normalize").getResultValue(0));
+            writer.setNormalizeFrame(b);
         }
-        if (opt.getSet().isSet("showoutput")) {
-                boolean b = Boolean.parseBoolean(opt.getSet().getOption("showoutput").getResultValue(0));
-                writer.setShowOutput(b);
+
+        if (opt.getSet()
+                .isSet("showoutput")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("showoutput").getResultValue(0));
+            writer.setShowOutput(b);
         }
 
         writer.openAVIOutputStream(outfile, args);
-//        int lastNumFramesWritten=0, numPrinted=0;
+        int lastNumFramesWritten = 0, numPrinted = 0;
 
         try {
             ais = new AEFileInputStream(inpfile, chip);
@@ -549,6 +583,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         } catch (IOException ex) {
             Logger.getLogger(DvsSliceAviWriter.class.getName()).log(Level.SEVERE, null, ex);
         }
+
         System.out.print(String.format("Frames written: "));
         while (writer.isWriteEnabled()) {
             try {
@@ -556,30 +591,32 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 EventExtractor2D extractor = chip.getEventExtractor();
                 EventPacket cooked = extractor.extractPacket(aeRaw);
                 writer.filterPacket(cooked);
-//                int numFramesWritten=writer.getFramesWritten();
-//                if(numFramesWritten>lastNumFramesWritten){
-//                    System.out.print(String.format(" %d",numFramesWritten));
-//                    if(numPrinted==20){
-//                        System.out.println();
-//                        numPrinted=0;
-//                    }
-//                }
-//                lastNumFramesWritten=numFramesWritten;
+                int numFramesWritten = writer.getFramesWritten();
+                if (numFramesWritten > lastNumFramesWritten) {
+                    System.out.print(String.format(" %d", numFramesWritten));
+                    if (numPrinted++ == 20) {
+                        System.out.println("");
+                        numPrinted = 0;
+                    }
+                }
+                lastNumFramesWritten = numFramesWritten;
 
             } catch (EOFException e) {
                 try {
                     ais.close();
+                    writer.setShowOutput(false);
                     writer.doCloseFile();
-                    log.info("finished writing file " + outfile);
+                    log.info("wrote file " + outfile);
+                    System.out.println("wrote file " + outfile);
                     System.exit(0);
 
                 } catch (IOException ioe) {
-                    log.warning("IOException on close after EOF: " + ioe.getMessage());
+                    System.err.println("IOException on close after EOF: " + ioe.getMessage());
                 }
             } catch (IOException e) {
                 e.printStackTrace();
                 try {
-                    log.warning("IOException: " + e.getMessage());
+                    System.err.println("IOException: " + e.getMessage());
                     if (ais != null) {
                         ais.close();
                     }
@@ -593,7 +630,13 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 }
             }
         }
-        System.exit(0);
+
+        log.info(
+                "Successfully wrote file " + outfile);
+        System.out.println(
+                "Successfully wrote file " + outfile);
+        System.exit(
+                0);
     }
 
 }
