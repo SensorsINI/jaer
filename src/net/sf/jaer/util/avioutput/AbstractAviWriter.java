@@ -350,6 +350,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     /**
+     * Set type of video encoding; see VideoFormat
      * @param format the format to set
      */
     public void setFormat(AVIOutputStream.VideoFormat format) {
