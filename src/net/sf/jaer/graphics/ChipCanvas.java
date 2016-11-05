@@ -291,7 +291,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             // opening 2nd instance, or even creating live file preview in AE file open dialog, often causes JOGL to bomb with
             // complaints about non availablility of the desired GLProfile.
             // On Linux systems, using the shared context below with Intel graphics causes an immediate native exception.
-            drawable.setSharedAutoDrawable(JAERViewer.sharedDrawable);
+            if(drawable!=null && JAERViewer.sharedDrawable!=null) drawable.setSharedAutoDrawable(JAERViewer.sharedDrawable); // drawable might be null if AEChip is created outside of normal context of AEViewer
         }
         // between all viewers and file open dialog
         // previews.
