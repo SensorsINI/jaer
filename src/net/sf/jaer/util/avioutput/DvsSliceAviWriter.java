@@ -46,6 +46,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     private int dvsMinEvents = getInt("dvsMinEvents", 10000);
     private float frameRateEstimatorTimeConstantMs = getFloat("frameRateEstimatorTimeConstantMs", 10f);
     private boolean normalizeFrame = getBoolean("normalizeFrame", true);
+    private boolean fullRectifyOutput = getBoolean("fullRectifyOutput", false);
     private JFrame frame = null;
     public ImageDisplay display;
     private boolean showOutput;
@@ -73,6 +74,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         setPropertyTooltip("frameRateEstimatorTimeConstantMs", "time constant of lowpass filter that shows average DVS slice frame rate");
         setPropertyTooltip("writeDvsSliceImageOnApsFrame", "<html>write DVS slice image for each APS frame end event (dvsMinEvents ignored).<br>The frame is written at the end of frame APS event.<br><b>Warning: to capture all frames, ensure that playback time slices are slow enough that all frames are rendered</b>");
         setPropertyTooltip("normalizeFrame", "<html>Normalize the frame so that the 3-sigma range of original values fills the full output range of 0-1 values (0-255 in PNG file)<br>This normalization is the same as that used in DeepLearnCnnNetwork.");
+        setPropertyTooltip("fullRectifyOutput", "<html>Fully rectify ON and OFF events to only ON events. <br>Output image ranges from 0-255 in PNG file but no events is 0 <br>and all events of either type produce positive pixel values");
     }
 
     @Override
@@ -162,6 +164,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 doCloseFile();
             }
             dvsSubsampler = new DvsSubsamplerToFrame(dimx, dimy, grayScale);
+            dvsSubsampler.setFullRectifyOutput(fullRectifyOutput);
         }
     }
 
@@ -365,6 +368,22 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     public void setNormalizeFrame(boolean normalizeFrame) {
         this.normalizeFrame = normalizeFrame;
         putBoolean("normalizeFrame", normalizeFrame);
+    }
+
+    /**
+     * @return the fullRectifyOutput
+     */
+    public boolean isFullRectifyOutput() {
+        return fullRectifyOutput;
+    }
+
+    /**
+     * @param fullRectifyOutput the fullRectifyOutput to set
+     */
+    public void setFullRectifyOutput(boolean fullRectifyOutput) {
+        this.fullRectifyOutput = fullRectifyOutput;
+        if(dvsSubsampler!=null) dvsSubsampler.setFullRectifyOutput(fullRectifyOutput);
+        putBoolean("fullRectifyOutput",fullRectifyOutput);
     }
 
 }
