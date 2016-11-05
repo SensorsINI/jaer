@@ -92,7 +92,7 @@ public class DeepLearnCnnNetwork {
     private boolean hideSubsamplingLayers = true;
     private boolean normalizeKernelDisplayWeightsGlobally = true;
     private boolean normalizeActivationDisplayGlobally = true;
-    private boolean hideConvLayers = false;
+    private boolean hideConvLayers = true;
     private String xmlFilename = null;
     private boolean printActivations = false;
     private boolean printWeights = false;
@@ -577,14 +577,25 @@ public class DeepLearnCnnNetwork {
                     }
                 }
             } else {
+                subsampler.normalizeFrame(); // this option uses the same normalization to 0-1 range as in DvsSliceAVIWriter
+                final float zeroValue = 127f / 255, fullscale = 1 - zeroValue;
                 for (int y = 0; y < dimy; y++) {
                     for (int x = 0; x < dimy; x++) {
-                        float v = subsampler.getValueAtPixel(x, y);
+                        // range is 0-1 in subsampler after normalization; just leave it there. Zero count pixels have value 127/255 in case subsampler does not rectify, and zero if it does.
+                        float v = (subsampler.getValueAtPixel(x, y) ) ;
                         v = debugNet(v, x, y);
                         activations[o(x, dimy - y - 1)] = v;
                     }
                 }
-                normalizeInputFrame(activations, false); // this option uses the original (slightly incorrect) DVS normalization
+                // normalization normalizeFrame below is simply incorrect. It does not leave 0.5 at 0.5 and it also moves the gray level depending on ON and OFF activity balance.
+//               for (int y = 0; y < dimy; y++) {
+//                    for (int x = 0; x < dimy; x++) {
+//                        float v = subsampler.getValueAtPixel(x, y);
+//                        v = debugNet(v, x, y);
+//                        activations[o(x, dimy - y - 1)] = v;
+//                    }
+//                }
+//                normalizeInputFrame(activations, false); // this option uses the original (slightly incorrect) DVS normalization
             }
             return activations;
         }
@@ -742,13 +753,6 @@ public class DeepLearnCnnNetwork {
                 for (int i = 0; i < n; i++) {
                     activations[i] = (activations[i] - mean_png_gray); // note that pixels with zero count are NOT left at mean_png_gray!
                 }
-//                for (int i = 0; i < n; i++) {
-//                    if (activations[i] > sig * 3.0f) {
-//                        activations[i] = sig * 3.0f;
-//                    } else if (activations[i] < -sig * 3.0f) {
-//                        activations[i] = -sig * 3.0f;
-//                    }
-//                }
                 float range = ((3.f * sig) - (-3.f * sig));
                 float rangenew = (1 - 0);
                 for (int i = 0; i < n; i++) {

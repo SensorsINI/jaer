@@ -175,7 +175,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 doCloseFile();
             }
             dvsSubsampler = new DvsSubsamplerToFrame(dimx, dimy, grayScale);
-            dvsSubsampler.setFullRectifyOutput(fullRectifyOutput);
+            dvsSubsampler.setRectifyPolarties(fullRectifyOutput);
         }
     }
 
@@ -395,7 +395,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     public void setFullRectifyOutput(boolean fullRectifyOutput) {
         this.fullRectifyOutput = fullRectifyOutput;
         if (dvsSubsampler != null) {
-            dvsSubsampler.setFullRectifyOutput(fullRectifyOutput);
+            dvsSubsampler.setRectifyPolarties(fullRectifyOutput);
         }
         putBoolean("fullRectifyOutput", fullRectifyOutput);
     }

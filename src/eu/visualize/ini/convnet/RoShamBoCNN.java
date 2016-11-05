@@ -27,6 +27,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.SpikeSound;
 
@@ -74,7 +75,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         FilterChain chain = new FilterChain(chip);
         setEnclosedFilterChain(chain);
         apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, statistics);
-    }
+     }
 
     @Override
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -90,6 +91,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
 
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
+        chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, statistics);
         super.setFilterEnabled(yes);
         if (!yes) {
             closeSerial();
@@ -416,6 +418,8 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                         log.warning(ex.toString());
                     }
                 }
+            }else if(evt.getPropertyName()==AEViewer.EVENT_FILEOPEN){
+                reset();
             }
         }
 

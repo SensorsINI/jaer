@@ -121,6 +121,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         try {
             apsDvsNet.loadFromXMLFile(c.getSelectedFile());
             dvsSubsampler = new DvsSubsamplerToFrame(apsDvsNet.inputLayer.dimx, apsDvsNet.inputLayer.dimy, getDvsColorScale());
+            dvsSubsampler.setRectifyPolarties(rectifyPolarities);
         } catch (Exception ex) {
             Logger.getLogger(DavisDeepLearnCnnProcessor.class.getName()).log(Level.SEVERE, null, ex);
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file, caught exception " + ex + ". See console for logging.", "Bad network file", JOptionPane.WARNING_MESSAGE);
@@ -193,11 +194,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             for (BasicEvent e : in) {
                 lastProcessedEventTimestamp = e.getTimestamp();
                 PolarityEvent p = (PolarityEvent) e;
-                if(rectifyPolarities){
-                    if(p.polarity==PolarityEvent.Polarity.Off){
-                        p.polarity=PolarityEvent.Polarity.On;
-                    }
-                }
+                
                 if (dvsSubsampler != null) {
                     dvsSubsampler.addEvent(p, sizeX, sizeY);
                 }
@@ -245,6 +242,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                     apsDvsNet.setZeroPadding(zeroPadding); // must set manually since net doesn't know option kept here.
                     apsDvsNet.setNormalizeDVSForZsNullhop(normalizeDVSForZsNullhop); // must set manually since net doesn't know option kept here.
                     dvsSubsampler = new DvsSubsamplerToFrame(apsDvsNet.inputLayer.dimx, apsDvsNet.inputLayer.dimy, getDvsColorScale());
+                    dvsSubsampler.setRectifyPolarties(rectifyPolarities);
                 } catch (IOException ex) {
                     Logger.getLogger(DavisDeepLearnCnnProcessor.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -652,5 +650,8 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     public void setRectifyPolarities(boolean rectifyPolarities) {
         this.rectifyPolarities = rectifyPolarities;
         putBoolean("rectifyPolarities",rectifyPolarities);
+        if(dvsSubsampler!=null){
+            dvsSubsampler.setRectifyPolarties(rectifyPolarities);
+        }
     }
 }

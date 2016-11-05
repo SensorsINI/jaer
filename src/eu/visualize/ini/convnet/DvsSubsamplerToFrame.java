@@ -36,7 +36,7 @@ public class DvsSubsamplerToFrame {
     private boolean cleared = true;
     private int lastIntervalUs = 0;
     private float sparsity = 1;  // computed when frame is normalized
-    private boolean fullRectifyOutput=false;
+    private boolean rectifyPolarties=false;
 
     /**
      * Makes a new DvsSubsamplingTimesliceConvNetInput
@@ -59,7 +59,7 @@ public class DvsSubsamplerToFrame {
 
     public void clear() {
         Arrays.fill(eventSum, 0);
-        Arrays.fill(pixmap, fullRectifyOutput?0:GRAY_LEVEL);
+        Arrays.fill(pixmap, rectifyPolarties?0:GRAY_LEVEL);
         accumulatedEventCount = 0;
         mostOffCount = Integer.MAX_VALUE;
         mostOnCount = Integer.MIN_VALUE;
@@ -131,14 +131,14 @@ public class DvsSubsamplerToFrame {
             throw new RuntimeException("index out of bounds for event " + e.toString() + " with srcWidth=" + srcWidth + " srcHeight=" + srcHeight);
         }
         int sum = eventSum[k];
-        sum += fullRectifyOutput? 1: (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
+        sum += rectifyPolarties? 1: (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
         if (sum > mostOnCount) {
             mostOnCount = sum;
         } else if (sum < mostOffCount) {
             mostOffCount = sum;
         }
         eventSum[k] = sum; // eventSum contains raw integer signed event count
-        float pmv = (fullRectifyOutput?0:GRAY_LEVEL) + ((sum * colorScaleRecip) / 2);
+        float pmv = (rectifyPolarties?0:GRAY_LEVEL) + ((sum * colorScaleRecip) / 2);
         if (pmv > 1) {
             pmv = 1;
         } else if (pmv < 0) {
@@ -293,7 +293,9 @@ public class DvsSubsamplerToFrame {
         if (sig < 0.1f / 255.0f) {
             sig = 0.1f / 255.0f;  // restrict sigma to reasonable range
         }
-        float mean_png_gray = 127f / 255;  // pixels with count zero should end up with this 0-1 range value so that they come out to 127 in PNG file range of 0-255
+        // if rectifyPolarties is false, pixels with count zero should end up with this 0-1 range value so that they come out to 127 in PNG file range of 0-255
+        // if rectifyPolarties is true, pixels with zero count should end up with zero.
+        float mean_png_gray = rectifyPolarties?0: 127f / 255;  
         float range = 6 * sig, halfRange = 3 * sig;
         float rangenew = 1;
         int nonZeroCount=0;
@@ -301,7 +303,7 @@ public class DvsSubsamplerToFrame {
         // and pixels with +3sigma or larger positive count go to 1. each count contributes +/- 1/6sigma to pixmap.
         for (int i = 0; i < n; i++) {
             if (eventSum[i] == 0) {
-                pixmap[i] = mean_png_gray;
+                pixmap[i] =  mean_png_gray;
             } else {
                 nonZeroCount++;
                 float f = (eventSum[i] - (-halfRange)) * rangenew / range;
@@ -325,20 +327,20 @@ public class DvsSubsamplerToFrame {
     }
 
     /**
-     * @return the fullRectifyOutput
+     * @return the rectifyPolarties
      */
-    public boolean isFullRectifyOutput() {
-        return fullRectifyOutput;
+    public boolean isRectifyPolarties() {
+        return rectifyPolarties;
     }
 
     /**
      * True: Events of both ON and OFF type produce positive pixel values; starting frame is set to 0. 
      * <br>
      * False: Events produce negative (for OFF events) and positive (for ON events); starting frame is set to 0.5.
-     * @param fullRectifyOutput the fullRectifyOutput to set
+     * @param rectifyPolarties the rectifyPolarties to set
      */
-    public void setFullRectifyOutput(boolean fullRectifyOutput) {
-        this.fullRectifyOutput = fullRectifyOutput;
+    public void setRectifyPolarties(boolean rectifyPolarties) {
+        this.rectifyPolarties = rectifyPolarties;
     }
 
     
