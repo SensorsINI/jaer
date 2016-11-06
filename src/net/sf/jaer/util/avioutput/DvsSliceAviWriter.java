@@ -405,7 +405,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             + "[-writedvssliceonapsframe=false] [-writetimecodefile=true] "
             + "[-numevents=2000] [-rectify=false] [-normalize=true] [-showoutput=true]  "
             + "inputFile.aedat [outputfile.avi]"
-            + ""
+            + "\n"
+            + "Note arguments values are assigned with =, not space"
+            + "\n"
             + "If outputfile is not provided its name is generated from the input file with appended .avi";
 
     public static void main(String[] args) {
@@ -452,7 +454,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             Constructor<AEChip> constructor = chipClass.getConstructor();
             chip = constructor.newInstance((java.lang.Object[]) null);
         } catch (Exception ex) {
-            log.warning(ex.toString());
+            System.err.println("Could not construct instance of aechip=" + chipname + ": " + ex.toString());
             System.exit(1);
         }
 
@@ -462,13 +464,10 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         AEPacketRaw aeRaw = null;
         DvsSliceAviWriter writer = new DvsSliceAviWriter(chip);
 
-        writer.setCloseOnRewind(
-                true);
-        writer.getSupport()
-                .addPropertyChangeListener(writer);
+        writer.setCloseOnRewind(true);
+        writer.getSupport().addPropertyChangeListener(writer);
         // handle options
-        if (opt.getSet()
-                .isSet("dimx")) {
+        if (opt.getSet().isSet("dimx")) {
             try {
                 int n = Integer.parseInt(opt.getSet().getOption("dimx").getResultValue(0));
                 writer.setDimx(n);
@@ -478,8 +477,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             }
         }
 
-        if (opt.getSet()
-                .isSet("dimy")) {
+        if (opt.getSet().isSet("dimy")) {
             try {
                 int n = Integer.parseInt(opt.getSet().getOption("dimy").getResultValue(0));
                 writer.setDimy(n);
@@ -489,8 +487,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             }
         }
 
-        if (opt.getSet()
-                .isSet("quality")) {
+        if (opt.getSet().isSet("quality")) {
             try {
                 float f = Float.parseFloat(opt.getSet().getOption("quality").getResultValue(0));
                 writer.setCompressionQuality(f);
@@ -500,8 +497,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             }
         }
 
-        if (opt.getSet()
-                .isSet("format")) {
+        if (opt.getSet().isSet("format")) {
             try {
                 String type = (opt.getSet().getOption("format").getResultValue(0));
                 VideoFormat format = VideoFormat.valueOf(type.toUpperCase());
@@ -511,8 +507,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             }
         }
 
-        if (opt.getSet()
-                .isSet("framerate")) {
+        if (opt.getSet().isSet("framerate")) {
             try {
                 int n = Integer.parseInt(opt.getSet().getOption("framerate").getResultValue(0));
                 writer.setFrameRate(n);
@@ -522,8 +517,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             }
         }
 
-        if (opt.getSet()
-                .isSet("grayscale")) {
+        if (opt.getSet().isSet("grayscale")) {
             try {
                 int n = Integer.parseInt(opt.getSet().getOption("grayscale").getResultValue(0));
                 writer.setGrayScale(n);
@@ -533,20 +527,17 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             }
         }
 
-        if (opt.getSet()
-                .isSet("writedvssliceonapsframe")) {
+        if (opt.getSet().isSet("writedvssliceonapsframe")) {
             boolean b = Boolean.parseBoolean(opt.getSet().getOption("writedvssliceonapsframe").getResultValue(0));
             writer.setWriteDvsSliceImageOnApsFrame(b);
         }
 
-        if (opt.getSet()
-                .isSet("writetimecodefile")) {
+        if (opt.getSet().isSet("writetimecodefile")) {
             boolean b = Boolean.parseBoolean(opt.getSet().getOption("writetimecodefile").getResultValue(0));
             writer.setWriteDvsSliceImageOnApsFrame(b);
         }
 
-        if (opt.getSet()
-                .isSet("numevents")) {
+        if (opt.getSet().isSet("numevents")) {
             try {
                 int n = Integer.parseInt(opt.getSet().getOption("numevents").getResultValue(0));
                 writer.setDvsMinEvents(n);
@@ -556,20 +547,17 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             }
         }
 
-        if (opt.getSet()
-                .isSet("rectify")) {
+        if (opt.getSet().isSet("rectify")) {
             boolean b = Boolean.parseBoolean(opt.getSet().getOption("rectify").getResultValue(0));
             writer.setFullRectifyOutput(b);
         }
 
-        if (opt.getSet()
-                .isSet("normalize")) {
+        if (opt.getSet().isSet("normalize")) {
             boolean b = Boolean.parseBoolean(opt.getSet().getOption("normalize").getResultValue(0));
             writer.setNormalizeFrame(b);
         }
 
-        if (opt.getSet()
-                .isSet("showoutput")) {
+        if (opt.getSet().isSet("showoutput")) {
             boolean b = Boolean.parseBoolean(opt.getSet().getOption("showoutput").getResultValue(0));
             writer.setShowOutput(b);
         }
@@ -631,12 +619,17 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             }
         }
 
-        log.info(
-                "Successfully wrote file " + outfile);
-        System.out.println(
-                "Successfully wrote file " + outfile);
-        System.exit(
-                0);
+        log.info(String.format("Settings: aechip=%s\ndimx=%d dimy=%d quality=%f format=%s framerate=%d grayscale=%d\n"
+                + "writedvssliceonapsframe=%s writetimecodefile=%s\n"
+                + "numevents=%d rectify=%s normalize=%s showoutput=%s",
+                chipname,writer.getDimx(),writer.getDimy(),
+                writer.getCompressionQuality(),writer.getFormat().toString(),
+                writer.getFrameRate(),writer.getGrayScale(),writer.isWriteDvsSliceImageOnApsFrame(),
+                writer.isWriteTimecodeFile(),writer.getDvsMinEvents(),writer.isFullRectifyOutput(), writer.isFullRectifyOutput(),
+                writer.isShowOutput()));
+        log.info("Successfully wrote file " + outfile);
+        System.out.println("Successfully wrote file " + outfile);
+        System.exit(0);
     }
 
 }
