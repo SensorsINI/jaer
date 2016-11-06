@@ -654,4 +654,24 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             dvsSubsampler.setRectifyPolarties(rectifyPolarities);
         }
     }
+
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes); 
+        if(!yes){
+            cleanup();
+        }
+    }
+    
+    
+
+    @Override
+    public synchronized void cleanup() {
+        super.cleanup();
+        if(showActivations && apsDvsNet!=null ){
+            apsDvsNet.cleanup();
+        }
+    }
+    
+    
 }

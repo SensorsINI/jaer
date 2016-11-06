@@ -148,6 +148,14 @@ public class DvsSubsamplerToFrame {
         accumulatedEventCount++;
 
     }
+    
+    /** Returns value of resulting pixmap after normalization for pixels with zero net event count
+     * 
+     * @return rectifyPolarties?0: 127f / 255;
+     */
+    public float getZeroCountPixelValue(){
+        return rectifyPolarties?0: 127f / 255;
+    }
 
     /**
      * Returns the float value of the histogram clipped to 0-1 range and scaled
@@ -294,10 +302,10 @@ public class DvsSubsamplerToFrame {
             sig = 0.1f / 255.0f;  // restrict sigma to reasonable range
         }
         // if rectifyPolarties is false, pixels with count zero should end up with this 0-1 range value so that they come out to 127 in PNG file range of 0-255
-        // if rectifyPolarties is true, pixels with zero count should end up with zero.
-        float mean_png_gray = rectifyPolarties?0: 127f / 255;  
-        float range = 6 * sig, halfRange = 3 * sig;
-        float rangenew = 1;
+        // if rectifyPolarties is true, pixels with zero count should end up with zero, and we use only 3 sigma range
+        final float mean_png_gray = rectifyPolarties?0: 127f / 255;  
+        final float range = rectifyPolarties? 3*sig:6 * sig, halfRange = rectifyPolarties?0:3*sig;
+        final float rangenew = 1;
         int nonZeroCount=0;
         //Now pixels with zero count go to 127/255, pixels with -3sigma or larger negative count go to 0, 
         // and pixels with +3sigma or larger positive count go to 1. each count contributes +/- 1/6sigma to pixmap.
@@ -306,7 +314,9 @@ public class DvsSubsamplerToFrame {
                 pixmap[i] =  mean_png_gray;
             } else {
                 nonZeroCount++;
-                float f = (eventSum[i] - (-halfRange)) * rangenew / range;
+                // rectifyPolarties=false: shift up by 3 sigma and divide by 6 sigma to get in range 0-1
+                // rectifyPolarties=true: don't shift (already origin at zero) and divide by 3 sigma to get in range 0-1
+                float f = (eventSum[i] + halfRange) * rangenew / range; 
                 if (f > 1) {
                     f = 1;
                 } else if (f < 0) {

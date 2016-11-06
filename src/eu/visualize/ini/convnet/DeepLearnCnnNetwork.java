@@ -193,7 +193,7 @@ public class DeepLearnCnnNetwork {
         return outputLayer.activations;
     }
 
-    void drawActivations() {
+    public void drawActivations() {
         checkActivationsFrame();
         if (layers == null) {
             return;
@@ -375,6 +375,8 @@ public class DeepLearnCnnNetwork {
         public void drawActivations() {
 
         }
+
+        abstract public void cleanupGraphics();
 
         /**
          * @return the visible
@@ -567,10 +569,12 @@ public class DeepLearnCnnNetwork {
 
             if (normalizeDVSForZsNullhop) {
                 subsampler.normalizeFrame(); // this option uses the same normalization to 0-1 range as in DvsSliceAVIWriter
-                final float zeroValue = 127f / 255, fullscale = 1 - zeroValue;
+                // note that if rectifyPolarties is true, then subsampler will create 0-1 pixmap with zero-event pixels having value 0
+                final float zeroValue =  subsampler.getZeroCountPixelValue(), fullscale = 1 - zeroValue;
                 for (int y = 0; y < dimy; y++) {
                     for (int x = 0; x < dimy; x++) {
-                        // range is 0-1 in subsampler after normalization; move it to range -1 to 1. Zero count pixels have value 127/255.
+                        // rectifyPolarties=false: range is 0-1 in subsampler after normalization; move it to range -1 to 1. Zero count pixels have value 127/255.
+                        // rectifyPolarties=true: range is 0-1 in subsampler, zero-count pixels have value 0.
                         float v = (subsampler.getValueAtPixel(x, y) - zeroValue) / fullscale;
                         v = debugNet(v, x, y);
                         activations[o(x, dimy - y - 1)] = v;
@@ -578,11 +582,10 @@ public class DeepLearnCnnNetwork {
                 }
             } else {
                 subsampler.normalizeFrame(); // this option uses the same normalization to 0-1 range as in DvsSliceAVIWriter
-                final float zeroValue = 127f / 255, fullscale = 1 - zeroValue;
                 for (int y = 0; y < dimy; y++) {
                     for (int x = 0; x < dimy; x++) {
                         // range is 0-1 in subsampler after normalization; just leave it there. Zero count pixels have value 127/255 in case subsampler does not rectify, and zero if it does.
-                        float v = (subsampler.getValueAtPixel(x, y) ) ;
+                        float v = (subsampler.getValueAtPixel(x, y));
                         v = debugNet(v, x, y);
                         activations[o(x, dimy - y - 1)] = v;
                     }
@@ -770,6 +773,11 @@ public class DeepLearnCnnNetwork {
             }
             return v;
         }
+
+        @Override
+        synchronized public void cleanupGraphics() {
+            imageDisplay = null;
+        }
     }
 
     /**
@@ -836,7 +844,7 @@ public class DeepLearnCnnNetwork {
         private int activationsLength;
         private ImageDisplay[] activationDisplays = null;
         private ImageDisplay[][] kernelDisplays = null;
-        private int warningCountMax=10;
+        private int warningCountMax = 10;
 
         private ActivationFunction activationFunction = ActivationFunction.Undefined; // default is the sigmoid, the only choice in DeepLearnToolbox
 
@@ -930,12 +938,12 @@ public class DeepLearnCnnNetwork {
                 log.warning("input.activations==null");
                 return;
             }
-            if ((inputLayer.activations.length % nInputMaps) != 0  && warningCountMax-->0) {
+            if ((inputLayer.activations.length % nInputMaps) != 0 && warningCountMax-- > 0) {
                 log.warning("input.activations.length=" + inputLayer.activations.length + " which is not divisible by nInputMaps=" + nInputMaps);
             }
             inputMapLength = inputLayer.activations.length / nInputMaps; // for computing indexing to input
             double sqrtInputMapLength = Math.sqrt(inputMapLength);
-            if (Math.IEEEremainder(sqrtInputMapLength, 1) != 0 && warningCountMax-->0) {
+            if (Math.IEEEremainder(sqrtInputMapLength, 1) != 0 && warningCountMax-- > 0) {
                 log.warning("input map is not square; Math.rint(sqrtInputMapLength)=" + Math.rint(sqrtInputMapLength));
             }
             nKernels = nInputMaps * nOutputMaps;
@@ -949,7 +957,7 @@ public class DeepLearnCnnNetwork {
             activationsLength = outputMapLength * nOutputMaps;
             kernelWeightsPerOutputMap = singleKernelLength * nOutputMaps;
 
-            if (nOutputMaps != biases.length && warningCountMax-->0) {
+            if (nOutputMaps != biases.length && warningCountMax-- > 0) {
                 log.warning("nOutputMaps!=biases.length: " + nOutputMaps + "!=" + biases.length);
             }
 
@@ -1107,6 +1115,12 @@ public class DeepLearnCnnNetwork {
             return (outputMap * outputMapLength) + (outputMapDim * x) + y; //(outputMapDim-y-1);
         }
 
+        @Override
+        synchronized public void cleanupGraphics() {
+            activationDisplays=null;
+            kernelDisplays=null;
+        }
+        
         @Override
         public void drawActivations() {
             if (!isVisible() || (activations == null)) {
@@ -1274,6 +1288,11 @@ public class DeepLearnCnnNetwork {
         // output index function
         final int o(int map, int x, int y) {
             return (map * outputMapLength) + (x * outputMapDim) + y;
+        }
+
+        @Override
+        synchronized public void cleanupGraphics() {
+            activationDisplays = null;
         }
 
         @Override
@@ -1456,6 +1475,11 @@ public class DeepLearnCnnNetwork {
             gl.glColor4fv(ca, 0);
             OutputOrInnerProductFullyConnectedLayer.this.annotateHistogram(gl, width, height);
             gl.glPopAttrib();
+        }
+
+        @Override
+        synchronized public void cleanupGraphics() {
+            imageDisplay = null;
         }
 
         @Override
@@ -1878,6 +1902,17 @@ public class DeepLearnCnnNetwork {
 //        }
         setXmlFilename(f.toString());
 
+        cleanup();
+        networkRanOnce = false;
+
+        log.info(toString());
+    }
+
+    /**
+     * Close extra graphics windows and dispose of them
+     *
+     */
+    synchronized public void cleanup() {
         if (activationsFrame != null) {
             activationsFrame.dispose();
             activationsFrame = null;
@@ -1886,9 +1921,9 @@ public class DeepLearnCnnNetwork {
             kernelsFrame.dispose();
             kernelsFrame = null;
         }
-        networkRanOnce = false;
-
-        log.info(toString());
+        for(Layer l:layers){
+            l.cleanupGraphics();
+        }
     }
 
     @Override
