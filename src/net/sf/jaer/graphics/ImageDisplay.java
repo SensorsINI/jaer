@@ -276,10 +276,10 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     public void init(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
 
-        log.info("OpenGL implementation is: " + gl.getClass().getName() + "\nGL_VENDOR: "
-                + gl.glGetString(GL.GL_VENDOR) + "\nGL_RENDERER: " + gl.glGetString(GL.GL_RENDERER) + "\nGL_VERSION: "
-                + gl.glGetString(GL.GL_VERSION) // + "\nGL_EXTENSIONS: " + gl.glGetString(GL.GL_EXTENSIONS)
-        );
+//        log.info("OpenGL implementation is: " + gl.getClass().getName() + "\nGL_VENDOR: "
+//                + gl.glGetString(GL.GL_VENDOR) + "\nGL_RENDERER: " + gl.glGetString(GL.GL_RENDERER) + "\nGL_VERSION: "
+//                + gl.glGetString(GL.GL_VERSION) // + "\nGL_EXTENSIONS: " + gl.glGetString(GL.GL_EXTENSIONS)
+//        );
         final float glVersion = Float.parseFloat(gl.glGetString(GL.GL_VERSION).substring(0, 3));
         if (glVersion < 1.3f) {
             log.warning("\n\n*******************\nOpenGL version "
@@ -299,7 +299,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         gl.glRasterPos3f(0, 0, 0);
         gl.glColor3f(1, 1, 1);
 
-        textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getFontSize()), true, true);
+        if(textRenderer==null) textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getFontSize()), true, true);
 
         checkGLError(gl, "ImageDisplay, after init");
     }
@@ -682,7 +682,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
 //        log.info("height=" + height + " width=" + width + " fillsHorizontally=" + fillsHorizontally + " fillsVertically=" + fillsVertically + " newscale=" + newscale);
         setDefaultProjection(gl, drawable); // this sets orthographic projection so that chip pixels are scaled to the drawable area
         gl.glViewport(0, 0, width, height);
-        repaint(300);
+        repaint(1000);
     }
 
     /**
@@ -727,7 +727,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
             borders.leftRight = b;
             borders.bottomTop = bb;
             g.glOrtho(-b, sizeX + b, -bb, (sizeY + bb), ZCLIP, -ZCLIP); // clip area has same aspect ratio as screen!
-            log.info("b border=" + b + " pixels, bb border=" + bb + " pixels");
+//            log.info("b border=" + b + " pixels, bb border=" + bb + " pixels");
         } else { //wide window, chip/array fills window vertically
             glScale = (h - (2 * borderPixels)) / sizeY; // number of screen pixels in drawing area (not counting borders) per chip/array pixels
             float b = borderPixels / glScale; // equiv number of chip/array pixels occupied by each horizontal border
@@ -746,7 +746,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
             borders.leftRight = bb;
             borders.bottomTop = b;
             g.glOrtho(-bb, (sizeX + bb), -b, sizeY + b, ZCLIP, -ZCLIP);
-            log.info("b border=" + b + " pixels, bb border=" + bb + " pixels");
+//            log.info("b border=" + b + " pixels, bb border=" + bb + " pixels");
         }
         g.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         checkGLError(g, "after setDefaultProjection");
