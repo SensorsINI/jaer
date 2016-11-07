@@ -36,7 +36,7 @@ public class DvsSubsamplerToFrame {
     private boolean cleared = true;
     private int lastIntervalUs = 0;
     private float sparsity = 1;  // computed when frame is normalized
-    private boolean rectifyPolarties=false;
+    private boolean rectifyPolarties = false;
 
     /**
      * Makes a new DvsSubsamplingTimesliceConvNetInput
@@ -59,7 +59,7 @@ public class DvsSubsamplerToFrame {
 
     public void clear() {
         Arrays.fill(eventSum, 0);
-        Arrays.fill(pixmap, rectifyPolarties?0:GRAY_LEVEL);
+        Arrays.fill(pixmap, rectifyPolarties ? 0 : GRAY_LEVEL);
         accumulatedEventCount = 0;
         mostOffCount = Integer.MAX_VALUE;
         mostOnCount = Integer.MIN_VALUE;
@@ -131,39 +131,60 @@ public class DvsSubsamplerToFrame {
             throw new RuntimeException("index out of bounds for event " + e.toString() + " with srcWidth=" + srcWidth + " srcHeight=" + srcHeight);
         }
         int sum = eventSum[k];
-        sum += rectifyPolarties? 1: (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
+        sum += rectifyPolarties ? 1 : (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
+        // clip count at full scale
+        if (sum > colorScale) {
+            sum = colorScale;
+        } else if (sum < -colorScale) {
+            sum = colorScale;
+        }
+        // keep track of largest and smallest count
         if (sum > mostOnCount) {
             mostOnCount = sum;
         } else if (sum < mostOffCount) {
             mostOffCount = sum;
         }
         eventSum[k] = sum; // eventSum contains raw integer signed event count
-        float pmv = (rectifyPolarties?0:GRAY_LEVEL) + ((sum * colorScaleRecip) / 2);
+        // compute the pixmap value (pmv) using gray level and colorScale
+        float pmv = 0;
+        if (!rectifyPolarties) {
+            pmv = GRAY_LEVEL + (sum * colorScaleRecip) / 2; // full scale is +/- colorScale events
+        } else {
+            pmv = sum * colorScaleRecip; // full scale is just exactly colorScale events
+        }
         if (pmv > 1) {
             pmv = 1;
         } else if (pmv < 0) {
             pmv = 0;
         }
-        pixmap[k] = pmv; // pixmap contains the scaled event count centered on 0.5 and clipped to 0-1 range
+        // pixmap contains the scaled event count clipped to 0-1 range and either starting at zero or centered on 0.5, depending on rectifyPolarties
+        pixmap[k] = pmv;
         accumulatedEventCount++;
 
     }
-    
-    /** Returns value of resulting pixmap after normalization for pixels with zero net event count
-     * 
+
+    /**
+     * Returns value of resulting pixmap after normalization for pixels with
+     * zero net event count
+     *
      * @return rectifyPolarties?0: 127f / 255;
      */
-    public float getZeroCountPixelValue(){
-        return rectifyPolarties?0: 127f / 255;
+    public float getZeroCountPixelValue() {
+        return rectifyPolarties ? 0 : 127f / 255;
     }
 
     /**
      * Returns the float value of the histogram clipped to 0-1 range and scaled
-     * by colorScale
+     * by colorScale, or normalized. To have these values normalized, call
+     * normalizeFrame.
+     *
+     * Returns the scaled event count clipped to 0-1 range and either starting
+     * at zero or centered on 0.5, depending on rectifyPolarties first.
      *
      * @param x
      * @param y
      * @return the value of the subsampled map
+     * @see #normalizeFrame()
      */
     public float getValueAtPixel(int x, int y) {
         return pixmap[getIndex(x, y)];
@@ -285,38 +306,44 @@ public class DvsSubsamplerToFrame {
     public void normalizeFrame() {
         // net trained gets 0-1 range inputs, so make our input so
         int n = eventSum.length;
-        float sum = 0, var = 0;
+        float sum = 0, var = 0, count = 0;
+        // sum and average only non-zero pixels
         for (int i = 0; i < n; i++) {
-            sum += eventSum[i];
+            if (eventSum[i] != 0) {
+                sum += eventSum[i];
+                count++;
+            }
         }
-        float mean = sum / n; // compute mean of all signed event counts
+        float mean = sum / count; // compute mean of all signed event counts
 
         for (int i = 0; i < n; i++) {
-            float f = (eventSum[i] - mean);
-            float vari = f * f;
-            var += vari;
+            if (eventSum[i] != 0) {
+                float f = (eventSum[i] - mean);
+                var += f*f;
+            }
         }
-        var = (var / n);
+        var = (var / count);
         float sig = (float) Math.sqrt(var); // compute 1-sigma of signed counts
         if (sig < 0.1f / 255.0f) {
             sig = 0.1f / 255.0f;  // restrict sigma to reasonable range
         }
         // if rectifyPolarties is false, pixels with count zero should end up with this 0-1 range value so that they come out to 127 in PNG file range of 0-255
         // if rectifyPolarties is true, pixels with zero count should end up with zero, and we use only 3 sigma range
-        final float mean_png_gray = rectifyPolarties?0: 127f / 255;  
-        final float range = rectifyPolarties? 3*sig:6 * sig, halfRange = rectifyPolarties?0:3*sig;
+        final float numSDevs=1;
+        final float mean_png_gray = rectifyPolarties ? 0 : 127f / 255;
+        final float range = rectifyPolarties ? numSDevs * sig : 2*numSDevs * sig, halfRange = rectifyPolarties ? 0 : numSDevs * sig;
         final float rangenew = 1;
-        int nonZeroCount=0;
+        int nonZeroCount = 0;
         //Now pixels with zero count go to 127/255, pixels with -3sigma or larger negative count go to 0, 
         // and pixels with +3sigma or larger positive count go to 1. each count contributes +/- 1/6sigma to pixmap.
         for (int i = 0; i < n; i++) {
             if (eventSum[i] == 0) {
-                pixmap[i] =  mean_png_gray;
+                pixmap[i] = mean_png_gray;
             } else {
                 nonZeroCount++;
                 // rectifyPolarties=false: shift up by 3 sigma and divide by 6 sigma to get in range 0-1
                 // rectifyPolarties=true: don't shift (already origin at zero) and divide by 3 sigma to get in range 0-1
-                float f = (eventSum[i] + halfRange) * rangenew / range; 
+                float f = (eventSum[i] + halfRange) * rangenew / range;
                 if (f > 1) {
                     f = 1;
                 } else if (f < 0) {
@@ -325,11 +352,13 @@ public class DvsSubsamplerToFrame {
                 pixmap[i] = f;
             }
         }
-        sparsity=(float)(n-nonZeroCount)/n;
+        sparsity = (float) (n - nonZeroCount) / n;
     }
 
     /**
-     * Returns the computed sparsity (fraction of nonzero pixels) if normalizeFrame is called beforehand.
+     * Returns the computed sparsity (fraction of nonzero pixels) if
+     * normalizeFrame is called beforehand.
+     *
      * @return the sparsity
      */
     public float getSparsity() {
@@ -344,15 +373,16 @@ public class DvsSubsamplerToFrame {
     }
 
     /**
-     * True: Events of both ON and OFF type produce positive pixel values; starting frame is set to 0. 
+     * True: Events of both ON and OFF type produce positive pixel values;
+     * starting frame is set to 0.
      * <br>
-     * False: Events produce negative (for OFF events) and positive (for ON events); starting frame is set to 0.5.
+     * False: Events produce negative (for OFF events) and positive (for ON
+     * events); starting frame is set to 0.5.
+     *
      * @param rectifyPolarties the rectifyPolarties to set
      */
     public void setRectifyPolarties(boolean rectifyPolarties) {
         this.rectifyPolarties = rectifyPolarties;
     }
-
-    
 
 }
