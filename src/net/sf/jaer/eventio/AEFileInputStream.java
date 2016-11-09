@@ -214,12 +214,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         /* Here is the logic:
          * The chip and extractor will be updated unless the chip changed such as by the user.
          * It makes the chip and the extractor are alwayse associated with each other. 
-        */
-        if(this.chip != LAST_CHIP) {
+         */
+        if (this.chip != LAST_CHIP) {
             LAST_CHIP = this.chip;
             LAST_EVENT_EXTRACTOR = this.chip.getEventExtractor();
         }
-        
+
         this.chip.setEventExtractor(LAST_EVENT_EXTRACTOR); // Restore the extractor, because jaer3BufferParser might change it.
         init(new FileInputStream(f));
 
@@ -290,7 +290,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             EventRaw ev = readEventForwards(); // init timestamp
             firstTimestamp = ev.timestamp;
             if (true == jaer3EnableFlg) {
-                if(fileSize <= chunkSizeBytes) {
+                if (fileSize <= chunkSizeBytes) {
                     lastTimestamp = jaer3BufferParser.getLastTimeStamp();
                 } else { //TODO, add the code to find the last time stamp of the big files
 //                    this.mapChunk((int)fileSize/chunkSizeBytes);
@@ -305,7 +305,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 ev = readEventForwards();
                 lastTimestamp = ev.timestamp;
             }
-            position(0);
             if (true == jaer3EnableFlg) {
                 jaer3BufferParser.setInFrameEvent(false);
             }
@@ -316,6 +315,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             log.warning("couldn't read first event to set starting timestamp - maybe the file is empty?");
         } catch (NonMonotonicTimeException e2) {
             log.warning("On AEInputStream.init() caught " + e2.toString());
+        }finally{
+            position(0);
         }
         log.info("initialized " + this.toString());
     }
@@ -362,6 +363,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // }
         try {
             if (position == markOut) { // TODO check exceptions here for markOut set before markIn
+                getSupport().firePropertyChange(AEInputStream.EVENT_EOF, position(), position());
                 if (repeat) {
                     rewind();
                     return readEventForwards();
@@ -786,8 +788,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                     log.warning("suppressing further warnings about NonMonotonicTimeException");
                 }
             }
-             currentStartTimestamp = e.getCurrentTimestamp();
-             mostRecentTimestamp = e.getCurrentTimestamp();
+            currentStartTimestamp = e.getCurrentTimestamp();
+            mostRecentTimestamp = e.getCurrentTimestamp();
             getSupport().firePropertyChange(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP, lastTimestamp, mostRecentTimestamp);
         } finally {
             // currentStartTimestamp = mostRecentTimestamp;
@@ -862,7 +864,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
             }
             byteBuffer.position((int) ((event * eventSizeBytes) % chunkSizeBytes));
-
 
             position = event;
         } catch (ClosedByInterruptException e3) {
@@ -1320,9 +1321,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             // log.info("ran garbage collection after mapping chunk " + chunkNumber);
         }
         // log.info("mapped chunk # "+chunkNumber+" of "+numChunks);
-        
+
         if (jaer3EnableFlg) {
-            if(jaer3BufferParser == null) {
+            if (jaer3BufferParser == null) {
                 jaer3BufferParser = new Jaer3BufferParser(byteBuffer, chip);
                 // jaer3ParseBuffer.setInBuffer(byteBuffer);
                 // jaer3ByteBuffer = jaer3ParseBuffer.extractAddrAndTs();
@@ -1334,7 +1335,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             }
         } else {
             jaer3BufferParser = null; // should call finalize method to restore the extractor
-        } 
+        }
     }
 
     /**
@@ -1424,11 +1425,11 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 jaer3EnableFlg = false;
             } else if (Math.floor(version) == 3) { // #!AEDAT-3.x
                 // TODO: need to change this code's affect to the cAER network steam data parsing.
-                if(Math.round((version - 3.0)*10) == 0) {
+                if (Math.round((version - 3.0) * 10) == 0) {
                     Jaer3BufferParser.JAER3XSHIFT = 17;
                     Jaer3BufferParser.JAER3XMASK = 0x7fff << Jaer3BufferParser.JAER3XSHIFT;
                     Jaer3BufferParser.JAER3YSHIFT = 2;
-                    Jaer3BufferParser.JAER3YMASK = 0x7fff << Jaer3BufferParser.JAER3YSHIFT;                    
+                    Jaer3BufferParser.JAER3YMASK = 0x7fff << Jaer3BufferParser.JAER3YSHIFT;
                     Jaer3BufferParser.JAER3POLSHIFT = 1;
                     Jaer3BufferParser.JAER3POLMASK = 1 << Jaer3BufferParser.JAER3POLSHIFT;
                 } else {
@@ -1483,7 +1484,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //                break;
 //            }
 //        }
-        
+
         if (c != AEDataFile.COMMENT_CHAR || flag == false) { // if it's not a comment char
             return null; // return a null header line
         }
