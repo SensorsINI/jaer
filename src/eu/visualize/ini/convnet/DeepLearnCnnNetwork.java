@@ -1749,6 +1749,7 @@ public class DeepLearnCnnNetwork {
                 layers[i] = null;
             }
         }
+        outputLayer=null;
         layers = new Layer[nLayers];
 
         for (int i = 0; i <= nLayers; i++) { // we need one more layer here (<=) to get the output layer
