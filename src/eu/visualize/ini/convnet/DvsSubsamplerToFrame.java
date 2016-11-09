@@ -329,7 +329,7 @@ public class DvsSubsamplerToFrame {
         }
         // if rectifyPolarties is false, pixels with count zero should end up with this 0-1 range value so that they come out to 127 in PNG file range of 0-255
         // if rectifyPolarties is true, pixels with zero count should end up with zero, and we use only 3 sigma range
-        final float numSDevs=1;
+        final float numSDevs=3;
         final float mean_png_gray = rectifyPolarties ? 0 : 127f / 255;
         final float range = rectifyPolarties ? numSDevs * sig : 2*numSDevs * sig, halfRange = rectifyPolarties ? 0 : numSDevs * sig;
         final float rangenew = 1;
