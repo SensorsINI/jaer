@@ -10,6 +10,7 @@ import java.io.IOException;
 import com.jogamp.opengl.GLAutoDrawable;
 import eu.seebetter.ini.chips.davis.DAVIS240C;
 import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.EOFException;
 import java.io.File;
 import java.lang.reflect.Constructor;
@@ -462,9 +463,11 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         File inpfile = new File(inpfilename);
         File outfile = new File(outfilename);
         AEPacketRaw aeRaw = null;
-        DvsSliceAviWriter writer = new DvsSliceAviWriter(chip);
 
-        writer.setCloseOnRewind(true);
+        final DvsSliceAviWriter writer = new DvsSliceAviWriter(chip);
+
+        boolean oldCloseOnRewind = writer.isCloseOnRewind();
+        writer.setCloseOnRewind(false);
         writer.getSupport().addPropertyChangeListener(writer);
         // handle options
         if (opt.getSet().isSet("dimx")) {
@@ -573,11 +576,25 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             System.exit(1);
         }
 
+        EventExtractor2D extractor = chip.getEventExtractor();
         System.out.print(String.format("Frames written: "));
-        while (writer.isWriteEnabled()) {
+
+        // need an object here to register as propertychange listener for the rewind event 
+        // generated when reading the file and getting to the end, 
+        // since the AEFileInputStream will not generate end of file exceptions
+        final WriterControl writerControl = new WriterControl();
+        PropertyChangeListener rewindListener = new PropertyChangeListener() {
+            @Override
+            public void propertyChange(PropertyChangeEvent pce) {
+                if (pce.getPropertyName() == AEInputStream.EVENT_EOF) {
+                    writerControl.end();
+                }
+            }
+        };
+        ais.getSupport().addPropertyChangeListener(rewindListener);
+        while (writerControl.writing) {
             try {
-                aeRaw = ais.readPacketByNumber(900000); // TODO fix
-                EventExtractor2D extractor = chip.getEventExtractor();
+                aeRaw = ais.readPacketByNumber(writer.getDvsMinEvents()); // read at most this many events to avoid writing duplicate frames at end of movie from start of file, which would happen automatically by
                 EventPacket cooked = extractor.extractPacket(aeRaw);
                 writer.filterPacket(cooked);
                 int numFramesWritten = writer.getFramesWritten();
@@ -589,24 +606,6 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                     }
                 }
                 lastNumFramesWritten = numFramesWritten;
-            } catch (EOFException e) {
-                if (aeRaw != null && aeRaw.getNumEvents() > 0) {
-                    log.info("reached end of file, processing last packet");
-                    EventExtractor2D extractor = chip.getEventExtractor();
-                    EventPacket cooked = extractor.extractPacket(aeRaw);
-                    writer.filterPacket(cooked);
-                }
-                try {
-                    ais.close();
-                    writer.setShowOutput(false);
-                    writer.doCloseFile();
-                    log.info("wrote file " + outfile);
-                    System.out.println("wrote file " + outfile);
-                    System.exit(0);
-
-                } catch (IOException ioe) {
-                    System.err.println("IOException on close after EOF: " + ioe.getMessage());
-                }
             } catch (IOException e) {
                 e.printStackTrace();
                 try {
@@ -620,11 +619,20 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                     System.exit(1);
 
                 } catch (Exception e3) {
-                    e3.printStackTrace();
+                    System.err.println("Exception closing file: " + e3.getMessage());
+                    System.exit(1);
                 }
             }
-        }
+        } // end of loop to read and write file
 
+        try {
+            ais.close();
+        } catch (IOException ex) {
+            log.warning("exception closing file: " + ex.toString());
+        }
+        writer.setShowOutput(false);
+        writer.setCloseOnRewind(oldCloseOnRewind);
+        writer.doCloseFile();
         log.info(String.format("Settings: aechip=%s\ndimx=%d dimy=%d quality=%f format=%s framerate=%d grayscale=%d\n"
                 + "writedvssliceonapsframe=%s writetimecodefile=%s\n"
                 + "numevents=%d rectify=%s normalize=%s showoutput=%s",
@@ -636,6 +644,16 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         log.info("Successfully wrote file " + outfile);
         System.out.println("Successfully wrote file " + outfile);
         System.exit(0);
+    }
+
+    // stupid static class just to control writing and handle rewind event
+    static class WriterControl {
+
+        boolean writing = true;
+
+        void end() {
+            writing = false;
+        }
     }
 
 }
