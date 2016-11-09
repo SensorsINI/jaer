@@ -569,13 +569,14 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             ais = new AEFileInputStream(inpfile, chip);
             ais.getSupport().addPropertyChangeListener(writer); // get informed about rewind events
         } catch (IOException ex) {
-            Logger.getLogger(DvsSliceAviWriter.class.getName()).log(Level.SEVERE, null, ex);
+            System.err.println("Couldn't open file " + inpfile + ": " + ex.toString());
+            System.exit(1);
         }
 
         System.out.print(String.format("Frames written: "));
         while (writer.isWriteEnabled()) {
             try {
-                aeRaw = ais.readPacketByNumber(20000); // TODO fix
+                aeRaw = ais.readPacketByNumber(900000); // TODO fix
                 EventExtractor2D extractor = chip.getEventExtractor();
                 EventPacket cooked = extractor.extractPacket(aeRaw);
                 writer.filterPacket(cooked);
@@ -588,8 +589,13 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                     }
                 }
                 lastNumFramesWritten = numFramesWritten;
-
             } catch (EOFException e) {
+                if (aeRaw != null && aeRaw.getNumEvents() > 0) {
+                    log.info("reached end of file, processing last packet");
+                    EventExtractor2D extractor = chip.getEventExtractor();
+                    EventPacket cooked = extractor.extractPacket(aeRaw);
+                    writer.filterPacket(cooked);
+                }
                 try {
                     ais.close();
                     writer.setShowOutput(false);
@@ -622,10 +628,10 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         log.info(String.format("Settings: aechip=%s\ndimx=%d dimy=%d quality=%f format=%s framerate=%d grayscale=%d\n"
                 + "writedvssliceonapsframe=%s writetimecodefile=%s\n"
                 + "numevents=%d rectify=%s normalize=%s showoutput=%s",
-                chipname,writer.getDimx(),writer.getDimy(),
-                writer.getCompressionQuality(),writer.getFormat().toString(),
-                writer.getFrameRate(),writer.getGrayScale(),writer.isWriteDvsSliceImageOnApsFrame(),
-                writer.isWriteTimecodeFile(),writer.getDvsMinEvents(),writer.isFullRectifyOutput(), writer.isFullRectifyOutput(),
+                chipname, writer.getDimx(), writer.getDimy(),
+                writer.getCompressionQuality(), writer.getFormat().toString(),
+                writer.getFrameRate(), writer.getGrayScale(), writer.isWriteDvsSliceImageOnApsFrame(),
+                writer.isWriteTimecodeFile(), writer.getDvsMinEvents(), writer.isFullRectifyOutput(), writer.isFullRectifyOutput(),
                 writer.isShowOutput()));
         log.info("Successfully wrote file " + outfile);
         System.out.println("Successfully wrote file " + outfile);
