@@ -26,6 +26,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
@@ -59,8 +60,8 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     /**
      * output units
      */
-    private static final int DECISION_PAPER = 0, DECISION_SCISSORS = 1, DECISION_ROCK = 2;
-    private static final String[] DECISION_STRINGS = {"Paper", "Scissors", "Rock"};
+    private static final int DECISION_PAPER = 0, DECISION_SCISSORS = 1, DECISION_ROCK = 2, DECISION_BACKGROUND = 3; 
+    private static final String[] DECISION_STRINGS = {"Paper", "Scissors", "Rock", "Background"};
 
     public RoShamBoCNN(AEChip chip) {
         super(chip);
@@ -319,7 +320,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
 
     private class Statistics implements PropertyChangeListener {
 
-        final int NUM_CLASSES = 3;
+        final int NUM_CLASSES = 4;
         int totalCount, totalCorrect, totalIncorrect;
         int[] correct = new int[NUM_CLASSES], incorrect = new int[NUM_CLASSES], count = new int[NUM_CLASSES];
         int dvsTotalCount, dvsCorrect, dvsIncorrect;
@@ -361,7 +362,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
             StringBuilder sb = new StringBuilder("Decision statistics: ");
             try {
                 for (int i = 0; i < NUM_CLASSES; i++) {
-                    sb.append(String.format("%s: %d (%.1f%%)  ", DECISION_STRINGS[i], decisionCounts[i], (100 * (float) decisionCounts[i]) / totalCount));
+                    sb.append(String.format("    %s: %d (%.1f%%) \n", DECISION_STRINGS[i], decisionCounts[i], (100 * (float) decisionCounts[i]) / totalCount));
                 }
             } catch (ArrayIndexOutOfBoundsException e) {
                 sb.append(" out of bounds exception; did you load valid CNN?");
@@ -409,6 +410,9 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                         case DECISION_PAPER:
                             cmd = '3';
                             break;
+                        case DECISION_BACKGROUND:
+                            cmd = '4';
+                            break;                            
                         default:
                             log.warning("maxUnit=" + maxUnit + " is not a valid network output state");
                     }
