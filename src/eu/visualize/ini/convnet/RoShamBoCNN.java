@@ -89,7 +89,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         super.resetFilter();
         statistics.reset();
     }
-
+    
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, statistics);
