@@ -363,7 +363,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // }
         try {
             if (position == markOut) { // TODO check exceptions here for markOut set before markIn
-                getSupport().firePropertyChange(AEInputStream.EVENT_EOF, position(), position());
+                getSupport().firePropertyChange(AEInputStream.EVENT_EOF, null, position());
                 if (repeat) {
                     rewind();
                     return readEventForwards();
@@ -485,7 +485,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 byteBuffer = null;
                 System.gc(); // all the byteBuffers have referred to mapped files and use up all memory, now free them
                 // since we're at end of file anyhow
-                getSupport().firePropertyChange(AEInputStream.EVENT_EOF, position(), position());
+                getSupport().firePropertyChange(AEInputStream.EVENT_EOF, null, position());
                 throw new EOFException("reached end of file");
             }
         } catch (NullPointerException npe) {
@@ -599,16 +599,16 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         try {
             if (n > 0) {
                 for (int i = 0; i < n; i++) {
-                    ev = readEventForwards();
+                    ev = readEventForwards();  // TODO since repeat is always true in existing code, then can never get null event right now TODO; fix this 
                     count++;
-                    addr[i] = ev.address;
+                    addr[i] = ev.address; // could get null pointer exception here if repeat was false
                     ts[i] = ev.timestamp;
                     currentStartTimestamp = ts[i];
                 }
             } else { // backwards
                 n = -n;
                 for (int i = 0; i < n; i++) {
-                    ev = readEventBackwards();
+                    ev = readEventBackwards(); // TODO fix for repeat = false
                     count++;
                     addr[i] = ev.address;
                     ts[i] = ev.timestamp;
