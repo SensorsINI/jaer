@@ -237,6 +237,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             File f = new File(lastApsDvsNetXMLFilename);
             if (f.exists() && f.isFile()) {
                 try {
+                    apsDvsNet = new DeepLearnCnnNetwork();
                     apsDvsNet.loadFromXMLFile(f);
                     apsDvsNet.setSoftMaxOutput(softMaxOutput); // must set manually since net doesn't know option kept here.
                     apsDvsNet.setZeroPadding(zeroPadding); // must set manually since net doesn't know option kept here.
