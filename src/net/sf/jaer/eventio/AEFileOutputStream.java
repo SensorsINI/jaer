@@ -71,6 +71,7 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 			}
 
 			chip.writeAdditionalAEFileOutputStreamHeader(this);
+			writeHeaderLine(" dataStartTimeMillis " + System.currentTimeMillis());
 
 			if (os instanceof FileOutputStream) {
 				channel = ((FileOutputStream) os).getChannel();
