@@ -63,7 +63,8 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 			writeHeaderLine(" This is a raw AE data file - do not edit");
 			writeHeaderLine(" Data format is int32 address, int32 timestamp (8 bytes total), repeated for each event");
 			writeHeaderLine(" Timestamps tick is " + AEConstants.TICK_DEFAULT_US + " us");
-			writeHeaderLine(" created " + new Date());
+			writeHeaderLine(" created " + new Date() );
+			writeHeaderLine(" Creation time System.currentTimeMillis() " + System.currentTimeMillis() );
 
 			// optionally write chip-specific info
 			if (chip.getHardwareInterface() != null) {
@@ -71,7 +72,7 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 			}
 
 			chip.writeAdditionalAEFileOutputStreamHeader(this);
-			writeHeaderLine(" dataStartTimeMillis " + System.currentTimeMillis());
+			writeHeaderLine(" DataStartTime System.currentTimeMillis() " + System.currentTimeMillis());
 
 			if (os instanceof FileOutputStream) {
 				channel = ((FileOutputStream) os).getChannel();
