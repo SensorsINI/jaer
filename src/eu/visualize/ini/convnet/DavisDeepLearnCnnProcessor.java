@@ -56,7 +56,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private boolean processDVSTimeSlices = getBoolean("processDVSTimeSlices", true);
     protected boolean addedPropertyChangeListener = false;  // must do lazy add of us as listener to chip because renderer is not there yet when this is constructed
     private int dvsMinEvents = getInt("dvsMinEvents", 10000);
-    private boolean rectifyPolarities=getBoolean("rectifyPolarities",false);
+    private boolean rectifyPolarities = getBoolean("rectifyPolarities", false);
 
     private JFrame imageDisplayFrame = null;
     public ImageDisplay inputImageDisplay;
@@ -120,6 +120,9 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         putString("lastAPSNetXMLFilename", lastApsDvsNetXMLFilename);
         try {
             apsDvsNet.loadFromXMLFile(c.getSelectedFile());
+            apsDvsNet.setSoftMaxOutput(softMaxOutput); // must set manually since net doesn't know option kept here.
+            apsDvsNet.setZeroPadding(zeroPadding); // must set manually since net doesn't know option kept here.
+            apsDvsNet.setNormalizeDVSForZsNullhop(normalizeDVSForZsNullhop); // must set manually since net doesn't know option kept here.
             dvsSubsampler = new DvsSubsamplerToFrame(apsDvsNet.inputLayer.dimx, apsDvsNet.inputLayer.dimy, getDvsColorScale());
             dvsSubsampler.setRectifyPolarties(rectifyPolarities);
         } catch (Exception ex) {
@@ -187,6 +190,9 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         }
 //        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsDvsNet on each frame in PropertyChangeListener
         // send DVS timeslice to convnet
+        if (dvsSubsampler == null) {
+            throw new RuntimeException("Null dvsSubsampler; this should not occur");
+        }
 
         if ((apsDvsNet != null)) {
             final int sizeX = chip.getSizeX();
@@ -194,7 +200,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             for (BasicEvent e : in) {
                 lastProcessedEventTimestamp = e.getTimestamp();
                 PolarityEvent p = (PolarityEvent) e;
-                
+
                 if (dvsSubsampler != null) {
                     dvsSubsampler.addEvent(p, sizeX, sizeY);
                 }
@@ -245,7 +251,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                     dvsSubsampler = new DvsSubsamplerToFrame(apsDvsNet.inputLayer.dimx, apsDvsNet.inputLayer.dimy, getDvsColorScale());
                     dvsSubsampler.setRectifyPolarties(rectifyPolarities);
                 } catch (IOException ex) {
-                    Logger.getLogger(DavisDeepLearnCnnProcessor.class.getName()).log(Level.SEVERE, null, ex);
+                    log.warning("Couldn't load the CNN from file " + f + ": got exception " + ex);
                 }
             }
         }
@@ -631,7 +637,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
      */
     public void setNormalizeDVSForZsNullhop(boolean normalizeDVSForZsNullhop) {
         this.normalizeDVSForZsNullhop = normalizeDVSForZsNullhop;
-        putBoolean("normalizeDVSForZsNullhop",normalizeDVSForZsNullhop);
+        putBoolean("normalizeDVSForZsNullhop", normalizeDVSForZsNullhop);
         if (apsDvsNet == null) {
             return;
         }
@@ -650,29 +656,26 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
      */
     public void setRectifyPolarities(boolean rectifyPolarities) {
         this.rectifyPolarities = rectifyPolarities;
-        putBoolean("rectifyPolarities",rectifyPolarities);
-        if(dvsSubsampler!=null){
+        putBoolean("rectifyPolarities", rectifyPolarities);
+        if (dvsSubsampler != null) {
             dvsSubsampler.setRectifyPolarties(rectifyPolarities);
         }
     }
 
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
-        super.setFilterEnabled(yes); 
-        if(!yes){
+        super.setFilterEnabled(yes);
+        if (!yes) {
             cleanup();
         }
     }
-    
-    
 
     @Override
     public synchronized void cleanup() {
         super.cleanup();
-        if(showActivations && apsDvsNet!=null ){
+        if (showActivations && apsDvsNet != null) {
             apsDvsNet.cleanup();
         }
     }
-    
-    
+
 }
