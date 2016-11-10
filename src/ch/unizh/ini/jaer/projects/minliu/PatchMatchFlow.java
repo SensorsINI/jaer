@@ -246,7 +246,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     // There're enough events fire on the specific block now.
                     if(spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum ) {
                         lastFireIndex[blockLocX][blockLocY] = spikeTrans[blockLocX][blockLocY].size() - 1;      
-                        result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);                          
+                        result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);  
+                        result.dx = result.dx/sliceDurationUs * 1000000;
+                        result.dy = result.dy/sliceDurationUs * 1000000;
                     }                     
                     
                     break;
@@ -257,6 +259,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     if(spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum ) {
                         lastFireIndex[blockLocX][blockLocY] = spikeTrans[blockLocX][blockLocY].size() - 1;      
                         result = minSad(x, y, tMinus2Slice, tMinus1Slice);
+                        result.dx = result.dx/sliceDurationUs * 1000000;
+                        result.dy = result.dy/sliceDurationUs * 1000000;
+
                     }
                     break;
                 case JaccardDistance:
@@ -266,6 +271,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     if(spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum ) {
                         lastFireIndex[blockLocX][blockLocY] = spikeTrans[blockLocX][blockLocY].size() - 1;      
                         result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
+                        result.dx = result.dx/sliceDurationUs * 1000000;
+                        result.dy = result.dy/sliceDurationUs * 1000000;
                     }
                     break;
                 case EventSqeDistance:                
@@ -358,8 +365,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     } 
                     break;
             }            
-            vx = result.dx * 5;
-            vy = result.dy * 5;
+            vx = result.dx;
+            vy = result.dy;
             v = (float) Math.sqrt(vx * vx + vy * vy);
             
             if (measurePerformance) {
@@ -459,84 +466,31 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         if (spikeTrans == null & subSizeX != 0 & subSizeY != 0) {
             spikeTrans = new ArrayList[subSizeX][subSizeY];
         }        
-        
-        int colPatchCnt = subSizeX/patchDimension; 
-        int rowPatchCnt = subSizeY/patchDimension;
-        
-        for(int ii = 0; ii < numSlices; ii ++) {
-            histogramsAL[ii] = new ArrayList();
-            for(int jj = 0; jj < colPatchCnt*rowPatchCnt; jj ++) {
-                int[][] patch = new int[patchDimension][patchDimension];
-                histogramsAL[ii].add(patch);
-            }
-        }  
+            if(patchDimension != 0) {
+            int colPatchCnt = subSizeX/patchDimension; 
+            int rowPatchCnt = subSizeY/patchDimension;
+
+            for(int ii = 0; ii < numSlices; ii ++) {
+                histogramsAL[ii] = new ArrayList();
+                for(int jj = 0; jj < colPatchCnt*rowPatchCnt; jj ++) {
+                    int[][] patch = new int[patchDimension][patchDimension];
+                    histogramsAL[ii].add(patch);
+                }
+            }             
+        }
+ 
         
         tMinus2SliceIdx = 0;
         tMinus1SliceIdx = 1;
         currentSliceIdx = 2;
-        assignSliceReferences();
+        if(histograms.length != 0) {
+            assignSliceReferences();           
+        }
                             
         sliceLastTs = 0;
         packetNum = 0;
         rewindFlg = true;
     }
-
-//    @Override
-//    public void annotate(GLAutoDrawable drawable) {
-//        GL2 gl = null;
-//        if (showTransformRectangle) {
-//            gl = drawable.getGL().getGL2();
-//        }
-//
-//        if (gl == null) {
-//            return;
-//        }
-//        // draw transform
-//        gl.glPushMatrix();
-//        
-//        // Use this blur rectangle to indicate where is the zero point position.
-//        gl.glColor4f(.1f, .1f, 1f, .25f);
-//        gl.glRectf(0, 0, 10, 10);
-//        
-//        gl.glLineWidth(1f);
-//        gl.glColor3f(1, 0, 0);
-//        
-//        if(chip != null) {
-//            sx2 = chip.getSizeX() / 2;
-//            sy2 = chip.getSizeY() / 2;
-//        } else {
-//            sx2 = 0;
-//            sy2 = 0;
-//        }
-//        // translate and rotate
-//        if(lastTransform != null) {
-//            gl.glTranslatef(lastTransform.translationPixels.x + sx2, lastTransform.translationPixels.y + sy2, 0);
-//            gl.glRotatef((float) ((lastTransform.rotationRad * 180) / Math.PI), 0, 0, 1);            
-//            
-//            // draw xhairs on frame to help show locations of objects and if they have moved.
-//           gl.glBegin(GL.GL_LINES); // sequence of individual segments, in pairs of vertices
-//           gl.glVertex2f(0, 0);  // start at origin
-//           gl.glVertex2f(sx2, 0);  // outputPacket to right
-//           gl.glVertex2f(0, 0);  // origin
-//           gl.glVertex2f(-sx2, 0); // outputPacket to left
-//           gl.glVertex2f(0, 0);  // origin
-//           gl.glVertex2f(0, sy2); // up
-//           gl.glVertex2f(0, 0);  // origin
-//           gl.glVertex2f(0, -sy2); // down
-//           gl.glEnd();
-//
-//           // rectangle around transform
-//           gl.glTranslatef(-sx2, -sy2, 0); // lower left corner
-//           gl.glBegin(GL.GL_LINE_LOOP); // loop of vertices
-//           gl.glVertex2f(0, 0); // lower left corner
-//           gl.glVertex2f(sx2 * 2, 0); // lower right
-//           gl.glVertex2f(2 * sx2, 2 * sy2); // upper right
-//           gl.glVertex2f(0, 2 * sy2); // upper left
-//           gl.glVertex2f(0, 0); // back of lower left
-//           gl.glEnd();
-//           gl.glPopMatrix();
-//        }      
-//    }
     
     @Override
     public void update(Observable o, Object arg) {
