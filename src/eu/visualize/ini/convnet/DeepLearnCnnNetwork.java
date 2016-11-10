@@ -103,7 +103,8 @@ public class DeepLearnCnnNetwork {
     private boolean softMaxOutput = false;
     private boolean zeroPadding = true;
     private boolean normalizeDVSForZsNullhop = false; // uses DvsSubsamplerToFrame normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1
-
+    private EngineeringFormat engFmt=new EngineeringFormat();
+    
     /**
      * This flag is set true once the network has run once. Some constants are
      * not set until then
@@ -226,8 +227,6 @@ public class DeepLearnCnnNetwork {
         }
     }
 
-    EngineeringFormat engFmt = new EngineeringFormat();
-
     public void printPerformance() {
         System.out.println("\n\n\n****************************************************\nActivations");
         System.out.println(getPerformanceString());
@@ -324,8 +323,8 @@ public class DeepLearnCnnNetwork {
      * @return %d operations in %d ns: %s ops/sec
      */
     public String getPerformanceString() {
-        return String.format("%d ops in %d ns: %s ops/sec",
-                operationCounter, processingTimeNs, engFmt.format(operationCounter / (1e-9f * processingTimeNs)));
+        return String.format("%s ops in %s s: %s ops/sec",
+                engFmt.format(operationCounter), engFmt.format(processingTimeNs*1e-9f), engFmt.format(operationCounter / (1e-9f * processingTimeNs)));
     }
 
     private float[] readFloatArray(EasyXMLReader layerReader, String name) {
