@@ -6,6 +6,8 @@
 package eu.visualize.ini.convnet;
 
 import java.util.Arrays;
+import java.util.logging.Logger;
+import jdk.nashorn.internal.ir.ContinueNode;
 
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.util.filter.LowpassFilter;
@@ -20,6 +22,8 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * @author tobi
  */
 public class DvsSubsamplerToFrame {
+
+    private static Logger log = Logger.getLogger("DvsSubsamplerToFrame");
 
     private final int width; // width of output
     private final int height; // height of output
@@ -106,6 +110,8 @@ public class DvsSubsamplerToFrame {
 //        }
 //
 //    }
+    private int warningsBadEvent = 0;
+
     /**
      * Adds event from a source event location to the map
      *
@@ -127,8 +133,15 @@ public class DvsSubsamplerToFrame {
             y = (int) Math.floor(((float) e.y / srcHeight) * height);
         }
         int k = getIndex(x, y);
-        if ((k < 0) || (k > eventSum.length)) {
-            throw new RuntimeException("index out of bounds for event " + e.toString() + " with srcWidth=" + srcWidth + " srcHeight=" + srcHeight);
+        if (((k < 0) || (k > eventSum.length))) {
+            if (warningsBadEvent < 2) {
+                log.warning("ignoring event with index out of bounds for event " + e.toString() + " with srcWidth=" + srcWidth + " srcHeight=" + srcHeight);
+            }
+            if (warningsBadEvent == 2) {
+                log.warning("supressing further warnings");
+            }
+            warningsBadEvent++;
+            return;
         }
         int sum = eventSum[k];
         sum += rectifyPolarties ? 1 : (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
@@ -319,7 +332,7 @@ public class DvsSubsamplerToFrame {
         for (int i = 0; i < n; i++) {
             if (eventSum[i] != 0) {
                 float f = (eventSum[i] - mean);
-                var += f*f;
+                var += f * f;
             }
         }
         var = (var / count);
@@ -329,9 +342,9 @@ public class DvsSubsamplerToFrame {
         }
         // if rectifyPolarties is false, pixels with count zero should end up with this 0-1 range value so that they come out to 127 in PNG file range of 0-255
         // if rectifyPolarties is true, pixels with zero count should end up with zero, and we use only 3 sigma range
-        final float numSDevs=3;
+        final float numSDevs = 3;
         final float mean_png_gray = rectifyPolarties ? 0 : 127f / 255;
-        final float range = rectifyPolarties ? numSDevs * sig : 2*numSDevs * sig, halfRange = rectifyPolarties ? 0 : numSDevs * sig;
+        final float range = rectifyPolarties ? numSDevs * sig : 2 * numSDevs * sig, halfRange = rectifyPolarties ? 0 : numSDevs * sig;
         final float rangenew = 1;
         int nonZeroCount = 0;
         //Now pixels with zero count go to 127/255, pixels with -3sigma or larger negative count go to 0, 
