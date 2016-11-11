@@ -7,7 +7,6 @@ package eu.visualize.ini.convnet;
 
 import java.util.Arrays;
 import java.util.logging.Logger;
-import jdk.nashorn.internal.ir.ContinueNode;
 
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.util.filter.LowpassFilter;
@@ -161,7 +160,7 @@ public class DvsSubsamplerToFrame {
         // compute the pixmap value (pmv) using gray level and colorScale
         float pmv = 0;
         if (!rectifyPolarties) {
-            pmv = GRAY_LEVEL + (sum * colorScaleRecip) / 2; // full scale is +/- colorScale events
+            pmv = GRAY_LEVEL + ((sum * colorScaleRecip) / 2); // full scale is +/- colorScale events
         } else {
             pmv = sum * colorScaleRecip; // full scale is just exactly colorScale events
         }
@@ -337,7 +336,7 @@ public class DvsSubsamplerToFrame {
         }
         var = (var / count);
         float sig = (float) Math.sqrt(var); // compute 1-sigma of signed counts
-        if (sig < 0.1f / 255.0f) {
+        if (sig < (0.1f / 255.0f)) {
             sig = 0.1f / 255.0f;  // restrict sigma to reasonable range
         }
         // if rectifyPolarties is false, pixels with count zero should end up with this 0-1 range value so that they come out to 127 in PNG file range of 0-255
@@ -347,7 +346,7 @@ public class DvsSubsamplerToFrame {
         final float range = rectifyPolarties ? numSDevs * sig : 2 * numSDevs * sig, halfRange = rectifyPolarties ? 0 : numSDevs * sig;
         final float rangenew = 1;
         int nonZeroCount = 0;
-        //Now pixels with zero count go to 127/255, pixels with -3sigma or larger negative count go to 0, 
+        //Now pixels with zero count go to 127/255, pixels with -3sigma or larger negative count go to 0,
         // and pixels with +3sigma or larger positive count go to 1. each count contributes +/- 1/6sigma to pixmap.
         for (int i = 0; i < n; i++) {
             if (eventSum[i] == 0) {
@@ -356,7 +355,7 @@ public class DvsSubsamplerToFrame {
                 nonZeroCount++;
                 // rectifyPolarties=false: shift up by 3 sigma and divide by 6 sigma to get in range 0-1
                 // rectifyPolarties=true: don't shift (already origin at zero) and divide by 3 sigma to get in range 0-1
-                float f = (eventSum[i] + halfRange) * rangenew / range;
+                float f = ((eventSum[i] + halfRange) * rangenew) / range;
                 if (f > 1) {
                     f = 1;
                 } else if (f < 0) {
