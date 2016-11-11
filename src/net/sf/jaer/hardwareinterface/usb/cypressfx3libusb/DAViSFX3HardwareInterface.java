@@ -285,7 +285,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										lastTimestamp = 0;
 										currentTimestamp = 0;
 
-										CypressFX3.log.info("Timestamp reset event received on " + super.toString());
+										CypressFX3.log.info("Timestamp reset event received on " + super.toString()+" at System.currentTimeMillis()="+System.currentTimeMillis());
 										break;
 
 									case 2: // External input (falling edge)
