@@ -189,6 +189,7 @@ public abstract class DisplayMethod {
         long now = System.currentTimeMillis();
         if ((now - statusChangeStartTimeMillis) > statusChangeDisplayTimeMillis) {
             statusChangeString = null;
+            return;
         }
         GL2 gl = drawable.getGL().getGL2();
         TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
