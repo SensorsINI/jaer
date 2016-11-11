@@ -442,6 +442,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         lastTs = Integer.MIN_VALUE;
 
         if (histograms == null || histograms.length != subSizeX || histograms[0].length != subSizeY) {
+            if(numSlices == 0 && subSizeX == 0 && subSizeX == 0) {
+                return;
+            }
             histograms = new int[numSlices][subSizeX][subSizeY];
         }
         for (int[][] a : histograms) {
@@ -483,9 +486,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         tMinus2SliceIdx = 0;
         tMinus1SliceIdx = 1;
         currentSliceIdx = 2;
-        if(histograms.length != 0) {
             assignSliceReferences();           
-        }
                             
         sliceLastTs = 0;
         packetNum = 0;
