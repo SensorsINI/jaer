@@ -116,6 +116,8 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 				// CHIP_SAMPLEPROB -- 11 bits
 				aerMaxAddress = 2048;
 			}
+
+			updateTimestampMasterStatus();
 		}
 
 		private void checkMonotonicTimestamp() {
@@ -187,6 +189,8 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 										wrapAdd = 0;
 										lastTimestamp = 0;
 										currentTimestamp = 0;
+
+										updateTimestampMasterStatus();
 
 										CypressFX3.log.info("Timestamp reset event received on " + super.toString());
 										break;

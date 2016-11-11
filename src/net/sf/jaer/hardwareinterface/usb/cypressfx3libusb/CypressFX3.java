@@ -14,6 +14,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
@@ -682,11 +683,11 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	}
 
 	public final static short FPGA_MUX = 0;
-	public final static short FPGA_DVS = 1;			// GenericAERConfig, DVSAERConfig, AERKillConfig
+	public final static short FPGA_DVS = 1; // GenericAERConfig, DVSAERConfig, AERKillConfig
 	public final static short FPGA_APS = 2;
 	public final static short FPGA_IMU = 3;
 	public final static short FPGA_EXTINPUT = 4;
-	public final static short FPGA_CHIPBIAS = 5;	// Biases, Chip Config, Channel Config
+	public final static short FPGA_CHIPBIAS = 5; // Biases, Chip Config, Channel Config
 	public final static short FPGA_SYSINFO = 6;
 	public final static short FPGA_DAC = 7;
 	public final static short FPGA_SCANNER = 8;
@@ -1371,7 +1372,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			LibUsb.getDeviceDescriptor(device, deviceDescriptor);
 		}
 
-		if (isBlankDevice()) {  // TODO throws null pointer exception if deviceDescriptor is not obtained above, which tobi has seen occur
+		if (isBlankDevice()) { // TODO throws null pointer exception if deviceDescriptor is not obtained above, which
+								// tobi has seen occur
 			CypressFX3.log.warning("open(): blank device detected, downloading preferred firmware");
 
 			isOpened = true;
@@ -1902,4 +1904,29 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		return usbPacketStatistics.isPrintUsbStatistics();
 	}
 
+	private AtomicBoolean isMaster = new AtomicBoolean(true);
+
+	public boolean isTimestampMaster() {
+		return isMaster.get();
+	}
+
+	protected void updateTimestampMasterStatus() {
+		final SwingWorker<Void, Void> masterUpdateWorker = new SwingWorker<Void, Void>() {
+			@Override
+			public Void doInBackground() {
+				try {
+					final int isMasterSPI = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 2);
+
+					isMaster.set(isMasterSPI != 0);
+				}
+				catch (HardwareInterfaceException e) {
+					// Ignore exceptions.
+				}
+
+				return (null);
+			}
+		};
+
+		masterUpdateWorker.execute();
+	}
 }

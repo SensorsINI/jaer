@@ -184,6 +184,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 			dvsSizeY = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
 
 			dvsInvertXY = (spiConfigReceive(CypressFX3.FPGA_DVS, (short) 2) & 0x04) != 0;
+
+			updateTimestampMasterStatus();
 		}
 
 		private void checkMonotonicTimestamp() {
@@ -284,6 +286,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										wrapAdd = 0;
 										lastTimestamp = 0;
 										currentTimestamp = 0;
+
+										updateTimestampMasterStatus();
 
 										CypressFX3.log.info("Timestamp reset event received on " + super.toString()+" at System.currentTimeMillis()="+System.currentTimeMillis());
 										break;
