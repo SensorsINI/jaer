@@ -8,13 +8,22 @@ package eu.seebetter.ini.chips.davis;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Point;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.Iterator;
 import java.util.logging.Level;
 
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.JComponent;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+import javax.swing.JSeparator;
+import javax.swing.KeyStroke;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -25,15 +34,6 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyEvent;
-import java.net.URL;
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-import javax.swing.JMenu;
-import javax.swing.JMenuItem;
-import javax.swing.JSeparator;
-import javax.swing.KeyStroke;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
@@ -89,8 +89,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     private float frameRateHz;
 
     protected IMUSample imuSample; // latest IMUSample from sensor
-
-    private boolean isTimestampMaster = true;
 
     private JComponent helpMenuItem1 = null;
     private JComponent helpMenuItem2 = null;
@@ -324,10 +322,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     @Override
     public void setADCEnabled(final boolean adcEnabled) {
         getDavisConfig().setCaptureFramesEnabled(adcEnabled);
-    }
-
-    public void setTimestampMaster(final boolean isTSMaster) {
-        isTimestampMaster = isTSMaster;
     }
 
     /**
@@ -1018,12 +1012,16 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, DavisDisplayMethod.FONTSIZE), true, true);
             }
 
-            if (isTimestampMaster == false) {
-                exposureRenderer.setColor(Color.WHITE);
-                exposureRenderer.begin3DRendering();
-                exposureRenderer.draw3D("Slave camera", 0, -(DavisDisplayMethod.FONTSIZE / 2), 0, .5f);
-                exposureRenderer.end3DRendering();
-            }
+            if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
+				final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
+
+				if (fx3HwIntf.isTimestampMaster() == false) {
+					exposureRenderer.setColor(Color.WHITE);
+					exposureRenderer.begin3DRendering();
+					exposureRenderer.draw3D("Slave camera", 0, -(DavisDisplayMethod.FONTSIZE / 2), 0, .5f);
+					exposureRenderer.end3DRendering();
+				}
+			}
 
             if ((getDavisConfig().getVideoControl() != null) && getDavisConfig().getVideoControl().isDisplayFrames()) {
                 final GL2 gl = drawable.getGL().getGL2();
@@ -1549,7 +1547,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         public void actionPerformed(ActionEvent e) {
             try {
                 float d = getDavisConfig().getFrameDelayMs() * exposureChangeFactor;
-                if(d<.1f)d=.1f;
+                if(d<.1f) {
+					d=.1f;
+				}
                 getDavisConfig().setFrameDelayMs(d);
             } catch (IllegalArgumentException ex) {
 
