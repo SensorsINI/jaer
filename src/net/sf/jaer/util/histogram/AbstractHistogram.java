@@ -135,7 +135,7 @@ public abstract class AbstractHistogram implements Histogram {
         renderer.begin3DRendering();
 //        renderer.draw3D("histogram [au]: " + (this.start + from * this.step) + ", " + (this.start + to * this.step) + ".", x, y, 0, 0.5f);
         String s=String.format("range [%d,%d], N=%d, entropy=%.2f",this.start + from * this.step,this.start + to * this.step,this.getN(),computeEntropy());
-        renderer.draw3D(s, x, y, 0, 0.5f);
+        renderer.draw3D(s, x, y, 0, 0.2f);
         renderer.end3DRendering();
     }
     
