@@ -994,7 +994,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
      */
     public class DavisDisplayMethod extends ChipRendererDisplayMethodRGBA {
 
-        private static final int FONTSIZE = 10;
+        private static final int FONTSIZE = 24;
         private static final int FRAME_COUNTER_BAR_LENGTH_FRAMES = 10;
 
         private TextRenderer exposureRenderer = null;
@@ -1018,7 +1018,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 				if (fx3HwIntf.isTimestampMaster() == false) {
 					exposureRenderer.setColor(Color.WHITE);
 					exposureRenderer.begin3DRendering();
-					exposureRenderer.draw3D("Slave camera", 0, -(DavisDisplayMethod.FONTSIZE / 2), 0, .5f);
+					exposureRenderer.draw3D("Slave camera", 0, -(DavisDisplayMethod.FONTSIZE / 2), 0, 0.4f);
 					exposureRenderer.end3DRendering();
 				}
 			}
@@ -1158,9 +1158,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             setMeasuredExposureMs((float) exposureDurationUs / 1000);
             final String s = String.format("Frame: %d; Exposure %.2f ms; Frame rate: %.2f Hz", getFrameCount(), getMeasuredExposureMs(),
                     getFrameRateHz());
-            final float scale = TextRendererScale.draw3dScale(exposureRenderer, s, getChipCanvas().getScale(), getSizeX(), .75f);
+            final float scale = TextRendererScale.draw3dScale(exposureRenderer, s, getChipCanvas().getScale(), getSizeX(), 1f);
             // determine width of string in pixels and scale accordingly
-            exposureRenderer.draw3D(s, 0, getSizeY() + (DavisDisplayMethod.FONTSIZE / 2), 0, scale);
+            exposureRenderer.draw3D(s, 0, getSizeY() + (DavisDisplayMethod.FONTSIZE / 2)*scale, 0, scale);
             exposureRenderer.end3DRendering();
 
             final int nframes = getFrameCount() % DavisDisplayMethod.FRAME_COUNTER_BAR_LENGTH_FRAMES;
