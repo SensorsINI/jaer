@@ -11,6 +11,7 @@ package net.sf.jaer.eventio;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Date;
@@ -31,189 +32,186 @@ import net.sf.jaer.chip.AEChip;
  */
 public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 
-	// tobi changed to 8k buffer (from 400k) because this has measurably better performance than super large buffer
-	/**
-	 * buffer size for this output stream
-	 */
-	private static final int BUFFER_EVENTS = 8192;
-	private static final int SIZE_EVENT = (Integer.SIZE / 8) * 2;
+    // tobi changed to 8k buffer (from 400k) because this has measurably better performance than super large buffer
+    /**
+     * buffer size for this output stream
+     */
+    private static final int BUFFER_EVENTS = 8192;
+    private static final int SIZE_EVENT = (Integer.SIZE / 8) * 2;
 
-	private FileChannel channel = null;
-	private ByteBuffer byteBuf = null;
+    private FileChannel channel = null;
+    private ByteBuffer byteBuf = null;
 
-	private int eventCounter = 0;
+    private int eventCounter = 0;
+ 
+    /**
+     * Creates a new instance of AEOutputStream and writes the header. If there
+     * is any IOException a stack trace is printed.
+     *
+     * @param os an output stream, e.g. from
+     * <code>new BufferedOutputStream(new FileOutputStream(File f)</code>.
+     * @param chip (optionally) provide the chip used and write out additional
+     * header info
+     * @throws java.io.IOException thrown when write to file failed
+     */
+    public AEFileOutputStream(final OutputStream os, final AEChip chip) throws IOException {
+        super(os);
+        try {
+            writeHeaderLine(AEDataFile.DATA_FILE_FORMAT_HEADER + AEDataFile.DATA_FILE_VERSION_NUMBER);
+            writeHeaderLine(" This is a raw AE data file - do not edit");
+            writeHeaderLine(" Data format is int32 address, int32 timestamp (8 bytes total), repeated for each event");
+            writeHeaderLine(" Timestamps tick: " + AEConstants.TICK_DEFAULT_US + " us");
+            writeHeaderLine(" Creation date: " + new Date());
+            writeHeaderLine(" Creation time: System.currentTimeMillis() " + System.currentTimeMillis());
+            writeHeaderLine(" User name: " + System.getProperty("user.name"));
+            String computerName=null;
+            try {
+                computerName = InetAddress.getLocalHost().getHostName();
+            } catch (Exception ex) {
+                log.warning("couldn't determine local host name");
+            }
+            writeHeaderLine(" Hostname: " + computerName);
 
-	/**
-	 * Creates a new instance of AEOutputStream and writes the header. If there
-	 * is any IOException a stack trace is printed.
-	 *
-	 * @param os
-	 *            an output stream, e.g. from
-	 *            <code>new BufferedOutputStream(new FileOutputStream(File f)</code>.
-	 * @param chip
-	 *            (optionally) provide the chip used and write out additional
-	 *            header info
-	 * @throws java.io.IOException
-	 *             thrown when write to file failed
-	 */
-	public AEFileOutputStream(final OutputStream os, final AEChip chip) throws IOException {
-		super(os);
-		try {
-			writeHeaderLine(AEDataFile.DATA_FILE_FORMAT_HEADER + AEDataFile.DATA_FILE_VERSION_NUMBER);
-			writeHeaderLine(" This is a raw AE data file - do not edit");
-			writeHeaderLine(" Data format is int32 address, int32 timestamp (8 bytes total), repeated for each event");
-			writeHeaderLine(" Timestamps tick is " + AEConstants.TICK_DEFAULT_US + " us");
-			writeHeaderLine(" created " + new Date() );
-			writeHeaderLine(" Creation time System.currentTimeMillis() " + System.currentTimeMillis() );
+            // optionally write chip-specific info
+            if (chip.getHardwareInterface() != null) {
+                writeHeaderLine(" HardwareInterface: " + chip.getHardwareInterface().toString());
+            }
 
-			// optionally write chip-specific info
-			if (chip.getHardwareInterface() != null) {
-				writeHeaderLine(" HardwareInterface: " + chip.getHardwareInterface().toString());
-			}
+            chip.writeAdditionalAEFileOutputStreamHeader(this);
+            writeHeaderLine(" DataStartTime: System.currentTimeMillis() " + System.currentTimeMillis());
+            writeHeaderLine(END_OF_HEADER_STRING);
 
-			chip.writeAdditionalAEFileOutputStreamHeader(this);
-			writeHeaderLine(" DataStartTime System.currentTimeMillis() " + System.currentTimeMillis());
+            if (os instanceof FileOutputStream) {
+                channel = ((FileOutputStream) os).getChannel();
+                AEOutputStream.log.info("using ByteBuffer with " + AEFileOutputStream.BUFFER_EVENTS + " events to buffer disk writes");
+                byteBuf = ByteBuffer.allocateDirect(AEFileOutputStream.BUFFER_EVENTS * AEFileOutputStream.SIZE_EVENT);
+            }
+        } catch (final BackingStoreException ex) {
+            Logger.getLogger(AEFileOutputStream.class.getName()).log(Level.SEVERE, null, ex);
+            throw new IOException(ex.getMessage());
+        }
+        eventCounter = 0;
+    }
 
-			if (os instanceof FileOutputStream) {
-				channel = ((FileOutputStream) os).getChannel();
-				AEOutputStream.log.info("using ByteBuffer with " + AEFileOutputStream.BUFFER_EVENTS + " events to buffer disk writes");
-				byteBuf = ByteBuffer.allocateDirect(AEFileOutputStream.BUFFER_EVENTS * AEFileOutputStream.SIZE_EVENT);
-			}
-		}
-		catch (final BackingStoreException ex) {
-			Logger.getLogger(AEFileOutputStream.class.getName()).log(Level.SEVERE, null, ex);
-			throw new IOException(ex.getMessage());
-		}
-		eventCounter = 0;
-	}
+    /**
+     * * Creates a new instance of AEOutputStream and writes the header.
+     *
+     * @param os an output stream, e.g. from
+     * <code>new BufferedOutputStream(new FileOutputStream(File f)</code>.
+     * @throws java.io.IOException thrown when write to file failed
+     */
+    public AEFileOutputStream(final OutputStream os) throws IOException {
+        this(os, null);
+    }
 
-	/**
-	 * * Creates a new instance of AEOutputStream and writes the header.
-	 *
-	 * @param os
-	 *            an output stream, e.g. from
-	 *            <code>new BufferedOutputStream(new FileOutputStream(File f)</code>.
-	 * @throws java.io.IOException
-	 *             thrown when write to file failed
-	 */
-	public AEFileOutputStream(final OutputStream os) throws IOException {
-		this(os, null);
-	}
+    /**
+     * Writes a comment header line. Writes the string with prepended '#' and
+     * appended '\r\n'
+     *
+     * @param s the string to write
+     * @throws java.io.IOException when we try to write header but have already
+     * written a data packet
+     */
+    public final void writeHeaderLine(final String s) throws IOException {
+        if (wrotePacket) {
+            throw new IOException("already wrote a packet, not writing the header");
+        }
+        writeByte(AEDataFile.COMMENT_CHAR); // '#'
+        writeBytes(s);
+        writeByte(AEDataFile.EOL[0]); // '\r'
+        writeByte(AEDataFile.EOL[1]); // '\n'
+    }
 
-	/**
-	 * Writes a comment header line. Writes the string with prepended '#' and
-	 * appended '\r\n'
-	 *
-	 * @param s
-	 *            the string to write
-	 * @throws java.io.IOException
-	 *             when we try to write header but have already
-	 *             written a data packet
-	 */
+    /**
+     * Writes a comment header from an input String s containing multiple lines.
+     * Each line is prepended with '#'
+     *
+     * @param s the multiline string to write
+     * @throws java.io.IOException when we try to write header but have already
+     * written a data packet
+     */
+    public final void writeHeaderBlock(final String s) throws IOException {
+        if (wrotePacket) {
+            throw new IOException("already wrote a packet, not writing the header");
+        }
+        final StringBuilder sb = new StringBuilder();
+        final StringTokenizer st = new StringTokenizer(s, System.lineSeparator(), true);
+        while (st.hasMoreElements()) {
+            sb.append(AEDataFile.COMMENT_CHAR);
+            sb.append(st.nextToken());
+        }
+        writeBytes(sb.toString());
+        // writeByte(AEDataFile.EOL[0]); // '\r'
+        // writeByte(AEDataFile.EOL[1]); // '\n'
+    }
 
-	public final void writeHeaderLine(final String s) throws IOException {
-		if (wrotePacket) {
-			throw new IOException("already wrote a packet, not writing the header");
-		}
-		writeByte(AEDataFile.COMMENT_CHAR); // '#'
-		writeBytes(s);
-		writeByte(AEDataFile.EOL[0]); // '\r'
-		writeByte(AEDataFile.EOL[1]); // '\n'
-	}
+    /**
+     * Writes the raw (device) address-event packet out as sequence of
+     * address/timestamps, just as they came as input from the device. The
+     * notion of a packet is discarded to simplify later reading an input stream
+     * from the output stream result. A null or empty packet returns immediately
+     * without writing anything.
+     *
+     * @param ae a raw address-event packet
+     */
+    @Override
+    public void writePacket(final AEPacketRaw ae) throws IOException {
+        if (ae == null) {
+            return;
+        }
 
-	/**
-	 * Writes a comment header from an input String s containing multiple lines. Each line is prepended with '#'
-	 *
-	 * @param s
-	 *            the multiline string to write
-	 * @throws java.io.IOException
-	 *             when we try to write header but have already
-	 *             written a data packet
-	 */
+        final int n = ae.getNumEvents();
+        if (n == 0) {
+            return;
+        }
 
-	public final void writeHeaderBlock(final String s) throws IOException {
-		if (wrotePacket) {
-			throw new IOException("already wrote a packet, not writing the header");
-		}
-		final StringBuilder sb = new StringBuilder();
-		final StringTokenizer st = new StringTokenizer(s, System.lineSeparator(), true);
-		while (st.hasMoreElements()) {
-			sb.append(AEDataFile.COMMENT_CHAR);
-			sb.append(st.nextToken());
-		}
-		writeBytes(sb.toString());
-		// writeByte(AEDataFile.EOL[0]); // '\r'
-		// writeByte(AEDataFile.EOL[1]); // '\n'
-	}
+        final int[] addr = ae.getAddresses();
+        final int[] ts = ae.getTimestamps();
 
-	/**
-	 * Writes the raw (device) address-event packet out as sequence of
-	 * address/timestamps, just as they came as input from the device. The
-	 * notion of a packet is discarded to simplify later reading an input stream
-	 * from the output stream result. A null or empty packet returns immediately
-	 * without writing anything.
-	 *
-	 * @param ae
-	 *            a raw address-event packet
-	 */
-	@Override
-	public void writePacket(final AEPacketRaw ae) throws IOException {
-		if (ae == null) {
-			return;
-		}
+        int startIdx = 0;
 
-		final int n = ae.getNumEvents();
-		if (n == 0) {
-			return;
-		}
+        if (eventCounter == 0) {
+            // For first event written out, make sure that the data is not a comment char character,
+            // or else the first data will be commented away as part of the file header.
+            // The ByteBuffer is ByteOrder.BIG_ENDIAN (default) which means that MSB is first (lower index)
 
-		final int[] addr = ae.getAddresses();
-		final int[] ts = ae.getTimestamps();
+            // addr[0]=((AEDataFile.COMMENT_CHAR&0xFFFF)<<16); // DEBUG
+            while ((startIdx < n) && (((addr[startIdx] & 0xFFFF0000) >>> 16) == (AEDataFile.COMMENT_CHAR & 0xFFFF))) {
+                log.warning(String.format(
+                        "address #%d with address value %d destined for start of data file happens to code the comment char %c, skipping this event",
+                        startIdx, addr[0], AEDataFile.COMMENT_CHAR));
+                startIdx++;
+            }
+        }
 
-		int startIdx = 0;
+        for (int i = startIdx; i < n; i++) {
+            byteBuf.putInt(addr[i]);
+            byteBuf.putInt(ts[i]);
 
-		if (eventCounter == 0) {
-			// For first event written out, make sure that the data is not a comment char character,
-			// or else the first data will be commented away as part of the file header.
-			// The ByteBuffer is ByteOrder.BIG_ENDIAN (default) which means that MSB is first (lower index)
+            eventCounter++;
 
-			// addr[0]=((AEDataFile.COMMENT_CHAR&0xFFFF)<<16); // DEBUG
-			while ((startIdx < n) && (((addr[startIdx] & 0xFFFF0000) >>> 16) == (AEDataFile.COMMENT_CHAR & 0xFFFF))) {
-				log.warning(String.format(
-					"address #%d with address value %d destined for start of data file happens to code the comment char %c, skipping this event",
-					startIdx, addr[0], AEDataFile.COMMENT_CHAR));
-				startIdx++;
-			}
-		}
+            if (byteBuf.remaining() < AEFileOutputStream.SIZE_EVENT) {
+                byteBuf.rewind();
+                channel.write(byteBuf);
+                byteBuf.clear();
+            }
+        }
 
-		for (int i = startIdx; i < n; i++) {
-			byteBuf.putInt(addr[i]);
-			byteBuf.putInt(ts[i]);
+        wrotePacket = true;
+    }
 
-			eventCounter++;
+    @Override
+    public void close() throws IOException {
+        // Flush last buffer to file, to avoid loosing small amounts of data.
+        byteBuf.flip();
+        channel.write(byteBuf);
+        byteBuf.clear();
 
-			if (byteBuf.remaining() < AEFileOutputStream.SIZE_EVENT) {
-				byteBuf.rewind();
-				channel.write(byteBuf);
-				byteBuf.clear();
-			}
-		}
+        channel.close();
+        byteBuf = null;
 
-		wrotePacket = true;
-	}
+        super.close();
 
-	@Override
-	public void close() throws IOException {
-		// Flush last buffer to file, to avoid loosing small amounts of data.
-		byteBuf.flip();
-		channel.write(byteBuf);
-		byteBuf.clear();
-
-		channel.close();
-		byteBuf = null;
-
-		super.close();
-
-		AEOutputStream.log.info("wrote " + eventCounter + " events");
-	}
+        AEOutputStream.log.info("wrote " + eventCounter + " events");
+    }
 }
