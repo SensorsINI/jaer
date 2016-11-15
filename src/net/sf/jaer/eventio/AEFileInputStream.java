@@ -116,6 +116,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     private Class addressType = Short.TYPE; // default address type, unless file header specifies otherwise
     public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT = 1000;
     private int numNonMonotonicTimeExceptionsPrinted = 0;
+    private int numHeaderLines=0;
 
     /**
      * Marking positions
@@ -315,7 +316,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             log.warning("couldn't read first event to set starting timestamp - maybe the file is empty?");
         } catch (NonMonotonicTimeException e2) {
             log.warning("On AEInputStream.init() caught " + e2.toString());
-        }finally{
+        } finally {
             position(0);
         }
         log.info("initialized " + this.toString());
@@ -751,8 +752,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                     // i++;
                 }
             } else // read backwards
-            {
-                if (!bigWrap) {
+             if (!bigWrap) {
                     do {
                         ae = readEventBackwards();
                         addr[i] = ae.address;
@@ -772,7 +772,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                     ts[i] = ae.timestamp;
                     i++;
                 }
-            }
         } catch (WrappedTimeException w) {
             log.info(w.toString());
             System.out.println(w.toString());
@@ -1472,6 +1471,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // reader.mark(1); // max header line length in chars
         int c = reader.read(); // read single char
         String s = reader.readLine();
+        
         boolean flag = true;
         // code below is wrong because it means that any header line with non alpha char 
         // (such as device with binary serial number) will terminate header
@@ -1485,7 +1485,14 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //            }
 //        }
 
+        if (s.equals(AEDataFile.END_OF_HEADER_STRING)) {
+            numHeaderLines++;
+            log.info("On line "+numHeaderLines+" detected end of header section string \""+AEDataFile.END_OF_HEADER_STRING+"\"");
+            headerOffset += s.length() + NUMBER_LINE_SEPARATORS +1 ; // adds comment char and trailing CRLF newline,
+            return null;
+        }
         if (c != AEDataFile.COMMENT_CHAR || flag == false) { // if it's not a comment char
+            log.info("On line "+numHeaderLines+" detected line not starting with comment character, ending header read");
             return null; // return a null header line
         }
         // reader.reset(); // reset to start of header/comment line
@@ -1498,11 +1505,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         for (int i = 0; i < s.length(); i++) {
             char b = s.charAt(i);
             if ((b < 32) || (b > 126)) {
-                log.warning("Non printable ASCII character (char value=" + b + ") which is (<32 || >126) detected in header line");
+                log.warning("On line "+numHeaderLines+" non printable ASCII character (char value=" + b + ") which is (<32 || >126) detected in header line");
                 sb.setCharAt(i, '-');
             }
         }
         headerOffset += sb.length() + NUMBER_LINE_SEPARATORS + 1; // adds comment char and trailing CRLF newline,
+        numHeaderLines++;
         // assumes CRLF EOL // TODO fix this assumption
         return sb.toString();
     }
