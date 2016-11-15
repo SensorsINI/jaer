@@ -30,6 +30,9 @@ public interface AEDataFile {
     /** file extension for index files that contain information about a set of related data files, ".adidx", including '.'. */
     public static final String INDEX_FILE_EXTENSION = ".aeidx"; // changed from .dat Apr 2010
     public static final String OLD_INDEX_FILE_EXTENSION = ".index"; // changed from .dat Apr 2010
+    /** Used to mark end of header block after 15.11.2016. Next line starts binary data. */
+    public static final String END_OF_HEADER_STRING="End Of ASCII Header";
+
     /** The leading comment character for data files, "#" */
     public static final char COMMENT_CHAR = '#';
     /** The format header, in unix/shell style the first line of the data file reads, e.g. "#!AER-DAT2.0" where
