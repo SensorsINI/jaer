@@ -8,7 +8,6 @@ package ch.unizh.ini.jaer.projects.minliu;
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
-import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -56,8 +55,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private ArrayList<int[][]> currentAL = null, previousAL = null, previousMinus1AL = null; // One is for current, the second is for previous, the third is for the one before previous one
     private BitSet[] histogramsBitSet = null;
     private BitSet currentSli = null, tMinus1Sli = null, tMinus2Sli = null;
-    private int patchDimension = getInt("patchDimension", 8);
-    protected boolean measurePerformance = getBoolean("measurePerformance", false);
+    private int patchDimension = getInt("patchDimension", 9);
     private boolean displayOutputVectors = getBoolean("displayOutputVectors", true);
     private int eventPatchDimension = getInt("eventPatchDimension", 3);
     private int forwardEventNum = getInt("forwardEventNum", 10);
@@ -65,6 +63,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int thresholdTime = getInt("thresholdTime", 1000000);
     private int[][] lastFireIndex = new int[240][240];
     private int[][] eventSeqStartTs = new int[240][240];
+    private boolean preProcessEnable = false;
+    private int packetNum;
 
 
     public enum PatchCompareMethod {
@@ -72,24 +72,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     };
     private PatchCompareMethod patchCompareMethod = PatchCompareMethod.valueOf(getString("patchCompareMethod", PatchCompareMethod.HammingDistance.toString()));
 
-    private int sliceDurationUs = getInt("sliceDurationUs", 1000);
+    private int sliceDurationUs = getInt("sliceDurationUs", 100000);
     private int sliceEventCount = getInt("sliceEventCount", 1000);
-    private String patchTT = "Patch matching";
-    private float sadSum = 0;
     private boolean rewindFlg = false; // The flag to indicate the rewind event.
     private TransformAtTime lastTransform = null, imageTransform = null;
     private FilterChain filterChain;
     private Steadicam cameraMotion;
-    private int packetNum;
-    private int sx2;
-    private int sy2;
-    private double panTranslationDeg;
-    private double tiltTranslationDeg;
-    private float rollDeg;
+
     private int lastImuTimestamp = 0;
     private float panRate = 0, tiltRate = 0, rollRate = 0; // in deg/sec
     private float panOffset = getFloat("panOffset", 0), tiltOffset = getFloat("tiltOffset", 0), rollOffset = getFloat("rollOffset", 0);
-    private float panDC = 0, tiltDC = 0, rollDC = 0;
     private boolean showTransformRectangle = getBoolean("showTransformRectangle", true);
     private boolean removeCameraMotion = getBoolean("removeCameraMotion", true);
 
@@ -98,16 +90,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int calibrationSampleCount = 0;
     private int NUM_CALIBRATION_SAMPLES_DEFAULT = 800; // 400 samples /sec
     protected int numCalibrationSamples = getInt("numCalibrationSamples", NUM_CALIBRATION_SAMPLES_DEFAULT);
-    private CalibrationFilter panCalibrator, tiltCalibrator, rollCalibrator;
     TextRenderer imuTextRenderer = null;
     private boolean showGrid = getBoolean("showGrid", true);
-    private int flushCounter = 0;
     public enum SliceMethod {
         ConstantDuration, ConstantEventNumber, AdaptationDuration
     };
     private SliceMethod sliceMethod = SliceMethod.valueOf(getString("sliceMethod", SliceMethod.ConstantDuration.toString()));
     private int eventCounter = 0;
-    // private int sliceLastTs = Integer.MIN_VALUE;
     private int sliceLastTs = 0;
     HighpassFilter panTranslationFilter = new HighpassFilter();
     HighpassFilter tiltTranslationFilter = new HighpassFilter();
@@ -129,17 +118,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         setEnclosedFilterChain(filterChain);
         
         String imu = "IMU";
+        String patchTT = "Patch matching";
+        String eventSqeMatching = "Event squence matching";
+        String preProcess = "Denoise";
 
         chip.addObserver(this); // to allocate memory once chip size is known
+        setPropertyTooltip(preProcess, "preProcessEnable", "enable this to remove noise before data processing");
+        setPropertyTooltip(preProcess, "forwardEventNum", "for pre processing");
         setPropertyTooltip(patchTT, "patchDimension", "linear dimenion of patches to match, in pixels");
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");
-        setPropertyTooltip(patchTT, "sliceDurationUs", "duration of patches in us");
-        setPropertyTooltip(patchTT, "sliceEventCount", "number of collected events in each bitmap");
-        setPropertyTooltip(patchTT, "eventPatchDimension", "linear dimenion of patches to match, in pixels");
-        setPropertyTooltip(patchTT, "forwardEventNum", "forward events number");
-        setPropertyTooltip(patchTT, "cost", "The cost to translation one event to the other position");
-        setPropertyTooltip(patchTT, "thresholdTime", "The threshold value of interval time between the first event and the last event");        
+        setPropertyTooltip(patchTT, "sliceDurationUs", "duration of patches in us, also called sample interval");
+        setPropertyTooltip(eventSqeMatching, "cost", "The cost to translation one event to the other position");
+        setPropertyTooltip(eventSqeMatching, "thresholdTime", "The threshold value of interval time between the first event and the last event");  
+        setPropertyTooltip(eventSqeMatching, "sliceEventCount", "number of collected events in each bitmap");
+        setPropertyTooltip(eventSqeMatching, "eventPatchDimension", "linear dimenion of patches to match, in pixels");
         setPropertyTooltip(dispTT, "highpassTauMsTranslation", "highpass filter time constant in ms to relax transform back to zero for translation (pan, tilt) components");
         setPropertyTooltip(dispTT, "highpassTauMsRotation", "highpass filter time constant in ms to relax transform back to zero for rotation (roll) component");
         setPropertyTooltip(dispTT, "highPassFilterEn", "enable the high pass filter or not");
@@ -148,25 +141,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         setPropertyTooltip(imu, "removeCameraMotion", "Remove the camera motion");
         setPropertyTooltip(imu, "zeroGyro", "zeros the gyro output. Sensor should be stationary for period of 1-2 seconds during zeroing");
         setPropertyTooltip(imu, "eraseGyroZero", "Erases the gyro zero values");
-
-        panCalibrator = new CalibrationFilter();
-        tiltCalibrator = new CalibrationFilter();
-        rollCalibrator = new CalibrationFilter();
-        rollFilter.setTauMs(highpassTauMsRotation);
-        panTranslationFilter.setTauMs(highpassTauMsTranslation);
-        tiltTranslationFilter.setTauMs(highpassTauMsTranslation);
-        
-        lastTransform = new TransformAtTime(ts,
-        new Point2D.Float(
-                (float)(0),
-                (float)(0)),
-                (float) (0));
     }
 
     @Override
     public EventPacket filterPacket(EventPacket in) {
         setupFilter(in);
-        sadSum = 0;
 
         packetNum++;
 
@@ -183,7 +162,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             ApsDvsEvent apsDvsEvent = (ApsDvsEvent) ein;
             if (apsDvsEvent.isImuSample()) {
                 IMUSample s = apsDvsEvent.getImuSample();
-                lastTransform = updateTransform(s);
                 continue;
             }
             // inItr = in.inputIterator;
@@ -214,10 +192,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 showTransformRectangle = false;
             }
             
-            long startTime = 0;
-            if (measurePerformance) {
-                    startTime = System.nanoTime();
-            }
             // compute flow
             SADResult result = new SADResult(0,0,0);
             
@@ -243,36 +217,55 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     maybeRotateSlices();
                     accumulateEvent();
                     
-                    // There're enough events fire on the specific block now.
-                    if(spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum ) {
-                        lastFireIndex[blockLocX][blockLocY] = spikeTrans[blockLocX][blockLocY].size() - 1;      
+                    if(preProcessEnable) {
+                        // There're enough events fire on the specific block now.
+                        if(spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum ) {
+                            lastFireIndex[blockLocX][blockLocY] = spikeTrans[blockLocX][blockLocY].size() - 1;      
+                            result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);  
+                            result.dx = result.dx/sliceDurationUs * 1000000;
+                            result.dy = result.dy/sliceDurationUs * 1000000;
+                        }                          
+                    } else {
                         result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);  
                         result.dx = result.dx/sliceDurationUs * 1000000;
-                        result.dy = result.dy/sliceDurationUs * 1000000;
-                    }                     
+                        result.dy = result.dy/sliceDurationUs * 1000000;                        
+                    }
+                   
                     
                     break;
                 case SAD:
                     maybeRotateSlices();
                     accumulateEvent();
-                    // There're enough events fire on the specific block now
-                    if(spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum ) {
-                        lastFireIndex[blockLocX][blockLocY] = spikeTrans[blockLocX][blockLocY].size() - 1;      
+                    if(preProcessEnable) {
+                        // There're enough events fire on the specific block now
+                        if(spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum ) {
+                            lastFireIndex[blockLocX][blockLocY] = spikeTrans[blockLocX][blockLocY].size() - 1;      
+                            result = minSad(x, y, tMinus2Slice, tMinus1Slice);
+                            result.dx = result.dx/sliceDurationUs * 1000000;
+                            result.dy = result.dy/sliceDurationUs * 1000000;
+
+                        }
+                    }else {
                         result = minSad(x, y, tMinus2Slice, tMinus1Slice);
                         result.dx = result.dx/sliceDurationUs * 1000000;
-                        result.dy = result.dy/sliceDurationUs * 1000000;
-
+                        result.dy = result.dy/sliceDurationUs * 1000000;                        
                     }
                     break;
                 case JaccardDistance:
                     maybeRotateSlices();
                     accumulateEvent();
-                    // There're enough events fire on the specific block now
-                    if(spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum ) {
-                        lastFireIndex[blockLocX][blockLocY] = spikeTrans[blockLocX][blockLocY].size() - 1;      
+                    if(preProcessEnable) {
+                        // There're enough events fire on the specific block now
+                        if(spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum ) {
+                            lastFireIndex[blockLocX][blockLocY] = spikeTrans[blockLocX][blockLocY].size() - 1;      
+                            result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
+                            result.dx = result.dx/sliceDurationUs * 1000000;
+                            result.dy = result.dy/sliceDurationUs * 1000000;
+                        }
+                    } else {
                         result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
                         result.dx = result.dx/sliceDurationUs * 1000000;
-                        result.dy = result.dy/sliceDurationUs * 1000000;
+                        result.dy = result.dy/sliceDurationUs * 1000000;                        
                     }
                     break;
                 case EventSqeDistance:                
@@ -310,7 +303,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                             }                            
                         }
                         // result = minVicPurDistance(blockLocX, blockLocY);  
-
 
                         eventSeqStartTs[blockLocX][blockLocY] = ts;
                         boolean allZeroFlg = true;
@@ -367,28 +359,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             }            
             vx = result.dx;
             vy = result.dy;
-            v = (float) Math.sqrt(vx * vx + vy * vy);
-            
-            if (measurePerformance) {
-                long dt = System.nanoTime() - startTime;
-                float us = 1e-3f * dt;
-                log.info(String.format("Per event processing time: %.1fus", us));
-            }
-//            long[] testByteArray1 = tMinus1Sli.toLongArray();
-//            long[] testByteArray2 = tMinus2Sli.toLongArray();
-//            tMinus1Sli.andNot(tMinus2Sli);
-
-//            long test1 = popcount_3((long) sadSum);
-            
-//                DavisChip apsDvsChip = (DavisChip) chip;
-//                int frameStartTimestamp = apsDvsChip.getFrameExposureStartTimestampUs();
-//                int frameEndTimestamp = apsDvsChip.getFrameExposureEndTimestampUs();
-//                int frameCounter = apsDvsChip.getFrameCount();
-//                // if a frame has been read outputPacket, then save the last transform to apply to rendering this frame
-//                imageTransform = lastTransform;
-//                ChipRendererDisplayMethodRGBA displayMethod = (ChipRendererDisplayMethodRGBA) chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
-//                displayMethod.setImageTransform(lastTransform.translationPixels, lastTransform.rotationRad);
-                                    
+            v = (float) Math.sqrt(vx * vx + vy * vy);       
+                                   
             // reject values that are unreasonable
             if (accuracyTests()) {
                 continue;
@@ -402,21 +374,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             }
         }
         
-//        if(cameraMotion.getLastTransform() != null) {
-//            lastTransform = cameraMotion.getLastTransform();
-//        }
-//        ChipRendererDisplayMethodRGBA displayMethod = (ChipRendererDisplayMethodRGBA) chip.getCanvas().getDisplayMethod();        // After the rewind event, restore sliceLastTs to 0 and rewindFlg to false.
-//        displayMethod.getImageTransform();
-//        displayMethod.setImageTransform(lastTransform.translationPixels, lastTransform.rotationRad);          
-
         if(rewindFlg) {
             rewindFlg = false;
             sliceLastTs = 0;
-            flushCounter = 10;
-            
-            panDC = 0;
-            tiltDC = 0;
-            rollDC = 0;
             
             for(int i = 0; i < 240; i++) {
                 for(int j = 0; j < 180; j++) {
@@ -502,117 +462,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         if (o instanceof AEChip && chip.getNumPixels() > 0) {
             resetFilter();
         }
-    }
-    /**
-     * Computes transform using current gyro outputs based on timestamp supplied
-     * and returns a TransformAtTime object. 
-     *
-     * @param timestamp the timestamp in us.
-     * @return the transform object representing the camera rotationRad
-     */
-    synchronized public TransformAtTime updateTransform(IMUSample imuSample) {
-        int timestamp = imuSample.getTimestampUs();
-        float dtS = (timestamp - lastImuTimestamp) * 1e-6f;
-        lastImuTimestamp = timestamp;
-        
-        if (flushCounter-- >= 0) {
-            return new TransformAtTime(ts,
-                    new Point2D.Float( (float)(0),(float)(0)),
-                    (float) (0));  // flush some samples if the timestamps have been reset and we need to discard some samples here
-        }
-        
-        panRate = imuSample.getGyroYawY();
-        tiltRate = imuSample.getGyroTiltX();
-        rollRate = imuSample.getGyroRollZ();
-        if (calibrating) {
-            calibrationSampleCount++;
-            if (calibrationSampleCount > numCalibrationSamples) {
-                calibrating = false;
-                panOffset = panCalibrator.computeAverage();
-                tiltOffset = tiltCalibrator.computeAverage();
-                rollOffset = rollCalibrator.computeAverage();
-                panDC = 0;
-                tiltDC = 0;
-                rollDC = 0;
-                putFloat("panOffset", panOffset);
-                putFloat("tiltOffset", tiltOffset);
-                putFloat("rollOffset", rollOffset);
-                log.info(String.format("calibration finished. %d samples averaged to (pan,tilt,roll)=(%.3f,%.3f,%.3f)", numCalibrationSamples, panOffset, tiltOffset, rollOffset));
-            } else {
-                panCalibrator.addSample(panRate);
-                tiltCalibrator.addSample(tiltRate);
-                rollCalibrator.addSample(rollRate);
-            }
-            return new TransformAtTime(ts,
-                                new Point2D.Float( (float)(0),(float)(0)),
-                                (float) (0));
-        }       
-        
-        panDC += getPanRate() * dtS;
-        tiltDC += getTiltRate() * dtS;
-        rollDC += getRollRate() * dtS;
-        
-        if(highPassFilterEn) {
-        panTranslationDeg = panTranslationFilter.filter(panDC, timestamp);
-        tiltTranslationDeg = tiltTranslationFilter.filter(tiltDC, timestamp);
-        rollDeg = rollFilter.filter(rollDC, timestamp);            
-        } else {
-            panTranslationDeg = panDC;
-            tiltTranslationDeg = tiltDC;
-            rollDeg = rollDC;
-        }
-        float radValPerPixel = (float) Math.atan(chip.getPixelWidthUm() / (1000 * getLensFocalLengthMm()));
-        
-        // Use the lens focal length and camera resolution.
-        TransformAtTime tr = new TransformAtTime(timestamp,
-                new Point2D.Float(
-                        (float) ((Math.PI / 180) * panTranslationDeg/radValPerPixel),
-                        (float) ((Math.PI / 180) * tiltTranslationDeg/radValPerPixel)),
-                (-rollDeg * (float) Math.PI) / 180);
-        return tr;
-    }    
-    
-    
-    private class CalibrationFilter {
-
-        int count = 0;
-        float sum = 0;
-
-        void reset() {
-            count = 0;
-            sum = 0;
-        }
-
-        void addSample(float sample) {
-            sum += sample;
-            count++;
-        }
-
-        float computeAverage() {
-            return sum / count;
-        }
-    }
-    
-    /**
-     * @return the panRate
-     */
-    public float getPanRate() {
-        return panRate - panOffset;
-    }
-
-    /**
-     * @return the tiltRate
-     */
-    public float getTiltRate() {
-        return tiltRate - tiltOffset;
-    }
-
-    /**
-     * @return the rollRate
-     */
-    public float getRollRate() {
-        return rollRate - rollOffset;
-    }
+    }   
     
     /**
      * uses the current event to maybe rotate the slices
@@ -634,30 +484,31 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     return;
                 }
             case AdaptationDuration:
-                int x = e.x;
-                int y = e.y;
-                
-                if(x < patchDimension || y < patchDimension || x > subSizeX - patchDimension || y > subSizeY - patchDimension) {
-                    return;
-                }
-                
-                int positionX = x%(patchDimension + 1);
-                int positionY = y%(patchDimension + 1);
-                int centerX = x + (patchDimension - positionX);
-                int centerY = y + (patchDimension - positionY);
-
-
-                int count = 0;
-                for (int row = -patchDimension; row <= patchDimension; row ++) {
-                    BitSet tmpRow = currentSli.get((centerX - patchDimension) + (centerY + row) * subSizeX, (centerX + patchDimension) + (centerY + row) * subSizeX);
-                    count += tmpRow.cardinality();
-                }
-                                
-                if(count <= (patchDimension * 2 + 1) * (patchDimension * 2 + 1) / 2) {
-                    return;
-                }
-                int timestamp = e.timestamp;
-                break;       
+                log.warning("The adaptation method is not supported yet.");
+//                int x = e.x;
+//                int y = e.y;
+//                
+//                if(x < patchDimension || y < patchDimension || x > subSizeX - patchDimension || y > subSizeY - patchDimension) {
+//                    return;
+//                }
+//                
+//                int positionX = x%(patchDimension + 1);
+//                int positionY = y%(patchDimension + 1);
+//                int centerX = x + (patchDimension - positionX);
+//                int centerY = y + (patchDimension - positionY);
+//
+//
+//                int count = 0;
+//                for (int row = -patchDimension; row <= patchDimension; row ++) {
+//                    BitSet tmpRow = currentSli.get((centerX - patchDimension) + (centerY + row) * subSizeX, (centerX + patchDimension) + (centerY + row) * subSizeX);
+//                    count += tmpRow.cardinality();
+//                }
+//                                
+//                if(count <= (patchDimension * 2 + 1) * (patchDimension * 2 + 1) / 2) {
+//                    return;
+//                }
+//                int timestamp = e.timestamp;
+                return;       
         }        
         
         /* The index cycle is " current idx -> t1 idx -> t2 idx -> current idx".
@@ -700,30 +551,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         for (int[] a : histograms[idx]) {
             Arrays.fill(a, 0);
         }
-    }
-    
-    synchronized public void doEraseGyroZero() {
-        panOffset = 0;
-        tiltOffset = 0;
-        rollOffset = 0;
-        putFloat("panOffset", 0);
-        putFloat("tiltOffset", 0);
-        putFloat("rollOffset", 0);
-        log.info("calibration erased");
-    }
-    
-    synchronized public void doZeroGyro() {
-        calibrating = true;
-        calibrationSampleCount = 0;
-        panCalibrator.reset();
-        tiltCalibrator.reset();
-        rollCalibrator.reset();
-        log.info("calibration started");
-
-//        panOffset = panRate; // TODO offsets should really be some average over some samples
-//        tiltOffset = tiltRate;
-//        rollOffset = rollRate;
-    }
+    }    
 
     /**
      * Computes hamming eight around point x,y using patchDimension and
@@ -766,15 +594,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      */
     private int hammingDistance(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
         int retVal = 0;
-        
+        int blockRadius = patchDimension/2;
+
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
-        if (x < patchDimension + dx || x >= subSizeX - patchDimension + dx || x < patchDimension || x >= subSizeX - patchDimension
-                || y < patchDimension + dy || y >= subSizeY - patchDimension + dy || y < patchDimension || y >= subSizeY - patchDimension) {
+        if (x < blockRadius + dx || x >= subSizeX - blockRadius + dx || x < blockRadius || x >= subSizeX - blockRadius
+                || y < blockRadius + dy || y >= subSizeY - blockRadius + dy || y < blockRadius || y >= subSizeY - blockRadius) {
             return Integer.MAX_VALUE;
         }
         
-        for (int xx = x - patchDimension; xx <= x + patchDimension; xx++) {
-            for (int yy = y - patchDimension; yy <= y + patchDimension; yy++) {
+        for (int xx = x - blockRadius; xx <= x + blockRadius; xx++) {
+            for (int yy = y - blockRadius; yy <= y + blockRadius; yy++) {
                 if(curSlice.get((xx + 1) + (yy) * subSizeX) != prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX)) {
                     retVal += 1;
                 }   
@@ -825,15 +654,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private float jaccardDistance(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
         float retVal = 0;
         float M01 = 0, M10 = 0, M11 = 0;
+        int blockRadius = patchDimension/2;
         
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
-        if (x < patchDimension + dx || x >= subSizeX - patchDimension + dx || x < patchDimension || x >= subSizeX - patchDimension
-                || y < patchDimension + dy || y >= subSizeY - patchDimension + dy || y < patchDimension || y >= subSizeY - patchDimension) {
+        if (x < blockRadius + dx || x >= subSizeX - blockRadius + dx || x < blockRadius || x >= subSizeX - blockRadius
+                || y < blockRadius + dy || y >= subSizeY - blockRadius + dy || y < blockRadius || y >= subSizeY - blockRadius) {
             return Integer.MAX_VALUE;
         }
         
-        for (int xx = x - patchDimension; xx <= x + patchDimension; xx++) {
-            for (int yy = y - patchDimension; yy <= y + patchDimension; yy++) {
+        for (int xx = x - blockRadius; xx <= x + blockRadius; xx++) {
+            for (int yy = y - blockRadius; yy <= y + blockRadius; yy++) {
                 if(curSlice.get((xx + 1) + (yy) * subSizeX) == true && prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX) == true) {
                     M11 += 1;
                 }
@@ -994,15 +824,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      * @return SAD value
      */
     private int sad(int x, int y, int dx, int dy, int[][] prevSlice, int[][] curSlice) {
+        int blockRadius = patchDimension/2;
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
-        if (x < patchDimension + dx || x >= subSizeX - patchDimension + dx || x < patchDimension || x >= subSizeX - patchDimension
-                || y < patchDimension + dy || y >= subSizeY - patchDimension + dy || y < patchDimension || y >= subSizeY - patchDimension) {
+        if (x < blockRadius + dx || x >= subSizeX - blockRadius + dx || x < blockRadius || x >= subSizeX - blockRadius
+                || y < blockRadius + dy || y >= subSizeY - blockRadius + dy || y < blockRadius || y >= subSizeY - blockRadius) {
             return Integer.MAX_VALUE;
         }
         
         int sad = 0;
-        for (int xx = x - patchDimension; xx <= x + patchDimension; xx++) {
-            for (int yy = y - patchDimension; yy <= y + patchDimension; yy++) {
+        for (int xx = x - blockRadius; xx <= x + blockRadius; xx++) {
+            for (int yy = y - blockRadius; yy <= y + blockRadius; yy++) {
                 int d = curSlice[xx][yy] - prevSlice[xx - dx][yy - dy];
                 if (d <= 0) {
                     d = -d;
@@ -1193,23 +1024,22 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         putBoolean("highPassFilterEn", highPassFilterEn);
     }
 
-    public boolean isMeasurePerformance() {
-        return measurePerformance;
-    }
-
-    public void setMeasurePerformance(boolean measurePerformance) {
-        this.measurePerformance = measurePerformance;
-        putBoolean("measurePerformance", measurePerformance);
-    }
-
     public boolean isDisplayOutputVectors() {
         return displayOutputVectors;
     }
 
     public void setDisplayOutputVectors(boolean displayOutputVectors) {
         this.displayOutputVectors = displayOutputVectors;
-        putBoolean("displayOutputVectors", measurePerformance);
+        putBoolean("displayOutputVectors", displayOutputVectors);
 
     }
-    
+
+    public boolean isPreProcessEnable() {
+        return preProcessEnable;
+    }
+
+    public void setPreProcessEnable(boolean preProcessEnable) {
+        this.preProcessEnable = preProcessEnable;
+        putBoolean("preProcessEnable", preProcessEnable);
+    }    
 }
