@@ -113,8 +113,8 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 				aerMaxAddress = 1024;
 			}
 			else {
-				// CHIP_SAMPLEPROB -- 11 bits
-				aerMaxAddress = 2048;
+				// CHIP_SAMPLEPROB -- 12 bits
+				aerMaxAddress = 4096;
 			}
 
 			updateTimestampMasterStatus();
