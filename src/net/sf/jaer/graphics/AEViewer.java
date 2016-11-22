@@ -403,7 +403,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     return "not enough arguments\n";
                 }
                 String filename = line.substring(REMOTE_START_LOGGING.length() + 1);
-                File f = startLogging(filename);
+                // TODO: ask user to choose the data format they want to use.
+                File f = startLogging(filename, "2.0");
                 if (f == null) {
                     return "Couldn't start logging to filename=" + filename + ", startlogging returned " + f + "\n";
                 } else {
@@ -4759,7 +4760,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      *
      * @return the file that is logged to.
      */
-    synchronized public File startLogging(String filename) {
+    synchronized public File startLogging(String filename, String dataFileVersionNum) {
         if (filename == null) {
             log.warning("tried to log to null filename, aborting");
             return null;
@@ -4772,9 +4773,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             loggingFile = new File(filename);
 //			loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), AEFileOutputStream.OUTPUT_BUFFER_SIZE), chip); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
-            loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile), chip); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
             loggingEnabled = true;
-
+            loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile), chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
+        
             if (playMode == PlayMode.PLAYBACK) { // add change listener for rewind to stop logging
                 getAePlayer().getAEInputStream().getSupport().addPropertyChangeListener("rewind", new PropertyChangeListener() {
 
@@ -4828,6 +4829,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         /* TODO : fix so that timestamps are zeroed before recording really starts */
         //zeroTimestamps();
 
+        // The aedat file's format user want to use in the log file.
+        String dataFileVersionNum;
+//        dataFileVersionNum = (String)JOptionPane.showInputDialog(this,
+//        "Choose the aedat file's format", "This is a format chooser dialog",
+//        JOptionPane.QUESTION_MESSAGE,null,
+//        new Object[]{"2.0","3.1"},"2.0");
+//        // User cancel the aedat format choosing dialog.
+//        if(dataFileVersionNum == null) {
+//            return null; 
+//        } 
+        dataFileVersionNum = "2.0";
+        
         String dateString
                 = AEDataFile.DATE_FORMAT.format(new Date());
         String className
@@ -4870,7 +4883,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return null;
         }
 
-        File lf = startLogging(filename);
+        File lf = startLogging(filename, dataFileVersionNum);
         return lf;
 
     }
