@@ -192,7 +192,9 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
             }
         }
 
-        if(dataFileVersionNumber == "2.0") {
+        // Check the data file version, if it's 2.0, then it just put addr and timestamp in sequence. 
+        // If it's 3.1, then we should add packet header for every different event types.
+        if(dataFileVersionNumber.equals("2.0")) {
             for (int i = startIdx; i < n; i++) {
                 byteBuf.putInt(addr[i]);
                 byteBuf.putInt(ts[i]);
