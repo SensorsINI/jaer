@@ -4773,7 +4773,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             loggingFile = new File(filename);
 //			loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), AEFileOutputStream.OUTPUT_BUFFER_SIZE), chip); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
-            loggingEnabled = true;
             loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile), chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
         
             if (playMode == PlayMode.PLAYBACK) { // add change listener for rewind to stop logging
