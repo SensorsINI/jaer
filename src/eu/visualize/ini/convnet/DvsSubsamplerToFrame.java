@@ -203,7 +203,30 @@ public class DvsSubsamplerToFrame {
     public float getValueAtPixel(int x, int y) {
         return pixmap[getIndex(x, y)];
     }
+    
 
+    /**
+     * Returns the integer event sum of the histogram clipped to +/- colorScale range. 
+     * If rectifyPolarties==true, then the events are rectified to +1, otherwise the events are accumulated with +/-1 polarity value.
+     *
+     * @param x
+     * @param y
+     * @return the value of the subsampled map
+     * @see #getValueAtPixel(int, int) 
+     */
+    public int getEventSumAtPixel(int x, int y) {
+        return eventSum[getIndex(x, y)];
+    }
+    
+    /** Sets the value of eventSum array. Utility method used for debugging normalization.
+     * 
+     * @param x
+     * @param y 
+     */
+    public void setEventSumAtPixel(int value, int x, int y){
+        eventSum[getIndex(x, y)]=value;
+    }
+    
     /**
      * Gets the index into the maps
      *
