@@ -170,6 +170,8 @@ public class DvsSubsamplerToFrame {
             pmv = 0;
         }
         // pixmap contains the scaled event count clipped to 0-1 range and either starting at zero or centered on 0.5, depending on rectifyPolarties
+        // This pixmap value is OVERWRITEN later if the frame is normalized, but otherwise if normalizeFrame is not called, then
+        // the pixmap value set here is the one that is returned (and typically used for rendering image) 
         pixmap[k] = pmv;
         accumulatedEventCount++;
 
