@@ -586,6 +586,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 System.err.println("Bad maxframes argument: " + e.toString());
                 System.exit(1);
             }
+        }else{
+            writer.setMaxFrames(0);
         }
 
         writer.openAVIOutputStream(outfile, args);
@@ -615,6 +617,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             }
         };
         ais.getSupport().addPropertyChangeListener(rewindListener);
+        ais.setNonMonotonicTimeExceptionsChecked(false); // to avoid wrap and big wrap exceptions, possibly, in long recordings
         while (writerControl.writing) {
             try {
                 aeRaw = ais.readPacketByNumber(writer.getDvsMinEvents()); // read at most this many events to avoid writing duplicate frames at end of movie from start of file, which would happen automatically by
