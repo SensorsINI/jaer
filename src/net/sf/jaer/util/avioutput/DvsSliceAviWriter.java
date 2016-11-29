@@ -404,7 +404,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     public static final String USAGE = "java DvsSliceAviWriter [-aechip=aechipclassname (fully qualified class name, e.g. eu.seebetter.ini.chips.davis.DAVIS240C)] "
             + "[-dimx=36] [-dimy=36] [-quality=.9] [-format=PNG|JPG|RLE|RAW] [-framerate=30] [-grayscale=200] "
             + "[-writedvssliceonapsframe=false] [-writetimecodefile=true] "
-            + "[-numevents=2000] [-rectify=false] [-normalize=true] [-showoutput=true]  "
+            + "[-numevents=2000] [-rectify=false] [-normalize=true] [-showoutput=true]  [-maxframes=0] "
             + "inputFile.aedat [outputfile.avi]"
             + "\n"
             + "Note arguments values are assigned with =, not space"
@@ -429,11 +429,24 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         opt.getSet().addOption("rectify", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("normalize", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("showoutput", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("maxframes", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         if (!opt.check()) {
             System.out.println(USAGE);
             System.exit(1);
         }
+        if (opt.getSet().getData().isEmpty()) {
+            System.err.println("no output file specified");
+            System.exit(1);
+        }
+        if (opt.getSet().getData().size() > 2) {
+            System.err.println("too many input/output file arguments (only one or two allowed)");
+            System.exit(1);
+        }
+
         String inpfilename = opt.getSet().getData().get(0);
+        if (!(inpfilename.toLowerCase().endsWith("aedat"))) {
+            System.err.println("Warning: Input filename does not end with aedat: " + inpfilename);
+        }
         String outfilename = null;
         if (opt.getSet().getData().size() == 2) {
             outfilename = opt.getSet().getData().get(1);
@@ -565,6 +578,16 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             writer.setShowOutput(b);
         }
 
+        if (opt.getSet().isSet("maxframes")) {
+            try {
+                int n = Integer.parseInt(opt.getSet().getOption("maxframes").getResultValue(0));
+                writer.setMaxFrames(n);
+            } catch (NumberFormatException e) {
+                System.err.println("Bad maxframes argument: " + e.toString());
+                System.exit(1);
+            }
+        }
+
         writer.openAVIOutputStream(outfile, args);
         int lastNumFramesWritten = 0, numPrinted = 0;
 
@@ -572,7 +595,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             ais = new AEFileInputStream(inpfile, chip);
             ais.getSupport().addPropertyChangeListener(writer); // get informed about rewind events
         } catch (IOException ex) {
-            System.err.println("Couldn't open file " + inpfile + ": " + ex.toString());
+            System.err.println("Couldn't open file " + inpfile + " from working directory "+System.getProperty("user.dir")+" : " + ex.toString());
             System.exit(1);
         }
 
@@ -601,6 +624,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 if (numFramesWritten >= lastNumFramesWritten + 500) {
                     lastNumFramesWritten = numFramesWritten;
                     System.out.println(String.format("%d frames", numFramesWritten));
+                }
+                if(writer.getMaxFrames()>0 && writer.getFramesWritten()>=writer.getMaxFrames()){
+                    break;
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -631,13 +657,13 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         writer.doCloseFile();
         System.out.println(String.format("Settings: aechip=%s\ndimx=%d dimy=%d quality=%f format=%s framerate=%d grayscale=%d\n"
                 + "writedvssliceonapsframe=%s writetimecodefile=%s\n"
-                + "numevents=%d rectify=%s normalize=%s showoutput=%s",
+                + "numevents=%d rectify=%s normalize=%s showoutput=%s maxframes=%d",
                 chipname, writer.getDimx(), writer.getDimy(),
                 writer.getCompressionQuality(), writer.getFormat().toString(),
                 writer.getFrameRate(), writer.getGrayScale(), writer.isWriteDvsSliceImageOnApsFrame(),
                 writer.isWriteTimecodeFile(), writer.getDvsMinEvents(), writer.isFullRectifyOutput(), writer.isFullRectifyOutput(),
-                writer.isShowOutput()));
-        System.out.println("Successfully wrote file " + outfile+" with "+writer.getFramesWritten()+" frames");
+                writer.isShowOutput(), writer.getMaxFrames()));
+        System.out.println("Successfully wrote file " + outfile + " with " + writer.getFramesWritten() + " frames");
         System.exit(0);
     }
 
