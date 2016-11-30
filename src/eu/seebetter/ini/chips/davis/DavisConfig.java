@@ -86,6 +86,8 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		getMasterbias().setKPrimeNFet(55e-3f); // estimated from tox=42A, mu_n=670 cm^2/Vs
 		getMasterbias().setMultiplier(4); // =45 correct for dvs320
 		getMasterbias().setWOverL(4.8f / 2.4f); // masterbias has nfet with w/l=2 at output
+		getMasterbias().setRExternal(100e3f); // biasgen on all SeeBetter chips designed for 100kOhn resistor that makes 389nA master current
+		getMasterbias().setRInternal(0); // no on-chip resistor is used
 		getMasterbias().addObserver(this); // changes to masterbias come back to update() here
 
 		ipots = new AddressedIPotArray(this);
