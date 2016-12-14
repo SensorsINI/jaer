@@ -402,13 +402,13 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                     char cmd = 0;
                     switch (maxUnit) {
                         case DECISION_ROCK:
-                            cmd = '1';
+                            cmd = '3';
                             break;
                         case DECISION_SCISSORS:
                             cmd = '2';
                             break;
                         case DECISION_PAPER:
-                            cmd = '3';
+                            cmd = '1';
                             break;
                         case DECISION_BACKGROUND:
                             cmd = '4';
