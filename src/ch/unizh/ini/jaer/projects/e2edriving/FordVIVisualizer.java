@@ -37,6 +37,9 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
     String lastFordVIFile = getString("lastFordVIFile", null);
     private boolean addedPropertyChangeListener=false;
     BufferedInputStream fordViInputStream=null;
+    private boolean showSteering=getBoolean("showSteering",true);
+    private boolean showThrottleBrake=getBoolean("showThrottleBrake",true);
+    private boolean showGPS=getBoolean("showGPS",true);
 
     public FordVIVisualizer(AEChip chip) {
         super(chip);
@@ -98,6 +101,51 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
             int fileStartTs=chip.getAeInputStream().getFirstTimestamp();
         }
         
+    }
+
+    /**
+     * @return the showSteering
+     */
+    public boolean isShowSteering() {
+        return showSteering;
+    }
+
+    /**
+     * @param showSteering the showSteering to set
+     */
+    public void setShowSteering(boolean showSteering) {
+        this.showSteering = showSteering;
+        putBoolean("showSteering",showSteering);
+    }
+
+    /**
+     * @return the showThrottleBrake
+     */
+    public boolean isShowThrottleBrake() {
+        return showThrottleBrake;
+    }
+
+    /**
+     * @param showThrottleBrake the showThrottleBrake to set
+     */
+    public void setShowThrottleBrake(boolean showThrottleBrake) {
+        this.showThrottleBrake = showThrottleBrake;
+        putBoolean("showThrottleBrake",showThrottleBrake);
+    }
+
+    /**
+     * @return the showGPS
+     */
+    public boolean isShowGPS() {
+        return showGPS;
+    }
+
+    /**
+     * @param showGPS the showGPS to set
+     */
+    public void setShowGPS(boolean showGPS) {
+        this.showGPS = showGPS;
+        putBoolean("showGPS", showGPS);
     }
 
 }
