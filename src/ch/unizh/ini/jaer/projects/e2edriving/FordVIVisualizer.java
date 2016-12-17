@@ -242,7 +242,7 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
         try {
             fordViFile = c.getSelectedFile();
             fordViInputStream = new BufferedInputStream(new FileInputStream(fordViFile));
-            fordViStates = readJsonStream(fordViInputStream);
+            fordViStates = readFordViJsonStream(fordViInputStream);
 
         } catch (Exception ex) {
             Logger.getLogger(DavisDeepLearnCnnProcessor.class.getName()).log(Level.SEVERE, null, ex);
@@ -251,7 +251,7 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
 
     }
 
-    public TreeMap<Double, FordViState> readJsonStream(InputStream in) throws IOException {
+    public TreeMap<Double, FordViState> readFordViJsonStream(InputStream in) throws IOException {
         Gson gson = new Gson();
         FordViState fordViCurrentState = new FordViState(); // starting state, all unknown
         fordViStates = new TreeMap<Double, FordViState>(); // map to hold state on each change
