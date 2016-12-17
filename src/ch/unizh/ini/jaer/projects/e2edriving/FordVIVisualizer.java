@@ -10,6 +10,7 @@ import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 import com.jogamp.opengl.GLAutoDrawable;
 import eu.visualize.ini.convnet.DavisDeepLearnCnnProcessor;
+import java.awt.Color;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedInputStream;
@@ -35,6 +36,7 @@ import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
  * Reads Ford VI (vehicle interface) log files to display vehicle data over
@@ -44,11 +46,13 @@ import net.sf.jaer.graphics.FrameAnnotater;
  */
 public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
 
-    private long aeDatStartTimeMs = 0;
     private File fordViFile = null;
-    String lastFordVIFile = getString("lastFordVIFile", System.getProperty("user.dir"));
+    private String lastFordVIFile = getString("lastFordVIFile", System.getProperty("user.dir"));
+    private BufferedInputStream fordViInputStream = null;
     private TreeMap<Double, FordViState> fordViStates = null;
-    BufferedInputStream fordViInputStream = null;
+    private FordViState lastFordViState = null;
+
+    private long aeDatStartTimeMs = 0;
 
     private boolean addedPropertyChangeListener = false;
     private boolean showSteering = getBoolean("showSteering", true);
@@ -57,6 +61,7 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
 
     int fileStartTs = 0;
     int lastTs = -1;
+    private double MAX_TIME_DIFF_S_ALLOWED=1; // max time difference allowed between FordVI message time and AE timestamp
 
     public FordVIVisualizer(AEChip chip) {
         super(chip);
@@ -76,11 +81,11 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
             if (!in.isEmpty()) {
                 lastTs = in.getLastTimestamp();
             }
-            double tsMs1970 = (lastTs - fileStartTs) + aeDatStartTimeMs / 1000;
-            Entry<Double, FordViState> lastEntry = fordViStates.lowerEntry(tsMs1970);
-            if (lastEntry != null) {
-                FordViState lastState = lastEntry.getValue();
-                System.out.println(lastState);
+            double tsSSince1970 = (lastTs - fileStartTs)*1e-6 + aeDatStartTimeMs / 1000;
+            Entry<Double, FordViState> lastEntry = fordViStates.lowerEntry(tsSSince1970);
+            if (lastEntry != null && Math.abs(lastEntry.getKey()-tsSSince1970)<MAX_TIME_DIFF_S_ALLOWED) {
+                lastFordViState = lastEntry.getValue();
+                System.out.println(lastFordViState);
             }
 
         }
@@ -97,6 +102,12 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
+        if (lastFordViState!=null) {
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
+            MultilineAnnotationTextRenderer.setScale(.3f);
+            MultilineAnnotationTextRenderer.setColor(Color.blue);
+            MultilineAnnotationTextRenderer.renderMultilineString(lastFordViState.toString());
+        }
     }
 
     private long parseDataStartTimeFromAeDatFile(AEFileInputStream aeis) throws FileNotFoundException, IOException {
@@ -205,6 +216,7 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
             } catch (IOException ex) {
                 log.info("could not read DataStartTime from AEDAT file: " + ex.toString());
             }
+            log.info("read DataStartTime (start time of data recording in ms unix time since 1970) as "+aeDatStartTimeMs);
         }
 
     }
@@ -256,14 +268,12 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
 
     public class FordViMessage {
 
-        private double timestamp;
-        private long timestampMs;
+        private double timestamp; // The timestamp is in UNIX time (i.e. seconds since the UNIX epoch, 00:00:00 UTC, 1/1/1970). https://github.com/openxc/openxc-message-format
         private String name;
         private Object value;
 
         public FordViMessage(double timestamp, String name, Object value) {
             this.timestamp = timestamp;
-            timestampMs = (long) timestamp / 1000;
             this.name = name;
             this.value = value;
         }
@@ -312,7 +322,7 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
 
         @Override
         public String toString() {
-            return "FordViState{" + "steeringWheelAngle=" + steeringWheelAngle + ", vehicleSpeed=" + vehicleSpeed + ", latitude=" + latitude + ", longtitude=" + longitude + ", acceleratorPedalPosition=" + acceleratorPedalPosition + ", brakePedalStatus=" + brakePedalStatus + '}';
+            return "FordViState:" + "\n steeringWheelAngle=" + steeringWheelAngle + "\n vehicleSpeed=" + vehicleSpeed + "\n latitude=" + latitude + "\n longtitude=" + longitude + "\n acceleratorPedalPosition=" + acceleratorPedalPosition + "\n brakePedalStatus=" + brakePedalStatus ;
         }
 
     }
