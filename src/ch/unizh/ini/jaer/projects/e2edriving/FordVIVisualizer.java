@@ -12,8 +12,11 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
+import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.visualize.ini.convnet.DavisDeepLearnCnnProcessor;
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedInputStream;
@@ -106,60 +109,100 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
     }
 
     GLU glu = null;
-    GLUquadric wheelQuad;
+    GLUquadric quad;
+    TextRenderer textRenderer = null;
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
         if (lastFordViState != null) {
-            if (showText) {
-                MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
-                MultilineAnnotationTextRenderer.setScale(.3f);
-                MultilineAnnotationTextRenderer.setColor(Color.blue);
-                MultilineAnnotationTextRenderer.renderMultilineString(lastFordViState.toString());
-            }
-            GL2 gl = drawable.getGL().getGL2();
-            if (showSpeedo) {
 
+            GL2 gl = drawable.getGL().getGL2();
+            gl.glColor3f(0, 0, 1);
+            gl.glLineWidth(2);
+            if (glu == null) {
+                glu = new GLU();
+            }
+            if (quad == null) {
+                quad = glu.gluNewQuadric();
+            }
+            if (textRenderer == null) {
+
+            }
+            if (showSpeedo) {
+                textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
+                textRenderer.setColor(Color.blue);
+                final float x = chip.getSizeX() * .8f, y = (chip.getSizeY()) * .8f, scale = .5f;
+                textRenderer.begin3DRendering();
+                String s = String.format("%.0f km/h", lastFordViState.vehicleSpeed);
+                Rectangle2D r = textRenderer.getBounds(s);
+                textRenderer.draw3D(s, (float) (x - scale*r.getWidth() / 2), (float) (y - scale*r.getHeight() / 2), 0, scale);
+                textRenderer.end3DRendering();
+
+//                final float radius = chip.getMinSize() * .1f;
+//                // draw steering wheel
+//                final float x = chip.getSizeX() * .8f, y = (chip.getSizeY()) * .8f;
+//
+//                gl.glPushMatrix();
+//                {
+//                    gl.glTranslatef(x, y, 0);
+//                    glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
+//                    glu.gluDisk(quad, radius, radius + 1, 32, 1);
+//                }
+//                gl.glPopMatrix();
+//
+//                // draw steering vector, including external radio input value
+//                gl.glPushMatrix();
+//                {
+//                    gl.glTranslatef(x, y, 0);
+//                    gl.glBegin(GL2.GL_LINES);
+//                    {
+//                        gl.glVertex2f(0, 0);
+//                        double a = lastFordViState.vehicleSpeed/200; // -1 to 1
+//                        float dx = radius * (float) Math.sin(a);
+//                        float dy = radius * (float) Math.cos(a);
+//                        gl.glVertex2f(dx, dy);
+//                    }
+//                    gl.glEnd();
+//                }
+//                gl.glPopMatrix();
             }
             if (showThrottleBrake) {
 
             }
-            if (showSteering) {
-                final float radius=chip.getMinSize()*.25f;
+            if (showSteering && !Float.isNaN(lastFordViState.steeringWheelAngle)) {
+                final float radius = chip.getMinSize() * .25f;
                 // draw steering wheel
-                if (glu == null) {
-                    glu = new GLU();
-                }
-                if (wheelQuad == null) {
-                    wheelQuad = glu.gluNewQuadric();
-                }
+                final float x = chip.getSizeX() / 2, y = (chip.getSizeY()) / 2;
                 gl.glPushMatrix();
                 {
-                    gl.glTranslatef(chip.getSizeX() / 2, (chip.getSizeY()) /2, 0);
-                    gl.glLineWidth(6f);
-                    glu.gluQuadricDrawStyle(wheelQuad, GLU.GLU_FILL);
-                    glu.gluDisk(wheelQuad, radius, radius + 1, 32, 1);
+                    gl.glTranslatef(x, y, 0);
+                    glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
+                    glu.gluDisk(quad, radius, radius + 1, 32, 1);
                 }
                 gl.glPopMatrix();
 
                 // draw steering vector, including external radio input value
                 gl.glPushMatrix();
                 {
-                    gl.glColor3f(1, 1, 1);
-                    gl.glTranslatef(chip.getSizeX() / 2, (chip.getSizeY()) /2, 0);
-                    gl.glLineWidth(6f);
+                    gl.glTranslatef(x, y, 0);
                     gl.glBegin(GL2.GL_LINES);
                     {
                         gl.glVertex2f(0, 0);
-                        double a = -Math.PI*lastFordViState.steeringWheelAngle/180; // -1 to 1
-                        float x = radius * (float) Math.sin(a);
-                        float y = radius * (float) Math.cos(a);
-                        gl.glVertex2f(x, y);
+                        double a = -Math.PI * lastFordViState.steeringWheelAngle / 180; // rad
+                        float dx = radius * (float) Math.sin(a);
+                        float dy = radius * (float) Math.cos(a);
+                        gl.glVertex2f(dx, dy);
                     }
                     gl.glEnd();
                 }
                 gl.glPopMatrix();
 
+            }
+            if (showText) {
+                MultilineAnnotationTextRenderer.setColor(Color.blue);
+                MultilineAnnotationTextRenderer.setScale(.3f);
+                MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
+                MultilineAnnotationTextRenderer.renderMultilineString(lastFordViState.toString());
             }
         }
     }
@@ -350,6 +393,10 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
         putBoolean("showSpeedo", showSpeedo);
     }
 
+    private void updateTime(FordViMessage message, FordViState fordViCurrentState) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
     public class FordViMessage {
 
         private double timestamp; // The timestamp is in UNIX time (i.e. seconds since the UNIX epoch, 00:00:00 UTC, 1/1/1970). https://github.com/openxc/openxc-message-format
@@ -392,6 +439,8 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
 
     public class FordViState implements Cloneable {
 
+        double timestamp = 0;
+        double timestampDelta = 0;
         float steeringWheelAngle = Float.NaN; // in degrees, CCW is positive 0 is straight
         float vehicleSpeed = Float.NaN; // in km/h I think
         float latitude = Float.NaN; // in deg?
