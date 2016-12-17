@@ -8,7 +8,10 @@ package ch.unizh.ini.jaer.projects.e2edriving;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
+import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.glu.GLU;
+import com.jogamp.opengl.glu.GLUquadric;
 import eu.visualize.ini.convnet.DavisDeepLearnCnnProcessor;
 import java.awt.Color;
 import java.beans.PropertyChangeEvent;
@@ -57,11 +60,13 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
     private boolean addedPropertyChangeListener = false;
     private boolean showSteering = getBoolean("showSteering", true);
     private boolean showThrottleBrake = getBoolean("showThrottleBrake", true);
+    private boolean showSpeedo = getBoolean("showSpeedo", true);
     private boolean showGPS = getBoolean("showGPS", true);
+    private boolean showText = getBoolean("showText", true);
 
     int fileStartTs = 0;
     int lastTs = -1;
-    private double MAX_TIME_DIFF_S_ALLOWED=1; // max time difference allowed between FordVI message time and AE timestamp
+    private double MAX_TIME_DIFF_S_ALLOWED = 1; // max time difference allowed between FordVI message time and AE timestamp
 
     public FordVIVisualizer(AEChip chip) {
         super(chip);
@@ -81,11 +86,11 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
             if (!in.isEmpty()) {
                 lastTs = in.getLastTimestamp();
             }
-            double tsSSince1970 = (lastTs - fileStartTs)*1e-6 + aeDatStartTimeMs / 1000;
+            double tsSSince1970 = (lastTs - fileStartTs) * 1e-6 + aeDatStartTimeMs / 1000;
             Entry<Double, FordViState> lastEntry = fordViStates.lowerEntry(tsSSince1970);
-            if (lastEntry != null && Math.abs(lastEntry.getKey()-tsSSince1970)<MAX_TIME_DIFF_S_ALLOWED) {
+            if (lastEntry != null && Math.abs(lastEntry.getKey() - tsSSince1970) < MAX_TIME_DIFF_S_ALLOWED) {
                 lastFordViState = lastEntry.getValue();
-                System.out.println(lastFordViState);
+//                System.out.println(lastFordViState);
             }
 
         }
@@ -100,13 +105,62 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
     public void initFilter() {
     }
 
+    GLU glu = null;
+    GLUquadric wheelQuad;
+
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        if (lastFordViState!=null) {
-            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
-            MultilineAnnotationTextRenderer.setScale(.3f);
-            MultilineAnnotationTextRenderer.setColor(Color.blue);
-            MultilineAnnotationTextRenderer.renderMultilineString(lastFordViState.toString());
+        if (lastFordViState != null) {
+            if (showText) {
+                MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
+                MultilineAnnotationTextRenderer.setScale(.3f);
+                MultilineAnnotationTextRenderer.setColor(Color.blue);
+                MultilineAnnotationTextRenderer.renderMultilineString(lastFordViState.toString());
+            }
+            GL2 gl = drawable.getGL().getGL2();
+            if (showSpeedo) {
+
+            }
+            if (showThrottleBrake) {
+
+            }
+            if (showSteering) {
+                final float radius=chip.getMinSize()*.25f;
+                // draw steering wheel
+                if (glu == null) {
+                    glu = new GLU();
+                }
+                if (wheelQuad == null) {
+                    wheelQuad = glu.gluNewQuadric();
+                }
+                gl.glPushMatrix();
+                {
+                    gl.glTranslatef(chip.getSizeX() / 2, (chip.getSizeY()) /2, 0);
+                    gl.glLineWidth(6f);
+                    glu.gluQuadricDrawStyle(wheelQuad, GLU.GLU_FILL);
+                    glu.gluDisk(wheelQuad, radius, radius + 1, 32, 1);
+                }
+                gl.glPopMatrix();
+
+                // draw steering vector, including external radio input value
+                gl.glPushMatrix();
+                {
+                    gl.glColor3f(1, 1, 1);
+                    gl.glTranslatef(chip.getSizeX() / 2, (chip.getSizeY()) /2, 0);
+                    gl.glLineWidth(6f);
+                    gl.glBegin(GL2.GL_LINES);
+                    {
+                        gl.glVertex2f(0, 0);
+                        double a = -Math.PI*lastFordViState.steeringWheelAngle/180; // -1 to 1
+                        float x = radius * (float) Math.sin(a);
+                        float y = radius * (float) Math.cos(a);
+                        gl.glVertex2f(x, y);
+                    }
+                    gl.glEnd();
+                }
+                gl.glPopMatrix();
+
+            }
         }
     }
 
@@ -216,7 +270,7 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
             } catch (IOException ex) {
                 log.info("could not read DataStartTime from AEDAT file: " + ex.toString());
             }
-            log.info("read DataStartTime (start time of data recording in ms unix time since 1970) as "+aeDatStartTimeMs);
+            log.info("read DataStartTime (start time of data recording in ms unix time since 1970) as " + aeDatStartTimeMs);
         }
 
     }
@@ -266,6 +320,36 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
         putBoolean("showGPS", showGPS);
     }
 
+    /**
+     * @return the showSpeedo
+     */
+    public boolean isShowSpeedo() {
+        return showSpeedo;
+    }
+
+    /**
+     * @return the showText
+     */
+    public boolean isShowText() {
+        return showText;
+    }
+
+    /**
+     * @param showText the showText to set
+     */
+    public void setShowText(boolean showText) {
+        this.showText = showText;
+        putBoolean("showText", showText);
+    }
+
+    /**
+     * @param showSpeedo the showSpeedo to set
+     */
+    public void setShowSpeedo(boolean showSpeedo) {
+        this.showSpeedo = showSpeedo;
+        putBoolean("showSpeedo", showSpeedo);
+    }
+
     public class FordViMessage {
 
         private double timestamp; // The timestamp is in UNIX time (i.e. seconds since the UNIX epoch, 00:00:00 UTC, 1/1/1970). https://github.com/openxc/openxc-message-format
@@ -308,11 +392,11 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
 
     public class FordViState implements Cloneable {
 
-        float steeringWheelAngle = Float.NaN;
-        float vehicleSpeed = Float.NaN;
-        float latitude = Float.NaN;
-        float longitude = Float.NaN;
-        float acceleratorPedalPosition = Float.NaN;
+        float steeringWheelAngle = Float.NaN; // in degrees, CCW is positive 0 is straight
+        float vehicleSpeed = Float.NaN; // in km/h I think
+        float latitude = Float.NaN; // in deg?
+        float longitude = Float.NaN; // deg?
+        float acceleratorPedalPosition = Float.NaN; // 0-1??
         boolean brakePedalStatus = false;
 
         @Override
@@ -322,7 +406,7 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
 
         @Override
         public String toString() {
-            return "FordViState:" + "\n steeringWheelAngle=" + steeringWheelAngle + "\n vehicleSpeed=" + vehicleSpeed + "\n latitude=" + latitude + "\n longtitude=" + longitude + "\n acceleratorPedalPosition=" + acceleratorPedalPosition + "\n brakePedalStatus=" + brakePedalStatus ;
+            return "FordViState:" + "\n steeringWheelAngle=" + steeringWheelAngle + "\n vehicleSpeed=" + vehicleSpeed + "\n latitude=" + latitude + "\n longtitude=" + longitude + "\n acceleratorPedalPosition=" + acceleratorPedalPosition + "\n brakePedalStatus=" + brakePedalStatus;
         }
 
     }
