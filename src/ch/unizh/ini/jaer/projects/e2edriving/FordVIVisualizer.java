@@ -128,10 +128,10 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
     public void annotate(GLAutoDrawable drawable) {
         if (lastFordViState != null) {
             if (textRenderer == null) {
+                textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
+                textRenderer.setColor(Color.blue);
 
             }
-            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
-            textRenderer.setColor(Color.blue);
             GL2 gl = drawable.getGL().getGL2();
             gl.glColor3f(0, 0, 1);
             gl.glLineWidth(2);
@@ -153,7 +153,7 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
             if (showTime) {
                 final float x = chip.getSizeX() * .7f, y = (chip.getSizeY()) * .05f, scale = .25f;
                 textRenderer.begin3DRendering();
-                String s = String.format("%s, dt=%4dms", new Date((long)lastFordViState.timestamp*1000).toString(), (int)(lastFordViState.timestampDelta*1000));
+                String s = String.format("%s, dt=%4dms", new Date((long) lastFordViState.timestamp * 1000).toString(), (int) (lastFordViState.timestampDelta * 1000));
                 Rectangle2D r = textRenderer.getBounds(s);
                 textRenderer.draw3D(s, (float) (x - scale * r.getWidth() / 2), (float) (y - scale * r.getHeight() / 2), 0, scale);
                 textRenderer.end3DRendering();
@@ -456,9 +456,9 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
     }
 
     private void updateTime(FordViMessage message, FordViState state) {
-        double old=state.timestamp;
+        double old = state.timestamp;
         state.timestamp = message.timestamp;
-        state.timestampDelta=state.timestamp-old;
+        state.timestampDelta = state.timestamp - old;
     }
 
     public class FordViMessage {
