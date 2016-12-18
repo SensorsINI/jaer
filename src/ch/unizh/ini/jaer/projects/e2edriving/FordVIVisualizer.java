@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
+import java.util.Date;
 import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.TreeMap;
@@ -36,6 +37,8 @@ import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEFileInputStream;
@@ -50,6 +53,8 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  *
  * @author tobi, jbinas
  */
+@Description("Reads Ford VI (vehicle interface) log files to display vehicle data over recording")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
 
     private File fordViFile = null;
@@ -65,6 +70,7 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
     private boolean showThrottleBrake = getBoolean("showThrottleBrake", true);
     private boolean showSpeedo = getBoolean("showSpeedo", true);
     private boolean showGPS = getBoolean("showGPS", true);
+    private boolean showTime = getBoolean("showTime", true);
     private boolean showText = getBoolean("showText", true);
 
     int fileStartTs = 0;
@@ -73,6 +79,12 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
 
     public FordVIVisualizer(AEChip chip) {
         super(chip);
+        setPropertyTooltip("showText", "shows text overlay of FordVI data, if available and if timestamp offset is not too large");
+        setPropertyTooltip("showSpeedo", "shows speedometer");
+        setPropertyTooltip("showGPS", "shows GPS latitude/longitude");
+        setPropertyTooltip("showSteering", "shows steering wheel angle");
+        setPropertyTooltip("showThrottleBrake", "shows throttle/brake");
+        setPropertyTooltip("showTime", "shows time/date from FordVI log file");
     }
 
     @Override
@@ -115,7 +127,11 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
     @Override
     public void annotate(GLAutoDrawable drawable) {
         if (lastFordViState != null) {
+            if (textRenderer == null) {
 
+            }
+            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
+            textRenderer.setColor(Color.blue);
             GL2 gl = drawable.getGL().getGL2();
             gl.glColor3f(0, 0, 1);
             gl.glLineWidth(2);
@@ -125,17 +141,30 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
             if (quad == null) {
                 quad = glu.gluNewQuadric();
             }
-            if (textRenderer == null) {
 
+            if (showGPS) {
+                final float x = chip.getSizeX() * .7f, y = (chip.getSizeY()) * .1f, scale = .25f;
+                textRenderer.begin3DRendering();
+                String s = String.format("GPS: %10.6f, %10.6f", lastFordViState.latitude, lastFordViState.longitude);
+                Rectangle2D r = textRenderer.getBounds(s);
+                textRenderer.draw3D(s, (float) (x - scale * r.getWidth() / 2), (float) (y - scale * r.getHeight() / 2), 0, scale);
+                textRenderer.end3DRendering();
             }
+            if (showTime) {
+                final float x = chip.getSizeX() * .7f, y = (chip.getSizeY()) * .05f, scale = .25f;
+                textRenderer.begin3DRendering();
+                String s = String.format("%s, dt=%4dms", new Date((long)lastFordViState.timestamp*1000).toString(), (int)(lastFordViState.timestampDelta*1000));
+                Rectangle2D r = textRenderer.getBounds(s);
+                textRenderer.draw3D(s, (float) (x - scale * r.getWidth() / 2), (float) (y - scale * r.getHeight() / 2), 0, scale);
+                textRenderer.end3DRendering();
+            }
+
             if (showSpeedo) {
-                textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
-                textRenderer.setColor(Color.blue);
                 final float x = chip.getSizeX() * .8f, y = (chip.getSizeY()) * .8f, scale = .5f;
                 textRenderer.begin3DRendering();
                 String s = String.format("%.0f km/h", lastFordViState.vehicleSpeed);
                 Rectangle2D r = textRenderer.getBounds(s);
-                textRenderer.draw3D(s, (float) (x - scale*r.getWidth() / 2), (float) (y - scale*r.getHeight() / 2), 0, scale);
+                textRenderer.draw3D(s, (float) (x - scale * r.getWidth() / 2), (float) (y - scale * r.getHeight() / 2), 0, scale);
                 textRenderer.end3DRendering();
 
 //                final float radius = chip.getMinSize() * .1f;
@@ -167,6 +196,18 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
 //                gl.glPopMatrix();
             }
             if (showThrottleBrake) {
+                final float x = chip.getSizeX() * .2f, y = (chip.getSizeY()) * .1f, scale = .4f;
+                textRenderer.begin3DRendering();
+                String s = null;
+                if (lastFordViState.brakePedalStatus) {
+                    s = String.format("Braking");
+                } else {
+                    s = String.format("Throttle: %3.0f%%", lastFordViState.acceleratorPedalPosition);
+
+                }
+                Rectangle2D r = textRenderer.getBounds(s);
+                textRenderer.draw3D(s, (float) (x - scale * r.getWidth() / 2), (float) (y - scale * r.getHeight() / 2), 0, scale);
+                textRenderer.end3DRendering();
 
             }
             if (showSteering && !Float.isNaN(lastFordViState.steeringWheelAngle)) {
@@ -264,26 +305,32 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
                 switch (message.name) {
                     case "steering_wheel_angle":
                         fordViCurrentState.steeringWheelAngle = ((Double) message.value).floatValue();
+                        updateTime(message, fordViCurrentState);
                         tmp = (FordViState) fordViCurrentState.clone();
                         break;
                     case "vehicle_speed":
                         fordViCurrentState.vehicleSpeed = ((Double) message.value).floatValue();
+                        updateTime(message, fordViCurrentState);
                         tmp = (FordViState) fordViCurrentState.clone();
                         break;
                     case "latitude":
                         fordViCurrentState.latitude = ((Double) message.value).floatValue();
+                        updateTime(message, fordViCurrentState);
                         tmp = (FordViState) fordViCurrentState.clone();
                         break;
                     case "longitude":
                         fordViCurrentState.longitude = ((Double) message.value).floatValue();
+                        updateTime(message, fordViCurrentState);
                         tmp = (FordViState) fordViCurrentState.clone();
                         break;
                     case "accelerator_pedal_position":
                         fordViCurrentState.acceleratorPedalPosition = ((Double) message.value).floatValue();
+                        updateTime(message, fordViCurrentState);
                         tmp = (FordViState) fordViCurrentState.clone();
                         break;
                     case "brake_pedal_status":
                         fordViCurrentState.brakePedalStatus = (boolean) message.value;
+                        updateTime(message, fordViCurrentState);
                         tmp = (FordViState) fordViCurrentState.clone();
                         break;
                     default:
@@ -364,6 +411,21 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
     }
 
     /**
+     * @return the showTime
+     */
+    public boolean isShowTime() {
+        return showTime;
+    }
+
+    /**
+     * @param showTime the showTime to set
+     */
+    public void setShowTime(boolean showTime) {
+        this.showTime = showTime;
+        putBoolean("showTime", showTime);
+    }
+
+    /**
      * @return the showSpeedo
      */
     public boolean isShowSpeedo() {
@@ -393,8 +455,10 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
         putBoolean("showSpeedo", showSpeedo);
     }
 
-    private void updateTime(FordViMessage message, FordViState fordViCurrentState) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    private void updateTime(FordViMessage message, FordViState state) {
+        double old=state.timestamp;
+        state.timestamp = message.timestamp;
+        state.timestampDelta=state.timestamp-old;
     }
 
     public class FordViMessage {
