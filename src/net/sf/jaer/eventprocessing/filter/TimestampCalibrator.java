@@ -67,7 +67,9 @@ public class TimestampCalibrator extends EventFilter2D implements FrameAnnotater
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if (in.isEmpty() || !(chip.getAeViewer().getPlayMode() == PlayMode.LIVE)) {
+        if (in.isEmpty() 
+                || (enableCalibration && !(chip.getAeViewer().getPlayMode() == PlayMode.LIVE)) // go ahead and run rest if we are just correcting timestamps
+        ) {
             return in;
         }
         if (!propertyChangeListenersAdded) {
@@ -110,9 +112,10 @@ public class TimestampCalibrator extends EventFilter2D implements FrameAnnotater
             } else {
                 i = (Iterator<BasicEvent>) in.inputIterator();
             }
+            final float factor=(1 - 1e-6f * ppmTimestampTooFastError);
             while (i.hasNext()) {
                 BasicEvent e = i.next();
-                e.timestamp = (int) (e.timestamp * (1 - 1e-6f * ppmTimestampTooFastError)); // if ppmTimestampTooFastError is positive, timestamp will be reduced
+                e.timestamp = (int) (e.timestamp * factor); // if ppmTimestampTooFastError is positive, timestamp will be reduced
             }
         }
         return in;
