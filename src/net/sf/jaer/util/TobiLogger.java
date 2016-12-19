@@ -126,7 +126,7 @@ public class TobiLogger {
                 logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File(fileNameActual))));
                 logStream.println("# "+getHeaderLine());
                 logStream.println("# created "+new Date());
-                log.info("created log file name "+fileNameActual+" in folder "+System.getProperties().getProperty("user.dir"));
+                log.info("created log file name "+fileNameActual);
                 startingTime=nanotimeEnabled? System.nanoTime():System.currentTimeMillis();
                 Runtime.getRuntime().addShutdownHook(new Thread(){
                         public void run(){
