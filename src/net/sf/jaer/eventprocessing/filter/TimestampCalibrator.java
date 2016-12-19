@@ -60,7 +60,7 @@ public class TimestampCalibrator extends EventFilter2D implements FrameAnnotater
         setPropertyTooltip("minTimeForCalibrationS", "minimum time elapsed before calibration is updated");
         setPropertyTooltip("enableCalibration", "a new calibration value is not computed unless enabled, allowing us of filter with pre-measured calibration");
         setPropertyTooltip("ppmTimestampTooFastError", "<html>the calibration factor: <br>parts per million that the timestamp clock is too fast relative to computer clock. <br> I.e. +1000 means timestamps advance 0.1% too fast; <br>after 1000 ticks of computer clock, timestamp will be 1 tick ahead");
-        setPropertyTooltip("correctTimestampEnabled", "if enabled, the event timestamps are corrected by multiplying by ppmTimestampTooFastError");
+        setPropertyTooltip("correctTimestampEnabled", "if enabled, the event timestamps are corrected by applying ppmTimestampTooFastError");
         setPropertyTooltip("selectLoggingFolder", "selects folder to store timestamp calibration log file");
         setPropertyTooltip("loggingIntervalS", "interval in seconds for logging calibration data after selecting logging folder");
     }
@@ -141,10 +141,12 @@ public class TimestampCalibrator extends EventFilter2D implements FrameAnnotater
 //            }
         gl.glColor3f(0, 0, 1);
         gl.glLineWidth(2);
-        final float x = chip.getSizeX() * .3f, y = (chip.getSizeY()) * .9f, scale = .2f;
+        final float x = chip.getSizeX() * .4f, y = (chip.getSizeY()) * .9f;
         textRenderer.begin3DRendering();
         String s = String.format("TimestampCalibrator: ts-wall: %6dms, ppmTsTooFast: %6.0f", driftTsMinusClockMs, ppmTimestampTooFastError);
-        Rectangle2D r = textRenderer.getBounds(s);
+        Rectangle2D r = textRenderer.getBounds(s); // width and height in pixels with scale=1
+        // set scale so that width fills fraction of 
+        final float scale = (float)(0.7f*(float)chip.getSizeX()/r.getWidth());
         textRenderer.draw3D(s, (float) (x - scale * r.getWidth() / 2), (float) (y - scale * r.getHeight() / 2), 0, scale);
         textRenderer.end3DRendering();
     }
