@@ -1189,7 +1189,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 chip.setHardwareInterface(null);
             }
             // force null interface
-            nullInterface = true;
+//            nullInterface = true; // setting null true here prevents openHardwareIfNonambiguous to work correctly (tobi)
             Constructor<AEChip> constructor = deviceClass.getConstructor();
             if (constructor == null) {
                 log.warning("null chip constructer, need to select valid chip class");
