@@ -348,7 +348,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 				open_minimal_close(); // populates stringDescription and sets
 				// numberOfStringDescriptors!=0
 			}
-			catch (final HardwareInterfaceException e) {
+			catch (final Exception e) {
+                            log.warning("caught exception when trying to populate stringDescription: "+e.toString());
 			}
 		}
 		return stringDescription;
