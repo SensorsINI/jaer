@@ -13,14 +13,15 @@ package net.sf.jaer.aemonitor;
 /**
  * A raw address-event, having an int (32 bit) timestamp and int (32 bit) raw address
  *
- * @author tobi
+ * @author tobi/minliu/luca
  */
 public class EventRaw {
 	public int address;
 	public int timestamp;
         
-        public enum EventType {
-            SpecialEvent(0), PolarityEvent(1), FrameEvent(2), Imu6Event(3), Imu9Event(4), SampleEvent(5), EarEvent(6), ConfigEvent(7);// ordered according to id code
+        public enum EventType { // see http://inilabs.com/support/software/fileformat/
+            SpecialEvent(0), PolarityEvent(1), FrameEvent(2), Imu6Event(3), Imu9Event(4), SampleEvent(5), EarEvent(6), ConfigEvent(7),
+            Point1DEvent(8),Point2DEvent(9),Point3DEvent(10), Point4DEvent(11),SpikeEvent(12);// ordered according to id code in http://inilabs.com/support/software/fileformat/#h.veimuraa2lff
             private int value;
             private EventType(int value) {
                 this.value = value;
