@@ -104,6 +104,9 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private int wrapAdd;
 		private int lastTimestamp;
 		private int currentTimestamp;
+		private int adjustedTimestamp;
+
+		private static final float FX3_TIME_MULT_FIX = (float) (120.96 / 120.00);
 
 		private int dvsLastY;
 		private boolean dvsGotY;
@@ -139,10 +142,19 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private int imuCount;
 		private byte imuTmpData;
 
+		private final boolean isFX2;
+
 		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
 
 			if (getPID() == PID_FX2) {
+				isFX2 = true;
+			}
+			else {
+				isFX2 = false;
+			}
+
+			if (isFX2) {
 				// FX2 firmware now emulates the same interface as FX3 firmware, so we support it here too.
 				checkFirmwareLogic(DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION_FX2,
 					DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION_FX2);
@@ -268,6 +280,9 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 						// Check monotonicity of timestamps.
 						checkMonotonicTimestamp();
+
+						// Update adjusted timestamp to map device time to real time.
+						adjustedTimestamp = (isFX2) ? (currentTimestamp) : ((int) (currentTimestamp * FX3_TIME_MULT_FIX));
 					}
 					else {
 						// Look at the code, to determine event and data
@@ -286,10 +301,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										wrapAdd = 0;
 										lastTimestamp = 0;
 										currentTimestamp = 0;
+										adjustedTimestamp = 0;
 
 										updateTimestampMasterStatus();
 
-										CypressFX3.log.info("Timestamp reset event received on " + super.toString()+" at System.currentTimeMillis()="+System.currentTimeMillis());
+										CypressFX3.log.info("Timestamp reset event received on " + super.toString()
+											+ " at System.currentTimeMillis()=" + System.currentTimeMillis());
 										break;
 
 									case 2: // External input (falling edge)
@@ -300,7 +317,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										// Check that the buffer has space for this event. Enlarge if needed.
 										if (ensureCapacity(buffer, eventCounter + 1)) {
 											buffer.getAddresses()[eventCounter] = DavisChip.EXTERNAL_INPUT_EVENT_ADDR;
-											buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+											buffer.getTimestamps()[eventCounter++] = adjustedTimestamp;
 										}
 										break;
 
@@ -317,7 +334,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										if (imuCount == ((2 * RetinaAEReader.IMU_DATA_LENGTH) + 1)) {
 											if (ensureCapacity(buffer, eventCounter + IMUSample.SIZE_EVENTS)) {
 												// Check for buffer space is also done inside writeToPacket().
-												final IMUSample imuSample = new IMUSample(currentTimestamp, imuEvents);
+												final IMUSample imuSample = new IMUSample(adjustedTimestamp, imuEvents);
 												eventCounter += imuSample.writeToPacket(buffer, eventCounter);
 											}
 										}
@@ -493,7 +510,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									// Check that the buffer has space for this event. Enlarge if needed.
 									if (ensureCapacity(buffer, eventCounter + 1)) {
 										buffer.getAddresses()[eventCounter] = ((dvsLastY << DavisChip.YSHIFT) & DavisChip.YMASK);
-										buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+										buffer.getTimestamps()[eventCounter++] = adjustedTimestamp;
 									}
 
 									CypressFX3.log.fine("DVS: row-only event received for address Y=" + dvsLastY + ".");
@@ -537,7 +554,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 											| (((polarity & 0x01) << DavisChip.POLSHIFT) & DavisChip.POLMASK);
 									}
 
-									buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+									buffer.getTimestamps()[eventCounter++] = adjustedTimestamp;
 								}
 
 								dvsGotY = false;
@@ -604,7 +621,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										| ((yPos << DavisChip.YSHIFT) & DavisChip.YMASK) | ((xPos << DavisChip.XSHIFT) & DavisChip.XMASK)
 										| ((apsCurrentReadoutType << DavisChip.ADC_READCYCLE_SHIFT) & DavisChip.ADC_READCYCLE_MASK)
 										| (data & DavisChip.ADC_DATA_MASK);
-									buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+									buffer.getTimestamps()[eventCounter++] = adjustedTimestamp;
 								}
 								break;
 
@@ -738,6 +755,9 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 								// Check monotonicity of timestamps.
 								checkMonotonicTimestamp();
+
+								// Update adjusted timestamp to map device time to real time.
+								adjustedTimestamp = (isFX2) ? (currentTimestamp) : ((int) (currentTimestamp * FX3_TIME_MULT_FIX));
 
 								CypressFX3.log.fine(
 									String.format("Timestamp wrap event received on %s with multiplier of %d.", super.toString(), data));
