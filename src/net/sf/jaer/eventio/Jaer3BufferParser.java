@@ -871,18 +871,23 @@ public class Jaer3BufferParser {
                                         readFrame(outItr, addr, data, timestamps[i]);
                                         break;
                                     case SampleEvent:
-                                        // readSample();
+                                         log.warning("event type "+etypes[i]+" (SampleEvent) not handled yet");
+                                      // readSample();
                                         break;
                                     case ConfigEvent:
-                                        // readConfig();
+                                        log.warning("event type "+etypes[i]+" (ConfigEvent) not handled yet");
+                                       // readConfig();
                                         break;
                                     case Imu6Event:
                                         // readImu6();
+                                        log.warning("event type "+etypes[i]+" (Imu6Event) not handled yet");
                                         break;
                                     case Imu9Event:
                                         // readImu9();;
-                                        break;
+                                        log.warning("event type "+etypes[i]+" (Imu9Event) not handled yet");
+                                       break;
                                     default:
+                                        log.warning("event type "+etypes[i]+" (not handled yet");
                                 }
 
 
