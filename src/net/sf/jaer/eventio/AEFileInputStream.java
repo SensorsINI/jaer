@@ -357,7 +357,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         int lastTs = mostRecentTimestamp;
         int lastBufferPosition = 0;
 
-        ByteBuffer tmpEventBuffer = ByteBuffer.allocate(16);
+        ByteBuffer tmpEventBuffer = ByteBuffer.allocate(16); // TODO why allocate every time?
 
         // if(jaer3fileinputstream!=null){
         // return jaer3fileinputstream.readEventForwards();
