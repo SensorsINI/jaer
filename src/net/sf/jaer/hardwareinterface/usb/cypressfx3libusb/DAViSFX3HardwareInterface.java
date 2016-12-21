@@ -219,7 +219,13 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 			}
 			else {
 				// FX3 needs adjustment, due to slight clock skew.
-				adjustedTimestamp = (int) ((currentTimestamp * FX3_TIME_FIX_MULT) / FX3_TIME_FIX_DIV);
+				// We must correctly handle negative currentTimestamp!
+				if (currentTimestamp < 0) {
+					adjustedTimestamp = (int) ((currentTimestamp * FX3_TIME_FIX_DIV) / FX3_TIME_FIX_MULT);
+				}
+				else {
+					adjustedTimestamp = (int) ((currentTimestamp * FX3_TIME_FIX_MULT) / FX3_TIME_FIX_DIV);
+				}
 			}
 		}
 
