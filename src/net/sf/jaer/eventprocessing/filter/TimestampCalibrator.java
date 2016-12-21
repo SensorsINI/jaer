@@ -5,6 +5,8 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
@@ -14,10 +16,14 @@ import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.Reader;
+import java.io.Writer;
+import java.util.Date;
 import java.util.Iterator;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
-import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -28,6 +34,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.util.TobiLogger;
 
 /**
@@ -51,9 +58,10 @@ public class TimestampCalibrator extends EventFilter2D implements FrameAnnotater
     boolean propertyChangeListenersAdded = false;
 
     private String lastLoggingFolder = getString("lastLoggingFolder", System.getProperty("user.home"));
+    private String lastCalibrationFile = getString("lastCalibrationFile", System.getProperty("user.home"));
     private int loggingIntervalS = getInt("loggingIntervalS", 1);
     private TobiLogger tobiLogger = null;
-    private long lastLoggingTimeMs=0;
+    private long lastLoggingTimeMs = 0;
 
     public TimestampCalibrator(AEChip chip) {
         super(chip);
@@ -63,13 +71,15 @@ public class TimestampCalibrator extends EventFilter2D implements FrameAnnotater
         setPropertyTooltip("correctTimestampEnabled", "if enabled, the event timestamps are corrected by applying ppmTimestampTooFastError");
         setPropertyTooltip("selectLoggingFolder", "selects folder to store timestamp calibration log file");
         setPropertyTooltip("loggingIntervalS", "interval in seconds for logging calibration data after selecting logging folder");
+        setPropertyTooltip("saveCalibration", "saves calbration data to JSON file");
+        setPropertyTooltip("loadCalibration", "loads calbration data from JSON file");
     }
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if (in.isEmpty() 
+        if (in.isEmpty()
                 || (enableCalibration && !(chip.getAeViewer().getPlayMode() == PlayMode.LIVE)) // go ahead and run rest if we are just correcting timestamps
-        ) {
+                ) {
             return in;
         }
         if (!propertyChangeListenersAdded) {
@@ -101,9 +111,9 @@ public class TimestampCalibrator extends EventFilter2D implements FrameAnnotater
         if (enableCalibration) {
             setPpmTimestampTooFastError(ppmTsTooFast);
         }
-       if(tobiLogger!=null && tobiLogger.isEnabled() && (System.currentTimeMillis()-lastLoggingTimeMs) > 1000*loggingIntervalS){
-            lastLoggingTimeMs=System.currentTimeMillis();
-            tobiLogger.log(String.format("%d %d",dtClockNs,dtTsUs));
+        if (tobiLogger != null && tobiLogger.isEnabled() && (System.currentTimeMillis() - lastLoggingTimeMs) > 1000 * loggingIntervalS) {
+            lastLoggingTimeMs = System.currentTimeMillis();
+            tobiLogger.log(String.format("%d %d", dtClockNs, dtTsUs));
         }
         if (correctTimestampEnabled) {
             Iterator<BasicEvent> i = null;
@@ -112,7 +122,7 @@ public class TimestampCalibrator extends EventFilter2D implements FrameAnnotater
             } else {
                 i = (Iterator<BasicEvent>) in.inputIterator();
             }
-            final float factor=(1 - 1e-6f * ppmTimestampTooFastError);
+            final float factor = (1 - 1e-6f * ppmTimestampTooFastError);
             while (i.hasNext()) {
                 BasicEvent e = i.next();
                 e.timestamp = (int) (e.timestamp * factor); // if ppmTimestampTooFastError is positive, timestamp will be reduced
@@ -149,7 +159,7 @@ public class TimestampCalibrator extends EventFilter2D implements FrameAnnotater
         String s = String.format("TimestampCalibrator: ts-wall: %6dms, ppmTsTooFast: %6.0f", driftTsMinusClockMs, ppmTimestampTooFastError);
         Rectangle2D r = textRenderer.getBounds(s); // width and height in pixels with scale=1
         // set scale so that width fills fraction of 
-        final float scale = (float)(0.7f*(float)chip.getSizeX()/r.getWidth());
+        final float scale = (float) (0.7f * (float) chip.getSizeX() / r.getWidth());
         textRenderer.draw3D(s, (float) (x - scale * r.getWidth() / 2), (float) (y - scale * r.getHeight() / 2), 0, scale);
         textRenderer.end3DRendering();
     }
@@ -188,11 +198,104 @@ public class TimestampCalibrator extends EventFilter2D implements FrameAnnotater
         }
         lastLoggingFolder = c.getSelectedFile().getPath();
         putString("lastLoggingFolder", lastLoggingFolder);
-        tobiLogger= new TobiLogger(lastLoggingFolder+File.separator+"TimestampCalibrator","SystemTimeMillis dtClockNs dtTsUs");
+        tobiLogger = new TobiLogger(lastLoggingFolder + File.separator + "TimestampCalibrator", "SystemTimeMillis dtClockNs dtTsUs");
         tobiLogger.setAbsoluteTimeEnabled(true);
         tobiLogger.setEnabled(true);// creates log file
         tobiLogger.addComment("timestamp calibrator log file");
+
+    }
+
+    private final String JSON_EXT = ".json";
+
+    private class TimestampCalibration {
+
+        float ppmTimestampTooFastError;
+        int vid, pid, did;
+        Date date;
+
+        public TimestampCalibration(float ppmTimestampTooFastError, int vid, int pid, int did) {
+            this.ppmTimestampTooFastError = ppmTimestampTooFastError;
+            this.vid = vid;
+            this.pid = pid;
+            this.did = did;
+            this.date = new Date();
+        }
+
+        @Override
+        public String toString() {
+            return "TimestampCalibration{" + "ppmTimestampTooFastError=" + ppmTimestampTooFastError + ", vid=" + vid + ", pid=" + pid + ", did=" + did + ", date=" + date + '}';
+        }
         
+        
+
+    }
+
+    public void doSaveCalibration() {
+        if (!(chip.getAeViewer().getPlayMode() == PlayMode.LIVE) || chip.getHardwareInterface() == null) {
+            JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Device not running live or no hardware interface, saving calibration disabled");
+            return;
+        }
+        JFileChooser c = new JFileChooser(lastCalibrationFile);
+        c.setDialogTitle("choose timestamp calibration JSON file");
+//        c.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        int ret = c.showSaveDialog(chip.getAeViewer().getFilterFrame());
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        lastCalibrationFile = c.getSelectedFile().getPath();
+        putString("lastCalibrationFile", lastCalibrationFile);
+        String fn = c.getSelectedFile().getPath();
+        if (!fn.toLowerCase().endsWith(JSON_EXT)) {
+            fn = fn + JSON_EXT;
+        }
+        USBInterface usbInterface = (USBInterface) chip.getHardwareInterface();
+        TimestampCalibration tsc = new TimestampCalibration(ppmTimestampTooFastError, usbInterface.getVID(), usbInterface.getPID(), usbInterface.getDID());
+        try (Writer writer = new FileWriter(fn)) {
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            gson.toJson(tsc, writer);
+            log.info("wrote calibration to " + fn);
+        } catch (Exception e) {
+            log.warning(e.toString());
+
+        }
+
+    }
+
+    public void doLoadCalibration() {
+        JFileChooser c = new JFileChooser(lastCalibrationFile);
+        c.setDialogTitle("choose timestamp calibration JSON file");
+//        c.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        int ret = c.showOpenDialog(chip.getAeViewer().getFilterFrame());
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        lastCalibrationFile = c.getSelectedFile().getPath();
+        putString("lastCalibrationFile", lastCalibrationFile);
+        String fn = c.getSelectedFile().getPath();
+        if (!fn.toLowerCase().endsWith(JSON_EXT)) {
+            fn = fn + JSON_EXT;
+        }
+        try (Reader reader = new FileReader(fn)) {
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            TimestampCalibration tsc = gson.fromJson(reader, TimestampCalibration.class);
+            log.info("read calibration from " + fn +"\n "+tsc.toString());
+            if (!(chip.getAeViewer().getPlayMode() == PlayMode.LIVE) || chip.getHardwareInterface() == null) {
+                JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Device not running live or no hardware interface, cannot check if calibration is valid for this device");
+                return;
+            }
+            setPpmTimestampTooFastError(tsc.ppmTimestampTooFastError);
+            USBInterface usbInterface = (USBInterface) chip.getHardwareInterface();
+            if (usbInterface.getVID() != tsc.vid
+                    || usbInterface.getPID() != tsc.pid
+                    || usbInterface.getDID() != tsc.did) {
+                JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Current device VID/PID/DID does not match that in saved calibration");
+            }
+
+        } catch (Exception e) {
+            log.warning(e.toString());
+
+        }
+
     }
 
     /**
@@ -251,7 +354,7 @@ public class TimestampCalibrator extends EventFilter2D implements FrameAnnotater
      */
     public void setLoggingIntervalS(int loggingIntervalS) {
         this.loggingIntervalS = loggingIntervalS;
-        putInt("loggingIntervalS",loggingIntervalS);
+        putInt("loggingIntervalS", loggingIntervalS);
     }
 
 }
