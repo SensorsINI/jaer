@@ -106,7 +106,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private int currentTimestamp;
 		private int adjustedTimestamp;
 
-		private static final float FX3_TIME_MULT_FIX = (float) (120.96 / 120.00);
+		// Timestamps from FX3 have to be multiplied by the ratio of the actual
+		// clock and the expected clock, so: 120.96 / 120.00 which is exactly
+		// 1.008, so we can do this with integer operations only by multiplying
+		// first by 1008, then dividing by 1000.
+		private static final long FX3_TIME_FIX_MULT = 1008;
+		private static final long FX3_TIME_FIX_DIV = 1000;
 
 		private int dvsLastY;
 		private boolean dvsGotY;
@@ -207,6 +212,17 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 			}
 		}
 
+		private void updateAdjustedTimestamp() {
+			if (isFX2) {
+				// FX2 provides a correct timestamp.
+				adjustedTimestamp = currentTimestamp;
+			}
+			else {
+				// FX3 needs adjustment, due to slight clock skew.
+				adjustedTimestamp = (int) ((currentTimestamp * FX3_TIME_FIX_MULT) / FX3_TIME_FIX_DIV);
+			}
+		}
+
 		private void updateROISizes() {
 			// Calculate APS ROI sizes for each region.
 			for (int i = 0; i < RetinaAEReader.APS_ROI_REGIONS_MAX; i++) {
@@ -282,7 +298,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 						checkMonotonicTimestamp();
 
 						// Update adjusted timestamp to map device time to real time.
-						adjustedTimestamp = (isFX2) ? (currentTimestamp) : ((int) (currentTimestamp * FX3_TIME_MULT_FIX));
+						updateAdjustedTimestamp();
 					}
 					else {
 						// Look at the code, to determine event and data
@@ -757,7 +773,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								checkMonotonicTimestamp();
 
 								// Update adjusted timestamp to map device time to real time.
-								adjustedTimestamp = (isFX2) ? (currentTimestamp) : ((int) (currentTimestamp * FX3_TIME_MULT_FIX));
+								updateAdjustedTimestamp();
 
 								CypressFX3.log.fine(
 									String.format("Timestamp wrap event received on %s with multiplier of %d.", super.toString(), data));
