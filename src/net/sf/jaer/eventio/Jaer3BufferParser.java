@@ -70,22 +70,27 @@ public class Jaer3BufferParser {
 	private AEChip chip = null;
 
 	/**
-	 * Field for decoding jaer 3.1 dvs address. These codes get the addresses from the AEDAT-3.1 data fields, which are then used to recode them to the AEDAT-2.0 format
+	 * Field for decoding jaer 3.1 dvs address. Note these fields are overridden by AEFileInputStream.parseFileFormatVersion.
+         * These codes get the addresses from the AEDAT-3.1 data fields, which are then used to recode them to the AEDAT-2.0 format
          * used internally and by existing AEChip EventExtractors, using the constants specified in eu.seebetter.ini.chips.DavisChip.
          * See http://inilabs.com/support/software/fileformat/ 
+         * @see AEFileInputStream#parseFileFormatVersion(java.lang.String) - sets these constants according to file type
 	 */
-	public static int JAER3YSHIFT = 2, JAER3YMASK = 0x07FFF << JAER3YSHIFT, // 3.0 is 15 bits from bits 22 to 30, 3.1 is 14 bits from bits 18 to 31.
-		JAER3XSHIFT = 17, JAER3XMASK = 0x07FFF << JAER3XSHIFT, // 3.0 is 15 bits from bits 12 to 21, 3.1 is 14 bits from bits from 4 to 17.
-		JAER3POLSHIFT = 1, JAER3POLMASK = 1 << JAER3POLSHIFT; // , // 1 bit at bit 11
+	public static int JAER3YSHIFT = 2, JAER3YMASK = 0x07FFF << JAER3YSHIFT, // ?? 3.0 is 15 bits from bits 22 to 30, 3.1 is 14 bits from bits 18 to 31.
+		JAER3XSHIFT = 17, JAER3XMASK = 0x07FFF << JAER3XSHIFT, // ?? 3.0 is 15 bits from bits 12 to 21, 3.1 is 14 bits from bits from 4 to 17.
+		JAER3POLSHIFT = 1, JAER3POLMASK = 1 << JAER3POLSHIFT, // , // ?? 1 bit at bit 11
+                JAER3VALIDITY_BIT=0; // marks filtered out events, 0 in the 0th bit of the first byte means invalid, 1 means valid. 
 	/**
 	 * Field for decoding jaer 3.1 aps address
 	 */
 	public static final int JAER3APSYSHIFT = 0, JAER3APSYMASK = 65535 << JAER3APSYSHIFT, // 16 bits from bits 16 to 31
 		JAER3APSXSHIFT = 16, JAER3APSXMASK = 65535 << JAER3APSXSHIFT; // 16 bits from bits 0 to 15
 
-	private boolean inFrameEvent = false;
-	private int frameCurrentEventOffset;
-	private boolean readOutType = false;
+	private boolean inFrameEvent = false; // TODO a flag used to represent the current event is in the frame or not.
+	// The reason why we use this flag is that a whole frame events is divided into several pixels data, and current in jaer, every
+	 // pixel data is packed as one single complete jaer 2 event.
+	private int frameCurrentEventOffset; // TODO ?? counter for something
+	private boolean readOutType = false; // TODO ?? flag for something
 
         private static AEChip ORIGINAL_CHIP = null;
 	private static EventExtractor2D ORIGINAL_EVENT_EXTRACTOR = null;
@@ -552,7 +557,7 @@ public class Jaer3BufferParser {
 			throw new BufferUnderflowException();
 		}
 
-		final int validMask = 0x00000001;
+		final int validMask = 1<<JAER3VALIDITY_BIT;
 		int eventFirstInt;
 		in.position(nextEventOffset);
 		eventFirstInt = in.getInt();
@@ -584,7 +589,7 @@ public class Jaer3BufferParser {
 	}
 
 	/**
-	 * This function is a very important function. It returns the 16-byte events (eventtype, addr, ts and pixeldata)
+	 * This is most important method. It returns the 16-byte events (eventtype, addr, ts and pixeldata)
 	 * like it's a jaer2 event.
 	 * Pixeldata is only used by frame event, in other case it's 0.
 	 *
@@ -595,10 +600,10 @@ public class Jaer3BufferParser {
 		ByteBuffer jaer2Buffer = ByteBuffer.allocate(16);
 
 		int nextEventOffset = 0;
-		if (!inFrameEvent) {
+		if (!inFrameEvent) { // we are a Polarity or Special event currently
 			nextEventOffset = getNextValidEventOffset();
 			frameCurrentEventOffset = nextEventOffset;
-			if (currentPkt.pktHeader.eventType == EventType.FrameEvent) {
+			if (currentPkt.pktHeader.eventType == EventType.FrameEvent) { // ?? tobi doesn't understand this logic
 				int xlengthOffset = frameCurrentEventOffset + 20;
 				int xlength = in.getInt(xlengthOffset);
 				int ylengthOffset = frameCurrentEventOffset + 24;
@@ -608,7 +613,7 @@ public class Jaer3BufferParser {
 		}
 
 		// First check if it's a frame event, if it's a frame event, we must check
-		// whether the current event is finished or not
+		// whether the current event is finished or not (tobi: does this mean current *frame* is finished??)
 		if (currentPkt.pktHeader.eventType == EventType.FrameEvent) {
 			int xlengthOffset = frameCurrentEventOffset + 20;
 			int xlength = in.getInt(xlengthOffset);
@@ -671,7 +676,7 @@ public class Jaer3BufferParser {
 				return getJaer2EventBuf();
 			}
 
-		}
+		} // end of dealing with frame??
 
 		int dataOffset = getDataOffset(currentPkt.pktHeader);
 		int tsOffset = currentPkt.pktHeader.eventTSOffset;
