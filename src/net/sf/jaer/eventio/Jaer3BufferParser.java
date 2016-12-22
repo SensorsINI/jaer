@@ -610,7 +610,8 @@ public class Jaer3BufferParser {
 
         // First check if it's a frame event, if it's a frame event, we must check
         // whether the current event is finished or not (tobi: does this mean current *frame* is finished??)
-        if (currentPkt.pktHeader.eventType == EventType.FrameEvent) {
+        if (currentPkt.pktHeader.eventType == EventType.FrameEvent) {   // TODO why does it parse the frame header over and over again
+            // it only needs to read the frame header once per frame???
             final int frameInfoOffset = frameCurrentEventOffset;
             final int frameInfo = in.getInt(frameInfoOffset); // http://inilabs.com/support/software/fileformat/#h.k6b3f6wpvb87
             final boolean frameValidFlag = (frameInfo & 1) != 0;
