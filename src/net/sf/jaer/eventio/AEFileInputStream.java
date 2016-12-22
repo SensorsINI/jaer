@@ -116,7 +116,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     private Class addressType = Short.TYPE; // default address type, unless file header specifies otherwise
     public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT = 1000;
     private int numNonMonotonicTimeExceptionsPrinted = 0;
-    private int numHeaderLines=0;
+    private int numHeaderLines = 0;
 
     /**
      * Marking positions
@@ -156,7 +156,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * the size of the memory mapped part of the input file. This window is
      * centered over the file position except at the start and end of the file.
      */
-    private long CHUNK_SIZE_EVENTS = 1L << 25;
+    private long CHUNK_SIZE_EVENTS = Integer.MAX_VALUE;
     private long chunkSizeBytes = CHUNK_SIZE_EVENTS * EVENT32_SIZE; // size of memory mapped file chunk, depends on event 
     // size and number of events to map, initialized as
     // though we didn't have a file header. Max value is Integer.MAX_VALUE however. Will generate illegalargument exception if we try to allowcate larger chunk
@@ -752,7 +752,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                     // i++;
                 }
             } else // read backwards
-             if (!bigWrap) {
+            {
+                if (!bigWrap) {
                     do {
                         ae = readEventBackwards();
                         addr[i] = ae.address;
@@ -772,6 +773,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                     ts[i] = ae.timestamp;
                     i++;
                 }
+            }
         } catch (WrappedTimeException w) {
             log.info(w.toString());
             System.out.println(w.toString());
@@ -1414,30 +1416,36 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             } catch (NumberFormatException numberFormatException) {
                 log.warning("While parsing header line " + s + " got " + numberFormatException.toString());
             }
-            if (Math.floor(version) == 1) { // #!AEDAT-1.0
+            if (Math.floor(version) == 1) { // #!AER-DAT-1.0
                 addressType = Short.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Short.SIZE / 8);
                 jaer3EnableFlg = false;
-            } else if (Math.floor(version) == 2) { // #!AEDAT-2.0
+                log.info("File format AER-DAT-1.0");
+            } else if (Math.floor(version) == 2) { // #!AER-DAT-2.0
                 addressType = Integer.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Integer.SIZE / 8);
                 jaer3EnableFlg = false;
-            } else if (Math.floor(version) == 3) { // #!AEDAT-3.x
+                log.info("File format AER-DAT-2.0");
+            } else if (Math.floor(version) == 3) { // #!AER-DAT-3.x
                 // TODO: need to change this code's affect to the cAER network steam data parsing.
-                if (Math.round((version - 3.0) * 10) == 0) {
+                if (Math.round((version - 3.0) * 10) == 1) {
                     Jaer3BufferParser.JAER3XSHIFT = 17;
                     Jaer3BufferParser.JAER3XMASK = 0x7fff << Jaer3BufferParser.JAER3XSHIFT;
                     Jaer3BufferParser.JAER3YSHIFT = 2;
                     Jaer3BufferParser.JAER3YMASK = 0x7fff << Jaer3BufferParser.JAER3YSHIFT;
                     Jaer3BufferParser.JAER3POLSHIFT = 1;
                     Jaer3BufferParser.JAER3POLMASK = 1 << Jaer3BufferParser.JAER3POLSHIFT;
-                } else {
+                    log.info("File format AER-DAT-3.1");
+                } else if (Math.round((version - 3.0) * 10) == 0){
                     Jaer3BufferParser.JAER3XSHIFT = 18;
                     Jaer3BufferParser.JAER3XMASK = 0x3fff << Jaer3BufferParser.JAER3XSHIFT;
                     Jaer3BufferParser.JAER3YSHIFT = 4;
                     Jaer3BufferParser.JAER3YMASK = 0x3fff << Jaer3BufferParser.JAER3YSHIFT;;
                     Jaer3BufferParser.JAER3POLSHIFT = 1;
                     Jaer3BufferParser.JAER3POLMASK = 1 << Jaer3BufferParser.JAER3POLSHIFT;
+                    log.info("File format AER-DAT-3.0");
+                } else {
+                    log.warning("unknown AER-DAT-3.x file format version detected, definitions of JAER3YSHIFT etc ");
                 }
                 addressType = Integer.TYPE;
                 eventSizeBytes = (Integer.SIZE / 8) + (Integer.SIZE / 8);
@@ -1471,7 +1479,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // reader.mark(1); // max header line length in chars
         int c = reader.read(); // read single char
         String s = reader.readLine();
-        
+
         boolean flag = true;
         // code below is wrong because it means that any header line with non alpha char 
         // (such as device with binary serial number) will terminate header
@@ -1487,12 +1495,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
         if (s.equals(AEDataFile.END_OF_HEADER_STRING)) {
             numHeaderLines++;
-            log.info("On line "+numHeaderLines+" detected end of header section string \""+AEDataFile.END_OF_HEADER_STRING+"\"");
-            headerOffset += s.length() + NUMBER_LINE_SEPARATORS +1 ; // adds comment char and trailing CRLF newline,
+            log.info("On line " + numHeaderLines + " detected end of header section string \"" + AEDataFile.END_OF_HEADER_STRING + "\"");
+            headerOffset += s.length() + NUMBER_LINE_SEPARATORS + 1; // adds comment char and trailing CRLF newline,
             return null;
         }
         if (c != AEDataFile.COMMENT_CHAR || flag == false) { // if it's not a comment char
-            log.info("On line "+numHeaderLines+" detected line not starting with comment character, ending header read");
+            log.info("On line " + numHeaderLines + " detected line not starting with comment character, ending header read");
             return null; // return a null header line
         }
         // reader.reset(); // reset to start of header/comment line
@@ -1505,7 +1513,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         for (int i = 0; i < s.length(); i++) {
             char b = s.charAt(i);
             if ((b < 32) || (b > 126)) {
-                log.warning("On line "+numHeaderLines+" non printable ASCII character (char value=" + b + ") which is (<32 || >126) detected in header line");
+                log.warning("On line " + numHeaderLines + " non printable ASCII character (char value=" + b + ") which is (<32 || >126) detected in header line");
                 sb.setCharAt(i, '-');
             }
         }
