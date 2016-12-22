@@ -41,8 +41,8 @@ import net.sf.jaer.event.OutputEventIterator;
 public class Jaer3BufferParser {
 
 	private static final Logger log = Logger.getLogger("net.sf.jaer.eventio");
-	private int BUFFER_CAPACITY_BYTES = 8 * 1000000;
-	private ByteBuffer in = ByteBuffer.allocate(BUFFER_CAPACITY_BYTES);
+//	private int BUFFER_CAPACITY_BYTES = 8 * 1000000;
+	private ByteBuffer in = null; // no reason to allocate here since it is copied reference from constuctor  (tobi) // ByteBuffer.allocate(BUFFER_CAPACITY_BYTES);
 	// private ByteBuffer out = ByteBuffer.allocate(BUFFER_CAPACITY_BYTES);
 
 	private final int PKT_HEADER_SIZE = 28;
@@ -70,10 +70,12 @@ public class Jaer3BufferParser {
 	private AEChip chip = null;
 
 	/**
-	 * Field for decoding jaer 3.1 dvs address.
+	 * Field for decoding jaer 3.1 dvs address. These codes get the addresses from the AEDAT-3.1 data fields, which are then used to recode them to the AEDAT-2.0 format
+         * used internally and by existing AEChip EventExtractors, using the constants specified in eu.seebetter.ini.chips.DavisChip.
+         * See http://inilabs.com/support/software/fileformat/ 
 	 */
-	public static int JAER3YSHIFT = 4, JAER3YMASK = 0x03FFF << JAER3YSHIFT, // 3.0 is 15 bits from bits 22 to 30, 3.1 is 14 bits from bits 18 to 31.
-		JAER3XSHIFT = 18, JAER3XMASK = 0x03FFF << JAER3XSHIFT, // 3.0 is 15 bits from bits 12 to 21, 3.1 is 14 bits from bits from 4 to 17.
+	public static int JAER3YSHIFT = 2, JAER3YMASK = 0x07FFF << JAER3YSHIFT, // 3.0 is 15 bits from bits 22 to 30, 3.1 is 14 bits from bits 18 to 31.
+		JAER3XSHIFT = 17, JAER3XMASK = 0x07FFF << JAER3XSHIFT, // 3.0 is 15 bits from bits 12 to 21, 3.1 is 14 bits from bits from 4 to 17.
 		JAER3POLSHIFT = 1, JAER3POLMASK = 1 << JAER3POLSHIFT; // , // 1 bit at bit 11
 	/**
 	 * Field for decoding jaer 3.1 aps address
@@ -112,11 +114,11 @@ public class Jaer3BufferParser {
 			pktPosition = 0;
 		}
 
-		public PacketHeader GetPktHeader() {
+		public PacketHeader getPktHeader() {
 			return pktHeader;
 		}
 
-		public int GetPktPosition() {
+		public int getPktPosition() {
 			return pktPosition;
 		}
 
@@ -144,7 +146,7 @@ public class Jaer3BufferParser {
 	// private EventRaw tmpEventRaw = new EventRaw();
 
 	/**
-	 * This method returns is used to find the packet header.
+	 * This method finds the packet header.
 	 *
 	 * @param startPosition:
 	 *            The position
@@ -155,8 +157,8 @@ public class Jaer3BufferParser {
 	 */
 	private PacketDescriptor searchPacketHeader(int startPosition, int direction) throws IOException {
 		PacketDescriptor pkt = new PacketDescriptor();
-		PacketHeader d = pkt.GetPktHeader();
-		int position = pkt.GetPktPosition();
+		PacketHeader d = pkt.getPktHeader();
+		int position = pkt.getPktPosition();
 
 		int eventTypeInt;
 		int currentPosition = in.position(); // store current position, guarntee the position didn't change in this function
