@@ -156,10 +156,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * the size of the memory mapped part of the input file. This window is
      * centered over the file position except at the start and end of the file.
      */
-    private int CHUNK_SIZE_EVENTS = 1 << 25;
-    private int chunkSizeBytes = CHUNK_SIZE_EVENTS * EVENT32_SIZE; // size of memory mapped file chunk, depends on event
+    private long CHUNK_SIZE_EVENTS = 1L << 25;
+    private long chunkSizeBytes = CHUNK_SIZE_EVENTS * EVENT32_SIZE; // size of memory mapped file chunk, depends on event 
     // size and number of events to map, initialized as
-    // though we didn't have a file header
+    // though we didn't have a file header. Max value is Integer.MAX_VALUE however. Will generate illegalargument exception if we try to allowcate larger chunk
 
     /**
      * the packet used for reading events.
