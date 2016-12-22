@@ -13,9 +13,10 @@ import net.sf.jaer.eventprocessing.filter.ApsDvsEventFilter;
 import net.sf.jaer.eventprocessing.label.SimpleOrientationFilter;
 
 /**
- * Constants for DAVIS AE data format such as raw address encodings.
+ * Constants for DAVIS AE data format such as raw address encodings. 
  *
  * @author Christian/Tobi (added IMU)
+ * @see eu.seebetter.ini.chips.davis.DavisBaseCamera
  */
 abstract public class DavisChip extends AETemporalConstastRetina {
 
