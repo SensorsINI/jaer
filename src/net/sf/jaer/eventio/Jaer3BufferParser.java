@@ -90,7 +90,7 @@ public class Jaer3BufferParser {
         private static AEChip ORIGINAL_CHIP = null;
 	private static EventExtractor2D ORIGINAL_EVENT_EXTRACTOR = null;
 
-        private static jaer3EventExtractor JAER3_EXTRACTOR = null;
+        private static Jaer3EventExtractor JAER3_EXTRACTOR = null;
 
 	public class PacketHeader {
 
@@ -365,11 +365,11 @@ public class Jaer3BufferParser {
                 if(this.chip != ORIGINAL_CHIP) {
                     ORIGINAL_CHIP = this.chip;
                     ORIGINAL_EVENT_EXTRACTOR = this.chip.getEventExtractor();
-                    JAER3_EXTRACTOR = new jaer3EventExtractor(this.chip);
+                    JAER3_EXTRACTOR = new Jaer3EventExtractor(this.chip);
                 }
 
                 if(JAER3_EXTRACTOR == null) {
-                    JAER3_EXTRACTOR = new jaer3EventExtractor(chip);
+                    JAER3_EXTRACTOR = new Jaer3EventExtractor(chip);
                 }
 
 		chip.setEventExtractor(JAER3_EXTRACTOR);
@@ -673,7 +673,7 @@ public class Jaer3BufferParser {
 
 		}
 
-		int dataOffset = GetDataOffset(currentPkt.pktHeader);
+		int dataOffset = getDataOffset(currentPkt.pktHeader);
 		int tsOffset = currentPkt.pktHeader.eventTSOffset;
 
 		in.position(nextEventOffset + dataOffset);
@@ -728,12 +728,11 @@ public class Jaer3BufferParser {
 	/**
 	 * Returns the data offset of different events.
 	 *
-	 * @param packetHeader
-	 *            the current packet header.
-	 * @return Returns the data offset of different events.
+	 * @param packetHeader the current packet header.
+	 * @return the data offset of different events.
 	 * @throws IOException
 	 */
-	private int GetDataOffset(PacketHeader packetHeader) throws IOException {
+	private int getDataOffset(PacketHeader packetHeader) throws IOException {
 		int eventDataOffset = 0;
 
 		switch (packetHeader.eventType) {
@@ -802,14 +801,15 @@ public class Jaer3BufferParser {
 	}
 
 	/**
-	 * This extractor is an uniform extractor for all the jaer 3.0 data. It only works for 3.0 and not cannot be used on
-	 * 2.0.
+	 * This extractor is a uniform extractor for all the jaer 3.1 data. It only works for 3.1 and not cannot be used on
+	 * 2.0. It assumes AEDAT-3.1 data has already been packed in the raw event data fields and extracts to the cooked subclass of BasicEvent from this data
+         * field.
 	 */
-	public class jaer3EventExtractor extends RetinaExtractor {
+	public class Jaer3EventExtractor extends RetinaExtractor {
 
 		protected int autoshotEventsSinceLastShot = 0; // autoshot counter
 
-		public jaer3EventExtractor(final AEChip chip) {
+		public Jaer3EventExtractor(final AEChip chip) {
 			super(chip);
 		}
 
