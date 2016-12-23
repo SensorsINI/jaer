@@ -114,6 +114,12 @@ public class Jaer3BufferParser {
         int eventCapacity = 0;
         int eventNumber = 0;
         int eventValid = 0;
+
+        @Override
+        public String toString() {
+            return "PacketHeader{" + "eventType=" + eventType + ", eventSource=" + eventSource + ", eventSize=" + eventSize + ", eventTSOffset=" + eventTSOffset + ", eventTSOverflow=" + eventTSOverflow + ", eventCapacity=" + eventCapacity + ", eventNumber=" + eventNumber + ", eventValid=" + eventValid + '}';
+        }
+
     }
 
     public class PacketDescriptor {
@@ -134,12 +140,17 @@ public class Jaer3BufferParser {
             return pktPosition;
         }
 
-        public void SetPktHeader(PacketHeader d) {
+        public void setPktHeader(PacketHeader d) {
             pktHeader = d;
         }
 
-        public void SetPosition(int position) {
+        public void setPosition(int position) {
             pktPosition = position;
+        }
+
+        @Override
+        public String toString() {
+            return "PacketDescriptor{" + "pktHeader=" + pktHeader + ", pktPosition=" + pktPosition + '}';
         }
     }
 
@@ -161,7 +172,7 @@ public class Jaer3BufferParser {
      * This method finds the packet header.
      *
      * @param startPosition: The position
-     * @param direction: The search direction, 1 is forward and 0 is backward.
+     * @param direction: The search direction, 1 is forward and -1 is backward.
      * @return: The packet header which the startPosition nearest to according
      * to the search direction.
      * @throws IOException
@@ -187,8 +198,9 @@ public class Jaer3BufferParser {
             int currentSearchPosition = in.position();
             eventTypeInt = in.getShort();
             // By default, eventTypeInt should range from 0 to 7
-            if ((eventTypeInt > 7) || (eventTypeInt < 0)) {
-                in.position(currentSearchPosition + direction);
+            if ((eventTypeInt > 7) || (eventTypeInt < 0)) { // TODO doesn't handle POINTXD or other later events yet
+                log.warning("At buffer position "+in.position()+" Event with eventType="+eventTypeInt+" which is <0 or >7; searching for next event: ");
+                in.position(currentSearchPosition + direction); // TODO ?? just goes forward 1 or backward 1 byte ?? how will this help?
                 continue;
             }
 
@@ -199,20 +211,23 @@ public class Jaer3BufferParser {
                 in.position(currentSearchPosition + direction);
                 continue;
             }
-            d.eventTSOffset = in.getInt(); // eventoverflow
+            d.eventTSOffset = in.getInt(); // timestamp offset can only be 6(Configuration Event), 12 (Frame Event) or 4(other events).
+            d.eventTSOverflow = in.getInt(); // overflow counter, using to generate 64 bit timestamp for systems that have this (not jaer, it handles big wraps in rendering)
 
-            // timestamp offset can only be 6(Configuration Event), 12 (Frame Event) or 4(other events).
             if (d.eventType == EventType.ConfigEvent) {
                 if (d.eventTSOffset != 6) {
+                    log.warning("At buffer position "+in.position()+" ConfigEvent with eventTSOffset!=6: " + d.toString());
                     in.position(currentSearchPosition + direction);
                     continue;
                 }
             } else if (d.eventType == EventType.FrameEvent) {
                 if ((d.eventTSOffset != 12) && (d.eventTSOffset != 8)) {
+                    log.warning("At buffer position "+in.position()+" FrameEvent with eventTSOffset!=12 and !=8: " + d.toString());
                     in.position(currentSearchPosition + direction);
                     continue;
                 }
-            } else if (d.eventTSOffset != 4) {
+            } else if (d.eventTSOffset != 4) { // other events have ts at byte 4
+                log.warning("At buffer position "+in.position()+" Some other event with eventTSOffset!=4: " + d.toString());
                 in.position(currentSearchPosition + direction);
                 continue;
             }
@@ -221,14 +236,14 @@ public class Jaer3BufferParser {
             {
                 if ((d.eventType == EventType.SpecialEvent) || (d.eventType == EventType.PolarityEvent)
                         || (d.eventType == EventType.SampleEvent) || (d.eventType == EventType.EarEvent)) {
-                    if (d.eventSize != 8) {
+                    if (d.eventSize != 8) { // each of these events is 8 bytes total
                         in.position(currentSearchPosition + direction);
                         continue;
                     }
                 }
 
                 if (d.eventType == EventType.FrameEvent) {
-                    if (d.eventSize < 36) {
+                    if (d.eventSize < 36) { // 36 bytes describe each frame in its header
                         in.position(currentSearchPosition + direction);
                         continue;
                     }
@@ -256,7 +271,6 @@ public class Jaer3BufferParser {
                 }
             }
 
-            d.eventTSOverflow = in.getInt(); // eventTSOverflow
             d.eventCapacity = in.getInt(); // eventcapacity
 
             d.eventNumber = in.getInt(); // eventnumber
@@ -299,8 +313,8 @@ public class Jaer3BufferParser {
             return null;
         }
 
-        pkt.SetPktHeader(d);
-        pkt.SetPosition(position);
+        pkt.setPktHeader(d);
+        pkt.setPosition(position);
 
         in.position(currentPosition); // restore the position, because the byteBuffer in AEFileinputStream share the
         // position with in.
