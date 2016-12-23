@@ -199,7 +199,7 @@ public class Jaer3BufferParser {
             eventTypeInt = in.getShort();
             // By default, eventTypeInt should range from 0 to 7
             if ((eventTypeInt > 7) || (eventTypeInt < 0)) { // TODO doesn't handle POINTXD or other later events yet
-                log.warning("At buffer position "+in.position()+" Event with eventType="+eventTypeInt+" which is <0 or >7; searching for next event: ");
+                log.warning("At buffer position " + in.position() + " Event with eventType=" + eventTypeInt + " which is <0 or >7; searching for next event: ");
                 in.position(currentSearchPosition + direction); // TODO ?? just goes forward 1 or backward 1 byte ?? how will this help?
                 continue;
             }
@@ -216,18 +216,18 @@ public class Jaer3BufferParser {
 
             if (d.eventType == EventType.ConfigEvent) {
                 if (d.eventTSOffset != 6) {
-                    log.warning("At buffer position "+in.position()+" ConfigEvent with eventTSOffset!=6: " + d.toString());
+                    log.warning("At buffer position " + in.position() + " ConfigEvent with eventTSOffset!=6: " + d.toString());
                     in.position(currentSearchPosition + direction);
                     continue;
                 }
             } else if (d.eventType == EventType.FrameEvent) {
                 if ((d.eventTSOffset != 12) && (d.eventTSOffset != 8)) {
-                    log.warning("At buffer position "+in.position()+" FrameEvent with eventTSOffset!=12 and !=8: " + d.toString());
+                    log.warning("At buffer position " + in.position() + " FrameEvent with eventTSOffset!=12 and !=8: " + d.toString());
                     in.position(currentSearchPosition + direction);
                     continue;
                 }
             } else if (d.eventTSOffset != 4) { // other events have ts at byte 4
-                log.warning("At buffer position "+in.position()+" Some other event with eventTSOffset!=4: " + d.toString());
+                log.warning("At buffer position " + in.position() + " Some other event with eventTSOffset!=4: " + d.toString());
                 in.position(currentSearchPosition + direction);
                 continue;
             }
@@ -237,6 +237,7 @@ public class Jaer3BufferParser {
                 if ((d.eventType == EventType.SpecialEvent) || (d.eventType == EventType.PolarityEvent)
                         || (d.eventType == EventType.SampleEvent) || (d.eventType == EventType.EarEvent)) {
                     if (d.eventSize != 8) { // each of these events is 8 bytes total
+                        log.warning("At buffer position " + in.position() + " event that should have eventSize=8 has different event size: " + d.toString());
                         in.position(currentSearchPosition + direction);
                         continue;
                     }
@@ -244,6 +245,7 @@ public class Jaer3BufferParser {
 
                 if (d.eventType == EventType.FrameEvent) {
                     if (d.eventSize < 36) { // 36 bytes describe each frame in its header
+                        log.warning("At buffer position " + in.position() + " FrameEvent that should have eventSize=36 has different event size: " + d.toString());
                         in.position(currentSearchPosition + direction);
                         continue;
                     }
@@ -251,6 +253,7 @@ public class Jaer3BufferParser {
 
                 if (d.eventType == EventType.Imu6Event) {
                     if (d.eventSize != 36) {
+                        log.warning("At buffer position " + in.position() + " Imu6Event that should have eventSize=36 has different event size: " + d.toString());
                         in.position(currentSearchPosition + direction);
                         continue;
                     }
@@ -258,6 +261,7 @@ public class Jaer3BufferParser {
 
                 if (d.eventType == EventType.Imu9Event) {
                     if (d.eventSize != 48) {
+                        log.warning("At buffer position " + in.position() + " Imu9Event that should have eventSize=48 has different event size: " + d.toString());
                         in.position(currentSearchPosition + direction);
                         continue;
                     }
@@ -265,6 +269,7 @@ public class Jaer3BufferParser {
 
                 if (d.eventType == EventType.ConfigEvent) {
                     if (d.eventSize != 10) {
+                        log.warning("At buffer position " + in.position() + " ConfigEvent that should have eventSize=10 has different event size: " + d.toString());
                         in.position(currentSearchPosition + direction);
                         continue;
                     }
@@ -275,6 +280,7 @@ public class Jaer3BufferParser {
 
             d.eventNumber = in.getInt(); // eventnumber
             if (d.eventNumber <= 0) {
+                log.warning("At buffer position " + in.position() + " event number is negative: " + d.toString());
                 in.position(currentSearchPosition + direction);
                 continue;
             }
@@ -282,12 +288,14 @@ public class Jaer3BufferParser {
             // eventCapacity is always equal to eventNumber, it can only have a different value for in-memory packets.
             // The relationship is: eventValid <= eventNumber <= eventCapacity. And eventCapacity must be at least 1.
             if (d.eventNumber > d.eventCapacity) {
+                log.warning("At buffer position " + in.position() + " event number is larger than event capacity: " + d.toString());
                 in.position(currentSearchPosition + direction);
                 continue;
             }
 
             d.eventValid = in.getInt(); // eventValid
             if (d.eventValid < 0) {
+                log.warning("At buffer position " + in.position() + " valid event count is negative: " + d.toString());
                 in.position(currentSearchPosition + direction);
                 continue;
             }
