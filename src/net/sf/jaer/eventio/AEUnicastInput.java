@@ -35,7 +35,7 @@ import net.sf.jaer.event.EventPacket;
 import static net.sf.jaer.eventio.AEFileInputStream.MAX_BUFFER_SIZE_EVENTS;
 import net.sf.jaer.eventio.Jaer3BufferParser;
 import net.sf.jaer.eventio.Jaer3BufferParser.PacketDescriptor;
-import net.sf.jaer.eventio.Jaer3BufferParser.jaer3EventExtractor;
+import net.sf.jaer.eventio.Jaer3BufferParser.Jaer3EventExtractor;
 
 /**
  * Receives input via datagram (connectionless, UDP) packets from a server.

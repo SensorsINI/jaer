@@ -83,9 +83,9 @@ public class Jaer3BufferParser {
      * @see AEFileInputStream#parseFileFormatVersion(java.lang.String) - sets
      * these constants according to file type
      */
-    public static int JAER3YSHIFT = 2, JAER3YMASK = 0x07FFF << JAER3YSHIFT, // ?? 3.0 is 15 bits from bits 22 to 30, 3.1 is 14 bits from bits 18 to 31.
-            JAER3XSHIFT = 17, JAER3XMASK = 0x07FFF << JAER3XSHIFT, // ?? 3.0 is 15 bits from bits 12 to 21, 3.1 is 14 bits from bits from 4 to 17.
-            JAER3POLSHIFT = 1, JAER3POLMASK = 1 << JAER3POLSHIFT, // , // ?? 1 bit at bit 11
+    public static int JAER3YSHIFT = 2, JAER3YMASK = 0x07FFF << JAER3YSHIFT, // 3.0 is 15 bits from bits 22 to 30, 3.1 is 15 bits from bits 2 to 16.
+            JAER3XSHIFT = 17, JAER3XMASK = 0x07FFF << JAER3XSHIFT, // 3.0 is 15 bits from bits 12 to 21, 3.1 is 15 bits from bits from 17 to 31.
+            JAER3POLSHIFT = 1, JAER3POLMASK = 1 << JAER3POLSHIFT, // , // 1 bit at bit 11
             JAER3VALIDITY_BIT = 0; // marks filtered out events, 0 in the 0th bit of the first byte means invalid, 1 means valid. 
     /**
      * Field for decoding jaer 3.1 aps address
