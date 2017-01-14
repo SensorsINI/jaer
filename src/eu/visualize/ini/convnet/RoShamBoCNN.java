@@ -411,7 +411,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                             cmd = '1';
                             break;
                         case DECISION_BACKGROUND:
-                            cmd = '4';
+                            cmd = '1';
                             break;                            
                         default:
                             log.warning("maxUnit=" + maxUnit + " is not a valid network output state");
