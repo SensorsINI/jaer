@@ -627,9 +627,10 @@ public class ChipCanvas implements GLEventListener, Observer {
                 final double mvmatrix[] = new double[16];
                 final double projmatrix[] = new double[16];
                 int realy = 0;// GL y coord pos
-                // set up a floatbuffer to getString the depth buffer value of the mouse position
+                // set up a floatbuffer to get the depth buffer value of the mouse position
                 final FloatBuffer fb = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asFloatBuffer();
                 final GL2 gl = drawable.getContext().getGL().getGL2();
+                checkGLError(gl, glu, "before getting mouse point");
                 gl.glGetIntegerv(GL.GL_VIEWPORT, viewport, 0);
                 gl.glGetDoublev(GLMatrixFunc.GL_MODELVIEW_MATRIX, mvmatrix, 0);
                 gl.glGetDoublev(GLMatrixFunc.GL_PROJECTION_MATRIX, projmatrix, 0);
@@ -637,9 +638,12 @@ public class ChipCanvas implements GLEventListener, Observer {
                 realy = viewport[3] - (int) mp.getY() - 1;
                 // Get the depth buffer value at the mouse position. have to do height-mouseY, as GL puts 0,0 in the bottom
                 // left, not top left.
-                gl.glReadPixels(mp.x, realy, 1, 1, GL2ES2.GL_DEPTH_COMPONENT, GL.GL_FLOAT, fb);
-                final float z = 0; // fb.getString(0);
+                checkGLError(gl, glu, "after getting modelview and projection matrices in getMousePoint");
+//                gl.glReadPixels(mp.x, realy, 1, 1, GL2ES2.GL_DEPTH_COMPONENT, GL.GL_FLOAT, fb);
+//                checkGLError(gl, glu, "after readPixels in getMousePoint");
+                final float z = 0; // fb.getString(0); // assume we want z=0 value of mouse point
                 glu.gluUnProject(mp.getX(), realy, z, mvmatrix, 0, projmatrix, 0, viewport, 0, wcoord, 0);
+                checkGLError(gl, glu, "after gluUnProject in getting mouse point");
             } catch (final GLException e) {
                 log.warning("couldn't make GL context current, mouse position meaningless: " + e.toString());
             } finally {
