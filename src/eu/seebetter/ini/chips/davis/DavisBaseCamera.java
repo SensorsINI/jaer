@@ -461,7 +461,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     // DVS event
                     final ApsDvsEvent e = nextApsDvsEvent(outItr); // imu sample possibly contained here set to null by
                     // this method
-                    if ((data & DavisChip.EVENT_TYPE_MASK) == DavisChip.EXTERNAL_INPUT_EVENT_ADDR) {
+                    if ((data & DavisChip.EXTERNAL_INPUT_EVENT_ADDR ) !=0) { // tobi changed to detect just bit set to transmit rising falling and pulse events
+//                    if ((data & DavisChip.EVENT_TYPE_MASK) == DavisChip.EXTERNAL_INPUT_EVENT_ADDR) {
                         e.setReadoutType(ReadoutType.DVS);
                         e.setSpecial(true);
 
