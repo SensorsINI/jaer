@@ -44,6 +44,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
+import net.sf.jaer.event.PolarityEvent;
 
 /**
  * Collects and displays statistics for a selected range of pixels / cells.
@@ -93,7 +94,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     EngineeringFormat engFmt = new EngineeringFormat();
     private boolean resetOnBiasChange = getBoolean("resetOnBiasChange", true);
     private boolean addedBiasgenPropChangeListener = false;
-    private boolean countDVSEventsBetweenExternalPinEvents=getBoolean("countDVSEventsBetweenExternalPinEvents",false);
+    private boolean countDVSEventsBetweenExternalPinEvents = getBoolean("countDVSEventsBetweenExternalPinEvents", false);
 
     public CellStatsProber(AEChip chip) {
         super(chip);
@@ -105,7 +106,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         currentAddress = new int[chip.getNumCellTypes()];
         Arrays.fill(currentAddress, -1);
         chip.addObserver(this);
-        final String h = "ISIs", e = "Event rate", l = "Latency", c="Count";
+        final String h = "ISIs", e = "Event rate", l = "Latency", c = "Count";
         setPropertyTooltip(h, "isiHistEnabled", "enable histogramming interspike intervals");
         setPropertyTooltip(h, "isiMinUs", "min ISI in us");
         setPropertyTooltip(h, "isiMaxUs", "max ISI in us");
@@ -139,7 +140,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         // implemented
         setPropertyTooltip(l, "externalInputEventAddress",
                 "int32 address of external input events; see e.g. DavisChip.EXTERNAL_INPUT_EVENT_ADDR for this address");
-        setPropertyTooltip(c,"countDVSEventsBetweenExternalPinEvents","counts events of ON and OFF polarity between external input pin rising and falling special events");
+        setPropertyTooltip(c, "countDVSEventsBetweenExternalPinEvents", "counts events of ON and OFF polarity between external input pin rising and falling special events");
         chip.getSupport().addPropertyChangeListener(this);
     }
 
@@ -210,7 +211,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     @Override
     synchronized public void resetFilter() {
         // selection = null;
-        stats.resetISIs();
+        stats.reset();
         if (isIsiAutoScalingEnabled()) {
             setIsiMaxUs(0);
         }
@@ -288,7 +289,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         }
         getSelection(e);
         selecting = false;
-        stats.resetISIs();
+        stats.reset();
     }
 
     private int min(int a, int b) {
@@ -471,7 +472,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     public void setLogISIEnabled(boolean logISIEnabled) {
         boolean old = this.logISIEnabled;
         if (logISIEnabled != old) {
-            stats.resetISIs();
+            stats.reset();
         }
         this.logISIEnabled = logISIEnabled;
         putBoolean("logISIEnabled", logISIEnabled);
@@ -494,6 +495,10 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         putBoolean("scaleHistogramsIncludingOverflow", scaleHistogramsIncludingOverflow);
     }
 
+    private static enum Phase {
+        Uninitalized, Rising, Falling
+    };
+
     private class Stats {
 
         private int isiMinUs = getInt("isiMinUs", 0), isiMaxUs = getInt("isiMaxUs", 100000), isiNumBins = getInt("isiNumBins", 100);
@@ -507,6 +512,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         private boolean showIndividualISIHistograms = getBoolean("showIndividualISIHistograms", false);
         private boolean showLatencyHistogramToExternalInputEvents = getBoolean("showLatencyHistogramToExternalInputEvents", false);
         private int externalInputEventAddress = getInt("externalInputEventAddress", DavisChip.EXTERNAL_INPUT_EVENT_ADDR);
+        private EventCountsAfterExternalPinEvents eventCountAfterExternalPinEvents = new EventCountsAfterExternalPinEvents();
 
         public LowpassFilter getRateFilter() {
             return rateFilter;
@@ -536,6 +542,9 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 if (showLatencyHistogramToExternalInputEvents && (e.address == externalInputEventAddress)) {
                     lastExternalInputEventTimestamp = e.timestamp;
                 }
+                if (countDVSEventsBetweenExternalPinEvents) {
+                    eventCountAfterExternalPinEvents.addEvent(e);
+                }
                 if (e.isSpecial()) {
                     continue;
                 }
@@ -557,6 +566,10 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                         globalHist.addEvent(e);
                     }
                     globalHist.lastT = e.timestamp;
+                    if (countDVSEventsBetweenExternalPinEvents) {
+                        eventCountAfterExternalPinEvents.addEvent((PolarityEvent) e); // TODO check if counting APS events
+                    }
+
                 }
             }
             if (stats.count > 0) {
@@ -963,7 +976,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             } else {
                 putInt("isiMinUs", isiMinUs);
             }
-            resetISIs();
+            reset();
         }
 
         /**
@@ -988,12 +1001,13 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             } else {
                 putInt("isiMaxUs", isiMaxUs);
             }
-            resetISIs();
+            reset();
         }
 
-        synchronized private void resetISIs() {
+        synchronized private void reset() {
             globalHist.reset();
             histMap.clear();
+            eventCountAfterExternalPinEvents.reset();
         }
 
         private int getIsiBin(int isi) {
@@ -1038,7 +1052,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 isiNumBins = 1;
             }
             this.isiNumBins = isiNumBins;
-            resetISIs();
+            reset();
             putInt("isiNumBins", isiNumBins);
             getSupport().firePropertyChange("isiNumBins", old, isiNumBins);
         }
@@ -1057,6 +1071,92 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             this.isiAutoScalingEnabled = isiAutoScalingEnabled;
             putBoolean("isiAutoScalingEnabled", isiAutoScalingEnabled);
         }
+
+        private class EventCountsAfterExternalPinEvents {
+
+            int onRisingCount = 0;
+            int offRisingCount = 0;
+            int onFallingCount = 0;
+            int offFallingCount = 0;
+            private Phase phase = Phase.Uninitalized;
+            int numRisingPhases = 0;
+            int numFallingPhases = 0;
+
+            void reset() {
+                numRisingPhases = 0;
+                numFallingPhases = 0;
+                onRisingCount = 0;
+                offRisingCount = 0;
+                onFallingCount = 0;
+                offFallingCount = 0;
+                phase = Phase.Uninitalized;
+            }
+
+            void addEvent(BasicEvent b) {
+                PolarityEvent e = (PolarityEvent) b; // TODO assumes DVS polarity event
+                if (e.isSpecial()) {
+                    switch (e.address) {
+                        case DavisChip.EXTERNAL_INPUT_ADDR_RISING:
+                            if (numRisingPhases > 0) {
+                                System.out.println(this);
+                            }
+                            phase = Phase.Rising;
+                            numRisingPhases++;
+                            return;
+                        case DavisChip.EXTERNAL_INPUT_EVENT_ADDR_FALLING:
+                            if (numFallingPhases > 0) {
+                                System.out.println(this);
+                            }
+                            phase = Phase.Falling;
+                            numFallingPhases++;
+                            return;
+                        default:
+                            log.warning("special event with address="+e.address+", which is not a valid Rising or Falling edge external input pin event");
+                    }
+                    return;
+                }
+                if (e.isFilteredOut() || !inSelection(e) || phase == Phase.Uninitalized) {
+                    return;
+                }
+                switch (e.polarity) {
+                    case On:
+                        if (phase == Phase.Rising) {
+                            onRisingCount++;
+                        } else {
+                            onFallingCount++;
+                        }
+                        break;
+                    case Off:
+                        if (phase == Phase.Rising) {
+                            offRisingCount++;
+                        } else {
+                            offFallingCount++;
+                        }
+                        break;
+                }
+            }
+
+            @Override
+            public String toString() {
+                return "EventCountsAfterExternalPinEvents{" + "onRisingCount=" + onRisingCount + ", offRisingCount=" + offRisingCount + ", onFallingCount=" + onFallingCount + ", offFallingCount=" + offFallingCount + ", phase=" + phase + '}';
+            }
+
+            /**
+             * @return the phase
+             */
+            public Phase getPhase() {
+                return phase;
+            }
+
+            /**
+             * @param phase the phase to set
+             */
+            public void setPhase(Phase phase) {
+                this.phase = phase;
+            }
+
+        }
+
     }
 
     @Override
@@ -1078,11 +1178,12 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     }
 
     /**
-     * @param countDVSEventsBetweenExternalPinEvents the countDVSEventsBetweenExternalPinEvents to set
+     * @param countDVSEventsBetweenExternalPinEvents the
+     * countDVSEventsBetweenExternalPinEvents to set
      */
     public void setCountDVSEventsBetweenExternalPinEvents(boolean countDVSEventsBetweenExternalPinEvents) {
         this.countDVSEventsBetweenExternalPinEvents = countDVSEventsBetweenExternalPinEvents;
-        putBoolean("countDVSEventsBetweenExternalPinEvents",countDVSEventsBetweenExternalPinEvents);
+        putBoolean("countDVSEventsBetweenExternalPinEvents", countDVSEventsBetweenExternalPinEvents);
     }
 
 }
