@@ -338,7 +338,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 										// Check that the buffer has space for this event. Enlarge if needed.
 										if (ensureCapacity(buffer, eventCounter + 1)) {
-											buffer.getAddresses()[eventCounter] = DavisChip.EXTERNAL_INPUT_EVENT_ADDR;
+                                                                                    // tobi added data to pass thru rising falling and pulse events 
+											buffer.getAddresses()[eventCounter] = DavisChip.EXTERNAL_INPUT_EVENT_ADDR+data;
 											buffer.getTimestamps()[eventCounter++] = adjustedTimestamp;
 										}
 										break;
