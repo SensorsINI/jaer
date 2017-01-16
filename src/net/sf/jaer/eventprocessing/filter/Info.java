@@ -41,12 +41,11 @@ import net.sf.jaer.util.TobiLogger;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
-import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.util.Iterator;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
-import net.sf.jaer.util.TextRendererScale;
 
 /**
  * Annotates the rendered data stream canvas with additional information like a
@@ -91,6 +90,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private TobiLogger tobiLogger = null;
     private boolean showAccumulatedEventCount = getBoolean("showAccumulatedEventCount", true);
     private long accumulatedDVSEventCount = 0, accumulatedAPSSampleCount = 0, accumulatedIMUSampleCount = 0;
+    private long accumulatedDVSOnEventCount = 0, accumulatedDVSOffEventCount = 0;
     private long accumulateTimeUs = 0;
 
     /**
@@ -148,11 +148,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 }
                 tobiLogger.setEnabled(true);
             }
-        } else {
-            if (this.logStatistics) {
-                tobiLogger.setEnabled(false);
-                log.info("stopped logging Info data to " + tobiLogger);
-            }
+        } else if (this.logStatistics) {
+            tobiLogger.setEnabled(false);
+            log.info("stopped logging Info data to " + tobiLogger);
         }
         this.logStatistics = logStatistics;
         getSupport().firePropertyChange("logStatistics", old, this.logStatistics);
@@ -240,7 +238,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
         synchronized void addSample(long time, float rate) {
             if (time < lastTimeAdded) {
-                log.info("time went backwards by " + (time - lastTimeAdded)+"ms, clearing history");
+                log.info("time went backwards by " + (time - lastTimeAdded) + "ms, clearing history");
                 clear();
             }
             //            System.out.println(String.format("adding RateHistory point at t=%-20d, dt=%-15d",time,(time-lastTimeAdded)));
@@ -304,7 +302,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             gl.glPopMatrix();
             gl.glPushMatrix();
             maxRateString = String.format("max %s eps", engFmt.format(maxRate));
-            maxTimeString = String.format("%s s",engFmt.format((endTimeMs-startTimeMs)*.001f));
+            maxTimeString = String.format("%s s", engFmt.format((endTimeMs - startTimeMs) * .001f));
 
             GLUT glut = chip.getCanvas().getGlut();
             int font = GLUT.BITMAP_9_BY_15;
@@ -316,7 +314,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             gl.glRasterPos3f(0, sy / 2, 0);
             glut.glutBitmapString(font, maxRateString);
             sw = (glut.glutBitmapLength(font, maxTimeString) / w) * sx;
-            gl.glRasterPos3f(sx-sw, sy*.3f, 0);
+            gl.glRasterPos3f(sx - sw, sy * .3f, 0);
             glut.glutBitmapString(font, maxTimeString);
 
             gl.glPopMatrix();
@@ -410,6 +408,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     private void resetAccumulatedStatistics() {
         accumulatedDVSEventCount = 0;
+        accumulatedDVSOnEventCount = 0;
+        accumulatedDVSOffEventCount = 0;
         accumulatedAPSSampleCount = 0;
         accumulatedIMUSampleCount = 0;
         accumulateTimeUs = 0;
@@ -467,12 +467,17 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             while (i.hasNext()) {
                 ApsDvsEvent e = i.next();
                 if (e.isImuSample()) {
-                        accumulatedIMUSampleCount++;
-                    } else if (e.isApsData()) {
-                        accumulatedAPSSampleCount++;
-                    } else if (e.isDVSEvent()) {
-                        accumulatedDVSEventCount++;
+                    accumulatedIMUSampleCount++;
+                } else if (e.isApsData()) {
+                    accumulatedAPSSampleCount++;
+                } else if (e.isDVSEvent()) {
+                    accumulatedDVSEventCount++;
+                    if (e.getPolarity() == Polarity.On) {
+                        accumulatedDVSOnEventCount++;
+                    } else if (e.getPolarity() == Polarity.Off) {
+                        accumulatedDVSOffEventCount++;
                     }
+                }
             }
         } else {
             accumulatedDVSEventCount += in.getSize();
@@ -643,13 +648,18 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         final float yorig = .7f * sy, xpos = 0;
         GLUT glut = chip.getCanvas().getGlut();
         gl.glRasterPos3f(xpos, yorig, 0);
+        int n=chip.getNumPixels();
         float cDvs = (float) accumulatedDVSEventCount;
+        float cDvsOn = (float) accumulatedDVSOnEventCount;
+        float cDvsOff = (float) accumulatedDVSOffEventCount;
         float cAps = (float) accumulatedAPSSampleCount;
         float cImu = (float) accumulatedIMUSampleCount;
         float t = 1e-6f * (float) accumulateTimeUs;
-        String s = String.format("In %ss:\n%s DVS events (%seps)\n%s APS samples (%ssps)\n%s IMU samples (%ssps)",
+        String s = String.format("In %ss:\n%s DVS events (%seps, %seps/pix)\n  %s DVS ON events (%seps, %seps/pix)\n  %s DVS OFF events (%seps, %seps/pix)\n%s APS samples (%ssps)\n%s IMU samples (%ssps)",
                 engFmt.format(t),
-                engFmt.format(accumulatedDVSEventCount), engFmt.format(cDvs / t),
+                engFmt.format(accumulatedDVSEventCount), engFmt.format(cDvs / t), engFmt.format(cDvs/t/n),
+                engFmt.format(accumulatedDVSOnEventCount), engFmt.format(cDvsOn / t), engFmt.format(cDvsOn/t/n),
+                engFmt.format(accumulatedDVSOffEventCount), engFmt.format(cDvsOff / t), engFmt.format(cDvsOff/t/n),
                 engFmt.format(accumulatedAPSSampleCount / 2), engFmt.format(cAps / 2 / t), // divide by two for reset/signal reads
                 engFmt.format(accumulatedIMUSampleCount), engFmt.format(cImu / t));
         MultilineAnnotationTextRenderer.setScale(.2f);
