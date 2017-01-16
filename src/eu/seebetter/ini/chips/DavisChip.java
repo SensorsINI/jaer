@@ -32,7 +32,12 @@ abstract public class DavisChip extends AETemporalConstastRetina {
 		IMU_SAMPLE_VALUE = 3 << EVENT_TYPE_SHIFT, // this special code is for IMU sample events
 		HW_BGAF = 5, HW_TRACKER_CM = 6, HW_TRACKER_CLUSTER = 7, HW_OMC_EVENT = 4; // event code cannot be higher than 7
 																					// in 3 bits
-
+        /** Special event addresses for external input pin events */
+        public static final int  // See DavisFX3HardwareInterface line 334 (tobi)
+                EXTERNAL_INPUT_ADDR_RISING=2+EXTERNAL_INPUT_EVENT_ADDR,
+                EXTERNAL_INPUT_EVENT_ADDR_FALLING=3+EXTERNAL_INPUT_EVENT_ADDR,
+                EXTERNAL_INPUT_EVENT_ADDR_PULSE=4+EXTERNAL_INPUT_EVENT_ADDR;
+        
 	/* Detects bit indicating a DVS external event of type IMU */
 	public static final int IMUSHIFT = 0, IMUMASK = 1 << IMUSHIFT;
 
