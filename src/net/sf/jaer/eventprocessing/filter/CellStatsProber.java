@@ -93,6 +93,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     EngineeringFormat engFmt = new EngineeringFormat();
     private boolean resetOnBiasChange = getBoolean("resetOnBiasChange", true);
     private boolean addedBiasgenPropChangeListener = false;
+    private boolean countDVSEventsBetweenExternalPinEvents=getBoolean("countDVSEventsBetweenExternalPinEvents",false);
 
     public CellStatsProber(AEChip chip) {
         super(chip);
@@ -104,7 +105,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         currentAddress = new int[chip.getNumCellTypes()];
         Arrays.fill(currentAddress, -1);
         chip.addObserver(this);
-        final String h = "ISIs", e = "Event rate", l = "Latency";
+        final String h = "ISIs", e = "Event rate", l = "Latency", c="Count";
         setPropertyTooltip(h, "isiHistEnabled", "enable histogramming interspike intervals");
         setPropertyTooltip(h, "isiMinUs", "min ISI in us");
         setPropertyTooltip(h, "isiMaxUs", "max ISI in us");
@@ -138,6 +139,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         // implemented
         setPropertyTooltip(l, "externalInputEventAddress",
                 "int32 address of external input events; see e.g. DavisChip.EXTERNAL_INPUT_EVENT_ADDR for this address");
+        setPropertyTooltip(c,"countDVSEventsBetweenExternalPinEvents","counts events of ON and OFF polarity between external input pin rising and falling special events");
         chip.getSupport().addPropertyChangeListener(this);
     }
 
@@ -1066,6 +1068,21 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             resetFilter();
             log.info("reset filter on " + evt.toString());
         }
+    }
+
+    /**
+     * @return the countDVSEventsBetweenExternalPinEvents
+     */
+    public boolean isCountDVSEventsBetweenExternalPinEvents() {
+        return countDVSEventsBetweenExternalPinEvents;
+    }
+
+    /**
+     * @param countDVSEventsBetweenExternalPinEvents the countDVSEventsBetweenExternalPinEvents to set
+     */
+    public void setCountDVSEventsBetweenExternalPinEvents(boolean countDVSEventsBetweenExternalPinEvents) {
+        this.countDVSEventsBetweenExternalPinEvents = countDVSEventsBetweenExternalPinEvents;
+        putBoolean("countDVSEventsBetweenExternalPinEvents",countDVSEventsBetweenExternalPinEvents);
     }
 
 }
