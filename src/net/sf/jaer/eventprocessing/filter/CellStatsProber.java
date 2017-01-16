@@ -44,7 +44,9 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
+import java.awt.Color;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
  * Collects and displays statistics for a selected range of pixels / cells.
@@ -175,7 +177,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     }
 
     private boolean inSelection(BasicEvent e) {
-        if (selection.contains(e.x, e.y)) {
+        if (selection==null || selection.isEmpty() || selection.contains(e.x, e.y)) {
             return true;
         }
         return false;
@@ -858,6 +860,12 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 }
                 renderer.draw3D(toString(), 1, chip.getSizeY() - 4, 0, scale); // TODO fix string n lines
             }
+            if(countDVSEventsBetweenExternalPinEvents){
+                MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()*.8f);
+                MultilineAnnotationTextRenderer.setScale(.25f);
+                MultilineAnnotationTextRenderer.setColor(Color.yellow);
+                MultilineAnnotationTextRenderer.renderMultilineString(eventCountAfterExternalPinEvents.toString());
+            }
             // ... more draw commands, color changes, etc.
             renderer.end3DRendering();
 
@@ -1138,7 +1146,14 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 
             @Override
             public String toString() {
-                return "EventCountsAfterExternalPinEvents{" + "onRisingCount=" + onRisingCount + ", offRisingCount=" + offRisingCount + ", onFallingCount=" + onFallingCount + ", offFallingCount=" + offFallingCount + ", phase=" + phase + '}';
+                int n=selection.height*selection.width;
+                return String.format("%d Rising phase events, %d Falling phase events\n"
+                        + "Rising phase: %d ON events, %d OFF events (%.1f ON/pix, %.1f OFF/pix)\n"
+                        + "Falling phase: %d ON events, %d OFF events(%.1f ON/pix, %.1f OFF/pix)",
+                        numRisingPhases, numFallingPhases,
+                        onRisingCount, offRisingCount, (float)onRisingCount/n/numRisingPhases,(float)offRisingCount/n/numRisingPhases,
+                        onFallingCount, offFallingCount, (float)onFallingCount/n/numFallingPhases,(float)offFallingCount/n/numFallingPhases
+                        );
             }
 
             /**
