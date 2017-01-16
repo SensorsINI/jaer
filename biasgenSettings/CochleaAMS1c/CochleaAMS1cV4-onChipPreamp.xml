@@ -2032,7 +2032,7 @@
                   <entry key="CochleaAMS1cV4.IPot.Vbias2" value="221969"/>
                   <entry key="CochleaAMS1cV4.IPot.Vth1" value="0"/>
                   <entry key="CochleaAMS1cV4.IPot.Vsetioadap" value="0"/>
-                  <entry key="CochleaAMS1cV4.IPot.Vbias1" value="711251"/>
+                  <entry key="CochleaAMS1cV4.IPot.Vbias1" value="839983"/>
                   <entry key="CochleaAMS1cV4.IPot.Vbpf1" value="61"/>
                   <entry key="CochleaAMS1cV4.IPot.Vrefn" value="0"/>
                   <entry key="CochleaAMS1cV4.IPot.Vbamp" value="0"/>
@@ -2209,10 +2209,10 @@
                   <entry key="CochleaAMS1cV4.IPot.Curstartbpf" value="3968053"/>
                   <entry key="CochleaAMS1cV4.IPot.DacBufferNb" value="408507"/>
                   <entry key="CochleaAMS1cV4.IPot.Vbp" value="81811"/>
-                  <entry key="CochleaAMS1cV4.IPot.Ibias20OpAmp" value="4"/>
+                  <entry key="CochleaAMS1cV4.IPot.Ibias20OpAmp" value="168221"/>
                   <entry key="CochleaAMS1cV4.IPot.N.C." value="0"/>
                   <entry key="CochleaAMS1cV4.IPot.NeuronRp" value="142441"/>
-                  <entry key="CochleaAMS1cV4.IPot.Ibias10OpAmp" value="3"/>
+                  <entry key="CochleaAMS1cV4.IPot.Ibias10OpAmp" value="55492"/>
                   <entry key="CochleaAMS1cV4.IPot.Vthbpf2" value="118"/>
                   <entry key="CochleaAMS1cV4.IPot.Follbias" value="91406"/>
                   <entry key="CochleaAMS1cV4.IPot.VbampP" value="174"/>
