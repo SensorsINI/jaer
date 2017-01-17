@@ -177,7 +177,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     }
 
     private boolean inSelection(BasicEvent e) {
-        if (selection==null || selection.isEmpty() || selection.contains(e.x, e.y)) {
+        if (selection == null || selection.isEmpty() || selection.contains(e.x, e.y)) {
             return true;
         }
         return false;
@@ -514,7 +514,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         private boolean showIndividualISIHistograms = getBoolean("showIndividualISIHistograms", false);
         private boolean showLatencyHistogramToExternalInputEvents = getBoolean("showLatencyHistogramToExternalInputEvents", false);
         private int externalInputEventAddress = getInt("externalInputEventAddress", DavisChip.EXTERNAL_INPUT_EVENT_ADDR);
-        private EventCountsAfterExternalPinEvents eventCountAfterExternalPinEvents = new EventCountsAfterExternalPinEvents();
+        private EventCountsAfterInputPinEvents eventCountAfterExternalPinEvents = new EventCountsAfterInputPinEvents();
 
         public LowpassFilter getRateFilter() {
             return rateFilter;
@@ -860,8 +860,8 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 }
                 renderer.draw3D(toString(), 1, chip.getSizeY() - 4, 0, scale); // TODO fix string n lines
             }
-            if(countDVSEventsBetweenExternalPinEvents){
-                MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()*.8f);
+            if (countDVSEventsBetweenExternalPinEvents) {
+                MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);
                 MultilineAnnotationTextRenderer.setScale(.25f);
                 MultilineAnnotationTextRenderer.setColor(Color.yellow);
                 MultilineAnnotationTextRenderer.renderMultilineString(eventCountAfterExternalPinEvents.toString());
@@ -1080,24 +1080,32 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             putBoolean("isiAutoScalingEnabled", isiAutoScalingEnabled);
         }
 
-        private class EventCountsAfterExternalPinEvents {
+        private class EventCountsAfterInputPinEvents {
 
             int onRisingCount = 0;
             int offRisingCount = 0;
             int onFallingCount = 0;
             int offFallingCount = 0;
             private Phase phase = Phase.Uninitalized;
-            int numRisingPhases = 0;
-            int numFallingPhases = 0;
+            int numRisingEdges = 0;
+            int numFallingEdges = 0;
+            float onRisingPerOnPhasePerPixel = Float.NaN;
+            float offRisingPerOnPhasePerPixel = Float.NaN;
+            float onFallingPerOffPhasePerPixel = Float.NaN;
+            float offFallingPerOffPhasePerPixel = Float.NaN;
 
             void reset() {
-                numRisingPhases = 0;
-                numFallingPhases = 0;
+                numRisingEdges = 0;
+                numFallingEdges = 0;
                 onRisingCount = 0;
                 offRisingCount = 0;
                 onFallingCount = 0;
                 offFallingCount = 0;
                 phase = Phase.Uninitalized;
+                onRisingPerOnPhasePerPixel = Float.NaN;
+                offRisingPerOnPhasePerPixel = Float.NaN;
+                onFallingPerOffPhasePerPixel = Float.NaN;
+                offFallingPerOffPhasePerPixel = Float.NaN;
             }
 
             void addEvent(BasicEvent b) {
@@ -1105,21 +1113,21 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 if (e.isSpecial()) {
                     switch (e.address) {
                         case DavisChip.EXTERNAL_INPUT_ADDR_RISING:
-                            if (numRisingPhases > 0) {
-                                System.out.println(this);
-                            }
+//                            if (numRisingPhases > 0) {
+//                                System.out.println(this);
+//                            }
                             phase = Phase.Rising;
-                            numRisingPhases++;
+                            numRisingEdges++;
                             return;
                         case DavisChip.EXTERNAL_INPUT_EVENT_ADDR_FALLING:
-                            if (numFallingPhases > 0) {
-                                System.out.println(this);
-                            }
+//                            if (numFallingPhases > 0) {
+//                                System.out.println(this);
+//                            }
                             phase = Phase.Falling;
-                            numFallingPhases++;
+                            numFallingEdges++;
                             return;
                         default:
-                            log.warning("special event with address="+e.address+", which is not a valid Rising or Falling edge external input pin event");
+                            log.fine("special event with address=" + e.address + ", which is not a valid Rising or Falling edge external input pin event");
                     }
                     return;
                 }
@@ -1146,14 +1154,22 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 
             @Override
             public String toString() {
-                int n=selection.height*selection.width;
-                return String.format("%d Rising phase events, %d Falling phase events\n"
-                        + "Rising phase: %d ON events, %d OFF events (%.1f ON/pix, %.1f OFF/pix)\n"
-                        + "Falling phase: %d ON events, %d OFF events(%.1f ON/pix, %.1f OFF/pix)",
-                        numRisingPhases, numFallingPhases,
-                        onRisingCount, offRisingCount, (float)onRisingCount/n/numRisingPhases,(float)offRisingCount/n/numRisingPhases,
-                        onFallingCount, offFallingCount, (float)onFallingCount/n/numFallingPhases,(float)offFallingCount/n/numFallingPhases
-                        );
+                int n = selection.height * selection.width;
+                if (numRisingEdges >= 2) {
+                    onRisingPerOnPhasePerPixel = (float) onRisingCount / n / (numRisingEdges-1);
+                    offRisingPerOnPhasePerPixel = (float) offRisingCount / n / (numRisingEdges-1);
+                }
+                if (numFallingEdges > 2) {
+                    onFallingPerOffPhasePerPixel = (float) onFallingCount / n / (numFallingEdges-1);
+                    offFallingPerOffPhasePerPixel = (float) offFallingCount / n / (numFallingEdges-1);
+                }
+                return String.format("%d Rising edges, %d Falling edges\n"
+                        + "Rising phase:  %d ON events, %d OFF events (%s ON/rise/pix, %s OFF/rise/pix)\n"
+                        + "Falling phase: %d ON events, %d OFF events (%s ON/fall/pix, %s OFF/fall/pix)",
+                        numRisingEdges, numFallingEdges,
+                        onRisingCount, offRisingCount, engFmt.format(onRisingPerOnPhasePerPixel), engFmt.format(offRisingPerOnPhasePerPixel),
+                        onFallingCount, offFallingCount, engFmt.format(onFallingPerOffPhasePerPixel), engFmt.format(offFallingPerOffPhasePerPixel)
+                );
             }
 
             /**
