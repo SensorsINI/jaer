@@ -217,6 +217,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         if (isIsiAutoScalingEnabled()) {
             setIsiMaxUs(0);
         }
+        stats.eventCountAfterExternalPinEvents.reset();
     }
 
     @Override
@@ -1015,7 +1016,6 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         synchronized private void reset() {
             globalHist.reset();
             histMap.clear();
-            eventCountAfterExternalPinEvents.reset();
         }
 
         private int getIsiBin(int isi) {
@@ -1156,12 +1156,12 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             public String toString() {
                 int n = selection.height * selection.width;
                 if (numRisingEdges >= 2) {
-                    onRisingPerOnPhasePerPixel = (float) onRisingCount / n / (numRisingEdges-1);
-                    offRisingPerOnPhasePerPixel = (float) offRisingCount / n / (numRisingEdges-1);
+                    onRisingPerOnPhasePerPixel = (float) onRisingCount / n / (numRisingEdges - 1);
+                    offRisingPerOnPhasePerPixel = (float) offRisingCount / n / (numRisingEdges - 1);
                 }
                 if (numFallingEdges > 2) {
-                    onFallingPerOffPhasePerPixel = (float) onFallingCount / n / (numFallingEdges-1);
-                    offFallingPerOffPhasePerPixel = (float) offFallingCount / n / (numFallingEdges-1);
+                    onFallingPerOffPhasePerPixel = (float) onFallingCount / n / (numFallingEdges - 1);
+                    offFallingPerOffPhasePerPixel = (float) offFallingCount / n / (numFallingEdges - 1);
                 }
                 return String.format("%d Rising edges, %d Falling edges\n"
                         + "Rising phase:  %d ON events, %d OFF events (%s ON/rise/pix, %s OFF/rise/pix)\n"
