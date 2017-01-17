@@ -14,7 +14,6 @@ package ch.unizh.ini.jaer.chip.multicamera;
  */
 
 import eu.seebetter.ini.chips.DavisChip;
-import eu.seebetter.ini.chips.davis.DAVIS240B;
 import eu.seebetter.ini.chips.davis.DAVIS240BaseCamera;
 import java.util.ArrayList;
 import java.util.TreeMap;
@@ -25,7 +24,6 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BinocularEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.MultiCameraEvent;
 import net.sf.jaer.event.OutputEventIterator;
@@ -38,29 +36,22 @@ import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.stereopsis.MultiCameraBiasgenHardwareInterface;
 import net.sf.jaer.stereopsis.MultiCameraInterface;
 
-import net.sf.jaer.graphics.TwoCamera3DDisplayMethod;
 
 import eu.seebetter.ini.chips.davis.DAVIS240C;
-import eu.seebetter.ini.chips.davis.Davis240Config;
-import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.DavisConfig;
-import java.awt.Point;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
-import net.sf.jaer.graphics.ChipRendererDisplayMethod;
-import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
-import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.graphics.MulticameraDavisRenderer;
-@Description("A multi DVS128 retina (DVS128) each on it's own USB interface with merged and presumably aligned fields of view")
+@Description("A multi Davis retina each on it's own USB interface with merged and presumably aligned fields of view")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class MultiDAVISCameraChip extends DAVIS240BaseCamera implements MultiCameraInterface {
 
     private AEChip[] cameras = new AEChip[MultiCameraEvent.NUM_CAMERAS];
     public MulticameraDavisRenderer  MultiDavisRenderer;
 
-    /** Creates a new instance of MultiDVS128CameraChip */
+    /** Creates a new instance of  */
     public MultiDAVISCameraChip() {
         super();
         for (AEChip c : cameras) {
@@ -190,7 +181,7 @@ public class MultiDAVISCameraChip extends DAVIS240BaseCamera implements MultiCam
             }
             return p;
         }
-    }// extractor for multidvs128camerachip
+    }// extractor for 
 
     @Override
     public void setHardwareInterface(HardwareInterface hw) {
