@@ -147,7 +147,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     }
 
     public void displayStats(GLAutoDrawable drawable) {
-        if ((drawable == null) || (selection == null) || (chip.getCanvas() == null)) {
+        if ((drawable == null) || (chip.getCanvas() == null)) {
             return;
         }
         canvas = chip.getCanvas();
@@ -155,10 +155,9 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         int sx = chip.getSizeX(), sy = chip.getSizeY();
         Rectangle chipRect = new Rectangle(sx, sy);
         GL2 gl = drawable.getGL().getGL2();
-        if (!chipRect.intersects(selection)) {
-            return;
+        if (selection != null && chipRect.intersects(selection)) {
+            drawSelection(gl, selection, SELECT_COLOR);
         }
-        drawSelection(gl, selection, SELECT_COLOR);
         stats.drawStats(drawable);
         stats.play();
 
@@ -536,10 +535,10 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         private int lastExternalInputEventTimestamp = 0;
 
         synchronized public void collectStats(EventPacket<BasicEvent> in) {
-            if (selection == null) {
-                return;
-            }
-            nPixels = ((selection.width) * (selection.height));
+//            if (selection == null) {
+//                return;
+//            }
+            nPixels = selection == null ? chip.getNumPixels() : (selection.width) * (selection.height);
             stats.count = 0;
             for (BasicEvent e : in) {
                 if (showLatencyHistogramToExternalInputEvents && (e.address == externalInputEventAddress)) {
@@ -557,7 +556,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 }
                 if (inSelection(e)) {
                     stats.count++;
-                    if (individualISIsEnabled) {
+                    if (isiHistEnabled && individualISIsEnabled) {
                         ISIHist h = histMap.get(e.address);
                         if (h == null) {
                             h = new ISIHist(e.address);
@@ -565,7 +564,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                             // System.out.println("added hist for "+e);
                         }
                         h.addEvent(e);
-                    } else {
+                    } else if (isiHistEnabled) {
                         globalHist.addEvent(e);
                     }
                     globalHist.lastT = e.timestamp;
@@ -578,7 +577,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             if (stats.count > 0) {
                 measureAverageEPS(globalHist.lastT, stats.count);
             }
-            if (individualISIsEnabled) {
+            if (isiHistEnabled && individualISIsEnabled) {
                 globalHist.reset();
                 for (ISIHist h : histMap.values()) {
                     for (int i = 0; i < isiNumBins; i++) {
@@ -1016,6 +1015,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         synchronized private void reset() {
             globalHist.reset();
             histMap.clear();
+            stats.eventCountAfterExternalPinEvents.reset();
         }
 
         private int getIsiBin(int isi) {
@@ -1093,6 +1093,9 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             float offRisingPerOnPhasePerPixel = Float.NaN;
             float onFallingPerOffPhasePerPixel = Float.NaN;
             float offFallingPerOffPhasePerPixel = Float.NaN;
+            int lastTimestamp = 0;
+            int lowPeriod = 0, highPeriod = 0;
+            int lastRisingTimstamp = 0, lastFallingTimestamp = 0;
 
             void reset() {
                 numRisingEdges = 0;
@@ -1106,32 +1109,60 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 offRisingPerOnPhasePerPixel = Float.NaN;
                 onFallingPerOffPhasePerPixel = Float.NaN;
                 offFallingPerOffPhasePerPixel = Float.NaN;
+                lowPeriod = 0;
+                highPeriod = 0;
             }
 
             void addEvent(BasicEvent b) {
                 PolarityEvent e = (PolarityEvent) b; // TODO assumes DVS polarity event
+                lastTimestamp = b.timestamp;
+                if (highPeriod > 0 && lowPeriod > 0) { // if we've already detected a low and high period on sync
+                    int dtfalling = lastTimestamp - lastFallingTimestamp, dtrising = lastTimestamp - lastRisingTimstamp;
+                    if (dtfalling > 0 && dtrising > 0) { // we're after both edges 
+                        if (dtfalling < dtrising) { // last edge falling
+                            if (dtfalling <= lowPeriod / 2) {
+                                phase = Phase.Falling;
+                            } else {
+                                phase = Phase.Rising;
+                            }
+                        } else { // last edge rising
+                            if (dtrising <= highPeriod / 2) {
+                                phase = Phase.Rising;
+                            } else {
+                                phase = Phase.Falling;
+                            }
+                        }
+                    } else {
+                        phase = Phase.Uninitalized;
+                    }
+                } else {
+                    phase = phase.Uninitalized;
+                }
+
                 if (e.isSpecial()) {
                     switch (e.address) {
                         case DavisChip.EXTERNAL_INPUT_ADDR_RISING:
-//                            if (numRisingPhases > 0) {
-//                                System.out.println(this);
-//                            }
-                            phase = Phase.Rising;
                             numRisingEdges++;
+                            if (numFallingEdges >= 1) {
+                                lowPeriod = lastTimestamp - lastFallingTimestamp;
+                            }
+                            lastRisingTimstamp = lastTimestamp;
                             return;
                         case DavisChip.EXTERNAL_INPUT_EVENT_ADDR_FALLING:
-//                            if (numFallingPhases > 0) {
-//                                System.out.println(this);
-//                            }
-                            phase = Phase.Falling;
                             numFallingEdges++;
+                            if (numRisingEdges >= 1) {
+                                highPeriod = lastTimestamp - lastRisingTimstamp;
+                            }
+                            lastFallingTimestamp = lastTimestamp;
                             return;
                         default:
                             log.fine("special event with address=" + e.address + ", which is not a valid Rising or Falling edge external input pin event");
                     }
                     return;
                 }
-                if (e.isFilteredOut() || !inSelection(e) || phase == Phase.Uninitalized) {
+
+                if (e.isFilteredOut()
+                        || !inSelection(e) || phase == Phase.Uninitalized) {
                     return;
                 }
                 switch (e.polarity) {
@@ -1154,7 +1185,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 
             @Override
             public String toString() {
-                int n = selection.height * selection.width;
+                int n = selection == null ? chip.getNumPixels() : selection.height * selection.width;
                 if (numRisingEdges >= 2) {
                     onRisingPerOnPhasePerPixel = (float) onRisingCount / n / (numRisingEdges - 1);
                     offRisingPerOnPhasePerPixel = (float) offRisingCount / n / (numRisingEdges - 1);
@@ -1163,9 +1194,10 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                     onFallingPerOffPhasePerPixel = (float) onFallingCount / n / (numFallingEdges - 1);
                     offFallingPerOffPhasePerPixel = (float) offFallingCount / n / (numFallingEdges - 1);
                 }
-                return String.format("%d Rising edges, %d Falling edges\n"
+                return String.format("Current phase: %s\n%d Rising edges, %d Falling edges\n"
                         + "Rising phase:  %d ON events, %d OFF events (%s ON/rise/pix, %s OFF/rise/pix)\n"
                         + "Falling phase: %d ON events, %d OFF events (%s ON/fall/pix, %s OFF/fall/pix)",
+                        phase.toString(),
                         numRisingEdges, numFallingEdges,
                         onRisingCount, offRisingCount, engFmt.format(onRisingPerOnPhasePerPixel), engFmt.format(offRisingPerOnPhasePerPixel),
                         onFallingCount, offFallingCount, engFmt.format(onFallingPerOffPhasePerPixel), engFmt.format(offFallingPerOffPhasePerPixel)
