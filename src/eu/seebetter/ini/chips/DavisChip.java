@@ -34,8 +34,8 @@ abstract public class DavisChip extends AETemporalConstastRetina {
 																					// in 3 bits
         /** Special event addresses for external input pin events */
         public static final int  // See DavisFX3HardwareInterface line 334 (tobi)
-                EXTERNAL_INPUT_ADDR_RISING=2+EXTERNAL_INPUT_EVENT_ADDR,
-                EXTERNAL_INPUT_EVENT_ADDR_FALLING=3+EXTERNAL_INPUT_EVENT_ADDR,
+                EXTERNAL_INPUT_EVENT_ADDR_FALLING=2+EXTERNAL_INPUT_EVENT_ADDR,
+                EXTERNAL_INPUT_ADDR_RISING=3+EXTERNAL_INPUT_EVENT_ADDR,
                 EXTERNAL_INPUT_EVENT_ADDR_PULSE=4+EXTERNAL_INPUT_EVENT_ADDR;
         
 	/* Detects bit indicating a DVS external event of type IMU */
