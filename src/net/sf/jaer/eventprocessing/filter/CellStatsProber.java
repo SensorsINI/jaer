@@ -1089,10 +1089,10 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             private Phase phase = Phase.Uninitalized;
             int numRisingEdges = 0;
             int numFallingEdges = 0;
-            float onRisingPerOnPhasePerPixel = Float.NaN;
-            float offRisingPerOnPhasePerPixel = Float.NaN;
-            float onFallingPerOffPhasePerPixel = Float.NaN;
-            float offFallingPerOffPhasePerPixel = Float.NaN;
+            float onEventsPerRisingPhasePerPixel = Float.NaN;
+            float offEventsPerRisingPhasePerPixel = Float.NaN;
+            float onEventsPerFallingPhasePerPixel = Float.NaN;
+            float offEventsPerFallingPhasePerPixel = Float.NaN;
             int lastTimestamp = 0;
             int lowPeriod = 0, highPeriod = 0;
             int lastRisingTimstamp = 0, lastFallingTimestamp = 0;
@@ -1105,10 +1105,10 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 onFallingCount = 0;
                 offFallingCount = 0;
                 phase = Phase.Uninitalized;
-                onRisingPerOnPhasePerPixel = Float.NaN;
-                offRisingPerOnPhasePerPixel = Float.NaN;
-                onFallingPerOffPhasePerPixel = Float.NaN;
-                offFallingPerOffPhasePerPixel = Float.NaN;
+                onEventsPerRisingPhasePerPixel = Float.NaN;
+                offEventsPerRisingPhasePerPixel = Float.NaN;
+                onEventsPerFallingPhasePerPixel = Float.NaN;
+                offEventsPerFallingPhasePerPixel = Float.NaN;
                 lowPeriod = 0;
                 highPeriod = 0;
             }
@@ -1187,20 +1187,20 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             public String toString() {
                 int n = selection == null ? chip.getNumPixels() : selection.height * selection.width;
                 if (numRisingEdges >= 2) {
-                    onRisingPerOnPhasePerPixel = (float) onRisingCount / n / (numRisingEdges - 1);
-                    offRisingPerOnPhasePerPixel = (float) offRisingCount / n / (numRisingEdges - 1);
+                    onEventsPerRisingPhasePerPixel = (float) onRisingCount / n / (numRisingEdges - 1);
+                    offEventsPerRisingPhasePerPixel = (float) offRisingCount / n / (numRisingEdges - 1);
                 }
                 if (numFallingEdges > 2) {
-                    onFallingPerOffPhasePerPixel = (float) onFallingCount / n / (numFallingEdges - 1);
-                    offFallingPerOffPhasePerPixel = (float) offFallingCount / n / (numFallingEdges - 1);
+                    onEventsPerFallingPhasePerPixel = (float) onFallingCount / n / (numFallingEdges - 1);
+                    offEventsPerFallingPhasePerPixel = (float) offFallingCount / n / (numFallingEdges - 1);
                 }
                 return String.format("Current phase: %s\n%d Rising edges, %d Falling edges\n"
                         + "Rising phase:  %d ON events, %d OFF events (%s ON/rise/pix, %s OFF/rise/pix)\n"
                         + "Falling phase: %d ON events, %d OFF events (%s ON/fall/pix, %s OFF/fall/pix)",
                         phase.toString(),
                         numRisingEdges, numFallingEdges,
-                        onRisingCount, offRisingCount, engFmt.format(onRisingPerOnPhasePerPixel), engFmt.format(offRisingPerOnPhasePerPixel),
-                        onFallingCount, offFallingCount, engFmt.format(onFallingPerOffPhasePerPixel), engFmt.format(offFallingPerOffPhasePerPixel)
+                        onRisingCount, offRisingCount, engFmt.format(onEventsPerRisingPhasePerPixel), engFmt.format(offEventsPerRisingPhasePerPixel),
+                        onFallingCount, offFallingCount, engFmt.format(onEventsPerFallingPhasePerPixel), engFmt.format(offEventsPerFallingPhasePerPixel)
                 );
             }
 
