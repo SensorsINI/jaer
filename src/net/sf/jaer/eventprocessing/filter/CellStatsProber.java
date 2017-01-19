@@ -46,6 +46,7 @@ import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
 import java.awt.Color;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
@@ -97,6 +98,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     private boolean resetOnBiasChange = getBoolean("resetOnBiasChange", true);
     private boolean addedBiasgenPropChangeListener = false;
     private boolean countDVSEventsBetweenExternalPinEvents = getBoolean("countDVSEventsBetweenExternalPinEvents", false);
+    private boolean accumulateEventsOnEachPhase = getBoolean("accumulateEventsOnEachPhase", false);
 
     public CellStatsProber(AEChip chip) {
         super(chip);
@@ -142,7 +144,8 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         // implemented
         setPropertyTooltip(l, "externalInputEventAddress",
                 "int32 address of external input events; see e.g. DavisChip.EXTERNAL_INPUT_EVENT_ADDR for this address");
-        setPropertyTooltip(c, "countDVSEventsBetweenExternalPinEvents", "counts events of ON and OFF polarity between external input pin rising and falling special events");
+        setPropertyTooltip(c, "countDVSEventsBetweenExternalPinEvents", "counts events of ON and OFF polarity between rising and falling phases of stimulus based on special events from external input pin");
+        setPropertyTooltip(c, "accumulateEventsOnEachPhase", "accumulates events to renderer of ON and OFF polarity between rising and falling stimulation");
         chip.getSupport().addPropertyChangeListener(this);
     }
 
@@ -1104,7 +1107,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 offRisingCount = 0;
                 onFallingCount = 0;
                 offFallingCount = 0;
-                phase = Phase.Uninitalized;
+                setPhase(Phase.Uninitalized);
                 onEventsPerRisingPhasePerPixel = Float.NaN;
                 offEventsPerRisingPhasePerPixel = Float.NaN;
                 onEventsPerFallingPhasePerPixel = Float.NaN;
@@ -1121,22 +1124,22 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                     if (dtfalling > 0 && dtrising > 0) { // we're after both edges 
                         if (dtfalling < dtrising) { // last edge falling
                             if (dtfalling <= lowPeriod / 2) {
-                                phase = Phase.Falling;
+                                setPhase(Phase.Falling);
                             } else {
-                                phase = Phase.Rising;
+                                setPhase(Phase.Rising);
                             }
                         } else { // last edge rising
                             if (dtrising <= highPeriod / 2) {
-                                phase = Phase.Rising;
+                                setPhase(Phase.Rising);
                             } else {
-                                phase = Phase.Falling;
+                                setPhase(Phase.Falling);
                             }
                         }
                     } else {
-                        phase = Phase.Uninitalized;
+                        setPhase(Phase.Uninitalized);
                     }
                 } else {
-                    phase = phase.Uninitalized;
+                    setPhase(Phase.Uninitalized);
                 }
 
                 if (e.isSpecial()) {
@@ -1182,7 +1185,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                         break;
                 }
             }
-
+            
             @Override
             public String toString() {
                 int n = selection == null ? chip.getNumPixels() : selection.height * selection.width;
@@ -1215,7 +1218,30 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
              * @param phase the phase to set
              */
             public void setPhase(Phase phase) {
+                Phase old=this.phase;
                 this.phase = phase;
+                if(old!=this.phase){
+                    maybeSetRendererAccumulation();
+                }
+            }
+            
+            void maybeSetRendererAccumulation(){
+                if(chip.getRenderer()==null) return;
+                AEChipRenderer renderer=chip.getRenderer();
+                if(!accumulateEventsOnEachPhase){
+                    renderer.setAccumulateEnabled(false);
+                    return;
+                }
+                switch(phase){
+                    case Rising:
+                    case Falling:
+                        renderer.resetFrame(renderer.getGrayValue());
+                        renderer.setAccumulateEnabled(true);
+                        break;
+                    case Uninitalized:
+                        renderer.setAccumulateEnabled(false);
+                        break;
+                }
             }
 
         }
@@ -1247,6 +1273,21 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     public void setCountDVSEventsBetweenExternalPinEvents(boolean countDVSEventsBetweenExternalPinEvents) {
         this.countDVSEventsBetweenExternalPinEvents = countDVSEventsBetweenExternalPinEvents;
         putBoolean("countDVSEventsBetweenExternalPinEvents", countDVSEventsBetweenExternalPinEvents);
+    }
+
+    /**
+     * @return the accumulateEventsOnEachPhase
+     */
+    public boolean isAccumulateEventsOnEachPhase() {
+        return accumulateEventsOnEachPhase;
+    }
+
+    /**
+     * @param accumulateEventsOnEachPhase the accumulateEventsOnEachPhase to set
+     */
+    public void setAccumulateEventsOnEachPhase(boolean accumulateEventsOnEachPhase) {
+        this.accumulateEventsOnEachPhase = accumulateEventsOnEachPhase;
+        putBoolean("accumulateEventsOnEachPhase",accumulateEventsOnEachPhase);
     }
 
 }
