@@ -192,6 +192,11 @@ public class Jaer3BufferParser {
             return null;
         }
 
+        if((startPosition < 0) || (startPosition > in.limit() - PKT_HEADER_SIZE)) {
+            int tmp = 0;
+            return null;
+        }
+
         in.position(startPosition);
 
         while ((in.position() <= (in.limit() - PKT_HEADER_SIZE)) && (in.position() >= 0)) {
@@ -199,13 +204,17 @@ public class Jaer3BufferParser {
             eventTypeInt = in.getShort();
             // By default, eventTypeInt should range from 0 to 7
             if ((eventTypeInt > 7) || (eventTypeInt < 0)) { // TODO doesn't handle POINTXD or other later events yet
-                log.warning("At buffer position " + in.position() + " Event with eventType=" + eventTypeInt + " which is <0 or >7; searching for next event: ");
+                // log.warning("At buffer position " + in.position() + " Event with eventType=" + eventTypeInt + " which is <0 or >7; searching for next event: ");
                 in.position(currentSearchPosition + direction); // TODO ?? just goes forward 1 or backward 1 byte ?? how will this help?
                 continue;
             }
 
             d.eventType = EventType.values()[eventTypeInt];
             d.eventSource = in.getShort();
+            if (d.eventSource < 0) {
+                in.position(currentSearchPosition + direction);
+                continue;
+            }
             d.eventSize = in.getInt();
             if (d.eventSize <= 0) {
                 in.position(currentSearchPosition + direction);
@@ -216,18 +225,18 @@ public class Jaer3BufferParser {
 
             if (d.eventType == EventType.ConfigEvent) {
                 if (d.eventTSOffset != 6) {
-                    log.warning("At buffer position " + in.position() + " ConfigEvent with eventTSOffset!=6: " + d.toString());
+                    // log.warning("At buffer position " + in.position() + " ConfigEvent with eventTSOffset!=6: " + d.toString());
                     in.position(currentSearchPosition + direction);
                     continue;
-                }
+                } 
             } else if (d.eventType == EventType.FrameEvent) {
                 if ((d.eventTSOffset != 12) && (d.eventTSOffset != 8)) {
-                    log.warning("At buffer position " + in.position() + " FrameEvent with eventTSOffset!=12 and !=8: " + d.toString());
+                    // log.warning("At buffer position " + in.position() + " FrameEvent with eventTSOffset!=12 and !=8: " + d.toString());
                     in.position(currentSearchPosition + direction);
                     continue;
                 }
             } else if (d.eventTSOffset != 4) { // other events have ts at byte 4
-                log.warning("At buffer position " + in.position() + " Some other event with eventTSOffset!=4: " + d.toString());
+                // log.warning("At buffer position " + in.position() + " Some other event with eventTSOffset!=4: " + d.toString());
                 in.position(currentSearchPosition + direction);
                 continue;
             }
@@ -237,7 +246,7 @@ public class Jaer3BufferParser {
                 if ((d.eventType == EventType.SpecialEvent) || (d.eventType == EventType.PolarityEvent)
                         || (d.eventType == EventType.SampleEvent) || (d.eventType == EventType.EarEvent)) {
                     if (d.eventSize != 8) { // each of these events is 8 bytes total
-                        log.warning("At buffer position " + in.position() + " event that should have eventSize=8 has different event size: " + d.toString());
+                        // log.warning("At buffer position " + in.position() + " event that should have eventSize=8 has different event size: " + d.toString());
                         in.position(currentSearchPosition + direction);
                         continue;
                     }
@@ -245,15 +254,19 @@ public class Jaer3BufferParser {
 
                 if (d.eventType == EventType.FrameEvent) {
                     if (d.eventSize < 36) { // 36 bytes describe each frame in its header
-                        log.warning("At buffer position " + in.position() + " FrameEvent that should have eventSize=36 has different event size: " + d.toString());
+                        // log.warning("At buffer position " + in.position() + " FrameEvent that should have eventSize=36 has different event size: " + d.toString());
                         in.position(currentSearchPosition + direction);
                         continue;
+                    }
+                    if (d.eventTSOverflow >= 2) {
+                        in.position(currentSearchPosition + direction);
+                        continue;                        
                     }
                 }
 
                 if (d.eventType == EventType.Imu6Event) {
                     if (d.eventSize != 36) {
-                        log.warning("At buffer position " + in.position() + " Imu6Event that should have eventSize=36 has different event size: " + d.toString());
+                        // log.warning("At buffer position " + in.position() + " Imu6Event that should have eventSize=36 has different event size: " + d.toString());
                         in.position(currentSearchPosition + direction);
                         continue;
                     }
@@ -261,7 +274,7 @@ public class Jaer3BufferParser {
 
                 if (d.eventType == EventType.Imu9Event) {
                     if (d.eventSize != 48) {
-                        log.warning("At buffer position " + in.position() + " Imu9Event that should have eventSize=48 has different event size: " + d.toString());
+                        // log.warning("At buffer position " + in.position() + " Imu9Event that should have eventSize=48 has different event size: " + d.toString());
                         in.position(currentSearchPosition + direction);
                         continue;
                     }
@@ -269,7 +282,7 @@ public class Jaer3BufferParser {
 
                 if (d.eventType == EventType.ConfigEvent) {
                     if (d.eventSize != 10) {
-                        log.warning("At buffer position " + in.position() + " ConfigEvent that should have eventSize=10 has different event size: " + d.toString());
+                        // log.warning("At buffer position " + in.position() + " ConfigEvent that should have eventSize=10 has different event size: " + d.toString());
                         in.position(currentSearchPosition + direction);
                         continue;
                     }
@@ -280,7 +293,7 @@ public class Jaer3BufferParser {
 
             d.eventNumber = in.getInt(); // eventnumber
             if (d.eventNumber <= 0) {
-                log.warning("At buffer position " + in.position() + " event number is negative: " + d.toString());
+                // log.warning("At buffer position " + in.position() + " event number is negative: " + d.toString());
                 in.position(currentSearchPosition + direction);
                 continue;
             }
@@ -288,14 +301,14 @@ public class Jaer3BufferParser {
             // eventCapacity is always equal to eventNumber, it can only have a different value for in-memory packets.
             // The relationship is: eventValid <= eventNumber <= eventCapacity. And eventCapacity must be at least 1.
             if (d.eventNumber > d.eventCapacity) {
-                log.warning("At buffer position " + in.position() + " event number is larger than event capacity: " + d.toString());
+                // log.warning("At buffer position " + in.position() + " event number is larger than event capacity: " + d.toString());
                 in.position(currentSearchPosition + direction);
                 continue;
             }
 
             d.eventValid = in.getInt(); // eventValid
             if (d.eventValid < 0) {
-                log.warning("At buffer position " + in.position() + " valid event count is negative: " + d.toString());
+                // log.warning("At buffer position " + in.position() + " valid event count is negative: " + d.toString());
                 in.position(currentSearchPosition + direction);
                 continue;
             }
@@ -742,6 +755,8 @@ public class Jaer3BufferParser {
     public long bufferNumEvents() throws IOException {
         PacketDescriptor pkt = getNextPkt(0);
         long numEvents = 0;
+        int validPkttNum = 0;  // Total number of valid packets.
+        int framePktNum = 0;   // Total number of valid frame packets.
         while (pkt != null) {
             // TODO: complete all kinds of the events
             if (pkt.pktHeader.eventType == EventType.PolarityEvent) {
@@ -755,10 +770,16 @@ public class Jaer3BufferParser {
             if (pkt.pktHeader.eventType == EventType.FrameEvent) {
                 int xlength = in.getInt(pkt.pktPosition + PKT_HEADER_SIZE + 20);
                 int ylength = in.getInt(pkt.pktPosition + PKT_HEADER_SIZE + 24);
+                
+                framePktNum += 1;
 
                 numEvents += 2 * (xlength * ylength * (pkt.pktHeader.eventValid)); // One array has been divided into 2 arrays, so the event numbers in Frame should also increase
             }
             try {
+                validPkttNum += 1;
+                if(validPkttNum == 9700) {
+                    int tmp = 0;
+                }
                 pkt = getNextPkt(pkt.pktPosition + ((pkt.pktHeader.eventNumber) * (pkt.pktHeader.eventSize)));
             } catch (IllegalArgumentException e) { // It means it reaches the buffer end
                 // log.warning("Reaches the end of the buffer!");
@@ -768,7 +789,7 @@ public class Jaer3BufferParser {
         return numEvents;
     }
 
-    /**
+    /** 
      * Returns the data offset of different events.
      *
      * @param packetHeader the current packet header.
