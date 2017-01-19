@@ -99,6 +99,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     private boolean addedBiasgenPropChangeListener = false;
     private boolean countDVSEventsBetweenExternalPinEvents = getBoolean("countDVSEventsBetweenExternalPinEvents", false);
     private boolean accumulateEventsOnEachPhase = getBoolean("accumulateEventsOnEachPhase", false);
+    private boolean freezeSelection = getBoolean("freezeSelection", false);
 
     public CellStatsProber(AEChip chip) {
         super(chip);
@@ -110,7 +111,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         currentAddress = new int[chip.getNumCellTypes()];
         Arrays.fill(currentAddress, -1);
         chip.addObserver(this);
-        final String h = "ISIs", e = "Event rate", l = "Latency", c = "Count";
+        final String h = "ISIs", e = "Event rate", l = "Latency", c = "Count", g="General";
         setPropertyTooltip(h, "isiHistEnabled", "enable histogramming interspike intervals");
         setPropertyTooltip(h, "isiMinUs", "min ISI in us");
         setPropertyTooltip(h, "isiMaxUs", "max ISI in us");
@@ -146,6 +147,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 "int32 address of external input events; see e.g. DavisChip.EXTERNAL_INPUT_EVENT_ADDR for this address");
         setPropertyTooltip(c, "countDVSEventsBetweenExternalPinEvents", "counts events of ON and OFF polarity between rising and falling phases of stimulus based on special events from external input pin");
         setPropertyTooltip(c, "accumulateEventsOnEachPhase", "accumulates events to renderer of ON and OFF polarity between rising and falling stimulation");
+        setPropertyTooltip(g, "freezeSelection", "freezes selection, to avoid mouse clicks changing selection");
         chip.getSupport().addPropertyChangeListener(this);
     }
 
@@ -289,7 +291,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 
     @Override
     public void mouseReleased(MouseEvent e) {
-        if (startPoint == null) {
+        if (freezeSelection || startPoint == null) {
             return;
         }
         getSelection(e);
@@ -332,7 +334,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 
     @Override
     public void mouseDragged(MouseEvent e) {
-        if (startPoint == null) {
+        if (freezeSelection || startPoint == null) {
             return;
         }
         getSelection(e);
@@ -1288,6 +1290,21 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     public void setAccumulateEventsOnEachPhase(boolean accumulateEventsOnEachPhase) {
         this.accumulateEventsOnEachPhase = accumulateEventsOnEachPhase;
         putBoolean("accumulateEventsOnEachPhase",accumulateEventsOnEachPhase);
+    }
+
+    /**
+     * @return the freezeSelection
+     */
+    public boolean isFreezeSelection() {
+        return freezeSelection;
+    }
+
+    /**
+     * @param freezeSelection the freezeSelection to set
+     */
+    public void setFreezeSelection(boolean freezeSelection) {
+        this.freezeSelection = freezeSelection;
+        putBoolean("freezeSelection", freezeSelection);
     }
 
 }
