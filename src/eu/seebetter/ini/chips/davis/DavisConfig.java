@@ -23,7 +23,6 @@ import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 
 import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
-import ch.unizh.ini.jaer.config.AbstractConfigValue;
 import ch.unizh.ini.jaer.config.spi.SPIConfigBit;
 import ch.unizh.ini.jaer.config.spi.SPIConfigInt;
 import ch.unizh.ini.jaer.config.spi.SPIConfigValue;
@@ -32,6 +31,7 @@ import eu.seebetter.ini.chips.davis.imu.ImuControl;
 import eu.seebetter.ini.chips.davis.imu.ImuControlPanel;
 import net.sf.jaer.biasgen.AddressedIPotArray;
 import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.biasgen.ChipControlPanel;
 import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.biasgen.PotTweakerUtilities;
@@ -43,6 +43,7 @@ import net.sf.jaer.chip.Chip;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
+import net.sf.jaer.stereopsis.MultiCameraBiasgenHardwareInterface;
 import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.ParameterControlPanel;
 import net.sf.jaer.util.PropertyTooltipSupport;
@@ -86,7 +87,8 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		getMasterbias().setKPrimeNFet(55e-3f); // estimated from tox=42A, mu_n=670 cm^2/Vs
 		getMasterbias().setMultiplier(4); // =45 correct for dvs320
 		getMasterbias().setWOverL(4.8f / 2.4f); // masterbias has nfet with w/l=2 at output
-		getMasterbias().setRExternal(100e3f); // biasgen on all SeeBetter chips designed for 100kOhn resistor that makes 389nA master current
+		getMasterbias().setRExternal(100e3f); // biasgen on all SeeBetter chips designed for 100kOhn resistor that makes
+												// 389nA master current
 		getMasterbias().setRInternal(0); // no on-chip resistor is used
 		getMasterbias().addObserver(this); // changes to masterbias come back to update() here
 
@@ -842,8 +844,21 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 	 */
 	@Override
 	public synchronized void update(final Observable observable, final Object object) {
-		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
-			final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
+		if (getHardwareInterface() != null) {
+			if (getHardwareInterface() instanceof MultiCameraBiasgenHardwareInterface) {
+				for (BiasgenHardwareInterface b : ((MultiCameraBiasgenHardwareInterface) getHardwareInterface()).getBiasgens()) {
+					updateHW(observable, b);
+				}
+			}
+			else if (getHardwareInterface() instanceof CypressFX3) {
+				updateHW(observable, getHardwareInterface());
+			}
+		}
+	}
+
+	private static void updateHW(final Observable observable, final BiasgenHardwareInterface b) {
+		if ((b != null) && (b instanceof CypressFX3)) {
+			final CypressFX3 fx3HwIntf = (CypressFX3) b;
 
 			try {
 				if (observable instanceof AddressedIPotCF) {
