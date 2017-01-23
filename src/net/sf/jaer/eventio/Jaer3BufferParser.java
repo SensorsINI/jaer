@@ -777,9 +777,6 @@ public class Jaer3BufferParser {
             }
             try {
                 validPkttNum += 1;
-                if(validPkttNum == 9700) {
-                    int tmp = 0;
-                }
                 pkt = getNextPkt(pkt.pktPosition + ((pkt.pktHeader.eventNumber) * (pkt.pktHeader.eventSize)));
             } catch (IllegalArgumentException e) { // It means it reaches the buffer end
                 // log.warning("Reaches the end of the buffer!");
