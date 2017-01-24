@@ -24,12 +24,12 @@ public class CochleaTow4EarEvent extends BinauralCochleaEvent {
 
 	@Override
 	public int getNumCellTypes() {
-		return 1;
+		return 4;
 	}
 
 	@Override
 	public int getType() {
-		return 0;
+		return type;
 	}
 
 }

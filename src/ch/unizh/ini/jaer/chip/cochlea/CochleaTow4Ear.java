@@ -73,7 +73,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 
 		setSizeX(64); // 64 frequency channels
 		setSizeY(16); // total four, ON/OFF for each ear
-		setNumCellTypes(1); // ON/OFF ADM output from each ear's channel
+		setNumCellTypes(4); // ON/OFF ADM output from each ear's channel
 
 		setRenderer(new Renderer(this));
 		setBiasgen(new CochleaTow4Ear.Biasgen(this));
@@ -146,11 +146,11 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			}
 			didit = true;
 			super.checkTypeColors(numCellTypes);
-			final Color[] colors = { Color.green, Color.green, Color.red, Color.red };
+			final Color[] colors = { Color.green, Color.magenta, Color.red, Color.blue };
 			for (int type = 0; type < 4; type++) {
 				// fill the typeColorRGBComponents array for this type from the color for this type
                 // TODO: Output of getRGBColorComponents() is not used. Check why we have it here at all.
-				colors[type].getRGBColorComponents(typeColorRGBComponents[type]);
+                            colors[type].getRGBColorComponents(typeColorRGBComponents[type]);
 			}
 		}
 	}
@@ -334,8 +334,8 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			// DAC1 channels (16)
 			vpots.addPot(new VPot(getChip(), "MICBIAS1L", dac1, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
 			vpots.addPot(new VPot(getChip(), "MICBIAS1L", dac1, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
-			vpots.addPot(new VPot(getChip(), "Vrefdiff", dac1, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Bias for differentiator"));
-			vpots.addPot(new VPot(getChip(), "Vrefdiff2", dac1, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Bias for differentiator"));
+			vpots.addPot(new VPot(getChip(), "Vrefdiff", dac1, 2, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Src Bias for differentiator"));
+			vpots.addPot(new VPot(getChip(), "Vrefdiff2", dac1, 3, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Src Bias for differentiator"));
 			vpots.addPot(new VPot(getChip(), "PreampGain1L", dac1, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Preamp gain for offchip preamp 1"));
 			vpots.addPot(new VPot(getChip(), "PreampGain1R", dac1, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Preamp gain for offchip preamp 2"));
 			vpots.addPot(new VPot(getChip(), "Vcom2", dac1, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
@@ -346,8 +346,8 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			vpots.addPot(new VPot(getChip(), "DACVout12", dac1, 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "RefADAMux0-", dac1, 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Ref for Mux0"));
 			vpots.addPot(new VPot(getChip(), "RefADAMux1-", dac1, 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Ref for Mux1"));
-			vpots.addPot(new VPot(getChip(), "Vth1x", dac1, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Low Threshold for Neuron"));
-			vpots.addPot(new VPot(getChip(), "Vth4x", dac1, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "High Threshold for Neuron"));
+			vpots.addPot(new VPot(getChip(), "Vth1x", dac1, 14, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Low Threshold for Neuron"));
+			vpots.addPot(new VPot(getChip(), "Vth4x", dac1, 15, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "High Threshold for Neuron"));
 
 			// DAC2 channels (16)
 			vpots.addPot(new VPot(getChip(), "Vbias1Bn", dac2, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Bias to set HF corner of last stage of L/R"));
@@ -358,8 +358,8 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			vpots.addPot(new VPot(getChip(), "PreampGain2L", dac2, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Preamp gain for offchip preamp 3"));
 			vpots.addPot(new VPot(getChip(), "MICBIAS2L", dac2, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
 			vpots.addPot(new VPot(getChip(), "MICBIAS2R", dac2, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
-			vpots.addPot(new VPot(getChip(), "VrefpreampBpx", dac2, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets Ref to On-Chip Preamp"));
-			vpots.addPot(new VPot(getChip(), "VbMicCasBpcx", dac2, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets Cascode voltage for On-Chip Preamp"));
+			vpots.addPot(new VPot(getChip(), "VrefpreampBpx", dac2, 8, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets Ref to On-Chip Preamp"));
+			vpots.addPot(new VPot(getChip(), "VbMicCasBpcx", dac2, 9, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets P-Cascode voltage for On-Chip Preamp"));
 			vpots.addPot(new VPot(getChip(), "RefADAMux3-", dac2, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Ref for Mux3"));
 			vpots.addPot(new VPot(getChip(), "RefADAMux2-", dac2, 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Ref for Mux2"));
 			vpots.addPot(new VPot(getChip(), "PreampGain2R", dac2, 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Preamp gain for offchip preamp 4"));
@@ -426,7 +426,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 				(short) 129, 2, 0, this));
 			chipControl.add(new SPIConfigBit("Seln1", "Set to 0 for parallel architecture, Set to 1 for cascaded architecture, settings for LR pair", CypressFX3.FPGA_CHIPBIAS,
 				(short) 130, false, this));
-			chipControl.add(new SPIConfigBit("Seln2", "Set to 0 for parallel architecture, Set to 1 for cascaded architecture, settings for LR pair", CypressFX3.FPGA_CHIPBIAS,
+			chipControl.add(new SPIConfigBit("Seln2", "Set to 0 for parallel architecture, Set to 1 for cascaded architecture, settings for TB pair", CypressFX3.FPGA_CHIPBIAS,
 				(short) 131, false, this));
 			chipControl.add(new SPIConfigBit("SMconfigArow", "Used in On-chip Arbiter", CypressFX3.FPGA_CHIPBIAS,
 				(short) 132, false, this));
@@ -870,7 +870,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 		 */
 		@Override
 		public byte getTypeFromAddress(final int addr) {
-			return 0;
+			return (byte) (((addr >>> 6) & 0x02) | (addr & 0x01)); // Concatenate bits 7 (T/B) and 0 (L/R)
 		}
 	}
 }
