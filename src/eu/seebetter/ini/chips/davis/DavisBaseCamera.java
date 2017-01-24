@@ -72,6 +72,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
     // Remote control support
     private final String CMD_EXPOSURE = "exposure";
+    private final String CMD_GET_IMU_TEMPERATURE_C = "getImuTemperature";
 
     private final DavisDisplayMethod davisDisplayMethod;
     protected DavisConfig davisConfig;
@@ -136,6 +137,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         if (getRemoteControl() != null) {
             getRemoteControl().addCommandListener(this, CMD_EXPOSURE, CMD_EXPOSURE + " val - sets exposure. val in ms.");
+            getRemoteControl().addCommandListener(this, CMD_GET_IMU_TEMPERATURE_C, CMD_GET_IMU_TEMPERATURE_C + "returns string value of IMU temperature in Celsius.");
         }
     }
 
@@ -1307,8 +1309,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         final String c = command.getCmdName();
         if (c.equals(CMD_EXPOSURE)) {
             getDavisConfig().setExposureDelayMs(v);
-        } else {
-            return input + ": unknown command";
+        } else if(c.equals(CMD_GET_IMU_TEMPERATURE_C)){
+            return String.format("%.3f",getImuSample().getTemperature());
         }
         return "successfully processed command " + input;
     }
