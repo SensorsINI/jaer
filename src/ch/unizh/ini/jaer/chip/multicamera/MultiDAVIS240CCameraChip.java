@@ -13,6 +13,7 @@ package ch.unizh.ini.jaer.chip.multicamera;
  *
  */
 
+import eu.seebetter.ini.chips.DavisChip;
 import java.util.ArrayList;
 import java.util.TreeMap;
 
@@ -40,13 +41,13 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.event.ApsDvsEvent;
-import net.sf.jaer.graphics.MulticameraDavisRenderer;
+
 @Description("A multi Davis retina each on it's own USB interface with merged and presumably aligned fields of view")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 public class MultiDAVIS240CCameraChip extends DAVIS240C implements MultiCameraInterface {
-
-    private AEChip[] cameras = new AEChip[MultiCameraApsDvsEvent.NUM_CAMERAS];
-    public MulticameraDavisRenderer  MultiDavisRenderer;
+    public static int NUM_CAMERAS; 
+    private AEChip[] cameras = new AEChip[NUM_CAMERAS];
+//    public MulticameraDavisRenderer  MultiDavisRenderer;
 
     /** Creates a new instance of  */
     public MultiDAVIS240CCameraChip() {
@@ -62,7 +63,7 @@ public class MultiDAVIS240CCameraChip extends DAVIS240C implements MultiCameraIn
         setEventClass(MultiCameraApsDvsEvent.class);
         setDefaultPreferencesFile("biasgenSettings/Davis240b/MultiDAVIS240CCameraChip.xml");
 //        MultiDavisRenderer= new MulticameraDavisRenderer(this);
-//        MultiDavisRenderer.setNumCameras(MultiCameraApsDvsEvent.NUM_CAMERAS);
+//        MultiDavisRenderer.setNumCameras(NUM_CAMERAS);
 
         setEventExtractor(new Extractor(this));
         setBiasgen(new Biasgen(this));
@@ -81,12 +82,12 @@ public class MultiDAVIS240CCameraChip extends DAVIS240C implements MultiCameraIn
 
     @Override
     public int getNumCellTypes() {
-        return MultiCameraApsDvsEvent.NUM_CAMERAS*2;
+        return NUM_CAMERAS*2;
     }
 
     @Override
     public int getNumCameras() {
-        return MultiCameraApsDvsEvent.NUM_CAMERAS;
+        return NUM_CAMERAS;
     }
 
     @Override
@@ -145,16 +146,22 @@ public class MultiDAVIS240CCameraChip extends DAVIS240C implements MultiCameraIn
             for (int i = 0; i < n; i += skipBy) { // bug here
                 MultiCameraApsDvsEvent e = (MultiCameraApsDvsEvent) outItr.nextOutput();
                 // we need to be careful to fill in all the fields here or understand how the super of MultiCameraApsDvsEvent fills its fields
-                e.address = a[i];
-                e.timestamp = timestamps[i];
-                e.camera = MultiCameraApsDvsEvent.getCameraFromRawAddress(a[i]);
-                e.x = getXFromAddress(a[i]);
-                e.y = getYFromAddress(a[i]);
-                // assumes that the raw address format has polarity in msb and that 0==OFF type
-                int pol = a[i] & 1;
-                e.polarity = pol == 0 ? ApsDvsEvent.Polarity.Off : ApsDvsEvent.Polarity.On;
-                // combines polarity with camera to assign 2*NUM_CAMERA types
-                e.type = (byte) (2 * e.camera + pol); // assign e.type here so that superclasses don't get fooled by using default type of event for polarity event
+                if ((a[i] & DavisChip.EXTERNAL_INPUT_EVENT_ADDR ) !=0) {
+                    e.setReadoutType(MultiCameraApsDvsEvent.ReadoutType.DVS);
+                    e.setSpecial(true);
+                    e.address = a[i];
+                    e.timestamp = timestamps[i]; 
+                    
+                    e.camera = MultiCameraApsDvsEvent.getCameraFromRawAddressDVS(a[i]);
+                    
+                    e.polarity = (a[i] & DavisChip.POLMASK) == DavisChip.POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
+                    e.type = (byte) ((a[i] & DavisChip.POLMASK) == DavisChip.POLMASK ? 1 : 0);
+                    e.x = (short) (cameras[i].getSizeX() - ((a[i] & DavisChip.XMASK) >>> DavisChip.XSHIFT));
+                    e.y = (short) ((a[i] & DavisChip.YMASK) >>> DavisChip.YSHIFT);
+                }
+//                if (!e.isDVSEvent()){
+//                    e.setFilteredOut(true);
+//                }
             }
             return out;
         }
@@ -170,7 +177,12 @@ public class MultiDAVIS240CCameraChip extends DAVIS240C implements MultiCameraIn
             for (int i = 0; i < packet.getSize(); i++) {
                 MultiCameraApsDvsEvent mce = (MultiCameraApsDvsEvent) packet.getEvent(i);
                 EventRaw event = p.getEvent(i);
-                event.address=MultiCameraApsDvsEvent.setCameraNumberToRawAddress(mce.camera, event.address);
+                if (mce.isDVSEvent()){
+                    event.address=MultiCameraApsDvsEvent.setCameraNumberToRawAddressDVS(mce.camera, event.address);
+                }
+                if (!mce.isDVSEvent()){
+//                    event.address=MultiCameraApsDvsEvent.setCameraNumberToRawAddressAPS(mce.camera, event.address);
+                }
             }
             return p;
         }
@@ -203,6 +215,7 @@ public class MultiDAVIS240CCameraChip extends DAVIS240C implements MultiCameraIn
         }
         int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
         log.info(n + " interfaces found!");
+        System.out.println(n + " interfaces found!");
 
         if (n == 1) {
             log.warning( " couldn't build MultiCameraHardwareInterface hardware interface because only " + n + " camera is available and more cameras are needed");
@@ -249,7 +262,7 @@ public class MultiDAVIS240CCameraChip extends DAVIS240C implements MultiCameraIn
             
             hardwareInterface = new MultiCameraBiasgenHardwareInterface(aemons);
             ((MultiCameraBiasgenHardwareInterface) hardwareInterface).setChip(this);
-            hardwareInterface.close(); // will be opened later on by user
+//            hardwareInterface.close(); // will be opened later on by user
 
         } catch (Exception e) {
             log.warning("couldn't build correct multi camera hardware interface: " + e.getMessage());
@@ -257,6 +270,11 @@ public class MultiDAVIS240CCameraChip extends DAVIS240C implements MultiCameraIn
         }
         deviceMissingWarningLogged = false;
         return hardwareInterface;
+    }
+    
+    public int getNumberOfHardwareInterface() {
+        int numCameras = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+        return numCameras;        
     }
 
     /**
