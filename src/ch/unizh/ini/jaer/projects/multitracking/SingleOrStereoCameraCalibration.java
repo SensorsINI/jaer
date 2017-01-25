@@ -1,4 +1,4 @@
-package ch.unizh.ini.jaer.projects.multitracking;
+package aTestSophie;
 
 
 /*
@@ -177,12 +177,16 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 	private AEViewer aevi;
 	private JAERViewer jaevi;
 	ArrayList<AEViewer> arrayOfAEvi;
-	private ArrayList<MatVector> images;
+	private ArrayList<MatVector> images = new ArrayList<MatVector>(2);
 	private ArrayList<MatVector> objects;
 	private boolean takeMultiFrame=false;
 	private boolean takeMultiFrame0=false;
 	private boolean takeMultiFrame1=false;
-    private FilterChain filterchainbis;
+	private FilterChain filterchainbis;
+	private float[] lastFrame1 = null;
+	private FilterChain filterchaintiers;
+	private boolean bool;
+	private boolean bool1;
 
 	public SingleOrStereoCameraCalibration(AEChip chip) {
 		super(chip);
@@ -226,7 +230,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 	 */
 	@Override
 	synchronized public EventPacket filterPacket(EventPacket in) {
-		getEnclosedFilterChain().filterPacket(in);
+		//getEnclosedFilterChain().filterPacket(in);
 
 		// for each event only keep it if it is within dt of the last time
 		// an event happened in the direct neighborhood
@@ -241,22 +245,51 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 			//	                continue;
 			//	            }
 
-			if (takeMultiFrame0==true){
-	//			System.out.println("takeMultiFrame0");
-				if(fraext.elementAt(0).hasNewFrame()){
+/*			if (takeMultiFrame0==true){
+				//			System.out.println("takeMultiFrame0");
+				if(fraext.get(0).hasNewFrame()){
 					System.out.println("take frame from viewer0");
 					takeMultiFrame0=false;
-					multiFramefunc(fraext.elementAt(0));
+					multiFramefunc(fraext.get(0));
 				}
 			}
+
 			if (takeMultiFrame1==true){
-//				System.out.println("takeMultiFrame1");
-				if(fraext.elementAt(1).hasNewFrame()){
+				//			System.out.println("takeMultiFrame0");
+				if(fraext.get(1).hasNewFrame()){
 					System.out.println("take frame from viewer1");
 					takeMultiFrame1=false;
-					multiFramefunc(fraext.elementAt(1));
+					multiFramefunc(fraext.get(1));
 				}
-			}
+			}	*/
+
+
+			if ((takeMultiFrame1==true)&&(takeMultiFrame0==true)){
+
+
+				if(fraext.get(0).hasNewFrame()){
+					 bool=false;
+					//System.out.println("take frame from viewer0");
+				    bool = multiFramefunc(fraext.get(0), false);
+				}
+					//		System.out.println("takeMultiFrame1");
+					if(fraext.get(1).hasNewFrame()){
+						 bool1=false;
+						//System.out.println("take frame from viewer1");
+						bool1 = multiFramefunc(fraext.get(1),false);
+
+					}
+					if ((bool==true)&&(bool1==true)){
+						bool1 = multiFramefunc(fraext.get(1),true);
+						System.out.println("take frame from viewer1");
+						bool = multiFramefunc(fraext.get(0), true);
+						System.out.println("take frame from viewer0");
+						takeMultiFrame0=false;
+						takeMultiFrame1=false;
+						imageCounter++;
+						System.out.println("nb of frames taken:"+ imageCounter);
+					}
+				}
 
 			//acquire new frame
 			if (frameExtractor.hasNewFrame()) {
@@ -267,7 +300,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 					patternFound = findCurrentCorners(false); // false just checks if there are corners detected
 				}
 
-				if (CalibrationDemanded
+				/*if (CalibrationDemanded
 					&& ((System.currentTimeMillis() - lastAutocaptureTimeMs) > autocaptureCalibrationFrameDelayMs)
 					&& (nAcqFrames < numAutoCaptureFrames)){
 					nAcqFrames++;
@@ -333,7 +366,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 					} else {
 						log.info("captured frame " + nAcqFrames);
 					}
-				}
+				}*/
 
 				if (patternFound
 					&& (captureTriggered
@@ -689,34 +722,50 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 
 	public void doSwitchGlobalView(){
 
-		 aevi = chip.getAeViewer();
+		aevi = this.chip.getAeViewer();
 
 		//switch to globalViewMode
-	    jaevi = aevi.getJaerViewer();
-//		jaevi.setViewMode(true);
+		jaevi = aevi.getJaerViewer();
+		//		jaevi.setViewMode(true);
 
 		//get the list of active viewers
-//		GlobalViewer gb = jaevi.globalViewer;
-//		System.out.println(gb);
-	    arrayOfAEvi = jaevi.getViewers();
+		//		GlobalViewer gb = jaevi.globalViewer;
+		//		System.out.println(gb);
+		arrayOfAEvi = jaevi.getViewers();
 		//Vector<AEChip> chips = new Vector<>();
 		//Vector<ApsFrameExtractor> fraext = new Vector<>();
-	    filterchainbis = new FilterChain(chip);
+		filterchainbis = new FilterChain(chip);
+		//filterchaintiers = new FilterChain(arrayOfAEvi.get(1).getChip());
 
-		for (AEViewer aec : arrayOfAEvi){
-			aec.setVisible(true);
-			AEChip chi = aec.getChip();
+		for (AEViewer aev : arrayOfAEvi){
+			aev.setVisible(true);
+			AEChip chi = aev.getChip();
+			chi.addObserver(this);
 			chips.add(chi);
+			System.out.println(chi.getAeViewer());
+			System.out.println(aev);
 		}
 
-		for (AEChip aec : chips){
-			ApsFrameExtractor frameExtractortemp = new ApsFrameExtractor(chip);
+		for (int i=0;i<2;i++){
+			ApsFrameExtractor frameExtractortemp = new ApsFrameExtractor(arrayOfAEvi.get(i).getChip());
 			fraext.add(frameExtractortemp);
 			filterchainbis.add(frameExtractortemp);
+			//filterchaintiers.add(frameExtractortemp);
 
+			arrayOfAEvi.get(i).getChip().getFilterChain().add(frameExtractortemp);
+			//arrayOfAEvi.get(1).getChip().getFilterChain().add(frameExtractortemp);
+			frameExtractortemp.setExtRender(false);
+
+			MatVector mv = new MatVector(100);
+			images.add(mv);
 		}
-		frameExtractor.setExtRender(false);
 		setEnclosedFilterChain(filterchainbis);
+		//setEnclosedFilterChain(filterchaintiers);
+
+		//setEnclosedFilterChain();
+		//setEnclosedFilterChain(arrayOfAEvi.get(1).getChip().getFilterChain());
+
+		chip.getFilterFrame().rebuildContents();
 	}
 
 	public void doTakeMultiFrame(){
@@ -725,182 +774,234 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 		System.out.println(fraext.elementAt(1));
 		System.out.println(fraext.elementAt(0).hasNewFrame());
 		System.out.println(fraext.elementAt(1).hasNewFrame());
-        takeMultiFrame0=true;
-        takeMultiFrame1=true;
-	}
-	public void multiFramefunc(ApsFrameExtractor fra){
-		FloatPointer ip;
-		int l = fraext.size();
-		images =new ArrayList<MatVector>(10);
-		imageCounter=0;
-//	for(int fra =0; fra<l; fra++){
+		takeMultiFrame0=true;
+		takeMultiFrame1=true;
 
-//		lastFrame = fraext.elementAt(fra).getNewFrame();
-		lastFrame = fra.getNewFrame();
-		ip = new FloatPointer(lastFrame);
+	}
+	public boolean multiFramefunc(ApsFrameExtractor fra, boolean thereIsAPattern){
+		FloatPointer ip;
+		//log.info("nb of frames taken:"+Integer.toString(imageCounter));
+		//	int l = fraext.size();
+		//	images =new ArrayList<MatVector>(10);
+		//imageCounter=0;
+		//	for(int fra =0; fra<l; fra++){
+
+		//		lastFrame = fraext.elementAt(fra).getNewFrame();
+		lastFrame1 = fra.getNewFrame();
+		ip = new FloatPointer(lastFrame1);
 		Mat input = new Mat(ip);
 		input.convertTo(input, CV_8U, 255, 0);
 		imgIn = input.reshape(0, sy);
+		imgOut = new Mat(sy, sx, CV_8UC3);
+		cvtColor(imgIn, imgOut, CV_GRAY2RGB);
+		boolean locPatternFound=false;
+		corners = new Mat();
+		Size patternSize = new Size(patternWidth, patternHeight);
+		try {
+			 locPatternFound = opencv_calib3d.findChessboardCorners(imgIn, patternSize, corners);
+		} catch (RuntimeException re) {
+			log.warning(re.toString());
+		}
+		if (locPatternFound) {
+			System.out.println(locPatternFound);
+			System.out.println(Integer.toString(fraext.indexOf(fra)));
+			opencv_calib3d.drawChessboardCorners(imgOut, patternSize, corners, locPatternFound);
+
+		}
+		//System.out.println(locPatternFound);
+
+
+		if(thereIsAPattern==true){
+			if (locPatternFound) {
+				opencv_core.TermCriteria tc = new opencv_core.TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1);
+				opencv_imgproc.cornerSubPix(imgIn, corners, new Size(3, 3), new Size(-1, -1), tc);
+			}
+			opencv_calib3d.drawChessboardCorners(imgOut, patternSize, corners, locPatternFound);
+	//	log.info("mew image:"+ printMatD(input));
 		opencv_core.TermCriteria tc = new opencv_core.TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1);
 		//opencv_imgproc.cornerSubPix(imgIn, corners, new Size(3, 3), new Size(-1, -1), tc);
-		MatVector mv = new MatVector(100);
-		images.add(mv);
-//		images.get(fra).put(imageCounter, imgIn);
-		images.get(imageCounter).put(imageCounter, imgIn);
-		imageCounter++;
+		//MatVector mv = new MatVector(100);
+		//images.add(mv);
+		//		images.get(fra).put(imageCounter, imgIn);
+		images.get(fraext.indexOf(fra)).put(imageCounter, imgIn);
+		log.info(Integer.toString(fraext.indexOf(fra)));
+		log.info(Integer.toString(imageCounter));
+       // log.info(printMatD(images.get(fraext.indexOf(fra))));
 
 		Mat imgSave = new Mat(sy, sx, CV_8U);
 		opencv_core.flip(imgIn, imgSave, 0);
-		String filename = chip.getName() + "-" + fileBaseName + "-" + String.format("%03d", imageCounter) + ".jpg";
+		String filename = chip.getName() + "-" + fileBaseName + "-" + String.format("%03d", imageCounter) + String.format("%03d", fraext.indexOf(fra))+ ".jpg";
 		String fullFilePath = dirPath + "\\" + filename;
 		org.bytedeco.javacpp.opencv_imgcodecs.imwrite(fullFilePath, imgSave);
 		log.info("wrote " + fullFilePath);
 	}
-//	}
-
-
-public void doStereoCalibrationV4(){
-	//fraext.elementAt(1).removeDisplays();
-	Size patternSize = new Size(patternWidth, patternHeight);
-	Size imgSize = new Size(sx, sy);
-	corners = new Mat();
-
-	Mat cameraMatrix;
-	Mat distortionCoefs;
-
-	Mat cameraMatrix2;
-	Mat distortionCoefs2;
-
-	MatVector rotationVectors;
-	MatVector translationVectors = null;
-
-
-	MatVector rotationVectors2;
-	MatVector translationVectors2 = null;
-
-	Mat rotationVectorsfinal;
-	Mat translationVectorsfinal;
-
-	Mat EssentialMat;
-	Mat FundamentalMat;
-
-	EssentialMat = new Mat();
-	FundamentalMat = new Mat();
-
-	cameraMatrix = new Mat();
-	distortionCoefs = new Mat();
-
-
-	cameraMatrix2 = new Mat();
-	distortionCoefs2 = new Mat();
-
-	translationVectors = new MatVector();
-	rotationVectors = new MatVector();
-
-	translationVectors2 = new MatVector();
-	rotationVectors2 = new MatVector();
-
-	rotationVectorsfinal = new Mat();
-	translationVectorsfinal = new Mat();
-
-
-	objects = new ArrayList<>(imageCounter);
-
-	for(MatVector mv:images){
-		int imageCount=0;
-		for(int i=0; i<mv.sizeof(); i++){
-   Mat m= mv.get(i);
-	boolean locPatternFound;
-	try {
-		locPatternFound = opencv_calib3d.findChessboardCorners(m, patternSize, corners);
-		System.out.println(locPatternFound);
-		System.out.println(corners);
-	} catch (RuntimeException e) {
-		log.warning(e.toString());
-
+		return(locPatternFound);
 	}
-			//store image points
-			if ((imageCount == 0) || (allObjectPoints == null) || (allImagePoints == null)) {
-				allImagePoints = new MatVector(100);
-				allObjectPoints = new MatVector(100);
-			}
-			try{
-			mv.put(imageCount, corners);
-			}
-			catch (RuntimeException e) {
-				log.info("no pattern found");
 
-			}
-			System.out.println("corners type is"+corners.type()+"\ncorner size is :"+corners.size());
-			log.info( "allimagepoints : "+printMatD(mv));
-			//create and store object points, which are just coordinates in mm of corners of pattern as we know they are drawn on the
-			// calibration target
-			Mat objectPoints = new Mat(corners.rows(), 1, opencv_core.CV_32FC3);
-			float x, y;
-			for (int h = 0; h < patternHeight; h++) {
-				y = h * rectangleHeightMm;
-				for (int w = 0; w < patternWidth; w++) {
-					x = w * rectangleWidthMm;
-					objectPoints.getFloatBuffer().put(3 * ((patternWidth * h) + w), x);
-					objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 1, y);
-					objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 2, 0); // z=0 for object points
+
+	public void doStereoCalibrationV4(){
+		//fraext.elementAt(1).removeDisplays();
+		Size patternSize = new Size(patternWidth, patternHeight);
+		Size imgSize = new Size(sx, sy);
+		corners = new Mat();
+
+		Mat cameraMatrix;
+		Mat distortionCoefs;
+
+		Mat cameraMatrix2;
+		Mat distortionCoefs2;
+
+		MatVector rotationVectors;
+		MatVector translationVectors = null;
+
+
+		MatVector rotationVectors2;
+		MatVector translationVectors2 = null;
+
+		Mat rotationVectorsfinal;
+		Mat translationVectorsfinal;
+
+		Mat EssentialMat;
+		Mat FundamentalMat;
+
+		EssentialMat = new Mat();
+		FundamentalMat = new Mat();
+
+		cameraMatrix = new Mat();
+		distortionCoefs = new Mat();
+
+
+		cameraMatrix2 = new Mat();
+		distortionCoefs2 = new Mat();
+
+		translationVectors = new MatVector();
+		rotationVectors = new MatVector();
+
+		translationVectors2 = new MatVector();
+		rotationVectors2 = new MatVector();
+
+		rotationVectorsfinal = new Mat();
+		translationVectorsfinal = new Mat();
+
+
+		objects = new ArrayList<>(imageCounter);
+
+		for(int u=0;u<2;u++){
+
+			log.info( "size : "+Long.toString(images.get(u).size()));
+	//		log.info( "mv : "+printMatD(mv));
+			int imageCount=0;
+			//for(int i=0; i<images.get(u).size(); i++){
+			for(int i=0; i<imageCounter; i++){
+				Mat m= images.get(u).get(i);
+		//		log.info( "m : "+printMatD(m));
+				boolean locPatternFound;
+				try {
+					locPatternFound = opencv_calib3d.findChessboardCorners(m, patternSize, corners,opencv_calib3d.CALIB_CB_ADAPTIVE_THRESH + opencv_calib3d.CALIB_CB_NORMALIZE_IMAGE
+				        + opencv_calib3d.CALIB_CB_FAST_CHECK);
+					System.out.println(locPatternFound);
+					System.out.println(corners);
+
+					if(locPatternFound==true){
+						//store image points
+						if ((imageCount == 0) || (allObjectPoints == null) || (allImagePoints == null)) {
+							allImagePoints = new MatVector(100);
+							allObjectPoints = new MatVector(100);
+							allImagePoints2 = new MatVector(100);
+							allObjectPoints2 = new MatVector(100);
+						}
+						try{
+							images.get(u).put(i,corners);
+						/*if(u==0){
+							allImagePoints.put(imageCount, corners);
+						}
+						else{
+							allImagePoints2.put(imageCount, corners);
+						}*/
+						}
+						catch (RuntimeException e) {
+							log.info("no pattern found");
+
+						}
+						System.out.println("corners type is"+corners.type()+"\ncorner size is :"+corners.size());
+						//	log.info( "allimagepoints : "+printMatD(mv));
+						//create and store object points, which are just coordinates in mm of corners of pattern as we know they are drawn on the
+						// calibration target
+						Mat objectPoints = new Mat(corners.rows(), 1, opencv_core.CV_32FC3);
+						float x, y;
+						for (int h = 0; h < patternHeight; h++) {
+							y = h * rectangleHeightMm;
+							for (int w = 0; w < patternWidth; w++) {
+								x = w * rectangleWidthMm;
+								objectPoints.getFloatBuffer().put(3 * ((patternWidth * h) + w), x);
+								objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 1, y);
+								objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 2, 0); // z=0 for object points
+							}
+						}
+						MatVector v = new MatVector(10);
+						objects.add(v);
+						objects.get(u).put(i, objectPoints);
+						//iterate image counter
+						System.out.println("objectPoints type is"+objectPoints.type()+"\ncorner size is :"+objectPoints.size());
+						//log.info("allobejctpoints : "+printMatD(allObjectPoints));
+						log.info(String.format("added corner points from image %d", imageCount));
+						imageCount++;
+						//frameExtractor.apsDisplay.setxLabel(filename);
+
+						//	                //debug
+						//	                System.out.println(allImagePoints.toString());
+						//	                for (int n = 0; n < imageCounter; n++) {
+						//	                    System.out.println("n=" + n + " " + allImagePoints.get(n).toString());
+						//	                    for (int i = 0; i < corners.rows(); i++) {
+						//	                        System.out.println(allImagePoints.get(n).getFloatBuffer().get(2 * i) + " " + allImagePoints.get(n).getFloatBuffer().get(2 * i + 1)+" | "+allObjectPoints.get(n).getFloatBuffer().get(3 * i) + " " + allObjectPoints.get(n).getFloatBuffer().get(3 * i + 1) + " " + allObjectPoints.get(n).getFloatBuffer().get(3 * i + 2));
+						//	                    }
+						//	                }
+					}else{
+						log.warning("corners not found for this image");
+					}
+				}
+				catch (RuntimeException e) {
+					log.warning(e.toString());
+
 				}
 			}
-			MatVector v = new MatVector(100);
-			objects.add(v);
-			objects.get(i).put(imageCount, objectPoints);
-			//iterate image counter
-			System.out.println("objectPoints type is"+objectPoints.type()+"\ncorner size is :"+objectPoints.size());
-			log.info("allobejctpoints : "+printMatD(allObjectPoints));
-			log.info(String.format("added corner points from image %d", imageCount));
-			imageCount++;
-			//frameExtractor.apsDisplay.setxLabel(filename);
-
-			//	                //debug
-			//	                System.out.println(allImagePoints.toString());
-			//	                for (int n = 0; n < imageCounter; n++) {
-			//	                    System.out.println("n=" + n + " " + allImagePoints.get(n).toString());
-			//	                    for (int i = 0; i < corners.rows(); i++) {
-			//	                        System.out.println(allImagePoints.get(n).getFloatBuffer().get(2 * i) + " " + allImagePoints.get(n).getFloatBuffer().get(2 * i + 1)+" | "+allObjectPoints.get(n).getFloatBuffer().get(3 * i) + " " + allObjectPoints.get(n).getFloatBuffer().get(3 * i + 1) + " " + allObjectPoints.get(n).getFloatBuffer().get(3 * i + 2));
-			//	                    }
-			//	                }
-
-			log.warning("corners not found for this image");
 		}
+		   // allImagePoints.resize(imageCounter);
+		   // allImagePoints2.resize(imageCounter);
+			images.get(0).resize(imageCounter);
+			images.get(1).resize(imageCounter);
+			objects.get(0).resize(imageCounter);
+			objects.get(1).resize(imageCounter);
+			log.info(String.format("calibrating based on %d images sized %d x %d", images.get(1).size(), imgSize.width(), imgSize.height()));
+			//calibrate
+			try {
+				setCursor(new Cursor(Cursor.WAIT_CURSOR));
+				TermCriteria termCrit = new TermCriteria(opencv_core.TermCriteria.COUNT+opencv_core.TermCriteria.EPS, 30, 1e-6);
+				opencv_calib3d.stereoCalibrate(objects.get(0),  images.get(0),images.get(1), cameraMatrix, distortionCoefs,cameraMatrix2, distortionCoefs2, imgSize, rotationVectorsfinal, translationVectorsfinal,EssentialMat, FundamentalMat, opencv_calib3d.CV_CALIB_FIX_INTRINSIC, termCrit);
+				generateCalibrationString();
+				log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html \n"
+					+ "\nCamera EssentialMat: " + EssentialMat.toString() + "\n" + printMatD(EssentialMat)
+					+ "\nFundamentalMat: " + FundamentalMat.toString() + "\n" + printMatD(FundamentalMat)
+					+ calibrationString);
+			} catch (RuntimeException e) {
+				log.warning("calibration failed with exception " + e + "See https://adventuresandwhathaveyou.wordpress.com/2014/03/14/opencv-error-messages-suck/");
+			} finally {
+				images.get(0).resize(100);
+				images.get(1).resize(100);
+				objects.get(0).resize(100);
+				objects.get(1).resize(100);
+				setCursor(Cursor.getDefaultCursor());
+			}
+			calibrated = true;
+			synchronized (this) {
+				this.cameraMatrix = cameraMatrix;
+				this.distortionCoefs = distortionCoefs;
+				//this.rotationVectorsfinal = rotationVectorsfinal;
+				//this.rotationVectorsfinal = rotationVectorsfinal;
+			}
+			getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
+
 	}
-	images.get(0).resize(imageCounter);
-	images.get(1).resize(imageCounter);
-	objects.get(0).resize(imageCounter);
-	objects.get(1).resize(imageCounter);
-	log.info(String.format("calibrating based on %d images sized %d x %d", allObjectPoints.size(), imgSize.width(), imgSize.height()));
-	//calibrate
-	try {
-		setCursor(new Cursor(Cursor.WAIT_CURSOR));
-		TermCriteria termCrit = new TermCriteria(opencv_core.TermCriteria.COUNT+opencv_core.TermCriteria.EPS, 30, 1e-6);
-		opencv_calib3d.stereoCalibrate(objects.get(0), images.get(0),images.get(1), cameraMatrix, distortionCoefs,cameraMatrix2, distortionCoefs2, imgSize, rotationVectorsfinal, translationVectorsfinal,EssentialMat, FundamentalMat, opencv_calib3d.CV_CALIB_FIX_INTRINSIC, termCrit);
-		generateCalibrationString();
-		log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html \n"
-			+ "\nCamera EssentialMat: " + EssentialMat.toString() + "\n" + printMatD(EssentialMat)
-			+ "\nFundamentalMat: " + FundamentalMat.toString() + "\n" + printMatD(FundamentalMat)
-			+ calibrationString);
-	} catch (RuntimeException e) {
-		log.warning("calibration failed with exception " + e + "See https://adventuresandwhathaveyou.wordpress.com/2014/03/14/opencv-error-messages-suck/");
-	} finally {
-		images.get(0).resize(100);
-		images.get(1).resize(100);
-		objects.get(0).resize(100);
-		objects.get(1).resize(100);
-		setCursor(Cursor.getDefaultCursor());
-	}
-	calibrated = true;
-	synchronized (this) {
-		this.cameraMatrix = cameraMatrix;
-		this.distortionCoefs = distortionCoefs;
-		//this.rotationVectorsfinal = rotationVectorsfinal;
-		//this.rotationVectorsfinal = rotationVectorsfinal;
-	}
-	getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
-}
 
 
 
@@ -1919,9 +2020,9 @@ public void doStereoCalibrationV4(){
 	private String printMatD(Mat M) {
 		StringBuilder sb = new StringBuilder();
 		int c = 0;
-		for (int i = 0; i < M.rows(); i++) {
-			for (int j = 0; j < M.cols(); j++) {
-				sb.append(String.format("%10.5f\t", M.getDoubleBuffer().get(c)));
+		for (int k = 0; k < (M.rows()); k++) {
+			for (int l = 0; l < (M.cols()); l++) {
+				sb.append(String.format("%10.5f\t", M.getDoubleBuffer().get(c)));//M.getDoubleBuffer().get(c))
 				c++;
 			}
 			sb.append("\n");
@@ -1936,10 +2037,10 @@ public void doStereoCalibrationV4(){
 			M=Mv.get(k);
 
 			String str=printMatD(M);
-			log.info("Mat : "+str);
+			//log.info("Mat : "+str);
 			string=string+"\n"+str;
 		}
-		log.info("MatVector : "+string);
+		//log.info("MatVector : "+string);
 		return string;
 
 	}
