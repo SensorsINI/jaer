@@ -1067,9 +1067,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             gl.glLineWidth(3);
 
             final float vectorScale = 1f;
-            final float textScale = TextRendererScale.draw3dScale(imuTextRenderer, "XXX.XXf,%XXX.XXf dps", getChipCanvas().getScale(),
+            final float textScale = TextRendererScale.draw3dScale(imuTextRenderer, 
+                    "XXX.XXf,%XXX.XXf dps", getChipCanvas().getScale(),
                     getSizeX(), .3f);
-            final float trans = .7f;
+            final float trans = .9f;
             float x, y;
 
             // acceleration x,y
@@ -1137,12 +1138,15 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
             // color annotation to show what is being rendered
             imuTextRenderer.begin3DRendering();
-            imuTextRenderer.setColor(1, 1, 1, trans);
-            final String ratestr = String.format("IMU: timestamp=%+9.3fs last dtMs=%6.1fms  avg dtMs=%6.1fms deg C=%5.1fC",
-                    1e-6f * imuSampleRender.getTimestampUs(), imuSampleRender.getDeltaTimeUs() * .001f,
-                    IMUSample.getAverageSampleIntervalUs() / 1000, imuSampleRender.getTemperature());
+            imuTextRenderer.setColor(1f, 1f, 1f, trans);
+//            final String ratestr = String.format("IMU: timestamp=%+9.3fs last dtMs=%6.1fms  avg dtMs=%6.1fms deg C=%5.1fC",
+//                    1e-6f * imuSampleRender.getTimestampUs(), imuSampleRender.getDeltaTimeUs() * .001f,
+//                    IMUSample.getAverageSampleIntervalUs() / 1000, imuSampleRender.getTemperature());
+           final String ratestr = String.format("IMU: last dt=%6.1fms temperature=%5.1fC",
+                    imuSampleRender.getDeltaTimeUs() * .001f,
+                    imuSampleRender.getTemperature());
             final Rectangle2D raterect = imuTextRenderer.getBounds(ratestr);
-            imuTextRenderer.draw3D(ratestr, -(float) raterect.getWidth() * textScale * 0.5f * .7f, -12, 0, textScale * .7f); // x,y,z,
+            imuTextRenderer.draw3D(ratestr, -(float) raterect.getWidth() * textScale * 0.5f * 1f, -20, 0, textScale * 1f); // x,y,z,
             // scale
             // factor
             imuTextRenderer.end3DRendering();
