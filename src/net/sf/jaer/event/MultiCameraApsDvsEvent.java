@@ -12,11 +12,8 @@
 
 package net.sf.jaer.event;
 
-import ch.unizh.ini.jaer.chip.multicamera.MultiDAVIS240CCameraChip;
+import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.DevelopmentStatus;
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
-import net.sf.jaer.stereopsis.MultiCameraInterface;
 
 /**
  * Represents an event from one camera in a multi-camera setup.
@@ -25,16 +22,15 @@ import net.sf.jaer.stereopsis.MultiCameraInterface;
 
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 public class MultiCameraApsDvsEvent extends ApsDvsEvent {
-    
-    public static int NUM_CAMERAS;
        
     /** Static method to extract the camera number from the 32 bit raw address 
      * for a DVS event.
      * It is stored as a byte in the LSB of the 32 bits.
      */
     
-    public static byte getCameraFromRawAddressDVS(int i) {
-            return (byte)(i & 0xff);   
+    public static byte getCameraFromRawAddressDVS(int address) {
+            int camera= address & 0xf;
+            return (byte) camera;   
     }
 
     /** For a DVS event, sets the camera number in the raw address, as the LSB of the 32 bits 
@@ -45,10 +41,9 @@ public class MultiCameraApsDvsEvent extends ApsDvsEvent {
      * @return the combined address
      */
 
-    public static int setCameraNumberToRawAddressDVS(int camera, int address){
-        
-        address=0xffffffff&(address | (0xffffffff&camera));
-        return address;            
+    public static int setCameraNumberToRawAddressDVS(int camera, int oldaddress){
+        int newaddress=0xffffffff&(oldaddress | (0xffffffff&camera));
+        return newaddress;            
     }
     
     
@@ -57,9 +52,9 @@ public class MultiCameraApsDvsEvent extends ApsDvsEvent {
      * It is stored as a byte..........
      */
     
-    public static byte getCameraFromRawAddressAPS(int i) {
-            return (byte)(i & 0xff);   
-    }
+//    public static byte getCameraFromRawAddressAPS(int i) {
+//            
+//    }
 
     /** For a APS event, sets the camera number in the raw address, 
      * as...... 
@@ -69,16 +64,14 @@ public class MultiCameraApsDvsEvent extends ApsDvsEvent {
      * @return the combined address
      */
 
-    public static int setCameraNumberToRawAddressAPS(int camera, int address){
-        
-        address=0xffffffff&(address | (0xffffffff&camera));
-        return address;            
-    }
+//    public static int setCameraNumberToRawAddressAPS(int camera, int address){
+//          
+//    }
     
     /** The index of the camera, 0 based. */
     public byte camera=0;    
     
-    /** Creates a new instance of BinocularEvent */
+    /** Creates a new instance of MultiCameraApsDvsEvent */
     public MultiCameraApsDvsEvent() {
     }
     
@@ -106,20 +99,6 @@ public class MultiCameraApsDvsEvent extends ApsDvsEvent {
     public void setCamera(byte aCamera) {
         camera = aCamera;
     }
-    
-    /**
-     * @return the camera
-     */
-    public int getNumberOfCameras() {
-        return NUM_CAMERAS=HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
-    }
-
-    /**
-     * @param aCamera the camera to set
-     */
-    public void setNumberOfCameras(int n) {
-        NUM_CAMERAS = n;
-    }
 
     /** Binocular event has two cell types (left and right) */
 //    @Override
@@ -136,6 +115,13 @@ public class MultiCameraApsDvsEvent extends ApsDvsEvent {
         if(e instanceof MultiCameraApsDvsEvent){
             this.camera=((MultiCameraApsDvsEvent)e).camera;
         }
+    }
+    
+       /** check the address and return true if it correspond to a DVS event
+     @param address address of the event
+     */
+    public boolean checkAddressDVS(int address){
+        return ((address & DavisChip.ADDRESS_TYPE_MASK ) ==0);
     }
 
 
