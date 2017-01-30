@@ -23,12 +23,10 @@ import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.MultiCameraEvent;
-import net.sf.jaer.graphics.ChipCanvas;
-import net.sf.jaer.graphics.DisplayMethod;
-import net.sf.jaer.graphics.DisplayMethod3D;
 import net.sf.jaer.util.EngineeringFormat;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import net.sf.jaer.event.MultiCameraApsDvsEvent;
 
 /**
  * Displays events in space time
@@ -144,6 +142,35 @@ public class TwoCamera3DDisplayMethod extends DisplayMethod implements DisplayMe
                 Object e = evItr.next();
                 if(e instanceof MultiCameraEvent){
                     MultiCameraEvent ev = (MultiCameraEvent) e;
+                    {
+                        gl.glPushMatrix();
+
+                        // Assign X-Y or Y-Z based on camera
+                        if(ev.getCamera() == 0){
+                            x = ev.x;
+                            y = ev.y;
+                            z = 0.0f;
+                        }
+                        else {
+                            x = 0;
+                            y = ev.y;
+                            z = ev.x;
+                        }
+                        computeRGBFromZ(z);
+                        gl.glColor3fv(rgb, 0);
+                        if (useCubeEnabled) {
+                            gl.glTranslatef(x, y, z);
+                            gl.glCallList(spikeList);
+                        } else {
+                            gl.glTranslatef(x, y, z);
+                            gl.glRectf(0 - .5f, 0 - .5f, 0 + .5f, 0 + .5f);
+                        }
+                        gl.glPopMatrix();
+                    }
+                }
+                //chiedere a luca come sistemarlo in modo piú elegante!!!!!!!!!!!!!!!!!!!!!
+                if(e instanceof MultiCameraApsDvsEvent){
+                    MultiCameraApsDvsEvent ev = (MultiCameraApsDvsEvent) e;
                     {
                         gl.glPushMatrix();
 
