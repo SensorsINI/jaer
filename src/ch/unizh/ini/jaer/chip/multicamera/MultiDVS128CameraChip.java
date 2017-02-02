@@ -45,11 +45,12 @@ import net.sf.jaer.graphics.TwoCamera3DDisplayMethod;
 
 import ch.unizh.ini.jaer.chip.retina.DVS128;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.stereopsis.MultiCameraHardwareInterface;
 @Description("A multi DVS128 retina (DVS128) each on it's own USB interface with merged and presumably aligned fields of view")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class MultiDVS128CameraChip extends DVS128 implements MultiCameraInterface {
-
-    private AEChip[] cameras = new AEChip[MultiCameraEvent.NUM_CAMERAS];
+    public int NUM_CAMERAS=MultiCameraHardwareInterface.NUM_CAMERAS;
+    private AEChip[] cameras = new AEChip[NUM_CAMERAS];
 
     /** Creates a new instance of MultiDVS128CameraChip */
     public MultiDVS128CameraChip() {
@@ -59,6 +60,8 @@ public class MultiDVS128CameraChip extends DVS128 implements MultiCameraInterfac
         for (AEChip c : cameras) {
             c = new DVS128();
         }
+        
+        setName("MultiDVS128CameraChip");
 
         setEventClass(BinocularEvent.class);
         setRenderer(new BinocularDVSRenderer(this));
