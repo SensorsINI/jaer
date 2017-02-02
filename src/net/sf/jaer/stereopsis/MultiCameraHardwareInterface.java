@@ -11,6 +11,7 @@
  */
 package net.sf.jaer.stereopsis;
 
+import ch.unizh.ini.jaer.chip.multicamera.MultiDavisCameraChip;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
@@ -21,10 +22,13 @@ import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.MultiCameraApsDvsEvent;
 import net.sf.jaer.event.MultiCameraEvent;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 
 /**
  * A hardware interface to multiple merged sensors.
@@ -49,16 +53,19 @@ public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderB
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     protected AEChip chip;
     /** The multiple hardware interfaces. */ // TODO currently depends on global static MultiCameraEvent.NUM_CAMERAS
-    private AEMonitorInterface[] aemons = new AEMonitorInterface[MultiCameraEvent.NUM_CAMERAS];
+    private static boolean firstTimeReadHWInterface=true;
+    public static int NUM_CAMERAS=MultiCameraHardwareInterface.getNumberOfCameraChip();
+    private AEMonitorInterface[] aemons = new AEMonitorInterface[NUM_CAMERAS];
     final static Logger log = Logger.getLogger("HardwareInterface");
     private boolean ignoreTimestampNonmonotonicity = false;
-    private int RESET_DELAY_MS = 200;
+    private int RESET_DELAY_MS = 200; 
     /** These FIFOs hold packets which are references to the packets from each source */
     /** Initial capacity of output buffer that is reused for outputting merged event stream */
-    private AEFifo[] aeFifos = new AEFifo[MultiCameraEvent.NUM_CAMERAS];    // this packet is re-used for outputting the merged events
-    public final int INITIAL_CAPACITY = CypressFX2.AE_BUFFER_SIZE;
-    private AEPacketRaw aeOut = new AEPacketRaw(INITIAL_CAPACITY * 2);//    AEPacketRaw bufLeft=new AEPacketRaw(BUFFER_CAPACITY); // holds events that arrive after the last event from the other packet.
-
+    private AEFifo[] aeFifos = new AEFifo[NUM_CAMERAS];    // this packet is re-used for outputting the merged events
+    public final int INITIAL_CAPACITY = CypressFX3.AE_BUFFER_SIZE;
+    private AEPacketRaw aeOut = new AEPacketRaw(INITIAL_CAPACITY * NUM_CAMERAS);//    AEPacketRaw bufLeft=new AEPacketRaw(BUFFER_CAPACITY); // holds events that arrive after the last event from the other packet.
+    boolean openMultipleView=true;
+    
     public void setChip(AEChip chip) {
         this.chip = chip;
         for (AEMonitorInterface aemon : aemons) {
@@ -287,7 +294,7 @@ public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderB
                     int t = f.peekNextTimestamp();
                     if (t < tsMin) {
                         tsMin = t;
-                        ind = i;
+                        ind = i;                        
                     }
                 }
                 addEvent(aeFifos[ind]);
@@ -533,8 +540,26 @@ public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderB
     private void labelCamera(AEPacketRaw aeRaw, int camera) {
         int[] adr = aeRaw.getAddresses();
         int n = aeRaw.getNumEvents();
-        for (int i = 0; i < n; i++) {
-            adr[i]=MultiCameraEvent.setCameraNumberToRawAddress(camera, adr[i]);
+        String name= chip.getName().toString();
+        if (name.equals("MultiDVS128CameraChip".toString())) {
+            MultiCameraEvent mce= new MultiCameraEvent();
+            for (int i = 0; i < n; i++) {
+                adr[i]=mce.setCameraNumberToRawAddress(camera, adr[i]);
+            }
+        }else if (name.equals("MultiDavisCameraChip".toString())) {
+            MultiCameraApsDvsEvent mce= new MultiCameraApsDvsEvent();                           
+            for (int i = 0; i < n; i++) {
+                if (mce.isDVSfromRawAddress(adr[i])){
+//                    System.out.println("camera: "+camera+" old address: "+Integer.toBinaryString(adr[i]));
+                    adr[i]=mce.setCameraNumberToRawAddressDVS(camera, adr[i]);
+//                    System.out.println("new address: "+Integer.toBinaryString(adr[i]));
+                }
+                if (!mce.isDVSfromRawAddress(adr[i])){
+//                    System.out.println("camera: "+camera+" old address: "+Integer.toBinaryString(adr[i]));
+                    adr[i]=mce.setCameraNumberToRawAddressAPS(camera, adr[i]);
+//                    System.out.println("new address: "+Integer.toBinaryString(adr[i]));
+                }
+            }
         }
     }
 
@@ -560,5 +585,30 @@ public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderB
         ignoreTimestampNonmonotonicity = yes;
         log.info("ignoreTimestampNonmonotonicity=" + ignoreTimestampNonmonotonicity);
 
+    }
+    
+    /**Return the number of HardwareInterface.
+     * @return the number of hardware interface (number of cameras)
+     */
+    public static final int getNumberOfCameraChip() {
+        int n;
+        if (firstTimeReadHWInterface==true){
+            NUM_CAMERAS=HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+            n=NUM_CAMERAS;
+            firstTimeReadHWInterface=false;
+            System.out.println("Number of cameras: "+ NUM_CAMERAS);
+            return n;
+        }
+        else{
+            log.warning("Number of cameras found: 0");
+            return 2;
+            
+        }        
+    }
+    
+    /**Set the number of cameras
+     */
+    public void setNumberOfCameras(int numberCameras) {
+        NUM_CAMERAS = numberCameras;       
     }
 }
