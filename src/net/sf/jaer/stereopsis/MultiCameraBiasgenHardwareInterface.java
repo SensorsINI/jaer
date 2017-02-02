@@ -16,6 +16,7 @@ import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.event.MultiCameraEvent;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 
 /**
  * Duplicates the hardware interface to a single bias generator to control multiple chips each with it's own hardware
@@ -24,8 +25,8 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * @author tobi
  */
 public class MultiCameraBiasgenHardwareInterface extends MultiCameraHardwareInterface implements BiasgenHardwareInterface {
-
-	protected BiasgenHardwareInterface[] biasgens = new BiasgenHardwareInterface[MultiCameraEvent.NUM_CAMERAS]; // TODO
+        
+	protected BiasgenHardwareInterface[] biasgens = new BiasgenHardwareInterface[NUM_CAMERAS]; // TODO
 
 	/**
 	 * Creates a new instance of MultiCameraBiasgenHardwareInterface.
