@@ -56,7 +56,7 @@ import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.BinocularDVSRenderer;
 import net.sf.jaer.graphics.TwoCamera3DDisplayMethod;
-import net.sf.jaer.graphics.MultiViewMultiCamera;
+//import net.sf.jaer.graphics.MultiViewMultiCamera;
 import net.sf.jaer.stereopsis.MultiCameraHardwareInterface;
 import static net.sf.jaer.stereopsis.MultiCameraHardwareInterface.getNumberOfCameraChip;
 
@@ -91,7 +91,7 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
         setEventExtractor(new Extractor(this));
         
         getCanvas().addDisplayMethod(new TwoCamera3DDisplayMethod(getCanvas()));
-        getCanvas().addDisplayMethod(new MultiViewMultiCamera(getCanvas()));
+//        getCanvas().addDisplayMethod(new MultiViewMultiCamera(getCanvas()));
   
     }
     
@@ -352,7 +352,7 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
             
             hardwareInterface = new MultiCameraBiasgenHardwareInterface(aemons);
             ((MultiCameraBiasgenHardwareInterface) hardwareInterface).setChip(this);
-            hardwareInterface.close(); // will be opened later on by user
+//            hardwareInterface.close(); // will be opened later on by user
 
         } catch (Exception e) {
             log.warning("couldn't build correct multi camera hardware interface: " + e.getMessage());
