@@ -36,9 +36,8 @@ public class MultiCameraApsDvsEvent extends ApsDvsEvent {
     /** For a DVS event, sets the camera number in the raw address, as the LSB of the 32 bits 
      * and returns the new address with camera number.
      *
-     * @param camera by convention starting with 0 for the leftmost looking at the array of cameras
-     * @param address the address of the pixel in the camera
-     * @return the combined address
+     * This method adds the information of the camera to the raw address. The camera ID is store
+     * in the LSB (4-0).
      */
 
     public static int setCameraNumberToRawAddressDVS(int camera, int oldaddress){
@@ -49,24 +48,24 @@ public class MultiCameraApsDvsEvent extends ApsDvsEvent {
     
     /** Static method to extract the camera number from the 32 bit raw address 
      * for a APS event.
-     * It is stored as a byte..........
+     * It is stored as lowest bits of the ADC bits of the raw address. 
      */
     
-//    public static byte getCameraFromRawAddressAPS(int i) {
-//            
-//    }
+    public static byte getCameraFromRawAddressAPS(int address) {
+            int camera= address & 0x3;
+            return (byte) camera;   
+    }
 
     /** For a APS event, sets the camera number in the raw address, 
      * as...... 
-     *
-     * @param camera by convention starting with 0 for the leftmost looking at the array of cameras
-     * @param address the address of the pixel in the camera
-     * @return the combined address
+     * This method adds the information of the camera to the raw address. The camera ID is store
+     * in the lowest bits of the ADC bits of the raw address. 
      */
 
-//    public static int setCameraNumberToRawAddressAPS(int camera, int address){
-//          
-//    }
+    public static int setCameraNumberToRawAddressAPS(int camera, int oldaddress){
+        int newaddress=0xffffffff&(oldaddress | (0xffffffff&(camera)));
+        return newaddress;            
+    }
     
     /** The index of the camera, 0 based. */
     public byte camera=0;    
@@ -120,7 +119,7 @@ public class MultiCameraApsDvsEvent extends ApsDvsEvent {
        /** check the address and return true if it correspond to a DVS event
      @param address address of the event
      */
-    public boolean checkAddressDVS(int address){
+    public boolean isDVSfromRawAddress(int address){
         return ((address & DavisChip.ADDRESS_TYPE_MASK ) ==0);
     }
 
