@@ -31,13 +31,14 @@ public class MultiDAVIS240CCameraChip extends MultiDavisCameraChip {
     /** Creates a new instance of  */
     public MultiDAVIS240CCameraChip() {
         super();
-        setCameraChip(new DAVIS240C());
-        setSizeX(DAVIS240C.WIDTH_PIXELS);
-        setSizeY(DAVIS240C.HEIGHT_PIXELS);
-        setApsFirstPixelReadOut(new Point(0, getSizeY() - 1));
-        setApsLastPixelReadOut(new Point(getSizeX() - 1, 0));
+        DAVIS240C chip=new DAVIS240C();
+        setCameraChip(chip);
+        setSizeX(chip.WIDTH_PIXELS);
+        setSizeY(chip.HEIGHT_PIXELS);
+        setApsFirstPixelReadOut(new Point(0, chip.getSizeY() - 1));
+        setApsLastPixelReadOut(new Point(chip.getSizeX() - 1, 0));
         
-        setRenderer(new AEFrameChipRenderer(new DAVIS240C()));
+        setRenderer(new AEFrameChipRenderer(chip));
         
         setDefaultPreferencesFile("biasgenSettings/Davis240bc/MultiDAVIS240CCameraChip.xml");
         setBiasgen(new Biasgen(this)); 
