@@ -37,6 +37,7 @@ import net.sf.jaer.stereopsis.MultiCameraInterface;
 
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.DavisConfig;
+import java.awt.Frame;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import javax.swing.Action;
@@ -51,14 +52,18 @@ import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.BinocularDVSRenderer;
 import net.sf.jaer.graphics.TwoCamera3DDisplayMethod;
-//import net.sf.jaer.graphics.MultiViewMultiCamera;
+import net.sf.jaer.graphics.MultiViewMultiCamera;
 import net.sf.jaer.stereopsis.MultiCameraHardwareInterface;
 import static net.sf.jaer.stereopsis.MultiCameraHardwareInterface.getNumberOfCameraChip;
+import java.lang.Object;
+import javax.swing.Icon;
+import javax.swing.JOptionPane;
 
 @Description("A multi Davis retina each on it's own USB interface with merged and presumably aligned fields of view")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
@@ -76,6 +81,7 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
     int nHW = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
     private int sx;
     private int sy;
+    private int displaycamera=NUM_CAMERAS; 
 
     private JMenu multiCameraMenu = null;
 
@@ -91,8 +97,50 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
         setEventExtractor(new Extractor(this));
         
         getCanvas().addDisplayMethod(new TwoCamera3DDisplayMethod(getCanvas()));
-//        getCanvas().addDisplayMethod(new MultiViewMultiCamera(getCanvas()));
+        getCanvas().addDisplayMethod(new MultiViewMultiCamera(getCanvas()));
   
+    }
+    
+    @Override
+    public void onDeregistration() {
+        super.onDeregistration();
+        if (getAeViewer() == null) {
+            return;
+        }
+        if (multiCameraMenu != null) {
+            getAeViewer().removeMenu(multiCameraMenu);
+            multiCameraMenu = null;
+        }
+    }
+
+    @Override
+    public void onRegistration() {
+        super.onRegistration();
+        if (getAeViewer() == null) {
+            return;
+        }
+        multiCameraMenu = new JMenu("MultiCameraMenu");
+        multiCameraMenu.add(new JMenuItem(new SelectCamera()));
+        getAeViewer().addMenu(multiCameraMenu);
+    }
+    
+    final public class SelectCamera extends DavisMenuAction {
+
+        public SelectCamera() {
+            super("SelectCamera", "Select which camera display", "SelectCamera");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_E, java.awt.event.InputEvent.SHIFT_MASK));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+        Object[] possibilities = new Object[NUM_CAMERAS+1];
+        for (int i=0; i<=NUM_CAMERAS; i++){
+            possibilities[i]=i;
+        }
+        Frame frame=new Frame();
+        displaycamera = (int)JOptionPane.showInputDialog(frame,"Select camera to display:","Choose Camera",JOptionPane.QUESTION_MESSAGE,null,possibilities,displaycamera);
+        
+        }
     }
     
     public void setCameraChip(AEChip chip){
@@ -167,16 +215,16 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
          *@return out the processed events. these are partially processed in-place. empty packet is returned if null is supplied as in.
          */
         @Override
-        synchronized public EventPacket extractPacket(AEPacketRaw in) {
+        synchronized public ApsDvsEventPacket extractPacket(AEPacketRaw in) {
             final int sx = getChipType().getSizeX()-1;
             final int sy = getChipType().getSizeY()-1;
             if (out == null) {
-                out = new EventPacket(MultiCameraApsDvsEvent.class);
+                out = new ApsDvsEventPacket(MultiCameraApsDvsEvent.class);
             }else {
                 out.clear();
             }
             if (in == null) {
-                return out;
+                return (ApsDvsEventPacket) out;
             }
 
             OutputEventIterator outItr = out.outputIterator();
@@ -197,61 +245,25 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
                 if (e.isDVSEvent() ){
                     e.camera = MultiCameraApsDvsEvent.getCameraFromRawAddressDVS(address);
 //                    System.out.println("DVS? "+ e.isDVSEvent()+" camera: " +e.camera+" x: "+ e.x+" y: "+e.y);
+//                    if (e.camera==0){
+//                        e.setFilteredOut(true);
+//                    }
 
                 }else if (e.isApsData()){
                     e.camera = MultiCameraApsDvsEvent.getCameraFromRawAddressAPS(address);
 //                    System.out.println("DVS? "+ e.isDVSEvent()+" camera: " +e.camera+" x: "+ e.x+" y: "+e.y);
-//                    e.setFilteredOut(true);
-                }   
+                }
+                
+                if(displaycamera<NUM_CAMERAS){
+                    int chosencamera=displaycamera;
+                    if(e.camera==chosencamera){
+                        e.setFilteredOut(true);
+                    }
+                }
+                
             }
-            return out;
+            return (ApsDvsEventPacket) out;
 
-//if (out == null) {
-//                out = new EventPacket(MultiCameraApsDvsEvent.class);
-//            }
-//            if (in == null) {
-//                return out;
-//            }
-//            int n = in.getNumEvents(); //addresses.length;
-//
-//            int skipBy = 1;
-//            if (isSubSamplingEnabled()) {
-//                while (n / skipBy > getSubsampleThresholdEventCount()) {
-//                    skipBy++;
-//                }
-//            }
-//            int[] a = in.getAddresses();
-//            int[] timestamps = in.getTimestamps();
-//            OutputEventIterator outItr = out.outputIterator();
-//            
-//            for (int i = 0; i < n; i += skipBy) { // bug here
-//                MultiCameraApsDvsEvent e = (MultiCameraApsDvsEvent) outItr.nextOutput();
-//                // we need to be careful to fill in all the fields here or understand how the super of MultiCameraApsDvsEvent fills its fields
-//                if (e.isDVSfromRawAddress(a[i])) {
-//                    e.setReadoutType(MultiCameraApsDvsEvent.ReadoutType.DVS);
-//                    e.setSpecial(true);
-//                    e.address = a[i];
-//                    e.timestamp = timestamps[i]; 
-//                    e.camera = MultiCameraApsDvsEvent.getCameraFromRawAddressDVS(a[i]);
-//                    e.polarity = (a[i] & DavisChip.POLMASK) == DavisChip.POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
-//                    e.type = (byte) ((a[i] & DavisChip.POLMASK) == DavisChip.POLMASK ? 1 : 0);
-//                    e.x = (short) (sx - ((a[i] & DavisChip.XMASK) >>> DavisChip.XSHIFT));
-//                    e.y = (short) ((a[i] & DavisChip.YMASK) >>> DavisChip.YSHIFT);
-//                    
-////                    System.out.println(e.timestamp+ "  camera: "+ e.camera + "  x: "+ e.x + "  y: "+e.y);
-//                        
-//                    if (e.camera>NUM_CAMERAS || e.camera<0){
-//                        log.warning("The camera's number read from the address is wrong!");
-//                    }
-//                    if (e.x>sx || e.x<0 || e.y<0 || e.y>sy){
-//                        log.warning("Out of borders");
-//                    }
-//                if (!e.isDVSfromRawAddress(a[i])){
-//                    e.setFilteredOut(true);
-//                    }
-//                }
-//            }
-//            return out;
         }
 
         /** Reconstructs the raw packet after event filtering to include the binocular information
@@ -352,7 +364,7 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
             
             hardwareInterface = new MultiCameraBiasgenHardwareInterface(aemons);
             ((MultiCameraBiasgenHardwareInterface) hardwareInterface).setChip(this);
-//            hardwareInterface.close(); // will be opened later on by user
+            hardwareInterface.close(); // will be opened later on by user
 
         } catch (Exception e) {
             log.warning("couldn't build correct multi camera hardware interface: " + e.getMessage());
