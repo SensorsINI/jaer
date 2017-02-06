@@ -12,7 +12,7 @@
           <node name="jaer">
             <map/>
             <node name="chip">
-              <map>
+              <map/>
                 <node name="multicamera">
               <map>
                 <entry key="FilterChain.timeLimitEnabled" value="true"/>
@@ -765,7 +765,6 @@
                 <entry key="MultiDAVIS240CCameraChip.AddressedIPotCF.LcolTimeoutBn.LowCurrent" value="false"/>
                 <entry key="MultiDAVIS240CCameraChip.AddressedIPotCF.LcolTimeoutBn.Sex" value="N"/>
                 <entry key="MultiDAVIS240CCameraChip.AddressedIPotCF.LcolTimeoutBn.Type" value="NORMAL"/>
-                <entry key="class eu.seebetter.ini.chips.DAViS.MultiDAVIS240CCameraChip.preferredDisplayMethod" value="eu.seebetter.ini.chips.DAViS.MultiDAVIS240CCameraChip$DAVIS240BaseCameraDisplayMethod"/>
                 <entry key="MultiDAVIS240CCameraChip.extTrigger" value="false"/>
                 <entry key="MultiDAVIS240CCameraChip.testPixAPSread" value="false"/>
                 <entry key="MultiDAVIS240CCameraChip.AddressedIPotCF.ApsROSFBn.BitValueCoarse" value="1"/>
@@ -1025,7 +1024,6 @@
                 <entry key="ApsDvsLocalPlanesFitting.showRawInputEnabled" value="true"/>
                 <entry key="ApsDvsLocalPlanesFitting.maxDtThreshold" value="68587"/>
                 <entry key="ApsDvsLocalPlanesFitting.minDtThreshold" value="1"/>
-                <entry key="class eu.seebetter.ini.chips.davis.MultiDAVIS240CCameraChip.preferredDisplayMethod" value="eu.seebetter.ini.chips.davis.DavisBaseCamera$DavisDisplayMethod"/>
                 <entry key="ServoArm.filterEnabled" value="true"/>
                 <entry key="VideoControl.separateAPSByColor" value="false"/>
                 <entry key="MultiDAVIS240CCameraChip.ResetCalibNeuron" value="true"/>
