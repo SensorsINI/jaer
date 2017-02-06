@@ -13,6 +13,7 @@ package ch.unizh.ini.jaer.chip.multicamera;
  *
  */
 
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DAVIS240C;
 import eu.seebetter.ini.chips.davis.Davis240Config;
@@ -37,9 +38,12 @@ import net.sf.jaer.stereopsis.MultiCameraInterface;
 
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.DavisConfig;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
 import javax.swing.Action;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
@@ -63,7 +67,9 @@ import net.sf.jaer.stereopsis.MultiCameraHardwareInterface;
 import static net.sf.jaer.stereopsis.MultiCameraHardwareInterface.getNumberOfCameraChip;
 import java.lang.Object;
 import javax.swing.Icon;
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import net.sf.jaer.graphics.ImageDisplay;
 
 @Description("A multi Davis retina each on it's own USB interface with merged and presumably aligned fields of view")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
@@ -82,6 +88,10 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
     private int sx;
     private int sy;
     private int displaycamera=NUM_CAMERAS; 
+    private JFrame apsFrame = null;
+    public ImageDisplay[] apsDisplay= new ImageDisplay[NUM_CAMERAS];
+    private boolean displayAPSEnable=false;
+
 
     private JMenu multiCameraMenu = null;
 
@@ -121,7 +131,30 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
         }
         multiCameraMenu = new JMenu("MultiCameraMenu");
         multiCameraMenu.add(new JMenuItem(new SelectCamera()));
+        multiCameraMenu.add(new JMenuItem(new ApsDisplay()));
         getAeViewer().addMenu(multiCameraMenu);
+    }
+    
+    final public class ApsDisplay extends DavisMenuAction {
+
+        public ApsDisplay() {
+            super("ApsDisplay", "Display APS", "Display the sorted event in frames");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_E, java.awt.event.InputEvent.SHIFT_MASK));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            displayAPSEnable=true;
+            for (int c=0; c< NUM_CAMERAS; c++){
+                apsDisplay[c] = ImageDisplay.createOpenGLCanvas();
+                apsFrame = new JFrame("APS Frame");
+                apsFrame.setPreferredSize(new Dimension(400, 400));
+                apsFrame.getContentPane().add(apsDisplay[c], BorderLayout.CENTER);
+                apsFrame.setVisible(true);
+                apsFrame.pack();
+                
+            }
+        }
     }
     
     final public class SelectCamera extends DavisMenuAction {
@@ -244,10 +277,6 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
                 //if DVS
                 if (e.isDVSEvent() ){
                     e.camera = MultiCameraApsDvsEvent.getCameraFromRawAddressDVS(address);
-//                    System.out.println("DVS? "+ e.isDVSEvent()+" camera: " +e.camera+" x: "+ e.x+" y: "+e.y);
-//                    if (e.camera==0){
-//                        e.setFilteredOut(true);
-//                    }
 
                 }else if (e.isApsData()){
                     e.camera = MultiCameraApsDvsEvent.getCameraFromRawAddressAPS(address);
@@ -259,7 +288,15 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
                     if(e.camera==chosencamera){
                         e.setFilteredOut(true);
                     }
+                }             
+                
+                if (displayAPSEnable && e.isApsData()){
+                    apsDisplay[e.camera].setPixmapGray(e.x, e.y, e.getAdcSample());
+                    if(e.isEndOfFrame()){
+                        apsDisplay[e.camera].display();
+                    }                                           
                 }
+
                 
             }
             return (ApsDvsEventPacket) out;
