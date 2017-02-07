@@ -1,4 +1,4 @@
-package ch.unizh.ini.jaer.projects.multitracking;
+package aTestSophie;
 
 
 /*
@@ -46,14 +46,26 @@ import javax.swing.SwingWorker;
 import org.bytedeco.javacpp.FloatPointer;
 import org.bytedeco.javacpp.opencv_calib3d;
 import org.bytedeco.javacpp.opencv_core;
+import org.bytedeco.javacpp.opencv_core.DMatchVector;
 import org.bytedeco.javacpp.opencv_core.FileStorage;
+import org.bytedeco.javacpp.opencv_core.KeyPointVector;
 import org.bytedeco.javacpp.opencv_core.Mat;
 import org.bytedeco.javacpp.opencv_core.MatVector;
+import org.bytedeco.javacpp.opencv_core.Rect;
+import org.bytedeco.javacpp.opencv_core.RectVector;
 import org.bytedeco.javacpp.opencv_core.Size;
 import org.bytedeco.javacpp.opencv_core.TermCriteria;
+//import org.bytedeco.javacpp.presets.opencv_features2d;
+import org.bytedeco.javacpp.opencv_features2d;
+import org.bytedeco.javacpp.opencv_features2d.DescriptorMatcher;
+//import org.bytedeco.javacpp.opencv_features2d.BFMatcher;
+import org.bytedeco.javacpp.opencv_features2d.ORB;
 import org.bytedeco.javacpp.opencv_imgproc;
+import org.bytedeco.javacpp.opencv_objdetect;
+import org.bytedeco.javacpp.opencv_objdetect.HOGDescriptor;
 import org.bytedeco.javacpp.indexer.DoubleBufferIndexer;
 import org.bytedeco.javacpp.indexer.DoubleIndexer;
+//import org.opencv.imgproc.Imgproc;
 import org.openni.Device;
 import org.openni.DeviceInfo;
 import org.openni.OpenNI;
@@ -178,6 +190,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 	private JAERViewer jaevi;
 	ArrayList<AEViewer> arrayOfAEvi;
 	private ArrayList<MatVector> images = new ArrayList<MatVector>(2);
+	private ArrayList<MatVector> frames = new ArrayList<MatVector>(2);
 	private ArrayList<MatVector> objects;
 	private boolean takeMultiFrame=false;
 	private boolean takeMultiFrame0=false;
@@ -187,6 +200,17 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 	private FilterChain filterchaintiers;
 	private boolean bool;
 	private boolean bool1;
+	private Mat disparity;
+	private boolean takeFramesForCalib=false;
+	private float[] Frame1 = null;
+	private float[] Frame0 = null;
+	private Mat R1;
+	private Mat R2;
+	private Mat P1;
+	private Mat P2;
+	private Mat Q;
+	private boolean takeAPic=false;
+	private Mat points4D;
 
 	public SingleOrStereoCameraCalibration(AEChip chip) {
 		super(chip);
@@ -262,34 +286,116 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 					multiFramefunc(fraext.get(1));
 				}
 			}	*/
+			bool=false;
+			bool1=false;
+			//(takeMultiFrame1==true)&&(takeMultiFrame0==true)&&
+
+			if ((takeMultiFrame1==true)&&(takeMultiFrame0==true)&&(takeFramesForCalib==true)){
 
 
-			if ((takeMultiFrame1==true)&&(takeMultiFrame0==true)){
-
+              if (imageCounter<15){
 
 				if(fraext.get(0).hasNewFrame()){
 					 bool=false;
+					 //Frame0 = fraext.get(0).getNewFrame();
 					//System.out.println("take frame from viewer0");
 				    bool = multiFramefunc(fraext.get(0), false);
 				}
 					//		System.out.println("takeMultiFrame1");
 					if(fraext.get(1).hasNewFrame()){
 						 bool1=false;
+						//Frame1 = fraext.get(1).getNewFrame();
 						//System.out.println("take frame from viewer1");
-						bool1 = multiFramefunc(fraext.get(1),false);
+						bool1 = multiFramefunc(fraext.get(1), false);
 
 					}
 					if ((bool==true)&&(bool1==true)){
-						bool1 = multiFramefunc(fraext.get(1),true);
-						System.out.println("take frame from viewer1");
 						bool = multiFramefunc(fraext.get(0), true);
 						System.out.println("take frame from viewer0");
-						takeMultiFrame0=false;
-						takeMultiFrame1=false;
+						bool1 = multiFramefunc(fraext.get(1), true);
+						System.out.println("take frame from viewer1");
+						if ((bool==true)&&(bool1==true)){
+						//takeMultiFrame0=false;
+						//takeMultiFrame1=false;
 						imageCounter++;
 						System.out.println("nb of frames taken:"+ imageCounter);
+
+
+						/*Mat imgr = new Mat(sy, sx, CV_8U);
+						Mat imgl = new Mat(sy, sx, CV_8U);
+						opencv_core.flip(images.get(0).get(imageCounter-1), imgr, 0);
+						opencv_core.flip(images.get(0).get(imageCounter-1), imgl, 0);
+						System.out.println(imgr.arrayWidth());
+						System.out.println(imgr.arrayHeight());*/
+						disparity=new Mat();
+						try{
+						   opencv_calib3d.StereoSGBM.create(0,16,3).compute(frames.get(0).get(imageCounter-1), frames.get(1).get(imageCounter-1), disparity);
+						   //System.out.println(opencv_calib3d.StereoBM.create().getBlockSize());
+						   }catch (RuntimeException p) {
+								log.warning(p.toString());
+							}
+						String filename = chip.getName() + "-" + fileBaseName + "-" + String.format("%03d", imageCounter) + "disparityMap"+ ".jpg";
+						String fullFilePath = dirPath + "\\" + filename;
+						org.bytedeco.javacpp.opencv_imgcodecs.imwrite(fullFilePath, disparity);
+						log.info("wrote " + fullFilePath);
+						/*try{
+							stereoMatchingPoint(frames.get(0).get(imageCounter-1), frames.get(1).get(imageCounter-1));
+						}catch (RuntimeException p) {
+							log.warning(p.toString());
+						}*/
+						}
 					}
 				}
+
+			}
+
+            if (takeAPic==true){
+            	boolean isimg1=false;
+            	boolean isimg2=false;
+
+            	if(fraext.get(0).hasNewFrame()){
+            		lastFrame1 = fraext.get(0).getNewFrame();
+            		//lastFrame1 = frame;
+            		FloatPointer p1 = new FloatPointer(lastFrame1);
+            		Mat input1 = new Mat(p1);
+            		input1.convertTo(input1, CV_8U, 255, 0);
+            		Mat img1 = input1.reshape(0, sy);
+            		isimg1=true;
+
+					//		System.out.println("takeMultiFrame1");
+					if(fraext.get(1).hasNewFrame()){
+
+						lastFrame1 = fraext.get(1).getNewFrame();
+						//lastFrame1 = frame;
+						FloatPointer p2 = new FloatPointer(lastFrame1);
+						Mat input2 = new Mat(p2);
+						input2.convertTo(input2, CV_8U, 255, 0);
+						Mat img2 = input2.reshape(0, sy);
+						isimg2=true;
+
+					if ((isimg1==true)&&(isimg2==true)){
+						disparity=new Mat();
+						try{
+						   opencv_calib3d.StereoSGBM.create(0,16,3).compute(img1, img2, disparity);
+						   //System.out.println(opencv_calib3d.StereoBM.create().getBlockSize());
+						   }catch (RuntimeException p) {
+								log.warning(p.toString());
+							}
+						String filename = chip.getName() + "-" + fileBaseName + "-" + String.format("%03d", imageCounter) + "disparityMap"+ ".jpg";
+						String fullFilePath = dirPath + "\\" + filename;
+						org.bytedeco.javacpp.opencv_imgcodecs.imwrite(fullFilePath, disparity);
+						log.info("wrote " + fullFilePath);
+						try{
+							//poepleDetection(img1, img2);
+							stereoMatchingPoint(img1, img2);
+						}catch (RuntimeException p) {
+							log.warning(p.toString());
+						}
+						takeAPic=false;
+					}
+					}
+            	}
+            }
 
 			//acquire new frame
 			if (frameExtractor.hasNewFrame()) {
@@ -719,6 +825,193 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 		this.cornerSubPixRefinement = cornerSubPixRefinement;
 	}
 
+	public void doTryToFind3DPosition(){
+		takeAPic=true;
+	}
+
+	public void poepleDetection(Mat img1, Mat img2){
+	//Mat img1=opencv_imgcodecs.imread("C:/Users/iniLabs/Desktop/testSophie/RealTest/imagesTest.jpg");
+	//Mat img2=opencv_imgcodecs.imread("C:/Users/iniLabs/Desktop/testSophie/RealTest/test2.jpg");
+
+	HOGDescriptor hog = new HOGDescriptor();
+    Mat svmdetector;
+    FloatPointer ip=opencv_objdetect.HOGDescriptor.getDefaultPeopleDetector();
+    svmdetector=new Mat(ip);
+    hog.setSVMDetector(svmdetector);
+    RectVector foundLocations1 = new RectVector() ;
+    RectVector foundLocations2 = new RectVector() ;
+    hog.detectMultiScale(img1, foundLocations1);
+	 System.out.println(foundLocations1.size());
+	org.bytedeco.javacpp.opencv_core.Scalar rectColor = new org.bytedeco.javacpp.opencv_core.Scalar(0, 255);
+	for(long i=0;i<foundLocations1.size();i++){
+		Rect r = new Rect(foundLocations1.get(i));
+		//Point pt1=r.br();
+		//Point pt2=r.tl();
+		//Mat img=img1;
+		opencv_imgproc.rectangle(img1, r,rectColor);
+		//img1=img1.adjustROI(r.tl().y(), r.br().y(), r.tl().x(),  r.br().x());
+	}
+	String filename = chip.getName() + "-" + "HOG" + "-" + String.format("%03d", imageCounter) + "img1rect"+ ".jpg";
+	String fullFilePath = dirPath + "\\" + filename;
+	org.bytedeco.javacpp.opencv_imgcodecs.imwrite(fullFilePath, img1);
+	log.info("wrote " + fullFilePath);
+	//
+	 hog.detectMultiScale(img2, foundLocations2);
+	 System.out.println(foundLocations2.size());
+		for(long i=0;i<foundLocations2.size();i++){
+			Rect r = new Rect(foundLocations2.get(i));
+			//Point pt1=r.br();
+			//Point pt2=r.tl();
+			//Mat img=img1;
+			opencv_imgproc.rectangle(img2, r,rectColor);
+
+			//img1=img1.adjustROI(r.tl().y(), r.br().y(), r.tl().x(),  r.br().x());
+		}
+		String filename2 = chip.getName() + "-" + "HOG" + "-" + String.format("%03d", imageCounter) + "img2rect"+ ".jpg";
+		String fullFilePath2 = dirPath + "\\" + filename2;
+		org.bytedeco.javacpp.opencv_imgcodecs.imwrite(fullFilePath2, img2);
+		log.info("wrote " + fullFilePath2);
+
+
+	}
+//
+//	public static void showResult(Mat img) {
+//		opencv_imgproc.resize(img, img, new Size(640, 480));
+//	    MatOfByte matOfByte = new MatOfByte();
+//	    org.bytedeco.javacpp.opencv_imgcodecs.imencodeimencode(".jpg", img, matOfByte);
+//	    byte[] byteArray = matOfByte.toArray();
+//	    BufferedImage bufImage = null;
+//	    try {
+//	        InputStream in = new ByteArrayInputStream(byteArray);
+//	        bufImage = ImageIO.read(in);
+//	        JFrame frame = new JFrame();
+//	        frame.getContentPane().add(new JLabel(new ImageIcon(bufImage)));
+//	        frame.pack();
+//	        frame.setVisible(true);
+//	    } catch (Exception e) {
+//	        e.printStackTrace();
+//	    }
+//	}
+	public void stereoMatchingPoint(Mat img1, Mat img2){
+		   //Mat img1 = frames.get(0).get(imageCounter-1);         //queryImage
+		   //Mat img2 = frames.get(1).get(imageCounter-1);        // trainImage
+
+			// Initiate SIFT detector
+			ORB orb = opencv_features2d.ORB.create();
+
+			// find the keypoints and descriptors with SIFT
+			KeyPointVector keypoints1=new KeyPointVector();
+			KeyPointVector keypoints2=new KeyPointVector();
+			Mat mask = new Mat();
+
+			Mat descriptor1= new Mat();
+			Mat descriptor2= new Mat();
+
+			orb.detect(img1, keypoints1);
+			orb.compute(img1, keypoints1, descriptor1);
+			orb.detect(img2, keypoints2);
+			orb.compute(img2, keypoints2, descriptor2);
+
+			//create BFMatcher object
+			boolean crossCheck;
+			DescriptorMatcher bf = DescriptorMatcher.create("BruteForce-Hamming");
+			//bf.(opencv_core.NORM_HAMMING,true);
+
+			//Match descriptors.
+			DMatchVector matches= new DMatchVector();
+			bf.match(descriptor1,descriptor2, matches);
+
+			//Sort them in the order of their distance.
+			/*opencv_features2d.sorted(matches, matches,opencv_core.SORT_DESCENDING);
+			matches.get(0).distance(distance)*/
+			//Draw first 10 matches.
+			Mat img3=new Mat();
+
+			opencv_features2d.drawMatches(img1,keypoints1,img2,keypoints2,matches, img3);
+
+			String filename = chip.getName() + "-" + fileBaseName + "-" + String.format("%03d", imageCounter) + "MatchingMap"+ ".jpg";
+			String fullFilePath = dirPath + "\\" + filename;
+			org.bytedeco.javacpp.opencv_imgcodecs.imwrite(fullFilePath, img3);
+			log.info("wrote " + fullFilePath);
+			Mat points4D;
+			//Vector<Point2f> points1 = new Vector<Point2f>();
+
+//			Mat matpoints1 = new Mat();
+//			Mat matpoints2 = new Mat();
+			Mat matpoints1 = new Mat();
+			Mat matpoints2 = new Mat();
+			//Point2fVector matpoints1 = new Point2fVector(matches.size());
+			//Point2fVector matpoints2 = new Point2fVector(matches.size());
+			//float[] matpoints1 =  new float[(int)matches.size()*2];
+			//float[] matpoints2 = new float[(int)matches.size()*2];
+
+			for (int i=0; i<((int)matches.size());i++){
+				//for (int j=0; j<matpoints1.rows();i++){
+//				matpoints1[i]=keypoints1.get(matches.get(i).queryIdx()).pt().x();
+//				matpoints1[i*2]=keypoints1.get(matches.get(i).queryIdx()).pt().y();
+//				matpoints1[i]=keypoints2.get(matches.get(i).trainIdx()).pt().x();
+//				matpoints1[i*2]=keypoints2.get(matches.get(i).trainIdx()).pt().y();
+//				matpoints1.put(i,keypoints1.get(matches.get(i).queryIdx()).pt());
+//				matpoints2.put(i,keypoints2.get(matches.get(i).trainIdx()).pt());
+				Mat mat1=new Mat();
+				Mat mat2=new Mat();
+				mat1.put(keypoints1.get(matches.get(i).queryIdx()).pt());
+				mat2.put(keypoints2.get(matches.get(i).queryIdx()).pt());
+				matpoints1.push_back(mat1);
+				matpoints2.push_back(mat2);
+//				matpoints1.put(i,j,keypoints1.get(matches.get(i).queryIdx()).pt().x());
+//				matpoints2.push_back_(keypoints2.get(matches.get(i).trainIdx()).pt());
+//              System.out.println(keypoints1.get(matches.get(i).queryIdx()).pt().x()+"+"+keypoints1.get(matches.get(i).queryIdx()).pt().y());
+//				System.out.println(keypoints2.get(matches.get(i).trainIdx()).pt().x()+"+"+keypoints2.get(matches.get(i).trainIdx()).pt().y());
+			}
+//			}
+			System.out.println("stop start printMatD");
+			System.out.println(printMatD(matpoints1));
+			System.out.println(printMatD(matpoints2));
+			System.out.println(matpoints1);
+			System.out.println(matpoints2);
+			//Pointer p1=new Pointer(matpoints1);
+			//Pointer.memcpy(p1, matpoints1, matches.size());
+			//Mat points1 = new Mat(p1);
+			//Mat points1 = new Mat((int) matches.size(), 2,CV_8U);
+
+			//points1.convertTo(points1, CV_8U, 255, 0);
+			//System.out.println(printMatD(points1));
+			//System.out.println(points1.channels());
+			//System.out.println(points1.rows());
+			//points1.reshape(2,0);
+			//System.out.println(points1.channels());
+			//System.out.println(points1.rows());
+			//FloatPointer p2=new FloatPointer(matpoints2);
+//			Mat points2 = new Mat();
+//			Pointer.memmove(points2, matpoints2, matches.size());
+//			points2.convertTo(points2, CV_8U, 255, 0);
+//			points2.reshape(1,2);
+//			System.out.println(points2.channels());
+//			System.out.println(points2.rows());
+
+			//points2.resize(100);
+			points4D=new Mat();
+
+//			Mat dispar=new Mat();
+//			Mat output=new Mat();
+//			Mat output3d=new Mat();
+//			try{
+//			   opencv_calib3d.StereoSGBM.create(0,16,3).compute(img1,img2, dispar);
+//			   //System.out.println(opencv_calib3d.StereoBM.create().getBlockSize());
+//			   }catch (RuntimeException p) {
+//					log.warning(p.toString());
+//				}
+//			opencv_calib3d.reprojectImageTo3D(dispar, output, Q);
+//			opencv_core.perspectiveTransform(output,output3d,Q) ;
+
+			opencv_calib3d.triangulatePoints(P1, P2, matpoints1, matpoints2, points4D);
+			System.out.println(printMatD(points4D));
+	}
+
+
+
+
 
 	public void doSwitchGlobalView(){
 
@@ -757,7 +1050,9 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 			frameExtractortemp.setExtRender(false);
 
 			MatVector mv = new MatVector(100);
+			MatVector mw = new MatVector(100);
 			images.add(mv);
+			frames.add(mw);
 		}
 		setEnclosedFilterChain(filterchainbis);
 		//setEnclosedFilterChain(filterchaintiers);
@@ -768,12 +1063,20 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 		chip.getFilterFrame().rebuildContents();
 	}
 
-	public void doTakeMultiFrame(){
+	synchronized public void doTakeMultiFrame(){
 		System.out.println("take multi frame");
-		System.out.println(fraext.elementAt(0));
-		System.out.println(fraext.elementAt(1));
-		System.out.println(fraext.elementAt(0).hasNewFrame());
-		System.out.println(fraext.elementAt(1).hasNewFrame());
+//		System.out.println(fraext.elementAt(0));
+//		System.out.println(fraext.elementAt(1));
+//		System.out.println(fraext.elementAt(0).hasNewFrame());
+//		System.out.println(fraext.elementAt(1).hasNewFrame());
+
+		    objects = new ArrayList<>(2);
+		    MatVector v = new MatVector(100);
+			MatVector w = new MatVector(100);
+			objects.add(v);
+			objects.add(w);
+
+		takeFramesForCalib=true;
 		takeMultiFrame0=true;
 		takeMultiFrame1=true;
 
@@ -788,6 +1091,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 
 		//		lastFrame = fraext.elementAt(fra).getNewFrame();
 		lastFrame1 = fra.getNewFrame();
+		//lastFrame1 = frame;
 		ip = new FloatPointer(lastFrame1);
 		Mat input = new Mat(ip);
 		input.convertTo(input, CV_8U, 255, 0);
@@ -801,6 +1105,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 			 locPatternFound = opencv_calib3d.findChessboardCorners(imgIn, patternSize, corners);
 		} catch (RuntimeException re) {
 			log.warning(re.toString());
+			return false;
 		}
 		if (locPatternFound) {
 			System.out.println(locPatternFound);
@@ -818,23 +1123,70 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 			}
 			opencv_calib3d.drawChessboardCorners(imgOut, patternSize, corners, locPatternFound);
 	//	log.info("mew image:"+ printMatD(input));
-		opencv_core.TermCriteria tc = new opencv_core.TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1);
+		//opencv_core.TermCriteria tc = new opencv_core.TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1);
 		//opencv_imgproc.cornerSubPix(imgIn, corners, new Size(3, 3), new Size(-1, -1), tc);
 		//MatVector mv = new MatVector(100);
 		//images.add(mv);
 		//		images.get(fra).put(imageCounter, imgIn);
-		images.get(fraext.indexOf(fra)).put(imageCounter, imgIn);
+			if (locPatternFound) {
+		//images.get(fraext.indexOf(fra)).put(imageCounter, imgIn);
+
+				try{
+					images.get(fraext.indexOf(fra)).put(imageCounter,corners);
+
+
+				/*if(u==0){
+					allImagePoints.put(imageCount, corners);
+				}
+				else{
+					allImagePoints2.put(imageCount, corners);
+				}*/
+				}
+				catch (RuntimeException e) {
+					log.info("no pattern found");
+
+				}
+				System.out.println("corners type is"+corners.type()+"\ncorner size is :"+corners.size());
+				//	log.info( "allimagepoints : "+printMatD(mv));
+				//create and store object points, which are just coordinates in mm of corners of pattern as we know they are drawn on the
+				// calibration target
+				Mat objectPoints = new Mat(corners.rows(), 1, opencv_core.CV_32FC3);
+				float x, y;
+				for (int h = 0; h < patternHeight; h++) {
+					y = h * rectangleHeightMm;
+					for (int w = 0; w < patternWidth; w++) {
+						x = w * rectangleWidthMm;
+						objectPoints.getFloatBuffer().put(3 * ((patternWidth * h) + w), x);
+						objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 1, y);
+						objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 2, 0); // z=0 for object points
+					}
+				}
+				// here was the previous matVector in object definition
+				objects.get(fraext.indexOf(fra)).put(imageCounter, objectPoints);
+				//iterate image counter
+				System.out.println("objectPoints type is"+objectPoints.type()+"\ncorner size is :"+objectPoints.size());
+				//log.info("allobejctpoints : "+printMatD(allObjectPoints));
+				log.info(String.format("added corner points from image %d", imageCounter));
+
+		//
 		log.info(Integer.toString(fraext.indexOf(fra)));
 		log.info(Integer.toString(imageCounter));
        // log.info(printMatD(images.get(fraext.indexOf(fra))));
 
 		Mat imgSave = new Mat(sy, sx, CV_8U);
+
 		opencv_core.flip(imgIn, imgSave, 0);
+		//opencv_core.flip(images.get(fraext.indexOf(fra)).get(imageCounter), imgSave, 0);
+		frames.get(fraext.indexOf(fra)).put(imageCounter, imgSave);
 		String filename = chip.getName() + "-" + fileBaseName + "-" + String.format("%03d", imageCounter) + String.format("%03d", fraext.indexOf(fra))+ ".jpg";
 		String fullFilePath = dirPath + "\\" + filename;
 		org.bytedeco.javacpp.opencv_imgcodecs.imwrite(fullFilePath, imgSave);
 		log.info("wrote " + fullFilePath);
 	}
+			else {
+				log.warning("corners not found for this image");
+			}
+		}
 		return(locPatternFound);
 	}
 
@@ -852,17 +1204,23 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 		Mat distortionCoefs2;
 
 		MatVector rotationVectors;
-		MatVector translationVectors = null;
+		MatVector translationVectors;
 
 
 		MatVector rotationVectors2;
-		MatVector translationVectors2 = null;
+		MatVector translationVectors2;
 
 		Mat rotationVectorsfinal;
 		Mat translationVectorsfinal;
 
 		Mat EssentialMat;
 		Mat FundamentalMat;
+
+		Mat R1= new Mat();
+		Mat R2= new Mat();
+		Mat P1= new Mat();
+		Mat P2= new Mat();
+		Mat Q = new Mat();
 
 		EssentialMat = new Mat();
 		FundamentalMat = new Mat();
@@ -882,23 +1240,28 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 
 		rotationVectorsfinal = new Mat();
 		translationVectorsfinal = new Mat();
+//////////////////////////////////////////////////////////////////////////////////
 
-
-		objects = new ArrayList<>(imageCounter);
+/*		objects = new ArrayList<>(2);
 
 		for(int u=0;u<2;u++){
+
+			MatVector v = new MatVector(100);
+			objects.add(v);
 
 			log.info( "size : "+Long.toString(images.get(u).size()));
 	//		log.info( "mv : "+printMatD(mv));
 			int imageCount=0;
-			//for(int i=0; i<images.get(u).size(); i++){
+
 			for(int i=0; i<imageCounter; i++){
-				Mat m= images.get(u).get(i);
-		//		log.info( "m : "+printMatD(m));
-				boolean locPatternFound;
+				System.out.println(u);
+				System.out.println(i);
+				Mat m= new Mat();
+				m= images.get(u).get(i);
+				System.out.println(m);
+				boolean locPatternFound=false;
 				try {
-					locPatternFound = opencv_calib3d.findChessboardCorners(m, patternSize, corners,opencv_calib3d.CALIB_CB_ADAPTIVE_THRESH + opencv_calib3d.CALIB_CB_NORMALIZE_IMAGE
-				        + opencv_calib3d.CALIB_CB_FAST_CHECK);
+					locPatternFound = opencv_calib3d.findChessboardCorners(m, patternSize, corners);
 					System.out.println(locPatternFound);
 					System.out.println(corners);
 
@@ -912,12 +1275,14 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 						}
 						try{
 							images.get(u).put(i,corners);
-						/*if(u==0){
+
+
+						if(u==0){
 							allImagePoints.put(imageCount, corners);
 						}
 						else{
 							allImagePoints2.put(imageCount, corners);
-						}*/
+						}
 						}
 						catch (RuntimeException e) {
 							log.info("no pattern found");
@@ -938,8 +1303,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 								objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 2, 0); // z=0 for object points
 							}
 						}
-						MatVector v = new MatVector(10);
-						objects.add(v);
+						// here was the previous matVector in object definition
 						objects.get(u).put(i, objectPoints);
 						//iterate image counter
 						System.out.println("objectPoints type is"+objectPoints.type()+"\ncorner size is :"+objectPoints.size());
@@ -965,7 +1329,8 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 
 				}
 			}
-		}
+		}*/
+////////////////////////////////////////////////////////////////////////////////////////////////////
 		   // allImagePoints.resize(imageCounter);
 		   // allImagePoints2.resize(imageCounter);
 			images.get(0).resize(imageCounter);
@@ -973,14 +1338,59 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 			objects.get(0).resize(imageCounter);
 			objects.get(1).resize(imageCounter);
 			log.info(String.format("calibrating based on %d images sized %d x %d", images.get(1).size(), imgSize.width(), imgSize.height()));
-			//calibrate
+			//calibrate0
+
+			try {
+				setCursor(new Cursor(Cursor.WAIT_CURSOR));
+				opencv_calib3d.calibrateCamera(objects.get(0), images.get(0), imgSize, cameraMatrix, distortionCoefs, rotationVectors, translationVectors);
+				generateCalibrationString();
+				log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html \n"
+					+ "\nCamera matrix: " + cameraMatrix.toString() + "\n" + printMatD(cameraMatrix)
+					+ "\nDistortion coefficients k_1 k_2 p_1 p_2 k_3 ...: " + distortionCoefs.toString() + "\n" + printMatD(distortionCoefs)
+					+ calibrationString);
+			} catch (RuntimeException e) {
+				log.warning("calibration failed with exception " + e + "See https://adventuresandwhathaveyou.wordpress.com/2014/03/14/opencv-error-messages-suck/");
+			}finally{
+				setCursor(Cursor.getDefaultCursor());
+			}
+			//calibrated = true;
+			synchronized (this) {
+				this.cameraMatrix = cameraMatrix;
+				this.distortionCoefs = distortionCoefs;
+				//calibrate1
+			}
+				try {
+					setCursor(new Cursor(Cursor.WAIT_CURSOR));
+					opencv_calib3d.calibrateCamera(objects.get(0), images.get(1), imgSize, cameraMatrix2, distortionCoefs2, rotationVectors2, translationVectors2);
+					generateCalibrationString();
+					log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html \n"
+						+ "\nCamera matrix2: " + cameraMatrix2.toString() + "\n" + printMatD(cameraMatrix2)
+						+ "\nDistortion coefficients2 k_1 k_2 p_1 p_2 k_3 ...: " + distortionCoefs2.toString() + "\n" + printMatD(distortionCoefs2)
+						+ calibrationString);
+				} catch (RuntimeException e) {
+					log.warning("calibration failed with exception " + e + "See https://adventuresandwhathaveyou.wordpress.com/2014/03/14/opencv-error-messages-suck/");
+				} finally {
+
+					setCursor(Cursor.getDefaultCursor());
+				}
+				//calibrated = true;
+				synchronized (this) {
+					this.cameraMatrix2 = cameraMatrix2;
+					this.distortionCoefs2 = distortionCoefs2;
+					//stereocalibrate
+
+				}
+
+
 			try {
 				setCursor(new Cursor(Cursor.WAIT_CURSOR));
 				TermCriteria termCrit = new TermCriteria(opencv_core.TermCriteria.COUNT+opencv_core.TermCriteria.EPS, 30, 1e-6);
-				opencv_calib3d.stereoCalibrate(objects.get(0),  images.get(0),images.get(1), cameraMatrix, distortionCoefs,cameraMatrix2, distortionCoefs2, imgSize, rotationVectorsfinal, translationVectorsfinal,EssentialMat, FundamentalMat, opencv_calib3d.CV_CALIB_FIX_INTRINSIC, termCrit);
+				opencv_calib3d.stereoCalibrate(objects.get(0),  images.get(0), images.get(1), cameraMatrix, distortionCoefs,cameraMatrix2, distortionCoefs2, imgSize, rotationVectorsfinal, translationVectorsfinal,EssentialMat, FundamentalMat, opencv_calib3d.CV_CALIB_FIX_INTRINSIC/*+opencv_calib3d.CV_CALIB_SAME_FOCAL_LENGTH+opencv_calib3d.CV_CALIB_ZERO_TANGENT_DIST*/, termCrit);
 				generateCalibrationString();
 				log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html \n"
-					+ "\nCamera EssentialMat: " + EssentialMat.toString() + "\n" + printMatD(EssentialMat)
+					+ "\nCamera rotationVectorsfinal: " + rotationVectorsfinal.toString() + "\n" + printMatD(rotationVectorsfinal)
+					+ "\nCamera translationVectorsfinal: " + translationVectorsfinal.toString() + "\n" + printMatD(translationVectorsfinal)
+					+ "\nCamera cameraMatrix2: " + cameraMatrix2.toString() + "\n" + printMatD(cameraMatrix2)
 					+ "\nFundamentalMat: " + FundamentalMat.toString() + "\n" + printMatD(FundamentalMat)
 					+ calibrationString);
 			} catch (RuntimeException e) {
@@ -992,15 +1402,39 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 				objects.get(1).resize(100);
 				setCursor(Cursor.getDefaultCursor());
 			}
-			calibrated = true;
+			//calibrated = true;
 			synchronized (this) {
-				this.cameraMatrix = cameraMatrix;
+/*				this.cameraMatrix = cameraMatrix;
 				this.distortionCoefs = distortionCoefs;
-				//this.rotationVectorsfinal = rotationVectorsfinal;
-				//this.rotationVectorsfinal = rotationVectorsfinal;
+			    this.cameraMatrix2 = cameraMatrix2;
+				this.distortionCoefs2 = distortionCoefs2;
+
+*/				this.translationVectorsfinal = translationVectorsfinal;
+				this.rotationVectorsfinal = rotationVectorsfinal;
+				this.EssentialMat = EssentialMat;
+				this.FundamentalMat = FundamentalMat;
+
+			}
+			try{
+				opencv_calib3d.stereoRectify(cameraMatrix, distortionCoefs, cameraMatrix2, distortionCoefs2, imgSize, rotationVectorsfinal, translationVectorsfinal, R1, R2, P1, P2, Q);
+				log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html \n"
+					+ "\nCamera Q: " + Q.toString() + "\n" + printMatD(Q)
+					+ "\nCamera P1: " + P1.toString() + "\n" + printMatD(P1)
+					+ "\nCamera P2: " + P2.toString() + "\n" + printMatD(P2)
+					);
+			}catch (RuntimeException e) {
+				log.warning("calibration failed with exception " + e + "See https://adventuresandwhathaveyou.wordpress.com/2014/03/14/opencv-error-messages-suck/");
+			}
+			//R1, R2, P1, P2, Q
+			synchronized (this) {
+				this.R1 = R1;
+				this.R2 = R2;
+				this.P1 = P1;
+				this.P2 = P2;
+				this.Q = Q;
 			}
 			getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
-
+			calibrated = true;
 	}
 
 
@@ -1282,6 +1716,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 			this.rotationVectors = rotationVectors;
 			this.translationVectors = translationVectors;
 		}
+
 		getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
 	}
 
@@ -1590,6 +2025,26 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 		putString("dirPath", dirPath);
 		serializeMat(dirPath, "cameraMatrix", cameraMatrix);
 		serializeMat(dirPath, "distortionCoefs", distortionCoefs);
+
+		serializeMat(dirPath, "cameraMatrix2", cameraMatrix2);
+		serializeMat(dirPath, "distortionCoefs2", distortionCoefs2);
+
+		serializeMat(dirPath, "rotationVectorsfinal", rotationVectorsfinal);
+		serializeMat(dirPath, "translationVectorsfinal", translationVectorsfinal);
+
+		serializeMat(dirPath, "EssentialMat", EssentialMat);
+		serializeMat(dirPath, "FundamentalMat", FundamentalMat);
+
+		serializeMat(dirPath, "P1", P1);
+		serializeMat(dirPath, "P2", P2);
+
+		serializeMat(dirPath, "R1", R1);
+		serializeMat(dirPath, "R2", R2);
+
+		serializeMat(dirPath, "Q", Q);
+
+
+		//cameraMatrix2, distortionCoefs2, imgSize, rotationVectorsfinal, translationVectorsfinal,EssentialMat, FundamentalMat,
 		saved = true;
 		generateCalibrationString();
 	}
@@ -1727,15 +2182,37 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 
 	synchronized public void doClearImages() {
 		imageCounter = 0;
-		allImagePoints.setNull();
-		allObjectPoints.setNull();
+		//images.get(0).setNull();
+		//images.get(1).setNull();
+		//allImagePoints.setNull();
+		//allObjectPoints.setNull();
 		generateCalibrationString();
 	}
 
 	private void loadCalibration() {
+		//cameraMatrix2, distortionCoefs2, imgSize, rotationVectorsfinal, translationVectorsfinal,EssentialMat, FundamentalMat,
+
 		try {
 			cameraMatrix = deserializeMat(dirPath, "cameraMatrix");
 			distortionCoefs = deserializeMat(dirPath, "distortionCoefs");
+
+			cameraMatrix2 = deserializeMat(dirPath, "cameraMatrix2");
+			distortionCoefs2 = deserializeMat(dirPath, "distortionCoefs2");
+
+			rotationVectorsfinal = deserializeMat(dirPath, "rotationVectorsfinal");
+			translationVectorsfinal = deserializeMat(dirPath, "translationVectorsfinal");
+
+			EssentialMat = deserializeMat(dirPath, "EssentialMat");
+			FundamentalMat = deserializeMat(dirPath, "FundamentalMat");
+
+			P1 = deserializeMat(dirPath, "P1");
+			P2 = deserializeMat(dirPath, "P2");
+
+			R1 = deserializeMat(dirPath, "R1");
+			R2 = deserializeMat(dirPath, "R2");
+
+			Q = deserializeMat(dirPath, "Q");
+
 			generateCalibrationString();
 			if (calibrated) {
 				log.info("Calibrated: loaded cameraMatrix and distortionCoefs from folder " + dirPath);
@@ -2303,7 +2780,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 			if (chip.getNumPixels() > 0) {
 				sx = chip.getSizeX();
 				sy = chip.getSizeY(); // might not yet have been set in constructor
-				loadCalibration();
+				//loadCalibration();
 			}
 		}
 	}
