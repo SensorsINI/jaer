@@ -43,9 +43,9 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	/** The USB product ID of this device */
 	static public final short PID_FX3 = (short) 0x841A;
 	static public final short PID_FX2 = (short) 0x841B;
-	static public final int REQUIRED_FIRMWARE_VERSION_FX3 = 2;
+	static public final int REQUIRED_FIRMWARE_VERSION_FX3 = 3;
 	static public final int REQUIRED_FIRMWARE_VERSION_FX2 = 3;
-	static public final int REQUIRED_LOGIC_REVISION_FX3 = 7449;
+	static public final int REQUIRED_LOGIC_REVISION_FX3 = 9465;
 	static public final int REQUIRED_LOGIC_REVISION_FX2 = 7449;
 
 	/**
@@ -133,6 +133,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private final boolean apsFlipY;
 		private final int apsSizeX;
 		private final int apsSizeY;
+		private int apsADCShift;
 
 		private static final int APS_ROI_REGIONS_MAX = 4;
 		private int apsROIUpdate;
@@ -185,6 +186,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 			apsSizeX = spiConfigReceive(CypressFX3.FPGA_APS, (short) 0);
 			apsSizeY = spiConfigReceive(CypressFX3.FPGA_APS, (short) 1);
+
+			apsADCShift = 0;
 
 			// Set intial ROI sizes.
 			apsROIPositionX[0] = 0;
@@ -338,7 +341,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 										// Check that the buffer has space for this event. Enlarge if needed.
 										if (ensureCapacity(buffer, eventCounter + 1)) {
-                                                                                    // tobi added data to pass thru rising falling and pulse events 
+                                                                                    // tobi added data to pass thru rising falling and pulse events
 											buffer.getAddresses()[eventCounter] = DavisChip.EXTERNAL_INPUT_EVENT_ADDR+data;
 											buffer.getTimestamps()[eventCounter++] = adjustedTimestamp;
 										}
@@ -643,7 +646,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									buffer.getAddresses()[eventCounter] = DavisChip.ADDRESS_TYPE_APS
 										| ((yPos << DavisChip.YSHIFT) & DavisChip.YMASK) | ((xPos << DavisChip.XSHIFT) & DavisChip.XMASK)
 										| ((apsCurrentReadoutType << DavisChip.ADC_READCYCLE_SHIFT) & DavisChip.ADC_READCYCLE_MASK)
-										| (data & DavisChip.ADC_DATA_MASK);
+										| ((data >>> apsADCShift) & DavisChip.ADC_DATA_MASK);
 									buffer.getTimestamps()[eventCounter++] = adjustedTimestamp;
 								}
 								break;
@@ -756,6 +759,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										// Jump to next type of APS info (col->row, start->end).
 										apsROIUpdate++;
 
+										break;
+									}
+
+									case 3: {
+										apsADCShift = misc8Data - 10;
 										break;
 									}
 

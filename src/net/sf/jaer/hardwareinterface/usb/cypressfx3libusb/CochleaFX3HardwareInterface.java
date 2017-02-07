@@ -42,7 +42,7 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 	 * The USB product ID of this device
 	 */
 	static public final short PID_FX3 = (short) 0x841C;
-	static public final int REQUIRED_FIRMWARE_VERSION_FX3 = 2;
+	static public final int REQUIRED_FIRMWARE_VERSION_FX3 = 3;
 	static public final int REQUIRED_LOGIC_REVISION_FX3 = 0;
 
 	/**
