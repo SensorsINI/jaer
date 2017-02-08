@@ -1,4 +1,4 @@
-package ch.unizh.ini.jaer.projects.multitracking;
+﻿package ch.unizh.ini.jaer.projects.multitracking;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -41,7 +41,7 @@ public class EasyRecordWindows extends JFrame implements ActionListener {
 		JPanel panel = new JPanel();
 		panel.setLayout(new FlowLayout());
 
-		Object[] elements = new Object[]{"Walking", "Running", "Jump"};
+		Object[] elements = new Object[]{"Walking", "Running", "Jump","Test","Calib"};
 
 		liste1 = new JComboBox(elements);
 		panel.add(liste1);
@@ -81,7 +81,7 @@ public class EasyRecordWindows extends JFrame implements ActionListener {
 
 @Override
 public String getTitle(){
-	return textboxName.getText()+liste1.getActionCommand();
+	return textboxName.getText()+liste1.getSelectedItem().toString();
 
 }
 
