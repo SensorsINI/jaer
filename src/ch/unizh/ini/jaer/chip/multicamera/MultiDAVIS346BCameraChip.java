@@ -27,13 +27,14 @@ public class MultiDAVIS346BCameraChip extends MultiDavisCameraChip{
     
     public MultiDAVIS346BCameraChip() {
         super();
-        setCameraChip(new Davis346B());
-        setSizeX(Davis346B.WIDTH_PIXELS);
-        setSizeY(Davis346B.HEIGHT_PIXELS);
-        setApsFirstPixelReadOut(new Point(0, getSizeY() - 1));
-        setApsLastPixelReadOut(new Point(getSizeX() - 1, 0));
+        Davis346B chip=new Davis346B();
+        setCameraChip(chip);
+        setSizeX(chip.WIDTH_PIXELS);
+        setSizeY(chip.HEIGHT_PIXELS);
+        setApsFirstPixelReadOut(new Point(0, chip.getSizeY() - 1));
+        setApsLastPixelReadOut(new Point(chip.getSizeX() - 1, 0));
         
-        setRenderer(new AEFrameChipRenderer(new Davis346B()));
+        setRenderer(new AEFrameChipRenderer(chip));
 
         setDefaultPreferencesFile("biasgenSettings/Davis346b/MultiDAVIS346BCameraChip.xml");
         setBiasgen(new Biasgen(this));
