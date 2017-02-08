@@ -35,6 +35,7 @@ public class MultiDAVIS240CCameraChip extends MultiDavisCameraChip {
         setCameraChip(chip);
         setSizeX(chip.WIDTH_PIXELS);
         setSizeY(chip.HEIGHT_PIXELS);
+        setADCMax(chip.MAX_ADC);
         setApsFirstPixelReadOut(new Point(0, chip.getSizeY() - 1));
         setApsLastPixelReadOut(new Point(chip.getSizeX() - 1, 0));
         
@@ -61,7 +62,7 @@ public class MultiDAVIS240CCameraChip extends MultiDavisCameraChip {
          */
         public Biasgen(final Chip chip) {
             super(chip);         
-            this.setCaptureFramesEnabled(false);
+//            this.setCaptureFramesEnabled(false);
             this.setDisplayFrames(false);
             this.setImuEnabled(false);
             this.setDisplayImu(false);
