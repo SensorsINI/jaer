@@ -13,63 +13,56 @@ package ch.unizh.ini.jaer.chip.multicamera;
  *
  */
 
-import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
-import eu.seebetter.ini.chips.DavisChip;
-import eu.seebetter.ini.chips.davis.DAVIS240C;
 import eu.seebetter.ini.chips.davis.Davis240Config;
 import java.util.ArrayList;
 import java.util.TreeMap;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
-import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.aemonitor.EventRaw;
-
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.MultiCameraApsDvsEvent;
-import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.stereopsis.MultiCameraBiasgenHardwareInterface;
+import net.sf.jaer.stereopsis.MultiCameraHardwareInterface;
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.stereopsis.MultiCameraInterface;
 
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.aemonitor.EventRaw;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.OutputEventIterator;
 
+import net.sf.jaer.event.MultiCameraApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEvent;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.DavisConfig;
+import eu.seebetter.ini.chips.davis.DavisTowerBaseConfig;
+
+import net.sf.jaer.JAERViewer;
+import net.sf.jaer.graphics.AEViewer;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.event.ActionEvent;
-import java.awt.event.KeyEvent;
-import java.awt.event.WindowAdapter;
 import javax.swing.Action;
+import javax.swing.KeyStroke;
+import java.awt.event.KeyEvent;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
-import javax.swing.KeyStroke;
-import net.sf.jaer.DevelopmentStatus;
-import net.sf.jaer.JAERViewer;
-import net.sf.jaer.aemonitor.AEPacket;
-import net.sf.jaer.biasgen.Biasgen;
-import net.sf.jaer.biasgen.BiasgenHardwareInterface;
-import net.sf.jaer.chip.Chip;
-import net.sf.jaer.chip.EventExtractor2D;
-import net.sf.jaer.event.ApsDvsEvent;
-import net.sf.jaer.event.ApsDvsEventPacket;
-import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
-import net.sf.jaer.graphics.AEViewer;
-import net.sf.jaer.graphics.BinocularDVSRenderer;
-import net.sf.jaer.graphics.TwoCamera3DDisplayMethod;
-import net.sf.jaer.graphics.MultiViewMultiCamera;
-import net.sf.jaer.stereopsis.MultiCameraHardwareInterface;
-import static net.sf.jaer.stereopsis.MultiCameraHardwareInterface.getNumberOfCameraChip;
-import java.lang.Object;
-import javax.swing.Icon;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.JSeparator;
 import net.sf.jaer.graphics.ImageDisplay;
+
+import net.sf.jaer.graphics.TwoCamera3DDisplayMethod;
+import net.sf.jaer.graphics.MultiViewMultiCamera;
+
+import java.util.Arrays;
+import java.util.logging.LogManager;
+
 
 @Description("A multi Davis retina each on it's own USB interface with merged and presumably aligned fields of view")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
@@ -80,17 +73,29 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
     private AEChip chip= new AEChip();
     private AEChip mainChip= new AEChip();
     public AEChip[] cameras= new AEChip[NUM_CAMERAS];
+    
     public JAERViewer JAERV;
     public AEViewer mainAEV;
     public AEViewer[] camerasAEVs= new AEViewer[NUM_CAMERAS];
-    public ArrayList<HardwareInterface> hws = new ArrayList();
-    int nHW = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
-    private int sx;
-    private int sy;
-    private int displaycamera=NUM_CAMERAS; 
     private JFrame apsFrame = null;
     public ImageDisplay[] apsDisplay= new ImageDisplay[NUM_CAMERAS];
+    private ImageDisplay.Legend apsDisplayLegend;
+    private int displaycamera=NUM_CAMERAS; 
+    private float[] displayFrame;
     private boolean displayAPSEnable=false;
+    
+    public ArrayList<HardwareInterface> hws = new ArrayList();
+    
+    private int sx;
+    private int sy;
+    private int ADCMax;
+
+    private float[] resetBuffer, signalBuffer;
+    private float[] displayBuffer;
+    private float[] apsDisplayPixmapBuffer;
+
+    int count0=0;
+    int count1=0;
 
 
     private JMenu multiCameraMenu = null;
@@ -101,7 +106,7 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
     public MultiDavisCameraChip() {
         
         super();
-
+        LogManager.getLogManager().reset();
         setName("MultiDavisCameraChip");
         setEventClass(MultiCameraApsDvsEvent.class);
         setEventExtractor(new Extractor(this));
@@ -121,6 +126,13 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
             getAeViewer().removeMenu(multiCameraMenu);
             multiCameraMenu = null;
         }
+        if (camerasAEVs != null) {
+            for (int i=0; i<camerasAEVs.length; i++){
+                if(camerasAEVs[i]!=null){
+                    camerasAEVs[i].setVisible(false);
+                }
+            }
+        }
     }
 
     @Override
@@ -131,9 +143,71 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
         }
         multiCameraMenu = new JMenu("MultiCameraMenu");
         multiCameraMenu.add(new JMenuItem(new SelectCamera()));
+        multiCameraMenu.add(new JSeparator());
         multiCameraMenu.add(new JMenuItem(new ApsDisplay()));
+        multiCameraMenu.add(new JMenuItem(new createMultipleAEViewer()));
         getAeViewer().addMenu(multiCameraMenu);
     }
+    
+    
+    final public class createMultipleAEViewer extends DavisMenuAction {
+
+        public createMultipleAEViewer() {
+            super("CreateMultipleAEViewer", "Show each camera view on different viewers", "CreateMultipleAEViewer");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_E, java.awt.event.InputEvent.SHIFT_MASK));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            
+            mainAEV=getMultiChip().getAeViewer();    
+            JAERV=mainAEV.getJaerViewer();
+            NUM_VIEWERS= JAERV.getViewers().size();
+                     
+            while (NUM_VIEWERS<NUM_CAMERAS+1) {
+                
+                int i=NUM_VIEWERS-1;
+                
+                camerasAEVs[i]= new AEViewer(JAERV,chip.getClass().getName());//,chip.getClass().getName()
+                
+                setBiasgenCameraViewers (camerasAEVs[i].getChip());
+                camerasAEVs[i].setVisible(true);
+                
+                if (hws.size()!=0){
+                    camerasAEVs[i].getChip().setHardwareInterface(hws.get(i));
+                } else {
+                    log.warning("No Harwdware Interfaces found!");
+                }
+
+                NUM_VIEWERS= JAERV.getViewers().size();
+            }
+            
+        }
+    }
+    
+    public void setBiasgenCameraViewers (AEChip chip){
+        
+        String biasName=chip.getBiasgen().getName();
+        if (biasName=="DavisConfig") {
+            DavisConfig davisconfig= (DavisConfig) chip.getBiasgen();
+            davisconfig.setDisplayFrames(false);
+            davisconfig.setDisplayImu(false);
+            chip.setBiasgen(davisconfig);
+        } 
+        if (biasName=="Davis240Config"){
+            Davis240Config davisconfig= (Davis240Config) chip.getBiasgen();
+            davisconfig.setDisplayFrames(false);
+            davisconfig.setDisplayImu(false);
+            chip.setBiasgen(davisconfig);
+        }
+        if (biasName=="DavisTowerBaseConfig"){
+            DavisTowerBaseConfig davisconfig= (DavisTowerBaseConfig) chip.getBiasgen();
+            davisconfig.setDisplayFrames(false);
+            davisconfig.setDisplayImu(false);
+            chip.setBiasgen(davisconfig); 
+        }
+    }
+    
     
     final public class ApsDisplay extends DavisMenuAction {
 
@@ -147,12 +221,28 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
             displayAPSEnable=true;
             for (int c=0; c< NUM_CAMERAS; c++){
                 apsDisplay[c] = ImageDisplay.createOpenGLCanvas();
-                apsFrame = new JFrame("APS Frame");
+                apsFrame = new JFrame("APS Camera " + c);
                 apsFrame.setPreferredSize(new Dimension(400, 400));
                 apsFrame.getContentPane().add(apsDisplay[c], BorderLayout.CENTER);
                 apsFrame.setVisible(true);
                 apsFrame.pack();
-                
+                apsDisplayLegend = apsDisplay[c].addLegend("", 0, 0);
+                final float[] displayColor = new float[3];
+                displayColor[0] = 1.0f;
+                displayColor[1] = 1.0f;
+                displayColor[2] = 1.0f;
+                apsDisplayLegend.color = displayColor;
+                apsDisplay[c].setImageSize(sx, sy);
+                resetBuffer = new float[sx * sy];
+                signalBuffer = new float[sx * sy];
+                displayFrame = new float[sx * sy];
+                displayBuffer = new float[sx * sy];
+                apsDisplayPixmapBuffer = new float[3 * sx * sy];
+                Arrays.fill(resetBuffer, 0.0f);
+                Arrays.fill(signalBuffer, 0.0f);
+                Arrays.fill(displayFrame, 0.0f);
+                Arrays.fill(displayBuffer, 0.0f);
+                Arrays.fill(apsDisplayPixmapBuffer, 0.0f);
             }
         }
     }
@@ -186,7 +276,11 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
         this.setSizeX(sx);
         sy=chip.getSizeY();
         this.setSizeY(sy);
-    } 
+    }
+    
+    public void setADCMax(int ADCmaxValue){
+        ADCMax=ADCmaxValue;
+    }
     
     public AEChip getChipType(){
         AEChip chipType=this.chip;
@@ -290,18 +384,24 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
                     }
                 }             
                 
-                if (displayAPSEnable && e.isApsData()){
-                    apsDisplay[e.camera].setPixmapGray(e.x, e.y, e.getAdcSample());
-                    if(e.isEndOfFrame()){
-                        apsDisplay[e.camera].display();
-                    }                                           
+                if (e.isApsData() & displayAPSEnable){
+                    putAPSEventInBuffer(e);
                 }
 
-                
             }
             return (ApsDvsEventPacket) out;
 
         }
+        
+        public void putAPSEventInBuffer(MultiCameraApsDvsEvent e) {
+                int c=e.camera;
+                final ApsDvsEvent.ReadoutType type = e.getReadoutType();
+                final float val = e.getAdcSample();
+                apsDisplay[c].setPixmapGray(e.x, e.y, val / ADCMax);
+                apsDisplay[c].repaint();               
+        }
+        
+        
 
         /** Reconstructs the raw packet after event filtering to include the binocular information
         @param packet the filtered packet
@@ -356,10 +456,10 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
         }
         int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
         
-        log.info(nHW + " interfaces found!");
-        if (nHW <1) {
-            log.warning( " couldn't build MultiCameraHardwareInterface hardware interface because only " + nHW + " camera is available and at least 2 cameras are needed");
-            hardwareInterface= HardwareInterfaceFactory.instance().getInterface(nHW);
+        log.info(n + " interfaces found!");
+        if (n <1) {
+            log.warning( " couldn't build MultiCameraHardwareInterface hardware interface because only " + n + " camera is available and at least 2 cameras are needed");
+            hardwareInterface= HardwareInterfaceFactory.instance().getInterface(n);
             return hardwareInterface;
         }
         
@@ -411,33 +511,14 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
         return hardwareInterface;
     }
     
-    public ArrayList<HardwareInterface> getNameHWs() {
+    public ArrayList<HardwareInterface> getHWs() {
         return hws;
     }
 
-    public void setNameHW(HardwareInterface hw) {
+    public void setHWs(HardwareInterface hw) {
         hws.add(hw);
     }
     
-//    public void setBiasgenCameraViewers (AEChip chip){
-//        
-//        String biasName=chip.getBiasgen().getName();
-//        if (biasName=="DavisConfig") {
-//            DavisConfig davisconfig= (DavisConfig) chip.getBiasgen();
-////            davisconfig.setCaptureFramesEnabled(false);
-//            davisconfig.setDisplayFrames(false);
-//            davisconfig.setImuEnabled(false);
-//            davisconfig.setDisplayImu(false);
-//            chip.setBiasgen(davisconfig);
-//        } else if (biasName=="Davis240Config"){
-//            Davis240Config davisconfig= (Davis240Config) chip.getBiasgen();
-//            davisconfig.setCaptureFramesEnabled(false);
-//            davisconfig.setDisplayFrames(false);
-//            davisconfig.setImuEnabled(false);
-//            davisconfig.setDisplayImu(false);
-//            chip.setBiasgen(davisconfig);
-//        }
-//    }
     
 }
 
