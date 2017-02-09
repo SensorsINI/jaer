@@ -1,4 +1,4 @@
-package aTestSophie;
+package ch.unizh.ini.jaer.projects.multitracking;
 
 import static org.bytedeco.javacpp.opencv_core.CV_32FC3;
 import static org.bytedeco.javacpp.opencv_core.CV_8U;
