@@ -1,4 +1,5 @@
-﻿package ch.unizh.ini.jaer.projects.multitracking;
+package ch.unizh.ini.jaer.projects.multitracking;
+
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;

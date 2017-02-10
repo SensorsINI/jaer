@@ -84,7 +84,7 @@ public class easyRecordInterface extends EventFilter2D{
 		//arrayOfRecordedFile=new ArrayList();
 		for (AEViewer aev : arrayOfAEvi){
 			System.out.println(aev.getName()+"startRecording");
-			aev.startLogging(filename+aev.toString());
+			aev.startLogging(filename+aev.toString(), "2.0"); // (tobi) use a AE-DAT-2.0 file for now
 			//arrayOfRecordedFile.add(loggingFile);
 
 
