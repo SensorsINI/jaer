@@ -1,6 +1,6 @@
 package ch.unizh.ini.jaer.projects.multitracking;
 
-import static org.bytedeco.javacpp.opencv_core.BORDER_REPLICATE;
+import static org.bytedeco.javacpp.opencv_core.BORDER_CONSTANT;
 import static org.bytedeco.javacpp.opencv_core.CV_32FC3;
 import static org.bytedeco.javacpp.opencv_core.CV_8U;
 
@@ -10,12 +10,10 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Vector;
 
-import org.bytedeco.javacpp.FloatPointer;
 import org.bytedeco.javacpp.opencv_core;
 import org.bytedeco.javacpp.opencv_core.FileStorage;
 import org.bytedeco.javacpp.opencv_core.Mat;
@@ -39,7 +37,6 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.filter.LowpassFilter;
-
 /**
  * Example to compute the location of one joint
  * @author Sophie
@@ -59,7 +56,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	//Vector<TrackFocus> listOfTrackFocus;
 	// radius of the tracker zone of interest
 	double radius=10.;
-	Vector<List> joints = new Vector<List>();
+	Vector<Vector<Float>> joints = new Vector<Vector<Float>>();
 	private Mat jointsToTrack;
 	private String dirPath = getString("dirPath", System.getProperty("user.dir"));
 	private boolean  jointsloaded=false;
@@ -81,6 +78,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 		frameExtractor.setExtRender(false);
 		setEnclosedFilterChain(filterChain);
 		resetFilter();
+	//	readMatTextFile();
 	}
 
 	// TO DO rewrite it properly
@@ -110,7 +108,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 		if(startnewtrack==true){
 		while(startnewtrack==true){
 			Iterator itr = ((ApsDvsEventPacket) in).fullIterator();
-			while (itr.hasNext()) {
+			while ((itr.hasNext())&&(startnewtrack==true)) {
 				Object o = itr.next();
 				if (o == null) {
 					break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
@@ -118,13 +116,15 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 				BasicEvent e = (BasicEvent) o;
 				//take a picture
 				if(frameExtractor.hasNewFrame()){
-					lastFrame1 = frameExtractor.getNewFrame();
-					FloatPointer p1 = new FloatPointer(lastFrame1);
-					Mat input1 = new Mat(p1);
+					float [] lastFrame1 = frameExtractor.getNewFrame();
+					//FloatPointer p1 = new FloatPointer(lastFrame1);
+					Mat input1 = new Mat(lastFrame1);
 					input1.convertTo(input1, CV_8U, 255, 0);
 					Mat img1 = input1.reshape(0, sy);
 					StartNewTrack(img1);
+					System.out.println("tracking is starting");
 					startnewtrack=false;
+					chip.getAeViewer().getAePlayer().setPaused(false);
 				}
 			}
 		}
@@ -141,10 +141,10 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 						if (e.isSpecial()) {
 							continue;
 						}
-						if ((e.x<((short) joints.get(i).get(j)+radius))&&
-							(e.x>((short) joints.get(i).get(j)-radius))&&
-							(e.y<((short)joints.get(i).get(j+2)+radius))&&
-							(e.y>((short)joints.get(i).get(j+2)-radius))) {
+						if ((e.x<(joints.get(i).get(j)+radius))&&
+							(e.x>(joints.get(i).get(j)-radius))&&
+							(e.y<(joints.get(i).get(j+2)+radius))&&
+							(e.y>(joints.get(i).get(j+2)-radius))) {
 							xs[index] = e.x;
 							ys[index] = e.y;
 							index++;
@@ -176,17 +176,24 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	}
 
 	public void readMatTextFile(){
-		Vector<Vector<Float>> joints = new Vector<Vector<Float>>();
+		joints = new Vector<Vector<Float>>();
 		int i=0;
 		int j=0;
 		try {
-			for (String line : Files.readAllLines(Paths.get("dirPath/file.txt"))) {
-				for (String part : line.split("\\s+")) {
+			for (String line : Files.readAllLines(Paths.get("C:/Users/sophie/Documents/MATLAB/pose_estimation_code_release_v1.22/example_data/myfile.txt"))) {
+
+				for (String part : line.split("   ")) {
+					if(!part.isEmpty()){
+					System.out.println(part);
+					System.out.println(Double.valueOf(part));
+					if(j<10){
 					Vector<Float> list=new Vector<Float>();
 					joints.add(list);
+					}
 					Float x = (Double.valueOf(part)).floatValue();
-					joints.get(i).add(j, x);
+					joints.get(j % 10).add(i, x);
 					j++;
+					}
 				}
 				i++;
 			}
@@ -194,7 +201,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 		catch (IOException e) {
 			e.printStackTrace();
 		}
-
+		System.out.println(joints);
 	}
 
 	@Override
@@ -215,13 +222,13 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 		float radius=10;
 		float scale=3;
 		for(int i=0;i<joints.size(); i++){
-			float centerX1=(float) joints.get(i).get(0);
-			float centerX2=(float) joints.get(i).get(2);
+			float centerX1=joints.get(i).get(0);
+			float centerX2=joints.get(i).get(2);
 			float width=radius;
 			float height=radius;
 			float angle=0;
-			float centerY1=(float) joints.get(i).get(1);
-			float centerY2=(float) joints.get(i).get(3);
+			float centerY1=joints.get(i).get(1);
+			float centerY2=joints.get(i).get(3);
 			DrawGL.drawBox(gl, centerX1, centerY1, width, height, angle);
 			DrawGL.drawBox(gl, centerX2, centerY2, width, height, angle);
 			DrawGL.drawLine(gl, centerX1, centerY1, centerX2, centerY2, scale);
@@ -251,22 +258,22 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 		int borderwidth=356-sx;
 		Mat imgPadded = new Mat(500, 356, CV_8U);
 
-		opencv_core.copyMakeBorder(imgSave, imgPadded, borderheigh/2, borderheigh/2, borderwidth/2,borderwidth/2, BORDER_REPLICATE);
+		opencv_core.copyMakeBorder(imgSave, imgPadded, borderheigh/2, borderheigh/2, borderwidth/2,borderwidth/2, BORDER_CONSTANT);
 		String path="C:/Users/sophie/Documents/MATLAB/pose_estimation_code_release_v1.22/example_data/images";
 		//save the taken picture
-		String filename = "test";
+		String filename = "test"+".jpg";
 		String fullFilePath = path + "\\" + filename;
-		org.bytedeco.javacpp.opencv_imgcodecs.imwrite(fullFilePath, imgSave);
+		org.bytedeco.javacpp.opencv_imgcodecs.imwrite(fullFilePath, imgPadded);
 		log.info("wrote " + fullFilePath);
 
 
 		//MATLAB JOB
 		// To get a sort of handler to the matlab instance
 		MatlabProxyFactory factory = new MatlabProxyFactory();
-		MatlabProxy proxy;
+
 
 		try {
-			proxy = factory.getProxy();
+			MatlabProxy proxy = factory.getProxy();
 			proxy.eval("cd C:/Users/sophie/Documents/MATLAB/pose_estimation_code_release_v1.22/code");
 			proxy.eval("startup");
 			proxy.eval("[T sticks_imgcoor] = PoseEstimStillImage(pwd, 'images', 'test.jpg', 1, 'full', [119 70 158 142]', fghigh_params, parse_params_Buffy3and4andPascal, [], pm2segms_params, true);");
@@ -325,14 +332,12 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	private void loadJoints() {
 		//cameraMatrix2, distortionCoefs2, imgSize, rotationVectorsfinal, translationVectorsfinal,EssentialMat, FundamentalMat,
 
-		try {
-			jointsToTrack = deserializeMat(dirPath, "jointsToTrack");
+
+			//jointsToTrack = deserializeMat(dirPath, "jointsToTrack");
 			readMatTextFile();
 			//distortionCoefs = deserializeMat(dirPath, "distortionCoefs");
 
-		} catch (Exception i) {
-			log.warning("Could not load existing joints from folder " + dirPath + " on construction:" + i.toString());
-		}
+
 		setInitialJointPosition();
 		jointsloaded=true;
 	}
