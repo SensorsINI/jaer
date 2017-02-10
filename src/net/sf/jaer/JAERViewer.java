@@ -91,7 +91,8 @@ public class JAERViewer {
     public ToggleSyncEnabledAction getToggleSyncEnabledAction() {
         return toggleSyncEnabledAction;
     }
-    volatile boolean loggingEnabled = false;
+    /** This public flag marks that data logging (recording) is enabled. It is normally set by startLogging/stopLogging, but special applications can set it */
+    public volatile boolean loggingEnabled = false;
     //private boolean electricalTimestampResetEnabled=prefs.getBoolean("JAERViewer.electricalTimestampResetEnabled",false);
 //    private String aeChipClassName=prefs.get("JAERViewer.aeChipClassName",Tmpdiff128.class.getName());
     private WindowSaver windowSaver; // TODO: encapsulate
