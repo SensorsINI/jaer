@@ -28,18 +28,20 @@ import net.sf.jaer.graphics.MultiViewMultiCamera;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class MultiDAVIS240CCameraChip extends MultiDavisCameraChip {
     
+    public int NUM_CAMERAS= super.getNumCameras();
+    
     /** Creates a new instance of  */
     public MultiDAVIS240CCameraChip() {
         super();
-        DAVIS240C chip=new DAVIS240C();
-        setCameraChip(chip);
-        setSizeX(chip.WIDTH_PIXELS);
-        setSizeY(chip.HEIGHT_PIXELS);
-        setADCMax(chip.MAX_ADC);
-        setApsFirstPixelReadOut(new Point(0, chip.getSizeY() - 1));
-        setApsLastPixelReadOut(new Point(chip.getSizeX() - 1, 0));
+
+        setCameraChip(new DAVIS240C());
+        setSizeX(DAVIS240C.WIDTH_PIXELS);
+        setSizeY(DAVIS240C.HEIGHT_PIXELS);
+        setADCMax(DAVIS240C.MAX_ADC);
+        setApsFirstPixelReadOut(new Point(0, DAVIS240C.WIDTH_PIXELS - 1));
+        setApsLastPixelReadOut(new Point(DAVIS240C.HEIGHT_PIXELS - 1, 0));
         
-        setRenderer(new AEFrameChipRenderer(chip));
+        setRenderer(new AEFrameChipRenderer(this));
         
         setDefaultPreferencesFile("biasgenSettings/Davis240bc/MultiDAVIS240CCameraChip.xml");
         setBiasgen(new Biasgen(this)); 
