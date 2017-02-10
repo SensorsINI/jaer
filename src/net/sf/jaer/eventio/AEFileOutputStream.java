@@ -53,7 +53,8 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
      * <code>new BufferedOutputStream(new FileOutputStream(File f)</code>.
      * @param chip (optionally) provide the chip used and write out additional
      * header info
-     * @param dataFileVersionNum provide the aedat file data format 
+     * @param dataFileVersionNum provide the AEDAT file data format string,  e.g. "2.0", "3.0", or "3.1". ("2.0" is standard AEDAT file format for pre-caer records and is most stable))
+
      * @throws java.io.IOException thrown when write to file failed
      */
     public AEFileOutputStream(final OutputStream os, final AEChip chip, String dataFileVersionNum) throws IOException {
