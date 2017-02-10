@@ -4757,6 +4757,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * Filenames without path are logged to the startup folder. The default
      * extension of AEDataFile.DATA_FILE_EXTENSION is appended if there is no
      * extension.
+     * 
+     * @param dataFileVersionNum the version  number string, e.g. "2.0", "3.0", or "3.1". ("2.0" is standard AEDAT file format for pre-caer records and is most stable))
      *
      * @return the file that is logged to.
      */
