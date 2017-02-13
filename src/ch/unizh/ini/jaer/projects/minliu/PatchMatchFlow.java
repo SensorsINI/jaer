@@ -26,7 +26,7 @@ import net.sf.jaer.eventprocessing.filter.TransformAtTime;
 import net.sf.jaer.util.filter.HighpassFilter;
 
 /**
- * Uses patch matching to measure local optical flow. <b>Not</b> gradient based,
+ * Uses patch matching to measureTT local optical flow. <b>Not</b> gradient based,
  * but rather matches local features backwards in time.
  *
  * @author Tobi, Jan 2016
@@ -78,12 +78,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private FilterChain filterChain;
     private Steadicam cameraMotion;
 
-    private int lastImuTimestamp = 0;
-    private float panRate = 0, tiltRate = 0, rollRate = 0; // in deg/sec
-    private float panOffset = getFloat("panOffset", 0), tiltOffset = getFloat("tiltOffset", 0), rollOffset = getFloat("rollOffset", 0);
-    private boolean showTransformRectangle = getBoolean("showTransformRectangle", true);
-    private boolean removeCameraMotion = getBoolean("removeCameraMotion", false);
-
     // calibration
     private boolean calibrating = false; // used to flag calibration state
     private int calibrationSampleCount = 0;
@@ -98,13 +92,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private SliceMethod sliceMethod = SliceMethod.valueOf(getString("sliceMethod", SliceMethod.ConstantDuration.toString()));
     private int eventCounter = 0;
     private int sliceLastTs = 0;
-    HighpassFilter panTranslationFilter = new HighpassFilter();
-    HighpassFilter tiltTranslationFilter = new HighpassFilter();
-    HighpassFilter rollFilter = new HighpassFilter();
-    private float highpassTauMsTranslation = getFloat("highpassTauMsTranslation", 1000);
-    private float highpassTauMsRotation = getFloat("highpassTauMsRotation", 1000);
-    private boolean highPassFilterEn = getBoolean("highPassFilterEn", false);
-
+ 
     public PatchMatchFlow(AEChip chip) {
         super(chip);
 
@@ -116,8 +104,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         // filterChain.add(cameraMotion);
         setEnclosedFilterChain(filterChain);
 
-        String imu = "IMU";
-        String patchTT = "Patch matching";
+        String patchTT = "Block matching";
         String eventSqeMatching = "Event squence matching";
         String preProcess = "Denoise";
 
@@ -128,18 +115,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");
         setPropertyTooltip(patchTT, "sliceDurationUs", "duration of patches in us, also called sample interval");
+        setPropertyTooltip(patchTT, "sliceMethod", "method for determining time slice duration for block matching");
         setPropertyTooltip(eventSqeMatching, "cost", "The cost to translation one event to the other position");
         setPropertyTooltip(eventSqeMatching, "thresholdTime", "The threshold value of interval time between the first event and the last event");
         setPropertyTooltip(eventSqeMatching, "sliceEventCount", "number of collected events in each bitmap");
         setPropertyTooltip(eventSqeMatching, "eventPatchDimension", "linear dimenion of patches to match, in pixels");
-        setPropertyTooltip(dispTT, "highpassTauMsTranslation", "highpass filter time constant in ms to relax transform back to zero for translation (pan, tilt) components");
-        setPropertyTooltip(dispTT, "highpassTauMsRotation", "highpass filter time constant in ms to relax transform back to zero for rotation (roll) component");
-        setPropertyTooltip(dispTT, "highPassFilterEn", "enable the high pass filter or not");
-        setPropertyTooltip(dispTT, "showTransformRectangle", "Disable to not show the red transform square and red cross hairs");
         setPropertyTooltip(dispTT, "displayOutputVectors", "display the output motion vectors or not");
-        setPropertyTooltip(imu, "removeCameraMotion", "Remove the camera rotation using IMU rate gyro, as in Steadicam filter");
-        setPropertyTooltip(imu, "zeroGyro", "zeros the gyro output. Sensor should be stationary for period of 1-2 seconds during zeroing");
-        setPropertyTooltip(imu, "eraseGyroZero", "Erases the gyro zero values");
     }
 
     @Override
@@ -179,23 +160,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 continue;
             }
             countIn++;
-
-            if (removeCameraMotion) {
-                showTransformRectangle = true;
-                int nx = e.x - chip.getSizeX() / 2, ny = e.y - chip.getSizeY() / 2;
-                e.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + 120);
-                e.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + 90);
-                e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
-                if ((e.x > chip.getSizeX() - 1) || (e.x < 0) || (e.y > chip.getSizeY() - 1) || (e.y < 0)) {
-                    e.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them outputPacket in the reused packet.
-                    continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
-                } else {
-                    e.setFilteredOut(false);
-                }
-                extractEventInfo(e); // Update x, y, ts and type    
-            } else {
-                showTransformRectangle = false;
-            }
 
             // compute flow
             SADResult result = new SADResult(0, 0, 0);
@@ -967,23 +931,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         putInt("sliceDurationUs", sliceDurationUs);
     }
 
-    public boolean isShowTransformRectangle() {
-        return showTransformRectangle;
-    }
-
-    public void setShowTransformRectangle(boolean showTransformRectangle) {
-        this.showTransformRectangle = showTransformRectangle;
-    }
-
-    public boolean isRemoveCameraMotion() {
-        return removeCameraMotion;
-    }
-
-    public void setRemoveCameraMotion(boolean removeCameraMotion) {
-        this.removeCameraMotion = removeCameraMotion;
-        putBoolean("removeCameraMotion", removeCameraMotion);
-    }
-
     /**
      * @return the sliceEventCount
      */
@@ -999,35 +946,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         putInt("sliceEventCount", sliceEventCount);
     }
 
-    public float getHighpassTauMsTranslation() {
-        return highpassTauMsTranslation;
-    }
-
-    public void setHighpassTauMsTranslation(float highpassTauMs) {
-        this.highpassTauMsTranslation = highpassTauMs;
-        putFloat("highpassTauMsTranslation", highpassTauMs);
-        panTranslationFilter.setTauMs(highpassTauMs);
-        tiltTranslationFilter.setTauMs(highpassTauMs);
-    }
-
-    public float getHighpassTauMsRotation() {
-        return highpassTauMsRotation;
-    }
-
-    public void setHighpassTauMsRotation(float highpassTauMs) {
-        this.highpassTauMsRotation = highpassTauMs;
-        putFloat("highpassTauMsRotation", highpassTauMs);
-        rollFilter.setTauMs(highpassTauMs);
-    }
-
-    public boolean isHighPassFilterEn() {
-        return highPassFilterEn;
-    }
-
-    public void setHighPassFilterEn(boolean highPassFilterEn) {
-        this.highPassFilterEn = highPassFilterEn;
-        putBoolean("highPassFilterEn", highPassFilterEn);
-    }
+ 
 
     public boolean isDisplayOutputVectors() {
         return displayOutputVectors;
