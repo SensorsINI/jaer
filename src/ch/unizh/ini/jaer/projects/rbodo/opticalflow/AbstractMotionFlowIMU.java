@@ -757,7 +757,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             motionFlowStatistics.processingTime.startTime = System.nanoTime();
         }
         motionField.checkArrays();
-        if(last)
         getEnclosedFilterChain().filterPacket(in);
     }
 
