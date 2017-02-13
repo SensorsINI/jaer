@@ -717,7 +717,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         // Display statistics
         if (measureProcessingTime) {
             gl.glPushMatrix();
-            gl.glRasterPos2i(240, 0);
+            gl.glRasterPos2i(chip.getSizeX(), 0);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("%4.2f +/- %5.2f us", new Object[]{
                 motionFlowStatistics.processingTime.getMean(),
@@ -727,14 +727,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
         if (measureAccuracy) {
             gl.glPushMatrix();
-            gl.glRasterPos2i(240, 10);
+            gl.glRasterPos2i(chip.getSizeX(), 10);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("%4.2f +/- %5.2f pixel/s", new Object[]{
                 motionFlowStatistics.endpointErrorAbs.getMean(),
                 motionFlowStatistics.endpointErrorAbs.getStdDev()}));
             gl.glPopMatrix();
             gl.glPushMatrix();
-            gl.glRasterPos2i(240, 20);
+            gl.glRasterPos2i(chip.getSizeX(), 20);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("%4.2f +/- %5.2f °", new Object[]{
                 motionFlowStatistics.angularError.getMean(),
@@ -757,6 +757,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             motionFlowStatistics.processingTime.startTime = System.nanoTime();
         }
         motionField.checkArrays();
+        if(last)
         getEnclosedFilterChain().filterPacket(in);
     }
 
