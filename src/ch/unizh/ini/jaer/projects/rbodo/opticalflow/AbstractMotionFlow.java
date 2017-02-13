@@ -48,10 +48,10 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
         super(chip);
         computeSavitzkyGolayCoefficients();
         setPropertyTooltip(smoothingTT, "searchDistance", "search distance to each side");
-        setPropertyTooltip(smoothingTT, "maxDtThreshold", "max delta time (us) of timestamps from current event time that are considered. Also sets grayscale scaling of showTimestampMap display.");
-        setPropertyTooltip(dispTT, "showTimestampMap", "Superimposes a color-coded timestamp map on the display. This map shows the lastTimesMap[][][] of the latest event as a color code. The type of events shown is set by showTimestampMapMask.");
-        setPropertyTooltip(dispTT, "showTimestampMapMask", "The timestamps shown from the map are set by this mask value. ");
-        setPropertyTooltip(dispTT, "showTimestampMapAlpha", "The alpha (brightness) of the overlaid timestamp map when showTimestampMap is enabled. ");
+        setPropertyTooltip(smoothingTT, "maxDtThreshold", "(Only for relevant algorithms) max delta time (us) of timestamps from current event time that are considered. Also sets grayscale scaling of showTimestampMap display.");
+        setPropertyTooltip(dispTT, "showTimestampMap", "(Only for relevant algorithms) Superimposes a color-coded timestamp map on the display. This map shows the lastTimesMap[][][] of the latest event as a color code. The type of events shown is set by showTimestampMapMask.");
+        setPropertyTooltip(dispTT, "showTimestampMapMask", "(Only for relevant algorithms) The timestamps shown from the map are set by this mask value. ");
+        setPropertyTooltip(dispTT, "showTimestampMapAlpha", "(Only for relevant algorithms) The alpha (brightness) of the overlaid timestamp map when showTimestampMap is enabled. ");
         // check lastLoggingFolder to see if it really exists, if not, default to user.dir
     }
 
