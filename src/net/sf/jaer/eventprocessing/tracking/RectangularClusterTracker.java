@@ -2922,7 +2922,7 @@ public class RectangularClusterTracker extends EventFilter2D
 		void init() {
 			nx = chip.getSizeX() >> SUBSAMPLE_BY;
 			ny = chip.getSizeY() >> SUBSAMPLE_BY;
-			grid = new Cluster[nx][ny];
+			grid = new Cluster[nx+1][ny+1];
 		}
 
 		/**
