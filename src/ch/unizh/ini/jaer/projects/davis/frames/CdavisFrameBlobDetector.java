@@ -56,6 +56,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  */
 @Description("Detects blobs in CDAVIS frames using OpenCV SimpleBlobDetector")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@SuppressWarnings( "deprecation" ) // tobi added for getFloatBuffer
 public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
 
     private int sx;
