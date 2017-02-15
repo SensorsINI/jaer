@@ -76,6 +76,7 @@ import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
  */
 @Description("Calibrates a single camera using DAVIS frames and OpenCV calibration methods")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@SuppressWarnings( "deprecation" ) // tobi added for getFloatBuffer
 public class SingleCameraCalibration extends EventFilter2D implements FrameAnnotater, Observer /* observes this to get informed about our size */ {
 
     private int sx; // set to chip.getSizeX()
