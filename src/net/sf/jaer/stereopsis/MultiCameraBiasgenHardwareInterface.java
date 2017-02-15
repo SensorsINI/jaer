@@ -26,6 +26,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
  */
 public class MultiCameraBiasgenHardwareInterface extends MultiCameraHardwareInterface implements BiasgenHardwareInterface {
         
+        final public int NUM_CAMERAS=MultiCameraHardwareInterface.NUM_CAMERAS; 
 	protected BiasgenHardwareInterface[] biasgens = new BiasgenHardwareInterface[NUM_CAMERAS]; // TODO
 
 	/**
