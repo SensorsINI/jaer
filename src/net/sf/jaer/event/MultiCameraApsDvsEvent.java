@@ -63,6 +63,7 @@ public class MultiCameraApsDvsEvent extends ApsDvsEvent {
      */
 
     public static int setCameraNumberToRawAddressAPS(int camera, int oldaddress){
+        oldaddress = oldaddress & 0xfffffffc;
         int newaddress=0xffffffff&(oldaddress | (0xffffffff&(camera)));
         return newaddress;            
     }
