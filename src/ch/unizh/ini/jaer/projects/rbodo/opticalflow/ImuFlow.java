@@ -19,6 +19,7 @@ import org.bytedeco.javacpp.opencv_core.Mat;
  */
 @Description("Class for amplitude and orientation of local motion optical flow using IMU gyro sensors.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@SuppressWarnings( "deprecation" ) // tobi added for getFloatBuffer
 public class ImuFlow extends AbstractMotionFlowIMU {
 
     public ImuFlow(AEChip chip) {
