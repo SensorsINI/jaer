@@ -11,6 +11,7 @@
  */
 package net.sf.jaer.stereopsis;
 
+import ch.unizh.ini.jaer.chip.multicamera.MultiDVS128CameraChip;
 import ch.unizh.ini.jaer.chip.multicamera.MultiDavisCameraChip;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -188,7 +189,7 @@ public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderB
         aeOut.ensureCapacity(cap); // preallocate arrays to ensure we can write to the timestamps/addressses arrays
         timestamps = aeOut.getTimestamps();
         addresses = aeOut.getAddresses();
-        count = 0;
+        this.count = 0;
     }
 
     private void finishAdd() {
@@ -196,8 +197,8 @@ public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderB
     }
 
     private void addEvent(AEFifo f) {
-        EventRaw event = f.popNextEvent();
-        timestamps[count] = event.timestamp;
+        EventRaw event = f.popNextEvent();     
+        timestamps[count] = event.timestamp;        
         addresses[count++] = event.address;
     }
 
@@ -296,6 +297,9 @@ public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderB
                         tsMin = t;
                         ind = i;                        
                     }
+                }
+                if (count==timestamps.length) {
+                    break;
                 }
                 addEvent(aeFifos[ind]);
                 if (aeFifos[ind].isEmpty()) {
@@ -540,13 +544,12 @@ public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderB
     private void labelCamera(AEPacketRaw aeRaw, int camera) {
         int[] adr = aeRaw.getAddresses();
         int n = aeRaw.getNumEvents();
-        String name= chip.getName().toString();
-        if (name.equals("MultiDVS128CameraChip".toString())) {
+        if (chip instanceof MultiDVS128CameraChip) {
             MultiCameraEvent mce= new MultiCameraEvent();
             for (int i = 0; i < n; i++) {
                 adr[i]=mce.setCameraNumberToRawAddress(camera, adr[i]);
             }
-        }else if (name.equals("MultiDavisCameraChip".toString())) {
+        }else if (chip instanceof MultiDavisCameraChip) {
             MultiCameraApsDvsEvent mce= new MultiCameraApsDvsEvent();                           
             for (int i = 0; i < n; i++) {
                 if (mce.isDVSfromRawAddress(adr[i])){
