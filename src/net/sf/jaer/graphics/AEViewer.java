@@ -797,7 +797,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         playerControlPanel.setVisible(false);
         timestampResetBitmaskMenuItem.setText("Set timestamp reset bitmask... (currently 0x" + Integer.toHexString(aeFileInputStreamTimestampResetBitmask) + ")");
-
         //        pack(); // seems to make no difference
         // tobi removed following oct 2008 because it was somehow apparently causing deadlock on exit, don't know why
         //        Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -4757,8 +4756,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * Filenames without path are logged to the startup folder. The default
      * extension of AEDataFile.DATA_FILE_EXTENSION is appended if there is no
      * extension.
-     * 
-     * @param dataFileVersionNum the version  number string, e.g. "2.0", "3.0", or "3.1". ("2.0" is standard AEDAT file format for pre-caer records and is most stable))
+     *
+     * @param dataFileVersionNum the version number string, e.g. "2.0", "3.0",
+     * or "3.1". ("2.0" is standard AEDAT file format for pre-caer records and
+     * is most stable))
      *
      * @return the file that is logged to.
      */
@@ -4776,7 +4777,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             loggingFile = new File(filename);
 //			loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), AEFileOutputStream.OUTPUT_BUFFER_SIZE), chip); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
             loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile), chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
-        
+
             if (playMode == PlayMode.PLAYBACK) { // add change listener for rewind to stop logging
                 getAePlayer().getAEInputStream().getSupport().addPropertyChangeListener("rewind", new PropertyChangeListener() {
 
@@ -4841,7 +4842,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            return null; 
 //        } 
         dataFileVersionNum = "2.0";
-        
+
         String dateString
                 = AEDataFile.DATE_FORMAT.format(new Date());
         String className
@@ -5062,9 +5063,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             try {
                 int n = Integer.parseInt(ans);
                 aemon.setAEBufferSize(n);
+                changeAEBufferSizeMenuItem.setText(String.format("Set AEPacketRaw buffer size (currently 2 buffers each %d events=%d bytes)", aemon.getAEBufferSize(), aemon.getAEBufferSize() * 16));
             } catch (NumberFormatException e) {
                 Toolkit.getDefaultToolkit().beep();
             }
+
 	}//GEN-LAST:event_changeAEBufferSizeMenuItemActionPerformed
 
 	private void updateFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updateFirmwareMenuItemActionPerformed
