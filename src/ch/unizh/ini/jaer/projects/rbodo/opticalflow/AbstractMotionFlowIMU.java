@@ -77,9 +77,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // xyFilter.
     private int xMin = getInt("xMin", 0);
-    int xMax = getInt("xMax", 1000); // (tobi) set to large value to make sure any chip will have full area processed by default
+    private static final int DEFAULT_XYMAX = 1000;
+    int xMax = getInt("xMax", DEFAULT_XYMAX); // (tobi) set to large value to make sure any chip will have full area processed by default
     private int yMin = getInt("yMin", 0);
-    int yMax = getInt("yMax", 1000);
+    int yMax = getInt("yMax", DEFAULT_XYMAX);
 
     // Display
     private boolean showVectorsEnabled = getBoolean("showVectorsEnabled", true);
@@ -213,9 +214,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip("startLoggingMotionVectorEvents", "starts saving motion vector events to a human readable file");
         setPropertyTooltip("stopLoggingMotionVectorEvents", "stops logging motion vector events to a human readable file");
         setPropertyTooltip("printStatistics", "<html> Prints to console as log output a single instance of statistics collected since <b>measureAccuracy</b> was selected. (These statistics are reset when the filter is reset, e.g. at rewind.)");
-        setPropertyTooltip(measureTT,"measureAccuracy", "<html> Writes a txt file with various motion statistics, by comparing the ground truth <br>(either estimated online using an embedded IMUFlow or loaded from file) <br> with the measured optical flow events.  <br>This measurment function is called for every event to assign the local ground truth<br> (vxGT,vyGT) at location (x,y) a value from the imported ground truth field (vxGTframe,vyGTframe).");
-        setPropertyTooltip(measureTT,"measureProcessingTime", "writes a text file with timestamp filename with the packet's mean processing time of an event. Processing time is also logged to console.");
-        setPropertyTooltip(measureTT,"loggingFolder", "directory to store logged data files");
+        setPropertyTooltip(measureTT, "measureAccuracy", "<html> Writes a txt file with various motion statistics, by comparing the ground truth <br>(either estimated online using an embedded IMUFlow or loaded from file) <br> with the measured optical flow events.  <br>This measurment function is called for every event to assign the local ground truth<br> (vxGT,vyGT) at location (x,y) a value from the imported ground truth field (vxGTframe,vyGTframe).");
+        setPropertyTooltip(measureTT, "measureProcessingTime", "writes a text file with timestamp filename with the packet's mean processing time of an event. Processing time is also logged to console.");
+        setPropertyTooltip(measureTT, "loggingFolder", "directory to store logged data files");
         setPropertyTooltip(dispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
         setPropertyTooltip(dispTT, "showVectorsEnabled", "shows local motion vector evemts as arrows");
         setPropertyTooltip(dispTT, "showColorWheelLegend", "Plots a color wheel to show flow direction colors.");
@@ -591,6 +592,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         if ("DirectionSelectiveFlow".equals(filterClassName) && getEnclosedFilter() != null) {
             getEnclosedFilter().resetFilter();
         }
+        setXMax(chip.getSizeX());
+        setYMax(chip.getSizeY());
     }
 
     @Override
@@ -600,7 +603,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     @Override
     public void update(Observable o, Object arg) {
-        initFilter();
+        if (chip.getNumPixels() > 0) {
+            initFilter();
+        }
     }
 
     @Override
@@ -1187,11 +1192,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
 
     public void setXMax(int xMax) {
+        int old = this.xMax;
         if (xMax > subSizeX) {
             xMax = subSizeX;
         }
         this.xMax = xMax;
         putInt("xMax", xMax);
+        getSupport().firePropertyChange("xMax", old, this.xMax);
     }
     // </editor-fold>
 
@@ -1215,11 +1222,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
 
     public void setYMax(int yMax) {
+        int old = this.yMax;
         if (yMax > subSizeY) {
             yMax = subSizeY;
         }
         this.yMax = yMax;
         putInt("yMax", yMax);
+        getSupport().firePropertyChange("yMax", old, this.yMax);
     }
     // </editor-fold>
 
@@ -1566,7 +1575,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             putFloat("minSpeedPpsToDrawMotionField", minSpeedPpsToDrawMotionField);
         }
 
-     } // MotionField
+    } // MotionField
 
     public boolean isShowMotionField() {
         return motionField.isShowMotionField();
@@ -1646,8 +1655,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
 
     public void setShowColorWheelLegend(boolean showColorWheelLegend) {
-        this.showColorWheelLegend=showColorWheelLegend;
-        putBoolean("showColorWheelLegend",showColorWheelLegend);
+        this.showColorWheelLegend = showColorWheelLegend;
+        putBoolean("showColorWheelLegend", showColorWheelLegend);
     }
-    
+
 }
