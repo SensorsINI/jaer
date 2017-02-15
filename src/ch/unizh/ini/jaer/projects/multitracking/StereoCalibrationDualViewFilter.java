@@ -83,8 +83,9 @@ import net.sf.jaer.util.TextRendererScale;
 /**
  * Calibrates a single camera using DAVIS frames and OpenCV calibration methods.
  *
- *
+ * @author Sophie Sribane/Gemma Taverni
  */
+@SuppressWarnings( "deprecation" ) // tobi added for getFloatBuffer
 @Description("Calibrates a single camera using DAVIS frames and OpenCV calibration methods")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class StereoCalibrationDualViewFilter extends MultiSourceProcessor implements FrameAnnotater, Observer /* observes this to get informed about our size */ {

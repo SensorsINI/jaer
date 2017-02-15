@@ -94,10 +94,11 @@ import net.sf.jaer.util.TextRendererScale;
 /**
  * Calibrates a single camera using DAVIS frames and OpenCV calibration methods.
  *
- *
+ * @author Marc Osswald, Tobi Delbruck Gemma Taverni, Sophie Skribane
  */
 @Description("Calibrates a single camera using DAVIS frames and OpenCV calibration methods")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@SuppressWarnings( "deprecation" ) // tobi added for getFloatBuffer
 public class SingleOrStereoCameraCalibration extends EventFilter2D implements FrameAnnotater, Observer /* observes this to get informed about our size */ {
 
 	private int sx; // set to chip.getSizeX()
