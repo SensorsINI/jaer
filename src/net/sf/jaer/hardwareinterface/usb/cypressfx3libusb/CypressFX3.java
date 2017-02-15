@@ -180,8 +180,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * @see AEReader
 	 * @see #setAEBufferSize
 	 */
-	public static final int AE_BUFFER_SIZE = 100000; // should handle 5Meps at
-	// 30FPS
+	public static final int AE_BUFFER_SIZE = 600000; // 100k should handle 5Meps at
+	// 30FPS, but tobi increased to 600k to handle APS frames from Davis346B at 40FPS
 	/**
 	 * this is the size of the AEPacketRaw that are part of AEPacketRawPool that
 	 * double buffer the translated events
@@ -1241,7 +1241,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	@Override
 	public void setAEBufferSize(final int size) {
-		if ((size < 1000) || (size > 1000000)) {
+		if ((size < 1000) || (size > 2000000)) {
 			CypressFX3.log
 				.warning("ignoring unreasonable aeBufferSize of " + size + ", choose a more reasonable size between 1000 and 1000000");
 			return;
