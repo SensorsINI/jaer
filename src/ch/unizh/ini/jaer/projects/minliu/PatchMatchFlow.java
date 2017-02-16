@@ -23,27 +23,16 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.Steadicam;
 import net.sf.jaer.eventprocessing.filter.TransformAtTime;
-import net.sf.jaer.util.filter.HighpassFilter;
 
 /**
  * Uses patch matching to measureTT local optical flow. <b>Not</b> gradient based,
  * but rather matches local features backwards in time.
  *
- * @author Tobi, Jan 2016
+ * @author Tobi and Min, Jan 2016
  */
 @Description("Computes optical flow with vector direction using binary block matching")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
-
-    // These const values are for the fast implementation of the hamming weight calculation
-    private final long m1 = 0x5555555555555555L; //binary: 0101...
-    private final long m2 = 0x3333333333333333L; //binary: 00110011..
-    private final long m4 = 0x0f0f0f0f0f0f0f0fL; //binary:  4 zeros,  4 ones ...
-    private final long m8 = 0x00ff00ff00ff00ffL; //binary:  8 zeros,  8 ones ...
-    private final long m16 = 0x0000ffff0000ffffL; //binary: 16 zeros, 16 ones ...
-    private final long m32 = 0x00000000ffffffffL; //binary: 32 zeros, 32 ones
-    private final long hff = 0xffffffffffffffffL; //binary: all ones
-    private final long h01 = 0x0101010101010101L; //the sum of 256 to the power of 0,1,2,3...
 
     private int[][][] histograms = null;
     private int numSlices = 3;
@@ -64,7 +53,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int[][] lastFireIndex = null;
     private int[][] eventSeqStartTs = null;
     private boolean preProcessEnable = false;
-    private int packetNum;
 
     public enum PatchCompareMethod {
         JaccardDistance, HammingDistance, SAD, EventSqeDistance
@@ -127,8 +115,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     public EventPacket filterPacket(EventPacket in) {
         setupFilter(in);
         checkArrays();
-
-        packetNum++;
 
         ApsDvsEventPacket in2 = (ApsDvsEventPacket) in;
         Iterator itr = in2.fullIterator();   // Wfffsfe also need IMU data, so here we use the full iterator. 
@@ -242,9 +228,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     }
 
                     if (previousTsInterval >= thresholdTime) {
-                        if (blockLocX == 55 && blockLocY == 35) {
-                            int tmp = 0;
-                        }
                         float maxDt = 0;
                         float[][] dataPoint = new float[9][2];
                         if (blockLocX >= 1 && blockLocY >= 1 && blockLocX <= 238 && blockLocY <= 178) {
@@ -257,14 +240,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                                         // continue;
                                         dt = 0;
                                     }
-//                                    if(dt > 50000) {
-//                                        continue;
-//                                    }
+
                                     dataPoint[(ii + 1) * 3 + (jj + 1)][0] = dt;
                                     if (dt > maxDt) {
-//                                        maxDt = dt;
-//                                        result.dx = -ii/dt * 1000000 * 0.2f * eventPatchDimension;
-//                                        result.dy = -jj/dt * 1000000 * 0.2f * eventPatchDimension;
                                     }
                                 }
                             }
@@ -415,7 +393,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         assignSliceReferences();
 
         sliceLastTs = 0;
-        packetNum = 0;
         rewindFlg = true;
     }
 
@@ -451,29 +428,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 }
             case AdaptationDuration:
                 log.warning("The adaptation method is not supported yet.");
-//                int x = e.x;
-//                int y = e.y;
-//                
-//                if(x < patchDimension || y < patchDimension || x > subSizeX - patchDimension || y > subSizeY - patchDimension) {
-//                    return;
-//                }
-//                
-//                int positionX = x%(patchDimension + 1);
-//                int positionY = y%(patchDimension + 1);
-//                int centerX = x + (patchDimension - positionX);
-//                int centerY = y + (patchDimension - positionY);
-//
-//
-//                int count = 0;
-//                for (int row = -patchDimension; row <= patchDimension; row ++) {
-//                    BitSet tmpRow = currentSli.get((centerX - patchDimension) + (centerY + row) * subSizeX, (centerX + patchDimension) + (centerY + row) * subSizeX);
-//                    count += tmpRow.cardinality();
-//                }
-//                                
-//                if(count <= (patchDimension * 2 + 1) * (patchDimension * 2 + 1) / 2) {
-//                    return;
-//                }
-//                int timestamp = e.timestamp;
                 return;
         }
 
@@ -555,8 +509,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      * @param x coordinate in subSampled space
      * @param y
      * @param patchSize
-     * @param prevSliceIdx
-     * @param curSliceIdx
+     * @param prevSlice
+     * @param curSlice
      * @return SAD value
      */
     private int hammingDistance(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
@@ -615,8 +569,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      * @param x coordinate in subSampled space
      * @param y
      * @param patchSize
-     * @param prevSliceIdx
-     * @param curSliceIdx
+     * @param prevSlice
+     * @param curSlice
      * @return SAD value
      */
     private float jaccardDistance(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
@@ -812,15 +766,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         return sad;
     }
 
-    //This uses fewer arithmetic operations than any other known  
-    //implementation on machines with fast multiplication.
-    //It uses 12 arithmetic operations, one of which is a multiply.
-    public long popcount_3(long x) {
-        x -= (x >> 1) & m1;             //put count of each 2 bits into those 2 bits
-        x = (x & m2) + ((x >> 2) & m2); //put count of each 4 bits into those 4 bits 
-        x = (x + (x >> 4)) & m4;        //put count of each 8 bits into those 8 bits 
-        return (x * h01) >> 56;  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ... 
-    }
 
     private class SADResult {
 
