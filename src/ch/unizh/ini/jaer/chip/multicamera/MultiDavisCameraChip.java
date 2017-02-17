@@ -61,6 +61,7 @@ import net.sf.jaer.graphics.TwoCamera3DDisplayMethod;
 import net.sf.jaer.graphics.MultiViewMultiCamera;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.logging.LogManager;
 
 
@@ -356,6 +357,7 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
                 ApsDvsEvent davisExtractedEvent= (ApsDvsEvent) davisExtractedPacket.getEvent(i);
                 MultiCameraApsDvsEvent e= (MultiCameraApsDvsEvent) outItr.nextOutput();
                 e.copyFrom(davisExtractedEvent);
+                e.NUM_CAMERAS=NUM_CAMERAS;
                 int address=e.address;
                 //if DVS
                 if (e.isDVSEvent() ){
@@ -530,15 +532,51 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
         deviceMissingWarningLogged = false;
         return hardwareInterface;
     }
-    
-    public ArrayList<HardwareInterface> getHWs() {
-        return hws;
+ 
+    /**Separation of the MultiPacket in SinglePacket.
+     * Unlike other chip objects, this one create a mixed packet containing all the events 
+     * from the different plugged cameras. This function separate the mixed Packet in  single Packets
+     * one for each camera. The single Packets are saved in an array of EventPacket[].
+     * <p>
+     * @return EventPacket[NUM_CAMERAS]
+     */   
+ public EventPacket[] separatedCameraPackets(EventPacket in){
+              
+        int n = in.getSize();
+        int numCameras=NUM_CAMERAS;
+        EventPacket[] camerasPacket=new EventPacket[numCameras];
+        int[] freePositionPacket= new int[numCameras]; 
+        
+        Iterator evItr = in.iterator();
+        for(int i=0; i<n; i++) {
+            Object e = evItr.next();
+            if ( e == null ){
+                log.warning("null event, skipping");
+            }
+            MultiCameraApsDvsEvent ev = (MultiCameraApsDvsEvent) e;
+            if (ev.isSpecial()) {
+                continue;
+            }
+            int camera= ev.camera;
+            
+            //Inizialization of the cameraPackets depending on how many cameras are connected
+            //CameraPackets is an array of the EventPackets sorted by camera
+            for(int c=0; c<numCameras; c++) {
+                    camerasPacket[c]=new EventPacket();
+                    camerasPacket[c].allocate(n);
+                    camerasPacket[c].clear();
+            }            
+            
+            //Allocation of each event in the new sorted Packet
+            freePositionPacket[camera]=camerasPacket[camera].getSize();
+            camerasPacket[camera].elementData[freePositionPacket[camera]]=ev;
+            camerasPacket[camera].size=camerasPacket[camera].size+1;
+        }
+        
+        return camerasPacket; 
     }
-
-    public void setHWs(HardwareInterface hw) {
-        hws.add(hw);
-    }
-    
-    
 }
+    
+    
+
 
