@@ -531,7 +531,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             rateFilter.setTauMs(getFloat("rateTauMs", 10));
         }
         boolean initialized = false;
-        float instantaneousRate = 0, filteredRate = 0;
+        float instantaneousRate = 0, filteredRatePerPixel = 0;
         int count = 0; // last update event count
         private HashMap<Integer, ISIHist> histMap = new HashMap();
         ISIHist globalHist = new ISIHist(-1);
@@ -820,7 +820,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 
         @Override
         public String toString() {
-            return String.format("Selected region %6d pixels, total %10d events, %15s eps/pixel", nPixels, count, engFmt.format(filteredRate));
+            return String.format("Selected region %6d pixels, total %10d events, %15s eps total, %15s eps/pixel", nPixels, count, engFmt.format(filteredRatePerPixel*nPixels), engFmt.format(filteredRatePerPixel));
         }
 
         /**
@@ -846,7 +846,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             } else {
                 instantaneousRate = (1e6f * n) / (dt * AEConstants.TICK_DEFAULT_US);
             }
-            filteredRate = rateFilter.filter(instantaneousRate / nPixels, lastT);
+            filteredRatePerPixel = rateFilter.filter(instantaneousRate / nPixels, lastT);
         }
 
         synchronized private void drawStats(GLAutoDrawable drawable) {
