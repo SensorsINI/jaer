@@ -25,8 +25,8 @@ import net.sf.jaer.eventprocessing.filter.Steadicam;
 import net.sf.jaer.eventprocessing.filter.TransformAtTime;
 
 /**
- * Uses patch matching to measureTT local optical flow. <b>Not</b> gradient based,
- * but rather matches local features backwards in time.
+ * Uses patch matching to measureTT local optical flow. <b>Not</b> gradient
+ * based, but rather matches local features backwards in time.
  *
  * @author Tobi and Min, Jan 2016
  */
@@ -79,7 +79,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private SliceMethod sliceMethod = SliceMethod.valueOf(getString("sliceMethod", SliceMethod.ConstantDuration.toString()));
     private int eventCounter = 0;
     private int sliceLastTs = 0;
- 
+
     public PatchMatchFlow(AEChip chip) {
         super(chip);
 
@@ -111,7 +111,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     }
 
     @Override
-    public EventPacket filterPacket(EventPacket in) {
+    synchronized public EventPacket filterPacket(EventPacket in) {
         setupFilter(in);
         checkArrays();
 
@@ -397,10 +397,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
     @Override
     public void update(Observable o, Object arg) {
-        super.update(o, arg);
         if (!isFilterEnabled()) {
             return;
         }
+        super.update(o, arg);
         if (o instanceof AEChip && chip.getNumPixels() > 0) {
             resetFilter();
         }
@@ -542,7 +542,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      * @param curSlice
      * @return SADResult that provides the shift and SAD value
      */
-
     private SADResult minJaccardDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
         float minSum = Integer.MAX_VALUE, sum = 0;
         SADResult sadResult = new SADResult(0, 0, 0);
@@ -765,7 +764,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         return sad;
     }
 
-
     private class SADResult {
 
         float dx, dy;
@@ -889,8 +887,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         this.sliceEventCount = sliceEventCount;
         putInt("sliceEventCount", sliceEventCount);
     }
-
- 
 
     public boolean isDisplayOutputVectors() {
         return displayOutputVectors;
