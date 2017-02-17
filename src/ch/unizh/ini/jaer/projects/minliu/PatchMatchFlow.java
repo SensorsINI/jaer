@@ -39,7 +39,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int sx, sy;
     private int tMinus2SliceIdx = 0, tMinus1SliceIdx = 1, currentSliceIdx = 2;
     private int[][] currentSlice = null, tMinus1Slice = null, tMinus2Slice = null;
-    private ArrayList<Integer[]>[][] spikeTrans = null;
+    private ArrayList<Integer[]>[][] spikeTrains = null;   // Spike trains for one block
     private ArrayList<int[][]>[] histogramsAL = null;
     private ArrayList<int[][]> currentAL = null, previousAL = null, previousMinus1AL = null; // One is for current, the second is for previous, the third is for the one before previous one
     private BitSet[] histogramsBitSet = null;
@@ -50,7 +50,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int forwardEventNum = getInt("forwardEventNum", 10);
     private float cost = getFloat("cost", 0.001f);
     private int thresholdTime = getInt("thresholdTime", 1000000);
-    private int[][] lastFireIndex = null;
+    private int[][] lastFireIndex = null;  // Events are numbered in time order for every block. This variable is for storing the last event index fired on all blocks.
     private int[][] eventSeqStartTs = null;
     private boolean preProcessEnable = false;
 
@@ -62,7 +62,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int sliceDurationUs = getInt("sliceDurationUs", 100000);
     private int sliceEventCount = getInt("sliceEventCount", 1000);
     private boolean rewindFlg = false; // The flag to indicate the rewind event.
-    private TransformAtTime lastTransform = null, imageTransform = null;
     private FilterChain filterChain;
     private Steadicam cameraMotion;
 
@@ -97,8 +96,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         String preProcess = "Denoise";
 
         chip.addObserver(this); // to allocate memory once chip size is known
-        setPropertyTooltip(preProcess, "preProcessEnable", "enable this to remove noise before data processing");
-        setPropertyTooltip(preProcess, "forwardEventNum", "for pre processing");
+        setPropertyTooltip(preProcess, "preProcessEnable", "enable this to denoise before data processing");
+        setPropertyTooltip(preProcess, "forwardEventNum", "Number of events have fired on the current block since last processing");
         setPropertyTooltip(patchTT, "patchDimension", "linear dimenion of patches to match, in pixels");
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");
@@ -154,17 +153,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             int blockLocY = y / eventPatchDimension;
 
             // Build the spike trains of every block, every block is consist of 3*3 pixels.
-            if (spikeTrans[blockLocX][blockLocY] == null) {
-                spikeTrans[blockLocX][blockLocY] = new ArrayList();
+            if (spikeTrains[blockLocX][blockLocY] == null) {
+                spikeTrains[blockLocX][blockLocY] = new ArrayList();
             }
-            int spikeBlokcLength = spikeTrans[blockLocX][blockLocY].size();
+            int spikeBlokcLength = spikeTrains[blockLocX][blockLocY].size();
             int previousTsInterval = 0;
             if (spikeBlokcLength == 0) {
                 previousTsInterval = ts;
             } else {
-                previousTsInterval = ts - spikeTrans[blockLocX][blockLocY].get(spikeBlokcLength - 1)[0];
+                previousTsInterval = ts - spikeTrains[blockLocX][blockLocY].get(spikeBlokcLength - 1)[0];
             }
-            spikeTrans[blockLocX][blockLocY].add(new Integer[]{ts, type});
+            spikeTrains[blockLocX][blockLocY].add(new Integer[]{ts, type});
 
             switch (patchCompareMethod) {
                 case HammingDistance:
@@ -173,8 +172,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
                     if (preProcessEnable) {
                         // There're enough events fire on the specific block now.
-                        if (spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum) {
-                            lastFireIndex[blockLocX][blockLocY] = spikeTrans[blockLocX][blockLocY].size() - 1;
+                        if (spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum) {
+                            lastFireIndex[blockLocX][blockLocY] = spikeTrains[blockLocX][blockLocY].size() - 1;
                             result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
                             result.dx = result.dx / sliceDurationUs * 1000000;
                             result.dy = result.dy / sliceDurationUs * 1000000;
@@ -191,8 +190,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     accumulateEvent();
                     if (preProcessEnable) {
                         // There're enough events fire on the specific block now
-                        if (spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum) {
-                            lastFireIndex[blockLocX][blockLocY] = spikeTrans[blockLocX][blockLocY].size() - 1;
+                        if (spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum) {
+                            lastFireIndex[blockLocX][blockLocY] = spikeTrains[blockLocX][blockLocY].size() - 1;
                             result = minSad(x, y, tMinus2Slice, tMinus1Slice);
                             result.dx = result.dx / sliceDurationUs * 1000000;
                             result.dy = result.dy / sliceDurationUs * 1000000;
@@ -209,8 +208,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     accumulateEvent();
                     if (preProcessEnable) {
                         // There're enough events fire on the specific block now
-                        if (spikeTrans[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum) {
-                            lastFireIndex[blockLocX][blockLocY] = spikeTrans[blockLocX][blockLocY].size() - 1;
+                        if (spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum) {
+                            lastFireIndex[blockLocX][blockLocY] = spikeTrains[blockLocX][blockLocY].size() - 1;
                             result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
                             result.dx = result.dx / sliceDurationUs * 1000000;
                             result.dy = result.dy / sliceDurationUs * 1000000;
@@ -223,7 +222,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     break;
                 case EventSqeDistance:
                     if (previousTsInterval < 0) {
-                        spikeTrans[blockLocX][blockLocY].remove(spikeTrans[blockLocX][blockLocY].size() - 1);
+                        spikeTrains[blockLocX][blockLocY].remove(spikeTrains[blockLocX][blockLocY].size() - 1);
                         continue;
                     }
 
@@ -326,8 +325,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             final int sx = chip.getSizeX(), sy = chip.getSizeY();
             for (int i = 0; i < sx; i++) {
                 for (int j = 0; j < sy; j++) {
-                    if (spikeTrans[i][j] != null) {
-                        spikeTrans[i][j] = null;
+                    if (spikeTrains[i][j] != null) {
+                        spikeTrains[i][j] = null;
                     }
                     if (lastFireIndex != null) {
                         lastFireIndex[i][j] = 0;
@@ -371,8 +370,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             histogramsAL = new ArrayList[3];
         }
 
-        if (spikeTrans == null & subSizeX != 0 & subSizeY != 0) {
-            spikeTrans = new ArrayList[subSizeX][subSizeY];
+        if (spikeTrains == null & subSizeX != 0 & subSizeY != 0) {
+            spikeTrains = new ArrayList[subSizeX][subSizeY];
         }
         if (patchDimension != 0) {
             int colPatchCnt = subSizeX / patchDimension;
@@ -610,10 +609,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         ArrayList<Integer[]> seq1 = new ArrayList(1);
         SADResult sadResult = new SADResult(0, 0, 0);
 
-        int size = spikeTrans[blockX][blockY].size();
-        int lastTs = spikeTrans[blockX][blockY].get(size - forwardEventNum)[0];
+        int size = spikeTrains[blockX][blockY].size();
+        int lastTs = spikeTrains[blockX][blockY].get(size - forwardEventNum)[0];
         for (int i = size - forwardEventNum; i < size; i++) {
-            seq1.add(spikeTrans[blockX][blockY].get(i));
+            seq1.add(spikeTrains[blockX][blockY].get(i));
         }
 
 //        if(seq1.get(2)[0] - seq1.get(0)[0] > thresholdTime) {
@@ -629,7 +628,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 ArrayList<Integer[]> seq2 = new ArrayList(1);
 
                 if (blockX >= 2 && blockY >= 2) {
-                    ArrayList<Integer[]> tmpSpikes = spikeTrans[blockX + i][blockY + j];
+                    ArrayList<Integer[]> tmpSpikes = spikeTrains[blockX + i][blockY + j];
                     if (tmpSpikes != null) {
                         for (int index = 0; index < tmpSpikes.size(); index++) {
                             if (tmpSpikes.get(index)[0] >= lastTs) {
@@ -650,7 +649,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
             }
         }
-        lastFireIndex[blockX][blockY] = spikeTrans[blockX][blockY].size() - 1;
+        lastFireIndex[blockX][blockY] = spikeTrains[blockX][blockY].size() - 1;
         if (sadResult.dx != 1 || sadResult.dy != 0) {
             // sadResult = new SADResult(0, 0, 0);
         }
