@@ -22,7 +22,9 @@ import net.sf.jaer.DevelopmentStatus;
 
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 public class MultiCameraApsDvsEvent extends ApsDvsEvent {
-       
+    
+    public int NUM_CAMERAS=0; 
+    
     /** Static method to extract the camera number from the 32 bit raw address 
      * for a DVS event.
      * It is stored as a byte in the LSB of the 32 bits.
@@ -98,6 +100,20 @@ public class MultiCameraApsDvsEvent extends ApsDvsEvent {
      */
     public void setCamera(byte aCamera) {
         camera = aCamera;
+    }
+    
+    /**
+     * @return the total number of cameras
+     */
+    public int getNumCamera() {
+        return NUM_CAMERAS;
+    }
+
+    /**
+     * @param aCamera the camera to set
+     */
+    public void setNumCamera(int numCam) {
+        NUM_CAMERAS = numCam;
     }
 
     /** Binocular event has two cell types (left and right) */
