@@ -88,5 +88,12 @@ final public class TimeLimiter extends Timer{
         this.enabled = enabled;
         if(!enabled) timedOut=false;
     }
+
+    @Override
+    public String toString() {
+        return "TimeLimiter{" + "timedOut=" + timedOut + ", timeLimitMs=" + timeLimitMs + ", enabled=" + enabled + '}';
+    }
+    
+    
     
 }
