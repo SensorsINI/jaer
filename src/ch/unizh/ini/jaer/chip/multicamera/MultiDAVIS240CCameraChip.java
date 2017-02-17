@@ -21,6 +21,7 @@ import java.awt.Point;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.MultiCameraDisplayRenderer;
 import net.sf.jaer.graphics.TwoCamera3DDisplayMethod;
 import net.sf.jaer.graphics.MultiViewMultiCamera;
 
@@ -41,7 +42,8 @@ public class MultiDAVIS240CCameraChip extends MultiDavisCameraChip {
         setApsFirstPixelReadOut(new Point(0, DAVIS240C.WIDTH_PIXELS - 1));
         setApsLastPixelReadOut(new Point(DAVIS240C.HEIGHT_PIXELS - 1, 0));
         
-        setRenderer(new AEFrameChipRenderer(this));
+//        setRenderer(new AEFrameChipRenderer(this));
+        setRenderer(new MultiCameraDisplayRenderer (this));
         
         setDefaultPreferencesFile("biasgenSettings/Davis240bc/MultiDAVIS240CCameraChip.xml");
         setBiasgen(new Biasgen(this)); 
