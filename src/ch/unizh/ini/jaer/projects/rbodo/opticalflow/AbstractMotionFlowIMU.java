@@ -1651,7 +1651,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
 
     public boolean isShowColorWheelLegend() {
-        return isShowColorWheelLegend();
+        return this.showColorWheelLegend;
     }
 
     public void setShowColorWheelLegend(boolean showColorWheelLegend) {
