@@ -13,10 +13,17 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.Vector;
 
+import org.bytedeco.javacpp.FloatPointer;
 import org.bytedeco.javacpp.opencv_core;
 import org.bytedeco.javacpp.opencv_core.FileStorage;
 import org.bytedeco.javacpp.opencv_core.Mat;
+import org.bytedeco.javacpp.opencv_core.Rect;
+import org.bytedeco.javacpp.opencv_core.RectVector;
+import org.bytedeco.javacpp.opencv_imgproc;
+import org.bytedeco.javacpp.opencv_objdetect;
+import org.bytedeco.javacpp.opencv_objdetect.HOGDescriptor;
 
+import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 
@@ -54,9 +61,9 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	// list of the current parallel trackers
 	//Vector<TrackFocus> listOfTrackFocus;
 	// radius of the tracker zone of interest
-	double radius=30.;
+	double radius=10;
 	Vector<Vector<Float>> joints = new Vector<Vector<Float>>();
-	private Mat jointsToTrack;
+	Vector<TrackPoints>jointsToTrack= new Vector<TrackPoints>();
 	private String dirPath = getString("dirPath", System.getProperty("user.dir"));
 	private boolean  jointsloaded=false;
 	ApsFrameExtractor frameExtractor=new ApsFrameExtractor(chip);
@@ -66,6 +73,9 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	LowpassFilter yFilter = new LowpassFilter();
 	int lastts = 0;
 	private boolean startnewtrack=false;
+	RectVector foundLocations1;
+	private boolean personDetected=false;
+	private boolean startclicktracking=false;
 
 
 	public trackerForJoints(AEChip chip) {
@@ -142,7 +152,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 				}
 				for(int i=0; i<joints.size(); i++){
 					for(int j=0; j<2; j++){
-						Pool pool = new Pool(n);
+						Pool pool = new Pool();
 						poolOfEvents.add(pool);
 					}
 				}
@@ -157,6 +167,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 						}
 					}
 				}
+			}
 				for(int i=0; i<joints.size(); i++){
 					for(int j=0; j<2; j++){
 						Vector<Integer> xs=poolOfEvents.get(i+(2*j)).xs;
@@ -166,18 +177,18 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 
 
 						if(xs.size()!=0)  { // got actual events
-//							float x, y;
-//							if ((xs.size() % 2) != 0) { // odd number points, take middle one, e.g. n=3, take element 1
-//								x = xs.get(xs.size() / 2);
-//								y = ys.get(xs.size() / 2);
-//							} else { // even num events, take avg around middle one, eg n=4, take avg of elements 1,2
-//								x = ((float) xs.get((xs.size() / 2) - 1) + xs.get(xs.size() / 2)) / 2f;
-//								y = ((float) ys.get((xs.size() / 2) - 1) + ys.get(xs.size() / 2)) / 2f;
-//							}
-//							xmedian = xFilter.filter(x, lastts);
-//							ymedian = yFilter.filter(y, lastts);
-							joints.get(i).set(j, (float) getMean(xs));
-							joints.get(i).set(j+2, (float) getMean(ys));
+							float x, y;
+							if ((xs.size() % 2) != 0) { // odd number points, take middle one, e.g. n=3, take element 1
+								x = xs.get(xs.size() / 2);
+								y = ys.get(xs.size() / 2);
+							} else { // even num events, take avg around middle one, eg n=4, take avg of elements 1,2
+								x = ((float) xs.get((xs.size() / 2) - 1) + xs.get(xs.size() / 2)) / 2f;
+								y = ((float) ys.get((xs.size() / 2) - 1) + ys.get(xs.size() / 2)) / 2f;
+							}
+							xmedian = xFilter.filter(x, lastts);
+							ymedian = yFilter.filter(y, lastts);
+							//joints.get(i).set(j, (float) getMean(xs));
+							//joints.get(i).set(j+2, (float) getMean(ys));
 						}
 					}
 				}
@@ -223,15 +234,79 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 					//			}
 					//			//System.out.println(joints);
 				}
+
+		   if(startclicktracking){
+
+			   float xmedian = 0f;
+				float ymedian = 0f;
+
+				Vector<Pool> poolOfEvents = new Vector<Pool>();
+				for(int i=0; i<jointsToTrack.size(); i++){
+
+					Pool pool = new Pool();
+					poolOfEvents.add(pool);
+
 			}
-			//		}
+				for (Object o : in) {
+					BasicEvent e = (BasicEvent) o;
+					if (e.isSpecial()) {
+						continue;
+					}
+
+					for(int i=0; i<this.jointsToTrack.size(); i++){
+
+							if ((e.x<(jointsToTrack.get(i).x+radius))&&
+								(e.x>(jointsToTrack.get(i).x-radius))&&
+								(e.y<(jointsToTrack.get(i).y+radius))&&
+								(e.y>(jointsToTrack.get(i).y-radius))) {
+								poolOfEvents.get(i).xs.add((int) e.x);
+								poolOfEvents.get(i).ys.add((int) e.y);
+
+						}
+					}
+				}
+					for(int i=0; i<jointsToTrack.size(); i++){
+						Vector<Integer> xs=poolOfEvents.get(i).xs;
+						Vector<Integer> ys=poolOfEvents.get(i).ys;
+
+							//xs.sort(null);
+							//ys.sort(null);
+
+
+							if(poolOfEvents.get(i).xs.size()!=0)  {
+
+//								float x, y;
+//								if ((xs.size() % 2) != 0) { // odd number points, take middle one, e.g. n=3, take element 1
+//									x = xs.get(xs.size() / 2);
+//									y = ys.get(xs.size() / 2);
+//								} else { // even num events, take avg around middle one, eg n=4, take avg of elements 1,2
+//									x = ((float) xs.get((xs.size() / 2) - 1) + xs.get(xs.size() / 2)) / 2f;
+//									y = ((float) ys.get((xs.size() / 2) - 1) + ys.get(xs.size() / 2)) / 2f;
+//								}
+//								xmedian = xFilter.filter(x, lastts);
+//								ymedian = yFilter.filter(y, lastts);
+//								jointsToTrack.get(i).x= (double) xmedian;
+//								jointsToTrack.get(i).y= (double) ymedian;
+								jointsToTrack.get(i).x=(double) getMean(xs);
+								jointsToTrack.get(i).y= (double) getMean(ys);
+								System.out.println("/////////////////");
+								System.out.println(i);
+								System.out.println(jointsToTrack.get(i).x);
+								System.out.println(jointsToTrack.get(i).y);
+							}
+
+					}
+
+
+				}
+
 			return in;
 
 		}
 
 public int getMean(Vector<Integer> xs){
 	int mean=0;
-	for (int i=1; i<xs.size(); i++){
+	for (int i=0; i<xs.size(); i++){
 		mean=mean+xs.get(i);
 	}
 	mean=mean/xs.size();
@@ -282,8 +357,9 @@ public int getMean(Vector<Integer> xs){
 		@Override
 		public void annotate(GLAutoDrawable drawable) {
 			GL2 gl = drawable.getGL().getGL2();
-			float radius=30;
+			float radius=20;
 			float scale=5;
+			if(jointsloaded){
 			for(int i=0;i<joints.size(); i++){
 				float centerX1=joints.get(i).get(0);
 				float centerX2=joints.get(i).get(2);
@@ -296,6 +372,42 @@ public int getMean(Vector<Integer> xs){
 				DrawGL.drawBox(gl, centerX2, centerY2, width, height, angle);
 				DrawGL.drawLine(gl, centerX1, centerY1, centerX2, centerY2, scale);
 			}
+			}
+			if(startclicktracking){
+				float width=radius;
+				float height=radius;
+				float angle=0;
+				float[] centerX = new float[jointsToTrack.indexOf(jointsToTrack.lastElement())+1];
+				float[] centerY = new float[jointsToTrack.indexOf(jointsToTrack.lastElement())+1];
+
+				for(int i=0;i<jointsToTrack.size(); i++){
+					centerX[i]=jointsToTrack.get(i).x.floatValue();
+					//System.out.println(centerX);
+					centerY[i]=jointsToTrack.get(i).y.floatValue();
+				}
+				 gl.glPushMatrix();
+			     gl.glColor3f(0, 0, 1);
+			     gl.glLineWidth(4);
+			     gl.glBegin(GL.GL_LINE_LOOP);
+					//System.out.println(centerY);
+
+			        gl.glVertex2d(centerX[0]-(radius/2), centerY[0]-(radius/2));
+			        gl.glVertex2d(centerX[0]+(radius/2), centerY[0]-(radius/2));
+			        gl.glVertex2d(centerX[0]+(radius/2), centerY[0]+(radius/2));
+			        gl.glVertex2d(centerX[0]-(radius/2), centerY[0]+(radius/2));
+
+			        gl.glVertex2d(centerX[1]-(radius/2), centerY[1]-(radius/2));
+			        gl.glVertex2d(centerX[1]+(radius/2), centerY[1]-(radius/2));
+			        gl.glVertex2d(centerX[1]+(radius/2), centerY[1]+(radius/2));
+			        gl.glVertex2d(centerX[1]-(radius/2), centerY[1]+(radius/2));;
+
+					gl.glEnd();
+				    gl.glPopMatrix();
+
+				    //DrawGL.drawBox(gl, centerX[0], centerY[0], width, height, angle);
+					//DrawGL.drawBox(gl, centerX[1], centerY[1], width, height, angle);
+			}
+
 
 
 		}
@@ -321,15 +433,25 @@ public int getMean(Vector<Integer> xs){
 			int borderwidth=356-sx;
 			Mat imgPadded = new Mat(500, 356, CV_8U);
 
+			opencv_core.Size dsize=new opencv_core.Size(0,0);
+            Mat imgBig = new Mat(sx*2, sy*2, CV_8U);
+            Rect roi = new Rect(imgBig.cols()/4,0,346,500);
+            Mat imgcropped = new Mat();
+            imgcropped = imgBig.apply(roi).clone();
+            //Mat imgcropped = new Mat(imgBig, roi).clone();
+           // Mat imgfinal = imgcropped.clone();
+            //imgCropped
 			opencv_core.copyMakeBorder(imgSave, imgPadded, borderheigh/2, borderheigh/2, borderwidth/2,borderwidth/2, BORDER_CONSTANT);
+			opencv_imgproc.resize(imgSave, imgBig, dsize, 2., 2., opencv_imgproc.INTER_AREA);
 			String path="C:/Users/iniLabs/Documents/MATLAB/pose_estimation_code_release_v1.22/example_data/images";
 			//save the taken picture
 			String filename = "test"+".jpg";
 			String fullFilePath = path + "\\" + filename;
-			org.bytedeco.javacpp.opencv_imgcodecs.imwrite(fullFilePath, imgPadded);
+			org.bytedeco.javacpp.opencv_imgcodecs.imwrite(fullFilePath, imgcropped);
+			//org.bytedeco.javacpp.opencv_imgcodecs.imwrite(path + "\\" + "imgBig"+".jpg", imgBig);
 			log.info("wrote " + fullFilePath);
-
-
+			poepleDetection(imgSave);
+            //doAssignJointsPosition();
 			//MATLAB JOB
 			// To get a sort of handler to the matlab instance
 			MatlabProxyFactory factory = new MatlabProxyFactory();
@@ -354,6 +476,24 @@ public int getMean(Vector<Integer> xs){
 
 		}
 
+	public void doAssignJointsPosition() {
+			//e.xs.add(chip.getCanvas().getMousePixel().getX()
+		//chip.getCanvas().getRenderer().getXsel();
+		TrackPoints e = new TrackPoints(chip.getCanvas().getRenderer().getXsel(),chip.getCanvas().getRenderer().getYsel());
+		this.jointsToTrack.add(e);
+		for(int i=0; i<jointsToTrack.size();i++){
+			System.out.println(jointsToTrack.get(i).x);
+			System.out.println(jointsToTrack.get(i).y);
+		}
+		System.out.println(jointsToTrack.size());
+		}
+      public void doStartClickTracking(){
+    	  startclicktracking=true;
+      }
+      public void doStopClickTracking(){
+    	  startclicktracking=false;
+    	  jointsToTrack.removeAllElements();
+      }
 		public void doStopTrack(){
 			jointsloaded=false;
 		}
@@ -410,6 +550,42 @@ public int getMean(Vector<Integer> xs){
 
 
 		}
+
+		public void poepleDetection(Mat img1){
+			//Mat img1=opencv_imgcodecs.imread("C:/Users/iniLabs/Desktop/testSophie/RealTest/imagesTest.jpg");
+			//Mat img2=opencv_imgcodecs.imread("C:/Users/iniLabs/Desktop/testSophie/RealTest/test2.jpg");
+
+			HOGDescriptor hog = new HOGDescriptor();
+		    Mat svmdetector;
+		    FloatPointer ip=opencv_objdetect.HOGDescriptor.getDefaultPeopleDetector();
+		    svmdetector=new Mat(ip);
+		    hog.setSVMDetector(svmdetector);
+		    foundLocations1 = new RectVector() ;
+
+		    hog.detectMultiScale(img1, foundLocations1);
+			System.out.println(foundLocations1.size());
+			org.bytedeco.javacpp.opencv_core.Scalar rectColor = new org.bytedeco.javacpp.opencv_core.Scalar(0, 255);
+			if(foundLocations1.size()!=0){
+			for(long i=0;i<foundLocations1.size();i++){
+				Rect r = new Rect(foundLocations1.get(i));
+				//Point pt1=r.br();
+				//Point pt2=r.tl();
+				//Mat img=img1;
+				opencv_imgproc.rectangle(img1, r,rectColor);
+				//img1=img1.adjustROI(r.tl().y(), r.br().y(), r.tl().x(),  r.br().x());
+			}
+			personDetected=true;
+			}
+
+			String filename = chip.getName() + "-" + "HOG" + "-" + "img1rect"+ ".jpg";
+			String fullFilePath = dirPath + "\\" + filename;
+			org.bytedeco.javacpp.opencv_imgcodecs.imwrite(fullFilePath, img1);
+			log.info("wrote " + fullFilePath);
+
+
+
+			}
+
 
 		@Override
 		public void update(Observable arg0, Object arg1) {

@@ -8,7 +8,7 @@ public class Pool {
 	private int xmedian;
 	private int ymedian;
 
-public Pool(int n){
+public Pool(){
 	this.xs=new Vector<Integer>();
 	this.ys=new Vector<Integer>();
 
