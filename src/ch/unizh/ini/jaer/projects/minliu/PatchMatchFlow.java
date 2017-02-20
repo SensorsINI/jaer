@@ -49,6 +49,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int eventPatchDimension = getInt("eventPatchDimension", 3);
     private int forwardEventNum = getInt("forwardEventNum", 10);
     private float cost = getFloat("cost", 0.001f);
+    private float confidenceThreshold = getFloat("confidence threshold", 1f);
     private int thresholdTime = getInt("thresholdTime", 1000000);
     private int[][] lastFireIndex = null;  // Events are numbered in time order for every block. This variable is for storing the last event index fired on all blocks.
     private int[][] eventSeqStartTs = null;
@@ -98,6 +99,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         chip.addObserver(this); // to allocate memory once chip size is known
         setPropertyTooltip(preProcess, "preProcessEnable", "enable this to denoise before data processing");
         setPropertyTooltip(preProcess, "forwardEventNum", "Number of events have fired on the current block since last processing");
+        setPropertyTooltip(preProcess, "confidenceThreshold", "Confidence threshold for rejecting unresonable value; Range from 0 to 1");
         setPropertyTooltip(patchTT, "patchDimension", "linear dimenion of patches to match, in pixels");
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");
@@ -932,6 +934,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         putBoolean("preProcessEnable", preProcessEnable);
     }
 
+    public float getConfidenceThreshold() {
+        return confidenceThreshold;
+    }
+
+    public void setConfidenceThreshold(float confidenceThreshold) {
+        this.confidenceThreshold = confidenceThreshold;
+        putFloat("confidenceThreshold", confidenceThreshold);    
+    }
+
     private void checkArrays() {
         if (lastFireIndex == null) {
             lastFireIndex = new int[chip.getSizeX()][chip.getSizeY()];
@@ -949,7 +960,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     public synchronized boolean accuracyTests(SADResult distResult) {
         boolean retVal =  super.accuracyTests(); //To change body of generated methods, choose Tools | Templates.
         
-        if(distResult.sadValue == 1) {
+        if(distResult.sadValue >= this.confidenceThreshold) {
             retVal = true || retVal;
         }
         
