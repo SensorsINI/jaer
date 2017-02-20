@@ -192,13 +192,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                         // There're enough events fire on the specific block now
                         if (spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum) {
                             lastFireIndex[blockLocX][blockLocY] = spikeTrains[blockLocX][blockLocY].size() - 1;
-                            result = minSad(x, y, tMinus2Slice, tMinus1Slice);
+                            result = minSad(x, y, tMinus2Sli, tMinus1Sli);
                             result.dx = result.dx / sliceDurationUs * 1000000;
                             result.dy = result.dy / sliceDurationUs * 1000000;
 
                         }
                     } else {
-                        result = minSad(x, y, tMinus2Slice, tMinus1Slice);
+                        result = minSad(x, y, tMinus2Sli, tMinus1Sli);
                         result.dx = result.dx / sliceDurationUs * 1000000;
                         result.dy = result.dy / sliceDurationUs * 1000000;
                     }
@@ -305,8 +305,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             vy = result.dy;
             v = (float) Math.sqrt(vx * vx + vy * vy);
 
+
             // reject values that are unreasonable
-            if (accuracyTests()) {
+            if (accuracyTests(result)) {
                 continue;
             }
 
@@ -484,7 +485,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      * @return SADResult that provides the shift and SAD value
      */
     private SADResult minHammingDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
-        int minSum = Integer.MAX_VALUE, sum = 0;
+        float minSum = Integer.MAX_VALUE, sum = 0;
         SADResult sadResult = new SADResult(0, 0, 0);
         for (int dx = -searchDistance; dx <= searchDistance; dx++) {
             for (int dy = -searchDistance; dy <= searchDistance; dy++) {
@@ -505,21 +506,23 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      * computes Hamming distance centered on x,y with patch of patchSize for
      * prevSliceIdx relative to curSliceIdx patch.
      *
-     * @param x coordinate in subSampled space
-     * @param y
-     * @param patchSize
+     * @param x coordinate x in subSampled space
+     * @param y coordinate y in subSampled space
+     * @param dx   
+     * @param dy
      * @param prevSlice
      * @param curSlice
-     * @return SAD value
+     * @return Hamming Distance value
      */
-    private int hammingDistance(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
-        int retVal = 0;
+    private float hammingDistance(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
+        float retVal = 0;
         int blockRadius = patchDimension / 2;
+        float validPixNum = 0; // The valid pixel number in the current block
 
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
         if (x < blockRadius + dx || x >= subSizeX - blockRadius + dx || x < blockRadius || x >= subSizeX - blockRadius
                 || y < blockRadius + dy || y >= subSizeY - blockRadius + dy || y < blockRadius || y >= subSizeY - blockRadius) {
-            return Integer.MAX_VALUE;
+            return 1;
         }
 
         for (int xx = x - blockRadius; xx <= x + blockRadius; xx++) {
@@ -527,7 +530,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 if (curSlice.get((xx + 1) + (yy) * subSizeX) != prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX)) {
                     retVal += 1;
                 }
+                if (curSlice.get((xx + 1) + (yy) * subSizeX) == true) {
+                    validPixNum += 1;
+                }    
             }
+        }
+        
+        // Normalize the return value
+        if(retVal == 0) {
+            retVal = 1 - (validPixNum/((2*blockRadius + 1) * (2*blockRadius + 1)));
+        } else {
+            retVal = (validPixNum/((2*blockRadius + 1) * (2*blockRadius + 1))) * (retVal/((2*blockRadius + 1) * (2*blockRadius + 1)));            
         }
         return retVal;
     }
@@ -579,7 +592,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
         if (x < blockRadius + dx || x >= subSizeX - blockRadius + dx || x < blockRadius || x >= subSizeX - blockRadius
                 || y < blockRadius + dy || y >= subSizeY - blockRadius + dy || y < blockRadius || y >= subSizeY - blockRadius) {
-            return Integer.MAX_VALUE;
+            return 1;
         }
 
         for (int xx = x - blockRadius; xx <= x + blockRadius; xx++) {
@@ -713,13 +726,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      * @param curSlice
      * @return SADResult that provides the shift and SAD value
      */
-    private SADResult minSad(int x, int y, int[][] prevSlice, int[][] curSlice) {
+    private SADResult minSad(int x, int y, BitSet prevSlice, BitSet curSlice) {
         // for now just do exhaustive search over all shifts up to +/-searchDistance
         SADResult sadResult = new SADResult(0, 0, 0);
-        int minSad = Integer.MAX_VALUE, minDx = 0, minDy = 0;
+        float minSad = 1;
         for (int dx = -searchDistance; dx <= searchDistance; dx++) {
             for (int dy = -searchDistance; dy <= searchDistance; dy++) {
-                int sad = sad(x, y, dx, dy, prevSlice, curSlice);
+                float sad = sad(x, y, dx, dy, prevSlice, curSlice);
                 if (sad <= minSad) {
                     minSad = sad;
                     sadResult.dx = dx;
@@ -735,31 +748,43 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      * computes SAD centered on x,y with shift of dx,dy for prevSliceIdx
      * relative to curSliceIdx patch.
      *
-     * @param x coordinate in subSampled space
-     * @param y
-     * @param dx
-     * @param dy
+     * @param x coordinate x in subSampled space
+     * @param y coordinate y in subSampled space
+     * @param dx block shift of x 
+     * @param dy block shift of y
      * @param prevSliceIdx
      * @param curSliceIdx
      * @return SAD value
      */
-    private int sad(int x, int y, int dx, int dy, int[][] prevSlice, int[][] curSlice) {
+    private float sad(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
         int blockRadius = patchDimension / 2;
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
         if (x < blockRadius + dx || x >= subSizeX - blockRadius + dx || x < blockRadius || x >= subSizeX - blockRadius
                 || y < blockRadius + dy || y >= subSizeY - blockRadius + dy || y < blockRadius || y >= subSizeY - blockRadius) {
-            return Integer.MAX_VALUE;
+            return 1;
         }
 
-        int sad = 0;
+        float sad = 0;
+        float validPixNum = 0; // The valid pixel number in the current block
         for (int xx = x - blockRadius; xx <= x + blockRadius; xx++) {
             for (int yy = y - blockRadius; yy <= y + blockRadius; yy++) {
-                int d = curSlice[xx][yy] - prevSlice[xx - dx][yy - dy];
+                int d = ((curSlice.get((xx + 1) + (yy) * subSizeX)) ? 1 : 0) - 
+                         ((prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX)) ? 1 : 0);
+                if (curSlice.get((xx + 1) + (yy) * subSizeX) == true) {
+                    validPixNum += 1;
+                }                
                 if (d <= 0) {
                     d = -d;
                 }
                 sad += d;
             }
+        }
+        
+        // Normalize sad
+        if(sad == 0) {
+            sad = 1 - (validPixNum/((2*blockRadius + 1) * (2*blockRadius + 1)));
+        } else {
+            sad = 1 - (validPixNum/((2*blockRadius + 1) * (2*blockRadius + 1))) * (sad/(2 * (2*blockRadius + 1) * (2*blockRadius + 1)));            
         }
         return sad;
     }
@@ -914,6 +939,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         if (eventSeqStartTs == null) {
             eventSeqStartTs = new int[chip.getSizeX()][chip.getSizeY()];
         }
+    }
+
+    /**
+     *
+     * @param distResult
+     * @return the confidence of the result. True mens it's not good and should be rejected, false means we should accept it.
+     */
+    public synchronized boolean accuracyTests(SADResult distResult) {
+        boolean retVal =  super.accuracyTests(); //To change body of generated methods, choose Tools | Templates.
+        
+        if(distResult.sadValue == 1) {
+            retVal = true || retVal;
+        }
+        
+        return retVal;
     }
 
 }
