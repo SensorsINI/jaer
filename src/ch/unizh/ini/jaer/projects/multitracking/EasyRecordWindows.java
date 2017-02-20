@@ -33,7 +33,7 @@ public class EasyRecordWindows extends JFrame implements ActionListener {
 		setSize(400,200); //On donne une taille a notre fenetre
 		setLocationRelativeTo(null); //On centre la fenetre sur l'ecran
 		setResizable(false); //On interdit la redimensionnement de la fenetre
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); //On dit � l'application de se fermer lors du clic sur la croix
+		//setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); //On dit � l'application de se fermer lors du clic sur la croix
 		setContentPane(buildContentPanel());
 	}
 
