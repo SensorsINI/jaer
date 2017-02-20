@@ -19,6 +19,8 @@ import javax.swing.JPanel;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
+import javax.swing.JOptionPane;
+
 import org.apache.commons.lang3.StringUtils;
 import org.jblas.FloatMatrix;
 
@@ -187,6 +189,8 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
 	private int lastEventTime;
 	private int firstEventTime;
 	private ArrayList<Integer> rnnProcessTimeStampList;
+        private int predCounter = 0;
+        private int predCorrectCounter = 0;
 	private ArrayList<float[]> rnnOutputList;
 	private boolean addedDisplayMethodPropertyChangeListener = false;
 	private boolean screenCleared = false; // set by RollingCochleaGramDisplayMethod
@@ -233,6 +237,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
 			// what to display on rolling cochlea gram display
 			return;
 		}
+                // prints the name of the network being used, and if the network is processing it also prints the time for which the network was being processed
 		if ((this.rnnetwork != null) & (this.rnnetwork.netname != null)) {
 			MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .1f);
 			MultilineAnnotationTextRenderer.setScale(.1f);
@@ -246,18 +251,19 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
 				MultilineAnnotationTextRenderer.renderMultilineString(this.rnnetwork.netname);
 			}
 		}
+                // 
 		if (this.networkOutput != null) {
-			float tmpValue = RNNfilter.maxValue(this.networkOutput) * 100;
-			tmpValue = ((int) tmpValue);
-			tmpValue = tmpValue / 100;
-			if (!this.isShowPredictionOnlyIfGood() | (this.isShowPredictionOnlyIfGood() & (tmpValue > 0.9))) {
+			float prediction_probability_percentage = RNNfilter.maxValue(this.networkOutput) * 100;
+			prediction_probability_percentage = ((int) prediction_probability_percentage);
+			prediction_probability_percentage = prediction_probability_percentage / 100;
+			if (!this.isShowPredictionOnlyIfGood() | (this.isShowPredictionOnlyIfGood() & (prediction_probability_percentage > 0.9))) {
 				MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1f);
 				MultilineAnnotationTextRenderer.setScale(.1f);
 				if (this.isDisplayAccuracy()) {
 					// MultilineAnnotationTextRenderer.renderMultilineString(String.join("", Integer.toString(this.label
 					// + 1),";",Float.toString(tmpValue)));
 					MultilineAnnotationTextRenderer
-						.renderMultilineString(StringUtils.join("Recognized digit ", Integer.toString(this.label), "; Probability ", Float.toString(tmpValue)));
+						.renderMultilineString(StringUtils.join("Recognized digit ", Integer.toString(this.label), "; Probability ", Float.toString(prediction_probability_percentage)));
 				}
 				else {
 					// MultilineAnnotationTextRenderer.renderMultilineString(Integer.toString(this.label + 1));
@@ -1355,5 +1361,28 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
 	public void doLoadFromXML() {
 		this.loadFromXML();
 	}
+        
+        public void doPredCorrect() {
+            this.predCounter += 1;
+            this.predCorrectCounter += 1;
+        }
+        
+        public void doPredWrong() {
+            this.predCounter += 1;
+        }
+        
+        public void doPredAccuracy()  {
+            Float accuracy = (float) 0;
+            if (this.predCounter > 0) {           
+                accuracy = (float)this.predCorrectCounter / this.predCounter;
+            }
+            String toDisplay = StringUtils.join("Accuracy is ", Float.toString(accuracy), " on ", Integer.toString(this.predCounter), " total predictions");
+            JOptionPane.showMessageDialog(null, toDisplay);
+        }
+        
+        public void doPredReset() {
+            this.predCounter = 0;
+            this.predCorrectCounter = 0;
+        }
 
 }

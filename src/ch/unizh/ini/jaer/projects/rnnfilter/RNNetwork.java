@@ -7,7 +7,6 @@ import static net.sf.jaer.eventprocessing.EventFilter.log;
 import java.io.File;
 import java.io.IOException;
 
-import org.jblas.DoubleMatrix;
 import org.jblas.MatrixFunctions;
 
 import eu.visualize.ini.convnet.EasyXMLReader;
@@ -1473,9 +1472,7 @@ public class RNNetwork {
             return null; 
         }
         float[] output = new float[input.length];
-        for (int i = 0; i < input.length; i++) {
-            output[i] = input[i];
-        }
+        System.arraycopy(input, 0, output, 0, input.length);
         return output;
     }
     /**
@@ -1489,9 +1486,7 @@ public class RNNetwork {
         }
         float[][] output = new float[input.length][input[0].length];
         for (int i = 0; i < input.length; i++) {
-            for (int j = 0; j < input[i].length; j++) {
-                output[i][j] = input[i][j];
-            }
+            System.arraycopy(input[i], 0, output[i], 0, input[i].length);
         }
         return output;
     }
