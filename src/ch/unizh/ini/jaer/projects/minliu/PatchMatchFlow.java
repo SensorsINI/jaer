@@ -5,15 +5,17 @@
  */
 package ch.unizh.ini.jaer.projects.minliu;
 
-import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
-import com.jogamp.opengl.util.awt.TextRenderer;
-import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
 import java.util.Observable;
 import java.util.Observer;
+
+import com.jogamp.opengl.util.awt.TextRenderer;
+
+import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
+import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -22,7 +24,6 @@ import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.Steadicam;
-import net.sf.jaer.eventprocessing.filter.TransformAtTime;
 
 /**
  * Uses patch matching to measureTT local optical flow. <b>Not</b> gradient
@@ -118,7 +119,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         checkArrays();
 
         ApsDvsEventPacket in2 = (ApsDvsEventPacket) in;
-        Iterator itr = in2.fullIterator();   // Wfffsfe also need IMU data, so here we use the full iterator. 
+        Iterator itr = in2.fullIterator();   // Wfffsfe also need IMU data, so here we use the full iterator.
         while (itr.hasNext()) {
             Object ein = itr.next();
             if (ein == null) {
@@ -174,16 +175,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
                     if (preProcessEnable) {
                         // There're enough events fire on the specific block now.
-                        if (spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum) {
+                        if ((spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY]) >= forwardEventNum) {
                             lastFireIndex[blockLocX][blockLocY] = spikeTrains[blockLocX][blockLocY].size() - 1;
                             result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
-                            result.dx = result.dx / sliceDurationUs * 1000000;
-                            result.dy = result.dy / sliceDurationUs * 1000000;
+                            result.dx = (result.dx / sliceDurationUs) * 1000000;
+                            result.dy = (result.dy / sliceDurationUs) * 1000000;
                         }
                     } else {
                         result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
-                        result.dx = result.dx / sliceDurationUs * 1000000;
-                        result.dy = result.dy / sliceDurationUs * 1000000;
+                        result.dx = (result.dx / sliceDurationUs) * 1000000;
+                        result.dy = (result.dy / sliceDurationUs) * 1000000;
                     }
 
                     break;
@@ -192,17 +193,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     accumulateEvent();
                     if (preProcessEnable) {
                         // There're enough events fire on the specific block now
-                        if (spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum) {
+                        if ((spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY]) >= forwardEventNum) {
                             lastFireIndex[blockLocX][blockLocY] = spikeTrains[blockLocX][blockLocY].size() - 1;
                             result = minSad(x, y, tMinus2Sli, tMinus1Sli);
-                            result.dx = result.dx / sliceDurationUs * 1000000;
-                            result.dy = result.dy / sliceDurationUs * 1000000;
+                            result.dx = (result.dx / sliceDurationUs) * 1000000;
+                            result.dy = (result.dy / sliceDurationUs) * 1000000;
 
                         }
                     } else {
                         result = minSad(x, y, tMinus2Sli, tMinus1Sli);
-                        result.dx = result.dx / sliceDurationUs * 1000000;
-                        result.dy = result.dy / sliceDurationUs * 1000000;
+                        result.dx = (result.dx / sliceDurationUs) * 1000000;
+                        result.dy = (result.dy / sliceDurationUs) * 1000000;
                     }
                     break;
                 case JaccardDistance:
@@ -210,16 +211,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     accumulateEvent();
                     if (preProcessEnable) {
                         // There're enough events fire on the specific block now
-                        if (spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY] >= forwardEventNum) {
+                        if ((spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY]) >= forwardEventNum) {
                             lastFireIndex[blockLocX][blockLocY] = spikeTrains[blockLocX][blockLocY].size() - 1;
                             result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
-                            result.dx = result.dx / sliceDurationUs * 1000000;
-                            result.dy = result.dy / sliceDurationUs * 1000000;
+                            result.dx = (result.dx / sliceDurationUs) * 1000000;
+                            result.dy = (result.dy / sliceDurationUs) * 1000000;
                         }
                     } else {
                         result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
-                        result.dx = result.dx / sliceDurationUs * 1000000;
-                        result.dy = result.dy / sliceDurationUs * 1000000;
+                        result.dx = (result.dx / sliceDurationUs) * 1000000;
+                        result.dy = (result.dy / sliceDurationUs) * 1000000;
                     }
                     break;
                 case EventSqeDistance:
@@ -231,24 +232,24 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     if (previousTsInterval >= thresholdTime) {
                         float maxDt = 0;
                         float[][] dataPoint = new float[9][2];
-                        if (blockLocX >= 1 && blockLocY >= 1 && blockLocX <= 238 && blockLocY <= 178) {
+                        if ((blockLocX >= 1) && (blockLocY >= 1) && (blockLocX <= 238) && (blockLocY <= 178)) {
                             for (int ii = -1; ii < 2; ii++) {
                                 for (int jj = -1; jj < 2; jj++) {
                                     float dt = ts - eventSeqStartTs[blockLocX + ii][blockLocY + jj];
 
-                                    // Remove the seq1 itself                             
-                                    if (0 == ii && 0 == jj) {
+                                    // Remove the seq1 itself
+                                    if ((0 == ii) && (0 == jj)) {
                                         // continue;
                                         dt = 0;
                                     }
 
-                                    dataPoint[(ii + 1) * 3 + (jj + 1)][0] = dt;
+                                    dataPoint[((ii + 1) * 3) + (jj + 1)][0] = dt;
                                     if (dt > maxDt) {
                                     }
                                 }
                             }
                         }
-                        // result = minVicPurDistance(blockLocX, blockLocY);  
+                        // result = minVicPurDistance(blockLocX, blockLocY);
 
                         eventSeqStartTs[blockLocX][blockLocY] = ts;
                         boolean allZeroFlg = true;
@@ -284,20 +285,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                                 thirdClusterIdx = i;
                             }
                         }
-                        if (kmeansResult.get(firstClusterIdx).size() == 3
-                                && kmeansResult.get(firstClusterIdx).size() == 3
-                                && kmeansResult.get(firstClusterIdx).size() == 3
+                        if ((kmeansResult.get(firstClusterIdx).size() == 3)
+                                && (kmeansResult.get(firstClusterIdx).size() == 3)
+                                && (kmeansResult.get(firstClusterIdx).size() == 3)
                                 && kmeansResult.get(firstClusterIdx).contains(1)
                                 && kmeansResult.get(firstClusterIdx).contains(2)) {
-                            result.dx = -1 / (classData[secondClusterIdx][0] - classData[firstClusterIdx][0]) * 1000000 * 0.2f * eventPatchDimension;;
+                            result.dx = (-1 / (classData[secondClusterIdx][0] - classData[firstClusterIdx][0])) * 1000000 * 0.2f * eventPatchDimension;;
                             result.dy = 0;
                         }
-                        if (kmeansResult.get(firstClusterIdx).size() == 3
-                                && kmeansResult.get(firstClusterIdx).size() == 3
-                                && kmeansResult.get(firstClusterIdx).size() == 3
+                        if ((kmeansResult.get(firstClusterIdx).size() == 3)
+                                && (kmeansResult.get(firstClusterIdx).size() == 3)
+                                && (kmeansResult.get(firstClusterIdx).size() == 3)
                                 && kmeansResult.get(thirdClusterIdx).contains(2)
                                 && kmeansResult.get(thirdClusterIdx).contains(5)) {
-                            result.dy = -1 / (classData[thirdClusterIdx][0] - classData[secondClusterIdx][0]) * 1000000 * 0.2f * eventPatchDimension;;
+                            result.dy = (-1 / (classData[thirdClusterIdx][0] - classData[secondClusterIdx][0])) * 1000000 * 0.2f * eventPatchDimension;;
                             result.dx = 0;
                         }
                     }
@@ -305,7 +306,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             }
             vx = result.dx;
             vy = result.dy;
-            v = (float) Math.sqrt(vx * vx + vy * vy);
+            v = (float) Math.sqrt((vx * vx) + (vy * vy));
 
 
             // reject values that are unreasonable
@@ -349,8 +350,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         eventCounter = 0;
         lastTs = Integer.MIN_VALUE;
 
-        if (histograms == null || histograms.length != subSizeX || histograms[0].length != subSizeY) {
-            if (numSlices == 0 && subSizeX == 0 && subSizeX == 0) {
+        if ((histograms == null) || (histograms.length != subSizeX) || (histograms[0].length != subSizeY)) {
+            if ((numSlices == 0) && (subSizeX == 0) && (subSizeX == 0)) {
                 return;
             }
             histograms = new int[numSlices][subSizeX][subSizeY];
@@ -373,7 +374,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             histogramsAL = new ArrayList[3];
         }
 
-        if (spikeTrains == null & subSizeX != 0 & subSizeY != 0) {
+        if ((spikeTrains == null) & (subSizeX != 0) & (subSizeY != 0)) {
             spikeTrains = new ArrayList[subSizeX][subSizeY];
         }
         if (patchDimension != 0) {
@@ -382,7 +383,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
             for (int ii = 0; ii < numSlices; ii++) {
                 histogramsAL[ii] = new ArrayList();
-                for (int jj = 0; jj < colPatchCnt * rowPatchCnt; jj++) {
+                for (int jj = 0; jj < (colPatchCnt * rowPatchCnt); jj++) {
                     int[][] patch = new int[patchDimension][patchDimension];
                     histogramsAL[ii].add(patch);
                 }
@@ -404,7 +405,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             return;
         }
         super.update(o, arg);
-        if (o instanceof AEChip && chip.getNumPixels() > 0) {
+        if ((o instanceof AEChip) && (chip.getNumPixels() > 0)) {
             resetFilter();
         }
     }
@@ -420,7 +421,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 if (rewindFlg) {
                     return;
                 }
-                if (dt < sliceDurationUs || dt < 0) {
+                if ((dt < sliceDurationUs) || (dt < 0)) {
                     return;
                 }
                 break;
@@ -467,7 +468,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      */
     private void accumulateEvent() {
         currentSlice[x][y] += e.getPolaritySignum();
-        currentSli.set((x + 1) + y * subSizeX);  // All evnets wheather 0 or 1 will be set in the BitSet Slice.
+        currentSli.set((x + 1) + (y * subSizeX));  // All evnets wheather 0 or 1 will be set in the BitSet Slice.
     }
 
     private void clearSlice(int idx) {
@@ -510,7 +511,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      *
      * @param x coordinate x in subSampled space
      * @param y coordinate y in subSampled space
-     * @param dx   
+     * @param dx
      * @param dy
      * @param prevSlice
      * @param curSlice
@@ -522,27 +523,27 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         float validPixNum = 0; // The valid pixel number in the current block
 
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
-        if (x < blockRadius + dx || x >= subSizeX - blockRadius + dx || x < blockRadius || x >= subSizeX - blockRadius
-                || y < blockRadius + dy || y >= subSizeY - blockRadius + dy || y < blockRadius || y >= subSizeY - blockRadius) {
+        if ((x < (blockRadius + dx)) || (x >= ((subSizeX - blockRadius) + dx)) || (x < blockRadius) || (x >= (subSizeX - blockRadius))
+                || (y < (blockRadius + dy)) || (y >= ((subSizeY - blockRadius) + dy)) || (y < blockRadius) || (y >= (subSizeY - blockRadius))) {
             return 1;
         }
 
-        for (int xx = x - blockRadius; xx <= x + blockRadius; xx++) {
-            for (int yy = y - blockRadius; yy <= y + blockRadius; yy++) {
-                if (curSlice.get((xx + 1) + (yy) * subSizeX) != prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX)) {
+        for (int xx = x - blockRadius; xx <= (x + blockRadius); xx++) {
+            for (int yy = y - blockRadius; yy <= (y + blockRadius); yy++) {
+                if (curSlice.get((xx + 1) + ((yy) * subSizeX)) != prevSlice.get(((xx + 1) - dx) + ((yy - dy) * subSizeX))) {
                     retVal += 1;
                 }
-                if (curSlice.get((xx + 1) + (yy) * subSizeX) == true) {
+                if (curSlice.get((xx + 1) + ((yy) * subSizeX)) == true) {
                     validPixNum += 1;
-                }    
+                }
             }
         }
-        
+
         // Normalize the return value
         if(retVal == 0) {
-            retVal = 1 - (validPixNum/((2*blockRadius + 1) * (2*blockRadius + 1)));
+            retVal = 1 - (validPixNum/(((2*blockRadius) + 1) * ((2*blockRadius) + 1)));
         } else {
-            retVal = (validPixNum/((2*blockRadius + 1) * (2*blockRadius + 1))) * (retVal/((2*blockRadius + 1) * (2*blockRadius + 1)));            
+            retVal = (validPixNum/(((2*blockRadius) + 1) * ((2*blockRadius) + 1))) * (retVal/(((2*blockRadius) + 1) * ((2*blockRadius) + 1)));
         }
         return retVal;
     }
@@ -592,25 +593,25 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         int blockRadius = patchDimension / 2;
 
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
-        if (x < blockRadius + dx || x >= subSizeX - blockRadius + dx || x < blockRadius || x >= subSizeX - blockRadius
-                || y < blockRadius + dy || y >= subSizeY - blockRadius + dy || y < blockRadius || y >= subSizeY - blockRadius) {
+        if ((x < (blockRadius + dx)) || (x >= ((subSizeX - blockRadius) + dx)) || (x < blockRadius) || (x >= (subSizeX - blockRadius))
+                || (y < (blockRadius + dy)) || (y >= ((subSizeY - blockRadius) + dy)) || (y < blockRadius) || (y >= (subSizeY - blockRadius))) {
             return 1;
         }
 
-        for (int xx = x - blockRadius; xx <= x + blockRadius; xx++) {
-            for (int yy = y - blockRadius; yy <= y + blockRadius; yy++) {
-                if (curSlice.get((xx + 1) + (yy) * subSizeX) == true && prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX) == true) {
+        for (int xx = x - blockRadius; xx <= (x + blockRadius); xx++) {
+            for (int yy = y - blockRadius; yy <= (y + blockRadius); yy++) {
+                if ((curSlice.get((xx + 1) + ((yy) * subSizeX)) == true) && (prevSlice.get(((xx + 1) - dx) + ((yy - dy) * subSizeX)) == true)) {
                     M11 += 1;
                 }
-                if (curSlice.get((xx + 1) + (yy) * subSizeX) == true && prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX) == false) {
+                if ((curSlice.get((xx + 1) + ((yy) * subSizeX)) == true) && (prevSlice.get(((xx + 1) - dx) + ((yy - dy) * subSizeX)) == false)) {
                     M01 += 1;
                 }
-                if (curSlice.get((xx + 1) + (yy) * subSizeX) == false && prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX) == true) {
+                if ((curSlice.get((xx + 1) + ((yy) * subSizeX)) == false) && (prevSlice.get(((xx + 1) - dx) + ((yy - dy) * subSizeX)) == true)) {
                     M10 += 1;
                 }
             }
         }
-        if (0 == M01 + M10 + M11) {
+        if (0 == (M01 + M10 + M11)) {
             retVal = 0;
         } else {
             retVal = M11 / (M01 + M10 + M11);
@@ -636,12 +637,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         for (int i = -1; i < 2; i++) {
             for (int j = -1; j < 2; j++) {
                 // Remove the seq1 itself
-                if (0 == i && 0 == j) {
+                if ((0 == i) && (0 == j)) {
                     continue;
                 }
                 ArrayList<Integer[]> seq2 = new ArrayList(1);
 
-                if (blockX >= 2 && blockY >= 2) {
+                if ((blockX >= 2) && (blockY >= 2)) {
                     ArrayList<Integer[]> tmpSpikes = spikeTrains[blockX + i][blockY + j];
                     if (tmpSpikes != null) {
                         for (int index = 0; index < tmpSpikes.size(); index++) {
@@ -664,7 +665,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             }
         }
         lastFireIndex[blockX][blockY] = spikeTrains[blockX][blockY].size() - 1;
-        if (sadResult.dx != 1 || sadResult.dy != 0) {
+        if ((sadResult.dx != 1) || (sadResult.dy != 0)) {
             // sadResult = new SADResult(0, 0, 0);
         }
         return sadResult;
@@ -692,7 +693,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 double tmpMin = Math.min(distanceMatrix[h][k - 1] + 1, distanceMatrix[h - 1][k] + 1);
                 double event1 = seq1.get(h - 1)[0] - seq1.get(0)[0];
                 double event2 = seq2.get(k - 1)[0] - seq2.get(0)[0];
-                distanceMatrix[h][k] = Math.min(tmpMin, distanceMatrix[h - 1][k - 1] + cost * Math.abs(event1 - event2));
+                distanceMatrix[h][k] = Math.min(tmpMin, distanceMatrix[h - 1][k - 1] + (cost * Math.abs(event1 - event2)));
             }
         }
 
@@ -752,7 +753,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      *
      * @param x coordinate x in subSampled space
      * @param y coordinate y in subSampled space
-     * @param dx block shift of x 
+     * @param dx block shift of x
      * @param dy block shift of y
      * @param prevSliceIdx
      * @param curSliceIdx
@@ -761,32 +762,32 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private float sad(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
         int blockRadius = patchDimension / 2;
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
-        if (x < blockRadius + dx || x >= subSizeX - blockRadius + dx || x < blockRadius || x >= subSizeX - blockRadius
-                || y < blockRadius + dy || y >= subSizeY - blockRadius + dy || y < blockRadius || y >= subSizeY - blockRadius) {
+        if ((x < (blockRadius + dx)) || (x >= ((subSizeX - blockRadius) + dx)) || (x < blockRadius) || (x >= (subSizeX - blockRadius))
+                || (y < (blockRadius + dy)) || (y >= ((subSizeY - blockRadius) + dy)) || (y < blockRadius) || (y >= (subSizeY - blockRadius))) {
             return 1;
         }
 
         float sad = 0;
         float validPixNum = 0; // The valid pixel number in the current block
-        for (int xx = x - blockRadius; xx <= x + blockRadius; xx++) {
-            for (int yy = y - blockRadius; yy <= y + blockRadius; yy++) {
-                int d = ((curSlice.get((xx + 1) + (yy) * subSizeX)) ? 1 : 0) - 
-                         ((prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX)) ? 1 : 0);
-                if (curSlice.get((xx + 1) + (yy) * subSizeX) == true) {
+        for (int xx = x - blockRadius; xx <= (x + blockRadius); xx++) {
+            for (int yy = y - blockRadius; yy <= (y + blockRadius); yy++) {
+                int d = ((curSlice.get((xx + 1) + ((yy) * subSizeX))) ? 1 : 0) -
+                         ((prevSlice.get(((xx + 1) - dx) + ((yy - dy) * subSizeX))) ? 1 : 0);
+                if (curSlice.get((xx + 1) + ((yy) * subSizeX)) == true) {
                     validPixNum += 1;
-                }                
+                }
                 if (d <= 0) {
                     d = -d;
                 }
                 sad += d;
             }
         }
-        
+
         // Normalize sad
         if(sad == 0) {
-            sad = 1 - (validPixNum/((2*blockRadius + 1) * (2*blockRadius + 1)));
+            sad = 1 - (validPixNum/(((2*blockRadius) + 1) * ((2*blockRadius) + 1)));
         } else {
-            sad = 1 - (validPixNum/((2*blockRadius + 1) * (2*blockRadius + 1))) * (sad/(2 * (2*blockRadius + 1) * (2*blockRadius + 1)));            
+            sad = 1 - ((validPixNum/(((2*blockRadius) + 1) * ((2*blockRadius) + 1))) * (sad/(2 * ((2*blockRadius) + 1) * ((2*blockRadius) + 1))));
         }
         return sad;
     }
@@ -940,7 +941,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
     public void setConfidenceThreshold(float confidenceThreshold) {
         this.confidenceThreshold = confidenceThreshold;
-        putFloat("confidenceThreshold", confidenceThreshold);    
+        putFloat("confidenceThreshold", confidenceThreshold);
     }
 
     private void checkArrays() {
@@ -959,11 +960,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      */
     public synchronized boolean accuracyTests(SADResult distResult) {
         boolean retVal =  super.accuracyTests(); //To change body of generated methods, choose Tools | Templates.
-        
+
         if(distResult.sadValue >= this.confidenceThreshold) {
-            retVal = true || retVal;
+            retVal = true;
         }
-        
+
         return retVal;
     }
 
