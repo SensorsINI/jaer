@@ -137,6 +137,9 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 		private static final int IMU_DATA_LENGTH = 7;
 		private final short[] imuEvents;
+		private final boolean imuFlipX;
+		private final boolean imuFlipY;
+		private final boolean imuFlipZ;
 		private int imuCount;
 		private byte imuTmpData;
 
@@ -187,6 +190,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 			dvsSizeY = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
 
 			dvsInvertXY = (spiConfigReceive(CypressFX3.FPGA_DVS, (short) 2) & 0x04) != 0;
+
+			final int imuOrientation = spiConfigReceive(CypressFX3.FPGA_IMU, (short) 10);
+			imuFlipX = (imuOrientation & 0x04) != 0;
+			imuFlipY = (imuOrientation & 0x02) != 0;
+			imuFlipZ = (imuOrientation & 0x01) != 0;
 
 			updateTimestampMasterStatus();
 		}
@@ -646,14 +654,23 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 											case 2: // Accel X
 												imuEvents[0] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
+												if (imuFlipX) {
+													imuEvents[0] = (short) -imuEvents[0];
+												}
 												break;
 
 											case 4: // Accel Y
 												imuEvents[1] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
+												if (imuFlipY) {
+													imuEvents[1] = (short) -imuEvents[1];
+												}
 												break;
 
 											case 6: // Accel Z
 												imuEvents[2] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
+												if (imuFlipZ) {
+													imuEvents[2] = (short) -imuEvents[2];
+												}
 												break;
 
 											case 8: // Temperature
@@ -662,14 +679,23 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 											case 10: // Gyro X
 												imuEvents[4] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
+												if (imuFlipX) {
+													imuEvents[4] = (short) -imuEvents[4];
+												}
 												break;
 
 											case 12: // Gyro Y
 												imuEvents[5] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
+												if (imuFlipY) {
+													imuEvents[5] = (short) -imuEvents[5];
+												}
 												break;
 
 											case 14: // Gyro Z
 												imuEvents[6] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
+												if (imuFlipZ) {
+													imuEvents[6] = (short) -imuEvents[6];
+												}
 												break;
 										}
 
