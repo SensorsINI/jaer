@@ -50,6 +50,7 @@ import java.awt.event.ActionEvent;
 import javax.swing.Action;
 import javax.swing.KeyStroke;
 import java.awt.event.KeyEvent;
+import java.io.File;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JFrame;
@@ -63,12 +64,14 @@ import net.sf.jaer.graphics.MultiViewMultiCamera;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.logging.LogManager;
+import net.sf.jaer.graphics.AEViewer.PlayMode;
 
 
 @Description("A multi Davis retina each on it's own USB interface with merged and presumably aligned fields of view")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 abstract public class MultiDavisCameraChip extends DavisBaseCamera implements MultiCameraInterface {
-    final public int NUM_CAMERAS=MultiCameraHardwareInterface.NUM_CAMERAS; 
+    public int NUM_CAMERAS=MultiCameraHardwareInterface.NUM_CAMERAS; 
+   
     public int NUM_VIEWERS;
 
     private AEChip chip= new AEChip();
@@ -247,13 +250,23 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
 
         @Override
         public void actionPerformed(ActionEvent e) {
-        Object[] possibilities = new Object[NUM_CAMERAS+1];
-        for (int i=0; i<=NUM_CAMERAS; i++){
-            possibilities[i]=i;
+            Object[] possibilities = new Object[NUM_CAMERAS+1];
+            for (int i=0; i<NUM_CAMERAS; i++){
+                possibilities[i]=i;
+            }
+            possibilities[NUM_CAMERAS]="All";
+            Frame frame=new Frame();
+            try{
+                displaycamera = (int)JOptionPane.showInputDialog(frame,"Select camera to display:","Choose Camera",JOptionPane.QUESTION_MESSAGE,null,possibilities,displaycamera);
+            } catch(Exception ex){
+                displaycamera=NUM_CAMERAS;
+            }
         }
-        Frame frame=new Frame();
-        displaycamera = (int)JOptionPane.showInputDialog(frame,"Select camera to display:","Choose Camera",JOptionPane.QUESTION_MESSAGE,null,possibilities,displaycamera);
-        
+    }
+    
+    public void findMaxNumCameras(MultiCameraApsDvsEvent e){
+        if (e.camera>NUM_CAMERAS){
+            NUM_CAMERAS=e.camera+1;
         }
     }
     
@@ -334,7 +347,7 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
         @Override
         synchronized public ApsDvsEventPacket extractPacket(AEPacketRaw in) {
             final int sx = getChipType().getSizeX()-1;
-            final int sy = getChipType().getSizeY()-1;
+            final int sy = getChipType().getSizeY()-1;            
             if (out == null) {
                 out = new ApsDvsEventPacket(MultiCameraApsDvsEvent.class);
             }else {
@@ -357,7 +370,6 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
                 ApsDvsEvent davisExtractedEvent= (ApsDvsEvent) davisExtractedPacket.getEvent(i);
                 MultiCameraApsDvsEvent e= (MultiCameraApsDvsEvent) outItr.nextOutput();
                 e.copyFrom(davisExtractedEvent);
-                e.NUM_CAMERAS=NUM_CAMERAS;
                 int address=e.address;
                 //if DVS
                 if (e.isDVSEvent() ){
@@ -368,9 +380,14 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
 //                    System.out.println("DVS? "+ e.isDVSEvent()+" camera: " +e.camera+" x: "+ e.x+" y: "+e.y);
                 }
                 
+                if (NUM_CAMERAS==0){
+                    findMaxNumCameras(e);
+                }
+                e.NUM_CAMERAS=NUM_CAMERAS;
+                
                 if(displaycamera<NUM_CAMERAS){
                     int chosencamera=displaycamera;
-                    if(e.camera==chosencamera){
+                    if(e.camera!=chosencamera){
                         e.setFilteredOut(true);
                     }
                 }             
@@ -482,8 +499,20 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
         if (n <1) {
             log.warning( " couldn't build MultiCameraHardwareInterface hardware interface because only " + n + " camera is available and at least 2 cameras are needed");
             hardwareInterface= HardwareInterfaceFactory.instance().getInterface(n);
+            
+            try{
+                if(getAeViewer().getPlayMode()==PlayMode.PLAYBACK){
+                    log.info("playback mode");
+                }
+            }
+            catch(Exception e){
+                log.warning("display a logged file or connect interfaces");
+            }
+            
             return hardwareInterface;
         }
+               
+        
         
         for (int i = 0; i < n; i++) {
             HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(i);
@@ -574,7 +603,7 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
         }
         
         return camerasPacket; 
-    }
+    }    
 }
     
     
