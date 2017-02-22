@@ -132,7 +132,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             }
             ApsDvsEvent apsDvsEvent = (ApsDvsEvent) ein;
             if (apsDvsEvent.isImuSample()) {
-                IMUSample s = apsDvsEvent.getImuSample();
+//                IMUSample s = apsDvsEvent.getImuSample();
                 continue;
             }
             if (apsDvsEvent.isApsData()) {
