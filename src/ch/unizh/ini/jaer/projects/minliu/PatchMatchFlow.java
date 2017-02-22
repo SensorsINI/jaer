@@ -49,7 +49,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int eventPatchDimension = getInt("eventPatchDimension", 3);
     private int forwardEventNum = getInt("forwardEventNum", 10);
     private float cost = getFloat("cost", 0.001f);
-    private float confidenceThreshold = getFloat("confidence threshold", 1f);
+    private float confidenceThreshold = getFloat("confidenceThreshold", 1f);
+    private float validPixOccupancy = getFloat("validPixOccupancy", 0.01f);  // threshold for valid pixel percent for one block
+    private float weightDistance = getFloat("weightDistance", 0.9f);        // confidence value consists of the distance and the dispersion, this value set the distance value
     private int thresholdTime = getInt("thresholdTime", 1000000);
     private int[][] lastFireIndex = null;  // Events are numbered in time order for every block. This variable is for storing the last event index fired on all blocks.
     private int[][] eventSeqStartTs = null;
@@ -95,11 +97,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         String patchTT = "Block matching";
         String eventSqeMatching = "Event squence matching";
         String preProcess = "Denoise";
+        String metricConfid = "Confidence of current metric";
 
         chip.addObserver(this); // to allocate memory once chip size is known
         setPropertyTooltip(preProcess, "preProcessEnable", "enable this to denoise before data processing");
         setPropertyTooltip(preProcess, "forwardEventNum", "Number of events have fired on the current block since last processing");
-        setPropertyTooltip(preProcess, "confidenceThreshold", "Confidence threshold for rejecting unresonable value; Range from 0 to 1");
+        setPropertyTooltip(metricConfid, "confidenceThreshold", "Confidence threshold for rejecting unresonable value; Range from 0 to 1");
+        setPropertyTooltip(metricConfid, "validPixOccupancy", "threshold for valid pixel percent for one block; Range from 0 to 1");
+        setPropertyTooltip(metricConfid, "weightDistance", "confidence value consists of the distance and the dispersion, this value set the distance value; Range from 0 to 1");
         setPropertyTooltip(patchTT, "patchDimension", "linear dimenion of patches to match, in pixels");
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");
@@ -489,6 +494,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private SADResult minHammingDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
         float minSum = Integer.MAX_VALUE, sum = 0;
         SADResult sadResult = new SADResult(0, 0, 0);
+        if(x >= 128 && x <= 130 && y >= 189 && y <= 191) {  // For debugging
+            int tmp = 0;
+        }
         for (int dx = -searchDistance; dx <= searchDistance; dx++) {
             for (int dy = -searchDistance; dy <= searchDistance; dy++) {
                  sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
@@ -517,14 +525,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      * @return Hamming Distance value
      */
     private float hammingDistance(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
-        float retVal = 0;
+        float retVal = 0, hd = 0;
         int blockRadius = patchDimension / 2;
         float validPixNumCurrSli = 0, validPixNumPrevSli = 0; // The valid pixel number in the current block
 
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
         if (x < blockRadius + dx || x >= subSizeX - blockRadius + dx || x < blockRadius || x >= subSizeX - blockRadius
                 || y < blockRadius + dy || y >= subSizeY - blockRadius + dy || y < blockRadius || y >= subSizeY - blockRadius) {
-            return Integer.MAX_VALUE;
+            return 1;
         }
 
         for (int xx = x - blockRadius; xx <= x + blockRadius; xx++) {
@@ -533,7 +541,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 boolean prevSlicePol = prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX); // binary value on (xx, yy) for previous slice
                 
                 if (currSlicePol != prevSlicePol) {
-                    retVal += 1;
+                    hd += 1;
                 }
                 if (currSlicePol == true) {
                     validPixNumCurrSli += 1;
@@ -544,12 +552,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             }
         }
         
-        // Normalize the return value
-        if(validPixNumCurrSli == 0 || validPixNumPrevSli == 0) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
-            retVal = Integer.MAX_VALUE;
+        // Calculate the metric confidence value
+        float validPixNum = this.validPixOccupancy * ((2*blockRadius + 1) * (2*blockRadius + 1));
+        if(validPixNumCurrSli <= validPixNum || validPixNumPrevSli <= validPixNum) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
+            retVal = 1;
         } else {
-            // retVal = (validPixNumCurrSli/((2*blockRadius + 1) * (2*blockRadius + 1))) * (retVal/((2*blockRadius + 1) * (2*blockRadius + 1)));     
-            retVal = retVal/(validPixNumCurrSli);
+            retVal = (hd * weightDistance + Math.abs(validPixNumCurrSli - validPixNumPrevSli) * (1 - weightDistance))/((2*blockRadius + 1) * (2*blockRadius + 1));
         }
         return retVal;
     }
@@ -948,6 +956,24 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     public void setConfidenceThreshold(float confidenceThreshold) {
         this.confidenceThreshold = confidenceThreshold;
         putFloat("confidenceThreshold", confidenceThreshold);    
+    }
+
+    public float getValidPixOccupancy() {
+        return validPixOccupancy;
+    }
+
+    public void setValidPixOccupancy(float validPixOccupancy) {
+        this.validPixOccupancy = validPixOccupancy;
+        putFloat("validPixOccupancy", validPixOccupancy);    
+    }
+
+    public float getWeightDistance() {
+        return weightDistance;
+    }
+
+    public void setWeightDistance(float weightDistance) {
+        this.weightDistance = weightDistance;
+        putFloat("weightDistance", weightDistance);    
     }
 
     private void checkArrays() {
