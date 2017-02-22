@@ -40,9 +40,11 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
+//import net.sf.jaer.eventprocessing.tracking.EinsteinClusterTracker.Cluster;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.filter.LowpassFilter;
+
 /**
  * Example to compute the location of one joint
  * @author Sophie
@@ -76,7 +78,11 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	RectVector foundLocations1;
 	private boolean personDetected=false;
 	private boolean startclicktracking=false;
-
+	private boolean clustering=false;
+	private Vector<BasicEvent> visitedPoints=new Vector<BasicEvent>();
+	private Double epsilon=(double) 10;
+	private int MinPts=30;
+	private Vector<Cluster> clusters=new Vector<Cluster>();;
 
 	public trackerForJoints(AEChip chip) {
 		super(chip);
@@ -93,7 +99,10 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	// TO DO rewrite it properly
 	@Override
 	public EventPacket filterPacket(EventPacket in) {
-
+		if(clustering)
+		{
+			densityBasedClustering(in);// do this check to avoid always running filter
+		}
 		int n = in.getSize();
 		//System.out.println(n);
 		if(!filterEnabled)
@@ -303,6 +312,117 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 			return in;
 
 		}
+public void doclustering(){
+	clustering=true;
+}
+
+//DBSCAN
+private void densityBasedClustering(EventPacket in) {
+	Cluster C;
+		for (Object o : in) {
+			BasicEvent e = (BasicEvent) o;
+			if (e.isSpecial()) {
+				continue;
+			}
+			if (visitedPoints.contains(e)){
+				continue;
+			}
+			visitedPoints.add(e);
+			Vector<BasicEvent> NeighborPoints=new Vector<BasicEvent>();
+		    NeighborPoints = regionQuery(e,epsilon, in);
+		    if (NeighborPoints.size()>=MinPts){
+		    	C= new Cluster(e);
+		    	expandCluster(e, NeighborPoints, C, in);
+		    }
+
+		}
+
+	}
+
+private void expandCluster(BasicEvent e, Vector<BasicEvent> neighPoints, Cluster c,EventPacket in) {
+	//c.addEvent(e);
+	for(int i=0; i<neighPoints.size(); i++){
+		BasicEvent b=neighPoints.get(i);
+		if (!visitedPoints.contains(b)){
+			visitedPoints.add(b);
+			Vector<BasicEvent> neighbPts=new Vector<BasicEvent>();
+			neighbPts = regionQuery(b,epsilon,in);
+		    if (neighbPts.size()>=MinPts){
+		    	neighPoints=addPointOfNeighboring(neighPoints, neighbPts);
+		    	  }
+		    if(DoesClustersContainBE(b)){
+		    	c.addEvent(b);
+
+		    }
+		}
+	}
+
+}
+
+private boolean DoesClustersContainBE(BasicEvent be) {
+	int counter=0;
+	for (Cluster c:clusters){
+		if (c.ListOfEvent.contains(be)){
+			counter++;
+		}
+	}
+	if (counter==0){
+		return false;
+	}
+	else{
+		return true;
+	}
+}
+
+private Vector<BasicEvent> addPointOfNeighboring(Vector<BasicEvent> neighbPts, Vector<BasicEvent> neighbPtsToAdd) {
+	for(BasicEvent e:neighbPtsToAdd){
+		neighbPts.add(e);
+	}
+	return neighbPts;
+}
+
+private Cluster getNearestCluster(BasicEvent event) {
+	float minDistance = Float.MAX_VALUE;
+	Cluster closest = null;
+	float currentDistance = 0;
+	for (Cluster c : clusters) {
+		float rX = c.radiusX;
+		float rY = c.radiusY; // this is surround region for purposes of dynamicSize scaling of cluster size or aspect ratio
+//		if (dynamicSizeEnabled) {
+//			rX *= surround;
+//			rY *= surround; // the event is captured even when it is in "invisible surround"
+//		}
+		float dx, dy;
+		if (((dx = c.distanceToX(event)) < rX) && ((dy = c.distanceToY(event)) < rY)) { // needs instantaneousAngle metric
+			currentDistance = dx + dy;
+			if (currentDistance < minDistance) {
+				closest = c;
+				minDistance = currentDistance;
+				c.distanceToLastEvent = minDistance;
+				c.xDistanceToLastEvent = dx;
+				c.yDistanceToLastEvent = dy;
+			}
+		}
+	}
+	return closest;
+}
+
+public Vector<BasicEvent> regionQuery(BasicEvent e, Double eps, EventPacket in){
+	Vector<BasicEvent> NeighborPoints=new Vector<BasicEvent>();
+	for (Object o : in) {
+		BasicEvent be = (BasicEvent) o;
+		if (be.isSpecial()) {
+			continue;
+		}
+		float distance= (float) Math.sqrt(Math.pow(Math.abs(be.x-e.x),2)+Math.pow(Math.abs(be.y-e.y),2));
+		if (distance<eps){
+			NeighborPoints.add(be);
+		}
+	}
+	return NeighborPoints;
+
+}
+
 
 public int getMean(Vector<Integer> xs){
 	int mean=0;
@@ -379,38 +499,73 @@ public int getMean(Vector<Integer> xs){
 				float angle=0;
 				float[] centerX = new float[jointsToTrack.indexOf(jointsToTrack.lastElement())+1];
 				float[] centerY = new float[jointsToTrack.indexOf(jointsToTrack.lastElement())+1];
-
+				 gl.glPushMatrix();
+			     gl.glColor3f(0, 0, 1);
+			     gl.glLineWidth(4);
 				for(int i=0;i<jointsToTrack.size(); i++){
 					centerX[i]=jointsToTrack.get(i).x.floatValue();
 					//System.out.println(centerX);
 					centerY[i]=jointsToTrack.get(i).y.floatValue();
-				}
-				 gl.glPushMatrix();
-			     gl.glColor3f(0, 0, 1);
-			     gl.glLineWidth(4);
+
+
 			     gl.glBegin(GL.GL_LINE_LOOP);
 					//System.out.println(centerY);
 
-			        gl.glVertex2d(centerX[0]-(radius/2), centerY[0]-(radius/2));
-			        gl.glVertex2d(centerX[0]+(radius/2), centerY[0]-(radius/2));
-			        gl.glVertex2d(centerX[0]+(radius/2), centerY[0]+(radius/2));
-			        gl.glVertex2d(centerX[0]-(radius/2), centerY[0]+(radius/2));
+			        gl.glVertex2d(centerX[i]-(radius/2), centerY[i]-(radius/2));
+			        gl.glVertex2d(centerX[i]+(radius/2), centerY[i]-(radius/2));
+			        gl.glVertex2d(centerX[i]+(radius/2), centerY[i]+(radius/2));
+			        gl.glVertex2d(centerX[i]-(radius/2), centerY[i]+(radius/2));
 
-			        gl.glVertex2d(centerX[1]-(radius/2), centerY[1]-(radius/2));
-			        gl.glVertex2d(centerX[1]+(radius/2), centerY[1]-(radius/2));
-			        gl.glVertex2d(centerX[1]+(radius/2), centerY[1]+(radius/2));
-			        gl.glVertex2d(centerX[1]-(radius/2), centerY[1]+(radius/2));;
+			        gl.glEnd();
+				}
+//			        gl.glBegin(GL.GL_LINE_LOOP);
+//
+//			        gl.glVertex2d(centerX[1]-(radius/2), centerY[1]-(radius/2));
+//			        gl.glVertex2d(centerX[1]+(radius/2), centerY[1]-(radius/2));
+//			        gl.glVertex2d(centerX[1]+(radius/2), centerY[1]+(radius/2));
+//			        gl.glVertex2d(centerX[1]-(radius/2), centerY[1]+(radius/2));;
+//
+//					gl.glEnd();
+//				    gl.glPopMatrix();
 
-					gl.glEnd();
-				    gl.glPopMatrix();
+//				    DrawGL.drawBox(gl, centerX[0], centerY[0], width, height, angle);
+//					DrawGL.drawBox(gl, centerX[1], centerY[1], width, height, angle);
+			}
+			if(clustering){
+				for(int j=0; j<clusters.size(); j++){
+					int[] means=getMeans(clusters.get(j).ListOfEvent);
+					 gl.glBegin(GL.GL_LINE_LOOP);
+						//System.out.println(centerY);
 
-				    //DrawGL.drawBox(gl, centerX[0], centerY[0], width, height, angle);
-					//DrawGL.drawBox(gl, centerX[1], centerY[1], width, height, angle);
+				        gl.glVertex2d(means[0]-(radius/2), means[1]-(radius/2));
+				        gl.glVertex2d(means[0]+(radius/2), means[1]-(radius/2));
+				        gl.glVertex2d(means[0]+(radius/2), means[1]+(radius/2));
+				        gl.glVertex2d(means[0]-(radius/2), means[1]+(radius/2));
+
+				        gl.glEnd();
+				}
 			}
 
 
-
 		}
+		private int[] getMeans(Vector<BasicEvent> listOfEvent) {
+			int[] means= new int[2];
+			Vector<Integer> x=new Vector<Integer>();
+			Vector<Integer> y=new Vector<Integer>();
+			int meanx;
+			int meany;
+			for(int i=0; i<listOfEvent.size(); i++){
+				BasicEvent e=listOfEvent.get(i);
+				x.add((int) e.x);
+				y.add((int) e.y);
+			}
+			meanx=getMean(x);
+			meany=getMean(y);
+			means[0]=meanx;
+			means[1]=meanx;
+			return means;
+		}
+
 		public void doStartNewTrack(){
 			System.out.println("let's start a newtracking");
 			startnewtrack=true;

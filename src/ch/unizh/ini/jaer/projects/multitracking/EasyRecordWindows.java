@@ -14,9 +14,12 @@ import javax.swing.JTextField;
 public class EasyRecordWindows extends JFrame implements ActionListener {
 	private easyRecordInterface inter;
 	private JComboBox liste1;
+	private JComboBox liste2;
+	private JComboBox liste3;
     private Boolean isRecording=false;
     private JButton startStopButton;
 	private JTextField textboxName;
+	private JTextField textboxIndex;
 
 	public EasyRecordWindows(easyRecordInterface interf){
 		super();
@@ -42,14 +45,21 @@ public class EasyRecordWindows extends JFrame implements ActionListener {
 		JPanel panel = new JPanel();
 		panel.setLayout(new FlowLayout());
 
-		Object[] elements = new Object[]{"Walking", "Running", "Jump","Test","Calib"};
-
+		Object[] elements = new Object[]{"Walking", "Running", "Jumping","Hopping","Kick","Punch","Waving","Circle","figure8","Clapping","Test","Calib"};
+		Object[] direction = new Object[]{"up","down","_"};
+		Object[] side = new Object[]{"left","right","_"};
 		liste1 = new JComboBox(elements);
+		liste2 = new JComboBox(direction);
+		liste3 = new JComboBox(side);
 		panel.add(liste1);
+		panel.add(liste2);
+		panel.add(liste3);
 
 
-	    textboxName = new JTextField("name of the person");
+	    textboxName = new JTextField("name");
 		panel.add(textboxName);
+		textboxIndex = new JTextField("index");
+		panel.add(textboxIndex);
 
 
 		startStopButton = new JButton("Start");
@@ -80,9 +90,9 @@ public class EasyRecordWindows extends JFrame implements ActionListener {
 		}
 	}
 
-@Override
-public String getTitle(){
-	return textboxName.getText()+liste1.getSelectedItem().toString();
+	@Override
+	public String getTitle(){
+		return textboxName.getText()+textboxIndex.getText()+liste1.getSelectedItem().toString()+liste2.getSelectedItem().toString()+liste3.getSelectedItem().toString();
 
 }
 
