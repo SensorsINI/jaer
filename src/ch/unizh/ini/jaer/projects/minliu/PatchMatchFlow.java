@@ -546,11 +546,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             }
         }
 
+        // TODD: NEXT WORK IS TO DO THE RESEARCH ON WEIGHTED HAMMING DISTANCE
         // Calculate the metric confidence value
         float validPixNum = this.validPixOccupancy * ((2 * blockRadius + 1) * (2 * blockRadius + 1));
         if (validPixNumCurrSli <= validPixNum || validPixNumPrevSli <= validPixNum) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
             retVal = 1;
-        } else {
+        } else { 
+            /*
+            retVal is consisted of the distance and the dispersion, dispersion is used to describe the spatial relationship within one block.
+            Here we use the difference between validPixNumCurrSli and validPixNumPrevSli to calculate the dispersion.
+            Inspired by paper "Measuring the spatial dispersion of evolutionist search process: application to Walksat" by Alain Sidaner.
+            */
             retVal = (hd * weightDistance + Math.abs(validPixNumCurrSli - validPixNumPrevSli) * (1 - weightDistance)) / ((2 * blockRadius + 1) * (2 * blockRadius + 1));
         }
         return retVal;
@@ -775,14 +781,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             return 1;
         }
 
-        float sad = 0;
-        float validPixNum = 0; // The valid pixel number in the current block
+        float sad = 0, retVal = 0;
+        float validPixNumCurrSli = 0, validPixNumPrevSli = 0; // The valid pixel number in the current block
         for (int xx = x - blockRadius; xx <= x + blockRadius; xx++) {
             for (int yy = y - blockRadius; yy <= y + blockRadius; yy++) {
-                int d = ((curSlice.get((xx + 1) + (yy) * subSizeX)) ? 1 : 0)
-                        - ((prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX)) ? 1 : 0);
-                if (curSlice.get((xx + 1) + (yy) * subSizeX) == true) {
-                    validPixNum += 1;
+                boolean currSlicePol = curSlice.get((xx + 1) + (yy) * subSizeX); // binary value on (xx, yy) for current slice
+                boolean prevSlicePol = prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX); // binary value on (xx, yy) for previous slice
+                
+                int d = (currSlicePol ? 1 : 0) - (prevSlicePol ? 1 : 0);
+                if (currSlicePol == true) {
+                    validPixNumCurrSli += 1;
+                }
+                if (prevSlicePol == true) {
+                    validPixNumPrevSli += 1;
                 }
                 if (d <= 0) {
                     d = -d;
@@ -791,13 +802,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             }
         }
 
-        // Normalize sad
-        if (sad == 0) {
-            sad = 1 - (validPixNum / ((2 * blockRadius + 1) * (2 * blockRadius + 1)));
-        } else {
-            sad = 1 - (validPixNum / ((2 * blockRadius + 1) * (2 * blockRadius + 1))) * (sad / (2 * (2 * blockRadius + 1) * (2 * blockRadius + 1)));
+        // Calculate the metric confidence value
+        float validPixNum = this.validPixOccupancy * ((2 * blockRadius + 1) * (2 * blockRadius + 1));
+        if (validPixNumCurrSli <= validPixNum || validPixNumPrevSli <= validPixNum) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
+            retVal = 1;
+        } else { 
+            /*
+            retVal is consisted of the distance and the dispersion, dispersion is used to describe the spatial relationship within one block.
+            Here we use the difference between validPixNumCurrSli and validPixNumPrevSli to calculate the dispersion.
+            Inspired by paper "Measuring the spatial dispersion of evolutionist search process: application to Walksat" by Alain Sidaner.
+            */
+            retVal = (sad * weightDistance + Math.abs(validPixNumCurrSli - validPixNumPrevSli) * (1 - weightDistance)) / ((2 * blockRadius + 1) * (2 * blockRadius + 1));
         }
-        return sad;
+        return retVal;
     }
 
     private class SADResult {
