@@ -73,11 +73,8 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             //exportFlowToMatlab(2500000,2600000); // for IMU_APS_translSin
             //exportFlowToMatlab(1360000,1430000); // for IMU_APS_rotDisk
             //exportFlowToMatlab(295500000,296500000); // for IMU_APS_translBoxes
-            writeOutputEvent();
-            if (measureAccuracy) {
-                getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
-            }
-        }
+            processGoodEvent();
+         }
         
         getMotionFlowStatistics().updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket;

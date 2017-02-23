@@ -448,10 +448,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
 
             if (accuracyTests()) continue;
             
-            writeOutputEvent();
-            if (measureAccuracy) {
-                getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
-            }
+            processGoodEvent();
         }
         getMotionFlowStatistics().updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket;

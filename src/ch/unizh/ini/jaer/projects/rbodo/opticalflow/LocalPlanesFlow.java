@@ -434,18 +434,14 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
 //        ApsDvsEventPacket packet = (ApsDvsEventPacket) in;
 //        Iterator itr = packet.fullIterator(); // the full iterator definitely passes us all the data, but also the APS samples
 //        while (itr.hasNext()) {
-        for(Object o:in){
-            
+        for (Object o : in) {
+
 //            ApsDvsEvent ein = (ApsDvsEvent) itr.next();
-            ApsDvsEvent ein = (ApsDvsEvent)o;
-            if(!extractEventInfo(ein)) continue;
+            ApsDvsEvent ein = (ApsDvsEvent) o;
+            if (!extractEventInfo(ein)) {
+                continue;
+            }
             if (!ein.isApsData()) { // should pass on IMU samples
-//                if (ein instanceof ApsDvsEvent && ((ApsDvsEvent) ein).isImuSample()) {
-//                    IMUSample imu = ((ApsDvsEvent) ein).getImuSample();
-//                    int dtImu = imu.getTimestampUs() - lastImuSampleTs;
-//                    lastImuSampleTs = imu.getTimestampUs();
-//
-//                }
                 if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                     imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
                     setGroundTruth();
@@ -464,13 +460,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                 if (accuracyTests()) {
                     continue;
                 }
-            }
-//            printNeighborhood();
-            if (!(ein.isApsData())) {
-                writeOutputEvent();
-            }
-            if (measureAccuracy) {
-                getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
+                processGoodEvent();
             }
         }
         getMotionFlowStatistics().updatePacket(countIn, countOut);

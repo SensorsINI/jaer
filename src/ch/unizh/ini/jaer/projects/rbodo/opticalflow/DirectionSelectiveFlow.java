@@ -60,7 +60,7 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
     }
 
     synchronized void writeOutputEvent(byte motionDir, Object ein) {
-        super.writeOutputEvent();
+        super.processGoodEvent();
         eout.copyFrom((ApsDvsOrientationEvent) ein);
         eout.direction = motionDir;
         eout.dir = ApsDvsMotionOrientationEvent.unitDirs[motionDir];

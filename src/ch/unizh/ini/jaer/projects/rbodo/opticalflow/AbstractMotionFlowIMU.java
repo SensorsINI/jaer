@@ -850,7 +850,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         return true;
     }
 
-    synchronized public void writeOutputEvent() {
+    /**
+     * Takes output event eout and logs it
+     *
+     */
+    synchronized public void processGoodEvent() {
         // Copy the input event to a new output event and add the computed optical flow properties
         eout = (ApsDvsMotionOrientationEvent) outItr.nextOutput();
         eout.copyFrom(e);
@@ -863,6 +867,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         if (v != 0) {
             countOut++;
         }
+        if (measureAccuracy) {
+            getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
+        }
+
         if (measureGlobalMotion) {
             motionFlowStatistics.getGlobalMotion().update(vx, vy, v, eout.x, eout.y);
         }
@@ -873,6 +881,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         motionField.update(ts, x, y, vx, vy, v);
     }
 
+    /**
+     * Returns true if motion event passes accuracy tests
+     *
+     * @return true if event is accurate enough, false if it should be rejected.
+     */
     synchronized public boolean accuracyTests() {
         // 1.) Filter out events with speed high above average.
         // 2.) Filter out events whose velocity deviates from IMU estimate by a 
