@@ -312,18 +312,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             vy = result.dy;
             v = (float) Math.sqrt(vx * vx + vy * vy);
 
-
             // reject values that are unreasonable
             if (accuracyTests(result)) {
                 continue;
             }
 
-            if (displayOutputVectors) {
-                writeOutputEvent();
-            }
-            if (measureAccuracy) {
-                motionFlowStatistics.update(vx, vy, v, vxGT, vyGT, vGT);
-            }
+            processGoodEvent();
         }
 
         if (rewindFlg) {
@@ -494,12 +488,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private SADResult minHammingDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
         float minSum = Integer.MAX_VALUE, sum = 0;
         SADResult sadResult = new SADResult(0, 0, 0);
-        if(x >= 128 && x <= 130 && y >= 189 && y <= 191) {  // For debugging
+        if (x >= 128 && x <= 130 && y >= 189 && y <= 191) {  // For debugging
             int tmp = 0;
         }
         for (int dx = -searchDistance; dx <= searchDistance; dx++) {
             for (int dy = -searchDistance; dy <= searchDistance; dy++) {
-                 sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
+                sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
                 if (sum <= minSum) {
                     minSum = sum;
                     sadResult.dx = dx;
@@ -518,7 +512,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      *
      * @param x coordinate x in subSampled space
      * @param y coordinate y in subSampled space
-     * @param dx   
+     * @param dx
      * @param dy
      * @param prevSlice
      * @param curSlice
@@ -539,25 +533,25 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             for (int yy = y - blockRadius; yy <= y + blockRadius; yy++) {
                 boolean currSlicePol = curSlice.get((xx + 1) + (yy) * subSizeX); // binary value on (xx, yy) for current slice
                 boolean prevSlicePol = prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX); // binary value on (xx, yy) for previous slice
-                
+
                 if (currSlicePol != prevSlicePol) {
                     hd += 1;
                 }
                 if (currSlicePol == true) {
                     validPixNumCurrSli += 1;
-                }   
+                }
                 if (prevSlicePol == true) {
                     validPixNumPrevSli += 1;
                 }
             }
         }
-        
+
         // Calculate the metric confidence value
-        float validPixNum = this.validPixOccupancy * ((2*blockRadius + 1) * (2*blockRadius + 1));
-        if(validPixNumCurrSli <= validPixNum || validPixNumPrevSli <= validPixNum) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
+        float validPixNum = this.validPixOccupancy * ((2 * blockRadius + 1) * (2 * blockRadius + 1));
+        if (validPixNumCurrSli <= validPixNum || validPixNumPrevSli <= validPixNum) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
             retVal = 1;
         } else {
-            retVal = (hd * weightDistance + Math.abs(validPixNumCurrSli - validPixNumPrevSli) * (1 - weightDistance))/((2*blockRadius + 1) * (2*blockRadius + 1));
+            retVal = (hd * weightDistance + Math.abs(validPixNumCurrSli - validPixNumPrevSli) * (1 - weightDistance)) / ((2 * blockRadius + 1) * (2 * blockRadius + 1));
         }
         return retVal;
     }
@@ -767,7 +761,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      *
      * @param x coordinate x in subSampled space
      * @param y coordinate y in subSampled space
-     * @param dx block shift of x 
+     * @param dx block shift of x
      * @param dy block shift of y
      * @param prevSliceIdx
      * @param curSliceIdx
@@ -785,23 +779,23 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         float validPixNum = 0; // The valid pixel number in the current block
         for (int xx = x - blockRadius; xx <= x + blockRadius; xx++) {
             for (int yy = y - blockRadius; yy <= y + blockRadius; yy++) {
-                int d = ((curSlice.get((xx + 1) + (yy) * subSizeX)) ? 1 : 0) - 
-                         ((prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX)) ? 1 : 0);
+                int d = ((curSlice.get((xx + 1) + (yy) * subSizeX)) ? 1 : 0)
+                        - ((prevSlice.get((xx + 1 - dx) + (yy - dy) * subSizeX)) ? 1 : 0);
                 if (curSlice.get((xx + 1) + (yy) * subSizeX) == true) {
                     validPixNum += 1;
-                }                
+                }
                 if (d <= 0) {
                     d = -d;
                 }
                 sad += d;
             }
         }
-        
+
         // Normalize sad
-        if(sad == 0) {
-            sad = 1 - (validPixNum/((2*blockRadius + 1) * (2*blockRadius + 1)));
+        if (sad == 0) {
+            sad = 1 - (validPixNum / ((2 * blockRadius + 1) * (2 * blockRadius + 1)));
         } else {
-            sad = 1 - (validPixNum/((2*blockRadius + 1) * (2*blockRadius + 1))) * (sad/(2 * (2*blockRadius + 1) * (2*blockRadius + 1)));            
+            sad = 1 - (validPixNum / ((2 * blockRadius + 1) * (2 * blockRadius + 1))) * (sad / (2 * (2 * blockRadius + 1) * (2 * blockRadius + 1)));
         }
         return sad;
     }
@@ -955,7 +949,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
     public void setConfidenceThreshold(float confidenceThreshold) {
         this.confidenceThreshold = confidenceThreshold;
-        putFloat("confidenceThreshold", confidenceThreshold);    
+        putFloat("confidenceThreshold", confidenceThreshold);
     }
 
     public float getValidPixOccupancy() {
@@ -964,7 +958,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
     public void setValidPixOccupancy(float validPixOccupancy) {
         this.validPixOccupancy = validPixOccupancy;
-        putFloat("validPixOccupancy", validPixOccupancy);    
+        putFloat("validPixOccupancy", validPixOccupancy);
     }
 
     public float getWeightDistance() {
@@ -973,7 +967,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
     public void setWeightDistance(float weightDistance) {
         this.weightDistance = weightDistance;
-        putFloat("weightDistance", weightDistance);    
+        putFloat("weightDistance", weightDistance);
     }
 
     private void checkArrays() {
@@ -988,15 +982,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     /**
      *
      * @param distResult
-     * @return the confidence of the result. True mens it's not good and should be rejected, false means we should accept it.
+     * @return the confidence of the result. True mens it's not good and should
+     * be rejected, false means we should accept it.
      */
     public synchronized boolean accuracyTests(SADResult distResult) {
-        boolean retVal =  super.accuracyTests(); //To change body of generated methods, choose Tools | Templates.
-        
-        if(distResult.sadValue >= this.confidenceThreshold) {
+        boolean retVal = super.accuracyTests(); //To change body of generated methods, choose Tools | Templates.
+
+        if (distResult.sadValue >= this.confidenceThreshold) {
             retVal = true || retVal;
         }
-        
+
         return retVal;
     }
 
