@@ -21,9 +21,9 @@ import java.awt.Point;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
-import net.sf.jaer.graphics.MultiCameraDisplayRenderer;
-import net.sf.jaer.graphics.TwoCamera3DDisplayMethod;
-import net.sf.jaer.graphics.MultiViewMultiCamera;
+import net.sf.jaer.graphics.MultiCameraDifferentColorDisplayRenderer;
+import net.sf.jaer.graphics.MultiViewerFromMultiCamera;
+
 
 @Description("A multi Davis retina each on it's own USB interface with merged and presumably aligned fields of view")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
@@ -39,12 +39,12 @@ public class MultiDAVIS240CCameraChip extends MultiDavisCameraChip {
         setSizeX(DAVIS240C.WIDTH_PIXELS);
         setSizeY(DAVIS240C.HEIGHT_PIXELS);
         setADCMax(DAVIS240C.MAX_ADC);
+
+//        setRenderer(new MultiCameraDifferentColorDisplayRenderer (this));
+        setRenderer(new MultiViewerFromMultiCamera (this));
+        
         setApsFirstPixelReadOut(new Point(0, DAVIS240C.WIDTH_PIXELS - 1));
-        setApsLastPixelReadOut(new Point(DAVIS240C.HEIGHT_PIXELS - 1, 0));
-        
-//        setRenderer(new AEFrameChipRenderer(this));
-        setRenderer(new MultiCameraDisplayRenderer (this));
-        
+        setApsLastPixelReadOut(new Point(DAVIS240C.HEIGHT_PIXELS - 1, 0));        
         setDefaultPreferencesFile("biasgenSettings/Davis240bc/MultiDAVIS240CCameraChip.xml");
         setBiasgen(new Biasgen(this)); 
   
