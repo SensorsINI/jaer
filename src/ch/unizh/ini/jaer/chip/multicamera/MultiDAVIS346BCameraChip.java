@@ -12,8 +12,8 @@ import eu.seebetter.ini.chips.davis.DavisTowerBaseConfig;
 import java.awt.Point;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
-import net.sf.jaer.graphics.MultiCameraDisplayRenderer;
-import net.sf.jaer.graphics.TwoCamera3DDisplayMethod;
+import net.sf.jaer.graphics.MultiCameraDifferentColorDisplayRenderer;
+import net.sf.jaer.graphics.MultiViewerFromMultiCamera;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 /**
@@ -32,12 +32,12 @@ public class MultiDAVIS346BCameraChip extends MultiDavisCameraChip{
         setCameraChip(chip);
         setSizeX(chip.WIDTH_PIXELS);
         setSizeY(chip.HEIGHT_PIXELS);
+        
+//        setRenderer(new MultiCameraDifferentColorDisplayRenderer (this));
+        setRenderer(new MultiViewerFromMultiCamera (this));
+        
         setApsFirstPixelReadOut(new Point(0, chip.getSizeY() - 1));
         setApsLastPixelReadOut(new Point(chip.getSizeX() - 1, 0));
-        
-//        setRenderer(new AEFrameChipRenderer(chip));
-        setRenderer(new MultiCameraDisplayRenderer (this));
-
         setDefaultPreferencesFile("biasgenSettings/Davis346b/MultiDAVIS346BCameraChip.xml");
         setBiasgen(new Biasgen(this));
   
