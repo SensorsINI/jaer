@@ -13,7 +13,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 public class Davis346mini extends Davis346BaseCamera {
 	public Davis346mini() {
 		setName("Davis346mini");
-		setDefaultPreferencesFile("biasgenSettings/Davis346b/DAVIS346b_Test.xml");
+		setDefaultPreferencesFile("biasgenSettings/Davis346b/DAVIS346mini.xml");
 
 		davisRenderer = new AEFrameChipRenderer(this);
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
