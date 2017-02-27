@@ -5,15 +5,21 @@
  * and open the template in the editor.
  */
 package net.sf.jaer.graphics;
-
-import java.util.Arrays;
-import java.util.Iterator;
-
-import ch.unizh.ini.jaer.chip.multicamera.MultiDavisCameraChip;
+    
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.MultiCameraApsDvsEvent;
+import net.sf.jaer.event.MultiCameraEvent;
+import ch.unizh.ini.jaer.chip.multicamera.MultiDavisCameraChip;
+import static java.lang.Math.abs;
+import java.nio.FloatBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
 import net.sf.jaer.event.PolarityEvent;
+import java.util.BitSet;
+
+
 
 
 /**
@@ -23,39 +29,39 @@ import net.sf.jaer.event.PolarityEvent;
  *
  * @author Gemma
  */
-public class MultiCameraDisplayRenderer extends AEFrameChipRenderer{
-
-    protected float disparityColors[][];
-    protected int minValue = Integer.MAX_VALUE;
-    protected int maxValue = Integer.MIN_VALUE;
+public class MultiCameraDifferentColorDisplayRenderer extends AEFrameChipRenderer{
+    
     int camera;
     int numCam=1; //default value
+    
 
     /**
      * Creates a new instance of MultiCameraDisplayRenderer.
      *
      * @param chip the chip we're rendering for
      */
-    public MultiCameraDisplayRenderer (AEChip chip){
+    public MultiCameraDifferentColorDisplayRenderer (AEChip chip){
         super(chip);
         if (chip instanceof MultiDavisCameraChip){
-            numCam=3;//((MultiDavisCameraChip)chip).NUM_CAMERAS;
-        }
+            numCam=((MultiDavisCameraChip)chip).NUM_CAMERAS;
+        } 
+        onColor = new float[4];
+        offColor = new float[4];
 
     }
 
     @Override
     public synchronized void render (EventPacket packet){
-
+   
         if ( packet == null ){
             return;
         }
-
+        
         if ( !(packet.getEventPrototype() instanceof MultiCameraApsDvsEvent )){
             super.render(packet);
             return;
         }
-
+        
         setColors();
         if (!accumulateEnabled) {
             Arrays.fill(onMap.array(), 0.0f);
@@ -65,7 +71,7 @@ public class MultiCameraDisplayRenderer extends AEFrameChipRenderer{
         checkPixmapAllocation();
         resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
         setSpecialCount(0);
-
+           
         final boolean displayEvents = isDisplayEvents();
         final Iterator itr = packet.inputIterator();
         while (itr.hasNext()) {
@@ -84,7 +90,7 @@ public class MultiCameraDisplayRenderer extends AEFrameChipRenderer{
                         playSpike(type);
                     }
                 }
-
+                
             }
             final int index = getIndex(e);
             if ((index < 0) || (index >= annotateMap.array().length)) {
@@ -98,25 +104,25 @@ public class MultiCameraDisplayRenderer extends AEFrameChipRenderer{
                 }
                 if(!ignorePolarityEnabled){
                     if (e.polarity == PolarityEvent.Polarity.On) {
-                        map[index] = onColor[0]+((float)camera/numCam);
-                        map[index + 1] = onColor[1]-((float)camera/numCam);
-                        map[index + 2] = onColor[2]+((float)camera/numCam);
+                        map[index] = onColor[0]+(float)camera/numCam;
+                        map[index + 1] = onColor[1]-(float)camera/numCam;
+                        map[index + 2] = onColor[2]+(float)camera/numCam;
                     } else {
-                        map[index] = offColor[0]-((float)camera/numCam);
-                        map[index + 1] = offColor[1]+((float)camera/numCam);
-                        map[index + 2] = offColor[2]+((float)camera/numCam);
+                        map[index] = offColor[0]-(float)camera/numCam;
+                        map[index + 1] = offColor[1]+(float)camera/numCam;
+                        map[index + 2] = offColor[2]+(float)camera/numCam;
                     }
                 }else{
-                    map[index] = (float)camera/numCam;
-                    map[index + 1] = (float)camera/numCam;
-                    map[index + 2] = 1.0f-((float)camera/numCam);
-                }
+                    map[index] = (float)(numCam-camera)/numCam;
+                    map[index + 1] = abs((float)(numCam-camera-0.5f))/numCam;
+                    map[index + 2] = (float)camera/numCam; 
+                }   
                 final float alpha = map[index + 3] + (1.0f / colorScale);
                 map[index + 3] = normalizeEvent(alpha);
             }
         }
     }
-
+       
     private void setColors() {
         checkPixmapAllocation();
         switch (colorMode) {
@@ -132,7 +138,7 @@ public class MultiCameraDisplayRenderer extends AEFrameChipRenderer{
                 offColor[3] = 0.0f;
                 break;
             case RedGreen:
-            default:
+            default:    
                 onColor[0] = 0.0f;
                 onColor[1] = 1.0f;
                 onColor[2] = 0.0f;
