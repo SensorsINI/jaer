@@ -699,11 +699,20 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		getImuControl().setDisplayImu(yes);
 	}
 
+        /** Sets the exposure delay (approximately but not exactly the exposure duration)
+         * 
+         * @param ms exposure delay in ms. If ms<0.001, then it is clipped to 1us to prevent 0 exposures
+         */
 	public void setExposureDelayMs(final float ms) {
-		final int expUs = (int) (ms * 1000);
+		int expUs = (int) (ms * 1000);
+                if(expUs<1) expUs=1;
 		apsExposure.set(expUs);
 	}
 
+        /** Returns the exposure delay setting
+         * 
+         * @return 
+         */
 	public float getExposureDelayMs() {
 		return apsExposure.get() * .001f;
 	}
