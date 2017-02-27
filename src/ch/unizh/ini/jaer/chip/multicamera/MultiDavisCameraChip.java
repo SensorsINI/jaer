@@ -87,7 +87,7 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
     private JFrame apsFrame = null;
     public ImageDisplay[] apsDisplay= new ImageDisplay[NUM_CAMERAS];
     private ImageDisplay.Legend apsDisplayLegend;
-    private int displaycamera;
+    int displaycamera;
     private float[][] displayFrame;
     private boolean displayAPSEnable=false;
     
@@ -116,11 +116,11 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
 //        LogManager.getLogManager().reset();
         setName("MultiDavisCameraChip");
         setEventClass(MultiCameraApsDvsEvent.class);
+        
         setEventExtractor(new Extractor(this));
 
         getCanvas().addDisplayMethod(new TwoCamera3DDisplayMethod(getCanvas()));
         getCanvas().addDisplayMethod(new DisplayMethod3DSpace(getCanvas()));
-
     }
     
     @Override
@@ -356,7 +356,14 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
                 if (NUM_CAMERAS==0){
                     findMaxNumCameras(e);
                 }
-                e.NUM_CAMERAS=NUM_CAMERAS;            
+                e.NUM_CAMERAS=NUM_CAMERAS; 
+                
+               if(displaycamera<NUM_CAMERAS){
+                    int chosencamera=displaycamera;
+                    if(e.camera!=chosencamera){
+                        e.setFilteredOut(true);
+                    }
+                }  		
                 
                 if (e.isApsData() & displayAPSEnable){
                     putAPSEventInBuffer(e);
@@ -569,7 +576,11 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
         }
         
         return camerasPacket; 
-    }    
+    }   
+
+    public void setDisplayCamera(int n){
+        displaycamera=n;
+    }
 }
     
     
