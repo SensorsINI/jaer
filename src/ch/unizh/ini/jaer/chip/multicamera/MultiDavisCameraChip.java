@@ -60,6 +60,7 @@ import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.TwoCamera3DDisplayMethod;
 
 import java.util.Iterator;
+import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.graphics.DisplayMethod3DSpace;
@@ -72,7 +73,7 @@ import net.sf.jaer.graphics.MultiViewerFromMultiCamera;
 @Description("A multi Davis retina each on it's own USB interface with merged and presumably aligned fields of view")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 abstract public class MultiDavisCameraChip extends DavisBaseCamera implements MultiCameraInterface {
-    public int NUM_CAMERAS=MultiCameraHardwareInterface.NUM_CAMERAS; 
+    public int NUM_CAMERAS;//=MultiCameraHardwareInterface.NUM_CAMERAS; 
    
     public int NUM_VIEWERS;
 
@@ -86,7 +87,7 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
     private JFrame apsFrame = null;
     public ImageDisplay[] apsDisplay= new ImageDisplay[NUM_CAMERAS];
     private ImageDisplay.Legend apsDisplayLegend;
-    private int displaycamera=NUM_CAMERAS; 
+    private int displaycamera;
     private float[][] displayFrame;
     private boolean displayAPSEnable=false;
     
@@ -272,6 +273,10 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
         return NUM_CAMERAS;
     }
     
+    public void setNumCameras(int n) {
+        NUM_CAMERAS=n;
+    }
+    
     @Override
     public void setCamera(int i, AEChip chip) {
         cameras[i] = chip;
@@ -351,14 +356,7 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
                 if (NUM_CAMERAS==0){
                     findMaxNumCameras(e);
                 }
-                e.NUM_CAMERAS=NUM_CAMERAS;
-                
-                if(displaycamera<NUM_CAMERAS){
-                    int chosencamera=displaycamera;
-                    if(e.camera!=chosencamera){
-                        e.setFilteredOut(true);
-                    }
-                }             
+                e.NUM_CAMERAS=NUM_CAMERAS;            
                 
                 if (e.isApsData() & displayAPSEnable){
                     putAPSEventInBuffer(e);
