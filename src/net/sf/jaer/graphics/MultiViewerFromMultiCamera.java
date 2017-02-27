@@ -73,10 +73,10 @@ public class MultiViewerFromMultiCamera extends AEFrameChipRenderer{
         
         textureWidth = AEFrameChipRenderer.ceilingPow2(sizeX);
         textureHeight = AEFrameChipRenderer.ceilingPow2(sizeY);
-        System.out.println(textureWidth);
-        System.out.println(textureHeight);
+//        System.out.println(textureWidth);
+//        System.out.println(textureHeight);
         final int n = 4 * textureWidth * textureHeight;
-        System.out.println(n);
+//        System.out.println(n);
         if ((pixmap == null) || (pixmap.capacity() < n) || (pixBuffer.capacity() < n) || (onMap.capacity() < n) || (offMap.capacity() < n)
                 || (annotateMap.capacity() < n)) {
             pixmap = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
@@ -148,7 +148,7 @@ public class MultiViewerFromMultiCamera extends AEFrameChipRenderer{
             }
             
             final int index = getIndex(e);
-            System.out.println("index:" +index+ " camera: "+ e.camera+ " x: "+ e.x+" y: "+e.y);
+//            System.out.println("index:" +index+ " camera: "+ e.camera+ " x: "+ e.x+" y: "+e.y);
             if ((index < 0) || (index >= annotateMap.array().length)) {
                 return;
             }else{
