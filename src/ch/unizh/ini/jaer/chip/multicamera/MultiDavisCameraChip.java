@@ -73,7 +73,7 @@ import net.sf.jaer.graphics.MultiViewerFromMultiCamera;
 @Description("A multi Davis retina each on it's own USB interface with merged and presumably aligned fields of view")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 abstract public class MultiDavisCameraChip extends DavisBaseCamera implements MultiCameraInterface {
-    public int NUM_CAMERAS;//=MultiCameraHardwareInterface.NUM_CAMERAS; 
+    public int NUM_CAMERAS=MultiCameraHardwareInterface.NUM_CAMERAS; 
    
     public int NUM_VIEWERS;
 
