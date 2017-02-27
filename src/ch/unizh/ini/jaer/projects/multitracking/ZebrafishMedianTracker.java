@@ -125,10 +125,12 @@ public class ZebrafishMedianTracker extends MedianTracker implements FrameAnnota
             gl.glBegin(GL2.GL_LINE_LOOP);
             Point2D p = medianTrackers[c].getMedianPoint();
             Point2D s = medianTrackers[c].getStdPoint();
-            gl.glVertex2d(p.getX() - s.getX(), p.getY() - s.getY());
-            gl.glVertex2d(p.getX() + s.getX(), p.getY() - s.getY());
-            gl.glVertex2d(p.getX() + s.getX(), p.getY() + s.getY());
-            gl.glVertex2d(p.getX() - s.getX(), p.getY() + s.getY());
+            int sx=chip.getSizeX();
+            int sy=chip.getSizeY();
+            gl.glVertex2d((c*sx/numCameras+p.getX()) - s.getX(), p.getY() - s.getY());
+            gl.glVertex2d((c*sx/numCameras+p.getX()) + s.getX(), p.getY() - s.getY());
+            gl.glVertex2d((c*sx/numCameras+p.getX()) + s.getX(), p.getY() + s.getY());
+            gl.glVertex2d((c*sx/numCameras+p.getX()) - s.getX(), p.getY() + s.getY());
             gl.glEnd();
         }
         gl.glPopMatrix();
