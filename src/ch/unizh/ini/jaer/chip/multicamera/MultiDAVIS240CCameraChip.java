@@ -42,6 +42,7 @@ public class MultiDAVIS240CCameraChip extends MultiDavisCameraChip {
 
 //        setRenderer(new MultiCameraDifferentColorDisplayRenderer (this));
         setRenderer(new MultiViewerFromMultiCamera (this));
+        setNumCameras(((MultiViewerFromMultiCamera )this.renderer).getNumCam());
         
         setApsFirstPixelReadOut(new Point(0, DAVIS240C.WIDTH_PIXELS - 1));
         setApsLastPixelReadOut(new Point(DAVIS240C.HEIGHT_PIXELS - 1, 0));        
