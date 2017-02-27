@@ -25,11 +25,13 @@ import net.sf.jaer.chip.Chip2D;
 import com.jogamp.opengl.util.gl2.GLUT;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera.DavisDisplayMethod;
+import java.awt.Frame;
 import java.awt.geom.Point2D;
 import static java.lang.Math.abs;
 import java.nio.FloatBuffer;
 import java.util.Arrays;
 import java.util.Iterator;
+import javax.swing.JOptionPane;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -49,15 +51,21 @@ public class MultiViewerFromMultiCamera extends AEFrameChipRenderer{
 //    public Point2D.Float translationPixels = new Point2D.Float(0, 0); 
 //    final float rotationRad=0.0f;
 //    ImageTransform imageTransform=new ImageTransform(translationPixels, rotationRad);
-    int NumCam=4;//((MultiDavisCameraChip)chip).NUM_CAMERAS;
+    int NumCam;//=((MultiDavisCameraChip)chip).NUM_CAMERAS;
     
    /**
      * Creates a new instance of DavisDisplayMethod
      * @param chip
      */
     public MultiViewerFromMultiCamera(AEChip chip) {
-        super(chip);
-        NumCam=4;
+        super(chip);       
+        Frame frame=new Frame();
+        try{
+                NumCam = Integer.parseInt((String) JOptionPane.showInputDialog(frame,"Define the number of Cameras","Number of Cameras",JOptionPane.QUESTION_MESSAGE,null,null,null));
+            } catch(Exception ex){
+                System.out.println(ex);
+                NumCam=1;
+            }
         chip.setSizeX(sizeX*NumCam);
         checkPixmapAllocation();
         
@@ -205,5 +213,9 @@ public class MultiViewerFromMultiCamera extends AEFrameChipRenderer{
                 offColor[3] = 0.0f;
                 break;
         }
+    }
+    
+    public int getNumCam() {
+        return NumCam;
     }
 }
