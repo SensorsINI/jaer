@@ -35,7 +35,9 @@ public class MultiDAVIS346BCameraChip extends MultiDavisCameraChip{
         
 //        setRenderer(new MultiCameraDifferentColorDisplayRenderer (this));
         setRenderer(new MultiViewerFromMultiCamera (this));
-        setNumCameras(((MultiViewerFromMultiCamera )this.renderer).getNumCam());
+        NUM_CAMERAS=((MultiViewerFromMultiCamera )this.renderer).getNumCam();
+        setNumCameras(NUM_CAMERAS);
+        setDisplayCamera(NUM_CAMERAS);
         
         setApsFirstPixelReadOut(new Point(0, chip.getSizeY() - 1));
         setApsLastPixelReadOut(new Point(chip.getSizeX() - 1, 0));
