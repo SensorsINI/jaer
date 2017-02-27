@@ -29,7 +29,7 @@ import net.sf.jaer.graphics.MultiViewerFromMultiCamera;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class MultiDAVIS240CCameraChip extends MultiDavisCameraChip {
     
-    public int NUM_CAMERAS= super.getNumCameras();
+    public int NUM_CAMERAS;
     
     /** Creates a new instance of  */
     public MultiDAVIS240CCameraChip() {
@@ -42,7 +42,9 @@ public class MultiDAVIS240CCameraChip extends MultiDavisCameraChip {
 
 //        setRenderer(new MultiCameraDifferentColorDisplayRenderer (this));
         setRenderer(new MultiViewerFromMultiCamera (this));
-        setNumCameras(((MultiViewerFromMultiCamera )this.renderer).getNumCam());
+        NUM_CAMERAS=((MultiViewerFromMultiCamera )this.renderer).getNumCam();
+        setNumCameras(NUM_CAMERAS);
+        setDisplayCamera(NUM_CAMERAS);
         
         setApsFirstPixelReadOut(new Point(0, DAVIS240C.WIDTH_PIXELS - 1));
         setApsLastPixelReadOut(new Point(DAVIS240C.HEIGHT_PIXELS - 1, 0));        
