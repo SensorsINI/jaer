@@ -20,6 +20,7 @@ import java.util.Vector;
 
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 
 import org.bytedeco.javacpp.FloatPointer;
 import org.bytedeco.javacpp.opencv_calib3d;
@@ -35,8 +36,10 @@ import org.jblas.FloatMatrix;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GL3;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLCapabilities;
+import com.jogamp.opengl.GLProfile;
+import com.jogamp.opengl.awt.GLCanvas;
 
 import ch.unizh.ini.jaer.chip.multicamera.MultiDAVIS346BCameraChip;
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
@@ -104,6 +107,10 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	private int cameraDisplayed;
 	private boolean calibrationloaded=false;
 	private LinkedList<FloatMatrix> Xfinals=new LinkedList<>();
+    //private Plot3DPanel plot3d = new Plot3DPanel();
+    double[][] ptToplot;
+    private Triangulation3DViewer triview;
+	private boolean triviewActivated;
 
 	public trackerForJoints(AEChip chip) {
 		super(chip);
@@ -111,6 +118,9 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 		chip.addObserver(this);
 //		frameExtractor = new ApsFrameExtractor(chip);
 		filterChain = new FilterChain(chip);
+		//plot3d.setVisible(false);
+		//new FrameView(plot3d);
+
 //		filterChain.add(frameExtractor);
 //		frameExtractor.setExtRender(false);
 //		setEnclosedFilterChain(filterChain);
@@ -573,7 +583,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	@Override
 	public void annotate(GLAutoDrawable drawable) {
 		GL2 gl = drawable.getGL().getGL2();
-		GL3 gl3 =drawable.getGL().getGL3();
+		//GL2 gl3 =drawable.getGL().getGL2();
 		float radius=20;
 		float scale=5;
 		if(jointsloaded){
@@ -782,6 +792,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 
 	public void doStartClickTracking(){
 		startclicktracking=true;
+		//plot3d.setVisible(true);
 	}
 	public void doStopClickTracking(){
 		startclicktracking=false;
@@ -870,6 +881,14 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 			}catch (Exception i) {
 				log.warning("Could not load existing calibration from folder " + dirPath + " on construction:" + i.toString());
 			}
+//			ptToplot=new double[1][1];
+//			ptToplot[0][0]=0;
+//			plot3d.addScatterPlot("3D reprojection", ptToplot);
+			//getting the capabilities object of GL2 profile
+			startNewWindows();
+//		      triview = new Triangulation3DViewer();
+//		      triview.startNewWindows();
+//		     triviewActivated=true;
 		}
 
 //		System.out.println(printMatD(P1));
@@ -916,13 +935,20 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 //		System.out.println("Xfinal:");
 		Xfinal.print();
 
-		if (Xfinals.size()<1000){
+		if (Xfinals.size()<100){
 		Xfinals.add(Xfinal);
 		}
 		else{
 			Xfinals.pop();
 			Xfinals.add(Xfinal);
 		}
+
+		ptToplot=fromVectToTab(Xfinals);
+
+		update3Dplot(Xfinals);
+
+		//plot3d.addScatterPlot("3D reprojection", ptToplot);
+		//plot3d.repaint();
 		//float[] xfinal = Xfinal.data;
 		//xfinal
 		// Build the 3D scatterplot of the datas in a Panel
@@ -933,11 +959,27 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 
 
 
+	private void update3Dplot(LinkedList<FloatMatrix> Xfinals) {
+		triview.setVectToDisplay(Xfinals);
+
+
+	}
+
+	private static double[][] fromVectToTab(LinkedList<FloatMatrix> xfinals2) {
+		double[][] tab=new double[xfinals2.size()][3];
+		for (int i=0; i<xfinals2.size();i++){
+			tab[i][0]=xfinals2.get(i).get(0);
+			tab[i][1]=xfinals2.get(i).get(1);
+			tab[i][2]=xfinals2.get(i).get(2);
+		}
+		return tab;
+	}
+
 	public void TriangulatePointPosition(TrackPoints tp1,TrackPoints tp2){
 //		System.out.println("coordinate of the points to triangulate:");
 //		System.out.println(tp1.x-(sx/2));
 //		System.out.println(tp1.y-(sy/2));
-//		System.out.println(tp2.x-((3*sx)/4));
+//		Systdem.out.println(tp2.x-((3*sx)/4));
 //		System.out.println(tp2.y-(sy/2));
 //		System.out.println("end of points coordinate");
 		//public void TriangulatePointPosition(){
@@ -998,7 +1040,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 		matpoints2=matpoints2.reshape(2);
 
 		Mat points4D=new Mat();
-		opencv_calib3d.triangulatePoints(P1, P2, matpoints1, matpoints2, points4D);
+		opencv_calib3d.triangulatePoints(P2, P1, matpoints1, matpoints2, points4D);
 //		System.out.println(points4D.rows());
 //		System.out.println(points4D.cols());
 		//System.out.println(printMatD(points4D));
@@ -1193,6 +1235,26 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 
 		return camerasPacket;
 	}
+	public void startNewWindows() {
+
+	      //getting the capabilities object of GL2 profile
+	      final GLProfile profile = GLProfile.get( GLProfile.GL2 );
+	      GLCapabilities capabilities = new GLCapabilities(profile);
+
+	      // The canvas
+	      final GLCanvas glcanvas = new GLCanvas( capabilities );
+	      triview = new Triangulation3DViewer();
+	      glcanvas.addGLEventListener( triview );
+	      glcanvas.setSize( 400, 400 );
+
+	      //creating frame
+	      final JFrame frame = new JFrame (" 3d line");
+
+	      //adding canvas to it
+	      frame.getContentPane().add( glcanvas );
+	      frame.setSize(frame.getContentPane().getPreferredSize() );
+	      frame.setVisible( true );
+	   }//end of main
 }
 
 

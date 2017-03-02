@@ -1036,7 +1036,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 			AEChip chi = aev.getChip();
 			chi.addObserver(this);
 			chips.add(chi);
-			System.out.println(chi.getAeViewer());
+//			System.out.println(chi.getAeViewer());
 			System.out.println(aev);
 		}
 
