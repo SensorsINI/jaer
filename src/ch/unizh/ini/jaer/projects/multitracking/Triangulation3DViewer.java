@@ -31,7 +31,7 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 
 	}
 	private GLU glu = new GLU();
-	private int sizeOfWin=800;
+	private int sizeOfWin=100;
 	private int radius=10;
 	public LinkedList<FloatMatrix> Xfinals=new LinkedList<FloatMatrix>();
 	private boolean annotationEnabled=true;
@@ -42,7 +42,8 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 	   public void display( GLAutoDrawable drawable ) {
 	      final GL2 gl = drawable.getGL().getGL2();
 	      annotate(drawable);
-	      gl.glTranslatef(this.sizeOfWin, 0.0f, this.sizeOfWin);
+	      gl.glTranslatef(this.sizeOfWin, 0.0f, -this.sizeOfWin); //check the origin position where you want to move the axis
+//              gl.glTranslatef(chip.getSizeX(), 0.0f, -chip.getSizeX());
 	        gl.glPushMatrix();
 	        gl.glClearColor(0.1f, 0.1f, 0.1f, 0);
 	        gl.glClear(GL.GL_COLOR_BUFFER_BIT);
@@ -83,6 +84,7 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
           gl.glVertex3f(this.sizeOfWin, 0.0f, this.sizeOfWin);
           gl.glVertex3f(this.sizeOfWin, 0.0f, 0.0f);
           gl.glEnd();
+          gl.glPopMatrix();
 
 	      if(Xfinals.size()!=0){
 	        gl.glPushMatrix();
@@ -106,6 +108,7 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 
 				gl.glEnd();
 			}
+                        gl.glPopMatrix();
 	      }
 	   }
 	   public void setVectToDisplay(LinkedList<FloatMatrix> vect){
@@ -230,6 +233,7 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 
 				gl.glEnd();
 			}
+                        gl.glPopMatrix();
 	      }
 
 	}
