@@ -404,14 +404,15 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 				}
 				}
 
-				for(int i=0;i<jointsToTrack.firstElement().size(); i++){
-					//TriangulatePointPosition(jointsToTrack.get(0).get(i), jointsToTrack.get(1).get(i));
-					triangulationUsingJBlas(jointsToTrack.get(0).get(i), jointsToTrack.get(1).get(i));
-				}
+
 
 
 
 		}
+			for(int i=0;i<jointsToTrack.firstElement().size(); i++){
+				//TriangulatePointPosition(jointsToTrack.get(0).get(i), jointsToTrack.get(1).get(i));
+				triangulationUsingJBlas(jointsToTrack.get(0).get(i), jointsToTrack.get(1).get(i));
+			}
 		}
 
 		return in;
