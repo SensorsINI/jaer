@@ -237,9 +237,9 @@
                 <entry key="AutoExposureController.highBoundary" value="0.5801483"/>
                 <entry key="AutoExposureController.lowBoundary" value="0.13400951"/>
                 <entry key="AutomaticReplayPlayer.filterEnabled" value="false"/>
-                <entry key="BackgroundActivityFilter.dt" value="67208"/>
-                <entry key="BackgroundActivityFilter.filterEnabled" value="true"/>
-                <entry key="BackgroundActivityFilter.letFirstEventThrough" value="false"/>
+                <entry key="BackgroundActivityFilter.dt" value="17213"/>
+                <entry key="BackgroundActivityFilter.filterEnabled" value="false"/>
+                <entry key="BackgroundActivityFilter.letFirstEventThrough" value="true"/>
                 <entry key="BackgroundActivityFilter.subsampleBy" value="0"/>
                 <entry key="BackgroundMotionSelectiveFilter.filterEnabled" value="false"/>
                 <entry key="BinaryFeatureDetector.filterEnabled" value="false"/>
@@ -1862,37 +1862,37 @@
                 <entry key="Davis640.APS.ResetRead" value="true"/>
                 <entry key="Davis640.APS.ResetSettle" value="10"/>
                 <entry key="Davis640.APS.RowSettle" value="10"/>
-                <entry key="Davis640.APS.Run" value="true"/>
+                <entry key="Davis640.APS.Run" value="false"/>
                 <entry key="Davis640.APS.SampleEnable" value="true"/>
                 <entry key="Davis640.APS.SampleSettle" value="30"/>
                 <entry key="Davis640.APS.UseInternalADC" value="true"/>
                 <entry key="Davis640.APS.WaitOnTransferStall" value="true"/>
-                <entry key="Davis640.AddressedIPotCF.ADCcompBp.BitValueCoarse" value="3"/>
-                <entry key="Davis640.AddressedIPotCF.ADCcompBp.BitValueFine" value="119"/>
+                <entry key="Davis640.AddressedIPotCF.ADCcompBp.BitValueCoarse" value="4"/>
+                <entry key="Davis640.AddressedIPotCF.ADCcompBp.BitValueFine" value="128"/>
                 <entry key="Davis640.AddressedIPotCF.ADCcompBp.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.ADCcompBp.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.ADCcompBp.Sex" value="P"/>
                 <entry key="Davis640.AddressedIPotCF.ADCcompBp.Type" value="NORMAL"/>
-                <entry key="Davis640.AddressedIPotCF.AEPdBn.BitValueCoarse" value="1"/>
-                <entry key="Davis640.AddressedIPotCF.AEPdBn.BitValueFine" value="91"/>
+                <entry key="Davis640.AddressedIPotCF.AEPdBn.BitValueCoarse" value="4"/>
+                <entry key="Davis640.AddressedIPotCF.AEPdBn.BitValueFine" value="185"/>
                 <entry key="Davis640.AddressedIPotCF.AEPdBn.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.AEPdBn.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.AEPdBn.Sex" value="N"/>
                 <entry key="Davis640.AddressedIPotCF.AEPdBn.Type" value="NORMAL"/>
-                <entry key="Davis640.AddressedIPotCF.AEPuXBp.BitValueCoarse" value="3"/>
-                <entry key="Davis640.AddressedIPotCF.AEPuXBp.BitValueFine" value="80"/>
+                <entry key="Davis640.AddressedIPotCF.AEPuXBp.BitValueCoarse" value="4"/>
+                <entry key="Davis640.AddressedIPotCF.AEPuXBp.BitValueFine" value="112"/>
                 <entry key="Davis640.AddressedIPotCF.AEPuXBp.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.AEPuXBp.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.AEPuXBp.Sex" value="P"/>
                 <entry key="Davis640.AddressedIPotCF.AEPuXBp.Type" value="NORMAL"/>
-                <entry key="Davis640.AddressedIPotCF.AEPuYBp.BitValueCoarse" value="0"/>
-                <entry key="Davis640.AddressedIPotCF.AEPuYBp.BitValueFine" value="152"/>
+                <entry key="Davis640.AddressedIPotCF.AEPuYBp.BitValueCoarse" value="3"/>
+                <entry key="Davis640.AddressedIPotCF.AEPuYBp.BitValueFine" value="201"/>
                 <entry key="Davis640.AddressedIPotCF.AEPuYBp.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.AEPuYBp.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.AEPuYBp.Sex" value="P"/>
                 <entry key="Davis640.AddressedIPotCF.AEPuYBp.Type" value="NORMAL"/>
-                <entry key="Davis640.AddressedIPotCF.ApsROSFBn.BitValueCoarse" value="3"/>
-                <entry key="Davis640.AddressedIPotCF.ApsROSFBn.BitValueFine" value="164"/>
+                <entry key="Davis640.AddressedIPotCF.ApsROSFBn.BitValueCoarse" value="4"/>
+                <entry key="Davis640.AddressedIPotCF.ApsROSFBn.BitValueFine" value="168"/>
                 <entry key="Davis640.AddressedIPotCF.ApsROSFBn.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.ApsROSFBn.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.ApsROSFBn.Sex" value="N"/>
@@ -1933,98 +1933,98 @@
                 <entry key="Davis640.AddressedIPotCF.Blk4N.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.Blk4N.Sex" value="N"/>
                 <entry key="Davis640.AddressedIPotCF.Blk4N.Type" value="NORMAL"/>
-                <entry key="Davis640.AddressedIPotCF.ColSelLowBn.BitValueCoarse" value="7"/>
-                <entry key="Davis640.AddressedIPotCF.ColSelLowBn.BitValueFine" value="1"/>
+                <entry key="Davis640.AddressedIPotCF.ColSelLowBn.BitValueCoarse" value="4"/>
+                <entry key="Davis640.AddressedIPotCF.ColSelLowBn.BitValueFine" value="4"/>
                 <entry key="Davis640.AddressedIPotCF.ColSelLowBn.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.ColSelLowBn.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.ColSelLowBn.Sex" value="N"/>
                 <entry key="Davis640.AddressedIPotCF.ColSelLowBn.Type" value="NORMAL"/>
-                <entry key="Davis640.AddressedIPotCF.DACBufBp.BitValueCoarse" value="1"/>
-                <entry key="Davis640.AddressedIPotCF.DACBufBp.BitValueFine" value="60"/>
+                <entry key="Davis640.AddressedIPotCF.DACBufBp.BitValueCoarse" value="7"/>
+                <entry key="Davis640.AddressedIPotCF.DACBufBp.BitValueFine" value="110"/>
                 <entry key="Davis640.AddressedIPotCF.DACBufBp.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.DACBufBp.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.DACBufBp.Sex" value="P"/>
                 <entry key="Davis640.AddressedIPotCF.DACBufBp.Type" value="NORMAL"/>
                 <entry key="Davis640.AddressedIPotCF.DiffBn.BitValueCoarse" value="3"/>
-                <entry key="Davis640.AddressedIPotCF.DiffBn.BitValueFine" value="126"/>
+                <entry key="Davis640.AddressedIPotCF.DiffBn.BitValueFine" value="74"/>
                 <entry key="Davis640.AddressedIPotCF.DiffBn.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.DiffBn.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.DiffBn.Sex" value="N"/>
                 <entry key="Davis640.AddressedIPotCF.DiffBn.Type" value="NORMAL"/>
-                <entry key="Davis640.AddressedIPotCF.IFRefrBn.BitValueCoarse" value="2"/>
+                <entry key="Davis640.AddressedIPotCF.IFRefrBn.BitValueCoarse" value="7"/>
                 <entry key="Davis640.AddressedIPotCF.IFRefrBn.BitValueFine" value="255"/>
                 <entry key="Davis640.AddressedIPotCF.IFRefrBn.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.IFRefrBn.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.IFRefrBn.Sex" value="N"/>
                 <entry key="Davis640.AddressedIPotCF.IFRefrBn.Type" value="NORMAL"/>
-                <entry key="Davis640.AddressedIPotCF.IFThrBn.BitValueCoarse" value="2"/>
+                <entry key="Davis640.AddressedIPotCF.IFThrBn.BitValueCoarse" value="7"/>
                 <entry key="Davis640.AddressedIPotCF.IFThrBn.BitValueFine" value="255"/>
                 <entry key="Davis640.AddressedIPotCF.IFThrBn.Enabled" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.IFThrBn.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.IFThrBn.Sex" value="N"/>
                 <entry key="Davis640.AddressedIPotCF.IFThrBn.Type" value="NORMAL"/>
                 <entry key="Davis640.AddressedIPotCF.LcolTimeoutBn.BitValueCoarse" value="2"/>
-                <entry key="Davis640.AddressedIPotCF.LcolTimeoutBn.BitValueFine" value="49"/>
+                <entry key="Davis640.AddressedIPotCF.LcolTimeoutBn.BitValueFine" value="71"/>
                 <entry key="Davis640.AddressedIPotCF.LcolTimeoutBn.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.LcolTimeoutBn.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.LcolTimeoutBn.Sex" value="N"/>
                 <entry key="Davis640.AddressedIPotCF.LcolTimeoutBn.Type" value="NORMAL"/>
                 <entry key="Davis640.AddressedIPotCF.LocalBufBn.BitValueCoarse" value="2"/>
-                <entry key="Davis640.AddressedIPotCF.LocalBufBn.BitValueFine" value="164"/>
+                <entry key="Davis640.AddressedIPotCF.LocalBufBn.BitValueFine" value="177"/>
                 <entry key="Davis640.AddressedIPotCF.LocalBufBn.Enabled" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.LocalBufBn.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.LocalBufBn.Sex" value="N"/>
                 <entry key="Davis640.AddressedIPotCF.LocalBufBn.Type" value="NORMAL"/>
-                <entry key="Davis640.AddressedIPotCF.OffBn.BitValueCoarse" value="4"/>
-                <entry key="Davis640.AddressedIPotCF.OffBn.BitValueFine" value="35"/>
+                <entry key="Davis640.AddressedIPotCF.OffBn.BitValueCoarse" value="3"/>
+                <entry key="Davis640.AddressedIPotCF.OffBn.BitValueFine" value="8"/>
                 <entry key="Davis640.AddressedIPotCF.OffBn.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.OffBn.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.OffBn.Sex" value="N"/>
                 <entry key="Davis640.AddressedIPotCF.OffBn.Type" value="NORMAL"/>
                 <entry key="Davis640.AddressedIPotCF.OnBn.BitValueCoarse" value="2"/>
-                <entry key="Davis640.AddressedIPotCF.OnBn.BitValueFine" value="241"/>
+                <entry key="Davis640.AddressedIPotCF.OnBn.BitValueFine" value="255"/>
                 <entry key="Davis640.AddressedIPotCF.OnBn.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.OnBn.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.OnBn.Sex" value="N"/>
                 <entry key="Davis640.AddressedIPotCF.OnBn.Type" value="NORMAL"/>
                 <entry key="Davis640.AddressedIPotCF.PadFollBn.BitValueCoarse" value="0"/>
-                <entry key="Davis640.AddressedIPotCF.PadFollBn.BitValueFine" value="215"/>
+                <entry key="Davis640.AddressedIPotCF.PadFollBn.BitValueFine" value="255"/>
                 <entry key="Davis640.AddressedIPotCF.PadFollBn.Enabled" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.PadFollBn.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.PadFollBn.Sex" value="N"/>
                 <entry key="Davis640.AddressedIPotCF.PadFollBn.Type" value="NORMAL"/>
-                <entry key="Davis640.AddressedIPotCF.PixInvBn.BitValueCoarse" value="3"/>
-                <entry key="Davis640.AddressedIPotCF.PixInvBn.BitValueFine" value="234"/>
+                <entry key="Davis640.AddressedIPotCF.PixInvBn.BitValueCoarse" value="2"/>
+                <entry key="Davis640.AddressedIPotCF.PixInvBn.BitValueFine" value="142"/>
                 <entry key="Davis640.AddressedIPotCF.PixInvBn.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.PixInvBn.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.PixInvBn.Sex" value="N"/>
                 <entry key="Davis640.AddressedIPotCF.PixInvBn.Type" value="NORMAL"/>
-                <entry key="Davis640.AddressedIPotCF.PrBp.BitValueCoarse" value="5"/>
-                <entry key="Davis640.AddressedIPotCF.PrBp.BitValueFine" value="115"/>
+                <entry key="Davis640.AddressedIPotCF.PrBp.BitValueCoarse" value="6"/>
+                <entry key="Davis640.AddressedIPotCF.PrBp.BitValueFine" value="255"/>
                 <entry key="Davis640.AddressedIPotCF.PrBp.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.PrBp.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.PrBp.Sex" value="P"/>
                 <entry key="Davis640.AddressedIPotCF.PrBp.Type" value="NORMAL"/>
-                <entry key="Davis640.AddressedIPotCF.PrSFBp.BitValueCoarse" value="5"/>
-                <entry key="Davis640.AddressedIPotCF.PrSFBp.BitValueFine" value="115"/>
+                <entry key="Davis640.AddressedIPotCF.PrSFBp.BitValueCoarse" value="6"/>
+                <entry key="Davis640.AddressedIPotCF.PrSFBp.BitValueFine" value="255"/>
                 <entry key="Davis640.AddressedIPotCF.PrSFBp.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.PrSFBp.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.PrSFBp.Sex" value="P"/>
                 <entry key="Davis640.AddressedIPotCF.PrSFBp.Type" value="NORMAL"/>
-                <entry key="Davis640.AddressedIPotCF.ReadoutBufBP.BitValueCoarse" value="2"/>
-                <entry key="Davis640.AddressedIPotCF.ReadoutBufBP.BitValueFine" value="29"/>
+                <entry key="Davis640.AddressedIPotCF.ReadoutBufBP.BitValueCoarse" value="0"/>
+                <entry key="Davis640.AddressedIPotCF.ReadoutBufBP.BitValueFine" value="49"/>
                 <entry key="Davis640.AddressedIPotCF.ReadoutBufBP.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.ReadoutBufBP.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.ReadoutBufBP.Sex" value="P"/>
                 <entry key="Davis640.AddressedIPotCF.ReadoutBufBP.Type" value="NORMAL"/>
                 <entry key="Davis640.AddressedIPotCF.RefrBp.BitValueCoarse" value="3"/>
-                <entry key="Davis640.AddressedIPotCF.RefrBp.BitValueFine" value="105"/>
+                <entry key="Davis640.AddressedIPotCF.RefrBp.BitValueFine" value="37"/>
                 <entry key="Davis640.AddressedIPotCF.RefrBp.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.RefrBp.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.RefrBp.Sex" value="P"/>
                 <entry key="Davis640.AddressedIPotCF.RefrBp.Type" value="NORMAL"/>
                 <entry key="Davis640.AddressedIPotCF.biasBuffer.BitValueCoarse" value="0"/>
-                <entry key="Davis640.AddressedIPotCF.biasBuffer.BitValueFine" value="254"/>
+                <entry key="Davis640.AddressedIPotCF.biasBuffer.BitValueFine" value="255"/>
                 <entry key="Davis640.AddressedIPotCF.biasBuffer.Enabled" value="true"/>
                 <entry key="Davis640.AddressedIPotCF.biasBuffer.LowCurrent" value="false"/>
                 <entry key="Davis640.AddressedIPotCF.biasBuffer.Sex" value="N"/>
@@ -2068,17 +2068,17 @@
                 <entry key="Davis640.ExtInput.RunDetector" value="false"/>
                 <entry key="Davis640.ExtInput.RunGenerator" value="false"/>
                 <entry key="Davis640.GlobalShutter" value="true"/>
-                <entry key="Davis640.IMU.AccelFullScale" value="0"/>
-                <entry key="Davis640.IMU.AccelScale" value="ImuAccelScaleG2"/>
+                <entry key="Davis640.IMU.AccelFullScale" value="2"/>
+                <entry key="Davis640.IMU.AccelScale" value="ImuAccelScaleG8"/>
                 <entry key="Davis640.IMU.DigitalLowPassFilter" value="1"/>
-                <entry key="Davis640.IMU.GyroFullScale" value="0"/>
-                <entry key="Davis640.IMU.GyroScale" value="GyroFullScaleDegPerSec250"/>
+                <entry key="Davis640.IMU.GyroFullScale" value="2"/>
+                <entry key="Davis640.IMU.GyroScale" value="GyroFullScaleDegPerSec1000"/>
                 <entry key="Davis640.IMU.LPCycle" value="false"/>
                 <entry key="Davis640.IMU.LPWakeup" value="1"/>
                 <entry key="Davis640.IMU.Run" value="false"/>
                 <entry key="Davis640.IMU.SampleRateDivider" value="0"/>
                 <entry key="Davis640.IMU.TempStandby" value="false"/>
-                <entry key="Davis640.IMU.displayEnabled" value="false"/>
+                <entry key="Davis640.IMU.displayEnabled" value="true"/>
                 <entry key="Davis640.Masterbias.internalResistorUsed" value="false"/>
                 <entry key="Davis640.Masterbias.rint" value="46000.0"/>
                 <entry key="Davis640.Masterbias.rx" value="8200.0"/>
@@ -2105,12 +2105,12 @@
                 <entry key="Davis640.ShiftedSourceBias.BlkV3.BufBitValue" value="0"/>
                 <entry key="Davis640.ShiftedSourceBias.BlkV3.VdacBitValue" value="0"/>
                 <entry key="Davis640.ShiftedSourceBias.SSN.OperatingMode" value="ShiftedSource"/>
-                <entry key="Davis640.ShiftedSourceBias.SSN.RefValue" value="1"/>
-                <entry key="Davis640.ShiftedSourceBias.SSN.RegBitValue" value="33"/>
+                <entry key="Davis640.ShiftedSourceBias.SSN.RefValue" value="3"/>
+                <entry key="Davis640.ShiftedSourceBias.SSN.RegBitValue" value="63"/>
                 <entry key="Davis640.ShiftedSourceBias.SSN.VoltageLevel" value="SplitGate"/>
                 <entry key="Davis640.ShiftedSourceBias.SSP.OperatingMode" value="ShiftedSource"/>
                 <entry key="Davis640.ShiftedSourceBias.SSP.RefValue" value="1"/>
-                <entry key="Davis640.ShiftedSourceBias.SSP.RegBitValue" value="33"/>
+                <entry key="Davis640.ShiftedSourceBias.SSP.RegBitValue" value="63"/>
                 <entry key="Davis640.ShiftedSourceBias.SSP.VoltageLevel" value="SplitGate"/>
                 <entry key="Davis640.ShiftedSourceBias.apsOverflowLevel.BufBitValue" value="6"/>
                 <entry key="Davis640.ShiftedSourceBias.apsOverflowLevel.VdacBitValue" value="27"/>
@@ -2119,15 +2119,15 @@
                 <entry key="Davis640.USB.EarlyPacketDelay" value="8"/>
                 <entry key="Davis640.UseAOut" value="false"/>
                 <entry key="Davis640.VDACBias.ADC_RefHigh.BufBitValue" value="6"/>
-                <entry key="Davis640.VDACBias.ADC_RefHigh.VdacBitValue" value="47"/>
+                <entry key="Davis640.VDACBias.ADC_RefHigh.VdacBitValue" value="25"/>
                 <entry key="Davis640.VDACBias.ADC_RefLow.BufBitValue" value="6"/>
-                <entry key="Davis640.VDACBias.ADC_RefLow.VdacBitValue" value="3"/>
+                <entry key="Davis640.VDACBias.ADC_RefLow.VdacBitValue" value="23"/>
                 <entry key="Davis640.VDACBias.AdcTestVoltage.BufBitValue" value="7"/>
-                <entry key="Davis640.VDACBias.AdcTestVoltage.VdacBitValue" value="20"/>
+                <entry key="Davis640.VDACBias.AdcTestVoltage.VdacBitValue" value="33"/>
                 <entry key="Davis640.VDACBias.ApsCas.BufBitValue" value="6"/>
-                <entry key="Davis640.VDACBias.ApsCas.VdacBitValue" value="27"/>
+                <entry key="Davis640.VDACBias.ApsCas.VdacBitValue" value="44"/>
                 <entry key="Davis640.VDACBias.apsOverflowLevel.BufBitValue" value="6"/>
-                <entry key="Davis640.VDACBias.apsOverflowLevel.VdacBitValue" value="35"/>
+                <entry key="Davis640.VDACBias.apsOverflowLevel.VdacBitValue" value="39"/>
                 <entry key="Davis640.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="Davis640.VideoControl.colorCorrection" value="false"/>
                 <entry key="Davis640.VideoControl.displayEvents" value="true"/>
@@ -2375,7 +2375,7 @@
                 <entry key="DavisAutoShooter.useEventRateThreshold" value="true"/>
                 <entry key="DavisAutoShooter.useTracker" value="false"/>
                 <entry key="DavisBaseCamera.autoshotThresholdEvents" value="0"/>
-                <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="0"/>
+                <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="1"/>
                 <entry key="DavisBaseCamera.showImageHistogram" value="true"/>
                 <entry key="DavisDeepLearnCnnProcessor.dvsMinEvents" value="2000"/>
                 <entry key="DavisDeepLearnCnnProcessor.filterEnabled" value="true"/>
@@ -2843,8 +2843,8 @@
                 <entry key="FilterChain.timeLimitEnabled" value="false"/>
                 <entry key="FilterChain.timeLimitMs" value="10"/>
                 <entry key="FilterChain.updateIntervalMs" value="1.0"/>
-                <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAKdwQAAAAKdAA5Y2gudW5pemguaW5pLmphZXIucHJvamVjdHMuZGF2aXMuZnJhbWVzLkFwc0ZyYW1lRXh0cmFjdG9ydAA1bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5BcHNOb2lzZVN0YXRpc3RpY3N0ADtuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkJhY2tncm91bmRBY3Rpdml0eUZpbHRlcnQAQmNoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLmRhdmlzLmZyYW1lcy5BcHNGcmFtZUV4dHJhcG9sYXRpb25JU0NBU3QAMWV1LnZpc3VhbGl6ZS5pbmkuY29udm5ldC5WaXN1YWxpc2VTdGVlcmluZ0NvbnZOZXR0ACxldS52aXN1YWxpemUuaW5pLmNvbnZuZXQuRmFjZURldGVjdG9yQ29udk5ldHQAJ25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuSW5mb3QAMm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuQ2VsbFN0YXRzUHJvYmVycQB+AAR0ACtldS5zZWViZXR0ZXIuaW5pLmNoaXBzLmRhdmlzLkhvdFBpeGVsRmlsdGVyeA=="/>
-                <entry key="FilterFrame.lastFilterSelected" value=""/>
+                <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAFdwQAAAAFdAA5Y2gudW5pemguaW5pLmphZXIucHJvamVjdHMuZGF2aXMuZnJhbWVzLkFwc0ZyYW1lRXh0cmFjdG9ydAA1bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5BcHNOb2lzZVN0YXRpc3RpY3N0ADtuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkJhY2tncm91bmRBY3Rpdml0eUZpbHRlcnQAJ25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuSW5mb3QAMm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuQ2VsbFN0YXRzUHJvYmVyeA=="/>
+                <entry key="FilterFrame.lastFilterSelected" value="class org.capocaccia.cne.jaer.cne2012.vor.Steadicam"/>
                 <entry key="FordVIVisualizer.filterEnabled" value="false"/>
                 <entry key="FordVIVisualizer.lastFordVIFile" value="D:\BitTorrent Sync\Recordings\DrivingFordMondeo\FordVI-2016-12-15-rec01-to-airport-and-back.dat"/>
                 <entry key="FordVIVisualizer.showText" value="false"/>
@@ -2860,7 +2860,7 @@
                 <entry key="Histogram2DFilter.showBitmap" value="false"/>
                 <entry key="Histogram2DFilter.showHistogram" value="true"/>
                 <entry key="Histogram2DFilter.threshold" value="10.0"/>
-                <entry key="HotPixelFilter.HotPixelSet" value="rO0ABXVyABNbTGphdmEubGFuZy5PYmplY3Q7kM5YnxBzKWwCAAB4cAAAAChzcgA0ZXUuc2VlYmV0dGVyLmluaS5jaGlwcy5kYXZpcy5Ib3RQaXhlbEZpbHRlciRIb3RQaXhlbC2Q9WoP5S1IAgAESQAHYWRkcmVzc0kABWNvdW50SQABeEkAAXl4cDKP2AAAAAAAAAABggAAAMpzcQB+AAI0T7gAAAAAAAAAAYQAAADRc3EAfgACFxBwAAAAAAAAAAF4AAAAXHNxAH4AAhsQ2AAAAAAAAAABcgAAAGxzcQB+AAIUUfgAAAAAAAAAAWAAAABRc3EAfgACG1G4AAAAAAAAAAFkAAAAbXNxAH4AAjURWAAAAAAAAAABagAAANRzcQB+AAITUggAAAAAAAAAAV8AAABNc3EAfgACExJ4AAAAAAAAAAFYAAAATHNxAH4AAhMSWAAAAAAAAAABWgAAAExzcQB+AAITEjgAAAAAAAAAAVwAAABMc3EAfgACExJoAAAAAAAAAAFZAAAATHNxAH4AAhMSSAAAAAAAAAABWwAAAExzcQB+AAI6EhgAAAAAAAAAAV4AAADoc3EAfgACG9L4AAAAAAAAAAFQAAAAb3NxAH4AAjwSWAAAAAAAAAABWgAAAPBzcQB+AAI8kqgAAAAAAAAAAVUAAADyc3EAfgACQZJYAAAAAAAAAAFaAAABBnNxAH4AAhNTWAAAAAAAAAABSgAAAE1zcQB+AAI2ExgAAAAAAAAAAU4AAADYc3EAfgACE1MoAAAAAAAAAAFNAAAATXNxAH4AAh0TGAAAAAAAAAABTgAAAHRzcQB+AAJEE8gAAAAAAAAAAUMAAAEQc3EAfgACOZQAAAAAAAAAAAE/AAAA5nNxAH4AAjOUmAAAAAAAAAABNgAAAM5zcQB+AAJCFEgAAAAAAAAAATsAAAEIc3EAfgACQBRYAAAAAAAAAAE6AAABAHNxAH4AAjqVKAAAAAAAAAABLQAAAOpzcQB+AAI6lTgAAAAAAAAAASwAAADqc3EAfgACPpUYAAAAAAAAAAEuAAAA+nNxAH4AAj6V6AAAAAAAAAABIQAAAPpzcQB+AAI/FYgAAAAAAAAAAScAAAD8c3EAfgACStdYAAAAAAAAAAEKAAABK3NxAH4AAkrXSAAAAAAAAAABCwAAAStzcQB+AAJK10AAAAAAAAAAAQsAAAErc3EAfgACPxcIAAAAAAAAAAEPAAAA/HNxAH4AAjcXGAAAAAAAAAABDgAAANxzcQB+AAIr2FgAAAAAAAAAAPoAAACvc3EAfgACKJmoAAAAAAAAAADlAAAAonNxAH4AAlQmeAAAAAAAAAAAGAAAAVA="/>
+                <entry key="HotPixelFilter.HotPixelSet" value="rO0ABXVyABNbTGphdmEubGFuZy5PYmplY3Q7kM5YnxBzKWwCAAB4cAAAABtzcgA0ZXUuc2VlYmV0dGVyLmluaS5jaGlwcy5EQVZpUy5Ib3RQaXhlbEZpbHRlciRIb3RQaXhlbPtTxzoUKi/5AgAESQAHYWRkcmVzc0kABWNvdW50SQABeEkAAXl4cA1D+AAAAAAAAAAAsAAAADVzcQB+AAIrxQgAAAAAAAAAAJ8AAACvc3EAfgACE0ZYAAAAAAAAAACKAAAATXNxAH4AAhGJaAAAAAAAAAAAWQAAAEZzcQB+AAIADHgAAAAAAAAAACgAAAAAc3EAfgACAUzoAAAAAAAAAAAhAAAABXNxAH4AAh8MyAAAAAAAAAAAIwAAAHxzcQB+AAIZTcgAAAAAAAAAABMAAABlc3EAfgACGQ3AAAAAAAAAAAATAAAAZHNxAH4AAhjNuAAAAAAAAAAAFAAAAGNzcQB+AAIYzbAAAAAAAAAAABQAAABjc3EAfgACBI2IAAAAAAAAAAAXAAAAEnNxAH4AAgTNeAAAAAAAAAAAGAAAABNzcQB+AAIAzTgAAAAAAAAAABwAAAADc3EAfgACAU04AAAAAAAAAAAcAAAABXNxAH4AAgBOWAAAAAAAAAAACgAAAAFzcQB+AAIADkgAAAAAAAAAAAsAAAAAc3EAfgACAI4oAAAAAAAAAAANAAAAAnNxAH4AAgAOaAAAAAAAAAAACQAAAABzcQB+AAIADlgAAAAAAAAAAAoAAAAAc3EAfgACAE5IAAAAAAAAAAALAAAAAXNxAH4AAgBOOAAAAAAAAAAADAAAAAFzcQB+AAIAjjgAAAAAAAAAAAwAAAACc3EAfgACAM4oAAAAAAAAAAANAAAAA3NxAH4AAgDOGAAAAAAAAAAADgAAAANzcQB+AAIBDigAAAAAAAAAAA0AAAAEc3EAfgACAQ4YAAAAAAAAAAAOAAAABA=="/>
                 <entry key="HotPixelFilter.filterEnabled" value="true"/>
                 <entry key="HotPixelFilter.learnTimeMs" value="107"/>
                 <entry key="HotPixelFilter.numHotPixels" value="22"/>
@@ -3066,6 +3066,7 @@
                 <entry key="MeanTracker.filterEnabled" value="false"/>
                 <entry key="MeanTracker.radius" value="55.160057"/>
                 <entry key="MedianTracker.filterEnabled" value="true"/>
+                <entry key="MedianTracker.numStdDevsForBoundingBox" value="1.05"/>
                 <entry key="MedianTracker.tauUs" value="16137"/>
                 <entry key="MultiLineClusterTracker.clusterLifetimeIncreasesWithAge" value="true"/>
                 <entry key="MultiLineClusterTracker.clusterLifetimeWithoutSupport" value="24069"/>
