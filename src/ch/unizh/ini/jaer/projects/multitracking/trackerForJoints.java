@@ -885,9 +885,11 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 //			ptToplot[0][0]=0;
 //			plot3d.addScatterPlot("3D reprojection", ptToplot);
 			//getting the capabilities object of GL2 profile
-			startNewWindows();
-//		      triview = new Triangulation3DViewer();
-//		      triview.startNewWindows();
+
+//			startNewWindows();
+		      triview = new Triangulation3DViewer(chip.getCanvas());
+		      triview.startNewWindows();
+
 //		     triviewActivated=true;
 		}
 
@@ -946,7 +948,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 		ptToplot=fromVectToTab(Xfinals);
 
 		update3Dplot(Xfinals);
-
+        triview.preventNewEvent();
 		//plot3d.addScatterPlot("3D reprojection", ptToplot);
 		//plot3d.repaint();
 		//float[] xfinal = Xfinal.data;
@@ -1243,12 +1245,12 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 
 	      // The canvas
 	      final GLCanvas glcanvas = new GLCanvas( capabilities );
-	      triview = new Triangulation3DViewer();
-	      glcanvas.addGLEventListener( triview );
-	      glcanvas.setSize( 400, 400 );
+	      triview = new Triangulation3DViewer(chip.getCanvas());
+	      glcanvas.addGLEventListener( triview);
+	      glcanvas.setSize( 800, 800 );
 
 	      //creating frame
-	      final JFrame frame = new JFrame (" 3d line");
+	      final JFrame frame = new JFrame (" triangulation 3D renderer");
 
 	      //adding canvas to it
 	      frame.getContentPane().add( glcanvas );
