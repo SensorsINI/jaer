@@ -45,6 +45,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private ArrayList<int[][]> currentAL = null, previousAL = null, previousMinus1AL = null; // One is for current, the second is for previous, the third is for the one before previous one
     private BitSet[] histogramsBitSet = null;
     private BitSet currentSli = null, tMinus1Sli = null, tMinus2Sli = null;
+    private final SADResult tmpSadResult = new SADResult(0, 0, 0);
     private int patchDimension = getInt("patchDimension", 9);
     private boolean displayOutputVectors = getBoolean("displayOutputVectors", true);
     private int eventPatchDimension = getInt("eventPatchDimension", 3);
@@ -57,9 +58,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int[][] lastFireIndex = null;  // Events are numbered in time order for every block. This variable is for storing the last event index fired on all blocks.
     private int[][] eventSeqStartTs = null;
     private boolean preProcessEnable = false;
-    private int skipProcessingEventsCount=getInt("skipProcessingEventsCount",0); // skip this many events for processing (but not for accumulating to bitmaps)
-    private int skipCounter=0;
-    
+    private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
+    private int skipCounter = 0;
+
     public enum PatchCompareMethod {
         JaccardDistance, HammingDistance, SAD, EventSqeDistance
     };
@@ -158,7 +159,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             countIn++;
 
             // compute flow
-            SADResult result = new SADResult(0, 0, 0);
+            SADResult result = null;
 
             int blockLocX = x / eventPatchDimension;
             int blockLocY = y / eventPatchDimension;
@@ -174,12 +175,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             } else {
                 previousTsInterval = ts - spikeTrains[blockLocX][blockLocY].get(spikeBlokcLength - 1)[0];
             }
-            spikeTrains[blockLocX][blockLocY].add(new Integer[]{ts, type});
+            if (preProcessEnable || patchCompareMethod == PatchCompareMethod.EventSqeDistance) {
+                spikeTrains[blockLocX][blockLocY].add(new Integer[]{ts, type});
+            }
 
             switch (patchCompareMethod) {
                 case HammingDistance:
                     maybeRotateSlices();
-                    if(!accumulateEvent()) break;
+                    if (!accumulateEvent()) {
+                        break;
+                    }
                     if (preProcessEnable) {
                         // There are enough events fire on the specific block now.
                         if ((spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY]) >= forwardEventNum) {
@@ -197,7 +202,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     break;
                 case SAD:
                     maybeRotateSlices();
-                     if(!accumulateEvent()) break;
+                    if (!accumulateEvent()) {
+                        break;
+                    }
                     if (preProcessEnable) {
                         // There're enough events fire on the specific block now
                         if ((spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY]) >= forwardEventNum) {
@@ -215,7 +222,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     break;
                 case JaccardDistance:
                     maybeRotateSlices();
-                     if(!accumulateEvent()) break;
+                    if (!accumulateEvent()) {
+                        break;
+                    }
                     if (preProcessEnable) {
                         // There're enough events fire on the specific block now
                         if ((spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY]) >= forwardEventNum) {
@@ -311,6 +320,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     }
                     break;
             }
+            if (result == null) {
+                continue; // maybe some property change caused this
+            }
             vx = result.dx;
             vy = result.dy;
             v = (float) Math.sqrt((vx * vx) + (vy * vy));
@@ -330,7 +342,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             final int sx = chip.getSizeX(), sy = chip.getSizeY();
             for (int i = 0; i < sx; i++) {
                 for (int j = 0; j < sy; j++) {
-                    if (spikeTrains[i][j] != null) {
+                    if (spikeTrains != null && spikeTrains[i][j] != null) {
                         spikeTrains[i][j] = null;
                     }
                     if (lastFireIndex != null) {
@@ -466,14 +478,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
     /**
      * Accumulates the current event to the current slice
-     * @return true if subsequent processing should done, false if it should be skipped for efficiency
+     *
+     * @return true if subsequent processing should done, false if it should be
+     * skipped for efficiency
      */
     private boolean accumulateEvent() {
         currentSlice[x][y] += e.getPolaritySignum();
         currentSli.set((x + 1) + (y * subSizeX));  // All evnets wheather 0 or 1 will be set in the BitSet Slice.
-        if(skipProcessingEventsCount==0) return true;
-        if(skipCounter++<skipProcessingEventsCount) return false;
-        skipCounter=0;
+        if (skipProcessingEventsCount == 0) {
+            return true;
+        }
+        if (skipCounter++ < skipProcessingEventsCount) {
+            return false;
+        }
+        skipCounter = 0;
         return true;
     }
 
@@ -495,23 +513,22 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      */
     private SADResult minHammingDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
         float minSum = Integer.MAX_VALUE, sum = 0;
-        SADResult sadResult = new SADResult(0, 0, 0);
-        if ((x >= 128) && (x <= 130) && (y >= 189) && (y <= 191)) {  // For debugging
-            int tmp = 0;
-        }
+//        if ((x >= 128) && (x <= 130) && (y >= 189) && (y <= 191)) {  // For debugging
+//            int tmp = 0;
+//        }
         for (int dx = -searchDistance; dx <= searchDistance; dx++) {
             for (int dy = -searchDistance; dy <= searchDistance; dy++) {
                 sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
                 if (sum <= minSum) {
                     minSum = sum;
-                    sadResult.dx = dx;
-                    sadResult.dy = dy;
-                    sadResult.sadValue = minSum;
+                    tmpSadResult.dx = dx;
+                    tmpSadResult.dy = dy;
+                    tmpSadResult.sadValue = minSum;
                 }
             }
         }
 
-        return sadResult;
+        return tmpSadResult;
     }
 
     /**
@@ -564,7 +581,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             retVal is consisted of the distance and the dispersion, dispersion is used to describe the spatial relationship within one block.
             Here we use the difference between validPixNumCurrSli and validPixNumPrevSli to calculate the dispersion.
             Inspired by paper "Measuring the spatial dispersion of evolutionist search process: application to Walksat" by Alain Sidaner.
-            */
+             */
             retVal = ((hd * weightDistance) + (Math.abs(validPixNumCurrSli - validPixNumPrevSli) * (1 - weightDistance))) / (((2 * blockRadius) + 1) * ((2 * blockRadius) + 1));
         }
         return retVal;
@@ -819,7 +836,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             retVal is consisted of the distance and the dispersion, dispersion is used to describe the spatial relationship within one block.
             Here we use the difference between validPixNumCurrSli and validPixNumPrevSli to calculate the dispersion.
             Inspired by paper "Measuring the spatial dispersion of evolutionist search process: application to Walksat" by Alain Sidaner.
-            */
+             */
             retVal = ((sad * weightDistance) + (Math.abs(validPixNumCurrSli - validPixNumPrevSli) * (1 - weightDistance))) / (((2 * blockRadius) + 1) * ((2 * blockRadius) + 1));
         }
         return retVal;
@@ -1031,10 +1048,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      * @param skipProcessingEventsCount the skipProcessingEventsCount to set
      */
     public void setSkipProcessingEventsCount(int skipProcessingEventsCount) {
-        if(skipProcessingEventsCount<0) skipProcessingEventsCount=0;
-        if(skipProcessingEventsCount>100) skipProcessingEventsCount=100;
+        if (skipProcessingEventsCount < 0) {
+            skipProcessingEventsCount = 0;
+        }
+        if (skipProcessingEventsCount > 100) {
+            skipProcessingEventsCount = 100;
+        }
         this.skipProcessingEventsCount = skipProcessingEventsCount;
-        putInt("skipProcessingEventsCount",skipProcessingEventsCount);
+        putInt("skipProcessingEventsCount", skipProcessingEventsCount);
     }
 
 }
