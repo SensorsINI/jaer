@@ -1087,6 +1087,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	}
 
 
+        @SuppressWarnings("deprecation")
 	private String printMatD(Mat M) {
 		StringBuilder sb = new StringBuilder();
 		int c = 0;
@@ -1113,6 +1114,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 		return null;
 	}
 
+        @SuppressWarnings("deprecation")
 	private double[][] makeMatrixfromMat(Mat M) {
 		double[][] matrix = new double[M.rows()][M.cols()];
 		int c=0;
