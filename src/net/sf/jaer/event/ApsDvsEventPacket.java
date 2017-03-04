@@ -123,7 +123,7 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E> {
 		 */
 		@Override
 		public boolean hasNext() {
-			if (usingTimeout && EventPacket.timeLimitTimer.isTimedOut()) {
+			if (usingTimeout && timeLimitTimer.isTimedOut()) {
 				return false;
 			}
 

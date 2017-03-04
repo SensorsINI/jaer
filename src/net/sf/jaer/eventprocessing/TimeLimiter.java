@@ -27,8 +27,9 @@ import java.util.logging.Logger;
 final public class TimeLimiter extends Timer{
     private static Logger log=Logger.getLogger("TimeLimiter");
 //    int counter=0;
+    public final int DEFAULT_TIME_LIMIT_MS=10;
     volatile public boolean timedOut=false;
-    private int timeLimitMs=10;
+    private int timeLimitMs=DEFAULT_TIME_LIMIT_MS;
     volatile private boolean enabled=false;
     
 //    /** only check System.nanoTime every checkTimeInterval calls to isTimedOut */
@@ -38,7 +39,7 @@ final public class TimeLimiter extends Timer{
 //    private int checkCounter=checkTimeInterval;
 //    private int limitMs=10;
     
-    /** Creates a new time limiter with timeout ms. Doesn't start it. */
+    /** Creates a new time limiter with timeout set to default value. Doesn't start it. */
     public TimeLimiter(){
     }
     

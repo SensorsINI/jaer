@@ -114,7 +114,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         getSupport().addPropertyChangeListener(chip.getFilterFrame());
         timeLimitEnabled = chip.getPrefs().getBoolean("FilterChain.timeLimitEnabled", false);
         timeLimitMs = chip.getPrefs().getInt("FilterChain.timeLimitMs", 10);
-        updateIntervalMs=chip.getPrefs().getFloat("FilterChain.updateIntervalMs", 25);
+        updateIntervalMs=chip.getPrefs().getFloat("FilterChain.updateIntervalMs", 10);
 
         setTimeLimitEnabled(timeLimitEnabled);
         setTimeLimitMs(timeLimitMs);
@@ -154,17 +154,19 @@ public class FilterChain extends LinkedList<EventFilter2D> {
      * @return the resulting output.
      */
     synchronized public EventPacket filterPacket(EventPacket in) {
-        if (!filteringEnabled) {
+        if (!filteringEnabled || size()==0) {
             return in;
         }
         EventPacket out;
         if (timeLimitEnabled) {
             if (chip.getAeViewer().isPaused()) {
-                EventPacket.setTimeLimitEnabled(false);
+                in.setTimeLimitEnabled(false);
             } else {
-                EventPacket.setTimeLimitEnabled(true);
-                EventPacket.restartTimeLimiter(timeLimitMs);
+                in.setTimeLimitEnabled(true);
+                in.restartTimeLimiter(timeLimitMs);
             }
+        }else{
+            in.setTimeLimitEnabled(false);
         }
         for (EventFilter2D f : this) {
             if (measurePerformanceEnabled && f.perf != null && (!f.isFilterEnabled() || resetPerformanceMeasurementStatistics)) { // check to reset performance meter
@@ -179,14 +181,13 @@ public class FilterChain extends LinkedList<EventFilter2D> {
                 f.perf.start(in);
             }
             out = f.filterPacket(in);
+            timedOut = in.isTimedOut();
             if (measurePerformanceEnabled && f.perf != null) {
                 f.perf.stop();
                 System.out.println(f.perf);
             }
             in = out;
         }
-        timedOut = EventPacket.isTimedOut();
-        EventPacket.setTimeLimitEnabled(false);
         resetPerformanceMeasurementStatistics=false;
         return in;
     }
@@ -238,7 +239,6 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     public void setTimeLimitEnabled(boolean timeLimitEnabled) {
         this.timeLimitEnabled = timeLimitEnabled;
         chip.getPrefs().putBoolean("FilterChain.timeLimitEnabled", timeLimitEnabled);
-        EventPacket.setTimeLimitEnabled(timeLimitEnabled);
     }
 
     public int getTimeLimitMs() {
@@ -250,7 +250,6 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     public void setTimeLimitMs(int timeLimitMs) {
         this.timeLimitMs = timeLimitMs;
         chip.getPrefs().putInt("FilterChain.timeLimitMs", timeLimitMs);
-        EventPacket.setTimeLimitMs(timeLimitMs);
     }
 
     public ProcessingMode getProcessingMode() {
@@ -258,7 +257,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     }
 
     /**
-    Sets whether this chain is procesed in the acquisition or rendering thread.
+    Sets whether this chain is processed in the acquisition or rendering thread.
     For more real-time performance the data should be processed as it is acquired, not later when it is rendered.
     <p>
     Fires PropertyChangeEvent "processingmode"
