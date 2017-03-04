@@ -1031,7 +1031,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
      * @param skipProcessingEventsCount the skipProcessingEventsCount to set
      */
     public void setSkipProcessingEventsCount(int skipProcessingEventsCount) {
+        if(skipProcessingEventsCount<0) skipProcessingEventsCount=0;
+        if(skipProcessingEventsCount>100) skipProcessingEventsCount=100;
         this.skipProcessingEventsCount = skipProcessingEventsCount;
+        putInt("skipProcessingEventsCount",skipProcessingEventsCount);
     }
 
 }
