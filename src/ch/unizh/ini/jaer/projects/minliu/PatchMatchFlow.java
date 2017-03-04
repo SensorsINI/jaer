@@ -57,7 +57,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int[][] lastFireIndex = null;  // Events are numbered in time order for every block. This variable is for storing the last event index fired on all blocks.
     private int[][] eventSeqStartTs = null;
     private boolean preProcessEnable = false;
-
+    private int skipProcessingEventsCount=getInt("skipProcessingEventsCount",0); // skip this many events for processing (but not for accumulating to bitmaps)
+    private int skipCounter=0;
+    
     public enum PatchCompareMethod {
         JaccardDistance, HammingDistance, SAD, EventSqeDistance
     };
@@ -109,8 +111,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         setPropertyTooltip(patchTT, "patchDimension", "linear dimenion of patches to match, in pixels");
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");
-        setPropertyTooltip(patchTT, "sliceDurationUs", "duration of patches in us, also called sample interval");
-        setPropertyTooltip(patchTT, "sliceMethod", "method for determining time slice duration for block matching");
+        setPropertyTooltip(patchTT, "sliceDurationUs", "duration of bitmaps in us, also called sample interval");
+        setPropertyTooltip(patchTT, "sliceMethod", "set method for determining time slice duration for block matching");
+        setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
         setPropertyTooltip(eventSqeMatching, "cost", "The cost to translation one event to the other position");
         setPropertyTooltip(eventSqeMatching, "thresholdTime", "The threshold value of interval time between the first event and the last event");
         setPropertyTooltip(eventSqeMatching, "sliceEventCount", "number of collected events in each bitmap");
@@ -176,10 +179,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
             switch (patchCompareMethod) {
                 case HammingDistance:
                     maybeRotateSlices();
-                    accumulateEvent();
-
+                    if(!accumulateEvent()) break;
                     if (preProcessEnable) {
-                        // There're enough events fire on the specific block now.
+                        // There are enough events fire on the specific block now.
                         if ((spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY]) >= forwardEventNum) {
                             lastFireIndex[blockLocX][blockLocY] = spikeTrains[blockLocX][blockLocY].size() - 1;
                             result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
@@ -195,7 +197,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     break;
                 case SAD:
                     maybeRotateSlices();
-                    accumulateEvent();
+                     if(!accumulateEvent()) break;
                     if (preProcessEnable) {
                         // There're enough events fire on the specific block now
                         if ((spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY]) >= forwardEventNum) {
@@ -213,7 +215,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                     break;
                 case JaccardDistance:
                     maybeRotateSlices();
-                    accumulateEvent();
+                     if(!accumulateEvent()) break;
                     if (preProcessEnable) {
                         // There're enough events fire on the specific block now
                         if ((spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY]) >= forwardEventNum) {
@@ -464,10 +466,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
     /**
      * Accumulates the current event to the current slice
+     * @return true if subsequent processing should done, false if it should be skipped for efficiency
      */
-    private void accumulateEvent() {
+    private boolean accumulateEvent() {
         currentSlice[x][y] += e.getPolaritySignum();
         currentSli.set((x + 1) + (y * subSizeX));  // All evnets wheather 0 or 1 will be set in the BitSet Slice.
+        if(skipProcessingEventsCount==0) return true;
+        if(skipCounter++<skipProcessingEventsCount) return false;
+        skipCounter=0;
+        return true;
     }
 
     private void clearSlice(int idx) {
@@ -1011,6 +1018,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         }
 
         return retVal;
+    }
+
+    /**
+     * @return the skipProcessingEventsCount
+     */
+    public int getSkipProcessingEventsCount() {
+        return skipProcessingEventsCount;
+    }
+
+    /**
+     * @param skipProcessingEventsCount the skipProcessingEventsCount to set
+     */
+    public void setSkipProcessingEventsCount(int skipProcessingEventsCount) {
+        this.skipProcessingEventsCount = skipProcessingEventsCount;
     }
 
 }
