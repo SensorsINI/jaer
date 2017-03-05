@@ -83,9 +83,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     int yMax = getInt("yMax", DEFAULT_XYMAX);
 
     // Display
-    private boolean showVectorsEnabled = getBoolean("showVectorsEnabled", true);
+    private boolean displayVectorsEnabled = getBoolean("displayVectorsEnabled", true);
     private boolean showRawInputEnabled = getBoolean("showRawInputEnabled", true);
-    private boolean showColorWheelLegend = getBoolean("showColorWheelLegend", true);
+    private boolean displayColorWheelLegend = getBoolean("displayColorWheelLegend", true);
 
     private float ppsScale = getFloat("ppsScale", 1f);
 
@@ -218,7 +218,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(measureTT, "measureProcessingTime", "writes a text file with timestamp filename with the packet's mean processing time of an event. Processing time is also logged to console.");
         setPropertyTooltip(measureTT, "loggingFolder", "directory to store logged data files");
         setPropertyTooltip(dispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
-        setPropertyTooltip(dispTT, "showVectorsEnabled", "shows local motion vector evemts as arrows");
+        setPropertyTooltip(dispTT, "displayVectorsEnabled", "shows local motion vector evemts as arrows");
         setPropertyTooltip(dispTT, "showColorWheelLegend", "Plots a color wheel to show flow direction colors.");
         setPropertyTooltip(dispTT, "measureGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
         setPropertyTooltip(dispTT, "showRawInputEnabled", "shows the input events, instead of the motion types");
@@ -706,7 +706,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
 
         // Draw individual motion vectors
-        if (dirPacket != null && isShowVectorsEnabled()) {
+        if (dirPacket != null && isDisplayVectorsEnabled()) {
             gl.glLineWidth(2f);
             for (Object o : dirPacket) {
                 MotionOrientationEventInterface ei = (MotionOrientationEventInterface) o;
@@ -718,7 +718,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             }
         }
 
-        if (showColorWheelLegend) {
+        if (displayColorWheelLegend) {
             final int segments = 16;
             final float scale = 15;
             gl.glPushMatrix();
@@ -1107,14 +1107,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --showVectorsEnabled--">
-    public boolean isShowVectorsEnabled() {
-        return showVectorsEnabled;
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --displayVectorsEnabled--">
+    public boolean isDisplayVectorsEnabled() {
+        return displayVectorsEnabled;
     }
 
-    public void setShowVectorsEnabled(boolean showVectorsEnabled) {
-        this.showVectorsEnabled = showVectorsEnabled;
-        putBoolean("showVectorsEnabled", showVectorsEnabled);
+    public void setDisplayVectorsEnabled(boolean displayVectorsEnabled) {
+        this.displayVectorsEnabled = displayVectorsEnabled;
+        putBoolean("displayVectorsEnabled", displayVectorsEnabled);
     }
     // </editor-fold>
 
@@ -1663,13 +1663,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         imuFlowEstimator.setCalibrationSamples(calibrationSamples);
     }
 
-    public boolean isShowColorWheelLegend() {
-        return this.showColorWheelLegend;
+    public boolean isDisplayColorWheelLegend() {
+        return this.displayColorWheelLegend;
     }
 
-    public void setShowColorWheelLegend(boolean showColorWheelLegend) {
-        this.showColorWheelLegend = showColorWheelLegend;
-        putBoolean("showColorWheelLegend", showColorWheelLegend);
+    public void setDisplayColorWheelLegend(boolean displayColorWheelLegend) {
+        this.displayColorWheelLegend = displayColorWheelLegend;
+        putBoolean("displayColorWheelLegend", displayColorWheelLegend);
     }
 
 }
