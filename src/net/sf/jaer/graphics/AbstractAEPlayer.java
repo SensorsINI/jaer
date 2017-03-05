@@ -627,6 +627,8 @@ public abstract class AbstractAEPlayer {
     }
     
     
+    
+    
 //    final public class SyncPlaybackAction extends AbstractAction{
 //        public SyncPlaybackAction (){
 //            super("Synchronized playback");
@@ -641,4 +643,10 @@ public abstract class AbstractAEPlayer {
 //            getViewer().getJaerViewer().getToggleSyncEnabledAction().actionPerformed(e);
 //        }
 //    }
+
+    @Override
+    public String toString() {
+        return String.format("AEPlayer paused=%s repeat=%s playBackDirection=%s playBackMode=%s timesliceUs=%d packetSizeEvents=%d ",
+                paused,repeat,playbackDirection, playbackMode,timesliceUs,packetSizeEvents);
+    }
 }
