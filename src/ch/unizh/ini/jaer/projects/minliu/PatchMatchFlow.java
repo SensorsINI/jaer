@@ -56,7 +56,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int eventPatchDimension = getInt("eventPatchDimension", 3);
     private int forwardEventNum = getInt("forwardEventNum", 10);
     private float cost = getFloat("cost", 0.001f);
-    private float confidenceThreshold = getFloat("confidenceThreshold", 1f);
+    private float confidenceThreshold = getFloat("confidenceThreshold", 0f);
     private float validPixOccupancy = getFloat("validPixOccupancy", 0.01f);  // threshold for valid pixel percent for one block
     private float weightDistance = getFloat("weightDistance", 0.9f);        // confidence value consists of the distance and the dispersion, this value set the distance value
     private int thresholdTime = getInt("thresholdTime", 1000000);
@@ -115,9 +115,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         chip.addObserver(this); // to allocate memory once chip size is known
         setPropertyTooltip(preProcess, "preProcessEnable", "enable this to denoise before data processing");
         setPropertyTooltip(preProcess, "forwardEventNum", "Number of events have fired on the current block since last processing");
-        setPropertyTooltip(metricConfid, "confidenceThreshold", "Confidence threshold for rejecting unresonable value; Range from 0 to 1");
-        setPropertyTooltip(metricConfid, "validPixOccupancy", "threshold for valid pixel percent for one block; Range from 0 to 1");
-        setPropertyTooltip(metricConfid, "weightDistance", "confidence value consists of the distance and the dispersion, this value set the distance value; Range from 0 to 1");
+        setPropertyTooltip(metricConfid, "confidenceThreshold", "<html>Confidence threshold for rejecting unresonable value; Range from 0 to 1. <p>Higher value means it is harder to accept the event. <br>Set to 0 to accept all results.");
+        setPropertyTooltip(metricConfid, "validPixOccupancy", "<html>Threshold for valid pixel percent for each block; Range from 0 to 1. <p>If either matching block is less occupied than this fraction, no motion vector will be calculated.");
+        setPropertyTooltip(metricConfid, "weightDistance", "<html>The confidence value consists of the distance and the dispersion; <br>weightDistance sets the weighting of the distance value compared with the dispersion value; Range from 0 to 1. <p>To count only e.g. hamming distance, set weighting to 1. <p> To count only dispersion, set to 0.");
         setPropertyTooltip(patchTT, "patchDimension", "linear dimenion of patches to match, in pixels");
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");
@@ -346,7 +346,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             v = (float) Math.sqrt((vx * vx) + (vy * vy));
 
             // reject values that are unreasonable
-            if (accuracyTests(result)) {
+            if (isNotSufficientlyAccurate(result)) {
                 continue;
             }
 
@@ -642,7 +642,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             retVal = 1;
         } else {
             /*
-            retVal is consisted of the distance and the dispersion, dispersion is used to describe the spatial relationship within one block.
+            retVal consists of the distance and the dispersion. dispersion is used to describe the spatial relationship within one block.
             Here we use the difference between validPixNumCurrSli and validPixNumPrevSli to calculate the dispersion.
             Inspired by paper "Measuring the spatial dispersion of evolutionist search process: application to Walksat" by Alain Sidaner.
              */
@@ -1055,6 +1055,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     public void setConfidenceThreshold(float confidenceThreshold) {
+        if(confidenceThreshold<0) confidenceThreshold=0; else if(confidenceThreshold>1)confidenceThreshold=1;
         this.confidenceThreshold = confidenceThreshold;
         putFloat("confidenceThreshold", confidenceThreshold);
     }
@@ -1064,6 +1065,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     public void setValidPixOccupancy(float validPixOccupancy) {
+        if(validPixOccupancy<0) validPixOccupancy=0; else if(validPixOccupancy>1)validPixOccupancy=1;
         this.validPixOccupancy = validPixOccupancy;
         putFloat("validPixOccupancy", validPixOccupancy);
     }
@@ -1073,6 +1075,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     public void setWeightDistance(float weightDistance) {
+        if(weightDistance<0)weightDistance=0; else if(weightDistance>1)weightDistance=1;
         this.weightDistance = weightDistance;
         putFloat("weightDistance", weightDistance);
     }
@@ -1089,13 +1092,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     /**
      *
      * @param distResult
-     * @return the confidence of the result. True mens it's not good and should
+     * @return the confidence of the result. True means it's not good and should
      * be rejected, false means we should accept it.
      */
-    public synchronized boolean accuracyTests(SADResult distResult) {
+    public synchronized boolean isNotSufficientlyAccurate(SADResult distResult) {
         boolean retVal = super.accuracyTests(); //To change body of generated methods, choose Tools | Templates.
 
-        if (distResult.sadValue >= this.confidenceThreshold) {
+        if (distResult.sadValue <= this.confidenceThreshold) {
             retVal = true;
         }
 
@@ -1121,6 +1124,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         this.skipProcessingEventsCount = skipProcessingEventsCount;
         putInt("skipProcessingEventsCount", skipProcessingEventsCount);
+    }
+
+    /**
+     * @return the displayResultHistogram
+     */
+    public boolean isDisplayResultHistogram() {
+        return displayResultHistogram;
+    }
+
+    /**
+     * @param displayResultHistogram the displayResultHistogram to set
+     */
+    public void setDisplayResultHistogram(boolean displayResultHistogram) {
+        this.displayResultHistogram = displayResultHistogram;
+        putBoolean("displayResultHistogram",displayResultHistogram);
     }
 
 }
