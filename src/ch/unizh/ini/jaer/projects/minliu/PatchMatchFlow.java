@@ -15,7 +15,11 @@ import java.util.Observer;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import java.awt.Color;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -24,6 +28,7 @@ import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.Steadicam;
+import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
  * Uses patch matching to measureTT local optical flow. <b>Not</b> gradient
@@ -33,7 +38,7 @@ import net.sf.jaer.eventprocessing.filter.Steadicam;
  */
 @Description("Computes optical flow with vector direction using binary block matching")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
+public class PatchMatchFlow extends AbstractMotionFlow implements Observer, FrameAnnotater {
 
     private int[][][] histograms = null;
     private int numSlices = 3;
@@ -61,6 +66,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
     private int skipCounter = 0;
 
+    // results histogram for each packet
+    private int[][] resultHistogram = null;
+
     public enum PatchCompareMethod {
         JaccardDistance, HammingDistance, SAD, EventSqeDistance
     };
@@ -79,6 +87,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
     protected int numCalibrationSamples = getInt("numCalibrationSamples", NUM_CALIBRATION_SAMPLES_DEFAULT);
     TextRenderer imuTextRenderer = null;
     private boolean showGrid = getBoolean("showGrid", true);
+    private boolean displayResultHistogram = getBoolean("displayResultHistogram", true);
 
     public enum SliceMethod {
         ConstantDuration, ConstantEventNumber, AdaptationDuration
@@ -120,12 +129,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         setPropertyTooltip(eventSqeMatching, "sliceEventCount", "number of collected events in each bitmap");
         setPropertyTooltip(eventSqeMatching, "eventPatchDimension", "linear dimenion of patches to match, in pixels");
         setPropertyTooltip(dispTT, "displayOutputVectors", "display the output motion vectors or not");
+        setPropertyTooltip(dispTT, "displayResultHistogram", "display the output motion vectors histogram to show disribution of results for each packet. Only implemented for HammingDistance");
     }
 
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
         setupFilter(in);
         checkArrays();
+        if (resultHistogram == null || resultHistogram.length != 2 * searchDistance + 1) {
+            int dim = 2 * searchDistance + 1; // e.g. search distance 1, dim=3, 3x3 possibilties (including zero motion) 
+            resultHistogram = new int[dim][dim];
+        } else {
+            for (int[] h : resultHistogram) {
+                Arrays.fill(h, 0);
+            }
+        }
 
         ApsDvsEventPacket in2 = (ApsDvsEventPacket) in;
         Iterator itr = in2.fullIterator();   // Wfffsfe also need IMU data, so here we use the full iterator.
@@ -195,7 +213,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                         }
                     } else {
                         result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
-                        result.dx = (result.dx / sliceDurationUs) * 1000000;
+                        result.dx = (result.dx / sliceDurationUs) * 1000000; // hack, convert to pix/second
                         result.dy = (result.dy / sliceDurationUs) * 1000000;
                     }
 
@@ -332,6 +350,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 continue;
             }
 
+            if (resultHistogram != null) {
+                resultHistogram[result.xidx][result.yidx]++;
+            }
             processGoodEvent();
         }
 
@@ -355,6 +376,47 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
         }
         motionFlowStatistics.updatePacket(countIn, countOut);
         return isShowRawInputEnabled() ? in : dirPacket;
+    }
+
+    @Override
+    public void annotate(GLAutoDrawable drawable) {
+        super.annotate(drawable);
+        if (displayResultHistogram && resultHistogram != null) {
+            GL2 gl = drawable.getGL().getGL2();
+            // draw histogram as shaded in 2d hist above color wheel
+            // normalize hist
+            int max = 0;
+            for (int[] h : resultHistogram) {
+                for (int v : h) {
+                    if (v > max) {
+                        max = v;
+                    }
+                }
+            }
+            if (max == 0) {
+                return;
+            }
+            final float maxRecip = 1f / max;
+            int dim = resultHistogram.length;
+            float s = 6; // chip pixels/bin
+            gl.glPushMatrix();
+            gl.glTranslatef(-2*dim*s, .75f * chip.getSizeY(), 0);
+            gl.glScalef(s, s, 1);
+            for (int x = 0; x < dim; x++) {
+                for (int y = 0; y < dim; y++) {
+                    float g = maxRecip * resultHistogram[x][y];
+                    gl.glColor3f(g, g, g);
+                    gl.glBegin(GL2.GL_QUADS);
+                    gl.glVertex2f(x, y);
+                    gl.glVertex2f(x + 1, y);
+                    gl.glVertex2f(x + 1, y + 1);
+                    gl.glVertex2f(x, y + 1);
+                    gl.glEnd();
+                }
+            }
+            gl.glPopMatrix();
+
+        }
     }
 
     @Override
@@ -527,6 +589,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
                 }
             }
         }
+        tmpSadResult.xidx = (int) tmpSadResult.dx + searchDistance;
+        tmpSadResult.yidx = (int) tmpSadResult.dy + searchDistance; // what a hack....
 
         return tmpSadResult;
     }
@@ -846,6 +910,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer {
 
         float dx, dy;
         float sadValue;
+        int xidx, yidx; // x and y indices into 2d matrix of result. 0,0 corresponds to motion SW
 
         public SADResult(float dx, float dy, float sadValue) {
             this.dx = dx;
