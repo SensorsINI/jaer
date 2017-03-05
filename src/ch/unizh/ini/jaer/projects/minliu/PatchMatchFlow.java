@@ -1096,9 +1096,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * be rejected, false means we should accept it.
      */
     public synchronized boolean isNotSufficientlyAccurate(SADResult distResult) {
-        boolean retVal = super.accuracyTests(); //To change body of generated methods, choose Tools | Templates.
+        boolean retVal = super.accuracyTests();  // check accuracy in super, if reject returns true
 
-        if (distResult.sadValue <= this.confidenceThreshold) {
+        // additional test, normalized blaock distance must be small enough 
+        // distance has max value 1
+        if (distResult.sadValue >= (1-confidenceThreshold)) { 
             retVal = true;
         }
 
