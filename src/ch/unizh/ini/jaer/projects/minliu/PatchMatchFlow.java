@@ -398,10 +398,18 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             }
             final float maxRecip = 1f / max;
             int dim = resultHistogram.length;
-            float s = 6; // chip pixels/bin
+            float s = 8; // chip pixels/bin
             gl.glPushMatrix();
-            gl.glTranslatef(-2*dim*s, .75f * chip.getSizeY(), 0);
+            gl.glTranslatef(-dim*s, .65f * chip.getSizeY(), 0);
             gl.glScalef(s, s, 1);
+            gl.glColor3f(0,0,1);
+            gl.glLineWidth(2f);
+            gl.glBegin(GL.GL_LINE_LOOP);
+            gl.glVertex2f(0,0);
+            gl.glVertex2f(dim,0);
+            gl.glVertex2f(dim,dim);
+            gl.glVertex2f(0,dim);
+            gl.glEnd();
             for (int x = 0; x < dim; x++) {
                 for (int y = 0; y < dim; y++) {
                     float g = maxRecip * resultHistogram[x][y];
@@ -415,7 +423,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 }
             }
             gl.glPopMatrix();
-
         }
     }
 
