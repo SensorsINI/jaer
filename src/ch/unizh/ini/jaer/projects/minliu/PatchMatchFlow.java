@@ -73,7 +73,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         JaccardDistance, HammingDistance, SAD, EventSqeDistance
     };
     private PatchCompareMethod patchCompareMethod = PatchCompareMethod.valueOf(getString("patchCompareMethod", PatchCompareMethod.HammingDistance.toString()));
-
+    
+    public enum SearchMethod {
+        DiomandSearch, FullSearch
+    };
+    private SearchMethod searchMethod = SearchMethod.valueOf(getString("searchMethod", SearchMethod.FullSearch.toString()));
+    
     private int sliceDurationUs = getInt("sliceDurationUs", 100000);
     private int sliceEventCount = getInt("sliceEventCount", 1000);
     private boolean rewindFlg = false; // The flag to indicate the rewind event.
@@ -120,7 +125,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(metricConfid, "weightDistance", "<html>The confidence value consists of the distance and the dispersion; <br>weightDistance sets the weighting of the distance value compared with the dispersion value; Range from 0 to 1. <p>To count only e.g. hamming distance, set weighting to 1. <p> To count only dispersion, set to 0.");
         setPropertyTooltip(patchTT, "patchDimension", "linear dimenion of patches to match, in pixels");
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
-        setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");
+        setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");     
+        setPropertyTooltip(patchTT, "searchMethod", "method to search patches");        
         setPropertyTooltip(patchTT, "sliceDurationUs", "duration of bitmaps in us, also called sample interval");
         setPropertyTooltip(patchTT, "sliceMethod", "set method for determining time slice duration for block matching");
         setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
@@ -582,9 +588,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
     private SADResult minHammingDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
         float minSum = Integer.MAX_VALUE, sum = 0;
-//        if ((x >= 128) && (x <= 130) && (y >= 189) && (y <= 191)) {  // For debugging
-//            int tmp = 0;
-//        }
+
         for (int dx = -searchDistance; dx <= searchDistance; dx++) {
             for (int dy = -searchDistance; dy <= searchDistance; dy++) {
                 sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
@@ -917,7 +921,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         float dx, dy;
         float sadValue;
-        int xidx, yidx; // x and y indices into 2d matrix of result. 0,0 corresponds to motion SW
+        int xidx, yidx; // x and y indices into 2d matrix of result. 0,0 corresponds to motion SW. dx, dy may be negative, like (-1, -1) represents SW. 
+                        // However, for histgram index, it's not possible to use negative number. That's the reason for intrducing xidx and yidx.
 
         public SADResult(float dx, float dy, float sadValue) {
             this.dx = dx;
@@ -1008,6 +1013,25 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         putString("patchCompareMethod", patchCompareMethod.toString());
     }
 
+    /**
+     *
+     * @return the search method
+     */
+    public SearchMethod getSearchMethod() {
+        return searchMethod;
+    }
+
+    /**
+     *
+     * @param searchMethod the method to be used for searching
+     */
+    public void setSearchMethod(SearchMethod searchMethod) {
+        this.searchMethod = searchMethod;
+        putString("searchMethod", searchMethod.toString());
+    }
+
+    
+    
     /**
      * @return the sliceDurationUs
      */
@@ -1149,5 +1173,4 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         this.displayResultHistogram = displayResultHistogram;
         putBoolean("displayResultHistogram",displayResultHistogram);
     }
-
 }
