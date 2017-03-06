@@ -40,6 +40,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.SpikeSound;
 
 /**
  * Extracts binned spike features from CochleaAMS sensor and processes them through a recurrent network
@@ -182,6 +183,17 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
 	 * click and record continuous RNN processing, 2 stands for click and record batch RNN processing
 	 */
 	private int whichFunction = 3;
+        
+        private int currentSpeakerNumber = 0;
+        private String currentSpeakerName = "speaker_0";
+        
+        private int currentFileNumber = 0;
+        private String currentFileName = "0";
+        
+        private String soxPath = "C:\\Program Files (x86)\\sox-14-4-2\\sox.exe";
+        private String speakerBaseDirectory = "C:\\Users\\jithendar\\Desktop";
+        
+        private SaveToFile dataLogger;
 
 	private boolean isFirstEventDone = false;
 	private int counter = 0; // counts total number of basic events
@@ -200,13 +212,20 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
 
 	public RNNfilter(AEChip chip) {
 		super(chip);
-		String xmlnetwork = "1. XML Network", function = "2. Filter function", parameters = "3. Parameter options", display = "4. Display";
+                dataLogger = new SaveToFile(chip);
+		String recording = "0. Recording", xmlnetwork = "1. XML Network", function = "2. Filter function", parameters = "3. Parameter options", display = "4. Display";
 		setPropertyTooltip("loadFromXML", "Load an XML file containing the network in an appropriate format");
 		setPropertyTooltip("runRNN",
 			"If clickToProcess is set to true, the filter will process events when this button is kept pressed, also the network will be reset when you press the button. So press the button and hold it, speak and release the button when you want the filter to stop processing.");
 		setPropertyTooltip("toggleBinning",
 			"If clickToProcess is set to true, this button will toggle the boolean variable - processingEnabled - which enables the events to be processed. So when processingEnabled is false, clicking on the button will make the filter start processing the events and when processingEnabled is true, clicking the button will make the filter stop processing events.");
-		setPropertyTooltip(xmlnetwork, "lastRNNXMLFile", "The XML file containing an RNN network exported from keras/somewhere else");
+		setPropertyTooltip(recording, "currentSpeakerName", "Holds the name of the current speaker.");
+                setPropertyTooltip(recording, "currentSpeakerNumber", "Used to keep a record of speakers without names.");
+                setPropertyTooltip(recording, "currentFileName", "Holds the name of the current file.");
+                setPropertyTooltip(recording, "currentFileNumber", "Used to change the name of the digits in an easier fashion.");
+                setPropertyTooltip(recording, "soxPath", "Holds the location of the sox executable file.");
+                setPropertyTooltip(recording, "speakerBaseDirectory", "Holds the location to store the recording files");
+                setPropertyTooltip(xmlnetwork, "lastRNNXMLFile", "The XML file containing an RNN network exported from keras/somewhere else");
 		setPropertyTooltip(parameters, "binTimeLength",
 			"Choose the bin size (in micro seconds) for the binning of the data, choose a network appropriately");
 		setPropertyTooltip(parameters, "useBothEars", "Choose whether to use the events from both ears");
@@ -278,6 +297,9 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
 
 	@Override
 	synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+                if (dataLogger.isLoggingEnabled()) {
+                    dataLogger.logData(in);
+                }
 		for (BasicEvent e : in) {
 			this.counter++;
 			try {
@@ -855,6 +877,88 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
 		}
 	}
 
+    /**
+     * @return the soxPath
+     */
+    public String getSoxPath() {
+        return soxPath;
+    }
+
+    /**
+     * @param soxPath the soxPath to set
+     */
+    public void setSoxPath(String soxPath) {
+        putString("soxPath", soxPath);
+        this.soxPath = soxPath;
+    }
+
+    /**
+     * @return the currentSpeakernumber
+     */
+    public int getCurrentSpeakerNumber() {
+        return currentSpeakerNumber;
+    }
+
+    /**
+     * @param currentSpeakernumber the currentSpeakernumber to set
+     */
+    public void setCurrentSpeakerNumber(int currentSpeakerNumber) {
+        getPrefs().putInt("currentSpeakerNumber", currentSpeakerNumber);
+        int oldCurrentSpeakerNumber = this.currentSpeakerNumber;
+        support.firePropertyChange("currentSpeakerNumber", oldCurrentSpeakerNumber, currentSpeakerNumber);
+        this.currentSpeakerNumber = currentSpeakerNumber;
+        this.setCurrentSpeakerName("speaker_" + Integer.toString(currentSpeakerNumber));
+    }
+
+    /**
+     * @return the currentFileNumber
+     */
+    public int getCurrentFileNumber() {
+        return currentFileNumber;
+    }
+    
+    public void setCurrentFileNumber(int currentFileNumber) {
+        prefs().putInt("currentFileNumber", currentFileNumber);
+        int oldCurrentFileNumber = this.currentFileNumber;
+        support.firePropertyChange("currentFileNumber", oldCurrentFileNumber, currentFileNumber);
+        this.currentFileNumber = currentFileNumber;
+        this.setCurrentFileName(Integer.toString(currentFileNumber));
+    }
+
+    /**
+     * @return the currentFileName
+     */
+    public String getCurrentFileName() {
+        return currentFileName;
+    }
+
+    /**
+     * @param currentFileName the currentFileName to set
+     */
+    public void setCurrentFileName(String currentFileName) {
+        putString("currentFileName", currentFileName);
+        String oldCurrentFileName = this.currentFileName;
+        support.firePropertyChange("currentFileName", oldCurrentFileName, currentFileName);
+        this.currentFileName = currentFileName;
+    }
+
+    /**
+     * @return the speakerBaseDirectory
+     */
+    public String getSpeakerBaseDirectory() {
+        return speakerBaseDirectory;
+    }
+
+    /**
+     * @param speakerBaseDirectory the speakerBaseDirectory to set
+     */
+    public void setSpeakerBaseDirectory(String speakerBaseDirectory) {
+        putString("speakerBaseDirectory", speakerBaseDirectory);
+        String oldSpeakerBaseDirectory = this.speakerBaseDirectory;
+        support.firePropertyChange("speakerBaseDirectory", oldSpeakerBaseDirectory, speakerBaseDirectory);
+        this.speakerBaseDirectory = speakerBaseDirectory;
+    }
+
 	/**
 	 * A class which helps scale the image to fit the size of the JFrame
 	 */
@@ -1384,5 +1488,102 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
             this.predCounter = 0;
             this.predCorrectCounter = 0;
         }
+        
+        public String getCurrentSpeakerName(){
+            return this.currentSpeakerName;
+        }
+        
+        public void setCurrentSpeakerName(String speakerName) {
+            putString("currentSpeakerName", speakerName);
+            String oldSpeakerName = this.currentSpeakerName;
+            support.firePropertyChange("currentSpeakerName", oldSpeakerName, speakerName);
+            this.currentSpeakerName = speakerName;
+        }
 
+        public void doPressRecord() throws InterruptedException {
+            String osName = System.getProperty("os.name");
+            
+            if (osName.startsWith("Windows")) {
+			try {
+                                String speakerDir = this.getSpeakerBaseDirectory() + "\\" + this.currentSpeakerName;
+                                File tmpDir = new File(speakerDir); 
+                                if (!tmpDir.exists()) { tmpDir.mkdir(); }
+    				Runtime.getRuntime().exec(this.soxPath + " -t waveaudio -d " + speakerDir + "\\"+ this.currentFileName + ".wav trim 0 5");
+                                dataLogger.startLogging(speakerDir + "\\" + this.currentFileName + ".aedat");
+                        } catch (IOException e) {
+				log.warning(e.getMessage());
+			}
+
+		}
+        }
+        
+        public void doReleaseRecord() throws IOException {
+            String osName = System.getProperty("os.name");
+            
+            if (osName.startsWith("Windows")) {
+                dataLogger.stopLogging();
+//                Runtime.getRuntime().exec("tskill sox");
+            }
+        }
+        
+        public void doPressRecordAndRunRNN() throws InterruptedException {
+            String osName = System.getProperty("os.name");
+            
+            log.info("RecordAndRunRNN button pressed");
+            if ((this.getWhichFunction() == 1) | (this.getWhichFunction() == 2)) {
+                    this.resetNetwork();
+                    this.setProcessingEnabled(true);
+            }
+
+            if (osName.startsWith("Windows")) {
+                try {
+                        String speakerDir = this.getSpeakerBaseDirectory() + "\\" + this.currentSpeakerName;
+                        File tmpDir = new File(speakerDir); 
+                        if (!tmpDir.exists()) { tmpDir.mkdir(); }
+                        Runtime.getRuntime().exec(this.soxPath + " -t waveaudio -d " + speakerDir + "\\" + this.currentFileName + ".wav" + " trim 0 5");
+                        dataLogger.startLogging(speakerDir + "\\" + this.currentFileName + ".aedat");
+                } catch (IOException e) {
+                        log.warning(e.getMessage());
+                }
+            }
+        }
+        
+        public void doReleaseRecordAndRunRNN() throws IOException {
+            String osName = System.getProperty("os.name");
+            
+            if (osName.startsWith("Windows")) {
+                dataLogger.stopLogging();
+//                Runtime.getRuntime().exec("tskill sox");
+
+            }
+            
+            log.info("RunRNN button released");
+            if ((this.getWhichFunction() == 1) | (this.getWhichFunction() == 2)) {
+                this.setProcessingEnabled(false);
+                if (this.displayFeature) {
+                        this.printDigit(binnedDataList);
+                }
+                if (this.getWhichFunction() == 2) {
+                        this.processRNNList();
+                }
+                this.resetBins();
+                this.rnnProcessTimeStampList = new ArrayList<>();
+                this.rnnOutputList = new ArrayList<>();
+                this.binnedDataList = new ArrayList<>();
+                this.counter = 0;
+                this.counter1 = 0;
+                this.isFirstEventDone = false;
+            }
+        }
+        
+        private SpikeSound spikeSound = new SpikeSound();
+        
+        public void doNewSpeaker() {
+            this.setCurrentSpeakerNumber(this.getCurrentSpeakerNumber() + 1);
+        }
+        
+        public void doNextFile() {
+            this.setCurrentFileNumber(this.getCurrentFileNumber() + 1);
+        }
+        
 }
