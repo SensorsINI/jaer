@@ -75,7 +75,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private PatchCompareMethod patchCompareMethod = PatchCompareMethod.valueOf(getString("patchCompareMethod", PatchCompareMethod.HammingDistance.toString()));
     
     public enum SearchMethod {
-        DiomandSearch, FullSearch
+        FullSearch, DiamondSearch, CrossDiamondSearch
     };
     private SearchMethod searchMethod = SearchMethod.valueOf(getString("searchMethod", SearchMethod.FullSearch.toString()));
     
@@ -589,16 +589,25 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private SADResult minHammingDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
         float minSum = Integer.MAX_VALUE, sum = 0;
 
-        for (int dx = -searchDistance; dx <= searchDistance; dx++) {
-            for (int dy = -searchDistance; dy <= searchDistance; dy++) {
-                sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
-                if (sum <= minSum) {
-                    minSum = sum;
-                    tmpSadResult.dx = dx;
-                    tmpSadResult.dy = dy;
-                    tmpSadResult.sadValue = minSum;
-                }
-            }
+        switch (searchMethod) {
+                case FullSearch:
+                    for (int dx = -searchDistance; dx <= searchDistance; dx++) {
+                        for (int dy = -searchDistance; dy <= searchDistance; dy++) {
+                            sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
+                            if (sum <= minSum) {
+                                minSum = sum;
+                                tmpSadResult.dx = dx;
+                                tmpSadResult.dy = dy;
+                                tmpSadResult.sadValue = minSum;
+                            }
+                        }
+                    }
+                    break;
+                case DiamondSearch:
+                    
+                    break;
+                case CrossDiamondSearch:
+                    break;                    
         }
         tmpSadResult.xidx = (int) tmpSadResult.dx + searchDistance;
         tmpSadResult.yidx = (int) tmpSadResult.dy + searchDistance; // what a hack....
