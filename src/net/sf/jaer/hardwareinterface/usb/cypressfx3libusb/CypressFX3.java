@@ -973,6 +973,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 
 		public void stopThread() {
+                    if(usbTransfer==null){
+                        log.warning("USB transfer thread became null before stopThread was called; doing nothing");
+                        return;
+                    }
 			usbTransfer.interrupt();
 
 			try {
