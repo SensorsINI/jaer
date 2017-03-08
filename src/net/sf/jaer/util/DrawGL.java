@@ -10,7 +10,8 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 
 /**
- *
+ * Static utility methods for drawing stuff.
+ * 
  * @author Bjoern
  */
 public final class DrawGL {
