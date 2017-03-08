@@ -1,7 +1,6 @@
 package ch.unizh.ini.jaer.projects.multitracking;
 
 import java.awt.event.ActionEvent;
-import java.awt.event.KeyListener;
 import java.util.LinkedList;
 import java.util.Observable;
 import java.util.Observer;
@@ -11,13 +10,13 @@ import java.util.prefs.Preferences;
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
 import javax.swing.InputMap;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 
 import org.jblas.FloatMatrix;
 
-import com.jogamp.newt.event.KeyEvent;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GL2ES3;
@@ -64,11 +63,15 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 	private int Width;
 	private float scale=1f;
 	private FPSAnimator animator;
+	private FloatMatrix positionSecondCamera;
+	private int xeye=0;
+	private int yeye=200;
+	private int zeye=600;
 	// reused imageOpenGL for OpenGL image grab
 	@Override
 	public void display( GLAutoDrawable drawable ) {
 		final GL2 gl = drawable.getGL().getGL2();
-		setCamera(drawable, glu, 600);
+		setCamera(drawable, glu, zeye);
 		//gl.glEnable(GL.GL_DEPTH_TEST);
 		//gl.glTranslatef( -chip.getSizeX()/4, -chip.getSizeX()/4, -1000);
 		//gl.glTranslatef( chip.getSizeX()/2, chip.getSizeX()/2, chip.getSizeX()/2 );
@@ -92,10 +95,10 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 		// Floor
 		gl.glBegin(GL2ES3.GL_QUADS);
 		gl.glColor3f(0.2f, 0.2f, 0.2f);
-		gl.glVertex3f(-chip.getSizeX()/2, 0.0f, -chip.getSizeX()/2);
-		gl.glVertex3f(-chip.getSizeX()/2, 0.0f, chip.getSizeX()/2);
-		gl.glVertex3f(chip.getSizeX()/2, 0.0f, chip.getSizeX()/2);
-		gl.glVertex3f(chip.getSizeX()/2, 0.0f, -chip.getSizeX()/2);
+		gl.glVertex3f(-chip.getSizeX(), 0.0f, -chip.getSizeX());
+		gl.glVertex3f(-chip.getSizeX(), 0.0f, chip.getSizeX());
+		gl.glVertex3f(chip.getSizeX(), 0.0f, chip.getSizeX());
+		gl.glVertex3f(chip.getSizeX(), 0.0f, -chip.getSizeX());
 		gl.glEnd();
 
 
@@ -104,8 +107,8 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 		gl.glLineWidth(2.0f);
 		gl.glBegin(GL.GL_LINES);
 		//gl.glVertex3f(0, 0, 0);
-		gl.glVertex3f(-chip.getSizeX()/2, 0, 0);
-		gl.glVertex3f(chip.getSizeX()/2, 0, 0);
+		gl.glVertex3f(-chip.getSizeX(), 0, 0);
+		gl.glVertex3f(chip.getSizeX(), 0, 0);
 		//              gl.glVertex3f(chip.getSizeX()/2, chip.getSizeY(), 0);
 		//              gl.glVertex3f(0, chip.getSizeY(), 0);
 		//              gl.glVertex3f(0, 0, 0);
@@ -118,8 +121,8 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 		//              gl.glVertex3f(0, 0, 0);
 		//              gl.glVertex3f(0, 0, chip.getSizeX()/2);
 		//              gl.glVertex3f(0, chip.getSizeY(), chip.getSizeX()/2);
-		gl.glVertex3f(0, -chip.getSizeY(), 0);
-		gl.glVertex3f(0, chip.getSizeY(), 0);
+		gl.glVertex3f(0, -chip.getSizeX(), 0);
+		gl.glVertex3f(0, chip.getSizeX(), 0);
 		//gl.glVertex3f(0, 0, 0);
 		gl.glEnd();
 
@@ -130,10 +133,33 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 		//              gl.glVertex3f(0, 0, 0);
 		//              gl.glVertex3f(0, 0, chip.getSizeX()/2);
 		//              gl.glVertex3f(0, chip.getSizeY(), chip.getSizeX()/2);
-		gl.glVertex3f(0,0, -chip.getSizeY());
-		gl.glVertex3f(0,0, chip.getSizeY());
+		gl.glVertex3f(0,0, -chip.getSizeX());
+		gl.glVertex3f(0,0, chip.getSizeX());
 		//gl.glVertex3f(0, 0, 0);
 		gl.glEnd();
+
+		//Position of the first camera
+		gl.glColor3f(1, 0, 0);
+		gl.glLineWidth(2.0f);
+		gl.glBegin(GL.GL_LINE_LOOP);
+		gl.glVertex3f(-10, 0, 0);
+		gl.glVertex3f(-10, 20, 0);
+		gl.glVertex3f(10, 20, 0);
+		gl.glVertex3f(10, 0, 0);
+		gl.glEnd();
+
+		//Position of the second camera
+		gl.glColor3f(1, 0, 0);
+		gl.glLineWidth(2.0f);
+		gl.glBegin(GL.GL_LINE_LOOP);
+		gl.glVertex3f(positionSecondCamera.get(0)-10, positionSecondCamera.get(1), positionSecondCamera.get(2));
+		gl.glVertex3f(positionSecondCamera.get(0)-10, positionSecondCamera.get(1)+20, positionSecondCamera.get(2));
+		gl.glVertex3f(positionSecondCamera.get(0)+10, positionSecondCamera.get(1)+20, positionSecondCamera.get(2));
+		gl.glVertex3f(positionSecondCamera.get(0)+10, positionSecondCamera.get(1), positionSecondCamera.get(2));
+		gl.glEnd();
+
+
+
 
 		if(Xfinals.size()!=0){
 			// System.out.println("annotate through display");
@@ -242,8 +268,8 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 		// Perspective.
 		float widthHeightRatio = getWidth() / getHeight();
 		//glu.gluPerspective(60, widthHeightRatio, 200, 1200);
-		glu.gluPerspective(60, widthHeightRatio, 200, 1200);
-		glu.gluLookAt(0, 200, distance, 0, 0, 0, 0, 1, 0);
+		glu.gluPerspective(60, widthHeightRatio, 50, 2000);
+		glu.gluLookAt(xeye, yeye, distance, 0, 0, 0, 0, 1, 0);
 
 		// Change back to model view matrix.
 		gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
@@ -278,58 +304,88 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 		//creating frame
 		final JFrame frame = new JFrame ("triangulation 3D renderer");
 		final JPanel panel = new JPanel();
-
-		im=panel.getInputMap();
-		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_NUMPAD6, 0), "6");
-		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_NUMPAD4, 0), "4");
-		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_NUMPAD8, 0), "8");
-		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_NUMPAD2, 0), "2");
-
+		frame.add(panel);
+		panel.enable();
+		//frame.getContentPane().add(panel);
+		//panel.requestFocus();
+		int mapName = JComponent.WHEN_IN_FOCUSED_WINDOW ;
+		panel.getInputMap(mapName);
+		panel.getInputMap(mapName).put(KeyStroke.getKeyStroke(102, 0), "6");
+		panel.getInputMap(mapName).put(KeyStroke.getKeyStroke(100, 0), "4");
+		panel.getInputMap(mapName).put(KeyStroke.getKeyStroke(104, 0), "8");
+		panel.getInputMap(mapName).put(KeyStroke.getKeyStroke(98, 0), "2");
+		panel.getInputMap(mapName).put(KeyStroke.getKeyStroke(107, 0), "+");
+		panel.getInputMap(mapName).put(KeyStroke.getKeyStroke(109, 0), "-");
 		am= panel.getActionMap();
-		am.put("6", new AbstractAction() {
+
+
+		panel.getActionMap().put("+", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent evt) {
-				translateRight(glcanvas);
+				zeye=zeye-10;
+				System.out.println("Key pressed zoom in");
+			}
+
+
+		});
+
+
+
+		panel.getActionMap().put("-", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent evt) {
+				zeye=zeye+10;
+				System.out.println("Key pressed zoom out");
+			}
+
+
+		});
+
+
+		panel.getActionMap().put("6", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent evt) {
+				xeye=xeye+10;
 				System.out.println("Key pressed right");
 			}
 
 
 		});
 
-		am.put("4", new AbstractAction() {
+		panel.getActionMap().put("4", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent evt) {
-				translateLeft(glcanvas);
+				xeye=xeye-10;
 				System.out.println("Key pressed left");
 			}
 
 
 		});
 
-		am.put("8", new AbstractAction() {
+		panel.getActionMap().put("8", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent evt) {
-				translateUp(glcanvas);
+				yeye=yeye+10;
 				System.out.println("Key pressed up");
 			}
 		});
 
-		am.put("2", new AbstractAction() {
+		panel.getActionMap().put("2", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent evt) {
-				translateDown(glcanvas);
+				yeye=yeye-10;
 				System.out.println("Key pressed down");
 			}
 
 
 		});
 
-		KeyListener l = null;
+		//KeyListener l = null;
 
 		//adding canvas to it
-		this.glcanvas.addKeyListener(l);
+		//this.glcanvas.addKeyListener(l);
 		//frame.add(panel);
-		frame.getContentPane().add(panel);
+
 		frame.getContentPane().add(glcanvas);
 		frame.setSize(frame.getContentPane().getPreferredSize() );
 		frame.setVisible( true );
@@ -804,4 +860,8 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 	//    public void addGLEventListener(final GLEventListener listener) {
 	//        System.out.println("addGLEventListener(" + listener + ")");
 	//    }
+	public void setPositionSecondCamera(FloatMatrix translate) {
+		this.positionSecondCamera=translate;
+
+	}
 }//end of class

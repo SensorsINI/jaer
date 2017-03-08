@@ -104,6 +104,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	private Mat FundamentalMat;
 	private Mat P1;
 	private Mat P2;
+	private Mat T;
 	private MultiDAVIS346BCameraChip chi;
 	private int cameraDisplayed;
 	private boolean calibrationloaded=false;
@@ -113,6 +114,9 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
     private Triangulation3DViewer triview;
 	private boolean triviewActivated;
 	private FloatMatrix e2;
+	private FloatMatrix Proj1;
+	private FloatMatrix Proj2;
+	private Mat R;
 
 	public trackerForJoints(AEChip chip) {
 		super(chip);
@@ -894,6 +898,8 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 				FundamentalMat = deserializeMat(dirPath, "FundamentalMat");
 				P1=deserializeMat(dirPath, "P1");
 				P2=deserializeMat(dirPath, "P2");
+				T=deserializeMat(dirPath, "translationVectorsfinal");
+				R=deserializeMat(dirPath, "rotationVectorsfinal");
 			}catch (Exception h) {
 				log.warning("Could not load existing calibration from folder " + dirPath + " on construction:" + h.toString());
 			}
@@ -904,9 +910,44 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 //Test test =new Test(chip.getCanvas());
 //test.start();
 //			startNewWindows();
+			double[][] fundam=makeMatrixfromMat(FundamentalMat);
+			double[][] proj1=makeMatrixfromMat(P1);
+			double[][] proj2=makeMatrixfromMat(P2);
+			double[][] tranlate=makeMatrixfromMat(T);
+			double[][] rotate=makeMatrixfromMat(R);
+
+			FloatMatrix Translate=new FloatMatrix(new float[] {(float)tranlate[0][0]/10,(float)tranlate[1][0]/10,(float)tranlate[2][0]/10});
+			Translate.print();
+
+
+			FloatMatrix Rotate=new FloatMatrix(new float[][] {{(float) rotate[0][0],(float) rotate[0][1],(float)rotate[0][2]},
+	            {(float)rotate[1][0],(float)rotate[1][1], (float)rotate[1][2]},
+	            {(float)rotate[2][0],(float)rotate[2][1],(float)rotate[2][2]}});
+
+
+
+
+
+			FloatMatrix Fundam=new FloatMatrix(new float[][] {{(float) fundam[0][0],(float) fundam[0][1],(float)fundam[0][2]},
+												            {(float)fundam[1][0],(float)fundam[1][1], (float)fundam[1][2]},
+												            {(float)fundam[2][0],(float)fundam[2][1],(float)fundam[2][2]}});
+
+
+			 Proj1=new FloatMatrix(new float[][] {{(float) proj1[0][0],(float) proj1[0][1],(float)proj1[0][2],(float) proj1[0][3]},
+																{(float)proj1[1][0],(float)proj1[1][1], (float)proj1[1][2],(float)proj1[1][3]},
+																{(float)proj1[2][0],(float)proj1[2][1],(float)proj1[2][2],(float)proj1[2][3]}});
+			//System.out.println("Proj1:");
+			//Proj1.print();
+
+			 Proj2=new FloatMatrix(new float[][] {{(float) proj2[0][0],(float) proj2[0][1],(float)proj2[0][2],(float) proj2[0][3]},
+															{(float)proj2[1][0],(float)proj2[1][1], (float)proj2[1][2],(float)proj2[1][3]},
+															{(float)proj2[2][0],(float)proj2[2][1],(float)proj2[2][2],(float)proj2[2][3]}});
+
 		      triview = new Triangulation3DViewer(chip.getCanvas());
 		      triview.XSize=sx;
 		      triview.YSize=sy;
+		      triview.setPositionSecondCamera(Rotate.mmul(Translate));
+		      Rotate.mmul(Translate).print();
 		      triview.startNewWindows();
 
 //		     triviewActivated=true;
@@ -914,37 +955,23 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 
 //		System.out.println(printMatD(P1));
 //		System.out.println(printMatD(P2));
-		double[][] fundam=makeMatrixfromMat(FundamentalMat);
-		double[][] proj1=makeMatrixfromMat(P1);
-		double[][] proj2=makeMatrixfromMat(P2);
+
 
 		FloatMatrix X1=new FloatMatrix(4);
 		FloatMatrix X2=new FloatMatrix(4);
 
 		FloatMatrix Xfinal=new FloatMatrix(3);
-		FloatMatrix x1=new FloatMatrix(new float[] {tp1.x.floatValue()-(sx/4),tp1.y.floatValue()-(sy/2), 1});
+		FloatMatrix x1=new FloatMatrix(new float[] {tp1.x.floatValue(),-tp1.y.floatValue(), 1});
 
 		e2=new FloatMatrix(3);
 //		System.out.println("x1:");
 //		x1.print();
 
-		FloatMatrix x2=new FloatMatrix(new float[] {tp2.x.floatValue()-(sx/4),tp2.y.floatValue()-(sy/2), 1});
+
+		FloatMatrix x2=new FloatMatrix(new float[] {tp2.x.floatValue(),-tp2.y.floatValue(), 1});
 //		System.out.println("x2:");
 //		x2.print();
-		FloatMatrix Fundam=new FloatMatrix(new float[][] {{(float) fundam[0][0],(float) fundam[0][1],(float)fundam[0][2]},
-												            {(float)fundam[1][0],(float)fundam[1][1], (float)fundam[1][2]},
-												            {(float)fundam[2][0],(float)fundam[2][1],(float)fundam[2][2]}});
 
-
-		FloatMatrix Proj1=new FloatMatrix(new float[][] {{(float) proj1[0][0],(float) proj1[0][1],(float)proj1[0][2],(float) proj1[0][3]},
-			                              {(float)proj1[1][0],(float)proj1[1][1], (float)proj1[1][2],(float)proj1[1][3]},
-		                                   {(float)proj1[2][0],(float)proj1[2][1],(float)proj1[2][2],(float)proj1[2][3]}});
-//		System.out.println("Proj1:");
-//		Proj1.print();
-
-		FloatMatrix Proj2=new FloatMatrix(new float[][] {{(float) proj2[0][0],(float) proj2[0][1],(float)proj2[0][2],(float) proj2[0][3]},
-            {(float)proj2[1][0],(float)proj2[1][1], (float)proj2[1][2],(float)proj2[1][3]},
-             {(float)proj2[2][0],(float)proj2[2][1],(float)proj2[2][2],(float)proj2[2][3]}});
 //		System.out.println("Proj2:");
 //		Proj2.print();
 		FloatMatrix A=new FloatMatrix(4, 4);
@@ -1013,6 +1040,11 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	}
 
 
+
+	private double[][] makeVectorfromMat(Mat t2) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 
 	private void update3Dplot(Vector<LinkedList<FloatMatrix>> xfinals2) {
 		triview.setVectToDisplay(xfinals2);
@@ -1314,10 +1346,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	   }//end of main
 
 
-	public void doTest(){
-		Test test =new Test(chip.getCanvas());
-		test.start();
-	}
+
 }
 
 
