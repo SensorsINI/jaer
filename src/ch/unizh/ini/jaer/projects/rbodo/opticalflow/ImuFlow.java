@@ -77,7 +77,7 @@ public class ImuFlow extends AbstractMotionFlowIMU {
          }
         
         getMotionFlowStatistics().updatePacket(countIn, countOut);
-        return isShowRawInputEnabled() ? in : dirPacket;
+        return isDisplayRawInput() ? in : dirPacket;
     }
 
     private String printMatF(Mat M) {

@@ -451,7 +451,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
             processGoodEvent();
         }
         getMotionFlowStatistics().updatePacket(countIn, countOut);
-        return isShowRawInputEnabled() ? in : dirPacket;
+        return isDisplayRawInput() ? in : dirPacket;
     }
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --thr--">

@@ -84,7 +84,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // Display
     private boolean displayVectorsEnabled = getBoolean("displayVectorsEnabled", true);
-    private boolean showRawInputEnabled = getBoolean("showRawInputEnabled", true);
+    private boolean displayRawInput = getBoolean("displayRawInput", true);
     private boolean displayColorWheelLegend = getBoolean("displayColorWheelLegend", true);
 
     private float ppsScale = getFloat("ppsScale", 1f);
@@ -163,6 +163,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     protected int outlierMotionFilteringSubsampleShift = getInt("outlierMotionFilteringSubsampleShift", 1);
     protected int outlierMotionFilteringMinSameAngleInNeighborhood = getInt("outlierMotionFilteringMinSameAngleInNeighborhood", 2);
     protected int[][] outlierMotionFilteringLastAngles = null;
+    private float motionVectorLineWidthPixels=getFloat("motionVectorLineWidthPixels",2);
 
     // MotionField that aggregates motion
     protected MotionField motionField = new MotionField();
@@ -219,13 +220,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(measureTT, "loggingFolder", "directory to store logged data files");
         setPropertyTooltip(dispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
         setPropertyTooltip(dispTT, "displayVectorsEnabled", "shows local motion vector evemts as arrows");
-        setPropertyTooltip(dispTT, "showColorWheelLegend", "Plots a color wheel to show flow direction colors.");
+        setPropertyTooltip(dispTT, "displayColorWheelLegend", "Plots a color wheel to show flow direction colors.");
         setPropertyTooltip(dispTT, "measureGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
-        setPropertyTooltip(dispTT, "showRawInputEnabled", "shows the input events, instead of the motion types");
+        setPropertyTooltip(dispTT, "displayRawInput", "shows the input events, instead of the motion types");
         setPropertyTooltip(dispTT, "xMin", "events with x-coordinate below this are filtered out.");
         setPropertyTooltip(dispTT, "xMax", "events with x-coordinate above this are filtered out.");
         setPropertyTooltip(dispTT, "yMin", "events with y-coordinate below this are filtered out.");
         setPropertyTooltip(dispTT, "yMax", "events with y-coordinate above this are filtered out.");
+        setPropertyTooltip(dispTT, "motionVectorLineWidthPixels", "line width to draw motion vectors");
         setPropertyTooltip(smoothingTT, "subSampleShift", "shift subsampled timestamp map stores by this many bits");
         setPropertyTooltip(smoothingTT, "refractoryPeriodUs", "compute no flow vector if a flow vector has already been computed within this period at the same location.");
         setPropertyTooltip(smoothingTT, "speedControlEnabled", "enables filtering of excess speeds");
@@ -657,7 +659,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         float[] rgb = color.getRGBComponents(null);
         gl.glColor3f(rgb[0], rgb[1], rgb[2]);
         gl.glPushMatrix();
-        DrawGL.drawVector(gl, e.getX() + .5f, e.getY() + .5f, e.getVelocity().x, e.getVelocity().y, 1, ppsScale);
+        gl.glLineWidth(motionVectorLineWidthPixels);
+        DrawGL.drawVector(gl, e.getX() + .5f, e.getY() + .5f, e.getVelocity().x, e.getVelocity().y, motionVectorLineWidthPixels, ppsScale);
         gl.glPopMatrix();
     }
 
@@ -1135,13 +1138,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --showRawInputEnable--">
-    public boolean isShowRawInputEnabled() {
-        return showRawInputEnabled;
+    public boolean isDisplayRawInput() {
+        return displayRawInput;
     }
 
-    public void setShowRawInputEnabled(boolean showRawInputEnabled) {
-        this.showRawInputEnabled = showRawInputEnabled;
-        putBoolean("showRawInputEnabled", showRawInputEnabled);
+    public void setDisplayRawInput(boolean displayRawInput) {
+        this.displayRawInput = displayRawInput;
+        putBoolean("displayRawInput", displayRawInput);
     }
     // </editor-fold>
 
@@ -1288,7 +1291,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      */
     protected class MotionField {
 
-        private boolean showMotionField = getBoolean("motionFieldShowMotionField", false);
         int sx, sy; // size of arrays
         private float[][] vxs, vys, speeds;
         private int[][] lastTs;
@@ -1299,6 +1301,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         private float minSpeedPpsToDrawMotionField = getFloat("minVelocityPps", 1);
         private boolean consistentWithNeighbors = getBoolean("motionFieldConsistentWithNeighbors", false);
         private boolean consistentWithCurrentAngle = getBoolean("motionFieldConsistentWithCurrentAngle", false);
+        private boolean displayMotionField = getBoolean("displayMotionField", false);
 
         public MotionField() {
         }
@@ -1353,7 +1356,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
          * @param vy
          */
         synchronized public void update(int timestamp, int x, int y, float vx, float vy, float speed) {
-            if (!showMotionField) {
+            if (!displayMotionField) {
                 return;
             }
             lastUpdateTimestamp = timestamp;
@@ -1422,7 +1425,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
 
         public void draw(GL2 gl) {
-            if (!showMotionField || vxs == null || vys == null) {
+            if (!displayMotionField || vxs == null || vys == null) {
                 return;
             }
             try {
@@ -1475,13 +1478,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
         }
 
-        private boolean isShowMotionField() {
-            return showMotionField;
+        private boolean isDisplayMotionField() {
+            return displayMotionField;
         }
 
-        private void setShowMotionField(boolean yes) {
-            showMotionField = yes;
-            putBoolean("motionFieldShowMotionField", yes);
+        private void setDisplayMotionField(boolean yes) {
+            displayMotionField = yes;
+            putBoolean("displayMotionField", yes);
         }
 
         /**
@@ -1590,12 +1593,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     } // MotionField
 
-    public boolean isShowMotionField() {
-        return motionField.isShowMotionField();
+    public boolean isDisplayMotionField() {
+        return motionField.isDisplayMotionField();
     }
 
-    public void setShowMotionField(boolean yes) {
-        motionField.setShowMotionField(yes);
+    public void setDisplayMotionField(boolean yes) {
+        motionField.setDisplayMotionField(yes);
     }
 
     public int getMotionFieldSubsamplingShift() {
@@ -1670,6 +1673,20 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     public void setDisplayColorWheelLegend(boolean displayColorWheelLegend) {
         this.displayColorWheelLegend = displayColorWheelLegend;
         putBoolean("displayColorWheelLegend", displayColorWheelLegend);
+    }
+
+    /**
+     * @return the motionVectorLineWidthPixels
+     */
+    public float getMotionVectorLineWidthPixels() {
+        return motionVectorLineWidthPixels;
+    }
+
+    /**
+     * @param motionVectorLineWidthPixels the motionVectorLineWidthPixels to set
+     */
+    public void setMotionVectorLineWidthPixels(float motionVectorLineWidthPixels) {
+        this.motionVectorLineWidthPixels = motionVectorLineWidthPixels;
     }
 
 }

@@ -464,7 +464,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             }
         }
         getMotionFlowStatistics().updatePacket(countIn, countOut);
-        return isShowRawInputEnabled() ? in : dirPacket;
+        return isDisplayRawInput() ? in : dirPacket;
     }
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --th1--">

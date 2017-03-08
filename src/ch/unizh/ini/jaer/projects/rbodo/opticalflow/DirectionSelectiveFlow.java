@@ -200,7 +200,7 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
             if (measureAccuracy) getMotionFlowStatistics().update(vx,vy,v,vxGT,vyGT,vGT);
         }
         getMotionFlowStatistics().updatePacket(countIn, countOut);
-        return isShowRawInputEnabled() ? in : dirPacket; 
+        return isDisplayRawInput() ? in : dirPacket; 
     }
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --MinDtThreshold--">
