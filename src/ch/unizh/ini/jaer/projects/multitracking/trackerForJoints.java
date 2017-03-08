@@ -32,6 +32,7 @@ import org.bytedeco.javacpp.opencv_core.RectVector;
 import org.bytedeco.javacpp.opencv_imgproc;
 import org.bytedeco.javacpp.opencv_objdetect;
 import org.bytedeco.javacpp.opencv_objdetect.HOGDescriptor;
+import org.jblas.ComplexFloatMatrix;
 import org.jblas.FloatMatrix;
 
 import com.jogamp.opengl.GL;
@@ -80,7 +81,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	// list of the current parallel trackers
 	//Vector<TrackFocus> listOfTrackFocus;
 	// radius of the tracker zone of interest
-	double radius=10;
+	double radius=40;
 	Vector<Vector<Float>> joints = new Vector<Vector<Float>>();
 	Vector<Vector<TrackPoints>>jointsToTrack= new Vector<Vector<TrackPoints>>();
 	private String dirPath = getString("dirPath", System.getProperty("user.dir"));
@@ -106,11 +107,12 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	private MultiDAVIS346BCameraChip chi;
 	private int cameraDisplayed;
 	private boolean calibrationloaded=false;
-	private LinkedList<FloatMatrix> Xfinals=new LinkedList<>();
+	private Vector<LinkedList<FloatMatrix>> Xfinals=new Vector<LinkedList<FloatMatrix>>();
     //private Plot3DPanel plot3d = new Plot3DPanel();
     double[][] ptToplot;
     private Triangulation3DViewer triview;
 	private boolean triviewActivated;
+	private FloatMatrix e2;
 
 	public trackerForJoints(AEChip chip) {
 		super(chip);
@@ -411,7 +413,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 		}
 			for(int i=0;i<jointsToTrack.firstElement().size(); i++){
 				//TriangulatePointPosition(jointsToTrack.get(0).get(i), jointsToTrack.get(1).get(i));
-				triangulationUsingJBlas(jointsToTrack.get(0).get(i), jointsToTrack.get(1).get(i));
+				triangulationUsingJBlas(jointsToTrack.get(0).get(i), jointsToTrack.get(1).get(i), i);
 			}
 		}
 
@@ -585,7 +587,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	public void annotate(GLAutoDrawable drawable) {
 		GL2 gl = drawable.getGL().getGL2();
 		//GL2 gl3 =drawable.getGL().getGL2();
-		float radius=20;
+		float radius=(float) (this.radius*2);
 		float scale=5;
 		if(jointsloaded){
 			for(int i=0;i<joints.size(); i++){
@@ -628,6 +630,19 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 
 					gl.glEnd();
 				}
+//				gl.glColor3f(1, 0, 0);
+//				gl.glBegin(GL.GL_LINE_LOOP);
+//				//System.out.println(centerY);
+//
+//				gl.glVertex2d((e2.get(0)-(radius/2))+((3*sx)/4), (e2.get(1)-(radius/2))+(sy/2));
+//				gl.glVertex2d(e2.get(0)+(radius/2)+((3*sx)/4), (e2.get(1)-(radius/2))+(sy/2));
+//				gl.glVertex2d(e2.get(0)+(radius/2)+((3*sx)/4), e2.get(1)+(radius/2)+(sy/2));
+//				gl.glVertex2d((e2.get(0)-(radius/2))+((3*sx)/4), e2.get(1)+(radius/2)+(sy/2));
+//
+//				gl.glEnd();
+
+
+
 
 //				gl.glPushMatrix();
 //				gl.glColor3f(0, 0, 1);
@@ -852,7 +867,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	}
 
 
-	public void triangulationUsingJBlas(TrackPoints tp1,TrackPoints tp2){
+	public void triangulationUsingJBlas(TrackPoints tp1,TrackPoints tp2,int i){
 		if (!calibrationloaded){
 			calibrationloaded=true;
 			final JFileChooser j = new JFileChooser();
@@ -879,16 +894,19 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 				FundamentalMat = deserializeMat(dirPath, "FundamentalMat");
 				P1=deserializeMat(dirPath, "P1");
 				P2=deserializeMat(dirPath, "P2");
-			}catch (Exception i) {
-				log.warning("Could not load existing calibration from folder " + dirPath + " on construction:" + i.toString());
+			}catch (Exception h) {
+				log.warning("Could not load existing calibration from folder " + dirPath + " on construction:" + h.toString());
 			}
 //			ptToplot=new double[1][1];
 //			ptToplot[0][0]=0;
 //			plot3d.addScatterPlot("3D reprojection", ptToplot);
 			//getting the capabilities object of GL2 profile
-
+//Test test =new Test(chip.getCanvas());
+//test.start();
 //			startNewWindows();
 		      triview = new Triangulation3DViewer(chip.getCanvas());
+		      triview.XSize=sx;
+		      triview.YSize=sy;
 		      triview.startNewWindows();
 
 //		     triviewActivated=true;
@@ -896,23 +914,27 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 
 //		System.out.println(printMatD(P1));
 //		System.out.println(printMatD(P2));
+		double[][] fundam=makeMatrixfromMat(FundamentalMat);
 		double[][] proj1=makeMatrixfromMat(P1);
 		double[][] proj2=makeMatrixfromMat(P2);
 
 		FloatMatrix X1=new FloatMatrix(4);
 		FloatMatrix X2=new FloatMatrix(4);
+
 		FloatMatrix Xfinal=new FloatMatrix(3);
-		FloatMatrix x1=new FloatMatrix(new float[] {tp1.x.floatValue(),tp1.y.floatValue(), 1});
+		FloatMatrix x1=new FloatMatrix(new float[] {tp1.x.floatValue()-(sx/4),tp1.y.floatValue()-(sy/2), 1});
+
+		e2=new FloatMatrix(3);
 //		System.out.println("x1:");
 //		x1.print();
 
-		FloatMatrix x2=new FloatMatrix(new float[] {tp2.x.floatValue(),tp2.y.floatValue(), 1});
+		FloatMatrix x2=new FloatMatrix(new float[] {tp2.x.floatValue()-(sx/4),tp2.y.floatValue()-(sy/2), 1});
 //		System.out.println("x2:");
 //		x2.print();
-//		FloatMatrix Proj1=new FloatMatrix(4,3,[proj1[0][0],proj1[1][0],proj1[2][0],
-//		                                       proj1[1][0],proj1[1][1],proj1[1][2],
-//			                                   proj1[2][0],proj1[2][1],proj1[2][2],
-//			                                   proj1[3][0],proj1[3][2],proj1[3][2]]);
+		FloatMatrix Fundam=new FloatMatrix(new float[][] {{(float) fundam[0][0],(float) fundam[0][1],(float)fundam[0][2]},
+												            {(float)fundam[1][0],(float)fundam[1][1], (float)fundam[1][2]},
+												            {(float)fundam[2][0],(float)fundam[2][1],(float)fundam[2][2]}});
+
 
 		FloatMatrix Proj1=new FloatMatrix(new float[][] {{(float) proj1[0][0],(float) proj1[0][1],(float)proj1[0][2],(float) proj1[0][3]},
 			                              {(float)proj1[1][0],(float)proj1[1][1], (float)proj1[1][2],(float)proj1[1][3]},
@@ -925,31 +947,61 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
              {(float)proj2[2][0],(float)proj2[2][1],(float)proj2[2][2],(float)proj2[2][3]}});
 //		System.out.println("Proj2:");
 //		Proj2.print();
+		FloatMatrix A=new FloatMatrix(4, 4);
+		A.putRow(0,Proj1.getRow(2).mul(x1.get(0)).add(Proj1.getRow(0).mul(-1)));
+		A.putRow(1,Proj1.getRow(2).mul(x1.get(1)).add(Proj1.getRow(1).mul(-1)));
+		A.putRow(2,Proj2.getRow(2).mul(x2.get(0)).add(Proj2.getRow(0).mul(-1)));
+		A.putRow(3,Proj2.getRow(2).mul(x2.get(1)).add(Proj2.getRow(1).mul(-1)));
+		//A.print();
+		ComplexFloatMatrix[] C=org.jblas.Eigen.eigenvectors(A.transpose().mmul(A));
+		//FloatMatrix[] C=org.jblas.Singular.fullSVD(A);
+//		C[0].print();
+//		C[1].print();
+//		C[2].print();
 
-		X1=org.jblas.Solve.solveLeastSquares(Proj1,x1);
-//		System.out.println("X1:");
-//		X1.print();
-		X2=org.jblas.Solve.solveLeastSquares(Proj2,x2);
-//		System.out.println("X2:");
-//		X2.print();
-		Xfinal.put(0,((X1.get(0))+(X2.get(0)/X2.get(3)))/2);
-		Xfinal.put(1,((X1.get(1))+(X2.get(1)/X2.get(3)))/2);
-		Xfinal.put(2,(X1.get(2)+(X2.get(2)/X2.get(3)))/2);
-//		System.out.println("Xfinal:");
-		Xfinal.print();
+//        C[0].getColumn(0).print();
+//        C[0].getColumn(1).print();
+//        C[0].getColumn(2).print();
+//        C[0].getColumn(3).print();
 
-		if (Xfinals.size()<100){
-		Xfinals.add(Xfinal);
+        //C[1].print();
+//		X1=org.jblas.Solve.solveLeastSquares(Proj1,x1);
+//		e2=org.jblas.Solve.solveLeastSquares(org.jblas.Solve.pinv(Proj2), X1);
+//		e2.print();
+
+//		X2=org.jblas.Solve.solveLeastSquares(Proj2,x2);
+
+//		Xfinal.put(0,((X1.get(0))+(X2.get(0)/X2.get(3)))/2);
+//		Xfinal.put(1,((X1.get(1))+(X2.get(1)/X2.get(3)))/2);
+//		Xfinal.put(2,(X1.get(2)+(X2.get(2)/X2.get(3)))/2);
+
+//		Xfinal=org.jblas.Solve.solve(A,FloatMatrix.zeros(4,1));
+        Xfinal=C[0].getColumn(3).getReal();
+
+        FloatMatrix X=new FloatMatrix(new float[] {(Xfinal.get(0))/(Xfinal.get(3)*10),(Xfinal.get(1))/(Xfinal.get(3)*10), (Xfinal.get(2))/(Xfinal.get(3)*10)});
+//		Xfinal.print();
+        X.print();
+
+        if (Xfinals.size()<(i+1)){
+        	int z = (i+1)-Xfinals.size();
+        	for(int t=0; t<z; t++){
+        		LinkedList<FloatMatrix> l = new LinkedList<FloatMatrix>();
+        		Xfinals.add(l);
+        	}
+        }
+		if (Xfinals.get(i).size()<10){
+		Xfinals.get(i).add(X);
+
 		}
 		else{
-			Xfinals.pop();
-			Xfinals.add(Xfinal);
+			Xfinals.get(i).pop();
+			Xfinals.get(i).add(X);
 		}
 
-		ptToplot=fromVectToTab(Xfinals);
+		//ptToplot=fromVectToTab(Xfinals);
 
 		update3Dplot(Xfinals);
-        triview.preventNewEvent();
+        //triview.preventNewEvent();
 		//plot3d.addScatterPlot("3D reprojection", ptToplot);
 		//plot3d.repaint();
 		//float[] xfinal = Xfinal.data;
@@ -962,8 +1014,8 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 
 
 
-	private void update3Dplot(LinkedList<FloatMatrix> Xfinals) {
-		triview.setVectToDisplay(Xfinals);
+	private void update3Dplot(Vector<LinkedList<FloatMatrix>> xfinals2) {
+		triview.setVectToDisplay(xfinals2);
 
 
 	}
@@ -1260,7 +1312,15 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	      frame.setSize(frame.getContentPane().getPreferredSize() );
 	      frame.setVisible( true );
 	   }//end of main
+
+
+	public void doTest(){
+		Test test =new Test(chip.getCanvas());
+		test.start();
+	}
 }
+
+
 
 
 
