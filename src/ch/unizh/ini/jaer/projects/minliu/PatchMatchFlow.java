@@ -617,13 +617,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     */
                     int xCenter = x, yCenter = y;
                     
-                    /* x offset relative to ZMP, y offset to ZMP.
-                       x offset in positive number to ZMP, y offset in positive number to ZMP. 
+                    /* x offset of center point relative to ZMP, y offset of center point to ZMP.
+                       x offset of center pointin positive number to ZMP, y offset of center point in positive number to ZMP. 
                     */
                     int dx, dy, xidx, yidx;  
                     
                     int minPointIdx = 0;      // Store the minimum point index.
                     boolean SDSPFlg = false;  // If this flag is set true, then it means LDSP search is finished and SDSP search could start.
+                    int searchRange = 2*searchDistance + 1; // The maxium search index, for xidx and yidx.
                     
                     /* If one block has been already calculated, the computedFlg will be set so we don't to do 
                        the calculation again.
@@ -647,7 +648,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                                 xidx = dx + searchDistance;
                                 yidx = dy + searchDistance;
-
+                                
+                                // Point to be searched is out of search area, skip it. 
+                                if( xidx >= searchRange || yidx >= searchRange || xidx < 0 || yidx < 0) {
+                                    continue;
+                                }
+                                
                                 /* We just calculate the blocks that haven't been calculated before */
                                 if(computedFlg[xidx][yidx] == false) {
                                     sumArray[xidx][yidx] = hammingDistance(xCenter, yCenter, LDSP[pointIdx][0], LDSP[pointIdx][1], prevSlice, curSlice);
@@ -665,6 +671,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         yCenter = yCenter + LDSP[minPointIdx][1];                       
                         if(minPointIdx == 4) { // It means it's in the center, so we should break the loop and go to SDSP search.
                             SDSPFlg = true;
+                        } else {
+                            SDSPFlg = false;
                         }                        
                     }
                     
@@ -675,6 +683,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                         xidx = dx + searchDistance;
                         yidx = dy + searchDistance;    
+                        
+                        // Point to be searched is out of search area, skip it. 
+                        if( xidx >= searchRange || yidx >= searchRange || xidx < 0 || yidx < 0) {
+                            continue;
+                        }                  
                         
                         /* We just calculate the blocks that haven't been calculated before */
                         if(computedFlg[xidx][yidx] == false) {
