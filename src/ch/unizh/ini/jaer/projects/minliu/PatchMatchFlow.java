@@ -48,28 +48,28 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private static final int SDSP[][] = {{0, -1}, {-1, 0}, {0, 0}, {1, 0}, {0, 1}}; 
     
     private int[][][] histograms = null;
-    private int numSlices = 3;
-    private int sx, sy;
+    private static final int NUM_SLICES = 3;
+//    private int sx, sy;
     private int tMinus2SliceIdx = 0, tMinus1SliceIdx = 1, currentSliceIdx = 2;
     private int[][] currentSlice = null, tMinus1Slice = null, tMinus2Slice = null;
-    private ArrayList<Integer[]>[][] spikeTrains = null;   // Spike trains for one block
-    private ArrayList<int[][]>[] histogramsAL = null;
-    private ArrayList<int[][]> currentAL = null, previousAL = null, previousMinus1AL = null; // One is for current, the second is for previous, the third is for the one before previous one
+//    private ArrayList<Integer[]>[][] spikeTrains = null;   // Spike trains for one block
+//    private ArrayList<int[][]>[] histogramsAL = null;
+//    private ArrayList<int[][]> currentAL = null, previousAL = null, previousMinus1AL = null; // One is for current, the second is for previous, the third is for the one before previous one
     private BitSet[] histogramsBitSet = null;
     private BitSet currentSli = null, tMinus1Sli = null, tMinus2Sli = null;
-    private final SADResult tmpSadResult = new SADResult(0, 0, 0);
+    private final SADResult tmpSadResult = new SADResult(0, 0, 0); // used to pass data back from min distance computation
     private int patchDimension = getInt("patchDimension", 9);
     private boolean displayOutputVectors = getBoolean("displayOutputVectors", true);
     private int eventPatchDimension = getInt("eventPatchDimension", 3);
-    private int forwardEventNum = getInt("forwardEventNum", 10);
+//    private int forwardEventNum = getInt("forwardEventNum", 10);
     private float cost = getFloat("cost", 0.001f);
     private float confidenceThreshold = getFloat("confidenceThreshold", 0f);
     private float validPixOccupancy = getFloat("validPixOccupancy", 0.01f);  // threshold for valid pixel percent for one block
     private float weightDistance = getFloat("weightDistance", 0.9f);        // confidence value consists of the distance and the dispersion, this value set the distance value
-    private int thresholdTime = getInt("thresholdTime", 1000000);
-    private int[][] lastFireIndex = null;  // Events are numbered in time order for every block. This variable is for storing the last event index fired on all blocks.
-    private int[][] eventSeqStartTs = null;
-    private boolean preProcessEnable = false;
+//    private int thresholdTime = getInt("thresholdTime", 1000000);
+//    private int[][] lastFireIndex = null;  // Events are numbered in time order for every block. This variable is for storing the last event index fired on all blocks.
+//    private int[][] eventSeqStartTs = null;
+//    private boolean preProcessEnable = false;
     private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
     private int skipCounter = 0;
 
@@ -77,7 +77,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int[][] resultHistogram = null;
 
     public enum PatchCompareMethod {
-        JaccardDistance, HammingDistance, SAD, EventSqeDistance
+        JaccardDistance, HammingDistance, SAD/*, EventSqeDistance*/
     };
     private PatchCompareMethod patchCompareMethod = PatchCompareMethod.valueOf(getString("patchCompareMethod", PatchCompareMethod.HammingDistance.toString()));
     
@@ -125,8 +125,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         String metricConfid = "Confidence of current metric";
 
         chip.addObserver(this); // to allocate memory once chip size is known
-        setPropertyTooltip(preProcess, "preProcessEnable", "enable this to denoise before data processing");
-        setPropertyTooltip(preProcess, "forwardEventNum", "Number of events have fired on the current block since last processing");
+//        setPropertyTooltip(preProcess, "preProcessEnable", "enable this to denoise before data processing");
+//        setPropertyTooltip(preProcess, "forwardEventNum", "Number of events have fired on the current block since last processing");
         setPropertyTooltip(metricConfid, "confidenceThreshold", "<html>Confidence threshold for rejecting unresonable value; Range from 0 to 1. <p>Higher value means it is harder to accept the event. <br>Set to 0 to accept all results.");
         setPropertyTooltip(metricConfid, "validPixOccupancy", "<html>Threshold for valid pixel percent for each block; Range from 0 to 1. <p>If either matching block is less occupied than this fraction, no motion vector will be calculated.");
         setPropertyTooltip(metricConfid, "weightDistance", "<html>The confidence value consists of the distance and the dispersion; <br>weightDistance sets the weighting of the distance value compared with the dispersion value; Range from 0 to 1. <p>To count only e.g. hamming distance, set weighting to 1. <p> To count only dispersion, set to 0.");
@@ -137,10 +137,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "sliceDurationUs", "duration of bitmaps in us, also called sample interval");
         setPropertyTooltip(patchTT, "sliceMethod", "set method for determining time slice duration for block matching");
         setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
-        setPropertyTooltip(eventSqeMatching, "cost", "The cost to translation one event to the other position");
-        setPropertyTooltip(eventSqeMatching, "thresholdTime", "The threshold value of interval time between the first event and the last event");
-        setPropertyTooltip(eventSqeMatching, "sliceEventCount", "number of collected events in each bitmap");
-        setPropertyTooltip(eventSqeMatching, "eventPatchDimension", "linear dimenion of patches to match, in pixels");
+//        setPropertyTooltip(eventSqeMatching, "cost", "The cost to translation one event to the other position");
+//        setPropertyTooltip(eventSqeMatching, "thresholdTime", "The threshold value of interval time between the first event and the last event");
+//        setPropertyTooltip(eventSqeMatching, "sliceEventCount", "number of collected events in each bitmap");
+//        setPropertyTooltip(eventSqeMatching, "eventPatchDimension", "linear dimenion of patches to match, in pixels");
         setPropertyTooltip(dispTT, "displayOutputVectors", "display the output motion vectors or not");
         setPropertyTooltip(dispTT, "displayResultHistogram", "display the output motion vectors histogram to show disribution of results for each packet. Only implemented for HammingDistance");
     }
@@ -196,19 +196,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             int blockLocY = y / eventPatchDimension;
 
             // Build the spike trains of every block, every block is consist of 3*3 pixels.
-            if (spikeTrains[blockLocX][blockLocY] == null) {
-                spikeTrains[blockLocX][blockLocY] = new ArrayList();
-            }
-            int spikeBlokcLength = spikeTrains[blockLocX][blockLocY].size();
-            int previousTsInterval = 0;
-            if (spikeBlokcLength == 0) {
-                previousTsInterval = ts;
-            } else {
-                previousTsInterval = ts - spikeTrains[blockLocX][blockLocY].get(spikeBlokcLength - 1)[0];
-            }
-            if (preProcessEnable || patchCompareMethod == PatchCompareMethod.EventSqeDistance) {
-                spikeTrains[blockLocX][blockLocY].add(new Integer[]{ts, type});
-            }
+//            if (spikeTrains[blockLocX][blockLocY] == null) {
+//                spikeTrains[blockLocX][blockLocY] = new ArrayList();
+//            }
+//            int spikeBlokcLength = spikeTrains[blockLocX][blockLocY].size();
+//            int previousTsInterval = 0;
+//            if (spikeBlokcLength == 0) {
+//                previousTsInterval = ts;
+//            } else {
+//                previousTsInterval = ts - spikeTrains[blockLocX][blockLocY].get(spikeBlokcLength - 1)[0];
+//            }
+//            if (preProcessEnable || patchCompareMethod == PatchCompareMethod.EventSqeDistance) {
+//                spikeTrains[blockLocX][blockLocY].add(new Integer[]{ts, type});
+//            }
 
             switch (patchCompareMethod) {
                 case HammingDistance:
@@ -216,19 +216,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     if (!accumulateEvent()) {
                         break;
                     }
-                    if (preProcessEnable) {
-                        // There are enough events fire on the specific block now.
-                        if ((spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY]) >= forwardEventNum) {
-                            lastFireIndex[blockLocX][blockLocY] = spikeTrains[blockLocX][blockLocY].size() - 1;
-                            result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
-                            result.dx = (result.dx / sliceDurationUs) * 1000000;
-                            result.dy = (result.dy / sliceDurationUs) * 1000000;
-                        }
-                    } else {
+//                    if (preProcessEnable) {
+//                        // There are enough events fire on the specific block now.
+//                        if ((spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY]) >= forwardEventNum) {
+//                            lastFireIndex[blockLocX][blockLocY] = spikeTrains[blockLocX][blockLocY].size() - 1;
+//                            result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
+//                            result.dx = (result.dx / sliceDurationUs) * 1000000;
+//                            result.dy = (result.dy / sliceDurationUs) * 1000000;
+//                        }
+//                    } else {
                         result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
                         result.dx = (result.dx / sliceDurationUs) * 1000000; // hack, convert to pix/second
                         result.dy = (result.dy / sliceDurationUs) * 1000000;
-                    }
+//                    }
 
                     break;
                 case SAD:
@@ -236,120 +236,120 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     if (!accumulateEvent()) {
                         break;
                     }
-                    if (preProcessEnable) {
-                        // There're enough events fire on the specific block now
-                        if ((spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY]) >= forwardEventNum) {
-                            lastFireIndex[blockLocX][blockLocY] = spikeTrains[blockLocX][blockLocY].size() - 1;
-                            result = minSad(x, y, tMinus2Sli, tMinus1Sli);
-                            result.dx = (result.dx / sliceDurationUs) * 1000000;
-                            result.dy = (result.dy / sliceDurationUs) * 1000000;
-
-                        }
-                    } else {
+//                    if (preProcessEnable) {
+//                        // There're enough events fire on the specific block now
+//                        if ((spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY]) >= forwardEventNum) {
+//                            lastFireIndex[blockLocX][blockLocY] = spikeTrains[blockLocX][blockLocY].size() - 1;
+//                            result = minSad(x, y, tMinus2Sli, tMinus1Sli);
+//                            result.dx = (result.dx / sliceDurationUs) * 1000000;
+//                            result.dy = (result.dy / sliceDurationUs) * 1000000;
+//
+//                        }
+//                    } else {
                         result = minSad(x, y, tMinus2Sli, tMinus1Sli);
                         result.dx = (result.dx / sliceDurationUs) * 1000000;
                         result.dy = (result.dy / sliceDurationUs) * 1000000;
-                    }
+//                    }
                     break;
                 case JaccardDistance:
                     maybeRotateSlices();
                     if (!accumulateEvent()) {
                         break;
                     }
-                    if (preProcessEnable) {
-                        // There're enough events fire on the specific block now
-                        if ((spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY]) >= forwardEventNum) {
-                            lastFireIndex[blockLocX][blockLocY] = spikeTrains[blockLocX][blockLocY].size() - 1;
-                            result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
-                            result.dx = (result.dx / sliceDurationUs) * 1000000;
-                            result.dy = (result.dy / sliceDurationUs) * 1000000;
-                        }
-                    } else {
+//                    if (preProcessEnable) {
+//                        // There're enough events fire on the specific block now
+//                        if ((spikeTrains[blockLocX][blockLocY].size() - lastFireIndex[blockLocX][blockLocY]) >= forwardEventNum) {
+//                            lastFireIndex[blockLocX][blockLocY] = spikeTrains[blockLocX][blockLocY].size() - 1;
+//                            result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
+//                            result.dx = (result.dx / sliceDurationUs) * 1000000;
+//                            result.dy = (result.dy / sliceDurationUs) * 1000000;
+//                        }
+//                    } else {
                         result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
                         result.dx = (result.dx / sliceDurationUs) * 1000000;
                         result.dy = (result.dy / sliceDurationUs) * 1000000;
-                    }
+//                    }
                     break;
-                case EventSqeDistance:
-                    if (previousTsInterval < 0) {
-                        spikeTrains[blockLocX][blockLocY].remove(spikeTrains[blockLocX][blockLocY].size() - 1);
-                        continue;
-                    }
-
-                    if (previousTsInterval >= thresholdTime) {
-                        float maxDt = 0;
-                        float[][] dataPoint = new float[9][2];
-                        if ((blockLocX >= 1) && (blockLocY >= 1) && (blockLocX <= 238) && (blockLocY <= 178)) {
-                            for (int ii = -1; ii < 2; ii++) {
-                                for (int jj = -1; jj < 2; jj++) {
-                                    float dt = ts - eventSeqStartTs[blockLocX + ii][blockLocY + jj];
-
-                                    // Remove the seq1 itself
-                                    if ((0 == ii) && (0 == jj)) {
-                                        // continue;
-                                        dt = 0;
-                                    }
-
-                                    dataPoint[((ii + 1) * 3) + (jj + 1)][0] = dt;
-                                    if (dt > maxDt) {
-                                    }
-                                }
-                            }
-                        }
-                        // result = minVicPurDistance(blockLocX, blockLocY);
-
-                        eventSeqStartTs[blockLocX][blockLocY] = ts;
-                        boolean allZeroFlg = true;
-                        for (int mm = 0; mm < 9; mm++) {
-                            for (int nn = 0; nn < 1; nn++) {
-                                if (dataPoint[mm][nn] != 0) {
-                                    allZeroFlg = false;
-                                }
-                            }
-                        }
-                        if (allZeroFlg) {
-                            continue;
-                        }
-                        KMeans cluster = new KMeans();
-                        cluster.setData(dataPoint);
-                        int[] initialValue = new int[3];
-                        initialValue[0] = 0;
-                        initialValue[1] = 4;
-                        initialValue[2] = 8;
-                        cluster.setInitialByUser(initialValue);
-                        cluster.cluster();
-                        ArrayList<ArrayList<Integer>> kmeansResult = cluster.getResult();
-                        float[][] classData = cluster.getClassData();
-                        int firstClusterIdx = -1, secondClusterIdx = -1, thirdClusterIdx = -1;
-                        for (int i = 0; i < 3; i++) {
-                            if (kmeansResult.get(i).contains(0)) {
-                                firstClusterIdx = i;
-                            }
-                            if (kmeansResult.get(i).contains(4)) {
-                                secondClusterIdx = i;
-                            }
-                            if (kmeansResult.get(i).contains(8)) {
-                                thirdClusterIdx = i;
-                            }
-                        }
-                        if ((kmeansResult.get(firstClusterIdx).size() == 3)
-                                && (kmeansResult.get(firstClusterIdx).size() == 3)
-                                && (kmeansResult.get(firstClusterIdx).size() == 3)
-                                && kmeansResult.get(firstClusterIdx).contains(1)
-                                && kmeansResult.get(firstClusterIdx).contains(2)) {
-                            result.dx = (-1 / (classData[secondClusterIdx][0] - classData[firstClusterIdx][0])) * 1000000 * 0.2f * eventPatchDimension;;
-                            result.dy = 0;
-                        }
-                        if ((kmeansResult.get(firstClusterIdx).size() == 3)
-                                && (kmeansResult.get(firstClusterIdx).size() == 3)
-                                && (kmeansResult.get(firstClusterIdx).size() == 3)
-                                && kmeansResult.get(thirdClusterIdx).contains(2)
-                                && kmeansResult.get(thirdClusterIdx).contains(5)) {
-                            result.dy = (-1 / (classData[thirdClusterIdx][0] - classData[secondClusterIdx][0])) * 1000000 * 0.2f * eventPatchDimension;;
-                            result.dx = 0;
-                        }
-                    }
-                    break;
+//                case EventSqeDistance:
+//                    if (previousTsInterval < 0) {
+//                        spikeTrains[blockLocX][blockLocY].remove(spikeTrains[blockLocX][blockLocY].size() - 1);
+//                        continue;
+//                    }
+//
+//                    if (previousTsInterval >= thresholdTime) {
+//                        float maxDt = 0;
+//                        float[][] dataPoint = new float[9][2];
+//                        if ((blockLocX >= 1) && (blockLocY >= 1) && (blockLocX <= 238) && (blockLocY <= 178)) {
+//                            for (int ii = -1; ii < 2; ii++) {
+//                                for (int jj = -1; jj < 2; jj++) {
+//                                    float dt = ts - eventSeqStartTs[blockLocX + ii][blockLocY + jj];
+//
+//                                    // Remove the seq1 itself
+//                                    if ((0 == ii) && (0 == jj)) {
+//                                        // continue;
+//                                        dt = 0;
+//                                    }
+//
+//                                    dataPoint[((ii + 1) * 3) + (jj + 1)][0] = dt;
+//                                    if (dt > maxDt) {
+//                                    }
+//                                }
+//                            }
+//                        }
+//                        // result = minVicPurDistance(blockLocX, blockLocY);
+//
+//                        eventSeqStartTs[blockLocX][blockLocY] = ts;
+//                        boolean allZeroFlg = true;
+//                        for (int mm = 0; mm < 9; mm++) {
+//                            for (int nn = 0; nn < 1; nn++) {
+//                                if (dataPoint[mm][nn] != 0) {
+//                                    allZeroFlg = false;
+//                                }
+//                            }
+//                        }
+//                        if (allZeroFlg) {
+//                            continue;
+//                        }
+//                        KMeans cluster = new KMeans();
+//                        cluster.setData(dataPoint);
+//                        int[] initialValue = new int[3];
+//                        initialValue[0] = 0;
+//                        initialValue[1] = 4;
+//                        initialValue[2] = 8;
+//                        cluster.setInitialByUser(initialValue);
+//                        cluster.cluster();
+//                        ArrayList<ArrayList<Integer>> kmeansResult = cluster.getResult();
+//                        float[][] classData = cluster.getClassData();
+//                        int firstClusterIdx = -1, secondClusterIdx = -1, thirdClusterIdx = -1;
+//                        for (int i = 0; i < 3; i++) {
+//                            if (kmeansResult.get(i).contains(0)) {
+//                                firstClusterIdx = i;
+//                            }
+//                            if (kmeansResult.get(i).contains(4)) {
+//                                secondClusterIdx = i;
+//                            }
+//                            if (kmeansResult.get(i).contains(8)) {
+//                                thirdClusterIdx = i;
+//                            }
+//                        }
+//                        if ((kmeansResult.get(firstClusterIdx).size() == 3)
+//                                && (kmeansResult.get(firstClusterIdx).size() == 3)
+//                                && (kmeansResult.get(firstClusterIdx).size() == 3)
+//                                && kmeansResult.get(firstClusterIdx).contains(1)
+//                                && kmeansResult.get(firstClusterIdx).contains(2)) {
+//                            result.dx = (-1 / (classData[secondClusterIdx][0] - classData[firstClusterIdx][0])) * 1000000 * 0.2f * eventPatchDimension;;
+//                            result.dy = 0;
+//                        }
+//                        if ((kmeansResult.get(firstClusterIdx).size() == 3)
+//                                && (kmeansResult.get(firstClusterIdx).size() == 3)
+//                                && (kmeansResult.get(firstClusterIdx).size() == 3)
+//                                && kmeansResult.get(thirdClusterIdx).contains(2)
+//                                && kmeansResult.get(thirdClusterIdx).contains(5)) {
+//                            result.dy = (-1 / (classData[thirdClusterIdx][0] - classData[secondClusterIdx][0])) * 1000000 * 0.2f * eventPatchDimension;;
+//                            result.dx = 0;
+//                        }
+//                    }
+//                    break;
             }
             if (result == null) {
                 continue; // maybe some property change caused this
@@ -373,18 +373,18 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             rewindFlg = false;
             sliceLastTs = 0;
 
-            final int sx = chip.getSizeX(), sy = chip.getSizeY();
-            for (int i = 0; i < sx; i++) {
-                for (int j = 0; j < sy; j++) {
-                    if (spikeTrains != null && spikeTrains[i][j] != null) {
-                        spikeTrains[i][j] = null;
-                    }
-                    if (lastFireIndex != null) {
-                        lastFireIndex[i][j] = 0;
-                    }
-                    eventSeqStartTs[i][j] = 0;
-                }
-            }
+//            final int sx = chip.getSizeX(), sy = chip.getSizeY();
+//            for (int i = 0; i < sx; i++) {
+//                for (int j = 0; j < sy; j++) {
+//                    if (spikeTrains != null && spikeTrains[i][j] != null) {
+//                        spikeTrains[i][j] = null;
+//                    }
+//                    if (lastFireIndex != null) {
+//                        lastFireIndex[i][j] = 0;
+//                    }
+//                    eventSeqStartTs[i][j] = 0;
+//                }
+//            }
 
         }
         motionFlowStatistics.updatePacket(countIn, countOut);
@@ -446,10 +446,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         lastTs = Integer.MIN_VALUE;
 
         if ((histograms == null) || (histograms.length != subSizeX) || (histograms[0].length != subSizeY)) {
-            if ((numSlices == 0) && (subSizeX == 0) && (subSizeX == 0)) {
+            if ((NUM_SLICES == 0) && (subSizeX == 0) && (subSizeX == 0)) {
                 return;
             }
-            histograms = new int[numSlices][subSizeX][subSizeY];
+            histograms = new int[NUM_SLICES][subSizeX][subSizeY];
         }
         for (int[][] a : histograms) {
             for (int[] b : a) {
@@ -457,33 +457,33 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             }
         }
         if (histogramsBitSet == null) {
-            histogramsBitSet = new BitSet[numSlices];
+            histogramsBitSet = new BitSet[NUM_SLICES];
         }
 
-        for (int ii = 0; ii < numSlices; ii++) {
+        for (int ii = 0; ii < NUM_SLICES; ii++) {
             histogramsBitSet[ii] = new BitSet(subSizeX * subSizeY);
         }
 
-        // Initialize 3 ArrayList's histogram, every pixel has three patches: current, previous and previous-1
-        if (histogramsAL == null) {
-            histogramsAL = new ArrayList[3];
-        }
+//        // Initialize 3 ArrayList's histogram, every pixel has three patches: current, previous and previous-1
+//        if (histogramsAL == null) {
+//            histogramsAL = new ArrayList[3];
+//        }
 
-        if ((spikeTrains == null) & (subSizeX != 0) & (subSizeY != 0)) {
-            spikeTrains = new ArrayList[subSizeX][subSizeY];
-        }
-        if (patchDimension != 0) {
-            int colPatchCnt = subSizeX / patchDimension;
-            int rowPatchCnt = subSizeY / patchDimension;
-
-            for (int ii = 0; ii < numSlices; ii++) {
-                histogramsAL[ii] = new ArrayList();
-                for (int jj = 0; jj < (colPatchCnt * rowPatchCnt); jj++) {
-                    int[][] patch = new int[patchDimension][patchDimension];
-                    histogramsAL[ii].add(patch);
-                }
-            }
-        }
+//        if ((spikeTrains == null) & (subSizeX != 0) & (subSizeY != 0)) {
+//            spikeTrains = new ArrayList[subSizeX][subSizeY];
+//        }
+//        if (patchDimension != 0) {
+//            int colPatchCnt = subSizeX / patchDimension;
+//            int rowPatchCnt = subSizeY / patchDimension;
+//
+////            for (int ii = 0; ii < NUM_SLICES; ii++) {
+////                histogramsAL[ii] = new ArrayList();
+////                for (int jj = 0; jj < (colPatchCnt * rowPatchCnt); jj++) {
+////                    int[][] patch = new int[patchDimension][patchDimension];
+////                    histogramsAL[ii].add(patch);
+////                }
+////            }
+//        }
 
         tMinus2SliceIdx = 0;
         tMinus1SliceIdx = 1;
@@ -534,9 +534,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
            next t2 = previous t1 = histogram(previous t2 idx + 1);
            next t1 = previous current = histogram(previous t1 idx + 1);
          */
-        currentSliceIdx = (currentSliceIdx + 1) % numSlices;
-        tMinus1SliceIdx = (tMinus1SliceIdx + 1) % numSlices;
-        tMinus2SliceIdx = (tMinus2SliceIdx + 1) % numSlices;
+        currentSliceIdx = (currentSliceIdx + 1) % NUM_SLICES;
+        tMinus1SliceIdx = (tMinus1SliceIdx + 1) % NUM_SLICES;
+        tMinus2SliceIdx = (tMinus2SliceIdx + 1) % NUM_SLICES;
         sliceEventCount = 0;
         sliceLastTs = ts;
         assignSliceReferences();
@@ -828,56 +828,56 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         return retVal;
     }
 
-    private SADResult minVicPurDistance(int blockX, int blockY) {
-        ArrayList<Integer[]> seq1 = new ArrayList(1);
-        SADResult sadResult = new SADResult(0, 0, 0);
-
-        int size = spikeTrains[blockX][blockY].size();
-        int lastTs = spikeTrains[blockX][blockY].get(size - forwardEventNum)[0];
-        for (int i = size - forwardEventNum; i < size; i++) {
-            seq1.add(spikeTrains[blockX][blockY].get(i));
-        }
-
-//        if(seq1.get(2)[0] - seq1.get(0)[0] > thresholdTime) {
-//            return sadResult;
+//    private SADResult minVicPurDistance(int blockX, int blockY) {
+//        ArrayList<Integer[]> seq1 = new ArrayList(1);
+//        SADResult sadResult = new SADResult(0, 0, 0);
+//
+//        int size = spikeTrains[blockX][blockY].size();
+//        int lastTs = spikeTrains[blockX][blockY].get(size - forwardEventNum)[0];
+//        for (int i = size - forwardEventNum; i < size; i++) {
+//            seq1.add(spikeTrains[blockX][blockY].get(i));
 //        }
-        double minium = Integer.MAX_VALUE;
-        for (int i = -1; i < 2; i++) {
-            for (int j = -1; j < 2; j++) {
-                // Remove the seq1 itself
-                if ((0 == i) && (0 == j)) {
-                    continue;
-                }
-                ArrayList<Integer[]> seq2 = new ArrayList(1);
-
-                if ((blockX >= 2) && (blockY >= 2)) {
-                    ArrayList<Integer[]> tmpSpikes = spikeTrains[blockX + i][blockY + j];
-                    if (tmpSpikes != null) {
-                        for (int index = 0; index < tmpSpikes.size(); index++) {
-                            if (tmpSpikes.get(index)[0] >= lastTs) {
-                                seq2.add(tmpSpikes.get(index));
-                            }
-                        }
-
-                        double dis = vicPurDistance(seq1, seq2);
-                        if (dis < minium) {
-                            minium = dis;
-                            sadResult.dx = -i;
-                            sadResult.dy = -j;
-
-                        }
-                    }
-
-                }
-
-            }
-        }
-        lastFireIndex[blockX][blockY] = spikeTrains[blockX][blockY].size() - 1;
-        if ((sadResult.dx != 1) || (sadResult.dy != 0)) {
-            // sadResult = new SADResult(0, 0, 0);
-        }
-        return sadResult;
-    }
+//
+////        if(seq1.get(2)[0] - seq1.get(0)[0] > thresholdTime) {
+////            return sadResult;
+////        }
+//        double minium = Integer.MAX_VALUE;
+//        for (int i = -1; i < 2; i++) {
+//            for (int j = -1; j < 2; j++) {
+//                // Remove the seq1 itself
+//                if ((0 == i) && (0 == j)) {
+//                    continue;
+//                }
+//                ArrayList<Integer[]> seq2 = new ArrayList(1);
+//
+//                if ((blockX >= 2) && (blockY >= 2)) {
+//                    ArrayList<Integer[]> tmpSpikes = spikeTrains[blockX + i][blockY + j];
+//                    if (tmpSpikes != null) {
+//                        for (int index = 0; index < tmpSpikes.size(); index++) {
+//                            if (tmpSpikes.get(index)[0] >= lastTs) {
+//                                seq2.add(tmpSpikes.get(index));
+//                            }
+//                        }
+//
+//                        double dis = vicPurDistance(seq1, seq2);
+//                        if (dis < minium) {
+//                            minium = dis;
+//                            sadResult.dx = -i;
+//                            sadResult.dy = -j;
+//
+//                        }
+//                    }
+//
+//                }
+//
+//            }
+//        }
+//        lastFireIndex[blockX][blockY] = spikeTrains[blockX][blockY].size() - 1;
+//        if ((sadResult.dx != 1) || (sadResult.dy != 0)) {
+//            // sadResult = new SADResult(0, 0, 0);
+//        }
+//        return sadResult;
+//    }
 
     private double vicPurDistance(ArrayList<Integer[]> seq1, ArrayList<Integer[]> seq2) {
         int sum1Plus = 0, sum1Minus = 0, sum2Plus = 0, sum2Minus = 0;
@@ -1056,14 +1056,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     }
 
-    public int getForwardEventNum() {
-        return forwardEventNum;
-    }
-
-    public void setForwardEventNum(int forwardEventNum) {
-        this.forwardEventNum = forwardEventNum;
-        putInt("forwardEventNum", forwardEventNum);
-    }
+//    public int getForwardEventNum() {
+//        return forwardEventNum;
+//    }
+//
+//    public void setForwardEventNum(int forwardEventNum) {
+//        this.forwardEventNum = forwardEventNum;
+//        putInt("forwardEventNum", forwardEventNum);
+//    }
 
     public float getCost() {
         return cost;
@@ -1074,14 +1074,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         putFloat("cost", cost);
     }
 
-    public int getThresholdTime() {
-        return thresholdTime;
-    }
-
-    public void setThresholdTime(int thresholdTime) {
-        this.thresholdTime = thresholdTime;
-        putInt("thresholdTime", thresholdTime);
-    }
+//    public int getThresholdTime() {
+//        return thresholdTime;
+//    }
+//
+//    public void setThresholdTime(int thresholdTime) {
+//        this.thresholdTime = thresholdTime;
+//        putInt("thresholdTime", thresholdTime);
+//    }
 
     /**
      * @return the sliceMethod
@@ -1166,14 +1166,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     }
 
-    public boolean isPreProcessEnable() {
-        return preProcessEnable;
-    }
-
-    public void setPreProcessEnable(boolean preProcessEnable) {
-        this.preProcessEnable = preProcessEnable;
-        putBoolean("preProcessEnable", preProcessEnable);
-    }
+//    public boolean isPreProcessEnable() {
+//        return preProcessEnable;
+//    }
+//
+//    public void setPreProcessEnable(boolean preProcessEnable) {
+//        this.preProcessEnable = preProcessEnable;
+//        putBoolean("preProcessEnable", preProcessEnable);
+//    }
 
     public float getConfidenceThreshold() {
         return confidenceThreshold;
@@ -1206,12 +1206,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     private void checkArrays() {
-        if (lastFireIndex == null) {
-            lastFireIndex = new int[chip.getSizeX()][chip.getSizeY()];
-        }
-        if (eventSeqStartTs == null) {
-            eventSeqStartTs = new int[chip.getSizeX()][chip.getSizeY()];
-        }
+//        if (lastFireIndex == null) {
+//            lastFireIndex = new int[chip.getSizeX()][chip.getSizeY()];
+//        }
+//        if (eventSeqStartTs == null) {
+//            eventSeqStartTs = new int[chip.getSizeX()][chip.getSizeY()];
+//        }
     }
 
     /**
