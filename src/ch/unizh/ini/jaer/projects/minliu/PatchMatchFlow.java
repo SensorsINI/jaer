@@ -40,6 +40,13 @@ import net.sf.jaer.graphics.FrameAnnotater;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class PatchMatchFlow extends AbstractMotionFlow implements Observer, FrameAnnotater {
 
+    /* LDSP is Large Diamond Search Pattern, and SDSP mens Small Diamond Search Pattern. 
+       LDSP has 9 points and SDSP consists of 5 points.
+    */
+    private static final int LDSP[][] = {{0, -2}, {-1, -1}, {1, -1}, {-2, 0}, {0, 0}, 
+                                          {2, 0}, {-1, 1}, {1, 1}, {0, 2}};
+    private static final int SDSP[][] = {{0, -1}, {-1, 0}, {0, 0}, {1, 0}, {0, 1}}; 
+    
     private int[][][] histograms = null;
     private int numSlices = 3;
     private int sx, sy;
@@ -604,6 +611,84 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     }
                     break;
                 case DiamondSearch:
+                    /* The center of the LDSP or SDSP could change in the iteration process,
+                       so we need to use a variable to represent it.
+                       In the first interation, it's the Zero Motion Potion (ZMP).  
+                    */
+                    int xCenter = x, yCenter = y;
+                    
+                    /* x offset relative to ZMP, y offset to ZMP.
+                       x offset in positive number to ZMP, y offset in positive number to ZMP. 
+                    */
+                    int dx, dy, xidx, yidx;  
+                    
+                    int minPointIdx = 0;      // Store the minimum point index.
+                    boolean SDSPFlg = false;  // If this flag is set true, then it means LDSP search is finished and SDSP search could start.
+                    
+                    /* If one block has been already calculated, the computedFlg will be set so we don't to do 
+                       the calculation again.
+                    */
+                    boolean computedFlg[][] = new boolean[2*searchDistance + 1][2*searchDistance + 1];
+                    float sumArray[][] = new float[2*searchDistance + 1][2*searchDistance + 1];
+                    java.util.Arrays.fill(computedFlg[0], false);
+                    java.util.Arrays.fill(computedFlg[1], false);
+                    java.util.Arrays.fill(sumArray[0], Integer.MAX_VALUE);
+                    java.util.Arrays.fill(sumArray[1], Integer.MAX_VALUE);
+                    
+                    if(searchDistance == 1) { // LDSP search can only be applied for search distance >= 2.
+                        SDSPFlg = true;
+                    } 
+                    
+                    while(!SDSPFlg) {
+                        /* 1. LDSP search */
+                        for (int pointIdx = 0; pointIdx < LDSP.length; pointIdx++) {
+                                dx = LDSP[pointIdx][0] + xCenter - x;
+                                dy = LDSP[pointIdx][1] + yCenter - y;
+
+                                xidx = dx + searchDistance;
+                                yidx = dy + searchDistance;
+
+                                /* We just calculate the blocks that haven't been calculated before */
+                                if(computedFlg[xidx][yidx] == false) {
+                                    sumArray[xidx][yidx] = hammingDistance(xCenter, yCenter, LDSP[pointIdx][0], LDSP[pointIdx][1], prevSlice, curSlice);
+                                    computedFlg[xidx][yidx] = true;                                 
+                                }
+
+                                if (sumArray[xidx][yidx] <= minSum) {
+                                    minSum = sumArray[xidx][yidx];    
+                                    minPointIdx = pointIdx;
+                                }                            
+                        }
+
+                        /* 2. Check the minimum value position is in the center or not. */ 
+                        xCenter = xCenter + LDSP[minPointIdx][0];
+                        yCenter = yCenter + LDSP[minPointIdx][1];                       
+                        if(minPointIdx == 4) { // It means it's in the center, so we should break the loop and go to SDSP search.
+                            SDSPFlg = true;
+                        }                        
+                    }
+                    
+                    /* 3. SDSP Search */
+                    for (int pointIdx = 0; pointIdx < SDSP.length; pointIdx++) {
+                        dx = SDSP[pointIdx][0] + xCenter - x;
+                        dy = SDSP[pointIdx][1] + yCenter - y;
+
+                        xidx = dx + searchDistance;
+                        yidx = dy + searchDistance;    
+                        
+                        /* We just calculate the blocks that haven't been calculated before */
+                        if(computedFlg[xidx][yidx] == false) {
+                            sumArray[xidx][yidx] = hammingDistance(xCenter, yCenter, SDSP[pointIdx][0], SDSP[pointIdx][1], prevSlice, curSlice);
+                            computedFlg[xidx][yidx] = true;                                 
+                        } 
+
+                        if (sumArray[xidx][yidx] <= minSum) {
+                            minSum = sumArray[xidx][yidx];    
+                            tmpSadResult.dx = dx;
+                            tmpSadResult.dy = dy;
+                            tmpSadResult.sadValue = minSum;    
+                        }   
+                    }
                     
                     break;
                 case CrossDiamondSearch:
