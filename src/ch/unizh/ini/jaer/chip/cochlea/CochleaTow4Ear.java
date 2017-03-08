@@ -273,7 +273,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			ipots.addPot(new AddressedIPotCF(this, "VneuronLeakExtBp", 17, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
 				AddressedIPotCF.maxFineBitValue, 18, "neuron"));
 			ipots.addPot(new AddressedIPotCF(this, "VpulseAERExtdBn", 18, Type.NORMAL, Sex.N, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 19, "fb Diff"));
+				AddressedIPotCF.maxFineBitValue, 19, "neuron"));
 			ipots.addPot(new AddressedIPotCF(this, "VwideampBp", 19, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
 				AddressedIPotCF.maxFineBitValue, 20, "wideamp Diff"));
 			ipots.addPot(new AddressedIPotCF(this, "VQBn", 20, Type.NORMAL, Sex.na, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
@@ -341,7 +341,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			vpots.addPot(new VPot(getChip(), "Vcom2", dac1, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "VQBn", dac1, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets Q of filter"));
 			vpots.addPot(new VPot(getChip(), "DCOutputLowLevel", dac1, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets DC level of input to cochlea"));
-			vpots.addPot(new VPot(getChip(), "DACVout10", dac1, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Used for VextBn"));
+			vpots.addPot(new VPot(getChip(), "DACVout10", dac1, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Used for VneuronExtBn"));
 			vpots.addPot(new VPot(getChip(), "DACVout11", dac1, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "DACVout12", dac1, 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "RefADAMux0-", dac1, 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Ref for Mux0"));
@@ -353,7 +353,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			vpots.addPot(new VPot(getChip(), "Vbias1Bn", dac2, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Bias to set HF corner of last stage of L/R"));
 			vpots.addPot(new VPot(getChip(), "Vbias2Bn", dac2, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Bias to set LF corner of last stage of T/B"));
 			vpots.addPot(new VPot(getChip(), "VbiasLF1Bn", dac2, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Bias to set LF corner of last stage of L/R"));
-			vpots.addPot(new VPot(getChip(), "VbiasHF1Bn", dac2, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Bias to set HF corner of last stage of T/B"));
+			vpots.addPot(new VPot(getChip(), "VbiasHF2Bn", dac2, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Bias to set HF corner of last stage of T/B"));
 			vpots.addPot(new VPot(getChip(), "VtauBn", dac2, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets CF of filter and Q"));
 			vpots.addPot(new VPot(getChip(), "PreampGain2L", dac2, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Preamp gain for offchip preamp 3"));
 			vpots.addPot(new VPot(getChip(), "MICBIAS2L", dac2, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Not implemented"));
