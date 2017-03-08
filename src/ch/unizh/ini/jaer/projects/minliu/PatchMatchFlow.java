@@ -59,8 +59,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private BitSet currentSli = null, tMinus1Sli = null, tMinus2Sli = null;
     private final SADResult tmpSadResult = new SADResult(0, 0, 0); // used to pass data back from min distance computation
     private int patchDimension = getInt("patchDimension", 9);
-    private boolean displayOutputVectors = getBoolean("displayOutputVectors", true);
-    private int eventPatchDimension = getInt("eventPatchDimension", 3);
+//    private int eventPatchDimension = getInt("eventPatchDimension", 3);
 //    private int forwardEventNum = getInt("forwardEventNum", 10);
     private float cost = getFloat("cost", 0.001f);
     private float confidenceThreshold = getFloat("confidenceThreshold", 0f);
@@ -134,7 +133,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");     
         setPropertyTooltip(patchTT, "searchMethod", "method to search patches");        
-        setPropertyTooltip(patchTT, "sliceDurationUs", "duration of bitmaps in us, also called sample interval");
+        setPropertyTooltip(patchTT, "sliceDurationUs", "duration of bitmaps in us, also called sample interval, when ConstantDuration method is used");
+        setPropertyTooltip(patchTT, "sliceEventCount", "number of events collected to fill a slice, when ConstantEventNumber method is used");
         setPropertyTooltip(patchTT, "sliceMethod", "set method for determining time slice duration for block matching");
         setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
 //        setPropertyTooltip(eventSqeMatching, "cost", "The cost to translation one event to the other position");
@@ -192,8 +192,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             // compute flow
             SADResult result = null;
 
-            int blockLocX = x / eventPatchDimension;
-            int blockLocY = y / eventPatchDimension;
+//            int blockLocX = x / eventPatchDimension;
+//            int blockLocY = y / eventPatchDimension;
 
             // Build the spike trains of every block, every block is consist of 3*3 pixels.
 //            if (spikeTrains[blockLocX][blockLocY] == null) {
@@ -388,7 +388,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         }
         motionFlowStatistics.updatePacket(countIn, countOut);
-        return isShowRawInputEnabled() ? in : dirPacket;
+        return isDisplayRawInput()? in : dirPacket;
     }
 
     @Override
@@ -892,53 +892,53 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        return sadResult;
 //    }
 
-    private double vicPurDistance(ArrayList<Integer[]> seq1, ArrayList<Integer[]> seq2) {
-        int sum1Plus = 0, sum1Minus = 0, sum2Plus = 0, sum2Minus = 0;
-        Iterator itr1 = seq1.iterator();
-        Iterator itr2 = seq2.iterator();
-        int length1 = seq1.size();
-        int length2 = seq2.size();
-        double[][] distanceMatrix = new double[length1 + 1][length2 + 1];
-
-        for (int h = 0; h <= length1; h++) {
-            for (int k = 0; k <= length2; k++) {
-                if (h == 0) {
-                    distanceMatrix[h][k] = k;
-                    continue;
-                }
-                if (k == 0) {
-                    distanceMatrix[h][k] = h;
-                    continue;
-                }
-
-                double tmpMin = Math.min(distanceMatrix[h][k - 1] + 1, distanceMatrix[h - 1][k] + 1);
-                double event1 = seq1.get(h - 1)[0] - seq1.get(0)[0];
-                double event2 = seq2.get(k - 1)[0] - seq2.get(0)[0];
-                distanceMatrix[h][k] = Math.min(tmpMin, distanceMatrix[h - 1][k - 1] + (cost * Math.abs(event1 - event2)));
-            }
-        }
-
-        while (itr1.hasNext()) {
-            Integer[] ii = (Integer[]) itr1.next();
-            if (ii[1] == 1) {
-                sum1Plus += 1;
-            } else {
-                sum1Minus += 1;
-            }
-        }
-
-        while (itr2.hasNext()) {
-            Integer[] ii = (Integer[]) itr2.next();
-            if (ii[1] == 1) {
-                sum2Plus += 1;
-            } else {
-                sum2Minus += 1;
-            }
-        }
-
-        // return Math.abs(sum1Plus - sum2Plus) + Math.abs(sum1Minus - sum2Minus);
-        return distanceMatrix[length1][length2];
-    }
+//    private double vicPurDistance(ArrayList<Integer[]> seq1, ArrayList<Integer[]> seq2) {
+//        int sum1Plus = 0, sum1Minus = 0, sum2Plus = 0, sum2Minus = 0;
+//        Iterator itr1 = seq1.iterator();
+//        Iterator itr2 = seq2.iterator();
+//        int length1 = seq1.size();
+//        int length2 = seq2.size();
+//        double[][] distanceMatrix = new double[length1 + 1][length2 + 1];
+//
+//        for (int h = 0; h <= length1; h++) {
+//            for (int k = 0; k <= length2; k++) {
+//                if (h == 0) {
+//                    distanceMatrix[h][k] = k;
+//                    continue;
+//                }
+//                if (k == 0) {
+//                    distanceMatrix[h][k] = h;
+//                    continue;
+//                }
+//
+//                double tmpMin = Math.min(distanceMatrix[h][k - 1] + 1, distanceMatrix[h - 1][k] + 1);
+//                double event1 = seq1.get(h - 1)[0] - seq1.get(0)[0];
+//                double event2 = seq2.get(k - 1)[0] - seq2.get(0)[0];
+//                distanceMatrix[h][k] = Math.min(tmpMin, distanceMatrix[h - 1][k - 1] + (cost * Math.abs(event1 - event2)));
+//            }
+//        }
+//
+//        while (itr1.hasNext()) {
+//            Integer[] ii = (Integer[]) itr1.next();
+//            if (ii[1] == 1) {
+//                sum1Plus += 1;
+//            } else {
+//                sum1Minus += 1;
+//            }
+//        }
+//
+//        while (itr2.hasNext()) {
+//            Integer[] ii = (Integer[]) itr2.next();
+//            if (ii[1] == 1) {
+//                sum2Plus += 1;
+//            } else {
+//                sum2Minus += 1;
+//            }
+//        }
+//
+//        // return Math.abs(sum1Plus - sum2Plus) + Math.abs(sum1Minus - sum2Minus);
+//        return distanceMatrix[length1][length2];
+//    }
 
     /**
      * Computes min SAD shift around point x,y using patchDimension and
@@ -1059,15 +1059,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         putInt("patchDimension", patchDimension);
     }
 
-    public int getEventPatchDimension() {
-        return eventPatchDimension;
-    }
-
-    public void setEventPatchDimension(int eventPatchDimension) {
-        this.eventPatchDimension = eventPatchDimension;
-        putInt("eventPatchDimension", eventPatchDimension);
-
-    }
+//    public int getEventPatchDimension() {
+//        return eventPatchDimension;
+//    }
+//
+//    public void setEventPatchDimension(int eventPatchDimension) {
+//        this.eventPatchDimension = eventPatchDimension;
+//        putInt("eventPatchDimension", eventPatchDimension);
+//
+//    }
 
 //    public int getForwardEventNum() {
 //        return forwardEventNum;
@@ -1078,14 +1078,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        putInt("forwardEventNum", forwardEventNum);
 //    }
 
-    public float getCost() {
-        return cost;
-    }
-
-    public void setCost(float cost) {
-        this.cost = cost;
-        putFloat("cost", cost);
-    }
+//    public float getCost() {
+//        return cost;
+//    }
+//
+//    public void setCost(float cost) {
+//        this.cost = cost;
+//        putFloat("cost", cost);
+//    }
 
 //    public int getThresholdTime() {
 //        return thresholdTime;
@@ -1169,15 +1169,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         putInt("sliceEventCount", sliceEventCount);
     }
 
-    public boolean isDisplayOutputVectors() {
-        return displayOutputVectors;
-    }
-
-    public void setDisplayOutputVectors(boolean displayOutputVectors) {
-        this.displayOutputVectors = displayOutputVectors;
-        putBoolean("displayOutputVectors", displayOutputVectors);
-
-    }
 
 //    public boolean isPreProcessEnable() {
 //        return preProcessEnable;
