@@ -220,7 +220,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             switch (patchCompareMethod) {
                 case HammingDistance:
                     maybeRotateSlices();
-                    if (!accumulateEvent()) {
+                    if (!accumulateEvent(in)) {
                         break;
                     }
 //                    if (preProcessEnable) {
@@ -240,7 +240,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     break;
                 case SAD:
                     maybeRotateSlices();
-                    if (!accumulateEvent()) {
+                    if (!accumulateEvent(in)) {
                         break;
                     }
 //                    if (preProcessEnable) {
@@ -260,7 +260,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     break;
                 case JaccardDistance:
                     maybeRotateSlices();
-                    if (!accumulateEvent()) {
+                    if (!accumulateEvent(in)) {
                         break;
                     }
 //                    if (preProcessEnable) {
@@ -569,9 +569,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @return true if subsequent processing should done, false if it should be
      * skipped for efficiency
      */
-    private boolean accumulateEvent() {
+    private boolean accumulateEvent(EventPacket in) {
         currentSlice[x][y] += e.getPolaritySignum();
         currentSli.set((x + 1) + (y * subSizeX));  // All evnets wheather 0 or 1 will be set in the BitSet Slice.
+        if(in.isTimedOut()) return false;
         if (skipProcessingEventsCount == 0) {
             return true;
         }
