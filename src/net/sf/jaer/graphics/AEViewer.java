@@ -2677,15 +2677,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         final int MAX_FPS = 1000;
         int desiredFPS = prefs.getInt("AEViewer.FrameRater.desiredFPS", getScreenRefreshRate());
-        final int nSamples = 10;
-        long[] samplesNs = new long[nSamples];
+        public final int N_SAMPLES = 10;
+        long[] samplesNs = new long[N_SAMPLES];
         int index = 0;
         int delayMs = 1;
         int desiredPeriodMs = (int) (1000f / desiredFPS);
         private long beforeTimeNs = System.nanoTime(), lastdt, afterTimeNs;
         WarningDialogWithDontShowPreference fpsWarning;
 
-        final void setDesiredFPS(int fps) {
+        /** Sets the desired target frames rate in frames/sec
+         * 
+         * @param fps frames/sec desired. Shows warning if rate is too high or too low, so that users do not inadvertently set a rate that may be unintended.
+         * 
+         */
+        public final void setDesiredFPS(int fps) {
             if (fps < 30 || fps > 120) {
                 if (fpsWarning == null) {
                     fpsWarning = new WarningDialogWithDontShowPreference(AEViewer.this, false,
@@ -2711,18 +2716,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             desiredPeriodMs = 1000 / fps;
         }
 
-        final int getDesiredFPS() {
+        public final int getDesiredFPS() {
             return desiredFPS;
         }
 
-        final float getAveragePeriodNs() {
+        /** Returns average over last N_SAMPLES frames of the frame period in ns
+         * 
+         * @return ns average period
+         */
+        public final float getAveragePeriodNs() {
             long sum = 0;
-            for (int i = 0; i < nSamples; i++) {
+            for (int i = 0; i < N_SAMPLES; i++) {
                 sum += samplesNs[i];
             }
-            return (float) sum / nSamples;
+            return (float) sum / N_SAMPLES;
         }
 
+        /** Returns average actual frame rate over last N_SAMPLES frames
+         * 
+         * @return box-averaged frame rate in frames/sec 
+         */
         public final float getAverageFPS() {
             return 1f / (getAveragePeriodNs() / 1e9f);
         }
@@ -2736,7 +2749,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          *
          * @return last frame delay in ms
          */
-        final int getLastDelayMs() {
+        public final int getLastDelayMs() {
             return delayMs;
         }
 
@@ -2761,12 +2774,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             lastdt = afterTimeNs - beforeTimeNs;
             samplesNs[index++] = afterTimeNs - lastAfterTime;
             lastAfterTime = afterTimeNs;
-            if (index >= nSamples) {
+            if (index >= N_SAMPLES) {
                 index = 0;
             }
         }
 
-        // call this to delayForDesiredFPS enough to make the total time including last sample period equal to desiredPeriodMs
+        /** call this to delayForDesiredFPS enough to make the total time including last sample period equal to desiredPeriodMs
+         * 
+         */
         final void delayForDesiredFPS() {
             if (Thread.interrupted()) {
                 return; // clear the interrupt flag here to make sure we don't just pass through with no one clearing the flag
