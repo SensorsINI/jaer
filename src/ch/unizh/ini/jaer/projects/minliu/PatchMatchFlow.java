@@ -20,6 +20,7 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.Color;
+import java.util.logging.Level;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -75,6 +76,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     // results histogram for each packet
     private int[][] resultHistogram = null;
+    private float FSCnt = 0, DSCorrect = 0;
+    float DSAverageNum = 0, DSAveError[] = {0, 0};           // Evaluate DS cost average number and the error.
 
     public enum PatchCompareMethod {
         JaccardDistance, HammingDistance, SAD/*, EventSqeDistance*/
@@ -82,7 +85,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private PatchCompareMethod patchCompareMethod = PatchCompareMethod.valueOf(getString("patchCompareMethod", PatchCompareMethod.HammingDistance.toString()));
 
     public enum SearchMethod {
-        FullSearch, DiamondSearch, CrossDiamondSearch
+        FSAndDS /*This item is just for comparisio between FS and DS*/, FullSearch, DiamondSearch, CrossDiamondSearch
     };
     private SearchMethod searchMethod = SearchMethod.valueOf(getString("searchMethod", SearchMethod.FullSearch.toString()));
 
@@ -593,22 +596,27 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @return SADResult that provides the shift and SAD value
      */
     private SADResult minHammingDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
-        float minSum = Integer.MAX_VALUE, sum = 0;
+        float minSum = Integer.MAX_VALUE, minSum1 = Integer.MAX_VALUE, sum = 0;
+
+        float FSDx = 0, FSDy = 0, DSDx = 0, DSDy = 0;  // This is for testing the DS search accuracy.       
+        int searchRange = 2 * searchDistance + 1; // The maxium search index, for xidx and yidx.
 
         switch (searchMethod) {
-            case FullSearch:
+            case FSAndDS:
                 for (int dx = -searchDistance; dx <= searchDistance; dx++) {
                     for (int dy = -searchDistance; dy <= searchDistance; dy++) {
                         sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
-                        if (sum <= minSum) {
-                            minSum = sum;
+                        if (sum <= minSum1) {
+                            minSum1 = sum;
                             tmpSadResult.dx = dx;
                             tmpSadResult.dy = dy;
                             tmpSadResult.sadValue = minSum;
                         }
                     }
                 }
-                break;
+                FSCnt += 1;
+                FSDx = tmpSadResult.dx;
+                FSDy = tmpSadResult.dy;
             case DiamondSearch:
                 /* The center of the LDSP or SDSP could change in the iteration process,
                        so we need to use a variable to represent it.
@@ -620,25 +628,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 /* x offset of center point relative to ZMP, y offset of center point to ZMP.
                        x offset of center pointin positive number to ZMP, y offset of center point in positive number to ZMP. 
                  */
-                int dx,
-                 dy,
-                 xidx,
-                 yidx;
+                int dx, dy, xidx, yidx;
 
                 int minPointIdx = 0;      // Store the minimum point index.
                 boolean SDSPFlg = false;  // If this flag is set true, then it means LDSP search is finished and SDSP search could start.
-                int searchRange = 2 * searchDistance + 1; // The maxium search index, for xidx and yidx.
 
                 /* If one block has been already calculated, the computedFlg will be set so we don't to do 
                        the calculation again.
                  */
-                boolean computedFlg[][] = new boolean[2 * searchDistance + 1][2 * searchDistance + 1];
-                float sumArray[][] = new float[2 * searchDistance + 1][2 * searchDistance + 1];
-                java.util.Arrays.fill(computedFlg[0], false);
-                java.util.Arrays.fill(computedFlg[1], false);
-                java.util.Arrays.fill(sumArray[0], Integer.MAX_VALUE);
-                java.util.Arrays.fill(sumArray[1], Integer.MAX_VALUE);
-
+                boolean computedFlg[][] = new boolean[2*searchDistance + 1][2*searchDistance + 1];
+                for (boolean[] row: computedFlg)  Arrays.fill(row, false);   
+                float sumArray[][] = new float[2*searchDistance + 1][2*searchDistance + 1];
+                for (float[] row: sumArray)  Arrays.fill(row, Integer.MAX_VALUE);    
+                
                 if (searchDistance == 1) { // LDSP search can only be applied for search distance >= 2.
                     SDSPFlg = true;
                 }
@@ -659,8 +661,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                         /* We just calculate the blocks that haven't been calculated before */
                         if (computedFlg[xidx][yidx] == false) {
-                            sumArray[xidx][yidx] = hammingDistance(xCenter, yCenter, LDSP[pointIdx][0], LDSP[pointIdx][1], prevSlice, curSlice);
+                            sumArray[xidx][yidx] = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
                             computedFlg[xidx][yidx] = true;
+                            DSAverageNum++;
                         }
 
                         if (sumArray[xidx][yidx] <= minSum) {
@@ -694,8 +697,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                     /* We just calculate the blocks that haven't been calculated before */
                     if (computedFlg[xidx][yidx] == false) {
-                        sumArray[xidx][yidx] = hammingDistance(xCenter, yCenter, SDSP[pointIdx][0], SDSP[pointIdx][1], prevSlice, curSlice);
+                        sumArray[xidx][yidx] = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
                         computedFlg[xidx][yidx] = true;
+                        DSAverageNum++;                        
                     }
 
                     if (sumArray[xidx][yidx] <= minSum) {
@@ -706,12 +710,40 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     }
                 }
 
+                DSDx = tmpSadResult.dx;
+                DSDy = tmpSadResult.dy;
+                break;
+            case FullSearch:
+                for (int dxx = -searchDistance; dxx <= searchDistance; dxx++) {
+                    for (int dyy = -searchDistance; dyy <= searchDistance; dyy++) {
+                        sum = hammingDistance(x, y, dxx, dyy, prevSlice, curSlice);
+                        if (sum <= minSum1) {
+                            minSum1 = sum;
+                            tmpSadResult.dx = dxx;
+                            tmpSadResult.dy = dyy;
+                            tmpSadResult.sadValue = minSum;
+                        }
+                    }
+                }      
                 break;
             case CrossDiamondSearch:
                 break;
         }
         tmpSadResult.xidx = (int) tmpSadResult.dx + searchDistance;
         tmpSadResult.yidx = (int) tmpSadResult.dy + searchDistance; // what a hack....
+
+        if(DSDx == FSDx && DSDy == FSDy) {
+            DSCorrect += 1;
+        } else {
+            DSAveError[0] += Math.abs(DSDx - FSDx);
+            DSAveError[1] += Math.abs(DSDx - FSDx);            
+        }
+        if(searchMethod == SearchMethod.FSAndDS) {
+            if(0 == FSCnt%2000) {
+                log.log(Level.INFO, "Correct Diamond Search times are {0} Full Search times are {1} accuracy is {2}, averageNumberPercent is {3}, averageError is ({4}, {5})", 
+                        new Object[]{DSCorrect, FSCnt, DSCorrect/FSCnt, DSAverageNum/(searchRange * searchRange * FSCnt), DSAveError[0]/FSCnt, DSAveError[1]/FSCnt});            
+            }            
+        }
 
         return tmpSadResult;
     }
