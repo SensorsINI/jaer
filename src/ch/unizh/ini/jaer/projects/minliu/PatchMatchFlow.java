@@ -71,9 +71,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //    private boolean preProcessEnable = false;
     private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
     private int skipCounter = 0;
-
+    private boolean adaptiveEventSkipping=getBoolean("adaptiveEventSkipping",false);
+    
     // results histogram for each packet
     private int[][] resultHistogram = null;
+
 
     public enum PatchCompareMethod {
         JaccardDistance, HammingDistance, SAD/*, EventSqeDistance*/
@@ -137,6 +139,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "sliceEventCount", "number of events collected to fill a slice, when ConstantEventNumber method is used");
         setPropertyTooltip(patchTT, "sliceMethod", "set method for determining time slice duration for block matching");
         setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
+        setPropertyTooltip(patchTT, "adaptiveEventSkipping", "enables adaptive event skipping depending on free time left in AEViewer animation loop");
 //        setPropertyTooltip(eventSqeMatching, "cost", "The cost to translation one event to the other position");
 //        setPropertyTooltip(eventSqeMatching, "thresholdTime", "The threshold value of interval time between the first event and the last event");
 //        setPropertyTooltip(eventSqeMatching, "sliceEventCount", "number of collected events in each bitmap");
@@ -149,6 +152,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     synchronized public EventPacket filterPacket(EventPacket in) {
         setupFilter(in);
         checkArrays();
+        adaptEventSkipping();
         if (resultHistogram == null || resultHistogram.length != 2 * searchDistance + 1) {
             int dim = 2 * searchDistance + 1; // e.g. search distance 1, dim=3, 3x3 possibilties (including zero motion) 
             resultHistogram = new int[dim][dim];
@@ -1247,6 +1251,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param skipProcessingEventsCount the skipProcessingEventsCount to set
      */
     public void setSkipProcessingEventsCount(int skipProcessingEventsCount) {
+        int old=this.skipProcessingEventsCount;
         if (skipProcessingEventsCount < 0) {
             skipProcessingEventsCount = 0;
         }
@@ -1254,6 +1259,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             skipProcessingEventsCount = 100;
         }
         this.skipProcessingEventsCount = skipProcessingEventsCount;
+        getSupport().firePropertyChange("skipProcessingEventsCount", old, this.skipProcessingEventsCount);
         putInt("skipProcessingEventsCount", skipProcessingEventsCount);
     }
 
@@ -1271,4 +1277,30 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         this.displayResultHistogram = displayResultHistogram;
         putBoolean("displayResultHistogram",displayResultHistogram);
     }
+
+    /**
+     * @return the adaptiveEventSkipping
+     */
+    public boolean isAdaptiveEventSkipping() {
+        return adaptiveEventSkipping;
+    }
+
+    /**
+     * @param adaptiveEventSkipping the adaptiveEventSkipping to set
+     */
+    public void setAdaptiveEventSkipping(boolean adaptiveEventSkipping) {
+        this.adaptiveEventSkipping = adaptiveEventSkipping;
+        putBoolean("adaptiveEventSkipping",adaptiveEventSkipping);
+    }
+
+    private void adaptEventSkipping() {
+        if(!adaptiveEventSkipping) return;
+        if(chip.getAeViewer()==null) return;
+        if(chip.getAeViewer().getFrameRater().getAverageFPS()<chip.getAeViewer().getFrameRate()){
+            setSkipProcessingEventsCount(skipProcessingEventsCount+1);
+        }else{
+            setSkipProcessingEventsCount(skipProcessingEventsCount-1);
+        }
+    }
+
 }
