@@ -73,10 +73,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
     private int skipCounter = 0;
     private boolean adaptiveEventSkipping = getBoolean("adaptiveEventSkipping", false);
-
+    private boolean outputSearchErrorInfo = getBoolean("outputSearchErrorInfo", false);
+    
     // results histogram for each packet
     private int[][] resultHistogram = null;
-    private float FSCnt = 0, DSCorrect = 0;
+    private float FSCnt = 0, DSCorrectCnt = 0;
     float DSAverageNum = 0, DSAveError[] = {0, 0};           // Evaluate DS cost average number and the error.
 
     public enum PatchCompareMethod {
@@ -85,7 +86,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private PatchCompareMethod patchCompareMethod = PatchCompareMethod.valueOf(getString("patchCompareMethod", PatchCompareMethod.HammingDistance.toString()));
 
     public enum SearchMethod {
-        FSAndDS /*This item is just for comparisio between FS and DS*/, FullSearch, DiamondSearch, CrossDiamondSearch
+        FullSearch, DiamondSearch, CrossDiamondSearch
     };
     private SearchMethod searchMethod = SearchMethod.valueOf(getString("searchMethod", SearchMethod.FullSearch.toString()));
 
@@ -142,6 +143,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "sliceMethod", "set method for determining time slice duration for block matching");
         setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
         setPropertyTooltip(patchTT, "adaptiveEventSkipping", "enables adaptive event skipping depending on free time left in AEViewer animation loop");
+        setPropertyTooltip(patchTT, "outputSearchErrorInfo", "enables displaying the search method error information");
+
 //        setPropertyTooltip(eventSqeMatching, "cost", "The cost to translation one event to the other position");
 //        setPropertyTooltip(eventSqeMatching, "thresholdTime", "The threshold value of interval time between the first event and the last event");
 //        setPropertyTooltip(eventSqeMatching, "sliceEventCount", "number of collected events in each bitmap");
@@ -601,8 +604,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         float FSDx = 0, FSDy = 0, DSDx = 0, DSDy = 0;  // This is for testing the DS search accuracy.       
         int searchRange = 2 * searchDistance + 1; // The maxium search index, for xidx and yidx.
 
+        if(outputSearchErrorInfo) {
+            setSearchMethod(SearchMethod.FullSearch);
+        } else {
+            setSearchMethod(getSearchMethod());
+        }
+        
         switch (searchMethod) {
-            case FSAndDS:
+            case FullSearch:                      
                 for (int dx = -searchDistance; dx <= searchDistance; dx++) {
                     for (int dy = -searchDistance; dy <= searchDistance; dy++) {
                         sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
@@ -610,13 +619,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                             minSum1 = sum;
                             tmpSadResult.dx = dx;
                             tmpSadResult.dy = dy;
-                            tmpSadResult.sadValue = minSum;
+                            tmpSadResult.sadValue = minSum1;
                         }
                     }
                 }
-                FSCnt += 1;
-                FSDx = tmpSadResult.dx;
-                FSDy = tmpSadResult.dy;
+                if(outputSearchErrorInfo) {
+                    FSCnt += 1;
+                    FSDx = tmpSadResult.dx;
+                    FSDy = tmpSadResult.dy;                    
+                } else {
+                    break;
+                }
             case DiamondSearch:
                 /* The center of the LDSP or SDSP could change in the iteration process,
                        so we need to use a variable to represent it.
@@ -663,7 +676,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         if (computedFlg[xidx][yidx] == false) {
                             sumArray[xidx][yidx] = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
                             computedFlg[xidx][yidx] = true;
-                            DSAverageNum++;
+                            if(outputSearchErrorInfo) {
+                                DSAverageNum++;                                
+                            }
                         }
 
                         if (sumArray[xidx][yidx] <= minSum) {
@@ -699,8 +714,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     if (computedFlg[xidx][yidx] == false) {
                         sumArray[xidx][yidx] = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
                         computedFlg[xidx][yidx] = true;
-                        DSAverageNum++;                        
-                    }
+                        if(outputSearchErrorInfo) {
+                            DSAverageNum++;                                
+                        }                    }
 
                     if (sumArray[xidx][yidx] <= minSum) {
                         minSum = sumArray[xidx][yidx];
@@ -710,21 +726,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     }
                 }
 
-                DSDx = tmpSadResult.dx;
-                DSDy = tmpSadResult.dy;
-                break;
-            case FullSearch:
-                for (int dxx = -searchDistance; dxx <= searchDistance; dxx++) {
-                    for (int dyy = -searchDistance; dyy <= searchDistance; dyy++) {
-                        sum = hammingDistance(x, y, dxx, dyy, prevSlice, curSlice);
-                        if (sum <= minSum1) {
-                            minSum1 = sum;
-                            tmpSadResult.dx = dxx;
-                            tmpSadResult.dy = dyy;
-                            tmpSadResult.sadValue = minSum;
-                        }
-                    }
-                }      
+                if(outputSearchErrorInfo) {
+                    DSDx = tmpSadResult.dx;
+                    DSDy = tmpSadResult.dy;                    
+                }
                 break;
             case CrossDiamondSearch:
                 break;
@@ -732,16 +737,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         tmpSadResult.xidx = (int) tmpSadResult.dx + searchDistance;
         tmpSadResult.yidx = (int) tmpSadResult.dy + searchDistance; // what a hack....
 
-        if(DSDx == FSDx && DSDy == FSDy) {
-            DSCorrect += 1;
-        } else {
-            DSAveError[0] += Math.abs(DSDx - FSDx);
-            DSAveError[1] += Math.abs(DSDx - FSDx);            
-        }
-        if(searchMethod == SearchMethod.FSAndDS) {
+
+        if(outputSearchErrorInfo) {
+            if(DSDx == FSDx && DSDy == FSDy) {
+                DSCorrectCnt += 1;
+            } else {
+                DSAveError[0] += Math.abs(DSDx - FSDx);
+                DSAveError[1] += Math.abs(DSDy - FSDy);            
+            }            
             if(0 == FSCnt%2000) {
-                log.log(Level.INFO, "Correct Diamond Search times are {0} Full Search times are {1} accuracy is {2}, averageNumberPercent is {3}, averageError is ({4}, {5})", 
-                        new Object[]{DSCorrect, FSCnt, DSCorrect/FSCnt, DSAverageNum/(searchRange * searchRange * FSCnt), DSAveError[0]/FSCnt, DSAveError[1]/FSCnt});            
+                log.log(Level.INFO, "Correct Diamond Search times are {0}, Full Search times are {1}, accuracy is {2}, averageNumberPercent is {3}, averageError is ({4}, {5})", 
+                        new Object[]{DSCorrectCnt, FSCnt, DSCorrectCnt/FSCnt, DSAverageNum/(searchRange * searchRange * FSCnt), DSAveError[0]/FSCnt, DSAveError[1]/(FSCnt - DSCorrectCnt)});            
             }            
         }
 
@@ -1326,6 +1332,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         putBoolean("adaptiveEventSkipping", adaptiveEventSkipping);
     }
 
+    public boolean isOutputSearchErrorInfo() {
+        return outputSearchErrorInfo;
+    }
+
+    public void setOutputSearchErrorInfo(boolean outputSearchErrorInfo) {
+        this.outputSearchErrorInfo = outputSearchErrorInfo;
+        putBoolean("outputSearchErrorInfo", outputSearchErrorInfo);        
+    }
+
+
+    
     private int adaptiveEventSkippingUpdateIntervalPackets = 10;
     private int adaptiveEventSkippingUpdateCounter = 0;
 
