@@ -603,7 +603,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         float FSDx = 0, FSDy = 0, DSDx = 0, DSDy = 0;  // This is for testing the DS search accuracy.       
         int searchRange = 2 * searchDistance + 1; // The maxium search index, for xidx and yidx.
-
+        float sumArray1[][] = new float[2*searchDistance + 1][2*searchDistance + 1];
+        for (float[] row: sumArray1)  Arrays.fill(row, Integer.MAX_VALUE);    
+        
         if(outputSearchErrorInfo) {
             setSearchMethod(SearchMethod.FullSearch);
         } else {
@@ -615,6 +617,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 for (int dx = -searchDistance; dx <= searchDistance; dx++) {
                     for (int dy = -searchDistance; dy <= searchDistance; dy++) {
                         sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
+                        sumArray1[dx + searchDistance][dy + searchDistance] = sum;
                         if (sum <= minSum1) {
                             minSum1 = sum;
                             tmpSadResult.dx = dx;
@@ -679,6 +682,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                             if(outputSearchErrorInfo) {
                                 DSAverageNum++;                                
                             }
+                            if(outputSearchErrorInfo) {
+                                if(sumArray[xidx][yidx] != sumArray1[xidx][yidx]) {
+                                    log.warning("It seems that there're some bugs in the DS algorithm.");
+                                }                                
+                            }
                         }
 
                         if (sumArray[xidx][yidx] <= minSum) {
@@ -716,7 +724,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         computedFlg[xidx][yidx] = true;
                         if(outputSearchErrorInfo) {
                             DSAverageNum++;                                
-                        }                    }
+                        }   
+                        if(outputSearchErrorInfo) {
+                            if(sumArray[xidx][yidx] != sumArray1[xidx][yidx]) {
+                                log.warning("It seems that there're some bugs in the DS algorithm.");
+                            }                                
+                        }                        
+                    }
 
                     if (sumArray[xidx][yidx] <= minSum) {
                         minSum = sumArray[xidx][yidx];
@@ -745,7 +759,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 DSAveError[0] += Math.abs(DSDx - FSDx);
                 DSAveError[1] += Math.abs(DSDy - FSDy);            
             }            
-            if(0 == FSCnt%2000) {
+            if(0 == FSCnt%10000) {
                 log.log(Level.INFO, "Correct Diamond Search times are {0}, Full Search times are {1}, accuracy is {2}, averageNumberPercent is {3}, averageError is ({4}, {5})", 
                         new Object[]{DSCorrectCnt, FSCnt, DSCorrectCnt/FSCnt, DSAverageNum/(searchRange * searchRange * FSCnt), DSAveError[0]/FSCnt, DSAveError[1]/(FSCnt - DSCorrectCnt)});            
             }            
