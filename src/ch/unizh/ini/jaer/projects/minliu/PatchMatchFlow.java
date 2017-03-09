@@ -1198,6 +1198,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
     public void setSliceDurationUs(int sliceDurationUs) {
         this.sliceDurationUs = sliceDurationUs;
+        
+        /* If the slice duration is changed, reset FSCnt and DScorrect so we can get more accurate evaluation result */
+        FSCnt = 0;
+        DSCorrectCnt = 0;
         putInt("sliceDurationUs", sliceDurationUs);
     }
 
