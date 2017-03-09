@@ -1293,10 +1293,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         putBoolean("adaptiveEventSkipping",adaptiveEventSkipping);
     }
 
+    private int adaptiveEventSkippingUpdateIntervalPackets=10;
+    private int adaptiveEventSkippingUpdateCounter=0;
+    
     private void adaptEventSkipping() {
         if(!adaptiveEventSkipping) return;
         if(chip.getAeViewer()==null) return;
-        if(chip.getAeViewer().getFrameRater().getAverageFPS()<chip.getAeViewer().getFrameRate()){
+        if(adaptiveEventSkippingUpdateCounter++<adaptiveEventSkippingUpdateIntervalPackets) return;
+        adaptiveEventSkippingUpdateCounter=0;
+        if(chip.getAeViewer().getFrameRater().getAverageFPS()<(int)(0.8f*chip.getAeViewer().getFrameRate())){
             setSkipProcessingEventsCount(skipProcessingEventsCount+1);
         }else{
             setSkipProcessingEventsCount(skipProcessingEventsCount-1);
