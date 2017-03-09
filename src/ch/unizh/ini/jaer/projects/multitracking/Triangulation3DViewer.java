@@ -170,6 +170,7 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 				if(Xfinals.get(h).size()!=0){
 					gl.glColor3f(h, h+1, h+2);
 					for(int i=0;i<Xfinals.get(h).size(); i++){
+						if(Xfinals.get(h).get(i).rows==3){
 						//centerX[i]=Xfinals.get(i).get(0);
 						//System.out.println(centerX);
 						//centerY[i]=Xfinals.get(i).get(1);
@@ -187,6 +188,7 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 
 						gl.glEnd();
 
+					   }
 					}
 				}
 			}

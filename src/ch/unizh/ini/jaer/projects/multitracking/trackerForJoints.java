@@ -81,7 +81,8 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	// list of the current parallel trackers
 	//Vector<TrackFocus> listOfTrackFocus;
 	// radius of the tracker zone of interest
-	double radius=40;
+	//double radius=getDouble("radius", 40);
+	double radius=35;
 	Vector<Vector<Float>> joints = new Vector<Vector<Float>>();
 	Vector<Vector<TrackPoints>>jointsToTrack= new Vector<Vector<TrackPoints>>();
 	private String dirPath = getString("dirPath", System.getProperty("user.dir"));
@@ -122,6 +123,8 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 		super(chip);
 		chi=(MultiDAVIS346BCameraChip) chip;
 		chip.addObserver(this);
+		final String size="Size";
+		setPropertyTooltip("Size", "radius", "size (starting) in pixel");
 //		frameExtractor = new ApsFrameExtractor(chip);
 		filterChain = new FilterChain(chip);
 		//plot3d.setVisible(false);
@@ -132,6 +135,8 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 //		setEnclosedFilterChain(filterChain);
 		resetFilter();
 		//readMatTextFile();
+
+
 	}
 
 	// TO DO rewrite it properly
@@ -871,7 +876,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	}
 
 
-	public void triangulationUsingJBlas(TrackPoints tp1,TrackPoints tp2,int i){
+	public void triangulationUsingJBlas(TrackPoints tp2,TrackPoints tp1,int i){
 		if (!calibrationloaded){
 			calibrationloaded=true;
 			final JFileChooser j = new JFileChooser();
@@ -946,7 +951,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 		      triview = new Triangulation3DViewer(chip.getCanvas());
 		      triview.XSize=sx;
 		      triview.YSize=sy;
-		      triview.setPositionSecondCamera(Rotate.mmul(Translate));
+		      triview.setPositionSecondCamera(Translate);
 		      Rotate.mmul(Translate).print();
 		      triview.startNewWindows();
 
@@ -961,14 +966,14 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 		FloatMatrix X2=new FloatMatrix(4);
 
 		FloatMatrix Xfinal=new FloatMatrix(3);
-		FloatMatrix x1=new FloatMatrix(new float[] {tp1.x.floatValue(),-tp1.y.floatValue(), 1});
+		FloatMatrix x1=new FloatMatrix(new float[] {(sx/2)-tp1.x.floatValue(),sy-tp1.y.floatValue(), 1});
 
 		e2=new FloatMatrix(3);
 //		System.out.println("x1:");
 //		x1.print();
 
 
-		FloatMatrix x2=new FloatMatrix(new float[] {tp2.x.floatValue(),-tp2.y.floatValue(), 1});
+		FloatMatrix x2=new FloatMatrix(new float[] {(sx/2)-tp2.x.floatValue(),sy-tp2.y.floatValue(), 1});
 //		System.out.println("x2:");
 //		x2.print();
 
