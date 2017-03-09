@@ -223,6 +223,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(dispTT, "displayColorWheelLegend", "Plots a color wheel to show flow direction colors.");
         setPropertyTooltip(dispTT, "measureGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
         setPropertyTooltip(dispTT, "displayRawInput", "shows the input events, instead of the motion types");
+        setPropertyTooltip(dispTT, "displayMotionField", "computes and shows the average motion field (see MotionField section)");
         setPropertyTooltip(dispTT, "xMin", "events with x-coordinate below this are filtered out.");
         setPropertyTooltip(dispTT, "xMax", "events with x-coordinate above this are filtered out.");
         setPropertyTooltip(dispTT, "yMin", "events with y-coordinate below this are filtered out.");
@@ -244,7 +245,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(imuTT, "selectLoggingFolder", "Allows selection of the folder to store the measured accuracies and optical flow events.");
         setPropertyTooltip(motionFieldTT, "motionFieldMixingFactor", "Flow events are mixed with the motion field with this factor. Use 1 to replace field content with each event, or e.g. 0.01 to update only by 1%.");
         setPropertyTooltip(motionFieldTT, "motionFieldSubsamplingShift", "The motion field is computed at this subsampled resolution, e.g. 1 means 1 motion field vector for each 2x2 pixel area.");
-        setPropertyTooltip(motionFieldTT, "showMotionField", "Computes and shows a motion field");
         setPropertyTooltip(motionFieldTT, "maxAgeUs", "Maximum age of motion field value for display and for unconditionally replacing with latest flow event");
         setPropertyTooltip(motionFieldTT, "minSpeedPpsToDrawMotionField", "Motion field locations where speed in pixels/second is less than this quantity are not drawn");
         setPropertyTooltip(motionFieldTT, "consistentWithNeighbors", "Motion field value must be consistent with several neighbors if this option is selected.");
@@ -1436,7 +1436,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 e.printStackTrace();
             }
             float shift = ((1 << motionFieldSubsamplingShift) * .5f);
-            final float saturationSpeedScaleInversePixels = 0.1f; // this length of vector in pixels makes full brightness
+            final float saturationSpeedScaleInversePixels = ppsScale* 0.1f; // this length of vector in pixels makes full brightness
             for (int ix = 0; ix < sx; ix++) {
                 float x = (ix << motionFieldSubsamplingShift) + shift;
                 for (int iy = 0; iy < sy; iy++) {
@@ -1450,13 +1450,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     }
                     float y = (iy << motionFieldSubsamplingShift) + shift;
                     float vx = vxs[ix][iy], vy = vys[ix][iy];
-                    float brightness = speeds[ix][iy] * ppsScale * saturationSpeedScaleInversePixels;
+                    float brightness = speeds[ix][iy] * saturationSpeedScaleInversePixels;
                     if (brightness > 1) {
                         brightness = 1;
                     }
                     float angle01 = (float) (Math.atan2(vy, vx) / (2 * Math.PI) + 0.5); // atan2 returns -pi to +pi, so dividing by 2*pi gives -.5 to +.5. Adding .5 gives range 0 to 1.
 //                    angle01=.5f; // debug
-                    int rgbValue = Color.HSBtoRGB(angle01, 1, 1);
+                    int rgbValue = Color.HSBtoRGB(angle01, 1, brightness);
                     Color color = new Color(rgbValue);
                     float[] rgb = color.getRGBComponents(null);
                     gl.glColor4f(rgb[0], rgb[1], rgb[2], 1f);
