@@ -1255,8 +1255,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (skipProcessingEventsCount < 0) {
             skipProcessingEventsCount = 0;
         }
-        if (skipProcessingEventsCount > 100) {
-            skipProcessingEventsCount = 100;
+        if (skipProcessingEventsCount > 300) {
+            skipProcessingEventsCount = 300;
         }
         this.skipProcessingEventsCount = skipProcessingEventsCount;
         getSupport().firePropertyChange("skipProcessingEventsCount", old, this.skipProcessingEventsCount);
