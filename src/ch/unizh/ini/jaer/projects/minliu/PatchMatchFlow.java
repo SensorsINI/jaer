@@ -42,11 +42,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     /* LDSP is Large Diamond Search Pattern, and SDSP mens Small Diamond Search Pattern. 
        LDSP has 9 points and SDSP consists of 5 points.
-    */
-    private static final int LDSP[][] = {{0, -2}, {-1, -1}, {1, -1}, {-2, 0}, {0, 0}, 
-                                          {2, 0}, {-1, 1}, {1, 1}, {0, 2}};
-    private static final int SDSP[][] = {{0, -1}, {-1, 0}, {0, 0}, {1, 0}, {0, 1}}; 
-    
+     */
+    private static final int LDSP[][] = {{0, -2}, {-1, -1}, {1, -1}, {-2, 0}, {0, 0},
+    {2, 0}, {-1, 1}, {1, 1}, {0, 2}};
+    private static final int SDSP[][] = {{0, -1}, {-1, 0}, {0, 0}, {1, 0}, {0, 1}};
+
     private int[][][] histograms = null;
     private static final int NUM_SLICES = 3;
 //    private int sx, sy;
@@ -71,22 +71,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //    private boolean preProcessEnable = false;
     private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
     private int skipCounter = 0;
-    private boolean adaptiveEventSkipping=getBoolean("adaptiveEventSkipping",false);
-    
+    private boolean adaptiveEventSkipping = getBoolean("adaptiveEventSkipping", false);
+
     // results histogram for each packet
     private int[][] resultHistogram = null;
-
 
     public enum PatchCompareMethod {
         JaccardDistance, HammingDistance, SAD/*, EventSqeDistance*/
     };
     private PatchCompareMethod patchCompareMethod = PatchCompareMethod.valueOf(getString("patchCompareMethod", PatchCompareMethod.HammingDistance.toString()));
-    
+
     public enum SearchMethod {
         FullSearch, DiamondSearch, CrossDiamondSearch
     };
     private SearchMethod searchMethod = SearchMethod.valueOf(getString("searchMethod", SearchMethod.FullSearch.toString()));
-    
+
     private int sliceDurationUs = getInt("sliceDurationUs", 100000);
     private int sliceEventCount = getInt("sliceEventCount", 1000);
     private boolean rewindFlg = false; // The flag to indicate the rewind event.
@@ -133,8 +132,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(metricConfid, "weightDistance", "<html>The confidence value consists of the distance and the dispersion; <br>weightDistance sets the weighting of the distance value compared with the dispersion value; Range from 0 to 1. <p>To count only e.g. hamming distance, set weighting to 1. <p> To count only dispersion, set to 0.");
         setPropertyTooltip(patchTT, "patchDimension", "linear dimenion of patches to match, in pixels");
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
-        setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");     
-        setPropertyTooltip(patchTT, "searchMethod", "method to search patches");        
+        setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");
+        setPropertyTooltip(patchTT, "searchMethod", "method to search patches");
         setPropertyTooltip(patchTT, "sliceDurationUs", "duration of bitmaps in us, also called sample interval, when ConstantDuration method is used");
         setPropertyTooltip(patchTT, "sliceEventCount", "number of events collected to fill a slice, when ConstantEventNumber method is used");
         setPropertyTooltip(patchTT, "sliceMethod", "set method for determining time slice duration for block matching");
@@ -198,7 +197,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
 //            int blockLocX = x / eventPatchDimension;
 //            int blockLocY = y / eventPatchDimension;
-
             // Build the spike trains of every block, every block is consist of 3*3 pixels.
 //            if (spikeTrains[blockLocX][blockLocY] == null) {
 //                spikeTrains[blockLocX][blockLocY] = new ArrayList();
@@ -213,7 +211,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //            if (preProcessEnable || patchCompareMethod == PatchCompareMethod.EventSqeDistance) {
 //                spikeTrains[blockLocX][blockLocY].add(new Integer[]{ts, type});
 //            }
-
             switch (patchCompareMethod) {
                 case HammingDistance:
                     maybeRotateSlices();
@@ -229,9 +226,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                            result.dy = (result.dy / sliceDurationUs) * 1000000;
 //                        }
 //                    } else {
-                        result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
-                        result.dx = (result.dx / sliceDurationUs) * 1000000; // hack, convert to pix/second
-                        result.dy = (result.dy / sliceDurationUs) * 1000000;
+                    result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
+                    result.dx = (result.dx / sliceDurationUs) * 1000000; // hack, convert to pix/second
+                    result.dy = (result.dy / sliceDurationUs) * 1000000;
 //                    }
 
                     break;
@@ -250,9 +247,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //
 //                        }
 //                    } else {
-                        result = minSad(x, y, tMinus2Sli, tMinus1Sli);
-                        result.dx = (result.dx / sliceDurationUs) * 1000000;
-                        result.dy = (result.dy / sliceDurationUs) * 1000000;
+                    result = minSad(x, y, tMinus2Sli, tMinus1Sli);
+                    result.dx = (result.dx / sliceDurationUs) * 1000000;
+                    result.dy = (result.dy / sliceDurationUs) * 1000000;
 //                    }
                     break;
                 case JaccardDistance:
@@ -269,9 +266,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                            result.dy = (result.dy / sliceDurationUs) * 1000000;
 //                        }
 //                    } else {
-                        result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
-                        result.dx = (result.dx / sliceDurationUs) * 1000000;
-                        result.dy = (result.dy / sliceDurationUs) * 1000000;
+                    result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
+                    result.dx = (result.dx / sliceDurationUs) * 1000000;
+                    result.dy = (result.dy / sliceDurationUs) * 1000000;
 //                    }
                     break;
 //                case EventSqeDistance:
@@ -389,10 +386,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    eventSeqStartTs[i][j] = 0;
 //                }
 //            }
-
         }
         motionFlowStatistics.updatePacket(countIn, countOut);
-        return isDisplayRawInput()? in : dirPacket;
+        return isDisplayRawInput() ? in : dirPacket;
     }
 
     @Override
@@ -417,15 +413,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             int dim = resultHistogram.length;
             float s = 8; // chip pixels/bin
             gl.glPushMatrix();
-            gl.glTranslatef(-dim*s, .65f * chip.getSizeY(), 0);
-            gl.glScalef(s, s, 1);
-            gl.glColor3f(0,0,1);
+            final float scale = 30 / (2 * searchDistance + 1);
+            gl.glTranslatef(-35, .65f * chip.getSizeY(), 0);
+            gl.glScalef(scale, scale, 1);
+            gl.glColor3f(0, 0, 1);
             gl.glLineWidth(2f);
             gl.glBegin(GL.GL_LINE_LOOP);
-            gl.glVertex2f(0,0);
-            gl.glVertex2f(dim,0);
-            gl.glVertex2f(dim,dim);
-            gl.glVertex2f(0,dim);
+            gl.glVertex2f(0, 0);
+            gl.glVertex2f(dim, 0);
+            gl.glVertex2f(dim, dim);
+            gl.glVertex2f(0, dim);
             gl.glEnd();
             for (int x = 0; x < dim; x++) {
                 for (int y = 0; y < dim; y++) {
@@ -472,7 +469,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        if (histogramsAL == null) {
 //            histogramsAL = new ArrayList[3];
 //        }
-
 //        if ((spikeTrains == null) & (subSizeX != 0) & (subSizeY != 0)) {
 //            spikeTrains = new ArrayList[subSizeX][subSizeY];
 //        }
@@ -488,7 +484,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 ////                }
 ////            }
 //        }
-
         tMinus2SliceIdx = 0;
         tMinus1SliceIdx = 1;
         currentSliceIdx = 2;
@@ -601,115 +596,119 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         float minSum = Integer.MAX_VALUE, sum = 0;
 
         switch (searchMethod) {
-                case FullSearch:
-                    for (int dx = -searchDistance; dx <= searchDistance; dx++) {
-                        for (int dy = -searchDistance; dy <= searchDistance; dy++) {
-                            sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
-                            if (sum <= minSum) {
-                                minSum = sum;
-                                tmpSadResult.dx = dx;
-                                tmpSadResult.dy = dy;
-                                tmpSadResult.sadValue = minSum;
-                            }
-                        }
-                    }
-                    break;
-                case DiamondSearch:
-                    /* The center of the LDSP or SDSP could change in the iteration process,
-                       so we need to use a variable to represent it.
-                       In the first interation, it's the Zero Motion Potion (ZMP).  
-                    */
-                    int xCenter = x, yCenter = y;
-                    
-                    /* x offset of center point relative to ZMP, y offset of center point to ZMP.
-                       x offset of center pointin positive number to ZMP, y offset of center point in positive number to ZMP. 
-                    */
-                    int dx, dy, xidx, yidx;  
-                    
-                    int minPointIdx = 0;      // Store the minimum point index.
-                    boolean SDSPFlg = false;  // If this flag is set true, then it means LDSP search is finished and SDSP search could start.
-                    int searchRange = 2*searchDistance + 1; // The maxium search index, for xidx and yidx.
-                    
-                    /* If one block has been already calculated, the computedFlg will be set so we don't to do 
-                       the calculation again.
-                    */
-                    boolean computedFlg[][] = new boolean[2*searchDistance + 1][2*searchDistance + 1];
-                    float sumArray[][] = new float[2*searchDistance + 1][2*searchDistance + 1];
-                    java.util.Arrays.fill(computedFlg[0], false);
-                    java.util.Arrays.fill(computedFlg[1], false);
-                    java.util.Arrays.fill(sumArray[0], Integer.MAX_VALUE);
-                    java.util.Arrays.fill(sumArray[1], Integer.MAX_VALUE);
-                    
-                    if(searchDistance == 1) { // LDSP search can only be applied for search distance >= 2.
-                        SDSPFlg = true;
-                    } 
-                    
-                    while(!SDSPFlg) {
-                        /* 1. LDSP search */
-                        for (int pointIdx = 0; pointIdx < LDSP.length; pointIdx++) {
-                                dx = LDSP[pointIdx][0] + xCenter - x;
-                                dy = LDSP[pointIdx][1] + yCenter - y;
-
-                                xidx = dx + searchDistance;
-                                yidx = dy + searchDistance;
-                                
-                                // Point to be searched is out of search area, skip it. 
-                                if( xidx >= searchRange || yidx >= searchRange || xidx < 0 || yidx < 0) {
-                                    continue;
-                                }
-                                
-                                /* We just calculate the blocks that haven't been calculated before */
-                                if(computedFlg[xidx][yidx] == false) {
-                                    sumArray[xidx][yidx] = hammingDistance(xCenter, yCenter, LDSP[pointIdx][0], LDSP[pointIdx][1], prevSlice, curSlice);
-                                    computedFlg[xidx][yidx] = true;                                 
-                                }
-
-                                if (sumArray[xidx][yidx] <= minSum) {
-                                    minSum = sumArray[xidx][yidx];    
-                                    minPointIdx = pointIdx;
-                                }                            
-                        }
-
-                        /* 2. Check the minimum value position is in the center or not. */ 
-                        xCenter = xCenter + LDSP[minPointIdx][0];
-                        yCenter = yCenter + LDSP[minPointIdx][1];                       
-                        if(minPointIdx == 4) { // It means it's in the center, so we should break the loop and go to SDSP search.
-                            SDSPFlg = true;
-                        } else {
-                            SDSPFlg = false;
-                        }                        
-                    }
-                    
-                    /* 3. SDSP Search */
-                    for (int pointIdx = 0; pointIdx < SDSP.length; pointIdx++) {
-                        dx = SDSP[pointIdx][0] + xCenter - x;
-                        dy = SDSP[pointIdx][1] + yCenter - y;
-
-                        xidx = dx + searchDistance;
-                        yidx = dy + searchDistance;    
-                        
-                        // Point to be searched is out of search area, skip it. 
-                        if( xidx >= searchRange || yidx >= searchRange || xidx < 0 || yidx < 0) {
-                            continue;
-                        }                  
-                        
-                        /* We just calculate the blocks that haven't been calculated before */
-                        if(computedFlg[xidx][yidx] == false) {
-                            sumArray[xidx][yidx] = hammingDistance(xCenter, yCenter, SDSP[pointIdx][0], SDSP[pointIdx][1], prevSlice, curSlice);
-                            computedFlg[xidx][yidx] = true;                                 
-                        } 
-
-                        if (sumArray[xidx][yidx] <= minSum) {
-                            minSum = sumArray[xidx][yidx];    
+            case FullSearch:
+                for (int dx = -searchDistance; dx <= searchDistance; dx++) {
+                    for (int dy = -searchDistance; dy <= searchDistance; dy++) {
+                        sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
+                        if (sum <= minSum) {
+                            minSum = sum;
                             tmpSadResult.dx = dx;
                             tmpSadResult.dy = dy;
-                            tmpSadResult.sadValue = minSum;    
-                        }   
+                            tmpSadResult.sadValue = minSum;
+                        }
                     }
-                    
-                    break;
-                case CrossDiamondSearch:
-                    break;                    
+                }
+                break;
+            case DiamondSearch:
+                /* The center of the LDSP or SDSP could change in the iteration process,
+                       so we need to use a variable to represent it.
+                       In the first interation, it's the Zero Motion Potion (ZMP).  
+                 */
+                int xCenter = x,
+                 yCenter = y;
+
+                /* x offset of center point relative to ZMP, y offset of center point to ZMP.
+                       x offset of center pointin positive number to ZMP, y offset of center point in positive number to ZMP. 
+                 */
+                int dx,
+                 dy,
+                 xidx,
+                 yidx;
+
+                int minPointIdx = 0;      // Store the minimum point index.
+                boolean SDSPFlg = false;  // If this flag is set true, then it means LDSP search is finished and SDSP search could start.
+                int searchRange = 2 * searchDistance + 1; // The maxium search index, for xidx and yidx.
+
+                /* If one block has been already calculated, the computedFlg will be set so we don't to do 
+                       the calculation again.
+                 */
+                boolean computedFlg[][] = new boolean[2 * searchDistance + 1][2 * searchDistance + 1];
+                float sumArray[][] = new float[2 * searchDistance + 1][2 * searchDistance + 1];
+                java.util.Arrays.fill(computedFlg[0], false);
+                java.util.Arrays.fill(computedFlg[1], false);
+                java.util.Arrays.fill(sumArray[0], Integer.MAX_VALUE);
+                java.util.Arrays.fill(sumArray[1], Integer.MAX_VALUE);
+
+                if (searchDistance == 1) { // LDSP search can only be applied for search distance >= 2.
+                    SDSPFlg = true;
+                }
+
+                while (!SDSPFlg) {
+                    /* 1. LDSP search */
+                    for (int pointIdx = 0; pointIdx < LDSP.length; pointIdx++) {
+                        dx = LDSP[pointIdx][0] + xCenter - x;
+                        dy = LDSP[pointIdx][1] + yCenter - y;
+
+                        xidx = dx + searchDistance;
+                        yidx = dy + searchDistance;
+
+                        // Point to be searched is out of search area, skip it. 
+                        if (xidx >= searchRange || yidx >= searchRange || xidx < 0 || yidx < 0) {
+                            continue;
+                        }
+
+                        /* We just calculate the blocks that haven't been calculated before */
+                        if (computedFlg[xidx][yidx] == false) {
+                            sumArray[xidx][yidx] = hammingDistance(xCenter, yCenter, LDSP[pointIdx][0], LDSP[pointIdx][1], prevSlice, curSlice);
+                            computedFlg[xidx][yidx] = true;
+                        }
+
+                        if (sumArray[xidx][yidx] <= minSum) {
+                            minSum = sumArray[xidx][yidx];
+                            minPointIdx = pointIdx;
+                        }
+                    }
+
+                    /* 2. Check the minimum value position is in the center or not. */
+                    xCenter = xCenter + LDSP[minPointIdx][0];
+                    yCenter = yCenter + LDSP[minPointIdx][1];
+                    if (minPointIdx == 4) { // It means it's in the center, so we should break the loop and go to SDSP search.
+                        SDSPFlg = true;
+                    } else {
+                        SDSPFlg = false;
+                    }
+                }
+
+                /* 3. SDSP Search */
+                for (int pointIdx = 0; pointIdx < SDSP.length; pointIdx++) {
+                    dx = SDSP[pointIdx][0] + xCenter - x;
+                    dy = SDSP[pointIdx][1] + yCenter - y;
+
+                    xidx = dx + searchDistance;
+                    yidx = dy + searchDistance;
+
+                    // Point to be searched is out of search area, skip it. 
+                    if (xidx >= searchRange || yidx >= searchRange || xidx < 0 || yidx < 0) {
+                        continue;
+                    }
+
+                    /* We just calculate the blocks that haven't been calculated before */
+                    if (computedFlg[xidx][yidx] == false) {
+                        sumArray[xidx][yidx] = hammingDistance(xCenter, yCenter, SDSP[pointIdx][0], SDSP[pointIdx][1], prevSlice, curSlice);
+                        computedFlg[xidx][yidx] = true;
+                    }
+
+                    if (sumArray[xidx][yidx] <= minSum) {
+                        minSum = sumArray[xidx][yidx];
+                        tmpSadResult.dx = dx;
+                        tmpSadResult.dy = dy;
+                        tmpSadResult.sadValue = minSum;
+                    }
+                }
+
+                break;
+            case CrossDiamondSearch:
+                break;
         }
         tmpSadResult.xidx = (int) tmpSadResult.dx + searchDistance;
         tmpSadResult.yidx = (int) tmpSadResult.dy + searchDistance; // what a hack....
@@ -895,7 +894,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        }
 //        return sadResult;
 //    }
-
 //    private double vicPurDistance(ArrayList<Integer[]> seq1, ArrayList<Integer[]> seq2) {
 //        int sum1Plus = 0, sum1Minus = 0, sum2Plus = 0, sum2Minus = 0;
 //        Iterator itr1 = seq1.iterator();
@@ -943,7 +941,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        // return Math.abs(sum1Plus - sum2Plus) + Math.abs(sum1Minus - sum2Minus);
 //        return distanceMatrix[length1][length2];
 //    }
-
     /**
      * Computes min SAD shift around point x,y using patchDimension and
      * searchDistance
@@ -1033,7 +1030,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         float dx, dy;
         float sadValue;
         int xidx, yidx; // x and y indices into 2d matrix of result. 0,0 corresponds to motion SW. dx, dy may be negative, like (-1, -1) represents SW. 
-                        // However, for histgram index, it's not possible to use negative number. That's the reason for intrducing xidx and yidx.
+        // However, for histgram index, it's not possible to use negative number. That's the reason for intrducing xidx and yidx.
 
         public SADResult(float dx, float dy, float sadValue) {
             this.dx = dx;
@@ -1072,7 +1069,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        putInt("eventPatchDimension", eventPatchDimension);
 //
 //    }
-
 //    public int getForwardEventNum() {
 //        return forwardEventNum;
 //    }
@@ -1081,7 +1077,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        this.forwardEventNum = forwardEventNum;
 //        putInt("forwardEventNum", forwardEventNum);
 //    }
-
 //    public float getCost() {
 //        return cost;
 //    }
@@ -1090,7 +1085,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        this.cost = cost;
 //        putFloat("cost", cost);
 //    }
-
 //    public int getThresholdTime() {
 //        return thresholdTime;
 //    }
@@ -1099,7 +1093,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        this.thresholdTime = thresholdTime;
 //        putInt("thresholdTime", thresholdTime);
 //    }
-
     /**
      * @return the sliceMethod
      */
@@ -1141,8 +1134,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         putString("searchMethod", searchMethod.toString());
     }
 
-    
-    
     /**
      * @return the sliceDurationUs
      */
@@ -1173,7 +1164,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         putInt("sliceEventCount", sliceEventCount);
     }
 
-
 //    public boolean isPreProcessEnable() {
 //        return preProcessEnable;
 //    }
@@ -1182,13 +1172,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        this.preProcessEnable = preProcessEnable;
 //        putBoolean("preProcessEnable", preProcessEnable);
 //    }
-
     public float getConfidenceThreshold() {
         return confidenceThreshold;
     }
 
     public void setConfidenceThreshold(float confidenceThreshold) {
-        if(confidenceThreshold<0) confidenceThreshold=0; else if(confidenceThreshold>1)confidenceThreshold=1;
+        if (confidenceThreshold < 0) {
+            confidenceThreshold = 0;
+        } else if (confidenceThreshold > 1) {
+            confidenceThreshold = 1;
+        }
         this.confidenceThreshold = confidenceThreshold;
         putFloat("confidenceThreshold", confidenceThreshold);
     }
@@ -1198,7 +1191,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     public void setValidPixOccupancy(float validPixOccupancy) {
-        if(validPixOccupancy<0) validPixOccupancy=0; else if(validPixOccupancy>1)validPixOccupancy=1;
+        if (validPixOccupancy < 0) {
+            validPixOccupancy = 0;
+        } else if (validPixOccupancy > 1) {
+            validPixOccupancy = 1;
+        }
         this.validPixOccupancy = validPixOccupancy;
         putFloat("validPixOccupancy", validPixOccupancy);
     }
@@ -1208,7 +1205,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     public void setWeightDistance(float weightDistance) {
-        if(weightDistance<0)weightDistance=0; else if(weightDistance>1)weightDistance=1;
+        if (weightDistance < 0) {
+            weightDistance = 0;
+        } else if (weightDistance > 1) {
+            weightDistance = 1;
+        }
         this.weightDistance = weightDistance;
         putFloat("weightDistance", weightDistance);
     }
@@ -1233,7 +1234,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         // additional test, normalized blaock distance must be small enough 
         // distance has max value 1
-        if (distResult.sadValue >= (1-confidenceThreshold)) { 
+        if (distResult.sadValue >= (1 - confidenceThreshold)) {
             retVal = true;
         }
 
@@ -1251,7 +1252,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param skipProcessingEventsCount the skipProcessingEventsCount to set
      */
     public void setSkipProcessingEventsCount(int skipProcessingEventsCount) {
-        int old=this.skipProcessingEventsCount;
+        int old = this.skipProcessingEventsCount;
         if (skipProcessingEventsCount < 0) {
             skipProcessingEventsCount = 0;
         }
@@ -1275,7 +1276,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
     public void setDisplayResultHistogram(boolean displayResultHistogram) {
         this.displayResultHistogram = displayResultHistogram;
-        putBoolean("displayResultHistogram",displayResultHistogram);
+        putBoolean("displayResultHistogram", displayResultHistogram);
     }
 
     /**
@@ -1290,21 +1291,27 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
     public void setAdaptiveEventSkipping(boolean adaptiveEventSkipping) {
         this.adaptiveEventSkipping = adaptiveEventSkipping;
-        putBoolean("adaptiveEventSkipping",adaptiveEventSkipping);
+        putBoolean("adaptiveEventSkipping", adaptiveEventSkipping);
     }
 
-    private int adaptiveEventSkippingUpdateIntervalPackets=10;
-    private int adaptiveEventSkippingUpdateCounter=0;
-    
+    private int adaptiveEventSkippingUpdateIntervalPackets = 10;
+    private int adaptiveEventSkippingUpdateCounter = 0;
+
     private void adaptEventSkipping() {
-        if(!adaptiveEventSkipping) return;
-        if(chip.getAeViewer()==null) return;
-        if(adaptiveEventSkippingUpdateCounter++<adaptiveEventSkippingUpdateIntervalPackets) return;
-        adaptiveEventSkippingUpdateCounter=0;
-        if(chip.getAeViewer().getFrameRater().getAverageFPS()<(int)(0.8f*chip.getAeViewer().getFrameRate())){
-            setSkipProcessingEventsCount(skipProcessingEventsCount+1);
-        }else{
-            setSkipProcessingEventsCount(skipProcessingEventsCount-1);
+        if (!adaptiveEventSkipping) {
+            return;
+        }
+        if (chip.getAeViewer() == null) {
+            return;
+        }
+        if (adaptiveEventSkippingUpdateCounter++ < adaptiveEventSkippingUpdateIntervalPackets) {
+            return;
+        }
+        adaptiveEventSkippingUpdateCounter = 0;
+        if (chip.getAeViewer().getFrameRater().getAverageFPS() < (int) (0.8f * chip.getAeViewer().getFrameRate())) {
+            setSkipProcessingEventsCount(skipProcessingEventsCount + 1);
+        } else {
+            setSkipProcessingEventsCount(skipProcessingEventsCount - 1);
         }
     }
 
