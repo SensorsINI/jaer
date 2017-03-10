@@ -163,7 +163,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     protected int outlierMotionFilteringSubsampleShift = getInt("outlierMotionFilteringSubsampleShift", 1);
     protected int outlierMotionFilteringMinSameAngleInNeighborhood = getInt("outlierMotionFilteringMinSameAngleInNeighborhood", 2);
     protected int[][] outlierMotionFilteringLastAngles = null;
-    private float motionVectorLineWidthPixels=getFloat("motionVectorLineWidthPixels",2);
+    private float motionVectorLineWidthPixels = getFloat("motionVectorLineWidthPixels", 2);
 
     // MotionField that aggregates motion
     protected MotionField motionField = new MotionField();
@@ -711,7 +711,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         // Draw individual motion vectors
         if (dirPacket != null && isDisplayVectorsEnabled()) {
             gl.glLineWidth(2f);
-            boolean timeoutEnabled=dirPacket.isTimeLimitEnabled();
+            boolean timeoutEnabled = dirPacket.isTimeLimitEnabled();
             dirPacket.setTimeLimitEnabled(false);
             for (Object o : dirPacket) {
                 MotionOrientationEventInterface ei = (MotionOrientationEventInterface) o;
@@ -1439,7 +1439,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 e.printStackTrace();
             }
             float shift = ((1 << motionFieldSubsamplingShift) * .5f);
-            final float saturationSpeedScaleInversePixels = ppsScale* 0.1f; // this length of vector in pixels makes full brightness
+            final float saturationSpeedScaleInversePixels = ppsScale * 0.1f; // this length of vector in pixels makes full brightness
             for (int ix = 0; ix < sx; ix++) {
                 float x = (ix << motionFieldSubsamplingShift) + shift;
                 for (int iy = 0; iy < sy; iy++) {
@@ -1689,7 +1689,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      * @param motionVectorLineWidthPixels the motionVectorLineWidthPixels to set
      */
     public void setMotionVectorLineWidthPixels(float motionVectorLineWidthPixels) {
+        if (motionVectorLineWidthPixels < .1f) {
+            motionVectorLineWidthPixels = .1f;
+        } else if (motionVectorLineWidthPixels > 10) {
+            motionVectorLineWidthPixels = 10;
+        }
         this.motionVectorLineWidthPixels = motionVectorLineWidthPixels;
+        putFloat("motionVectorLineWidthPixels", motionVectorLineWidthPixels);
     }
 
 }
