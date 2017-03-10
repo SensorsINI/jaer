@@ -82,8 +82,8 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	// list of the current parallel trackers
 	//Vector<TrackFocus> listOfTrackFocus;
 	// radius of the tracker zone of interest
-//	protected Double radius= (double) getFloat("radius", 40);
-	private double radius=35;
+	protected double radius= getFloat("radius", 40);
+	//private double radius=35;
 	Vector<Vector<Float>> joints = new Vector<Vector<Float>>();
 	Vector<Vector<TrackPoints>>jointsToTrack= new Vector<Vector<TrackPoints>>();
 	private String dirPath = getString("dirPath", System.getProperty("user.dir"));
@@ -125,7 +125,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 		//chi=(MultiDAVIS346BCameraChip) chip;
 		chip.addObserver(this);
 		final String size="Size";
-//		setPropertyTooltip("Size", "radius", "size (starting) in pixel");
+		setPropertyTooltip("Size", "radius", "size (starting) in pixel");
 //		frameExtractor = new ApsFrameExtractor(chip);
 		filterChain = new FilterChain(chip);
 		//plot3d.setVisible(false);
@@ -607,14 +607,14 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	public void annotate(GLAutoDrawable drawable) {
 		GL2 gl = drawable.getGL().getGL2();
 		//GL2 gl3 =drawable.getGL().getGL2();
-		float radius=(float) (this.radius*2);
+		float rad=(float) (this.radius*2);
 		float scale=5;
 		if(jointsloaded){
 			for(int i=0;i<joints.size(); i++){
 				float centerX1=joints.get(i).get(0);
 				float centerX2=joints.get(i).get(2);
-				float width=radius;
-				float height=radius;
+				float width=rad;
+				float height=rad;
 				float angle=0;
 				float centerY1=joints.get(i).get(1);
 				float centerY2=joints.get(i).get(3);
@@ -625,8 +625,8 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 		}
 		if(startclicktracking){
 			for(int h =0; h<jointsToTrack.size();h++){
-				float width=radius;
-				float height=radius;
+				float width=rad;
+				float height=rad;
 				float angle=0;
 				float[] centerX = new float[jointsToTrack.get(h).indexOf(jointsToTrack.get(h).lastElement())+1];
 				float[] centerY = new float[jointsToTrack.get(h).indexOf(jointsToTrack.get(h).lastElement())+1];
@@ -977,14 +977,14 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 		FloatMatrix X2=new FloatMatrix(4);
 
 		FloatMatrix Xfinal=new FloatMatrix(3);
-		FloatMatrix x1=new FloatMatrix(new float[] {(sx/2)-tp1.x.floatValue(),sy-tp1.y.floatValue(), 1});
+		FloatMatrix x1=new FloatMatrix(new float[] {(sx/2)-tp1.x.floatValue(),sy-tp1.y.floatValue(), (float) 3.5});
 
 		e2=new FloatMatrix(3);
 //		System.out.println("x1:");
 //		x1.print();
 
 
-		FloatMatrix x2=new FloatMatrix(new float[] {(sx/2)-tp2.x.floatValue(),sy-tp2.y.floatValue(), 1});
+		FloatMatrix x2=new FloatMatrix(new float[] {(sx/2)-tp2.x.floatValue(),sy-tp2.y.floatValue(), (float) 3.5});
 //		System.out.println("x2:");
 //		x2.print();
 
@@ -1025,6 +1025,9 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 //		Xfinal.print();
         X.print();
 
+        try {
+			triview.semaphore.acquire();
+
         if (Xfinals.size()<(i+1)){
         	int z = (i+1)-Xfinals.size();
         	for(int t=0; t<z; t++){
@@ -1040,10 +1043,18 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 			Xfinals.get(i).pop();
 			Xfinals.get(i).add(X);
 		}
+		update3Dplot(Xfinals);
 
+		triview.semaphore.release();
+
+        }
+		catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		//ptToplot=fromVectToTab(Xfinals);
 
-		update3Dplot(Xfinals);
+
         //triview.preventNewEvent();
 		//plot3d.addScatterPlot("3D reprojection", ptToplot);
 		//plot3d.repaint();
@@ -1361,7 +1372,27 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	      frame.setVisible( true );
 	   }//end of main
 
+	public final double getradius() {
+		return radius;
+	}
 
+	/**
+	 * max number of clusters
+	 *
+	 * @param radius
+	 */
+	public void setradius(final double radius) {
+		this.radius = radius;
+		putDouble("radius", radius);
+	}
+
+	public double getMinradius() {
+		return 0;
+	}
+
+	public double getMaxradius() {
+		return 50;
+	}
 
 }
 

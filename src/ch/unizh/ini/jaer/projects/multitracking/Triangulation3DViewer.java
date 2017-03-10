@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Vector;
+import java.util.concurrent.Semaphore;
 import java.util.prefs.Preferences;
 
 import javax.swing.AbstractAction;
@@ -67,6 +68,7 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 	private int xeye=0;
 	private int yeye=200;
 	private int zeye=600;
+	public Semaphore semaphore;
 	// reused imageOpenGL for OpenGL image grab
 	@Override
 	public void display( GLAutoDrawable drawable ) {
@@ -162,6 +164,9 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 
 
 		if(Xfinals.size()!=0){
+			try {
+				semaphore.acquire();
+
 			// System.out.println("annotate through display");
 			//gl.glPushMatrix();
 
@@ -169,7 +174,7 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 			for(int h=0;h<Xfinals.size(); h++){
 				if(Xfinals.get(h).size()!=0){
 					gl.glColor3f(h, h+1, h+2);
-					for(int i=0;i<Xfinals.get(h).size(); i++){
+					for(int i=0;i<(Xfinals.get(h).size()-1); i++){
 						if(Xfinals.get(h).get(i).rows==3){
 						//centerX[i]=Xfinals.get(i).get(0);
 						//System.out.println(centerX);
@@ -191,6 +196,12 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 					   }
 					}
 				}
+			}
+			semaphore.release();
+			}
+			catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 		//gl.glScalef(chip.getSizeX()/2, chip.getSizeY(), chip.getSizeX());
@@ -294,7 +305,7 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 		//getting the capabilities object of GL2 profile
 		final GLProfile profile = GLProfile.get( GLProfile.GL2 );
 		GLCapabilities capabilities = new GLCapabilities(profile);
-
+        semaphore=new Semaphore(1);
 		// The canvas
 		glcanvas = new GLCanvas( capabilities );
 		//Triangulation3DViewer triview = new Triangulation3DViewer();
