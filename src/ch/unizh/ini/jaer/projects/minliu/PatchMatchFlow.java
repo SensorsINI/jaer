@@ -75,6 +75,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private boolean adaptiveEventSkipping = getBoolean("adaptiveEventSkipping", false);
     private boolean outputSearchErrorInfo = false; // make user choose this slow down every time
     private boolean adapativeSliceDuration = getBoolean("adapativeSliceDuration", false);
+    private float adapativeSliceDurationProportionalErrorGain=1.4f; // factor by which an error signal on match distance changes slice duration
 
     // results histogram for each packet
     private int[][] resultHistogram = null;
@@ -167,6 +168,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             resultHistogram = new int[dim][dim];
         } else {
             if (adapativeSliceDuration && resultHistogramCount > 0) {
+            // measure last hist to get control signal on slice duration
                 float radiusSum = 0, countSum=0;
                 for (int x = -searchDistance ; x <= searchDistance; x++) {
                     for (int y = -searchDistance ; y <= searchDistance; y++) {
@@ -178,10 +180,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         }
                     }
                 }
-                final int dim=(2*searchDistance+1);
                 avgMatchDistance=radiusSum/(countSum);
+                // compute error signal. 
+                // If err<0 it means the average match distance is larger than 1/2 search distance, so we need to reduce slice duration
+                // If err>0, it means the avg match distance is too short, so increse time slice
+                // TODO some bug in following
+//                final float err=searchDistance/2-avgMatchDistance; 
+//                final float errSign=Math.signum(err);
+//                int durChange=(int)(-errSign*adapativeSliceDurationProportionalErrorGain*sliceDurationUs);
+//                setSliceDurationUs(sliceDurationUs+durChange);
             }
-            // measure last hist to get control signal on slice duration
             for (int[] h : resultHistogram) {
                 Arrays.fill(h, 0);
             }
@@ -1234,12 +1242,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param sliceDurationUs the sliceDurationUs to set
      */
     public void setSliceDurationUs(int sliceDurationUs) {
+        int old=this.sliceDurationUs;
+        if(sliceDurationUs<100){
+            sliceDurationUs=100;
+        }else if(sliceDurationUs>1000000){
+            sliceDurationUs=1000000; // limit it to one second
+        }
         this.sliceDurationUs = sliceDurationUs;
 
         /* If the slice duration is changed, reset FSCnt and DScorrect so we can get more accurate evaluation result */
         FSCnt = 0;
         DSCorrectCnt = 0;
         putInt("sliceDurationUs", sliceDurationUs);
+        getSupport().firePropertyChange("sliceDurationUs", old, this.sliceDurationUs);
     }
 
     /**
@@ -1431,6 +1446,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
     public void setAdapativeSliceDuration(boolean adapativeSliceDuration) {
         this.adapativeSliceDuration = adapativeSliceDuration;
+        putBoolean("adapativeSliceDuration",adapativeSliceDuration);
     }
 
 }
