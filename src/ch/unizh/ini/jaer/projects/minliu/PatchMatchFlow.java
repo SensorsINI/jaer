@@ -73,6 +73,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
     private int skipCounter = 0;
     private boolean adaptiveEventSkipping = getBoolean("adaptiveEventSkipping", false);
+    private float skipChangeFactor=1.1f;
     private boolean outputSearchErrorInfo = false; // make user choose this slow down every time
     private boolean adapativeSliceDuration = getBoolean("adapativeSliceDuration", false);
     private float adapativeSliceDurationProportionalErrorGain=1.4f; // factor by which an error signal on match distance changes slice duration
@@ -1428,10 +1429,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             return;
         }
         adaptiveEventSkippingUpdateCounter = 0;
-        if (chip.getAeViewer().getFrameRater().getAverageFPS() < (int) (0.8f * chip.getAeViewer().getFrameRate())) {
-            setSkipProcessingEventsCount(skipProcessingEventsCount + 1);
+        boolean skipMore=chip.getAeViewer().getFrameRater().getAverageFPS() < (int) (0.8f * chip.getAeViewer().getFrameRate());
+        if (skipMore) {
+            setSkipProcessingEventsCount(Math.round(skipChangeFactor*skipProcessingEventsCount + 1));
         } else {
-            setSkipProcessingEventsCount(skipProcessingEventsCount - 1);
+            setSkipProcessingEventsCount(Math.round(skipProcessingEventsCount/skipChangeFactor - 1));
         }
     }
 
