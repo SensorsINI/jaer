@@ -55,6 +55,7 @@ import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.MultiCameraApsDvsEvent;
+import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 //import net.sf.jaer.eventprocessing.tracking.EinsteinClusterTracker.Cluster;
@@ -81,8 +82,8 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	// list of the current parallel trackers
 	//Vector<TrackFocus> listOfTrackFocus;
 	// radius of the tracker zone of interest
-	//double radius=getDouble("radius", 40);
-	double radius=35;
+//	protected Double radius= (double) getFloat("radius", 40);
+	private double radius=35;
 	Vector<Vector<Float>> joints = new Vector<Vector<Float>>();
 	Vector<Vector<TrackPoints>>jointsToTrack= new Vector<Vector<TrackPoints>>();
 	private String dirPath = getString("dirPath", System.getProperty("user.dir"));
@@ -121,10 +122,10 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 
 	public trackerForJoints(AEChip chip) {
 		super(chip);
-		chi=(MultiDAVIS346BCameraChip) chip;
+		//chi=(MultiDAVIS346BCameraChip) chip;
 		chip.addObserver(this);
 		final String size="Size";
-		setPropertyTooltip("Size", "radius", "size (starting) in pixel");
+//		setPropertyTooltip("Size", "radius", "size (starting) in pixel");
 //		frameExtractor = new ApsFrameExtractor(chip);
 		filterChain = new FilterChain(chip);
 		//plot3d.setVisible(false);
@@ -336,17 +337,20 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 //				switch(camera) {
 //					case 0:
 					for(int i=0; i<this.jointsToTrack.get(0).size(); i++){
-
 						if ((e.x<(jointsToTrack.get(camera).get(i).x+radius))&&//-((h*sx)/2))
 							(e.x>(jointsToTrack.get(camera).get(i).x-radius))&&//-((h*sx)/2)
 							(e.y<(jointsToTrack.get(camera).get(i).y+radius))&&
 							(e.y>(jointsToTrack.get(camera).get(i).y-radius))){
+							//poolOfEvents.get(camera).get(i).xs.add((int) e.x);
+							//poolOfEvents.get(camera).get(i).ys.add((int) e.y);
+
+
+						if(e.polarity==Polarity.On){
 							poolOfEvents.get(camera).get(i).xs.add((int) e.x);
 							poolOfEvents.get(camera).get(i).ys.add((int) e.y);
-
 						}
 					}
-
+					}
 //					case 1:
 //						System.out.println("case1 limit:");
 //						System.out.println(sx);
@@ -402,8 +406,15 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 						//								ymedian = yFilter.filter(y, lastts);
 						//								jointsToTrack.get(i).x= (double) xmedian;
 						//								jointsToTrack.get(i).y= (double) ymedian;
+
+						double errx=jointsToTrack.get(h).get(i).x-getMean(xs);
+						double erry=jointsToTrack.get(h).get(i).y-getMean(ys);
+						double err=Math.sqrt(Math.pow(errx, 2)+Math.pow(erry, 2));
+
+						if(err<30){
 						jointsToTrack.get(h).get(i).x=(double) getMean(xs);
 						jointsToTrack.get(h).get(i).y= (double) getMean(ys);
+						}
 //						System.out.println("/////////////////");
 //						System.out.println(h);
 //						System.out.println(jointsToTrack.get(h).get(i).x);
