@@ -168,8 +168,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         } else {
             if (adapativeSliceDuration && resultHistogramCount > 0) {
                 float radiusSum = 0, countSum=0;
-                for (int x = -searchDistance + 1; x < searchDistance; x++) {
-                    for (int y = -searchDistance + 1; y < searchDistance; y++) {
+                for (int x = -searchDistance ; x <= searchDistance; x++) {
+                    for (int y = -searchDistance ; y <= searchDistance; y++) {
                         int count=resultHistogram[x+searchDistance][y+searchDistance];
                         if(count>0){
                             final float radius=(float)Math.sqrt(x*x+y*y);
