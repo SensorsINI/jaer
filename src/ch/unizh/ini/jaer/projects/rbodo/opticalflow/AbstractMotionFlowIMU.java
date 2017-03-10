@@ -660,7 +660,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         gl.glColor3f(rgb[0], rgb[1], rgb[2]);
         gl.glPushMatrix();
         gl.glLineWidth(motionVectorLineWidthPixels);
-        DrawGL.drawVector(gl, e.getX() + .5f, e.getY() + .5f, e.getVelocity().x, e.getVelocity().y, motionVectorLineWidthPixels, ppsScale);
+        // start arrow from event
+//        DrawGL.drawVector(gl, e.getX() + .5f, e.getY() + .5f, e.getVelocity().x, e.getVelocity().y, motionVectorLineWidthPixels, ppsScale);
+        // center arrow on location, rather that start from event location
+        float dx=e.getVelocity().x*ppsScale, dy=e.getVelocity().y*ppsScale;
+        float x0=e.getX()-dx/2+.5f, y0=e.getY()-dy/2+.5f;
+        DrawGL.drawVector(gl, x0, y0, dx, dy, motionVectorLineWidthPixels, 1);
         gl.glPopMatrix();
     }
 
