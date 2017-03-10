@@ -19,7 +19,10 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.glu.GLU;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.logging.Level;
+import static javafx.scene.input.KeyCode.T;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -31,6 +34,7 @@ import net.sf.jaer.eventprocessing.TimeLimiter;
 import net.sf.jaer.eventprocessing.filter.Steadicam;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
+import org.apache.commons.lang3.ArrayUtils;
 
 /**
  * Uses patch matching to measureTT local optical flow. <b>Not</b> gradient
@@ -77,7 +81,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private float skipChangeFactor=1.01f; // by what factor to change the skip count if too slow or too fast
     private boolean outputSearchErrorInfo = false; // make user choose this slow down every time
     private boolean adapativeSliceDuration = getBoolean("adapativeSliceDuration", false);
-    private float adapativeSliceDurationProportionalErrorGain=1.4f; // factor by which an error signal on match distance changes slice duration
+    private float adapativeSliceDurationProportionalErrorGain=0.4f; // factor by which an error signal on match distance changes slice duration
     private int processingTimeLimitMs=getInt("processingTimeLimitMs",1000); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
     private TimeLimiter timeLimiter=new TimeLimiter();
     
@@ -186,15 +190,42 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         }
                     }
                 }
-                avgMatchDistance=radiusSum/(countSum);
+                avgMatchDistance = radiusSum/(countSum);
+                    
+                double[] rstHist1D = new double[resultHistogram.length * resultHistogram.length];                    
+                int index = 0;
+                int rstHistMax = 0;
+                for (int[] resultHistogram1 : resultHistogram) {
+                    for (int n = 0; n < resultHistogram1.length; n++) {
+                        rstHist1D[index++] = resultHistogram1[n];
+                    }
+                }                    
+                
+                Statistics histStats = new Statistics(rstHist1D);
+                // double histMax = Collections.max(Arrays.asList(ArrayUtils.toObject(rstHist1D)));   
+                double histMax = histStats.getMax();
+                for (int m = 0; m < rstHist1D.length; m++) {
+                    rstHist1D[m] = rstHist1D[m]/histMax;
+                }
+                double histStdDev = histStats.getStdDev();
+                double histMean = histStats.getMean();
+                    
                 // compute error signal. 
                 // If err<0 it means the average match distance is larger than 1/2 search distance, so we need to reduce slice duration
                 // If err>0, it means the avg match distance is too short, so increse time slice
                 // TODO some bug in following
 //                final float err=searchDistance/2-avgMatchDistance; 
-//                final float errSign=Math.signum(err);
-//                int durChange=(int)(-errSign*adapativeSliceDurationProportionalErrorGain*sliceDurationUs);
-//                setSliceDurationUs(sliceDurationUs+durChange);
+//                final double err = histMean - 1/ (rstHist1D.length * rstHist1D.length); 
+//                float errSign = (float) Math.signum(err);
+
+//                if(histStdDev >= 0.1) {
+//                    errSign = 1;
+//                } else if(avgMatchDistance >= searchDistance/2) {
+//                    errSign = -1;
+//                }
+                
+//                 int durChange=(int)(errSign*adapativeSliceDurationProportionalErrorGain*sliceDurationUs);
+//                 setSliceDurationUs(sliceDurationUs+durChange);             
             }
             for (int[] h : resultHistogram) {
                 Arrays.fill(h, 0);
@@ -481,8 +512,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             }
             if(avgMatchDistance>0){
                 gl.glColor3f(1, 0, 0);
-              gl.glLineWidth(5f);
-              DrawGL.drawCircle(gl, searchDistance+.5f, searchDistance+.5f, avgMatchDistance, 16);
+                gl.glLineWidth(5f);
+                DrawGL.drawCircle(gl, searchDistance+.5f, searchDistance+.5f, avgMatchDistance, 16);
             }
             gl.glPopMatrix();
         }
@@ -1149,7 +1180,63 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
 
     }
+    
+    private class Statistics 
+    {
+        double[] data;
+        int size;   
 
+        public Statistics(double[] data) 
+        {
+            this.data = data;
+            size = data.length;
+        }   
+
+        double getMean()
+        {
+            double sum = 0.0;
+            for(double a : data)
+                sum += a;
+            return sum/size;
+        }
+
+        double getVariance()
+        {
+            double mean = getMean();
+            double temp = 0;
+            for(double a :data)
+                temp += (a-mean)*(a-mean);
+            return temp/size;
+        }
+
+        double getStdDev()
+        {
+            return Math.sqrt(getVariance());
+        }
+
+        public double median() {
+           Arrays.sort(data);
+
+           if (data.length % 2 == 0) 
+           {
+              return (data[(data.length / 2) - 1] + data[data.length / 2]) / 2.0;
+           } 
+           return data[data.length / 2];
+        }
+
+        public double getMin() {
+           Arrays.sort(data);
+
+           return data[0];  
+        }
+        
+        public double getMax() {
+           Arrays.sort(data);
+
+           return data[data.length - 1];  
+        }
+    }
+    
     /**
      * @return the patchDimension
      */
