@@ -5,7 +5,6 @@
  */
 package ch.unizh.ini.jaer.projects.minliu;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
@@ -18,8 +17,8 @@ import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.glu.GLU;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
-import java.awt.Color;
 import java.util.logging.Level;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -30,6 +29,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.Steadicam;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.DrawGL;
 
 /**
  * Uses patch matching to measureTT local optical flow. <b>Not</b> gradient
@@ -74,9 +74,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int skipCounter = 0;
     private boolean adaptiveEventSkipping = getBoolean("adaptiveEventSkipping", false);
     private boolean outputSearchErrorInfo = false; // make user choose this slow down every time
+    private boolean adapativeSliceDuration = getBoolean("adapativeSliceDuration", false);
 
     // results histogram for each packet
     private int[][] resultHistogram = null;
+    private int resultHistogramCount;
+    private float avgMatchDistance=0; // stores average match distance for rendering it
     private float FSCnt = 0, DSCorrectCnt = 0;
     float DSAverageNum = 0, DSAveError[] = {0, 0};           // Evaluate DS cost average number and the error.
 
@@ -143,6 +146,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "sliceMethod", "set method for determining time slice duration for block matching");
         setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
         setPropertyTooltip(patchTT, "adaptiveEventSkipping", "enables adaptive event skipping depending on free time left in AEViewer animation loop");
+        setPropertyTooltip(patchTT, "adapativeSliceDuration", "<html>enables adaptive slice duration using feedback control, <br> based on average match search distance compared with total search distance. <p>If the match is too close short, increaes duration, and if too far, decreases duration");
         setPropertyTooltip(patchTT, "outputSearchErrorInfo", "enables displaying the search method error information");
 
 //        setPropertyTooltip(eventSqeMatching, "cost", "The cost to translation one event to the other position");
@@ -162,10 +166,27 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             int dim = 2 * searchDistance + 1; // e.g. search distance 1, dim=3, 3x3 possibilties (including zero motion) 
             resultHistogram = new int[dim][dim];
         } else {
+            if (adapativeSliceDuration && resultHistogramCount > 0) {
+                float radiusSum = 0, countSum=0;
+                for (int x = -searchDistance + 1; x < searchDistance; x++) {
+                    for (int y = -searchDistance + 1; y < searchDistance; y++) {
+                        int count=resultHistogram[x+searchDistance][y+searchDistance];
+                        if(count>0){
+                            final float radius=(float)Math.sqrt(x*x+y*y);
+                            countSum+=count;
+                            radiusSum+=radius*count;
+                        }
+                    }
+                }
+                final int dim=(2*searchDistance+1);
+                avgMatchDistance=radiusSum/(countSum);
+            }
+            // measure last hist to get control signal on slice duration
             for (int[] h : resultHistogram) {
                 Arrays.fill(h, 0);
             }
         }
+        resultHistogramCount = 0;
 
         ApsDvsEventPacket in2 = (ApsDvsEventPacket) in;
         Iterator itr = in2.fullIterator();   // Wfffsfe also need IMU data, so here we use the full iterator.
@@ -372,6 +393,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
             if (resultHistogram != null) {
                 resultHistogram[result.xidx][result.yidx]++;
+                resultHistogramCount++;
             }
             processGoodEvent();
         }
@@ -416,11 +438,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 return;
             }
             final float maxRecip = 1f / max;
-            int dim = resultHistogram.length;
-            float s = 8; // chip pixels/bin
+            int dim = resultHistogram.length; // 2*searchDistance+1
             gl.glPushMatrix();
-            final float scale = 30 / (2 * searchDistance + 1);
-            gl.glTranslatef(-35, .65f * chip.getSizeY(), 0);
+            final float scale = 30 / (2 * searchDistance + 1); // size same as the color wheel
+            gl.glTranslatef(-35, .65f * chip.getSizeY(), 0);  // center above color wheel
             gl.glScalef(scale, scale, 1);
             gl.glColor3f(0, 0, 1);
             gl.glLineWidth(2f);
@@ -441,6 +462,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     gl.glVertex2f(x, y + 1);
                     gl.glEnd();
                 }
+            }
+            if(avgMatchDistance>0){
+                gl.glColor3f(1, 0, 0);
+              gl.glLineWidth(5f);
+              DrawGL.drawCircle(gl, searchDistance+.5f, searchDistance+.5f, avgMatchDistance, 16);
             }
             gl.glPopMatrix();
         }
@@ -1391,6 +1417,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         } else {
             setSkipProcessingEventsCount(skipProcessingEventsCount - 1);
         }
+    }
+
+    /**
+     * @return the adapativeSliceDuration
+     */
+    public boolean isAdapativeSliceDuration() {
+        return adapativeSliceDuration;
+    }
+
+    /**
+     * @param adapativeSliceDuration the adapativeSliceDuration to set
+     */
+    public void setAdapativeSliceDuration(boolean adapativeSliceDuration) {
+        this.adapativeSliceDuration = adapativeSliceDuration;
     }
 
 }
