@@ -62,6 +62,7 @@ final public class TimeLimiter extends Timer{
     }
     
     final public void restart(){
+        setEnabled(true);
         start(timeLimitMs);
     }
     
@@ -76,6 +77,10 @@ final public class TimeLimiter extends Timer{
         return timeLimitMs;
     }
     
+    /** sets the time limit in ms, but does not start timer
+     * 
+     * @param timeLimitMs 
+     */
     final public void setTimeLimitMs(int timeLimitMs) {
         this.timeLimitMs = timeLimitMs;
     }
@@ -84,7 +89,10 @@ final public class TimeLimiter extends Timer{
         return enabled;
     }
     
-    /** Set true to enable time timeouts, false to disable starting timer */
+    /** Set true to enable time timeouts, false to disable starting timer. If false, clears the timedOut flag.
+     * 
+     * @param enabled 
+     */
     final public void setEnabled(boolean enabled) {
         this.enabled = enabled;
         if(!enabled) timedOut=false;
