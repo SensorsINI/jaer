@@ -73,8 +73,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
     private int skipCounter = 0;
     private boolean adaptiveEventSkipping = getBoolean("adaptiveEventSkipping", false);
-    private boolean outputSearchErrorInfo = getBoolean("outputSearchErrorInfo", false);
-    
+    private boolean outputSearchErrorInfo = false; // make user choose this slow down every time
+
     // results histogram for each packet
     private int[][] resultHistogram = null;
     private float FSCnt = 0, DSCorrectCnt = 0;
@@ -572,7 +572,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private boolean accumulateEvent(EventPacket in) {
         currentSlice[x][y] += e.getPolaritySignum();
         currentSli.set((x + 1) + (y * subSizeX));  // All evnets wheather 0 or 1 will be set in the BitSet Slice.
-        if(in.isTimedOut()) return false;
+        if (in.isTimedOut()) {
+            return false;
+        }
         if (skipProcessingEventsCount == 0) {
             return true;
         }
@@ -604,17 +606,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         float FSDx = 0, FSDy = 0, DSDx = 0, DSDy = 0;  // This is for testing the DS search accuracy.       
         int searchRange = 2 * searchDistance + 1; // The maxium search index, for xidx and yidx.
-        float sumArray1[][] = new float[2*searchDistance + 1][2*searchDistance + 1];
-        for (float[] row: sumArray1)  Arrays.fill(row, Integer.MAX_VALUE);    
-        
-        if(outputSearchErrorInfo) {
-            setSearchMethod(SearchMethod.FullSearch);
-        } else {
-            setSearchMethod(getSearchMethod());
+        float sumArray1[][] = new float[2 * searchDistance + 1][2 * searchDistance + 1];
+        for (float[] row : sumArray1) {
+            Arrays.fill(row, Integer.MAX_VALUE);
         }
-        
+
+        if (outputSearchErrorInfo) {
+            searchMethod = SearchMethod.FullSearch;
+        } else {
+            searchMethod = getSearchMethod();
+        }
+
         switch (searchMethod) {
-            case FullSearch:                      
+            case FullSearch:
                 for (int dx = -searchDistance; dx <= searchDistance; dx++) {
                     for (int dy = -searchDistance; dy <= searchDistance; dy++) {
                         sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
@@ -627,10 +631,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         }
                     }
                 }
-                if(outputSearchErrorInfo) {
+                if (outputSearchErrorInfo) {
                     FSCnt += 1;
                     FSDx = tmpSadResult.dx;
-                    FSDy = tmpSadResult.dy;                    
+                    FSDy = tmpSadResult.dy;
                 } else {
                     break;
                 }
@@ -645,7 +649,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 /* x offset of center point relative to ZMP, y offset of center point to ZMP.
                        x offset of center pointin positive number to ZMP, y offset of center point in positive number to ZMP. 
                  */
-                int dx, dy, xidx, yidx;
+                int dx,
+                 dy,
+                 xidx,
+                 yidx;
 
                 int minPointIdx = 0;      // Store the minimum point index.
                 boolean SDSPFlg = false;  // If this flag is set true, then it means LDSP search is finished and SDSP search could start.
@@ -653,11 +660,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 /* If one block has been already calculated, the computedFlg will be set so we don't to do 
                        the calculation again.
                  */
-                boolean computedFlg[][] = new boolean[2*searchDistance + 1][2*searchDistance + 1];
-                for (boolean[] row: computedFlg)  Arrays.fill(row, false);   
-                float sumArray[][] = new float[2*searchDistance + 1][2*searchDistance + 1];
-                for (float[] row: sumArray)  Arrays.fill(row, Integer.MAX_VALUE);    
-                
+                boolean computedFlg[][] = new boolean[2 * searchDistance + 1][2 * searchDistance + 1];
+                for (boolean[] row : computedFlg) {
+                    Arrays.fill(row, false);
+                }
+                float sumArray[][] = new float[2 * searchDistance + 1][2 * searchDistance + 1];
+                for (float[] row : sumArray) {
+                    Arrays.fill(row, Integer.MAX_VALUE);
+                }
+
                 if (searchDistance == 1) { // LDSP search can only be applied for search distance >= 2.
                     SDSPFlg = true;
                 }
@@ -680,13 +691,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         if (computedFlg[xidx][yidx] == false) {
                             sumArray[xidx][yidx] = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
                             computedFlg[xidx][yidx] = true;
-                            if(outputSearchErrorInfo) {
-                                DSAverageNum++;                                
+                            if (outputSearchErrorInfo) {
+                                DSAverageNum++;
                             }
-                            if(outputSearchErrorInfo) {
-                                if(sumArray[xidx][yidx] != sumArray1[xidx][yidx]) {
+                            if (outputSearchErrorInfo) {
+                                if (sumArray[xidx][yidx] != sumArray1[xidx][yidx]) {
                                     log.warning("It seems that there're some bugs in the DS algorithm.");
-                                }                                
+                                }
                             }
                         }
 
@@ -723,14 +734,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     if (computedFlg[xidx][yidx] == false) {
                         sumArray[xidx][yidx] = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
                         computedFlg[xidx][yidx] = true;
-                        if(outputSearchErrorInfo) {
-                            DSAverageNum++;                                
-                        }   
-                        if(outputSearchErrorInfo) {
-                            if(sumArray[xidx][yidx] != sumArray1[xidx][yidx]) {
+                        if (outputSearchErrorInfo) {
+                            DSAverageNum++;
+                        }
+                        if (outputSearchErrorInfo) {
+                            if (sumArray[xidx][yidx] != sumArray1[xidx][yidx]) {
                                 log.warning("It seems that there're some bugs in the DS algorithm.");
-                            }                                
-                        }                        
+                            }
+                        }
                     }
 
                     if (sumArray[xidx][yidx] <= minSum) {
@@ -741,9 +752,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     }
                 }
 
-                if(outputSearchErrorInfo) {
+                if (outputSearchErrorInfo) {
                     DSDx = tmpSadResult.dx;
-                    DSDy = tmpSadResult.dy;                    
+                    DSDy = tmpSadResult.dy;
                 }
                 break;
             case CrossDiamondSearch:
@@ -752,18 +763,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         tmpSadResult.xidx = (int) tmpSadResult.dx + searchDistance;
         tmpSadResult.yidx = (int) tmpSadResult.dy + searchDistance; // what a hack....
 
-
-        if(outputSearchErrorInfo) {
-            if(DSDx == FSDx && DSDy == FSDy) {
+        if (outputSearchErrorInfo) {
+            if (DSDx == FSDx && DSDy == FSDy) {
                 DSCorrectCnt += 1;
             } else {
                 DSAveError[0] += Math.abs(DSDx - FSDx);
-                DSAveError[1] += Math.abs(DSDy - FSDy);            
-            }            
-            if(0 == FSCnt%10000) {
-                log.log(Level.INFO, "Correct Diamond Search times are {0}, Full Search times are {1}, accuracy is {2}, averageNumberPercent is {3}, averageError is ({4}, {5})", 
-                        new Object[]{DSCorrectCnt, FSCnt, DSCorrectCnt/FSCnt, DSAverageNum/(searchRange * searchRange * FSCnt), DSAveError[0]/FSCnt, DSAveError[1]/(FSCnt - DSCorrectCnt)});            
-            }            
+                DSAveError[1] += Math.abs(DSDy - FSDy);
+            }
+            if (0 == FSCnt % 10000) {
+                log.log(Level.INFO, "Correct Diamond Search times are {0}, Full Search times are {1}, accuracy is {2}, averageNumberPercent is {3}, averageError is ({4}, {5})",
+                        new Object[]{DSCorrectCnt, FSCnt, DSCorrectCnt / FSCnt, DSAverageNum / (searchRange * searchRange * FSCnt), DSAveError[0] / FSCnt, DSAveError[1] / (FSCnt - DSCorrectCnt)});
+            }
         }
 
         return tmpSadResult;
@@ -1199,7 +1209,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
     public void setSliceDurationUs(int sliceDurationUs) {
         this.sliceDurationUs = sliceDurationUs;
-        
+
         /* If the slice duration is changed, reset FSCnt and DScorrect so we can get more accurate evaluation result */
         FSCnt = 0;
         DSCorrectCnt = 0;
@@ -1355,13 +1365,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         return outputSearchErrorInfo;
     }
 
-    public void setOutputSearchErrorInfo(boolean outputSearchErrorInfo) {
+    synchronized public void setOutputSearchErrorInfo(boolean outputSearchErrorInfo) {
         this.outputSearchErrorInfo = outputSearchErrorInfo;
-        putBoolean("outputSearchErrorInfo", outputSearchErrorInfo);        
+        if (!outputSearchErrorInfo) {
+            searchMethod = SearchMethod.valueOf(getString("searchMethod", SearchMethod.FullSearch.toString()));  // make sure method is reset
+        }
     }
 
-
-    
     private int adaptiveEventSkippingUpdateIntervalPackets = 10;
     private int adaptiveEventSkippingUpdateCounter = 0;
 
