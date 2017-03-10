@@ -27,6 +27,7 @@ import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.TimeLimiter;
 import net.sf.jaer.eventprocessing.filter.Steadicam;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
@@ -73,11 +74,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
     private int skipCounter = 0;
     private boolean adaptiveEventSkipping = getBoolean("adaptiveEventSkipping", false);
-    private float skipChangeFactor=1.1f;
+    private float skipChangeFactor=1.01f; // by what factor to change the skip count if too slow or too fast
     private boolean outputSearchErrorInfo = false; // make user choose this slow down every time
     private boolean adapativeSliceDuration = getBoolean("adapativeSliceDuration", false);
     private float adapativeSliceDurationProportionalErrorGain=1.4f; // factor by which an error signal on match distance changes slice duration
-
+    private int processingTimeLimitMs=getInt("processingTimeLimitMs",1000); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
+    private TimeLimiter timeLimiter=new TimeLimiter();
+    
     // results histogram for each packet
     private int[][] resultHistogram = null;
     private int resultHistogramCount;
@@ -149,6 +152,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
         setPropertyTooltip(patchTT, "adaptiveEventSkipping", "enables adaptive event skipping depending on free time left in AEViewer animation loop");
         setPropertyTooltip(patchTT, "adapativeSliceDuration", "<html>enables adaptive slice duration using feedback control, <br> based on average match search distance compared with total search distance. <p>If the match is too close short, increaes duration, and if too far, decreases duration");
+        setPropertyTooltip(patchTT, "processingTimeLimitMs", "<html>time limit for processing packet in ms to process OF events (events still accumulate). <p>Alternative to the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events");
         setPropertyTooltip(patchTT, "outputSearchErrorInfo", "enables displaying the search method error information");
 
 //        setPropertyTooltip(eventSqeMatching, "cost", "The cost to translation one event to the other position");
@@ -197,6 +201,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             }
         }
         resultHistogramCount = 0;
+        timeLimiter.setTimeLimitMs(processingTimeLimitMs);
+        timeLimiter.restart();
 
         ApsDvsEventPacket in2 = (ApsDvsEventPacket) in;
         Iterator itr = in2.fullIterator();   // Wfffsfe also need IMU data, so here we use the full iterator.
@@ -608,7 +614,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private boolean accumulateEvent(EventPacket in) {
         currentSlice[x][y] += e.getPolaritySignum();
         currentSli.set((x + 1) + (y * subSizeX));  // All evnets wheather 0 or 1 will be set in the BitSet Slice.
-        if (in.isTimedOut()) {
+        if (timeLimiter.isTimedOut()) {
             return false;
         }
         if (skipProcessingEventsCount == 0) {
@@ -1450,6 +1456,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     public void setAdapativeSliceDuration(boolean adapativeSliceDuration) {
         this.adapativeSliceDuration = adapativeSliceDuration;
         putBoolean("adapativeSliceDuration",adapativeSliceDuration);
+    }
+
+    /**
+     * @return the processingTimeLimitMs
+     */
+    public int getProcessingTimeLimitMs() {
+        return processingTimeLimitMs;
+    }
+
+    /**
+     * @param processingTimeLimitMs the processingTimeLimitMs to set
+     */
+    public void setProcessingTimeLimitMs(int processingTimeLimitMs) {
+        this.processingTimeLimitMs = processingTimeLimitMs;
+        putInt("processingTimeLimitMs",processingTimeLimitMs);
     }
 
 }
