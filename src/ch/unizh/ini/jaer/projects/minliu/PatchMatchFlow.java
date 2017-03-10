@@ -166,6 +166,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (resultHistogram == null || resultHistogram.length != 2 * searchDistance + 1) {
             int dim = 2 * searchDistance + 1; // e.g. search distance 1, dim=3, 3x3 possibilties (including zero motion) 
             resultHistogram = new int[dim][dim];
+            resultHistogramCount=0;
         } else {
             if (adapativeSliceDuration && resultHistogramCount > 0) {
             // measure last hist to get control signal on slice duration
