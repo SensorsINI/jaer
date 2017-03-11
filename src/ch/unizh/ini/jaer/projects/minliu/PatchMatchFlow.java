@@ -76,7 +76,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
     private int skipCounter = 0;
     private boolean adaptiveEventSkipping = getBoolean("adaptiveEventSkipping", false);
-    private float skipChangeFactor = 1.01f; // by what factor to change the skip count if too slow or too fast
+    private float skipChangeFactor = 1.1f; // by what factor to change the skip count if too slow or too fast
     private boolean outputSearchErrorInfo = false; // make user choose this slow down every time
     private boolean adapativeSliceDuration = getBoolean("adapativeSliceDuration", false);
     private float adapativeSliceDurationProportionalErrorGain = 0.4f; // factor by which an error signal on match distance changes slice duration
