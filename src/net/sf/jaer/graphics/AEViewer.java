@@ -4580,7 +4580,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (evt.getPropertyName() == AEInputStream.EVENT_REWIND) {
                 log.info("rewind");
             }
+            if(evt.getPropertyName()!=AEInputStream.EVENT_POSITION){ // for efficiency, don't pass on every position change (event)
             firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // forward/refire events from AEFileInputStream to listeners on AEViewer
+            }
         } else if (evt.getSource() instanceof AEPlayer) {
             firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // forward/refire events from AEFileInputStream to listeners on AEViewer
         }
@@ -4794,11 +4796,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile), chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
 
             if (playMode == PlayMode.PLAYBACK) { // add change listener for rewind to stop logging
-                getAePlayer().getAEInputStream().getSupport().addPropertyChangeListener("rewind", new PropertyChangeListener() {
+                getAePlayer().getAEInputStream().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWIND, new PropertyChangeListener() {
 
                     @Override
                     public void propertyChange(PropertyChangeEvent evt) {
-                        if ((evt.getSource() == getAePlayer().getAEInputStream()) && evt.getPropertyName().equals("rewind")) {
+                        if ((evt.getSource() == getAePlayer().getAEInputStream()) && evt.getPropertyName().equals(AEInputStream.EVENT_REWIND)) {
                             log.info("recording reached end, stopping re-logging");
                             SwingUtilities.invokeLater(new Runnable() {
 

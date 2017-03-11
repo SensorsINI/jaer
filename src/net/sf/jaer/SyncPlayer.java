@@ -24,6 +24,7 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.util.IndexFileFilter;
@@ -250,7 +251,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                 v.setAeChipClass(chipClass);
                 v.aePlayer.stopPlayback();
                 v.aePlayer.startPlayback(e.getKey());
-                v.aePlayer.getAEInputStream().getSupport().addPropertyChangeListener("rewind", this);
+                v.aePlayer.getAEInputStream().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWIND, this);
                 getPlayingViewers().add(v);
             }
             initTime();
@@ -463,7 +464,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     /** JAERViewer gets PropertyChangeEvent from the AEPlayer in the AEViewers. This method presently only logs this event.
      */
     public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName().equals("rewind")) {
+        if (evt.getPropertyName().equals(AEInputStream.EVENT_REWIND)) {
             // comes from AEFileInputStream when file reaches end and AEViewer rewinds the file
             for (AEViewer v : outer.getViewers()) {
                 v.getChip().getRenderer().resetFrame(v.getChip().getRenderer().getGrayValue());

@@ -61,6 +61,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         markerPopupMenu.add(aePlayer.markOutAction);
         markerPopupMenu.add(aePlayer.clearMarksAction);
         playerSlider.setComponentPopupMenu(markerPopupMenu);
+//        playerSlider.setExtent(100);
         repeatPlaybackButton.setSelected(aePlayer.isRepeat());
     }
 

@@ -618,13 +618,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     resetFilter();
                     break;
                 case AEInputStream.EVENT_REWIND:
-                    log.info(evt.toString() + ": resetting filter after printing collected statistics if measurement enabled");
-                    if (measureAccuracy || measureProcessingTime) {
-                        doPrintStatistics();
-                    }
-                    resetFilter();
-                    break;
                 case AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP:
+                case AEInputStream.EVENT_REPOSITIONED:
                     log.info(evt.toString() + ": resetting filter after printing collected statistics if measurement enabled");
                     if (measureAccuracy || measureProcessingTime) {
                         doPrintStatistics();
@@ -633,9 +628,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     break;
                 case AEViewer.EVENT_FILEOPEN:
                     log.info("File Open");
-                    AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
-                    AEFileInputStream in = (player.getAEInputStream());
-                    in.getSupport().addPropertyChangeListener(this);
+//                    AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
+//                    AEFileInputStream in = (player.getAEInputStream());
+//                    in.getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWIND,this);
+//                    in.getSupport().addPropertyChangeListener(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP,this);
                     // Treat FileOpen same as a rewind
                     resetFilter();
                     break;

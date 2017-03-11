@@ -49,8 +49,7 @@ public class AEInputStream implements Closeable {
      * <ul>
      * <li>EVENT_EOF end of input file or stream
      * <li>EVENT_WRAPPED_TIME means timestamp has wrapped around 32-bit value
-     * <li>EVENT_POSITION means input stream position has changed (called on
-     * every packet) 
+     * <li>EVENT_POSITION means input stream position has changed (called just before returning each new packet) 
      * <li>EVENT_REWIND means files has just rewound to start
      * <li>EVENT_MARKSET means the mark has just been set on the stream for
      * later possible rewind 
