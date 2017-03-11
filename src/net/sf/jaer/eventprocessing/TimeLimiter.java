@@ -31,6 +31,7 @@ final public class TimeLimiter extends Timer{
     volatile public boolean timedOut=false;
     private int timeLimitMs=DEFAULT_TIME_LIMIT_MS;
     volatile private boolean enabled=false;
+    private TimerTask currentTask=null;
     
 //    /** only check System.nanoTime every checkTimeInterval calls to isTimedOut */
 //    public static final int checkTimeInterval=100;
@@ -49,11 +50,14 @@ final public class TimeLimiter extends Timer{
     private void start(int ms){
         timedOut=false;
         setTimeLimitMs(ms);
+        if(currentTask!=null){
+            currentTask.cancel();
+        }
         if(enabled){
-            schedule(new TimerTask(){
+            schedule(currentTask= new TimerTask(){
                 public void run(){
                     if(enabled) {
-//                        log.info("timeout after "+timeLimitMs+" ms");
+                        log.info("timeout after "+timeLimitMs+" ms");
                         timedOut=true;
                     }
                 }
