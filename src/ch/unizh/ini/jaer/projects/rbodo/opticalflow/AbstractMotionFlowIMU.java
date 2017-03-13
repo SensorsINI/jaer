@@ -83,7 +83,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     private boolean displayRawInput = getBoolean("displayRawInput", true);
     private boolean displayColorWheelLegend = getBoolean("displayColorWheelLegend", true);
 
-    private float ppsScale = getFloat("ppsScale", 1f);
+    private float ppsScale = getFloat("ppsScale", .1f);
 
     // A pixel can fire an event only after this period. Used for smoother flow
     // and speedup.
@@ -164,7 +164,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     // MotionField that aggregates motion
     protected MotionField motionField = new MotionField();
 
-    private static final float GLOBAL_MOTION_DRAWING_SCALE = 5;
+    protected static final float GLOBAL_MOTION_DRAWING_SCALE = 5;
 
     /**
      * Used for logging motion vector events to a text log file
