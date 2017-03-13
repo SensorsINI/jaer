@@ -15,7 +15,12 @@ import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.util.gl2.GLUT;
+import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import java.awt.Font;
+import java.awt.font.FontRenderContext;
+import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
 import java.util.logging.Level;
 import net.sf.jaer.Description;
@@ -31,6 +36,8 @@ import net.sf.jaer.eventprocessing.filter.Steadicam;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
+import net.sf.jaer.util.EngineeringFormat;
+import net.sf.jaer.util.TextRendererScale;
 
 /**
  * Uses patch matching to measureTT local optical flow. <b>Not</b> gradient
@@ -219,11 +226,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 // If err<0 it means the average match distance is larger than 1/2 search distance, so we need to reduce slice duration
                 // If err>0, it means the avg match distance is too short, so increse time slice
                 // TODO some bug in following
-                final float err = (searchDistance/2) - avgMatchDistance; 
-                final float lastErr = searchDistance/2-lastAvgMatchDistance;
+                final float err = (searchDistance / 2) - avgMatchDistance;
+                final float lastErr = searchDistance / 2 - lastAvgMatchDistance;
 //                final double err = histMean - 1/ (rstHist1D.length * rstHist1D.length); 
                 float errSign = (float) Math.signum(err);
-                
+
 //                if(Math.abs(err) > Math.abs(lastErr)) {
 //                    errSign = -errSign;
 //                }
@@ -232,8 +239,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                } else if(avgMatchDistance >= searchDistance/2) {
 //                    errSign = -1;
 //                }
-                 int durChange=(int)(errSign*adapativeSliceDurationProportionalErrorGain*sliceDurationUs);
-                 setSliceDurationUs(sliceDurationUs+durChange);             
+                int durChange = (int) (errSign * adapativeSliceDurationProportionalErrorGain * sliceDurationUs);
+                setSliceDurationUs(sliceDurationUs + durChange);
             }
             // clear histograms for each packet so that we accumulate OF distribution for this packet
             for (int[] h : resultHistogram) {
@@ -246,8 +253,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
 //        ApsDvsEventPacket in2 = (ApsDvsEventPacket) in;
 //        Iterator itr = in2.fullIterator();   // Wfffsfe also need IMU data, so here we use the full iterator.
-        for (Object o:in) { // to support pure DVS like DVS128
-            BasicEvent ein=(BasicEvent)o;
+        for (Object o : in) { // to support pure DVS like DVS128
+            BasicEvent ein = (BasicEvent) o;
             if (ein == null) {
                 log.warning("null event passed in, returning input packet");
                 return in;
@@ -478,6 +485,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         return isDisplayRawInput() ? in : dirPacket;
     }
 
+    private EngineeringFormat engFmt = new EngineeringFormat();
+    private TextRenderer textRenderer = null;
+
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
@@ -522,6 +532,22 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     gl.glEnd();
                 }
             }
+            if (textRenderer == null) {
+                textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 48));
+            }
+            // a bunch of cryptic crap to draw a string the same width as the histogram...
+            textRenderer.begin3DRendering();
+            final String s = String.format("d=%s ms", engFmt.format(1e-3f * sliceDurationUs));
+//            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getSizeX(), .1f);
+            // determine width of string in pixels and scale accordingly
+            FontRenderContext frc = textRenderer.getFontRenderContext();
+            Rectangle2D r = textRenderer.getBounds(s);
+            Rectangle2D rt = frc.getTransform().createTransformedShape(r).getBounds2D();
+            float ps = chip.getCanvas().getScale();
+            float w = (float) rt.getWidth() * ps;
+            float sc = (2 * searchDistance + 1) * ps / w;
+            textRenderer.draw3D(s, 0, (2 * searchDistance + 1), 0, sc);
+            textRenderer.end3DRendering();
             if (avgMatchDistance > 0) {
                 gl.glColor3f(1, 0, 0);
                 gl.glLineWidth(5f);
