@@ -81,14 +81,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private float skipChangeFactor = 1.1f; // by what factor to change the skip count if too slow or too fast
     private boolean outputSearchErrorInfo = false; // make user choose this slow down every time
     private boolean adapativeSliceDuration = getBoolean("adapativeSliceDuration", false);
-    private float adapativeSliceDurationProportionalErrorGain = 0.4f; // factor by which an error signal on match distance changes slice duration
+    private float adapativeSliceDurationProportionalErrorGain = 0.01f; // factor by which an error signal on match distance changes slice duration
     private int processingTimeLimitMs = getInt("processingTimeLimitMs", 1000); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
     private TimeLimiter timeLimiter = new TimeLimiter();
 
     // results histogram for each packet
     private int[][] resultHistogram = null;
     private int resultHistogramCount;
-    private float avgMatchDistance = 0; // stores average match distance for rendering it
+    private float lastAvgMatchDistance, avgMatchDistance = 0; // stores average match distance for rendering it
     private float FSCnt = 0, DSCorrectCnt = 0;
     float DSAverageNum = 0, DSAveError[] = {0, 0};           // Evaluate DS cost average number and the error.
 
@@ -195,6 +195,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         }
                     }
                 }
+                lastAvgMatchDistance = avgMatchDistance;
                 avgMatchDistance = radiusSum / (countSum);
 
                 double[] rstHist1D = new double[resultHistogram.length * resultHistogram.length];
@@ -219,17 +220,23 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 // If err<0 it means the average match distance is larger than 1/2 search distance, so we need to reduce slice duration
                 // If err>0, it means the avg match distance is too short, so increse time slice
                 // TODO some bug in following
-//                final float err=searchDistance/2-avgMatchDistance; 
+                final float err = (searchDistance/2) - avgMatchDistance; 
+                final float lastErr = searchDistance/2-lastAvgMatchDistance;
 //                final double err = histMean - 1/ (rstHist1D.length * rstHist1D.length); 
-//                float errSign = (float) Math.signum(err);
+                float errSign = (float) Math.signum(err);
+                
+//                if(Math.abs(err) > Math.abs(lastErr)) {
+//                    errSign = -errSign;
+//                }
 //                if(histStdDev >= 0.1) {
 //                    errSign = 1;
 //                } else if(avgMatchDistance >= searchDistance/2) {
 //                    errSign = -1;
 //                }
-//                 int durChange=(int)(errSign*adapativeSliceDurationProportionalErrorGain*sliceDurationUs);
-//                 setSliceDurationUs(sliceDurationUs+durChange);             
+                 int durChange=(int)(errSign*adapativeSliceDurationProportionalErrorGain*sliceDurationUs);
+                 setSliceDurationUs(sliceDurationUs+durChange);             
             }
+            // clear histograms for each packet so that we accumulate OF distribution for this packet
             for (int[] h : resultHistogram) {
                 Arrays.fill(h, 0);
             }
@@ -1405,10 +1412,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
     public void setSliceDurationUs(int sliceDurationUs) {
         int old = this.sliceDurationUs;
-        if (sliceDurationUs < 100) {
-            sliceDurationUs = 100;
-        } else if (sliceDurationUs > 1000000) {
-            sliceDurationUs = 1000000; // limit it to one second
+        if (sliceDurationUs < 4000) {
+            sliceDurationUs = 4000;
+        } else if (sliceDurationUs > 500000) {
+            sliceDurationUs = 500000; // limit it to one second
         }
         this.sliceDurationUs = sliceDurationUs;
 
