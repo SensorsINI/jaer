@@ -31,19 +31,15 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.orientation.ApsDvsMotionOrientationEvent;
 import net.sf.jaer.event.orientation.MotionOrientationEventInterface;
-import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
-import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
-import org.bytedeco.javacpp.indexer.DoubleIndexer;
-
 /**
  * Abstract base class for motion flow filters. The filters that extend this
  * class use different methods to compute the optical flow vectors and override
@@ -204,11 +200,16 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setMeasureGlobalMotion(getBoolean("measureGlobalMotion", false));
 
         FilterChain chain = new FilterChain(chip);
-        calibration = new SingleCameraCalibration(chip);
-        calibration.setRealtimePatternDetectionEnabled(false);
-        calibration.setFilterEnabled(false);
+        try{
+            calibration = new SingleCameraCalibration(chip);
+            calibration.setRealtimePatternDetectionEnabled(false);
+            calibration.setFilterEnabled(false);
+
         getSupport().addPropertyChangeListener(SingleCameraCalibration.EVENT_NEW_CALIBRATION, this);
         chain.add(calibration);
+        } catch(Exception e){            
+            log.warning("could not add calibration for DVS128");
+        }
         setEnclosedFilterChain(chain);
 
         // Labels for setPropertyTooltip.
