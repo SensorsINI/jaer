@@ -82,7 +82,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	// list of the current parallel trackers
 	//Vector<TrackFocus> listOfTrackFocus;
 	// radius of the tracker zone of interest
-	protected double radius= getFloat("radius", 40);
+	protected float radius= getFloat("radius", 40);
 	//private double radius=35;
 	Vector<Vector<Float>> joints = new Vector<Vector<Float>>();
 	Vector<Vector<TrackPoints>>jointsToTrack= new Vector<Vector<TrackPoints>>();
@@ -607,7 +607,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	public void annotate(GLAutoDrawable drawable) {
 		GL2 gl = drawable.getGL().getGL2();
 		//GL2 gl3 =drawable.getGL().getGL2();
-		float rad=(float) (this.radius*2);
+		float rad=this.radius*2;
 		float scale=5;
 		if(jointsloaded){
 			for(int i=0;i<joints.size(); i++){
@@ -1372,7 +1372,7 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	      frame.setVisible( true );
 	   }//end of main
 
-	public final double getradius() {
+	public final float getradius() {
 		return radius;
 	}
 
@@ -1381,16 +1381,16 @@ public class trackerForJoints extends EventFilter2D implements FrameAnnotater, O
 	 *
 	 * @param radius
 	 */
-	public void setradius(final double radius) {
+	public void setradius(final float radius) {
 		this.radius = radius;
 		putDouble("radius", radius);
 	}
 
-	public double getMinradius() {
+	public float getMinradius() {
 		return 0;
 	}
 
-	public double getMaxradius() {
+	public float getMaxradius() {
 		return 50;
 	}
 
