@@ -2685,10 +2685,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         private long beforeTimeNs = System.nanoTime(), lastdt, afterTimeNs;
         WarningDialogWithDontShowPreference fpsWarning;
 
-        /** Sets the desired target frames rate in frames/sec
-         * 
-         * @param fps frames/sec desired. Shows warning if rate is too high or too low, so that users do not inadvertently set a rate that may be unintended.
-         * 
+        /**
+         * Sets the desired target frames rate in frames/sec
+         *
+         * @param fps frames/sec desired. Shows warning if rate is too high or
+         * too low, so that users do not inadvertently set a rate that may be
+         * unintended.
+         *
          */
         public final void setDesiredFPS(int fps) {
             if (fps < 30 || fps > 120) {
@@ -2720,8 +2723,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return desiredFPS;
         }
 
-        /** Returns average over last N_SAMPLES frames of the frame period in ns
-         * 
+        /**
+         * Returns average over last N_SAMPLES frames of the frame period in ns
+         *
          * @return ns average period
          */
         public final float getAveragePeriodNs() {
@@ -2732,9 +2736,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return (float) sum / N_SAMPLES;
         }
 
-        /** Returns average actual frame rate over last N_SAMPLES frames
-         * 
-         * @return box-averaged frame rate in frames/sec 
+        /**
+         * Returns average actual frame rate over last N_SAMPLES frames
+         *
+         * @return box-averaged frame rate in frames/sec
          */
         public final float getAverageFPS() {
             return 1f / (getAveragePeriodNs() / 1e9f);
@@ -2779,8 +2784,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
 
-        /** call this to delayForDesiredFPS enough to make the total time including last sample period equal to desiredPeriodMs
-         * 
+        /**
+         * call this to delayForDesiredFPS enough to make the total time
+         * including last sample period equal to desiredPeriodMs
+         *
          */
         final void delayForDesiredFPS() {
             if (Thread.interrupted()) {
@@ -4577,11 +4584,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } else if (evt.getPropertyName().equals("cleared")) {
             setStatusMessage(null);
         } else if (evt.getSource() instanceof AEFileInputStream) {
-            if (evt.getPropertyName() == AEInputStream.EVENT_REWIND) {
-                log.info("rewind");
-            }
-            if(evt.getPropertyName()!=AEInputStream.EVENT_POSITION){ // for efficiency, don't pass on every position change (event)
-            firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // forward/refire events from AEFileInputStream to listeners on AEViewer
+            switch (evt.getPropertyName()) {
+                case AEInputStream.EVENT_REWIND:
+                    log.info("rewind");
+                    firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());
+                    break;
+                case AEInputStream.EVENT_POSITION:
+                    // don't pass on position on every packet since this consumes a lot of processing time in each filter
+                    break;
+                default:
+                    firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());
             }
         } else if (evt.getSource() instanceof AEPlayer) {
             firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // forward/refire events from AEFileInputStream to listeners on AEViewer
@@ -5573,6 +5585,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void setMarkOutMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setMarkOutMIActionPerformed
         synchronized (aePlayer) {
             aePlayer.setMarkOut();
+            aePlayer.rewind();
         }
     }//GEN-LAST:event_setMarkOutMIActionPerformed
 
