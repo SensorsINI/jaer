@@ -300,6 +300,8 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 		// TODO Auto-generated method stub
 		return Width;
 	}
+        
+        @SuppressWarnings("deprecation")
 	public void startNewWindows() {
 
 		//getting the capabilities object of GL2 profile
