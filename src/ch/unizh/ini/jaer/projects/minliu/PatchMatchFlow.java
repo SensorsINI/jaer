@@ -6,8 +6,6 @@
 package ch.unizh.ini.jaer.projects.minliu;
 
 import java.util.Arrays;
-import java.util.BitSet;
-import java.util.Iterator;
 import java.util.Observable;
 import java.util.Observer;
 
@@ -24,7 +22,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
-import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -68,9 +66,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //    private int eventPatchDimension = getInt("eventPatchDimension", 3);
 //    private int forwardEventNum = getInt("forwardEventNum", 10);
     private float cost = getFloat("cost", 0.001f);
-    private float confidenceThreshold = getFloat("confidenceThreshold", 0f);
+    private float confidenceThreshold = getFloat("confidenceThreshold", .3f);
     private float validPixOccupancy = getFloat("validPixOccupancy", 0.01f);  // threshold for valid pixel percent for one block
-    private float weightDistance = getFloat("weightDistance", 0.9f);        // confidence value consists of the distance and the dispersion, this value set the distance value
+    private float weightDistance = getFloat("weightDistance", 0.95f);        // confidence value consists of the distance and the dispersion, this value set the distance value
 //    private int thresholdTime = getInt("thresholdTime", 1000000);
 //    private int[][] lastFireIndex = null;  // Events are numbered in time order for every block. This variable is for storing the last event index fired on all blocks.
 //    private int[][] eventSeqStartTs = null;
@@ -100,9 +98,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     public enum SearchMethod {
         FullSearch, DiamondSearch, CrossDiamondSearch
     };
-    private SearchMethod searchMethod = SearchMethod.valueOf(getString("searchMethod", SearchMethod.FullSearch.toString()));
+    private SearchMethod searchMethod = SearchMethod.valueOf(getString("searchMethod", SearchMethod.DiamondSearch.toString()));
 
-    private int sliceDurationUs = getInt("sliceDurationUs", 100000);
+    private int sliceDurationUs = getInt("sliceDurationUs", 40000);
     private int sliceEventCount = getInt("sliceEventCount", 1000);
     private boolean rewindFlg = false; // The flag to indicate the rewind event.
     private FilterChain filterChain;
@@ -151,6 +149,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");
         setPropertyTooltip(patchTT, "searchMethod", "method to search patches");
         setPropertyTooltip(patchTT, "sliceDurationUs", "duration of bitmaps in us, also called sample interval, when ConstantDuration method is used");
+        setPropertyTooltip(patchTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
         setPropertyTooltip(patchTT, "sliceEventCount", "number of events collected to fill a slice, when ConstantEventNumber method is used");
         setPropertyTooltip(patchTT, "sliceMethod", "set method for determining time slice duration for block matching");
         setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
@@ -245,10 +244,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         timeLimiter.setTimeLimitMs(processingTimeLimitMs);
         timeLimiter.restart();
 
-        ApsDvsEventPacket in2 = (ApsDvsEventPacket) in;
-        Iterator itr = in2.fullIterator();   // Wfffsfe also need IMU data, so here we use the full iterator.
-        while (itr.hasNext()) {
-            Object ein = itr.next();
+//        ApsDvsEventPacket in2 = (ApsDvsEventPacket) in;
+//        Iterator itr = in2.fullIterator();   // Wfffsfe also need IMU data, so here we use the full iterator.
+        for (Object o:in) { // to support pure DVS like DVS128
+            BasicEvent ein=(BasicEvent)o;
             if (ein == null) {
                 log.warning("null event passed in, returning input packet");
                 return in;
@@ -257,14 +256,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             if (!extractEventInfo(ein)) {
                 continue;
             }
-            ApsDvsEvent apsDvsEvent = (ApsDvsEvent) ein;
-            if (apsDvsEvent.isImuSample()) {
-                IMUSample s = apsDvsEvent.getImuSample();
-                continue;
-            }
-            if (apsDvsEvent.isApsData()) {
-                continue;
-            }
+//            ApsDvsEvent apsDvsEvent = (ApsDvsEvent) ein;
+//            if (apsDvsEvent.isImuSample()) {
+//                IMUSample s = apsDvsEvent.getImuSample();
+//                continue;
+//            }
+//            if (apsDvsEvent.isApsData()) {
+//                continue;
+//            }
             // inItr = in.inputIterator;
             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                 imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
