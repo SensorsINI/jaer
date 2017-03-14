@@ -83,7 +83,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
     private int skipCounter = 0;
     private boolean adaptiveEventSkipping = getBoolean("adaptiveEventSkipping", false);
-    private float skipChangeFactor = 1.1f; // by what factor to change the skip count if too slow or too fast
+    private float skipChangeFactor = 1.5f; // by what factor to change the skip count if too slow or too fast
     private boolean outputSearchErrorInfo = false; // make user choose this slow down every time
     private boolean adapativeSliceDuration = getBoolean("adapativeSliceDuration", false);
     private float adapativeSliceDurationProportionalErrorGain = 0.01f; // factor by which an error signal on match distance changes slice duration
@@ -1613,7 +1613,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
     }
 
-    private int adaptiveEventSkippingUpdateIntervalPackets = 3;
+    private int adaptiveEventSkippingUpdateIntervalPackets = 10;
     private int adaptiveEventSkippingUpdateCounter = 0;
 
     private void adaptEventSkipping() {
@@ -1627,11 +1627,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             return;
         }
         adaptiveEventSkippingUpdateCounter = 0;
-        boolean skipMore = chip.getAeViewer().getFrameRater().getAverageFPS() < (int) (0.8f * chip.getAeViewer().getFrameRate());
+        final float averageFPS = chip.getAeViewer().getFrameRater().getAverageFPS();
+        final int frameRate = chip.getAeViewer().getFrameRate();
+        boolean skipMore = averageFPS < (int) (0.75f * frameRate);
+        boolean skipLess = averageFPS > (int) (0.25f * frameRate);
         if (skipMore) {
             setSkipProcessingEventsCount(Math.round(skipChangeFactor * skipProcessingEventsCount + 1));
-        } else {
-            setSkipProcessingEventsCount(Math.round(skipProcessingEventsCount / (skipChangeFactor/5) - 1));
+        } else if(skipLess) {
+            setSkipProcessingEventsCount(Math.round(skipProcessingEventsCount / (skipChangeFactor) - 1));
         }
     }
 
