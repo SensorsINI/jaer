@@ -721,6 +721,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 // the events without a real direction.
                 if (ei.isHasDirection()) {
                     drawMotionVector(gl, ei);
+                }else{
+                    gl.glPushMatrix();
+                    gl.glTranslatef(ei.getX(),ei.getY(),0);
+                    gl.glPointSize(motionVectorLineWidthPixels*2);
+                    gl.glColor3f(1,1,1);
+                    gl.glBegin(GL.GL_POINTS);
+                    gl.glVertex2i(0,0);
+                    gl.glEnd();
+                    gl.glPopMatrix();
                 }
             }
             dirPacket.setTimeLimitEnabled(timeoutEnabled);
