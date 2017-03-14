@@ -535,24 +535,30 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             if (textRenderer == null) {
                 textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 48));
             }
-            // a bunch of cryptic crap to draw a string the same width as the histogram...
-            textRenderer.begin3DRendering();
-            final String s = String.format("d=%s ms", engFmt.format(1e-3f * sliceDurationUs));
-//            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getSizeX(), .1f);
-            // determine width of string in pixels and scale accordingly
-            FontRenderContext frc = textRenderer.getFontRenderContext();
-            Rectangle2D r = textRenderer.getBounds(s);
-            Rectangle2D rt = frc.getTransform().createTransformedShape(r).getBounds2D();
-            float ps = chip.getCanvas().getScale();
-            float w = (float) rt.getWidth() * ps;
-            float sc = (2 * searchDistance + 1) * ps / w;
-            textRenderer.draw3D(s, 0, (2 * searchDistance + 1), 0, sc);
-            textRenderer.end3DRendering();
             if (avgMatchDistance > 0) {
                 gl.glColor3f(1, 0, 0);
                 gl.glLineWidth(5f);
                 DrawGL.drawCircle(gl, searchDistance + .5f, searchDistance + .5f, avgMatchDistance, 16);
             }
+            // a bunch of cryptic crap to draw a string the same width as the histogram...
+            gl.glTranslatef(-dim/2, dim/2, 0); // translate to UL corner of histogram
+            textRenderer.begin3DRendering();
+            String s = String.format("d=%s ms", engFmt.format(1e-3f * sliceDurationUs));
+//            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getSizeX(), .1f);
+            // determine width of string in pixels and scale accordingly
+            FontRenderContext frc = textRenderer.getFontRenderContext();
+            Rectangle2D r = textRenderer.getBounds(s); // bounds in java2d coordinates, downwards more positive
+            Rectangle2D rt = frc.getTransform().createTransformedShape(r).getBounds2D(); // get bounds in textrenderer coordinates
+//            float ps = chip.getCanvas().getScale();
+            float w = (float) rt.getWidth(); // width of text in textrenderer, i.e. histogram cell coordinates (1 unit = 1 histogram cell)
+            float sc=dim/w; // scale to histogram width
+            textRenderer.draw3D(s, 0, 0, 0, sc);
+            textRenderer.end3DRendering();
+            String s2 = String.format("skip %d", skipProcessingEventsCount);
+            gl.glTranslatef(0f,(float)(rt.getHeight())*sc,0);
+            textRenderer.begin3DRendering();
+            textRenderer.draw3D(s2, 0, 0, 0, sc);
+            textRenderer.end3DRendering();
             gl.glPopMatrix();
         }
     }
@@ -1625,7 +1631,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (skipMore) {
             setSkipProcessingEventsCount(Math.round(skipChangeFactor * skipProcessingEventsCount + 1));
         } else {
-            setSkipProcessingEventsCount(Math.round(skipProcessingEventsCount / skipChangeFactor - 1));
+            setSkipProcessingEventsCount(Math.round(skipProcessingEventsCount / (skipChangeFactor/5) - 1));
         }
     }
 
