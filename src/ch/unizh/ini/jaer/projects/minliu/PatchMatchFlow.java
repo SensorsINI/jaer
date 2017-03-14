@@ -18,11 +18,17 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
 import java.util.logging.Level;
+import javax.swing.BoxLayout;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -35,6 +41,7 @@ import net.sf.jaer.eventprocessing.TimeLimiter;
 import net.sf.jaer.eventprocessing.filter.Steadicam;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.TextRendererScale;
@@ -86,6 +93,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private float skipChangeFactor = 1.5f; // by what factor to change the skip count if too slow or too fast
     private boolean outputSearchErrorInfo = false; // make user choose this slow down every time
     private boolean adapativeSliceDuration = getBoolean("adapativeSliceDuration", false);
+    private boolean showSliceBitMap = getBoolean("showSliceBitMap", false); // Display the bitmaps
     private float adapativeSliceDurationProportionalErrorGain = 0.01f; // factor by which an error signal on match distance changes slice duration
     private int processingTimeLimitMs = getInt("processingTimeLimitMs", 1000); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
     private TimeLimiter timeLimiter = new TimeLimiter();
@@ -128,6 +136,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private SliceMethod sliceMethod = SliceMethod.valueOf(getString("sliceMethod", SliceMethod.ConstantDuration.toString()));
     private int eventCounter = 0;
     private int sliceLastTs = 0;
+    
+    ImageDisplay display; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+    private JFrame Frame = null;
 
     public PatchMatchFlow(AEChip chip) {
         super(chip);
@@ -139,7 +150,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         cameraMotion.setDisableTranslation(true);
         // filterChain.add(cameraMotion);
         setEnclosedFilterChain(filterChain);
-
+            
         String patchTT = "Block matching";
         String eventSqeMatching = "Event squence matching";
         String preProcess = "Denoise";
@@ -164,6 +175,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "adapativeSliceDuration", "<html>enables adaptive slice duration using feedback control, <br> based on average match search distance compared with total search distance. <p>If the match is too close short, increaes duration, and if too far, decreases duration");
         setPropertyTooltip(patchTT, "processingTimeLimitMs", "<html>time limit for processing packet in ms to process OF events (events still accumulate). <p>Alternative to the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events");
         setPropertyTooltip(patchTT, "outputSearchErrorInfo", "enables displaying the search method error information");
+        setPropertyTooltip(patchTT, "showSliceBitMap", "enables displaying the slices' bitmap");
 
 //        setPropertyTooltip(eventSqeMatching, "cost", "The cost to translation one event to the other position");
 //        setPropertyTooltip(eventSqeMatching, "thresholdTime", "The threshold value of interval time between the first event and the last event");
@@ -318,8 +330,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    } else {
 //                    result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
                     result = minHammingDistance(x, y, tm2Bitmap, tm1Bitmap);
+                    if(showSliceBitMap) {
+                        showBitmaps(x, y, (int) result.dx, (int) result.dy, tm1Bitmap, tm2Bitmap);
+                    }
                     result.dx = (result.dx / sliceDurationUs) * 1000000; // hack, convert to pix/second
-                    result.dy = (result.dy / sliceDurationUs) * 1000000;
+                    result.dy = (result.dy / sliceDurationUs) * 1000000;                  
 //                    }
 
                     break;
@@ -359,7 +374,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                        }
 //                    } else {
 //                    result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
-                    result = minJaccardDistance(x, y, tm2Bitmap, tm1Bitmap);
+                    result = minJaccardDistance(x, y, tm2Bitmap, tm1Bitmap);            
                     result.dx = (result.dx / sliceDurationUs) * 1000000;
                     result.dy = (result.dy / sliceDurationUs) * 1000000;
 //                    }
@@ -456,7 +471,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             if (isNotSufficientlyAccurate(result)) {
                 continue;
             }
-
+            
             if (resultHistogram != null) {
                 resultHistogram[result.xidx][result.yidx]++;
                 resultHistogramCount++;
@@ -560,6 +575,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             textRenderer.draw3D(s2, 0, 0, 0, sc);
             textRenderer.end3DRendering();
             gl.glPopMatrix();
+            
         }
     }
 
@@ -1606,6 +1622,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         return outputSearchErrorInfo;
     }
 
+    public boolean isShowSliceBitMap() {
+        return showSliceBitMap;
+    }
+
+    /**
+     *
+     * @param showSliceBitMpa the option of displaying bitmap
+     */
+    public void setShowSliceBitMap(boolean showSliceBitMap) {
+        boolean old = this.showSliceBitMap;
+        this.showSliceBitMap = showSliceBitMap;
+        getSupport().firePropertyChange("showSliceBitMap", old, this.showSliceBitMap);
+        putBoolean("showSliceBitMap", showSliceBitMap);        
+    }
+
     synchronized public void setOutputSearchErrorInfo(boolean outputSearchErrorInfo) {
         this.outputSearchErrorInfo = outputSearchErrorInfo;
         if (!outputSearchErrorInfo) {
@@ -1677,5 +1708,63 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         for (boolean[] b : bitmap) {
             Arrays.fill(b, false);
         }
+    }
+    
+    private void showBitmaps(int x, int y, int dx, int dy, boolean[][] tm1Bitmap, boolean[][] tm2Bitmap) {        
+        if (Frame == null) {
+            String windowName = "Slice bitmaps";
+            Frame = new JFrame(windowName);
+            Frame.setLayout(new BoxLayout(Frame.getContentPane(), BoxLayout.Y_AXIS));
+            Frame.setPreferredSize(new Dimension(600, 600));
+            JPanel panel = new JPanel();
+            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+            display = ImageDisplay.createOpenGLCanvas();
+            display.setBorderSpacePixels(10);
+            display.setImageSize(subSizeX, subSizeY);
+            display.setSize(200, 200);
+            panel.add(display);
+
+            Frame.getContentPane().add(panel);
+            Frame.pack();
+            Frame.addWindowListener(new WindowAdapter() {
+                public void windowClosing(WindowEvent e) {
+                    setShowSliceBitMap(false);
+                }
+            });
+        }
+        if (!Frame.isVisible()) {
+            Frame.setVisible(true);
+        }        
+        display.setImageSize(subSizeX, subSizeY);        
+//        GL2 gl = display.getGL().getGL2();
+//        gl.glPushMatrix();
+
+        if ((x >= patchDimension/2 + searchDistance) && (x + patchDimension/2 + searchDistance < subSizeX) 
+                        && (y >= patchDimension/2 + searchDistance) && (y + patchDimension/2 + searchDistance < subSizeY)) {   
+            /* Rendering the reference patch in t-d slice, it's on the bottom-left corner */
+            for (int i = 0; i < patchDimension; i++) {
+                for (int j = 0; j < patchDimension; j++) {
+                    display.setPixmapGray(i, j, tm1Bitmap[x - patchDimension/2 + i][y - patchDimension/2 + j] ? 1 : 0);                                        
+                 }
+            }
+            
+            /* Rendering the area within search distance in t-2d slice, it's on the middle */            
+            for (int i = 50; i < patchDimension + 2 * searchDistance + 50; i++) {
+                for (int j = 50; j < patchDimension + 2 * searchDistance + 50; j++) {   
+                    display.setPixmapGray(i, j, tm2Bitmap[x - patchDimension/2 - searchDistance + i - 50][y - patchDimension/2 - searchDistance + j - 50] ? 1 : 0);                                         
+                }   
+            }            
+            
+            /* Rendering the best matching patch in t-d slice, it's on the up-right corner */            
+            for (int i = 100; i < patchDimension + 100; i++) {
+                for (int j = 100; j < patchDimension + 100; j++) {
+                    display.setPixmapGray(i, j, tm2Bitmap[x - patchDimension/2 + dx + i - 100][y - patchDimension/2 + dy + j - 100] ? 1 : 0);                                       
+                }
+            }
+        }
+        
+//        gl.glPopMatrix();
+            
+        display.repaint();
     }
 }
