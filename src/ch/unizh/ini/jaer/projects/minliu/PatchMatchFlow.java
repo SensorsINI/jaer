@@ -1758,32 +1758,41 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             dim = dimNew;
             display.setImageSize(dimNew, dimNew);
         }
-        final int dim2 = patchDimension / 2 + searchDistance;
+        final int radiaus = patchDimension / 2 + searchDistance;
 
-//        GL2 gl = display.getGL().getGL2();
-//        gl.glPushMatrix();
-        if ((x >= dim2) && (x + dim2 < subSizeX)
-                && (y >= dim2) && (y + dim2 < subSizeY)) {
-            /* Rendering the reference patch in t-d slice, it's on the bottom-left corner */
-            for (int i = 0; i < patchDimension; i++) {
-                for (int j = 0; j < patchDimension; j++) {
+        /* Reset the image first */
+        for (int i = 0; i < 2 * radiaus + 1; i++) {
+            for (int j = 0; j < 2 * radiaus + 1; j++) {
+                display.setPixmapRGB(i, j, 0, 0, 0);
+            }
+        }
+        
+        if ((x >= radiaus) && (x + radiaus < subSizeX)
+                && (y >= radiaus) && (y + radiaus < subSizeY)) {
+            /* Rendering the reference patch in t-d slice, it's on the center with color red */
+            for (int i = searchDistance; i < patchDimension + searchDistance; i++) {
+                for (int j = searchDistance; j < patchDimension + searchDistance; j++) {
                     float[] f = display.getPixmapRGB(i, j);
-                    f[0] = tm1Bitmap[x - patchDimension / 2 + i][y - patchDimension / 2 + j] ? 1 : 0;
+                    f[0] = tm1Bitmap[x - patchDimension / 2 + i - searchDistance][y - patchDimension / 2 + j - searchDistance] ? 1 : 0;
                     display.setPixmapRGB(i, j, f);
                 }
             }
 
-            /* Rendering the area within search distance in t-2d slice, it's on the middle */
-            for (int i = 0; i < dim2; i++) {
-                for (int j = 0; j < dim2; j++) {
-                    display.setPixmapRGB(i, j, 0, tm2Bitmap[x - dim2 + i][y - dim2 + j] ? 1 : 0, 0);
+            /* Rendering the area within search distance in t-2d slice, it's full of the whole image with color green */
+            for (int i = 0; i < 2 * radiaus + 1; i++) {
+                for (int j = 0; j < 2 * radiaus + 1; j++) {
+                    float[] f = display.getPixmapRGB(i, j);
+                    f[1] = tm2Bitmap[x - radiaus + i ][y - radiaus + j] ? 1 : 0;                    
+                    display.setPixmapRGB(i, j, f);
                 }
             }
 
-            /* Rendering the best matching patch in t-d slice, it's on the up-right corner */
-            for (int i = 0; i < patchDimension; i++) {
-                for (int j = 0; j < patchDimension; j++) {
-                    display.setPixmapRGB(i, j, 0, 0, tm2Bitmap[x - patchDimension / 2 + dx + i][y - patchDimension / 2 + dy + j] ? 1 : 0);
+            /* Rendering the best matching patch in t-2d slice, it's on the shifted position related to the center location with color blue */
+            for (int i = searchDistance + dx; i < patchDimension + searchDistance + dx ; i++) {
+                for (int j = searchDistance + dy; j < patchDimension + searchDistance + dy; j++) {
+                    float[] f = display.getPixmapRGB(i, j);
+                    f[2] = tm2Bitmap[x - patchDimension / 2 + i - searchDistance][y - patchDimension / 2 + j - searchDistance] ? 1 : 0;                    
+                    display.setPixmapRGB(i, j, f);
                 }
             }
         }
