@@ -781,11 +781,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
                         sumArray1[dx + searchDistance][dy + searchDistance] = sum;
                         if (sum <= minSum1) {
-                            if (sum == minSum1 && minSum1 != Integer.MAX_VALUE) {
-                                tmpSadResult.minSearchedFlg = true;
-                            } else {
-                                tmpSadResult.minSearchedFlg = false;
-                            }
+//                            if (sum == minSum1 && minSum1 != Integer.MAX_VALUE) {
+//                                tmpSadResult.minSearchedFlg = true;
+//                            } else {
+//                                tmpSadResult.minSearchedFlg = false;
+//                            }
                             minSum1 = sum;
                             tmpSadResult.dx = dx;
                             tmpSadResult.dy = dy;
@@ -793,9 +793,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         }
                     }
                 }
-                if (tmpSadResult.minSearchedFlg) {
-                    tmpSadResult.sadValue = Integer.MAX_VALUE;     // This minimum is not a unique minimum, we should reject this event.
-                }
+//                if (tmpSadResult.minSearchedFlg) {
+//                    tmpSadResult.sadValue = Integer.MAX_VALUE;     // This minimum is not a unique minimum, we should reject this event.
+//                }
                 if (outputSearchErrorInfo) {
                     FSCnt += 1;
                     FSDx = tmpSadResult.dx;
@@ -991,10 +991,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             }
         }
 
+        int blockArea = ((2 * blockRadius) + 1) * ((2 * blockRadius) + 1);
         // TODD: NEXT WORK IS TO DO THE RESEARCH ON WEIGHTED HAMMING DISTANCE
         // Calculate the metric confidence value
-        float validPixNum = this.validPixOccupancy * (((2 * blockRadius) + 1) * ((2 * blockRadius) + 1));
-        if ((validPixNumCurrSli <= validPixNum) || (validPixNumPrevSli <= validPixNum)) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
+        float validPixNum = this.validPixOccupancy * blockArea;
+        if ((validPixNumCurrSli <= validPixNum) || (validPixNumPrevSli <= validPixNum) 
+                || (validPixNumCurrSli == blockArea) || (validPixNumPrevSli == blockArea)) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
             return 1;
         } else {
             /*
@@ -1002,7 +1004,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             Here we use the difference between validPixNumCurrSli and validPixNumPrevSli to calculate the dispersion.
             Inspired by paper "Measuring the spatial dispersion of evolutionist search process: application to Walksat" by Alain Sidaner.
              */
-            return ((hd * weightDistance) + (Math.abs(validPixNumCurrSli - validPixNumPrevSli) * (1 - weightDistance))) / (((2 * blockRadius) + 1) * ((2 * blockRadius) + 1));
+            return ((hd * weightDistance) + (Math.abs(validPixNumCurrSli - validPixNumPrevSli) * (1 - weightDistance))) / blockArea;
         }
     }
 
@@ -1275,7 +1277,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         float sadValue;
         int xidx, yidx; // x and y indices into 2d matrix of result. 0,0 corresponds to motion SW. dx, dy may be negative, like (-1, -1) represents SW. 
         // However, for histgram index, it's not possible to use negative number. That's the reason for intrducing xidx and yidx.
-        boolean minSearchedFlg = false;  // The flag indicates that this minimum have been already searched before. 
+//        boolean minSearchedFlg = false;  // The flag indicates that this minimum have been already searched before. 
 
         public SADResult(float dx, float dy, float sadValue) {
             this.dx = dx;
