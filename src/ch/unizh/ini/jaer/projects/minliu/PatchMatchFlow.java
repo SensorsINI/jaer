@@ -173,7 +173,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
         setPropertyTooltip(patchTT, "adaptiveEventSkipping", "enables adaptive event skipping depending on free time left in AEViewer animation loop");
         setPropertyTooltip(patchTT, "adapativeSliceDuration", "<html>enables adaptive slice duration using feedback control, <br> based on average match search distance compared with total search distance. <p>If the match is too close short, increaes duration, and if too far, decreases duration");
-        setPropertyTooltip(patchTT, "processingTimeLimitMs", "<html>time limit for processing packet in ms to process OF events (events still accumulate). <p>Alternative to the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events");
+        setPropertyTooltip(patchTT, "processingTimeLimitMs", "<html>time limit for processing packet in ms to process OF events (events still accumulate). <br> Set to 0 to disable. <p>Alternative to the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events");
         setPropertyTooltip(patchTT, "outputSearchErrorInfo", "enables displaying the search method error information");
         setPropertyTooltip(patchTT, "showSliceBitMap", "enables displaying the slices' bitmap");
 
@@ -260,8 +260,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             }
         }
         resultHistogramCount = 0;
-        timeLimiter.setTimeLimitMs(processingTimeLimitMs);
-        timeLimiter.restart();
+        if (processingTimeLimitMs > 0) {
+            timeLimiter.setTimeLimitMs(processingTimeLimitMs);
+            timeLimiter.restart();
+        } else {
+            timeLimiter.setEnabled(false);
+        }
 
 //        ApsDvsEventPacket in2 = (ApsDvsEventPacket) in;
 //        Iterator itr = in2.fullIterator();   // Wfffsfe also need IMU data, so here we use the full iterator.
