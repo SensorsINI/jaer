@@ -779,6 +779,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         if (sum <= minSum1) {
                             if(sum == minSum1 && minSum1 != Integer.MAX_VALUE) {
                                 tmpSadResult.minSearchedFlg = true;
+                            } else {
+                                tmpSadResult.minSearchedFlg = false;                                
                             }
                             minSum1 = sum;
                             tmpSadResult.dx = dx;
