@@ -777,12 +777,18 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
                         sumArray1[dx + searchDistance][dy + searchDistance] = sum;
                         if (sum <= minSum1) {
+                            if(sum == minSum1 && minSum1 != Integer.MAX_VALUE) {
+                                tmpSadResult.minSearchedFlg = true;
+                            }
                             minSum1 = sum;
                             tmpSadResult.dx = dx;
                             tmpSadResult.dy = dy;
                             tmpSadResult.sadValue = minSum1;
                         }
                     }
+                }
+                if(tmpSadResult.minSearchedFlg) {
+                    tmpSadResult.sadValue = Integer.MAX_VALUE;     // This minimum is not a unique minimum, we should reject this event.
                 }
                 if (outputSearchErrorInfo) {
                     FSCnt += 1;
@@ -1260,7 +1266,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         float sadValue;
         int xidx, yidx; // x and y indices into 2d matrix of result. 0,0 corresponds to motion SW. dx, dy may be negative, like (-1, -1) represents SW. 
         // However, for histgram index, it's not possible to use negative number. That's the reason for intrducing xidx and yidx.
-
+        boolean minSearchedFlg = false;  // The flag indicates that this minimum have been already searched before. 
         public SADResult(float dx, float dy, float sadValue) {
             this.dx = dx;
             this.dy = dy;
