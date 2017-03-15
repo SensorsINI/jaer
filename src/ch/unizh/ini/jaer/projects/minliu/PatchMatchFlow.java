@@ -777,10 +777,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
                         sumArray1[dx + searchDistance][dy + searchDistance] = sum;
                         if (sum <= minSum1) {
-                            if(sum == minSum1 && minSum1 != Integer.MAX_VALUE) {
+                            if (sum == minSum1 && minSum1 != Integer.MAX_VALUE) {
                                 tmpSadResult.minSearchedFlg = true;
                             } else {
-                                tmpSadResult.minSearchedFlg = false;                                
+                                tmpSadResult.minSearchedFlg = false;
                             }
                             minSum1 = sum;
                             tmpSadResult.dx = dx;
@@ -789,7 +789,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         }
                     }
                 }
-                if(tmpSadResult.minSearchedFlg) {
+                if (tmpSadResult.minSearchedFlg) {
                     tmpSadResult.sadValue = Integer.MAX_VALUE;     // This minimum is not a unique minimum, we should reject this event.
                 }
                 if (outputSearchErrorInfo) {
@@ -937,6 +937,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             }
         }
 
+//        if (tmpSadResult.xidx == searchRange-1 && tmpSadResult.yidx == searchRange-1) {
+//            tmpSadResult.sadValue = 1; // reject results to top right that are likely result of ambiguous search
+//        }
         return tmpSadResult;
     }
 
@@ -1269,6 +1272,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         int xidx, yidx; // x and y indices into 2d matrix of result. 0,0 corresponds to motion SW. dx, dy may be negative, like (-1, -1) represents SW. 
         // However, for histgram index, it's not possible to use negative number. That's the reason for intrducing xidx and yidx.
         boolean minSearchedFlg = false;  // The flag indicates that this minimum have been already searched before. 
+
         public SADResult(float dx, float dy, float sadValue) {
             this.dx = dx;
             this.dy = dy;
@@ -1759,23 +1763,23 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             /* Rendering the reference patch in t-d slice, it's on the bottom-left corner */
             for (int i = 0; i < patchDimension; i++) {
                 for (int j = 0; j < patchDimension; j++) {
-                    float[] f=display.getPixmapRGB(i, j);
-                    f[0]=tm1Bitmap[x - patchDimension / 2 + i][y - patchDimension / 2 + j] ? 1 : 0;
-                    display.setPixmapRGB(i, j,f);
+                    float[] f = display.getPixmapRGB(i, j);
+                    f[0] = tm1Bitmap[x - patchDimension / 2 + i][y - patchDimension / 2 + j] ? 1 : 0;
+                    display.setPixmapRGB(i, j, f);
                 }
             }
 
             /* Rendering the area within search distance in t-2d slice, it's on the middle */
             for (int i = 0; i < dim2; i++) {
-                for (int j = 0; j < dim2 ; j++) {
-                    display.setPixmapRGB(i, j, 0,tm2Bitmap[x - dim2 + i ][y -dim2 + j] ? 1 : 0,0);
+                for (int j = 0; j < dim2; j++) {
+                    display.setPixmapRGB(i, j, 0, tm2Bitmap[x - dim2 + i][y - dim2 + j] ? 1 : 0, 0);
                 }
             }
 
             /* Rendering the best matching patch in t-d slice, it's on the up-right corner */
-            for (int i = 0; i < patchDimension ; i++) {
-                for (int j = 0; j < patchDimension ; j++) {
-                    display.setPixmapRGB(i, j, 0,0,tm2Bitmap[x - patchDimension / 2 + dx + i][y - patchDimension / 2 + dy + j] ? 1 : 0);
+            for (int i = 0; i < patchDimension; i++) {
+                for (int j = 0; j < patchDimension; j++) {
+                    display.setPixmapRGB(i, j, 0, 0, tm2Bitmap[x - patchDimension / 2 + dx + i][y - patchDimension / 2 + dy + j] ? 1 : 0);
                 }
             }
         }
