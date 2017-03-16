@@ -479,7 +479,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 			chipControl.add(new SPIConfigBit("VresetBn", "If VresetBn_S = 1, all local latched AER KillBits in the neuron are cleared, that is neurons can send AER spikes", CypressFX3.FPGA_CHIPBIAS,
 				(short) 157, false, this));
 			chipControl.add(new SPIConfigInt("KillSignalDuration", "In 100MHz clock cycles", CypressFX3.FPGA_CHIPBIAS,
-				(short) 164, 10, 200, this));
+				(short) 164, 11, 2000, this));
 			chipControl.add(new SPIConfigInt("KillChannel", "Select the channel to kill neurons in", CypressFX3.FPGA_CHIPBIAS,
 				(short) 160, 8, 0, this));
 			chipControl.add(new SPIConfigBit("KillNeurons02", "Toggle this bit to kill neurons 0, 2 of the channel selected above", CypressFX3.FPGA_CHIPBIAS,
