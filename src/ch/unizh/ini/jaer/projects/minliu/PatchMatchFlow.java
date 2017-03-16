@@ -15,9 +15,6 @@ import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.util.gl2.GLUT;
-import eu.seebetter.ini.chips.davis.DavisBaseCamera;
-import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.WindowAdapter;
@@ -25,7 +22,13 @@ import java.awt.event.WindowEvent;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.Format;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -36,6 +39,7 @@ import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.TimeLimiter;
 import net.sf.jaer.eventprocessing.filter.Steadicam;
@@ -44,7 +48,6 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.EngineeringFormat;
-import net.sf.jaer.util.TextRendererScale;
 
 /**
  * Uses patch matching to measureTT local optical flow. <b>Not</b> gradient
@@ -101,9 +104,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     // results histogram for each packet
     private int[][] resultHistogram = null;
     private int resultHistogramCount;
-    private float lastAvgMatchDistance, avgMatchDistance = 0; // stores average match distance for rendering it
+    private float avgMatchDistance = 0; // stores average match distance for rendering it
+    private float histStdDev = 0, lastHistStdDev = 0;
     private float FSCnt = 0, DSCorrectCnt = 0;
     float DSAverageNum = 0, DSAveError[] = {0, 0};           // Evaluate DS cost average number and the error.
+    private float lastErrSign = Math.signum(1);
+    private final String outputFilename;
 
     public enum PatchCompareMethod {
         JaccardDistance, HammingDistance/*, SAD, EventSqeDistance*/
@@ -141,8 +147,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private JFrame Frame = null;
 
     public PatchMatchFlow(AEChip chip) {
-        super(chip);
-
+        super(chip);      
+        
         filterChain = new FilterChain(chip);
         cameraMotion = new Steadicam(chip);
         cameraMotion.setFilterEnabled(true);
@@ -150,7 +156,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         cameraMotion.setDisableTranslation(true);
         // filterChain.add(cameraMotion);
         setEnclosedFilterChain(filterChain);
-
+        
+        // Save the result to the file
+        Format formatter = new SimpleDateFormat("YYYY-MM-dd_hh-mm-ss");
+        // Instantiate a Date object
+        Date date = new Date();
+         
+        outputFilename = "PMF_HistStdDev" + formatter.format(date) + ".txt";
+        
         String patchTT = "Block matching";
         String eventSqeMatching = "Event squence matching";
         String preProcess = "Denoise";
@@ -201,6 +214,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             resultHistogramCount = 0;
         } else {
             if (adapativeSliceDuration && resultHistogramCount > 0) {
+//            if (resultHistogramCount > 0) {
+
                 // measure last hist to get control signal on slice duration
                 float radiusSum = 0, countSum = 0;
                 for (int x = -searchDistance; x <= searchDistance; x++) {
@@ -213,7 +228,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         }
                     }
                 }
-                lastAvgMatchDistance = avgMatchDistance;
                 avgMatchDistance = radiusSum / (countSum);
 
                 double[] rstHist1D = new double[resultHistogram.length * resultHistogram.length];
@@ -231,28 +245,47 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 for (int m = 0; m < rstHist1D.length; m++) {
                     rstHist1D[m] = rstHist1D[m] / histMax;
                 }
-                double histStdDev = histStats.getStdDev();
-                double histMean = histStats.getMean();
+                lastHistStdDev = histStdDev;
+                
+                histStdDev = (float) histStats.getStdDev();
+                try (FileWriter outFile = new FileWriter(outputFilename,true)) {
+                            outFile.write(String.format(in.getFirstEvent().getTimestamp() + " " + histStdDev + "\r\n"));
+                            outFile.close();
+                        } catch (IOException ex) {
+                            Logger.getLogger(PatchMatchFlow.class.getName()).log(Level.SEVERE, null, ex);
+                        } catch (Exception e) {
+                            log.warning("Caught " + e + ". See following stack trace.");
+                            e.printStackTrace();
+                        }
+                float histMean = (float) histStats.getMean();
 
                 // compute error signal. 
                 // If err<0 it means the average match distance is larger than 1/2 search distance, so we need to reduce slice duration
                 // If err>0, it means the avg match distance is too short, so increse time slice
                 // TODO some bug in following
                 final float err = (searchDistance / 2) - avgMatchDistance;
-                final float lastErr = searchDistance / 2 - lastAvgMatchDistance;
+                final float lastErr = searchDistance / 2 - lastHistStdDev;
 //                final double err = histMean - 1/ (rstHist1D.length * rstHist1D.length); 
                 float errSign = (float) Math.signum(err);
 
 //                if(Math.abs(err) > Math.abs(lastErr)) {
 //                    errSign = -errSign;
 //                }
-//                if(histStdDev >= 0.1) {
-//                    errSign = 1;
-//                } else if(avgMatchDistance >= searchDistance/2) {
-//                    errSign = -1;
-//                }
+                if(histStdDev >= 0.13) {
+//                    if(lastHistStdDev > histStdDev) {
+//                        errSign = -lastErrSign;
+//                    } else {
+//                        errSign = lastErrSign;
+//                    }
+                    errSign = 1;
+                } else {
+                    errSign = (float) Math.signum(err);                    
+                }
+                
+                lastErrSign = errSign;
+
                 int durChange = (int) (errSign * adapativeSliceDurationProportionalErrorGain * sliceDurationUs);
-                setSliceDurationUs(sliceDurationUs + durChange);
+                // setSliceDurationUs(sliceDurationUs + durChange);
             }
             // clear histograms for each packet so that we accumulate OF distribution for this packet
             for (int[] h : resultHistogram) {
