@@ -651,7 +651,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         float angle01 = (float) (Math.atan2(e.getVelocity().y, e.getVelocity().x) / (2 * Math.PI) + 0.5);
         // atan2 returns -pi to +pi, so dividing by 2*pi gives -.5 to +.5. Adding .5 gives range 0 to 1.
 //                    angle01=.5f; // debug
-        int rgbValue = Color.HSBtoRGB(angle01, 1, 1);
+        int rgbValue = Color.HSBtoRGB(angle01, 1, e.getSpeed()*ppsScale/20);
         Color color = new Color(rgbValue);
         float[] rgb = color.getRGBComponents(null);
         gl.glColor3f(rgb[0], rgb[1], rgb[2]);
