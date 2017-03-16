@@ -271,21 +271,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                if(Math.abs(err) > Math.abs(lastErr)) {
 //                    errSign = -errSign;
 //                }
-                if(histStdDev >= 0.13) {
+//                if(histStdDev >= 0.13) {
 //                    if(lastHistStdDev > histStdDev) {
 //                        errSign = -lastErrSign;
 //                    } else {
 //                        errSign = lastErrSign;
 //                    }
-                    errSign = 1;
-                } else {
-                    errSign = (float) Math.signum(err);                    
-                }
+//                    errSign = 1;
+//                } else {
+//                    errSign = (float) Math.signum(err);                    
+//                }
                 
                 lastErrSign = errSign;
 
                 int durChange = (int) (errSign * adapativeSliceDurationProportionalErrorGain * sliceDurationUs);
-                // setSliceDurationUs(sliceDurationUs + durChange);
+                setSliceDurationUs(sliceDurationUs + durChange);
             }
             // clear histograms for each packet so that we accumulate OF distribution for this packet
             for (int[] h : resultHistogram) {
