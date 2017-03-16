@@ -157,11 +157,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         // filterChain.add(cameraMotion);
         setEnclosedFilterChain(filterChain);
         
+        setSliceDurationUs(40000);   // 40ms is good for the start of the slice duration adatative since 4ms is too fast and 500ms is too slow.
         // Save the result to the file
         Format formatter = new SimpleDateFormat("YYYY-MM-dd_hh-mm-ss");
         // Instantiate a Date object
         Date date = new Date();
          
+        // Log file for the OF distribution's statistics
         outputFilename = "PMF_HistStdDev" + formatter.format(date) + ".txt";
         
         String patchTT = "Block matching";
@@ -248,15 +250,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 lastHistStdDev = histStdDev;
                 
                 histStdDev = (float) histStats.getStdDev();
-                try (FileWriter outFile = new FileWriter(outputFilename,true)) {
-                            outFile.write(String.format(in.getFirstEvent().getTimestamp() + " " + histStdDev + "\r\n"));
-                            outFile.close();
-                        } catch (IOException ex) {
-                            Logger.getLogger(PatchMatchFlow.class.getName()).log(Level.SEVERE, null, ex);
-                        } catch (Exception e) {
-                            log.warning("Caught " + e + ". See following stack trace.");
-                            e.printStackTrace();
-                        }
+//                try (FileWriter outFile = new FileWriter(outputFilename,true)) {
+//                            outFile.write(String.format(in.getFirstEvent().getTimestamp() + " " + histStdDev + "\r\n"));
+//                            outFile.close();
+//                } catch (IOException ex) {
+//                    Logger.getLogger(PatchMatchFlow.class.getName()).log(Level.SEVERE, null, ex);
+//                } catch (Exception e) {
+//                    log.warning("Caught " + e + ". See following stack trace.");
+//                    e.printStackTrace();
+//                }
                 float histMean = (float) histStats.getMean();
 
                 // compute error signal. 
@@ -271,7 +273,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                if(Math.abs(err) > Math.abs(lastErr)) {
 //                    errSign = -errSign;
 //                }
-//                if(histStdDev >= 0.13) {
+//                if(histStdDev >= 0.14) {
 //                    if(lastHistStdDev > histStdDev) {
 //                        errSign = -lastErrSign;
 //                    } else {
