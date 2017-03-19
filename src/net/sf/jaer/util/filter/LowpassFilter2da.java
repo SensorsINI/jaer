@@ -9,7 +9,7 @@ import java.awt.geom.Point2D;
 <a href="http://jaerproject.net/">jaerproject.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
-public class LowpassFilter2d extends LowpassFilter{
+public class LowpassFilter2da extends LowpassFilter{
     private LowpassFilter x=new LowpassFilter();
     private LowpassFilter y=new LowpassFilter();
     private Point2D.Float point=new Point2D.Float();
@@ -17,7 +17,7 @@ public class LowpassFilter2d extends LowpassFilter{
     /** Construct a new instance using an internal Point2D.Float
      *
      */
-    public LowpassFilter2d(){
+    public LowpassFilter2da(){
         x.setTauMs(getTauMs());
         y.setTauMs(getTauMs());
     }
@@ -26,7 +26,7 @@ public class LowpassFilter2d extends LowpassFilter{
      *
      * @param point
      */
-    public LowpassFilter2d(Point2D.Float point){
+    public LowpassFilter2da(Point2D.Float point){
         this.point=point;
         x.setInternalValue(point.x);
         y.setInternalValue(point.y);
@@ -35,7 +35,7 @@ public class LowpassFilter2d extends LowpassFilter{
     /** Construct a new instance using an internal Point2D.Float.
      *@param tauMs the time constant in ms.
      */
-    public LowpassFilter2d(float tauMs){
+    public LowpassFilter2da(float tauMs){
         x.setTauMs(getTauMs());
         y.setTauMs(getTauMs());
     }
@@ -45,7 +45,7 @@ public class LowpassFilter2d extends LowpassFilter{
      * @param point
      * @param tauMs the time constant in ms
      */
-    public LowpassFilter2d(Point2D.Float point, float tauMs){
+    public LowpassFilter2da(Point2D.Float point, float tauMs){
         this.point=point;
         x.setInternalValue(point.x);
         y.setInternalValue(point.y);
