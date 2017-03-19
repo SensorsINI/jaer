@@ -26,7 +26,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.event.orientation.OrientationEventInterface;
-import net.sf.jaer.util.filter.LowpassFilter2d;
+import net.sf.jaer.util.filter.LowpassFilter2D;
 import net.sf.jaer.util.histogram.SimpleHistogram;
 
 /**
@@ -77,7 +77,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      * low pass temporal filter that computes time-averaged min and max gray
      * values
      */
-    protected LowpassFilter2d autoContrast2DLowpassRangeFilter = new LowpassFilter2d(); // 2 lp values are min and max
+    protected LowpassFilter2D autoContrast2DLowpassRangeFilter = new LowpassFilter2D(); // 2 lp values are min and max
     // log intensities from each
     // frame
     /**

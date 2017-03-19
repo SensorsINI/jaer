@@ -12,7 +12,7 @@ import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import eu.seebetter.ini.chips.DavisChip;
-import net.sf.jaer.util.filter.LowpassFilter2d;
+import net.sf.jaer.util.filter.LowpassFilter2D;
 
 /**
  * Encapsulates control of rendering contrast of rendered DAVIS APS images
@@ -44,7 +44,7 @@ public class DavisVideoContrastController extends Observable {
 	public float brightness = prefs.getFloat("DavisVideoContrastController.brightness", 0.0F);
 	private float gamma = prefs.getFloat("DavisVideoContrastController.gamma", 1); // gamma control for improving
 																					// display
-	protected LowpassFilter2d autoContrast2DLowpassRangeFilter = new LowpassFilter2d(); // 2 lp values are min and max
+	protected LowpassFilter2D autoContrast2DLowpassRangeFilter = new LowpassFilter2D(); // 2 lp values are min and max
 																						// log intensities from each
 																						// frame
 	public static final String PROPERTY_CONTRAST = "contrast";
@@ -144,7 +144,7 @@ public class DavisVideoContrastController extends Observable {
 		}
 		if ((maxValue-minValue > 0)) { // don't adapt to first frame which is all zeros TODO does not work if
 													// minValue<0
-			final java.awt.geom.Point2D.Float filter2d = autoContrast2DLowpassRangeFilter.filter2d(minValue, maxValue, timestamp);
+			final java.awt.geom.Point2D.Float filter2d = autoContrast2DLowpassRangeFilter.filter(minValue, maxValue, timestamp);
 			autoBrightness = -filter2d.x;
 			float diff = (filter2d.y - filter2d.x);
 			if (diff < 1) {
@@ -173,7 +173,7 @@ public class DavisVideoContrastController extends Observable {
 
 	@Override
 	public String toString() {
-		final Point2D.Float minmax = autoContrast2DLowpassRangeFilter.getValue2d();
+		final Point2D.Float minmax = autoContrast2DLowpassRangeFilter.getValue2D();
 		return String.format("DavisVideoContrastController: minAvg=%-10.1f, maxAvg=%-10.1f, autoContrast=%-10.3f autoBrightness=%-10.3f",
 			minmax.x, minmax.y, autoContrast, autoBrightness);
 	}

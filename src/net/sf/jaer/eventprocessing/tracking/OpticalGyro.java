@@ -17,7 +17,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
-import net.sf.jaer.util.filter.LowpassFilter2d;
+import net.sf.jaer.util.filter.LowpassFilter2D;
 
 /**
  * Computes camera pose changes based on tracking many clusters of local activity.
@@ -28,7 +28,7 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
 public class OpticalGyro extends RectangularClusterTracker implements FrameAnnotater {
 
 	private Point2D.Float translation = new Point2D.Float(); // translation in pixels
-	private LowpassFilter2d translationFilter = new LowpassFilter2d(translation);
+	private LowpassFilter2D translationFilter = new LowpassFilter2D(translation);
 	private float rotationAngle = 0, cosAngle = 1, sinAngle = 0; // transform angle in radians
 	private LowpassFilter rotationFilter = new LowpassFilter();
 	//        Point2D.Float focusOfExpansion=new Point2D.Float();
@@ -333,7 +333,7 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
 		 */
 		private void filterTransform(float tx, float ty, float rotation, int t) {
 
-			translation = translationFilter.filter2d(tx, ty, t);
+			translation = translationFilter.filter(tx, ty, t);
 			if (isOpticalGyroRotationEnabled()) {
 				rotationAngle = rotationFilter.filter(rotation, t);
 			}

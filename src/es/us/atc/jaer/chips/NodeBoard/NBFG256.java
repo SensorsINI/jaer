@@ -37,7 +37,7 @@ import net.sf.jaer.event.OutputEventIterator;
 //import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.RetinaRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
-import net.sf.jaer.util.filter.LowpassFilter2d;
+import net.sf.jaer.util.filter.LowpassFilter2D;
 
 
     @Description("NodeBoard FrameGrabber 256x256 version 0.0")
@@ -496,7 +496,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
         private final float[] redder = {1, 0, 0}, bluer = {0, 0, 1}, greener={0,1,0}, brighter = {1, 1, 1}, darker = {-1, -1, -1};
 //        private final float[] brighter = {0, 1, 0}, darker = {1, 0, 0};
         private int sizeX = 1;
-        private LowpassFilter2d agcFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
+        private LowpassFilter2D agcFilter = new LowpassFilter2D();  // 2 lp values are min and max log intensities from each frame
         private boolean agcEnabled;
         /** PropertyChange */
         public static final String AGC_VALUES = "AGCValuesChanged";
@@ -625,8 +625,8 @@ public final class NBFG256 extends AETemporalConstastRetina {
                         }
                     }
                     if (agcEnabled && ((minADC > 0) && (maxADC > 0))) { // don't adapt to first frame which is all zeros
-                        Float filter2d = agcFilter.filter2d(minADC, maxADC, frameData.getTimestamp());
-//                        System.out.println("agc minmax=" + filter2d + " minADC=" + minADC + " maxADC=" + maxADC);
+                        Float filter2d = agcFilter.filter(minADC, maxADC, frameData.getTimestamp());
+//                        System.out.println("agc minmax=" + filter + " minADC=" + minADC + " maxADC=" + maxADC);
                         getSupport().firePropertyChange(AGC_VALUES, null, filter2d); // inform listeners (GUI) of new AGC min/max filterd log intensity values
                     }
 
@@ -681,7 +681,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
             if (!agcEnabled) {
                 v = (float) ((apsIntensityGain*count)+apsIntensityOffset) / (float) 256;
             } else {
-                Float filter2d = agcFilter.getValue2d();
+                Float filter2d = agcFilter.getValue2D();
                 float offset = filter2d.x;
                 float range = (filter2d.y - filter2d.x);
                 v = ((count - offset)) / range;
@@ -723,17 +723,17 @@ public final class NBFG256 extends AETemporalConstastRetina {
         }
 
         void applyAGCValues() {
-            Float f = agcFilter.getValue2d();
+            Float f = agcFilter.getValue2D();
             setApsIntensityOffset(agcOffset());
             setApsIntensityGain(agcGain());
         }
 
         private int agcOffset() {
-            return (int) agcFilter.getValue2d().x;
+            return (int) agcFilter.getValue2D().x;
         }
 
         private int agcGain() {
-            Float f = agcFilter.getValue2d();
+            Float f = agcFilter.getValue2D();
             float diff = f.y - f.x;
             if (diff < 1) {
                 return 1;

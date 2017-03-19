@@ -35,7 +35,7 @@ import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 import net.sf.jaer.eventprocessing.tracking.ClusterPathPoint;
 import net.sf.jaer.eventprocessing.tracking.ClusterTrackerInterface;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.util.filter.LowpassFilter2d;
+import net.sf.jaer.util.filter.LowpassFilter2D;
 import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.BlurringTunnelFilter.NeuronGroup;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -1064,10 +1064,10 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 
 			// low pass filtering based on time constant
 			if(path.size() > 3){
-				LowpassFilter2d lpf = new LowpassFilter2d();
+				LowpassFilter2D lpf = new LowpassFilter2D();
 				lpf.setTauMs(tauLPFMs);
-				Point2D.Float pt = lpf.filter2d(path.get(path.size()-1).x, path.get(path.size()-1).y, path.get(path.size()-1).t);
-				pt = lpf.filter2d(location.x, location.y, t);
+				Point2D.Float pt = lpf.filter(path.get(path.size()-1).x, path.get(path.size()-1).y, path.get(path.size()-1).t);
+				pt = lpf.filter(location.x, location.y, t);
 
 				newPath = new ClusterPathPoint(pt.x, pt.y, t, 1);
 			}

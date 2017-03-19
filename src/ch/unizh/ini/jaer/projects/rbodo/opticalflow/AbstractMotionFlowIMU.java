@@ -42,7 +42,9 @@ import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.filter.LowpassFilter;
-import net.sf.jaer.util.filter.LowpassFilter2d;
+import net.sf.jaer.util.filter.LowpassFilter2D;
+import net.sf.jaer.util.filter.LowpassFilter3D;
+import net.sf.jaer.util.filter.LowpassFilter3D.Point3D;
 
 /**
  * Abstract base class for motion flow filters. The filters that extend this
@@ -1311,8 +1313,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     protected class MotionField {
 
         int sx = 0, sy = 0; // size of arrays
-        private LowpassFilter2d[][] velocities;
-        private LowpassFilter[][] speeds;
+        private LowpassFilter3D[][] velocities;
+//        private LowpassFilter[][] speeds;
         private int[][] lastTs;
         private int lastUpdateTimestamp = Integer.MAX_VALUE;
         private int motionFieldSubsamplingShift = getInt("motionFieldSubsamplingShift", 3);
@@ -1339,15 +1341,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
             if (sx == 0 || sy == 0 || sx != newsx || sy != newsy || lastTs == null || lastTs.length != sx
                     || velocities == null || velocities.length != sx
-                    || speeds == null || speeds.length != sx) {
+                   ) {
                 sx = newsx;
                 sy = newsy;
                 lastTs = new int[sx][sy];
-                velocities = new LowpassFilter2d[sx][sy];
-                speeds = new LowpassFilter[sx][sy];
+                velocities = new LowpassFilter3D[sx][sy];
+//                speeds = new LowpassFilter[sx][sy];
                 for(x=0;x<sx;x++) for(y=0;y<sy;y++){
-                    velocities[x][y]=new LowpassFilter2d(motionFieldTimeConstantMs);
-                    speeds[x][y]=new LowpassFilter(motionFieldTimeConstantMs);
+                    velocities[x][y]=new LowpassFilter3D(motionFieldTimeConstantMs);
+//                    speeds[x][y]=new LowpassFilter(motionFieldTimeConstantMs);
                 }
             }
         }
@@ -1362,16 +1364,16 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             for (int[] a : lastTs) {
                 Arrays.fill(a, Integer.MAX_VALUE);
             }
-            for (LowpassFilter2d[] a : velocities) {
-                for (LowpassFilter2d f : a) {
+            for (LowpassFilter3D[] a : velocities) {
+                for (LowpassFilter3D f : a) {
                     f.reset();
                 }
             }
-            for (LowpassFilter[] a : speeds) {
-                for (LowpassFilter f : a) {
-                    f.reset();
-                }
-            }
+//            for (LowpassFilter[] a : speeds) {
+//                for (LowpassFilter f : a) {
+//                    f.reset();
+//                }
+//            }
         }
 
         /**
@@ -1393,8 +1395,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 return;
             }
             if (checkConsistent(timestamp, x1, y1, vx, vy)) {
-                velocities[x1][y1].filter2d(vx, vy, timestamp);
-                speeds[x1][y1].filter(speed, timestamp);
+                velocities[x1][y1].filter(vx, vy, speed,timestamp);
+//                speeds[x1][y1].filter(speed, timestamp);
             }
             lastTs[x1][y1] = ts;
         }
@@ -1416,7 +1418,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             }
             boolean thisAngleConsistentWithCurrentAngle = true;
             if (consistentWithCurrentAngle) {
-                Point2D.Float p=velocities[x1][y1].getValue2d();
+                Point3D p=velocities[x1][y1].getValue3D();
                 float dot = vx * p.x + vy * p.y;
                 thisAngleConsistentWithCurrentAngle = (dot >= 0);
             }
@@ -1432,7 +1434,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                         continue;
                     }
                     count++;
-                    Point2D.Float p = velocities[x2][y2].getValue2d();
+                    Point3D p = velocities[x2][y2].getValue3D();
                     float dot2 = vx * p.x + vy * p.y;
                     if (dot2 >= 0) {
                         countConsistent++;
@@ -1467,14 +1469,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     if (dt > maxAgeUs || dt < 0) {
                         continue;
                     }
-                    final float speed = speeds[ix][iy].getValue();
+                    final float speed = velocities[ix][iy].getValue3D().z;
                     if (speed < minSpeedPpsToDrawMotionField) {
                         continue;
                     }
                     final float y = (iy << motionFieldSubsamplingShift) + shift;
-                    final Point2D.Float p=velocities[ix][iy].getValue2d();
+                    final Point3D p=velocities[ix][iy].getValue3D();
                     final float vx = p.x, vy = p.y;
-                    float brightness = speeds[ix][iy].getValue() * saturationSpeedScaleInversePixels;
+                    float brightness = p.z * saturationSpeedScaleInversePixels;
                     if (brightness > 1) {
                         brightness = 1;
                     }
@@ -1633,16 +1635,16 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
         private void setTimeConstant(int motionFieldTimeConstantMs) {
             if(sx==0 || sy==0) return;
-            for (LowpassFilter2d[] a : velocities) {
-                for (LowpassFilter2d f : a) {
+            for (LowpassFilter3D[] a : velocities) {
+                for (LowpassFilter3D f : a) {
                     f.setTauMs(motionFieldTimeConstantMs);
                 }
             }
-            for (LowpassFilter[] a : speeds) {
-                for (LowpassFilter f : a) {
-                    f.setTauMs(motionFieldTimeConstantMs);
-                }
-            }
+//            for (LowpassFilter[] a : speeds) {
+//                for (LowpassFilter f : a) {
+//                    f.setTauMs(motionFieldTimeConstantMs);
+//                }
+//            }
         }
 
     } // MotionField
