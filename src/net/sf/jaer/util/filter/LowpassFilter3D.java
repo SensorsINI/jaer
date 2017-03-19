@@ -163,7 +163,7 @@ public class LowpassFilter3D extends LowpassFilter{
     public Point3D filter (float x,float y,float z,int time){
         point.x = this.xf.filter(x,time);
         point.y = this.yf.filter(y,time);
-        point.z = this.zf.filter(y,time);
+        point.z = this.zf.filter(z,time);
         return point;
     }
 
@@ -172,7 +172,7 @@ public class LowpassFilter3D extends LowpassFilter{
     }
 
     /** Returns internal Point3D present value. */
-    public Point3D getValue3d (){
+    public Point3D getValue3D (){
         point.x = xf.getValue();
         point.y = yf.getValue();
         point.z = zf.getValue();
