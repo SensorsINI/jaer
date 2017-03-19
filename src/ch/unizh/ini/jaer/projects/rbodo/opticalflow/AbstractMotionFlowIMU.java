@@ -1367,6 +1367,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             for (LowpassFilter3D[] a : velocities) {
                 for (LowpassFilter3D f : a) {
                     f.reset();
+                    f.setInitialized(true); // start out with zero motion
                 }
             }
 //            for (LowpassFilter[] a : speeds) {
