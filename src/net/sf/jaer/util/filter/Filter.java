@@ -99,7 +99,7 @@ public abstract class Filter{
      * Sets the filter to initialized state, so that subsequent filtering operations treat the last time value as having been stored and the
      * internal value as having been set already.  Can also be used to check if the filter has had a value applied to it.
      * Can also be used to have this IIR filter start out, for example, with 0 as the starting value, so that values build up to the DC solution
-     * starting from 0 instead of the first value applied.
+     * starting from 0 instead of the first value applied. To do this, reset the filter or set initial value, then setInitialized(true).
      * 
      * @param initialized the initialized to set
      */
