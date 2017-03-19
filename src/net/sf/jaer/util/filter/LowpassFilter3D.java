@@ -179,7 +179,7 @@ public class LowpassFilter3D extends LowpassFilter{
         return point;
     }
 
-    public void setInternalValue3d (float x,float y,float z){
+    public void setInternalValue3D (float x,float y,float z){
         this.xf.setInternalValue(x);
         this.yf.setInternalValue(y);
         this.zf.setInternalValue(z);
