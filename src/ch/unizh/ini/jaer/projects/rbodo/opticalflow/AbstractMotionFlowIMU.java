@@ -250,7 +250,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(imuTT, "importGTfromMatlab", "Allows importing two 2D-arrays containing the x-/y- components of the motion flow field used as ground truth.");
         setPropertyTooltip(imuTT, "resetGroundTruth", "Resets the ground truth optical flow that was imported from matlab. Used in the measureAccuracy option.");
         setPropertyTooltip(imuTT, "selectLoggingFolder", "Allows selection of the folder to store the measured accuracies and optical flow events.");
-        setPropertyTooltip(motionFieldTT, "motionFieldMixingFactor", "Flow events are mixed with the motion field with this factor. Use 1 to replace field content with each event, or e.g. 0.01 to update only by 1%.");
+//        setPropertyTooltip(motionFieldTT, "motionFieldMixingFactor", "Flow events are mixed with the motion field with this factor. Use 1 to replace field content with each event, or e.g. 0.01 to update only by 1%.");
         setPropertyTooltip(motionFieldTT, "motionFieldSubsamplingShift", "The motion field is computed at this subsampled resolution, e.g. 1 means 1 motion field vector for each 2x2 pixel area.");
         setPropertyTooltip(motionFieldTT, "maxAgeUs", "Maximum age of motion field value for display and for unconditionally replacing with latest flow event");
         setPropertyTooltip(motionFieldTT, "minSpeedPpsToDrawMotionField", "Motion field locations where speed in pixels/second is less than this quantity are not drawn");
@@ -1318,7 +1318,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         private int[][] lastTs;
         private int lastUpdateTimestamp = Integer.MAX_VALUE;
         private int motionFieldSubsamplingShift = getInt("motionFieldSubsamplingShift", 3);
-        private float motionFieldMixingFactor = getFloat("motionFieldMixingFactor", 1e-1f);
+//        private float motionFieldMixingFactor = getFloat("motionFieldMixingFactor", 1e-1f);
         private int motionFieldTimeConstantMs = getInt("motionFieldTimeConstantMs", 100);
         private int maxAgeUs = getInt("motionFieldMaxAgeUs", 100000);
         private float minSpeedPpsToDrawMotionField = getFloat("minVelocityPps", 1);
@@ -1536,25 +1536,25 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             reset();
         }
 
-        /**
-         * @return the motionFieldMixingFactor
-         */
-        public float getMotionFieldMixingFactor() {
-            return motionFieldMixingFactor;
-        }
-
-        /**
-         * @param motionFieldMixingFactor the motionFieldMixingFactor to set
-         */
-        public void setMotionFieldMixingFactor(float motionFieldMixingFactor) {
-            if (motionFieldMixingFactor < 1e-6f) {
-                motionFieldMixingFactor = 1e-6f;
-            } else if (motionFieldMixingFactor > 1) {
-                motionFieldMixingFactor = 1;
-            }
-            this.motionFieldMixingFactor = motionFieldMixingFactor;
-            putFloat("motionFieldMixingFactor", motionFieldMixingFactor);
-        }
+//        /**
+//         * @return the motionFieldMixingFactor
+//         */
+//        public float getMotionFieldMixingFactor() {
+//            return motionFieldMixingFactor;
+//        }
+//
+//        /**
+//         * @param motionFieldMixingFactor the motionFieldMixingFactor to set
+//         */
+//        public void setMotionFieldMixingFactor(float motionFieldMixingFactor) {
+//            if (motionFieldMixingFactor < 1e-6f) {
+//                this.motionFieldMixingFactor = 1e-6f;
+//            } else if (motionFieldMixingFactor > 1) {
+//                this.motionFieldMixingFactor = 1;
+//            }
+//            this.motionFieldMixingFactor = motionFieldMixingFactor;
+//            putFloat("motionFieldMixingFactor", motionFieldMixingFactor);
+//        }
 
         /**
          * @return the maxAgeUs
@@ -1666,13 +1666,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         motionField.setMotionFieldSubsamplingShift(motionFieldSubsamplingShift);
     }
 
-    public float getMotionFieldMixingFactor() {
-        return motionField.getMotionFieldMixingFactor();
-    }
-
-    public void setMotionFieldMixingFactor(float motionFieldMixingFactor) {
-        motionField.setMotionFieldMixingFactor(motionFieldMixingFactor);
-    }
+//    public float getMotionFieldMixingFactor() {
+//        return motionField.getMotionFieldMixingFactor();
+//    }
+//
+//    public void setMotionFieldMixingFactor(float motionFieldMixingFactor) {
+//        motionField.setMotionFieldMixingFactor(motionFieldMixingFactor);
+//    }
 
     public int getMotionFieldTimeConstantMs() {
         return motionField.getMotionFieldTimeConstantMs();
