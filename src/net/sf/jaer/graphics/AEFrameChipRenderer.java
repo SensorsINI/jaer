@@ -332,6 +332,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         final boolean backwards = packetAPS.getDurationUs() < 0;
 
         final Iterator allItr = packetAPS.fullIterator();
+        packetAPS.setTimeLimitEnabled(false);
         while (allItr.hasNext()) {
             // The iterator only iterates over the DVS events
             final ApsDvsEvent e = (ApsDvsEvent) allItr.next();

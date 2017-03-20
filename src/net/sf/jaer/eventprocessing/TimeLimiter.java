@@ -57,7 +57,7 @@ final public class TimeLimiter extends Timer{
             schedule(currentTask= new TimerTask(){
                 public void run(){
                     if(enabled) {
-                        log.info("timeout after "+timeLimitMs+" ms");
+//                        log.info("timeout after "+timeLimitMs+" ms");
                         timedOut=true;
                     }
                 }

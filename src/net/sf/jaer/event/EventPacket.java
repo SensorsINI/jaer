@@ -525,7 +525,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
         }
 
         /**
-         * Sets the size to zero.
+         * Sets the pointer to zero to point to first event and sets the usingTimeout flag.
          */
         public void reset() {
             cursor = 0;
