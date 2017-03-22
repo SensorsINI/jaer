@@ -63,26 +63,26 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     int numInputTypes;
 
-    // Basic event information.
-    public int x, y, ts, type, lastTs;
+    /** Basic event information. */
+    protected int x, y, ts, type, lastTs;
 
-    // (Subsampled) chip sizes.
-    public int sizex, sizey, subSizeX, subSizeY;
+    /** (Subsampled) chip sizes. */
+    protected int sizex, sizey, subSizeX, subSizeY;
 
-    // Subsampling
-    int subSampleShift = getInt("subSampleShift", 0);
-    boolean[][] subsampledPixelIsSet;
+    /** Subsampling */
+    private int subSampleShift = getInt("subSampleShift", 0);
+    protected boolean[][] subsampledPixelIsSet;
 
     // Map of input orientation event times 
     // [x][y][type] where type is mixture of orienation and polarity.
-    int[][][] lastTimesMap;
+    protected int[][][] lastTimesMap;
 
     // xyFilter.
     private int xMin = getInt("xMin", 0);
     private static final int DEFAULT_XYMAX = 1000;
-    int xMax = getInt("xMax", DEFAULT_XYMAX); // (tobi) set to large value to make sure any chip will have full area processed by default
+    private int xMax = getInt("xMax", DEFAULT_XYMAX); // (tobi) set to large value to make sure any chip will have full area processed by default
     private int yMin = getInt("yMin", 0);
-    int yMax = getInt("yMax", DEFAULT_XYMAX);
+    private int yMax = getInt("yMax", DEFAULT_XYMAX);
 
     // Display
     private boolean displayVectorsEnabled = getBoolean("displayVectorsEnabled", true);
@@ -94,10 +94,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // A pixel can fire an event only after this period. Used for smoother flow
     // and speedup.
-    int refractoryPeriodUs = getInt("refractoryPeriodUs", 0);
+    private int refractoryPeriodUs = getInt("refractoryPeriodUs", 0);
 
     // Global translation, rotation and expansion.
-    boolean measureGlobalMotion = getBoolean("measureGlobalMotion", true);
+    private boolean measureGlobalMotion = getBoolean("measureGlobalMotion", true);
 
     /**
      * The output events, also used for rendering output events.
@@ -1470,7 +1470,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             for (int ix = 0; ix < sx; ix++) {
                 float x = (ix << motionFieldSubsamplingShift) + shift;
                 for (int iy = 0; iy < sy; iy++) {
-                    final int dt = lastUpdateTimestamp - lastTs[ix][iy];
+                    final int dt = ts - lastTs[ix][iy]; // use last timestamp of any event that is processed by extractEventInfo
                     if (dt > maxAgeUs || dt < 0) {
                         continue;
                     }
