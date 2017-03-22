@@ -67,7 +67,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     private boolean measurePerformanceEnabled = false;
-    public boolean resetPerformanceMeasurementStatistics=false; // flag to reset everyone on this cycle
+    volatile private boolean resetPerformanceMeasurementStatistics=false; // flag to reset everyone on this cycle
     static final Logger log = Logger.getLogger("FilterChain");
     AEChip chip;
     private boolean filteringEnabled = true;
@@ -171,7 +171,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         for (EventFilter2D f : this) {
             if (measurePerformanceEnabled && f.perf != null && (!f.isFilterEnabled() || resetPerformanceMeasurementStatistics)) { // check to reset performance meter
                 f.perf.resetStatistics();
-                f.perf = null;
+                resetPerformanceMeasurementStatistics=false;
             }
             if(!f.isFilterEnabled() || in==null) continue;  // tobi added so that each filter doesn't need to check if enabled and non-null packet
             if (measurePerformanceEnabled) {
@@ -188,7 +188,6 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             }
             in = out;
         }
-        resetPerformanceMeasurementStatistics=false;
         return in;
     }
 
