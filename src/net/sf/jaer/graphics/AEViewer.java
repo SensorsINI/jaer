@@ -141,9 +141,9 @@ import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
-import net.sf.jaer.util.SubclassFinder;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
+import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
  * This is the main jAER interface to the user. The main event loop "ViewLoop"
@@ -2677,13 +2677,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         final int MAX_FPS = 1000;
         int desiredFPS = prefs.getInt("AEViewer.FrameRater.desiredFPS", getScreenRefreshRate());
-        public final int N_SAMPLES = 10;
-        long[] samplesNs = new long[N_SAMPLES];
+//        public final int N_SAMPLES = 10;
+//        long[] samplesNs = new long[N_SAMPLES];
         int index = 0;
         int delayMs = 1;
         int desiredPeriodMs = (int) (1000f / desiredFPS);
         private long beforeTimeNs = System.nanoTime(), lastdt, afterTimeNs;
         WarningDialogWithDontShowPreference fpsWarning;
+        private LowpassFilter periodFilter=new LowpassFilter(100);
 
         /**
          * Sets the desired target frames rate in frames/sec
@@ -2729,11 +2730,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          * @return ns average period
          */
         public final float getAveragePeriodNs() {
-            long sum = 0;
-            for (int i = 0; i < N_SAMPLES; i++) {
-                sum += samplesNs[i];
-            }
-            return (float) sum / N_SAMPLES;
+            return periodFilter.getValue();
+//            long sum = 0;
+//            for (int i = 0; i < N_SAMPLES; i++) {
+//                sum += samplesNs[i];
+//            }
+//            return (float) sum / N_SAMPLES;
         }
 
         /**
@@ -2777,11 +2779,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         final void takeAfter() {
             afterTimeNs = System.nanoTime();
             lastdt = afterTimeNs - beforeTimeNs;
-            samplesNs[index++] = afterTimeNs - lastAfterTime;
+            periodFilter.filter((int)(afterTimeNs - lastAfterTime), (int)(afterTimeNs/1000));
+//            samplesNs[index++] = afterTimeNs - lastAfterTime;
             lastAfterTime = afterTimeNs;
-            if (index >= N_SAMPLES) {
-                index = 0;
-            }
+//            if (index >= N_SAMPLES) {
+//                index = 0;
+//            }
         }
 
         /**
@@ -4409,20 +4412,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
 	private void decreaseFrameRateMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_decreaseFrameRateMenuItemActionPerformed
             //            case KeyEvent.VK_LEFT: // slower
-            setFrameRate(getFrameRate() / 2);
+            setDesiredFrameRate(getDesiredFrameRate() / 2);
             //                break;
             //            case KeyEvent.VK_RIGHT: //faster
-            //                setFrameRate(getFrameRate()*2);
+            //                setDesiredFrameRate(getDesiredFrameRate()*2);
             //                break;
 
 	}//GEN-LAST:event_decreaseFrameRateMenuItemActionPerformed
 
 	private void increaseFrameRateMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_increaseFrameRateMenuItemActionPerformed
             //            case KeyEvent.VK_LEFT: // slower
-            //                setFrameRate(getFrameRate()/2);
+            //                setDesiredFrameRate(getDesiredFrameRate()/2);
             //                break;
             //            case KeyEvent.VK_RIGHT: //faster
-            setFrameRate(getFrameRate() * 2);
+            setDesiredFrameRate(getDesiredFrameRate() * 2);
             //                break;
 
 	}//GEN-LAST:event_increaseFrameRateMenuItemActionPerformed
@@ -5631,7 +5634,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      *
      * @return desired frame rate in Hz.
      */
-    public int getFrameRate() {
+    public int getDesiredFrameRate() {
         return frameRater.getDesiredFPS();
     }
 
@@ -5640,7 +5643,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      *
      * @param renderDesiredFrameRateHz frame rate in Hz
      */
-    public void setFrameRate(int renderDesiredFrameRateHz) {
+    public void setDesiredFrameRate(int renderDesiredFrameRateHz) {
         frameRater.setDesiredFPS(renderDesiredFrameRateHz);
     }
 
