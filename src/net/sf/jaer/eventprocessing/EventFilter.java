@@ -857,7 +857,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * boolean, e.g. "dt")
      * @param tooltip the tooltip String to display
      */
-    public void setPropertyTooltip(String propertyName, String tooltip) {
+    final public void setPropertyTooltip(String propertyName, String tooltip) {
         tooltipSupport.setPropertyTooltip(propertyName, tooltip);
     }
 
@@ -870,7 +870,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @param tooltip the tip.
      * @see #TOOLTIP_GROUP_GLOBAL
      */
-    public void setPropertyTooltip(String groupName, String propertyName, String tooltip) {
+    final public void setPropertyTooltip(String groupName, String propertyName, String tooltip) {
         tooltipSupport.setPropertyTooltip(groupName, propertyName, tooltip);
     }
 
@@ -878,7 +878,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return the tooltip for the property
      */
     @Override
-    public String getPropertyTooltip(String propertyName) {
+    final public String getPropertyTooltip(String propertyName) {
         return tooltipSupport.getPropertyTooltip(propertyName);
     }
 
