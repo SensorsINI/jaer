@@ -118,7 +118,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
 		oldColorScale = colorScale;
 		int frameRate = 60; // hz
 		if (chip instanceof AEChip) {
-			frameRate = ((AEChip) chip).getAeViewer().getFrameRate();
+			frameRate = ((AEChip) chip).getAeViewer().getDesiredFrameRate();
 		}
 		timeWidthUs = (1e6f / frameRate) * (1 << colorScale); // set horizontal scale so that we can just use relative timestamp for x
 		drawTimeScale = (drawable.getSurfaceWidth() / timeWidthUs); // scale horizontal is draw
