@@ -93,7 +93,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
     private int skipCounter = 0;
     private boolean adaptiveEventSkipping = getBoolean("adaptiveEventSkipping", false);
-    private float skipChangeFactor = 1.5f; // by what factor to change the skip count if too slow or too fast
+    private float skipChangeFactor = (float)Math.sqrt(2); // by what factor to change the skip count if too slow or too fast
     private boolean outputSearchErrorInfo = false; // make user choose this slow down every time
     private boolean adapativeSliceDuration = getBoolean("adapativeSliceDuration", false);
     private boolean showSliceBitMap = getBoolean("showSliceBitMap", false); // Display the bitmaps
@@ -122,7 +122,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private SearchMethod searchMethod = SearchMethod.valueOf(getString("searchMethod", SearchMethod.DiamondSearch.toString()));
 
     private int sliceDurationUs = getInt("sliceDurationUs", 40000);
-    private int sliceEventCount = getInt("sliceEventCount", 1000);
+    private int sliceEventCount = getInt("sliceEventCount", 10000);
     private boolean rewindFlg = false; // The flag to indicate the rewind event.
     private FilterChain filterChain;
     private Steadicam cameraMotion;
@@ -183,7 +183,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "searchMethod", "method to search patches");
         setPropertyTooltip(patchTT, "sliceDurationUs", "duration of bitmaps in us, also called sample interval, when ConstantDuration method is used");
         setPropertyTooltip(patchTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
-//        setPropertyTooltip(patchTT, "sliceEventCount", "number of events collected to fill a slice, when ConstantEventNumber method is used");
+        setPropertyTooltip(patchTT, "sliceEventCount", "number of events collected to fill a slice, when ConstantEventNumber method is used");
         setPropertyTooltip(patchTT, "sliceMethod", "set method for determining time slice duration for block matching");
         setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
         setPropertyTooltip(patchTT, "adaptiveEventSkipping", "enables adaptive event skipping depending on free time left in AEViewer animation loop");
@@ -706,9 +706,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 }
                 break;
             case ConstantEventNumber:
+                if (rewindFlg) {
+                    return;
+                }
                 if (eventCounter++ < sliceEventCount) {
                     return;
                 }
+                break;
             case AdaptationDuration:
                 log.warning("The adaptation method is not supported yet.");
                 return;
@@ -722,7 +726,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         currentSliceIdx = (currentSliceIdx + 1) % NUM_SLICES;
         tMinus1SliceIdx = (tMinus1SliceIdx + 1) % NUM_SLICES;
         tMinus2SliceIdx = (tMinus2SliceIdx + 1) % NUM_SLICES;
-        sliceEventCount = 0;
+        eventCounter = 0;
         sliceLastTs = ts;
         assignSliceReferences();
     }
