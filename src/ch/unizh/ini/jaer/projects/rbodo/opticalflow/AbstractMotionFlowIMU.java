@@ -86,6 +86,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // Display
     private boolean displayVectorsEnabled = getBoolean("displayVectorsEnabled", true);
+    private boolean displayZeroLengthVectorsEnabled = getBoolean("displayZeroLengthVectorsEnabled", true);
     private boolean displayRawInput = getBoolean("displayRawInput", true);
     private boolean displayColorWheelLegend = getBoolean("displayColorWheelLegend", true);
 
@@ -227,6 +228,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(measureTT, "loggingFolder", "directory to store logged data files");
         setPropertyTooltip(dispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
         setPropertyTooltip(dispTT, "displayVectorsEnabled", "shows local motion vector evemts as arrows");
+        setPropertyTooltip(dispTT, "displayZeroLengthVectorsEnabled", "shows local motion vector evemts even if they indicate zero motion (stationary features)");
         setPropertyTooltip(dispTT, "displayColorWheelLegend", "Plots a color wheel to show flow direction colors.");
         setPropertyTooltip(dispTT, "measureGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
         setPropertyTooltip(dispTT, "displayRawInput", "shows the input events, instead of the motion types");
@@ -728,7 +730,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 // the events without a real direction.
                 if (ei.isHasDirection()) {
                     drawMotionVector(gl, ei);
-                } else {
+                } else if (displayZeroLengthVectorsEnabled){
                     gl.glPushMatrix();
                     gl.glTranslatef(ei.getX(), ei.getY(), 0);
                     gl.glPointSize(motionVectorLineWidthPixels * 2);
@@ -1336,20 +1338,22 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
             int newsx = (chip.getSizeX() >> motionFieldSubsamplingShift) + 1;
             int newsy = (chip.getSizeY() >> motionFieldSubsamplingShift) + 1;
-            
-            if(newsx==0 || newsy==0) return; // not yet
 
+            if (newsx == 0 || newsy == 0) {
+                return; // not yet
+            }
             if (sx == 0 || sy == 0 || sx != newsx || sy != newsy || lastTs == null || lastTs.length != sx
-                    || velocities == null || velocities.length != sx
-                   ) {
+                    || velocities == null || velocities.length != sx) {
                 sx = newsx;
                 sy = newsy;
                 lastTs = new int[sx][sy];
                 velocities = new LowpassFilter3D[sx][sy];
 //                speeds = new LowpassFilter[sx][sy];
-                for(x=0;x<sx;x++) for(y=0;y<sy;y++){
-                    velocities[x][y]=new LowpassFilter3D(motionFieldTimeConstantMs);
+                for (x = 0; x < sx; x++) {
+                    for (y = 0; y < sy; y++) {
+                        velocities[x][y] = new LowpassFilter3D(motionFieldTimeConstantMs);
 //                    speeds[x][y]=new LowpassFilter(motionFieldTimeConstantMs);
+                    }
                 }
             }
         }
@@ -1396,7 +1400,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 return;
             }
             if (checkConsistent(timestamp, x1, y1, vx, vy)) {
-                velocities[x1][y1].filter(vx, vy, speed,timestamp);
+                velocities[x1][y1].filter(vx, vy, speed, timestamp);
 //                speeds[x1][y1].filter(speed, timestamp);
             }
             lastTs[x1][y1] = ts;
@@ -1419,7 +1423,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             }
             boolean thisAngleConsistentWithCurrentAngle = true;
             if (consistentWithCurrentAngle) {
-                Point3D p=velocities[x1][y1].getValue3D();
+                Point3D p = velocities[x1][y1].getValue3D();
                 float dot = vx * p.x + vy * p.y;
                 thisAngleConsistentWithCurrentAngle = (dot >= 0);
             }
@@ -1451,7 +1455,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
 
         public void draw(GL2 gl) {
-            if (!displayMotionField || velocities == null ) {
+            if (!displayMotionField || velocities == null) {
                 return;
             }
             try {
@@ -1475,7 +1479,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                         continue;
                     }
                     final float y = (iy << motionFieldSubsamplingShift) + shift;
-                    final Point3D p=velocities[ix][iy].getValue3D();
+                    final Point3D p = velocities[ix][iy].getValue3D();
                     final float vx = p.x, vy = p.y;
                     float brightness = p.z * saturationSpeedScaleInversePixels;
                     if (brightness > 1) {
@@ -1555,7 +1559,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 //            this.motionFieldMixingFactor = motionFieldMixingFactor;
 //            putFloat("motionFieldMixingFactor", motionFieldMixingFactor);
 //        }
-
         /**
          * @return the maxAgeUs
          */
@@ -1635,7 +1638,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
 
         private void setTimeConstant(int motionFieldTimeConstantMs) {
-            if(sx==0 || sy==0) return;
+            if (sx == 0 || sy == 0) {
+                return;
+            }
             for (LowpassFilter3D[] a : velocities) {
                 for (LowpassFilter3D f : a) {
                     f.setTauMs(motionFieldTimeConstantMs);
@@ -1673,7 +1678,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 //    public void setMotionFieldMixingFactor(float motionFieldMixingFactor) {
 //        motionField.setMotionFieldMixingFactor(motionFieldMixingFactor);
 //    }
-
     public int getMotionFieldTimeConstantMs() {
         return motionField.getMotionFieldTimeConstantMs();
     }
@@ -1681,8 +1685,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     public void setMotionFieldTimeConstantMs(int motionFieldTimeConstantMs) {
         motionField.setMotionFieldTimeConstantMs(motionFieldTimeConstantMs);
     }
-    
-    
 
     public int getMaxAgeUs() {
         return motionField.getMaxAgeUs();
@@ -1760,6 +1762,22 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
         this.motionVectorLineWidthPixels = motionVectorLineWidthPixels;
         putFloat("motionVectorLineWidthPixels", motionVectorLineWidthPixels);
+    }
+
+    /**
+     * @return the displayZeroLengthVectorsEnabled
+     */
+    public boolean isDisplayZeroLengthVectorsEnabled() {
+        return displayZeroLengthVectorsEnabled;
+    }
+
+    /**
+     * @param displayZeroLengthVectorsEnabled the
+     * displayZeroLengthVectorsEnabled to set
+     */
+    public void setDisplayZeroLengthVectorsEnabled(boolean displayZeroLengthVectorsEnabled) {
+        this.displayZeroLengthVectorsEnabled = displayZeroLengthVectorsEnabled;
+        putBoolean("displayZeroLengthVectorsEnabled", displayZeroLengthVectorsEnabled);
     }
 
 }
