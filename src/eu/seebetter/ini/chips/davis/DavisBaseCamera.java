@@ -1528,7 +1528,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         @Override
         public void actionPerformed(ActionEvent e) {
             try {
-                getDavisConfig().setExposureDelayMs(getDavisConfig().getExposureDelayMs() * exposureChangeFactor);
+                int expUsNow=(int)(1000*getDavisConfig().getExposureDelayMs());
+                int expUsNew=(int)(expUsNow*exposureChangeFactor);
+                if(expUsNew==expUsNow) expUsNew++; // solve problem of being stuck as 1us
+                getDavisConfig().setExposureDelayMs(0.001f*expUsNew);
             } catch (IllegalArgumentException ex) {
             }
             final String s = "set exposure delay = " + getDavisConfig().getExposureDelayMs() + " ms";
