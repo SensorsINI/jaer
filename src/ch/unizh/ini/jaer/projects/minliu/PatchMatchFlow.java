@@ -55,7 +55,7 @@ import net.sf.jaer.util.EngineeringFormat;
  *
  * @author Tobi and Min, Jan 2016
  */
-@Description("Computes optical flow with vector direction using binary block matching")
+@Description("Computes optical flow with vector direction using binary block matching") 
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class PatchMatchFlow extends AbstractMotionFlow implements Observer, FrameAnnotater {
 
@@ -1641,8 +1641,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (skipProcessingEventsCount < 0) {
             skipProcessingEventsCount = 0;
         }
-        if (skipProcessingEventsCount > 300) {
-            skipProcessingEventsCount = 300;
+        if (skipProcessingEventsCount > 1000) {
+            skipProcessingEventsCount = 1000;
         }
         this.skipProcessingEventsCount = skipProcessingEventsCount;
         getSupport().firePropertyChange("skipProcessingEventsCount", old, this.skipProcessingEventsCount);
@@ -1705,7 +1705,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
     }
 
-    private int adaptiveEventSkippingUpdateIntervalPackets = 10;
+    private int adaptiveEventSkippingUpdateIntervalPackets = 0;
     private int adaptiveEventSkippingUpdateCounter = 0;
 
     private void adaptEventSkipping() {
@@ -1720,7 +1720,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         adaptiveEventSkippingUpdateCounter = 0;
         final float averageFPS = chip.getAeViewer().getFrameRater().getAverageFPS();
-        final int frameRate = chip.getAeViewer().getFrameRate();
+        final int frameRate = chip.getAeViewer().getDesiredFrameRate();
         boolean skipMore = averageFPS < (int) (0.75f * frameRate);
         boolean skipLess = averageFPS > (int) (0.25f * frameRate);
         if (skipMore) {
