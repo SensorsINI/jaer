@@ -108,8 +108,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private float histStdDev = 0, lastHistStdDev = 0;
     private float FSCnt = 0, DSCorrectCnt = 0;
     float DSAverageNum = 0, DSAveError[] = {0, 0};           // Evaluate DS cost average number and the error.
-    private float lastErrSign = Math.signum(1);
-    private final String outputFilename;
+//    private float lastErrSign = Math.signum(1);
+//    private final String outputFilename;
 
     public enum PatchCompareMethod {
         JaccardDistance, HammingDistance/*, SAD, EventSqeDistance*/
@@ -164,11 +164,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         Date date = new Date();
          
         // Log file for the OF distribution's statistics
-        outputFilename = "PMF_HistStdDev" + formatter.format(date) + ".txt";
+//        outputFilename = "PMF_HistStdDev" + formatter.format(date) + ".txt";
         
         String patchTT = "Block matching";
-        String eventSqeMatching = "Event squence matching";
-        String preProcess = "Denoise";
+//        String eventSqeMatching = "Event squence matching";
+//        String preProcess = "Denoise";
         String metricConfid = "Confidence of current metric";
 
         chip.addObserver(this); // to allocate memory once chip size is known
@@ -183,7 +183,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "searchMethod", "method to search patches");
         setPropertyTooltip(patchTT, "sliceDurationUs", "duration of bitmaps in us, also called sample interval, when ConstantDuration method is used");
         setPropertyTooltip(patchTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
-        setPropertyTooltip(patchTT, "sliceEventCount", "number of events collected to fill a slice, when ConstantEventNumber method is used");
+//        setPropertyTooltip(patchTT, "sliceEventCount", "number of events collected to fill a slice, when ConstantEventNumber method is used");
         setPropertyTooltip(patchTT, "sliceMethod", "set method for determining time slice duration for block matching");
         setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
         setPropertyTooltip(patchTT, "adaptiveEventSkipping", "enables adaptive event skipping depending on free time left in AEViewer animation loop");
@@ -284,7 +284,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    errSign = (float) Math.signum(err);                    
 //                }
                 
-                lastErrSign = errSign;
+//                lastErrSign = errSign;
 
                 int durChange = (int) (errSign * adapativeSliceDurationProportionalErrorGain * sliceDurationUs);
                 setSliceDurationUs(sliceDurationUs + durChange);
@@ -1598,6 +1598,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        if (eventSeqStartTs == null) {
 //            eventSeqStartTs = new int[chip.getSizeX()][chip.getSizeY()];
 //        }
+
+        if(lastTimesMap!=null){
+            lastTimesMap=null; // save memory
+        }
     }
 
     /**
