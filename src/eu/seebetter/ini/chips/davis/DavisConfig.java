@@ -710,9 +710,9 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		apsExposure.set(expUs);
 	}
 
-        /** Returns the exposure delay setting
+        /** Returns the exposure delay setting in float ms.
          * 
-         * @return 
+         * @return value of exposure delay. It is quantized by apsExposure to be a multiple of 1ms.
          */
 	public float getExposureDelayMs() {
 		return apsExposure.get() * .001f;
