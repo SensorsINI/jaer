@@ -580,9 +580,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean renderBlankFramesEnabled = prefs.getBoolean("AEViewer.renderBlankFramesEnabled", false);
     // number of packets to skip over rendering, used to speed up real time processing
     private int skipPacketsRenderingNumber = prefs.getInt("AEViewer.skipPacketsRenderingNumber", 0);
-    int skipPacketsRenderingCount = 0; // render first packet always
-    DropTarget dropTarget;
-    File draggedFile;
+    private int skipPacketsRenderingCount = 0; // this is counter for skipping rendering cycles; set to zero to render first packet always
+    private DropTarget dropTarget;
+    private File draggedFile;
     private boolean loggingPlaybackImmediatelyEnabled = prefs.getBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", false);
     private boolean enableFiltersOnStartup = prefs.getBoolean("AEViewer.enableFiltersOnStartup", false);
     private long loggingTimeLimit = 0, loggingStartTime = System.currentTimeMillis();
@@ -1736,7 +1736,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (aePlayer.isChoosingFile() || (ae == null) || (!isRenderBlankFramesEnabled() && (ae.getSize() == 0))) {
                 return;
             } // don't render while filechooser is active
-            boolean subsamplingEnabled = getRenderer().isSubsamplingEnabled();
+//            boolean subsamplingEnabled = getRenderer().isSubsamplingEnabled();
             //            if (isPaused()) {
             //                getRenderer().setSubsamplingEnabled(false);
             //            } // not needed and always overwrites the preference value
@@ -1877,6 +1877,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                 } // if (!isPaused() || isSingleStep())
 
+                adaptRenderSkipping(); // try to keep up with desired frame rate
+
                 if ((packet != null) && (skipPacketsRenderingCount-- <= 0)) {
                     // we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
                     try {
@@ -1956,6 +1958,37 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             //            }
             // </editor-fold>
         } // viewLoop.run()
+
+        private LowpassFilter skipPacketsRenderingLowpassFilter=null;
+        
+        private void adaptRenderSkipping() {
+            if(renderer instanceof AEFrameChipRenderer && ((AEFrameChipRenderer)renderer).isDisplayFrames()) return; // don't skip rendering frames since this will chop frames up and corrupt them
+            if(skipPacketsRenderingLowpassFilter==null){
+                skipPacketsRenderingLowpassFilter=new LowpassFilter(frameRater.FPS_LOWPASS_FILTER_TIMECONSTANT_MS);
+            }
+            int oldSkip = skipPacketsRenderingNumber;
+            int newSkip=oldSkip;
+            
+            final float averageFPS = chip.getAeViewer().getFrameRater().getAverageFPS();
+            final int desiredFrameRate = chip.getAeViewer().getDesiredFrameRate();
+            boolean skipMore = averageFPS < (int) (0.75f * desiredFrameRate);
+            boolean skipLess = averageFPS > (int) (0.25f * desiredFrameRate);
+            if (skipMore) {
+                newSkip = (Math.round(2 * skipPacketsRenderingNumber + 1));
+                if (newSkip > 5) {
+                    newSkip = 5;
+                }
+            } else if (skipLess) {
+                newSkip = (int) (0.5f * skipPacketsRenderingNumber);
+                if (newSkip < 0) {
+                    newSkip = 0;
+                }
+            }
+            skipPacketsRenderingNumber=Math.round(skipPacketsRenderingLowpassFilter.filter(newSkip,(int)System.currentTimeMillis()*1000));
+            if (oldSkip != skipPacketsRenderingNumber) {
+                log.info("now skipping rendering " + skipPacketsRenderingNumber+" packets");
+            }
+        }
 
         /**
          * Grabs the input data from whatever source is currently supplying it,
@@ -2674,6 +2707,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      *
      */
     public class FrameRater {
+       public final float FPS_LOWPASS_FILTER_TIMECONSTANT_MS=300;
 
         final int MAX_FPS = 1000;
         int desiredFPS = prefs.getInt("AEViewer.FrameRater.desiredFPS", getScreenRefreshRate());
@@ -2684,8 +2718,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         int desiredPeriodMs = (int) (1000f / desiredFPS);
         private long beforeTimeNs = System.nanoTime(), lastdt, afterTimeNs;
         WarningDialogWithDontShowPreference fpsWarning;
-        private LowpassFilter periodFilter=new LowpassFilter(100);
-
+        private LowpassFilter periodFilter = new LowpassFilter(FPS_LOWPASS_FILTER_TIMECONSTANT_MS);
+ 
         /**
          * Sets the desired target frames rate in frames/sec
          *
@@ -2779,7 +2813,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         final void takeAfter() {
             afterTimeNs = System.nanoTime();
             lastdt = afterTimeNs - beforeTimeNs;
-            periodFilter.filter((int)(afterTimeNs - lastAfterTime), (int)(afterTimeNs/1000));
+            periodFilter.filter((int) (afterTimeNs - lastAfterTime), (int) (afterTimeNs / 1000));
 //            samplesNs[index++] = afterTimeNs - lastAfterTime;
             lastAfterTime = afterTimeNs;
 //            if (index >= N_SAMPLES) {
