@@ -121,6 +121,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     protected boolean computeHistograms = false;
     private boolean displayAnnotation = false;
 
+    /**
+     * downsampling of DVS to speed up rendering at high frame rate
+     */
+    private int dvsDownsamplingValue = 10, dvsDownsamplingCount = 0;
+
     public AEFrameChipRenderer(final AEChip chip) {
         super(chip);
 
@@ -290,6 +295,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 }
             }
         }
+//        adaptDvsDownsampling();
 
         numEventTypes = pkt.getNumCellTypes();
 
@@ -350,8 +356,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 if (displayEvents) {
                     if ((xsel >= 0) && (ysel >= 0)) { // find correct mouse pixel interpretation to make sounds for
                         // large pixels
-                        final int xs = xsel, ys = ysel;
-                        if ((e.x == xs) && (e.y == ys)) {
+                        if ((e.x == xsel) && (e.y == ysel)) {
                             playSpike(type);
                         }
                     }
@@ -503,6 +508,10 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      * @param index 0-(size of pixel array-1) of pixel
      */
     protected void updateEventMaps(final PolarityEvent e) {
+        if (dvsDownsamplingCount++ < dvsDownsamplingValue) {
+            return;
+        }
+        dvsDownsamplingCount = 0;
         float[] map;
         if (packet.getNumCellTypes() > 2) {
             map = onMap.array();
@@ -593,13 +602,13 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         if ((x < 0) || (y < 0) || (x >= sizeX) || (y >= sizeY)) {
             badEventCount++;
             if ((System.currentTimeMillis() - lastWarningPrintedTimeMs) > INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS) {
-                int newBadEventCount=badEventCount-lastPrintedBadEventCount;
+                int newBadEventCount = badEventCount - lastPrintedBadEventCount;
                 log.warning(String.format(
                         "Event %s out of bounds and cannot be rendered in bounds sizeX=%d sizeY=%d\n delaying next warning for %dms\n %d bad events since last warning",
-                        e.toString(), sizeX, sizeY, INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS,newBadEventCount));
-                lastPrintedBadEventCount=badEventCount;
+                        e.toString(), sizeX, sizeY, INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS, newBadEventCount));
+                lastPrintedBadEventCount = badEventCount;
                 lastWarningPrintedTimeMs = System.currentTimeMillis();
-                
+
             }
 
             return -1;
@@ -711,7 +720,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      * @see #getPixmap()
      */
     @Override
-    public int getPixMapIndex(final int x, final int y) {
+    final public int getPixMapIndex(final int x, final int y) {
         return 4 * ((y * textureWidth) + x);
     }
 
@@ -896,7 +905,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         return value;
     }
 
-    protected float normalizeEvent(float value) {
+    final protected float normalizeEvent(float value) {
         if (value < 0) {
             value = 0;
         } else if (value > 1) {
@@ -1081,5 +1090,27 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      */
     public int getTimestampFrameEnd() {
         return timestampFrameEnd;
+    }
+
+    private void adaptDvsDownsampling() {
+        if (chip.getAeViewer() == null || chip.getAeViewer().isPaused()) {
+            return;
+        }
+        final float averageFPS = chip.getAeViewer().getFrameRater().getAverageFPS();
+        final int desiredFrameRate = chip.getAeViewer().getDesiredFrameRate();
+        boolean skipMore = averageFPS < (int) (0.75f * desiredFrameRate);
+        boolean skipLess = averageFPS > (int) (0.25f * desiredFrameRate);
+        if (skipMore) {
+            dvsDownsamplingValue = (Math.round(2 * dvsDownsamplingValue + 1));
+            if (dvsDownsamplingValue > 5) {
+                dvsDownsamplingValue = 5;
+            }
+        } else if (skipLess) {
+            dvsDownsamplingValue = (int)(0.5f * dvsDownsamplingValue);
+            if (dvsDownsamplingValue < 0) {
+                dvsDownsamplingValue = 0;
+            }
+        }
+//        System.out.println("downsampling "+dvsDownsamplingValue);
     }
 }
