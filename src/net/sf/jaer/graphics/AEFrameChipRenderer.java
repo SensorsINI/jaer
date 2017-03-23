@@ -124,7 +124,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     /**
      * downsampling of DVS to speed up rendering at high frame rate
      */
-    private int dvsDownsamplingValue = 10, dvsDownsamplingCount = 0;
+    private int dvsDownsamplingValue = 0, dvsDownsamplingCount = 0;
 
     public AEFrameChipRenderer(final AEChip chip) {
         super(chip);
@@ -508,9 +508,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      * @param index 0-(size of pixel array-1) of pixel
      */
     protected void updateEventMaps(final PolarityEvent e) {
-        if (dvsDownsamplingCount++ < dvsDownsamplingValue) {
-            return;
-        }
+//        if (dvsDownsamplingCount++ < dvsDownsamplingValue) {
+//            return;
+//        }
         dvsDownsamplingCount = 0;
         float[] map;
         if (packet.getNumCellTypes() > 2) {
