@@ -132,7 +132,7 @@ public class JAERViewer {
         if (splash != null) {
             new SplashHandler(splash);
         } else {
-            log.warning("no Java 6 splash screen to animate");
+            log.warning("no Java 6 splash screen to animate (don't worry; this happens if you run from development environment)");
         }
 
         // GLProfile and GLCapabilities should be equal across all shared GL drawable/context.
