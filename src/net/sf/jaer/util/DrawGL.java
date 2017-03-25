@@ -21,10 +21,35 @@ public final class DrawGL {
      */
     private DrawGL() {}
     
+   
+    /** Draws an arrow vector using current open gl color, starting from 0,0, using head length 1 and scaling 1
+      * 
+      * @param gl the opengl context
+      * @param headX The x length of arrow
+      * @param headY the y length of arrow
+      */
     public static void drawVector(GL2 gl, float headX, float headY) { drawVector(gl,0,0,headX,headY,1,1); }
+    /** Draws an arrow vector using current open gl color, using headlength 1 and scaling 1
+      * 
+      * @param gl the opengl context
+      * @param origX the arrow origin location x
+      * @param origY the arrow origin location x
+      * @param headX The x length of arrow
+      * @param headY the y length of arrow
+      */
     public static void drawVector(GL2 gl, float origX, float origY, float headX, float headY) { drawVector(gl,origX,origY,headX,headY,1,1); }
-    public static void drawVector(GL2 gl, float origX, float origY, float headX, float headY, float headlength, float Scale) {
-        float endx = headX*Scale, endy = headY*Scale;
+     /** Draws an arrow vector using current open gl color
+      * 
+      * @param gl the opengl context
+      * @param origX the arrow origin location x
+      * @param origY the arrow origin location x
+      * @param headX The x length of arrow
+      * @param headY the y length of arrow
+      * @param headlength the length of the arrow tip segments as fraction of entire arrow length, after scaling
+      * @param scale the scaling used for drawing the arrow
+      */
+    public static void drawVector(GL2 gl, float origX, float origY, float headX, float headY, float headlength, float scale) {
+        float endx = headX*scale, endy = headY*scale;
         float arx  = -endx+endy,  ary  = -endx-endy;   // halfway between pointing back to origin
         float l = (float)Math.sqrt((arx*arx)+(ary*ary)); // length
         arx = (arx/l)*headlength;   ary  = (ary/l)*headlength; // normalize to headlength
