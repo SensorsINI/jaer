@@ -22,13 +22,10 @@ import java.awt.event.WindowEvent;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.text.Format;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -48,6 +45,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.EngineeringFormat;
+import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
  * Uses patch matching to measureTT local optical flow. <b>Not</b> gradient
@@ -55,7 +53,7 @@ import net.sf.jaer.util.EngineeringFormat;
  *
  * @author Tobi and Min, Jan 2016
  */
-@Description("Computes optical flow with vector direction using binary block matching") 
+@Description("Computes optical flow with vector direction using binary block matching")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class PatchMatchFlow extends AbstractMotionFlow implements Observer, FrameAnnotater {
 
@@ -93,7 +91,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
     private int skipCounter = 0;
     private boolean adaptiveEventSkipping = getBoolean("adaptiveEventSkipping", false);
-    private float skipChangeFactor = (float)Math.sqrt(2); // by what factor to change the skip count if too slow or too fast
+    private float skipChangeFactor = (float) Math.sqrt(2); // by what factor to change the skip count if too slow or too fast
     private boolean outputSearchErrorInfo = false; // make user choose this slow down every time
     private boolean adapativeSliceDuration = getBoolean("adapativeSliceDuration", false);
     private boolean showSliceBitMap = getBoolean("showSliceBitMap", false); // Display the bitmaps
@@ -147,8 +145,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private JFrame Frame = null;
 
     public PatchMatchFlow(AEChip chip) {
-        super(chip);      
-        
+        super(chip);
+
         filterChain = new FilterChain(chip);
         cameraMotion = new Steadicam(chip);
         cameraMotion.setFilterEnabled(true);
@@ -156,16 +154,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         cameraMotion.setDisableTranslation(true);
         // filterChain.add(cameraMotion);
         setEnclosedFilterChain(filterChain);
-        
+
         setSliceDurationUs(40000);   // 40ms is good for the start of the slice duration adatative since 4ms is too fast and 500ms is too slow.
         // Save the result to the file
         Format formatter = new SimpleDateFormat("YYYY-MM-dd_hh-mm-ss");
         // Instantiate a Date object
         Date date = new Date();
-         
+
         // Log file for the OF distribution's statistics
 //        outputFilename = "PMF_HistStdDev" + formatter.format(date) + ".txt";
-        
         String patchTT = "Block matching";
 //        String eventSqeMatching = "Event squence matching";
 //        String preProcess = "Denoise";
@@ -248,7 +245,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     rstHist1D[m] = rstHist1D[m] / histMax;
                 }
                 lastHistStdDev = histStdDev;
-                
+
                 histStdDev = (float) histStats.getStdDev();
 //                try (FileWriter outFile = new FileWriter(outputFilename,true)) {
 //                            outFile.write(String.format(in.getFirstEvent().getTimestamp() + " " + histStdDev + "\r\n"));
@@ -283,9 +280,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                } else {
 //                    errSign = (float) Math.signum(err);                    
 //                }
-                
 //                lastErrSign = errSign;
-
                 int durChange = (int) (errSign * adapativeSliceDurationProportionalErrorGain * sliceDurationUs);
                 setSliceDurationUs(sliceDurationUs + durChange);
             }
@@ -1034,7 +1029,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         // TODD: NEXT WORK IS TO DO THE RESEARCH ON WEIGHTED HAMMING DISTANCE
         // Calculate the metric confidence value
         float validPixNum = this.validPixOccupancy * blockArea;
-        if ((validPixNumCurrSli <= validPixNum) || (validPixNumPrevSli <= validPixNum) 
+        if ((validPixNumCurrSli <= validPixNum) || (validPixNumPrevSli <= validPixNum)
                 || (validPixNumCurrSli == blockArea) || (validPixNumPrevSli == blockArea)) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
             return 1;
         } else {
@@ -1603,8 +1598,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //            eventSeqStartTs = new int[chip.getSizeX()][chip.getSizeY()];
 //        }
 
-        if(lastTimesMap!=null){
-            lastTimesMap=null; // save memory
+        if (lastTimesMap != null) {
+            lastTimesMap = null; // save memory
         }
     }
 
@@ -1705,7 +1700,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
     }
 
-    private int adaptiveEventSkippingUpdateIntervalPackets = 0;
+    private LowpassFilter adaptiveEventSkippingUpdateCounterLPFilter = null;
     private int adaptiveEventSkippingUpdateCounter = 0;
 
     private void adaptEventSkipping() {
@@ -1715,19 +1710,24 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (chip.getAeViewer() == null) {
             return;
         }
-        if (adaptiveEventSkippingUpdateCounter++ < adaptiveEventSkippingUpdateIntervalPackets) {
-            return;
+        int old = skipProcessingEventsCount;
+        if (adaptiveEventSkippingUpdateCounterLPFilter == null) {
+            adaptiveEventSkippingUpdateCounterLPFilter = new LowpassFilter(chip.getAeViewer().getFrameRater().FPS_LOWPASS_FILTER_TIMECONSTANT_MS);
         }
-        adaptiveEventSkippingUpdateCounter = 0;
         final float averageFPS = chip.getAeViewer().getFrameRater().getAverageFPS();
         final int frameRate = chip.getAeViewer().getDesiredFrameRate();
         boolean skipMore = averageFPS < (int) (0.75f * frameRate);
         boolean skipLess = averageFPS > (int) (0.25f * frameRate);
+        float newSkipCount = skipProcessingEventsCount;
         if (skipMore) {
-            setSkipProcessingEventsCount(Math.round(skipChangeFactor * skipProcessingEventsCount + 1));
+            newSkipCount = adaptiveEventSkippingUpdateCounterLPFilter.filter(1+(skipChangeFactor * skipProcessingEventsCount), 1000*(int) System.currentTimeMillis());
         } else if (skipLess) {
-            setSkipProcessingEventsCount(Math.round(skipProcessingEventsCount / (skipChangeFactor) - 1));
+            newSkipCount = adaptiveEventSkippingUpdateCounterLPFilter.filter((skipChangeFactor / skipProcessingEventsCount)-1, 1000*(int) System.currentTimeMillis());
         }
+        skipProcessingEventsCount = (int) newSkipCount;
+        if(skipProcessingEventsCount>1000)skipProcessingEventsCount=1000;
+        getSupport().firePropertyChange("skipProcessingEventsCount", old, this.skipProcessingEventsCount);
+
     }
 
     /**
@@ -1811,7 +1811,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 display.setPixmapRGB(i, j, 0, 0, 0);
             }
         }
-        
+
         if ((x >= radiaus) && (x + radiaus < subSizeX)
                 && (y >= radiaus) && (y + radiaus < subSizeY)) {
             /* Rendering the reference patch in t-d slice, it's on the center with color red */
@@ -1827,16 +1827,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             for (int i = 0; i < 2 * radiaus + 1; i++) {
                 for (int j = 0; j < 2 * radiaus + 1; j++) {
                     float[] f = display.getPixmapRGB(i, j);
-                    f[1] = tm2Bitmap[x - radiaus + i ][y - radiaus + j] ? 1 : 0;                    
+                    f[1] = tm2Bitmap[x - radiaus + i][y - radiaus + j] ? 1 : 0;
                     display.setPixmapRGB(i, j, f);
                 }
             }
 
             /* Rendering the best matching patch in t-2d slice, it's on the shifted position related to the center location with color blue */
-            for (int i = searchDistance + dx; i < patchDimension + searchDistance + dx ; i++) {
+            for (int i = searchDistance + dx; i < patchDimension + searchDistance + dx; i++) {
                 for (int j = searchDistance + dy; j < patchDimension + searchDistance + dy; j++) {
                     float[] f = display.getPixmapRGB(i, j);
-                    f[2] = tm2Bitmap[x - patchDimension / 2 + i - searchDistance][y - patchDimension / 2 + j - searchDistance] ? 1 : 0;                    
+                    f[2] = tm2Bitmap[x - patchDimension / 2 + i - searchDistance][y - patchDimension / 2 + j - searchDistance] ? 1 : 0;
                     display.setPixmapRGB(i, j, f);
                 }
             }
