@@ -579,7 +579,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", true);
     private boolean renderBlankFramesEnabled = prefs.getBoolean("AEViewer.renderBlankFramesEnabled", false);
     // number of packets to skip over rendering, used to speed up real time processing
-    private int skipPacketsRenderingNumber = prefs.getInt("AEViewer.skipPacketsRenderingNumber", 0);
+    private int skipPacketsRenderingNumberMax = prefs.getInt("AEViewer.skipPacketsRenderingNumber", 0), skipPacketsRenderingNumberCurrent = 0;
     private int skipPacketsRenderingCount = 0; // this is counter for skipping rendering cycles; set to zero to render first packet always
     private DropTarget dropTarget;
     private File draggedFile;
@@ -817,11 +817,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // init menu items that are checkboxes to correct initial state
         viewActiveRenderingEnabledMenuItem.setSelected(isActiveRenderingEnabled());
         loggingPlaybackImmediatelyCheckBoxMenuItem.setSelected(isLoggingPlaybackImmediatelyEnabled());
-        if (chip == null) {
-            log.warning("null chip object - some problem occurred constructing chip instance");
-        } else {
-            subsampleEnabledCheckBoxMenuItem.setSelected(chip.isSubSamplingEnabled());
-        }
         acccumulateImageEnabledCheckBoxMenuItem.setSelected(getRenderer().isAccumulateEnabled());
         autoscaleContrastEnabledCheckBoxMenuItem.setSelected(getRenderer().isAutoscaleEnabled());
         pauseRenderingCheckBoxMenuItem.setSelected(false);// not isPaused because aePlayer doesn't exist yet
@@ -829,12 +824,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         logFilteredEventsCheckBoxMenuItem.setSelected(logFilteredEventsEnabled);
         enableFiltersOnStartupCheckBoxMenuItem.setSelected(enableFiltersOnStartup);
 
-        fixSkipPacketsRenderingMenuItems();
-        if (!showedSkippedPacketsRenderingWarning && skipPacketsRenderingNumber > 1) {
-            JOptionPane.showMessageDialog(this, String.format("<html>AEViewer rendering (but not processing) is currently skipping %d cycles.<p>If this is not desired, use menu item <i>View/Graphics Options/Skip packets rendering enabled...</i> or deselect the <i>Don't render</i> button to change behavior", skipPacketsRenderingNumber));
-            showedSkippedPacketsRenderingWarning = true;
-        }
-
+//        fixSkipPacketsRenderingMenuItems();
+//        if (!showedSkippedPacketsRenderingWarning && skipPacketsRenderingNumberMax > 1) {
+//            JOptionPane.showMessageDialog(this, String.format("<html>AEViewer rendering (but not processing) is currently skipping %d cycles.<p>If this is not desired, use menu item <i>View/Graphics Options/Skip packets rendering enabled...</i> or deselect the <i>Don't render</i> button to change behavior", skipPacketsRenderingNumberMax));
+//            showedSkippedPacketsRenderingWarning = true;
+//        }
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(prefs.getBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", true));
 
         // start the server thread for incoming socket connections for remote consumers of events
@@ -1897,7 +1891,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                     numFilteredEvents = packet.getSizeNotFilteredOut();
                     makeStatisticsLabel(packet);
-                    skipPacketsRenderingCount = skipPacketsRenderingNumber;
+                    skipPacketsRenderingCount = skipPacketsRenderingCheckBoxMenuItem.isSelected()? skipPacketsRenderingNumberCurrent:0;
                 }
                 getFrameRater().takeAfter();
                 renderCount++;
@@ -1959,35 +1953,41 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             // </editor-fold>
         } // viewLoop.run()
 
-        private LowpassFilter skipPacketsRenderingLowpassFilter=null;
-        
+        private LowpassFilter skipPacketsRenderingLowpassFilter = null;
+
         private void adaptRenderSkipping() {
-            if(renderer instanceof AEFrameChipRenderer && ((AEFrameChipRenderer)renderer).isDisplayFrames()) return; // don't skip rendering frames since this will chop frames up and corrupt them
-            if(skipPacketsRenderingLowpassFilter==null){
-                skipPacketsRenderingLowpassFilter=new LowpassFilter(frameRater.FPS_LOWPASS_FILTER_TIMECONSTANT_MS);
+            if (!skipPacketsRenderingCheckBoxMenuItem.isSelected()) {
+                skipPacketsRenderingNumberCurrent=0;
+                return;
             }
-            int oldSkip = skipPacketsRenderingNumber;
-            int newSkip=oldSkip;
-            
+            if (renderer instanceof AEFrameChipRenderer && ((AEFrameChipRenderer) renderer).isDisplayFrames()) {
+                return; // don't skip rendering frames since this will chop frames up and corrupt them
+            }
+            if (skipPacketsRenderingLowpassFilter == null) {
+                skipPacketsRenderingLowpassFilter = new LowpassFilter(frameRater.FPS_LOWPASS_FILTER_TIMECONSTANT_MS);
+            }
+            int oldSkip = skipPacketsRenderingNumberCurrent;
+            int newSkip = oldSkip;
+
             final float averageFPS = chip.getAeViewer().getFrameRater().getAverageFPS();
             final int desiredFrameRate = chip.getAeViewer().getDesiredFrameRate();
             boolean skipMore = averageFPS < (int) (0.75f * desiredFrameRate);
             boolean skipLess = averageFPS > (int) (0.25f * desiredFrameRate);
             if (skipMore) {
-                newSkip = (Math.round(2 * skipPacketsRenderingNumber + 1));
-                if (newSkip > 5) {
-                    newSkip = 5;
+                newSkip = (Math.round(2 * skipPacketsRenderingNumberCurrent + 1));
+                if (newSkip > skipPacketsRenderingNumberMax) {
+                    newSkip = skipPacketsRenderingNumberMax;
                 }
             } else if (skipLess) {
-                newSkip = (int) (0.5f * skipPacketsRenderingNumber);
+                newSkip = (int) (0.5f * skipPacketsRenderingNumberCurrent);
                 if (newSkip < 0) {
                     newSkip = 0;
                 }
             }
-            skipPacketsRenderingNumber=Math.round(skipPacketsRenderingLowpassFilter.filter(newSkip,(int)System.currentTimeMillis()*1000));
-            if (oldSkip != skipPacketsRenderingNumber) {
-                log.info("now skipping rendering " + skipPacketsRenderingNumber+" packets");
-            }
+            skipPacketsRenderingNumberCurrent = Math.round(skipPacketsRenderingLowpassFilter.filter(newSkip, (int) System.currentTimeMillis() * 1000));
+//            if (oldSkip != skipPacketsRenderingNumberCurrent) {
+//                log.info("now skipping rendering " + skipPacketsRenderingNumberCurrent + " packets");
+//            }
         }
 
         /**
@@ -2498,10 +2498,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                 FrameRater fr = getFrameRater();
 
-                String frameRateString = String.format("%3.0f/%dfps,%3dms ",
+                String frameRateString = String.format("%3.0f/%dfps,%2dms skip %d ",
                         fr.getAverageFPS(),
                         fr.getDesiredFPS(),
-                        fr.getLastDelayMs());
+                        fr.getLastDelayMs(),
+                        skipPacketsRenderingNumberCurrent);
 
                 String colorScaleString = (getRenderer().isAutoscaleEnabled() ? "AS=" : "FS=") + Integer.toString(cs);
 
@@ -2707,7 +2708,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      *
      */
     public class FrameRater {
-       public final float FPS_LOWPASS_FILTER_TIMECONSTANT_MS=300;
+
+        public final float FPS_LOWPASS_FILTER_TIMECONSTANT_MS = 300;
 
         final int MAX_FPS = 1000;
         int desiredFPS = prefs.getInt("AEViewer.FrameRater.desiredFPS", getScreenRefreshRate());
@@ -2719,7 +2721,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         private long beforeTimeNs = System.nanoTime(), lastdt, afterTimeNs;
         WarningDialogWithDontShowPreference fpsWarning;
         private LowpassFilter periodFilter = new LowpassFilter(FPS_LOWPASS_FILTER_TIMECONSTANT_MS);
- 
+
         /**
          * Sets the desired target frames rate in frames/sec
          *
@@ -2900,7 +2902,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         buttonsPanel = new javax.swing.JPanel();
         biasesToggleButton = new javax.swing.JToggleButton();
         filtersToggleButton = new javax.swing.JToggleButton();
-        dontRenderToggleButton = new javax.swing.JToggleButton();
         loggingButton = new javax.swing.JToggleButton();
         multiModeButton = new javax.swing.JToggleButton();
         playerControlPanel = new javax.swing.JPanel();
@@ -2951,8 +2952,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewRenderBlankFramesCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         jSeparator2 = new javax.swing.JSeparator();
         skipPacketsRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        subsampleEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        subSampleSizeMenuItem = new javax.swing.JMenuItem();
         jSeparator3 = new javax.swing.JSeparator();
         cycleColorRenderingMethodMenuItem = new javax.swing.JMenuItem();
         increaseContrastMenuItem = new javax.swing.JMenuItem();
@@ -3068,18 +3067,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         buttonsPanel.add(filtersToggleButton);
-
-        dontRenderToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
-        dontRenderToggleButton.setText("Don't render");
-        dontRenderToggleButton.setToolTipText("Disables rendering to spped up processing; see menu item Graphcs Options/Skip packets rendering enabled... to set the number of rendering cycles to skip");
-        dontRenderToggleButton.setAlignmentY(0.0F);
-        dontRenderToggleButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
-        dontRenderToggleButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                dontRenderToggleButtonActionPerformed(evt);
-            }
-        });
-        buttonsPanel.add(dontRenderToggleButton);
 
         loggingButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
         loggingButton.setMnemonic('l');
@@ -3436,32 +3423,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         graphicsSubMenu.add(viewRenderBlankFramesCheckBoxMenuItem);
         graphicsSubMenu.add(jSeparator2);
 
-        skipPacketsRenderingCheckBoxMenuItem.setText("Skip packets rendering enabled...");
-        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("Enables skipping rendering of packets to speed up processing");
+        skipPacketsRenderingCheckBoxMenuItem.setText("Enable adaptive render skipping");
+        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("Enables skipping rendering of packets to speed up frame rate");
+        skipPacketsRenderingCheckBoxMenuItem.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                skipPacketsRenderingCheckBoxMenuItemStateChanged(evt);
+            }
+        });
         skipPacketsRenderingCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 skipPacketsRenderingCheckBoxMenuItemActionPerformed(evt);
             }
         });
         graphicsSubMenu.add(skipPacketsRenderingCheckBoxMenuItem);
-
-        subsampleEnabledCheckBoxMenuItem.setText("Enable subsample rendering");
-        subsampleEnabledCheckBoxMenuItem.setToolTipText("use to speed up rendering");
-        subsampleEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                subsampleEnabledCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
-        graphicsSubMenu.add(subsampleEnabledCheckBoxMenuItem);
-
-        subSampleSizeMenuItem.setText("Choose rendering subsample limit...");
-        subSampleSizeMenuItem.setToolTipText("Sets the number of events rendered in subsampling mode");
-        subSampleSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                subSampleSizeMenuItemActionPerformed(evt);
-            }
-        });
-        graphicsSubMenu.add(subSampleSizeMenuItem);
 
         viewMenu.add(graphicsSubMenu);
         viewMenu.add(jSeparator3);
@@ -4007,49 +3981,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             prefs.putBoolean("AEViewer.enableFiltersOnStartup", enableFiltersOnStartup);
 	}//GEN-LAST:event_enableFiltersOnStartupCheckBoxMenuItemActionPerformed
 
-	private void dontRenderToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dontRenderToggleButtonActionPerformed
-            if (dontRenderToggleButton.isSelected()) {
-                skipPacketsRenderingNumber = 100;
-                skipPacketsRenderingCheckBoxMenuItem.setSelected(true);
-            } else {
-                skipPacketsRenderingNumber = 0;
-                skipPacketsRenderingCount = 0; // added to restart rendering immediately
-                skipPacketsRenderingCheckBoxMenuItem.setSelected(false);
-            }
-            prefs.putInt("AEViewer.skipPacketsRenderingNumber", skipPacketsRenderingNumber);  // store this as preference on menu choice to make skipping persistent
-	}//GEN-LAST:event_dontRenderToggleButtonActionPerformed
-
     void fixSkipPacketsRenderingMenuItems() {
-        skipPacketsRenderingCheckBoxMenuItem.setSelected(skipPacketsRenderingNumber > 0);
-        skipPacketsRenderingCheckBoxMenuItem.setText("Skip rendering packets (skipping " + skipPacketsRenderingNumber + " packets)");
-        dontRenderToggleButton.setSelected(skipPacketsRenderingNumber > 0);
+        skipPacketsRenderingCheckBoxMenuItem.setText("Enable adaptive render skipping (currently skipping maximum of " + skipPacketsRenderingNumberMax + " packets)...");
     }
-
-	private void skipPacketsRenderingCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_skipPacketsRenderingCheckBoxMenuItemActionPerformed
-            // come here when user wants to skip rendering except every n packets
-            if (!skipPacketsRenderingCheckBoxMenuItem.isSelected()) {
-                skipPacketsRenderingNumber = 0;
-                prefs.putInt("AEViewer.skipPacketsRenderingNumber", skipPacketsRenderingNumber);
-                fixSkipPacketsRenderingMenuItems();
-                return;
-            }
-            String s = "Number of packets to skip over between rendering (currently " + skipPacketsRenderingNumber + ")";
-            boolean gotIt = false;
-            while (!gotIt) {
-                String retString = JOptionPane.showInputDialog(this, s, Integer.toString(skipPacketsRenderingNumber));
-                if (retString == null) {
-                    return;
-                } // cancelled
-                try {
-                    skipPacketsRenderingNumber = Integer.parseInt(retString);
-                    gotIt = true;
-                } catch (NumberFormatException e) {
-                    log.warning(e.toString());
-                }
-            }
-            prefs.putInt("AEViewer.skipPacketsRenderingNumber", skipPacketsRenderingNumber);
-            fixSkipPacketsRenderingMenuItems();
-	}//GEN-LAST:event_skipPacketsRenderingCheckBoxMenuItemActionPerformed
 
 	private void customizeDevicesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_customizeDevicesMenuItemActionPerformed
             //        log.info("customizing chip classes");
@@ -4233,10 +4167,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             stopMe();
 	}//GEN-LAST:event_formWindowClosed
 
-	private void viewRenderBlankFramesCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewRenderBlankFramesCheckBoxMenuItemActionPerformed
-            setRenderBlankFramesEnabled(viewRenderBlankFramesCheckBoxMenuItem.isSelected());
-	}//GEN-LAST:event_viewRenderBlankFramesCheckBoxMenuItemActionPerformed
-
 	private void monSeqMissedEventsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monSeqMissedEventsMenuItemActionPerformed
             if (aemon instanceof CypressFX2MonitorSequencer) {
                 CypressFX2MonitorSequencer fx = (CypressFX2MonitorSequencer) aemon;
@@ -4371,17 +4301,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             // TODO add your handling code here:
 	}//GEN-LAST:event_refreshInterfaceMenuItemActionPerformed
 
-	private void subSampleSizeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_subSampleSizeMenuItemActionPerformed
-            String ans = JOptionPane.showInputDialog(this, "Enter limit to number of rendered events", getRenderer().getSubsampleThresholdEventCount());
-            try {
-                int n = Integer.parseInt(ans);
-                getRenderer().setSubsampleThresholdEventCount(n);
-                extractor.setSubsampleThresholdEventCount(n);
-            } catch (NumberFormatException e) {
-                Toolkit.getDefaultToolkit().beep();
-            }
-	}//GEN-LAST:event_subSampleSizeMenuItemActionPerformed
-
 	private void filtersToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_filtersToggleButtonActionPerformed
             showFilters(filtersToggleButton.isSelected());
 	}//GEN-LAST:event_filtersToggleButtonActionPerformed
@@ -4489,14 +4408,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.warning("It does not make sense to cycle color mode for this display method, ignoring");
             }
 	}//GEN-LAST:event_cycleColorRenderingMethodMenuItemActionPerformed
-
-	private void subsampleEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_subsampleEnabledCheckBoxMenuItemActionPerformed
-            chip.setSubSamplingEnabled(subsampleEnabledCheckBoxMenuItem.isSelected());
-	}//GEN-LAST:event_subsampleEnabledCheckBoxMenuItemActionPerformed
-
-	private void viewActiveRenderingEnabledMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewActiveRenderingEnabledMenuItemActionPerformed
-            setActiveRenderingEnabled(viewActiveRenderingEnabledMenuItem.isSelected());
-	}//GEN-LAST:event_viewActiveRenderingEnabledMenuItemActionPerformed
 
     /**
      * Fills in the device control menu (the USB menu) so that menu items are
@@ -5663,6 +5574,41 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }//GEN-LAST:event_setBorderSpaceMenuItemActionPerformed
 
+    private void skipPacketsRenderingCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_skipPacketsRenderingCheckBoxMenuItemActionPerformed
+        // come here when user wants to skip rendering except every n packets
+        if (!skipPacketsRenderingCheckBoxMenuItem.isSelected()) {
+            skipPacketsRenderingNumberCurrent=0;
+            return;
+        }
+        String s = "Maximum number of packets to skip over between rendering (currently " + skipPacketsRenderingNumberMax + ")";
+        boolean gotIt = false;
+        while (!gotIt) {
+            String retString = JOptionPane.showInputDialog(this, s, Integer.toString(skipPacketsRenderingNumberMax));
+            if (retString == null) {
+                return;
+            } // cancelled
+            try {
+                skipPacketsRenderingNumberMax = Integer.parseInt(retString);
+                gotIt = true;
+            } catch (NumberFormatException e) {
+                log.warning(e.toString());
+            }
+        }
+        prefs.putInt("AEViewer.skipPacketsRenderingNumber", skipPacketsRenderingNumberMax);
+    }//GEN-LAST:event_skipPacketsRenderingCheckBoxMenuItemActionPerformed
+
+    private void viewRenderBlankFramesCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewRenderBlankFramesCheckBoxMenuItemActionPerformed
+        setRenderBlankFramesEnabled(viewRenderBlankFramesCheckBoxMenuItem.isSelected());
+    }//GEN-LAST:event_viewRenderBlankFramesCheckBoxMenuItemActionPerformed
+
+    private void viewActiveRenderingEnabledMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewActiveRenderingEnabledMenuItemActionPerformed
+        setActiveRenderingEnabled(viewActiveRenderingEnabledMenuItem.isSelected());
+    }//GEN-LAST:event_viewActiveRenderingEnabledMenuItemActionPerformed
+
+    private void skipPacketsRenderingCheckBoxMenuItemStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_skipPacketsRenderingCheckBoxMenuItemStateChanged
+        fixSkipPacketsRenderingMenuItems();        // TODO add your handling code here:
+    }//GEN-LAST:event_skipPacketsRenderingCheckBoxMenuItemStateChanged
+
     /**
      * Returns desired frame rate of FrameRater
      *
@@ -5817,7 +5763,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             extractor = chip.getEventExtractor();
             renderer = chip.getRenderer();
 
-            extractor.setSubsamplingEnabled(subsampleEnabledCheckBoxMenuItem.isSelected());
             extractor.setSubsampleThresholdEventCount(getRenderer().getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
         }
 
@@ -6230,7 +6175,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenu deviceMenu;
     private javax.swing.JSeparator deviceMenuSpparator;
     private javax.swing.JMenu displayMethodMenu;
-    private javax.swing.JToggleButton dontRenderToggleButton;
     private javax.swing.JCheckBoxMenuItem enableFiltersOnStartupCheckBoxMenuItem;
     private javax.swing.JCheckBoxMenuItem enableMissedEventsCheckBox;
     private javax.swing.JMenuItem exitMenuItem;
@@ -6311,8 +6255,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JCheckBoxMenuItem skipPacketsRenderingCheckBoxMenuItem;
     private javax.swing.JPanel statisticsPanel;
     private javax.swing.JTextField statusTextField;
-    private javax.swing.JMenuItem subSampleSizeMenuItem;
-    private javax.swing.JCheckBoxMenuItem subsampleEnabledCheckBoxMenuItem;
     private javax.swing.JCheckBoxMenuItem syncEnabledCheckBoxMenuItem;
     private javax.swing.JSeparator syncSeperator;
     private javax.swing.JMenuItem timestampResetBitmaskMenuItem;
