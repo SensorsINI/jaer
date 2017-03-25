@@ -754,6 +754,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 int rgbValue = Color.HSBtoRGB(val01, 1, 1);
                 Color color = new Color(rgbValue);
                 float[] rgb = color.getRGBComponents(null);
+                gl.glColor4f(rgb[0], rgb[1], rgb[2], 1f);
+//                gl.glLineWidth(motionVectorLineWidthPixels);
+//                final double angleRad = 2*Math.PI*(val01-.5f);
+//                DrawGL.drawVector(gl, 0,0,(float)Math.cos(angleRad), (float)Math.sin(angleRad),.3f,2);
                 final float angle0 = (val01 - .5f) * 2 * (float) Math.PI;
                 final float angle1 = ((val01 - .5f) + 1f / segments) * 2 * (float) Math.PI;
                 gl.glBegin(GL.GL_TRIANGLES);
