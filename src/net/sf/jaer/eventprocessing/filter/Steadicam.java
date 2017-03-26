@@ -139,7 +139,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     private int sx2, sy2;
     private boolean transformImageEnabled = getBoolean("transformImageEnabled", true);
     private int lastFrameNumber = 0;
-    protected float imuLagMs = getFloat("imuLagMs", 1.8f);
+    protected float imuLagMs = getFloat("imuLagMs", 0);
 
     private boolean addedViewerPropertyChangeListener = false;
     ApsDvsEventPacket outputPacket = null;
@@ -198,7 +198,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         setPropertyTooltip(transform, "disableTranslation", "Disables translations part of transform");
         setPropertyTooltip(transform, "selectCenterOfRotation", "Select during mouse movement the center of rotation (to try out stabilization), then confirm with mouse click on the image the actual center of rotation (COR)");
         setPropertyTooltip(transform, "eraseCenterOfRotationSelection", "Clear center of rotation to reset it back to center of image");
-        setPropertyTooltip(imu, "imuLagMs", "absolute delay/lag of IMU in ms; from Invense datasheet this delay is specified as 1.8ms");
+        setPropertyTooltip(imu, "imuLagMs", "absolute delay/lag of IMU in ms; from Invense datasheet this delay is specified as 1.8ms; by default is set to 0ms to reduce memory pushes/pulls");
 
         rollFilter.setTauMs(highpassTauMsRotation);
         panTranslationFilter.setTauMs(highpassTauMsTranslation);
@@ -366,10 +366,15 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         return outputPacket;
     }
 
-    final int INIITAL_QUEUE_SIZE = 10000;
-    ArrayBlockingQueue<ApsDvsEvent> eventQueue = new ArrayBlockingQueue<ApsDvsEvent>(INIITAL_QUEUE_SIZE);
-
+    private final int INIITAL_QUEUE_SIZE = 1000;
+    private ArrayBlockingQueue<ApsDvsEvent> eventQueue = new ArrayBlockingQueue<ApsDvsEvent>(INIITAL_QUEUE_SIZE);
+    private ApsDvsEvent heldEvent=null; // used when imuLagMs==0
+    
     private void pushEvent(ApsDvsEvent ev) {
+        if(imuLagMs==0){
+            heldEvent=ev;
+            return;
+        }
         ApsDvsEvent ne = new ApsDvsEvent();
         ne.copyFrom(ev);
         if (!eventQueue.offer(ne)) {
@@ -383,10 +388,16 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     }
 
     private ApsDvsEvent popEvent() {
+        if(imuLagMs==0) {
+            ApsDvsEvent re=heldEvent;
+            heldEvent=null;
+            return re;
+        }
         return eventQueue.poll();
     }
 
     private ApsDvsEvent peekEvent() {
+        if(imuLagMs==0) return heldEvent;
         return eventQueue.peek();
     }
 
