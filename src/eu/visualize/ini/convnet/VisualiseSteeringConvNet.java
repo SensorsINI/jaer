@@ -36,6 +36,9 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Font;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
@@ -56,6 +59,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     volatile private boolean showArrow = getBoolean("showArrow", false);
     volatile private boolean showAngleOnly = getBoolean("showAngleOnly", true);
     volatile private boolean showStatistics = getBoolean("showStatistics", true);
+    private boolean startLogging = getBoolean("startLogging", false);
+    private boolean deleteLogging = getBoolean("deleteLogging", false);
     private TargetLabeler targetLabeler = null;
     private Error error = new Error();
     protected TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10), true, true);
@@ -98,6 +103,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private final LowpassFilter Lowpass = new LowpassFilter(300);
     private float[] lastProjectionX; // save the last values
     private float[] lastProjectionY; // save the last values
+    private float[] lastSize; // save the last values
     private float[] lastTipX; // save the last values
     private float[] lastTipY; // save the last values
     private int counter = 0;
@@ -132,6 +138,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         setPropertyTooltip(udp, "startLoggingUDPMessages", "start logging UDP messages to a text log file");
         setPropertyTooltip(udp, "stopLoggingUDPMessages", "stop logging UDP messages");
         setPropertyTooltip(disp, "renderingCyclesDecision", "Display robot behavior for these many rendering cycles");
+        setPropertyTooltip(deb, "startLogging", "Start logging inhibition and excitation");
+        setPropertyTooltip(deb, "deleteLogging", "Delete the logging of inhibition and excitation");
 
         FilterChain chain = new FilterChain(chip);
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
@@ -144,6 +152,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         behaviorLogger.setNanotimeEnabled(false);
         this.lastProjectionX = new float[getRememberLast()];
         this.lastProjectionY = new float[getRememberLast()];
+        this.lastSize = new float[getRememberLast()];
         this.lastTipX = new float[getRememberLast()];
         this.lastTipY = new float[getRememberLast()];
 //        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
@@ -300,8 +309,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 float sizeS = (net.outputLayer.activations[0] + net.outputLayer.activations[3] + net.outputLayer.activations[6]) / 3;
                 float sizeM = (net.outputLayer.activations[1] + net.outputLayer.activations[4] + net.outputLayer.activations[7]) / 3;
                 float sizeXL = (net.outputLayer.activations[2] + net.outputLayer.activations[5] + net.outputLayer.activations[8]) / 3;
-                float overallSize = Lowpass.filter(sizeS * (chip.getSizeX()) + sizeM * (chip.getSizeX() / 2) + sizeXL * (chip.getSizeX() / 3), lastProcessedEventTimestamp);
-
+                float overallDistance = Lowpass.filter(sizeS * (chip.getSizeX()) + sizeM * (chip.getSizeX() / 2) + sizeXL * (chip.getSizeX() / 3), lastProcessedEventTimestamp);
+                float overallSize = Lowpass.filter(sizeS * (chip.getSizeX() / 3) + sizeM * (chip.getSizeX() / 2) + sizeXL * (chip.getSizeX()), lastProcessedEventTimestamp);
                 if (counter < (getRememberLast() - 1)) {
                     counter++;
                 } else {
@@ -309,6 +318,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 }
                 lastProjectionX[counter] = projectionX;
                 lastProjectionY[counter] = projectionY;
+                lastSize[counter] = overallSize;
                 float averageProjectionX = 0;
                 float averageProjectionY = 0;
                 for (int i = 0; i < getRememberLast(); i++) {
@@ -323,8 +333,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 float normalizationFactor = (float) (1 / (Math.sqrt(averageProjectionX * averageProjectionX + averageProjectionY * averageProjectionY)));
 
                 if (!showAngleOnly) {
-                    tipX = averageProjectionX * normalizationFactor * overallSize * 2;
-                    tipY = averageProjectionY * normalizationFactor * overallSize * 2;
+                    tipX = averageProjectionX * normalizationFactor * overallDistance * 2;
+                    tipY = averageProjectionY * normalizationFactor * overallDistance * 2;
                     if (tipY > chip.getSizeY() / 2) {
                         tipY = chip.getSizeY() / 2;
                     }
@@ -358,18 +368,64 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 }
                 glu.gluDisk(quad, chip.getMinSize() * 0.95f / 4, chip.getMinSize() / 4, 32, 1);
                 gl.glPopMatrix();
-                float distance = overallSize/20;
-                float angleRad = (float) Math.atan(tipX/tipY);
-                float angleDeg = -angleRad*180f/3.14f +90f;
-                if(tipY < 0) {
-                    angleDeg = angleDeg+180;
-                }
+                float distance = ((7/4)*(overallDistance / 40f)-0.4f)*3f;
+                if(distance<0){distance=0;}
+                double tipYd = (double) tipY;
+                double tipXd = (double) tipX;
+                float angleRad;
+                angleRad = (float) Math.atan2(tipYd,tipXd);
+                float angleDeg = angleRad * 180f / 3.14f;
                 gl.glColor4f(0, 0, 1, 0.2f);
                 gl.glPushMatrix();
                 gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 5);
-                glu.gluPartialDisk(quad,5,15,32,1,+90,-angleDeg);
+                glu.gluPartialDisk(quad, 5, 15, 32, 1, +90, -angleDeg);
                 gl.glPopMatrix();
-                MultilineAnnotationTextRenderer.renderMultilineString(String.format("Angle: %6.1f   Distance: %6.1f m", angleDeg, distance));
+                if(angleDeg>0){
+                    MultilineAnnotationTextRenderer.renderMultilineString(String.format("Angle: %6.1f   Distance: %6.1f m", angleDeg, distance));
+                }else
+                {MultilineAnnotationTextRenderer.renderMultilineString(String.format("Angle: %6.1f", angleDeg));
+}
+                PrintStream p; // declare a print stream object
+                //------------------------------------------------------------------------------
+                // Log eventRate
+                //System.out.println(targetLabeler.getTargetLocation().height);
+                if (startLogging == true) {
+                    try {
+                        //Create a new file output stream 
+                        FileOutputStream outR = new FileOutputStream(new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\Trial.txt"), true);
+                        //Connect print stream to the output stream 
+                        p = new PrintStream(outR);
+                        p.print(targetLabeler.getTargetLocation().timestamp);
+                        p.print("\t");
+                        if (targetLabeler.getTargetLocation() != null && targetLabeler.getTargetLocation().location != null) {
+                            p.print(targetLabeler.getTargetLocation().location.x);
+                            p.print("\t");
+                            p.print(targetLabeler.getTargetLocation().location.y);
+                            p.print("\t");
+                            p.print(2 * targetLabeler.getTargetLocation().height);
+                        } else {
+                            p.print("-1\t-1\t-1");
+                        }
+                        p.print("\t");
+                        p.print(tipX);
+                        p.print("\t");
+                        p.print(tipY);
+                        p.print("\t");
+                        p.print(angleDeg);
+                        p.print("\t");
+                        p.print(overallSize);
+                        p.print("\t");
+                        int DVSorAPS = (net.lastInputTypeProcessedWasApsFrame) ? 1 : 0;
+                        p.println(DVSorAPS);
+                        p.close();
+                    } catch (Exception x) {
+                        System.err.println("Error writing to file");
+                    }
+                }
+                if (deleteLogging == true) {
+                    File fout = new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\Trial5both.txt.txt");
+                    fout.delete();
+                }
             }
         }
 
@@ -1348,6 +1404,30 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         this.sendOnlyNovelSteeringMessages = sendOnlyNovelSteeringMessages;
         putBoolean("sendOnlyNovelSteeringMessages", sendOnlyNovelSteeringMessages);
 
+    }
+    //------------------------------------------------------------------------------
+    // return the startLogging
+
+    public boolean isStartLogging() {
+        return startLogging;
+    }
+
+    // @param startLogging the startLogging to set
+    public void setStartLogging(boolean startLogging) {
+        this.startLogging = startLogging;
+        putBoolean("startLogging", startLogging);
+    }
+    //------------------------------------------------------------------------------
+    // @return the deleteLogging
+
+    public boolean isDeleteLogging() {
+        return deleteLogging;
+    }
+
+    // @param deleteLogging the deleteLogging to set
+    public void setDeleteLogging(boolean deleteLogging) {
+        this.deleteLogging = deleteLogging;
+        putBoolean("deleteLogging", deleteLogging);
     }
 
     private class BehaviorLoggingThread extends Thread {
