@@ -781,6 +781,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
     }
 
+    private float sumArray[][] = null;
+
     /**
      * Computes hamming eight around point x,y using patchDimension and
      * searchDistance
@@ -796,10 +798,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         float minSum = Integer.MAX_VALUE, minSum1 = Integer.MAX_VALUE, sum = 0;
 
         float FSDx = 0, FSDy = 0, DSDx = 0, DSDy = 0;  // This is for testing the DS search accuracy.       
-        int searchRange = 2 * searchDistance + 1; // The maxium search index, for xidx and yidx.
-        float sumArray1[][] = new float[2 * searchDistance + 1][2 * searchDistance + 1];
-        for (float[] row : sumArray1) {
-            Arrays.fill(row, Integer.MAX_VALUE);
+        final int searchRange = 2 * searchDistance + 1; // The maxium search index, for xidx and yidx.
+        if (sumArray == null || sumArray.length != searchRange) {
+            sumArray = new float[searchRange][searchRange];
+        } else {
+            for (float[] row : sumArray) {
+                Arrays.fill(row, Integer.MAX_VALUE);
+            }
         }
 
         if (outputSearchErrorInfo) {
@@ -813,7 +818,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 for (int dx = -searchDistance; dx <= searchDistance; dx++) {
                     for (int dy = -searchDistance; dy <= searchDistance; dy++) {
                         sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
-                        sumArray1[dx + searchDistance][dy + searchDistance] = sum;
+                        sumArray[dx + searchDistance][dy + searchDistance] = sum;
                         if (sum <= minSum1) {
 //                            if (sum == minSum1 && minSum1 != Integer.MAX_VALUE) {
 //                                tmpSadResult.minSearchedFlg = true;
@@ -859,13 +864,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 /* If one block has been already calculated, the computedFlg will be set so we don't to do 
                        the calculation again.
                  */
-                boolean computedFlg[][] = new boolean[2 * searchDistance + 1][2 * searchDistance + 1];
+                boolean computedFlg[][] = new boolean[searchRange][searchRange];
                 for (boolean[] row : computedFlg) {
                     Arrays.fill(row, false);
-                }
-                float sumArray[][] = new float[2 * searchDistance + 1][2 * searchDistance + 1];
-                for (float[] row : sumArray) {
-                    Arrays.fill(row, Integer.MAX_VALUE);
                 }
 
                 if (searchDistance == 1) { // LDSP search can only be applied for search distance >= 2.
@@ -894,7 +895,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                                 DSAverageNum++;
                             }
                             if (outputSearchErrorInfo) {
-                                if (sumArray[xidx][yidx] != sumArray1[xidx][yidx]) {
+                                if (sumArray[xidx][yidx] != sumArray[xidx][yidx]) {
                                     log.warning("It seems that there're some bugs in the DS algorithm.");
                                 }
                             }
@@ -937,7 +938,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                             DSAverageNum++;
                         }
                         if (outputSearchErrorInfo) {
-                            if (sumArray[xidx][yidx] != sumArray1[xidx][yidx]) {
+                            if (sumArray[xidx][yidx] != sumArray[xidx][yidx]) {
                                 log.warning("It seems that there're some bugs in the DS algorithm.");
                             }
                         }
@@ -1720,12 +1721,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         boolean skipLess = averageFPS > (int) (0.25f * frameRate);
         float newSkipCount = skipProcessingEventsCount;
         if (skipMore) {
-            newSkipCount = adaptiveEventSkippingUpdateCounterLPFilter.filter(1+(skipChangeFactor * skipProcessingEventsCount), 1000*(int) System.currentTimeMillis());
+            newSkipCount = adaptiveEventSkippingUpdateCounterLPFilter.filter(1 + (skipChangeFactor * skipProcessingEventsCount), 1000 * (int) System.currentTimeMillis());
         } else if (skipLess) {
-            newSkipCount = adaptiveEventSkippingUpdateCounterLPFilter.filter((skipChangeFactor / skipProcessingEventsCount)-1, 1000*(int) System.currentTimeMillis());
+            newSkipCount = adaptiveEventSkippingUpdateCounterLPFilter.filter((skipChangeFactor / skipProcessingEventsCount) - 1, 1000 * (int) System.currentTimeMillis());
         }
         skipProcessingEventsCount = (int) newSkipCount;
-        if(skipProcessingEventsCount>1000)skipProcessingEventsCount=1000;
+        if (skipProcessingEventsCount > 1000) {
+            skipProcessingEventsCount = 1000;
+        }
         getSupport().firePropertyChange("skipProcessingEventsCount", old, this.skipProcessingEventsCount);
 
     }
