@@ -63,13 +63,19 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     int numInputTypes;
 
-    /** Basic event information. */
+    /**
+     * Basic event information.
+     */
     protected int x, y, ts, type, lastTs;
 
-    /** (Subsampled) chip sizes. */
+    /**
+     * (Subsampled) chip sizes.
+     */
     protected int sizex, sizey, subSizeX, subSizeY;
 
-    /** Subsampling */
+    /**
+     * Subsampling
+     */
     private int subSampleShift = getInt("subSampleShift", 0);
     protected boolean[][] subsampledPixelIsSet;
 
@@ -657,13 +663,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      * @param e the event
      */
     protected void drawMotionVector(GL2 gl, MotionOrientationEventInterface e) {
-        float angle01 = (float) (Math.atan2(e.getVelocity().y, e.getVelocity().x) / (2 * Math.PI) + 0.5);
-        // atan2 returns -pi to +pi, so dividing by 2*pi gives -.5 to +.5. Adding .5 gives range 0 to 1.
-//                    angle01=.5f; // debug
-        int rgbValue = Color.HSBtoRGB(angle01, 1, e.getSpeed() * ppsScale / 20);
-        Color color = new Color(rgbValue);
-        float[] rgb = color.getRGBComponents(null);
-        gl.glColor3f(rgb[0], rgb[1], rgb[2]);
+        float[] rgb = motionColor(e);
+        gl.glColor3fv(rgb, 0);
         gl.glPushMatrix();
         gl.glLineWidth(motionVectorLineWidthPixels);
         // start arrow from event
@@ -671,8 +672,30 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         // center arrow on location, rather that start from event location
         float dx = e.getVelocity().x * ppsScale, dy = e.getVelocity().y * ppsScale;
         float x0 = e.getX() - dx / 2 + .5f, y0 = e.getY() - dy / 2 + .5f;
-        DrawGL.drawVector(gl, x0, y0, dx, dy, motionVectorLineWidthPixels, 1);
+        DrawGL.drawVector(gl, x0, y0, dx, dy, motionVectorLineWidthPixels, .5f);
         gl.glPopMatrix();
+    }
+
+    protected float[] motionColor(float angle) {
+        return motionColor((float) Math.cos(angle), (float) Math.sin(angle), 1, 1);
+    }
+
+    protected float[] motionColor(float angle, float saturation, float brightness) {
+        return motionColor((float) Math.cos(angle), (float) Math.sin(angle), saturation, brightness);
+    }
+
+    protected float[] motionColor(MotionOrientationEventInterface e1) {
+        return motionColor(e1.getVelocity().x, e1.getVelocity().y, 1, e1.getSpeed() * ppsScale / 40);
+    }
+
+    protected float[] motionColor(float x, float y, float saturation, float brightness) {
+        float angle01 = (float) (Math.atan2(y, x) / (2 * Math.PI) + 0.5);
+        // atan2 returns -pi to +pi, so dividing by 2*pi gives -.5 to +.5. Adding .5 gives range 0 to 1.
+//                    angle01=.5f; // debug
+        int rgbValue = Color.HSBtoRGB(angle01, saturation, brightness);
+        Color color = new Color(rgbValue);
+        float[] rgb = color.getRGBComponents(null);
+        return rgb;
     }
 
     @Override
@@ -730,7 +753,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 // the events without a real direction.
                 if (ei.isHasDirection()) {
                     drawMotionVector(gl, ei);
-                } else if (displayZeroLengthVectorsEnabled){
+                } else if (displayZeroLengthVectorsEnabled) {
                     gl.glPushMatrix();
                     gl.glTranslatef(ei.getX(), ei.getY(), 0);
                     gl.glPointSize(motionVectorLineWidthPixels * 2);
@@ -751,10 +774,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             gl.glTranslatef(-20, chip.getSizeY() / 2, 0);
             gl.glScalef(scale, scale, 1);
             for (float val01 = 0; val01 < 1; val01 += 1f / segments) {
-                int rgbValue = Color.HSBtoRGB(val01, 1, 1);
-                Color color = new Color(rgbValue);
-                float[] rgb = color.getRGBComponents(null);
-                gl.glColor4f(rgb[0], rgb[1], rgb[2], 1f);
+                float[] rgb = motionColor((float) ((val01-.5f) * 2 * Math.PI),1f,.5f);
+                gl.glColor3fv(rgb, 0);
 //                gl.glLineWidth(motionVectorLineWidthPixels);
 //                final double angleRad = 2*Math.PI*(val01-.5f);
 //                DrawGL.drawVector(gl, 0,0,(float)Math.cos(angleRad), (float)Math.sin(angleRad),.3f,2);
