@@ -88,6 +88,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //    private int[][] lastFireIndex = null;  // Events are numbered in time order for every block. This variable is for storing the last event index fired on all blocks.
 //    private int[][] eventSeqStartTs = null;
 //    private boolean preProcessEnable = false;
+    private static final int MAX_SKIP_COUNT = 300;
     private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
     private int skipCounter = 0;
     private boolean adaptiveEventSkipping = getBoolean("adaptiveEventSkipping", false);
@@ -96,7 +97,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private boolean adapativeSliceDuration = getBoolean("adapativeSliceDuration", false);
     private boolean showSliceBitMap = getBoolean("showSliceBitMap", false); // Display the bitmaps
     private float adapativeSliceDurationProportionalErrorGain = 0.01f; // factor by which an error signal on match distance changes slice duration
-    private int processingTimeLimitMs = getInt("processingTimeLimitMs", 1000); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
+    private int processingTimeLimitMs = getInt("processingTimeLimitMs", 100); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
     private TimeLimiter timeLimiter = new TimeLimiter();
 
     // results histogram for each packet
@@ -672,6 +673,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         sliceLastTs = 0;
         rewindFlg = true;
+        if (adaptiveEventSkippingUpdateCounterLPFilter != null) {
+            adaptiveEventSkippingUpdateCounterLPFilter.reset();
+        }
     }
 
     @Override
@@ -726,10 +730,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         assignSliceReferences();
     }
 
-    private int updateAdaptDuration() {
-        return 1000;
-    }
-
+//    private int updateAdaptDuration() {
+//        return 1000;
+//    }
     private void assignSliceReferences() {
         currentSlice = histograms[currentSliceIdx];
         tMinus1Slice = histograms[tMinus1SliceIdx];
@@ -1637,8 +1640,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (skipProcessingEventsCount < 0) {
             skipProcessingEventsCount = 0;
         }
-        if (skipProcessingEventsCount > 1000) {
-            skipProcessingEventsCount = 1000;
+        if (skipProcessingEventsCount > MAX_SKIP_COUNT) {
+            skipProcessingEventsCount = MAX_SKIP_COUNT;
         }
         this.skipProcessingEventsCount = skipProcessingEventsCount;
         getSupport().firePropertyChange("skipProcessingEventsCount", old, this.skipProcessingEventsCount);
@@ -1673,6 +1676,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     public void setAdaptiveEventSkipping(boolean adaptiveEventSkipping) {
         this.adaptiveEventSkipping = adaptiveEventSkipping;
         putBoolean("adaptiveEventSkipping", adaptiveEventSkipping);
+        if (adaptiveEventSkipping) {
+            adaptiveEventSkippingUpdateCounterLPFilter.reset();
+        }
     }
 
     public boolean isOutputSearchErrorInfo() {
@@ -1723,11 +1729,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (skipMore) {
             newSkipCount = adaptiveEventSkippingUpdateCounterLPFilter.filter(1 + (skipChangeFactor * skipProcessingEventsCount), 1000 * (int) System.currentTimeMillis());
         } else if (skipLess) {
-            newSkipCount = adaptiveEventSkippingUpdateCounterLPFilter.filter((skipChangeFactor / skipProcessingEventsCount) - 1, 1000 * (int) System.currentTimeMillis());
+            newSkipCount = adaptiveEventSkippingUpdateCounterLPFilter.filter((skipProcessingEventsCount / skipChangeFactor) - 1, 1000 * (int) System.currentTimeMillis());
         }
         skipProcessingEventsCount = (int) newSkipCount;
-        if (skipProcessingEventsCount > 1000) {
-            skipProcessingEventsCount = 1000;
+        if (skipProcessingEventsCount > MAX_SKIP_COUNT) {
+            skipProcessingEventsCount = MAX_SKIP_COUNT;
+        } else if (skipProcessingEventsCount < 0) {
+            skipProcessingEventsCount = 0;
         }
         getSupport().firePropertyChange("skipProcessingEventsCount", old, this.skipProcessingEventsCount);
 
