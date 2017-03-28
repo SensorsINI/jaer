@@ -109,6 +109,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     float DSAverageNum = 0, DSAveError[] = {0, 0};           // Evaluate DS cost average number and the error.
 //    private float lastErrSign = Math.signum(1);
 //    private final String outputFilename;
+    private int sliceDeltaT;    //  The time difference between two slices used for velocity caluction. For constantDuration, this one is equal to the duration. For constantEventNumber, this value will change.
 
     public enum PatchCompareMethod {
         JaccardDistance, HammingDistance/*, SAD, EventSqeDistance*/
@@ -348,6 +349,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //            if (preProcessEnable || patchCompareMethod == PatchCompareMethod.EventSqeDistance) {
 //                spikeTrains[blockLocX][blockLocY].add(new Integer[]{ts, type});
 //            }
+            int deltaTime = 0;
+            if(sliceMethod == SliceMethod.ConstantDuration) {
+                deltaTime = sliceDurationUs;
+            } else if(sliceMethod == SliceMethod.ConstantEventNumber) {
+                deltaTime = sliceDeltaT;
+            }
             switch (patchCompareMethod) {
                 case HammingDistance:
                     maybeRotateSlices();
@@ -368,8 +375,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     if (showSliceBitMap) {
                         showBitmaps(x, y, (int) result.dx, (int) result.dy, tm1Bitmap, tm2Bitmap);
                     }
-                    result.dx = (result.dx / sliceDurationUs) * 1000000; // hack, convert to pix/second
-                    result.dy = (result.dy / sliceDurationUs) * 1000000;
+                    result.dx = (result.dx / deltaTime) * 1000000; // hack, convert to pix/second
+                    result.dy = (result.dy / deltaTime) * 1000000;
 //                    }
 
                     break;
@@ -410,8 +417,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    } else {
 //                    result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
                     result = minJaccardDistance(x, y, tm2Bitmap, tm1Bitmap);
-                    result.dx = (result.dx / sliceDurationUs) * 1000000;
-                    result.dy = (result.dy / sliceDurationUs) * 1000000;
+                    result.dx = (result.dx / deltaTime) * 1000000;
+                    result.dy = (result.dy / deltaTime) * 1000000;
 //                    }
                     break;
 //                case EventSqeDistance:
@@ -726,6 +733,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         tMinus1SliceIdx = (tMinus1SliceIdx + 1) % NUM_SLICES;
         tMinus2SliceIdx = (tMinus2SliceIdx + 1) % NUM_SLICES;
         eventCounter = 0;
+        sliceDeltaT = ts - sliceLastTs;
         sliceLastTs = ts;
         assignSliceReferences();
     }
