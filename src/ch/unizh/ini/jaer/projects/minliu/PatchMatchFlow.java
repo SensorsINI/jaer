@@ -191,7 +191,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "processingTimeLimitMs", "<html>time limit for processing packet in ms to process OF events (events still accumulate). <br> Set to 0 to disable. <p>Alternative to the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events");
         setPropertyTooltip(patchTT, "outputSearchErrorInfo", "enables displaying the search method error information");
         setPropertyTooltip(patchTT, "showSliceBitMap", "enables displaying the slices' bitmap");
-        setPropertyTooltip(patchTT, "outlierMotionFilteringEnabled", "discards first optical flow event that points in opposite direction as previous one (dot product is negative)");
+        setPropertyTooltip(patchTT, "outlierMotionFilteringEnabled", "(Currently has no effect) discards first optical flow event that points in opposite direction as previous one (dot product is negative)");
 
 //        setPropertyTooltip(eventSqeMatching, "cost", "The cost to translation one event to the other position");
 //        setPropertyTooltip(eventSqeMatching, "thresholdTime", "The threshold value of interval time between the first event and the last event");
@@ -507,9 +507,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 continue;
             }
 
-            if (filterOutInconsistentEvent(result)) {
-                continue;
-            }
+//            if (filterOutInconsistentEvent(result)) {
+//                continue;
+//            }
 
             if (resultHistogram != null) {
                 resultHistogram[result.xidx][result.yidx]++;
@@ -1609,21 +1609,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         putFloat("weightDistance", weightDistance);
     }
 
-    private int totalFlowEvents=0, filteredOutFlowEvents=0;
-    private boolean filterOutInconsistentEvent(SADResult result) {
-        if (!isOutlierMotionFilteringEnabled()) {
-            return false;
-        }
-        totalFlowEvents++;
-        if (lastGoodSadResult == null) {
-            return false;
-        }
-        if (result.dx * lastGoodSadResult.dx + result.dy * lastGoodSadResult.dy >= 0) {
-            return false;
-        }
-        filteredOutFlowEvents++;
-        return true;
-    }
+//    private int totalFlowEvents=0, filteredOutFlowEvents=0;
+//    private boolean filterOutInconsistentEvent(SADResult result) {
+//        if (!isOutlierMotionFilteringEnabled()) {
+//            return false;
+//        }
+//        totalFlowEvents++;
+//        if (lastGoodSadResult == null) {
+//            return false;
+//        }
+//        if (result.dx * lastGoodSadResult.dx + result.dy * lastGoodSadResult.dy >= 0) {
+//            return false;
+//        }
+//        filteredOutFlowEvents++;
+//        return true;
+//    }
 
     private void checkArrays() {
 //        if (lastFireIndex == null) {
