@@ -92,6 +92,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // Display
     private boolean displayVectorsEnabled = getBoolean("displayVectorsEnabled", true);
+    private boolean displayVectorsAsColorDots = getBoolean("displayVectorsAsColorDots", false);
     private boolean displayZeroLengthVectorsEnabled = getBoolean("displayZeroLengthVectorsEnabled", true);
     private boolean displayRawInput = getBoolean("displayRawInput", true);
     private boolean displayColorWheelLegend = getBoolean("displayColorWheelLegend", true);
@@ -234,6 +235,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(measureTT, "loggingFolder", "directory to store logged data files");
         setPropertyTooltip(dispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
         setPropertyTooltip(dispTT, "displayVectorsEnabled", "shows local motion vector evemts as arrows");
+        setPropertyTooltip(dispTT, "displayVectorsAsColorDots", "shows local motion vector events as color dots, rather than arrows");
         setPropertyTooltip(dispTT, "displayZeroLengthVectorsEnabled", "shows local motion vector evemts even if they indicate zero motion (stationary features)");
         setPropertyTooltip(dispTT, "displayColorWheelLegend", "Plots a color wheel to show flow direction colors.");
         setPropertyTooltip(dispTT, "measureGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
@@ -665,15 +667,24 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     protected void drawMotionVector(GL2 gl, MotionOrientationEventInterface e) {
         float[] rgb = motionColor(e);
         gl.glColor3fv(rgb, 0);
-        gl.glPushMatrix();
-        gl.glLineWidth(motionVectorLineWidthPixels);
-        // start arrow from event
+        if (displayVectorsEnabled) {
+            gl.glPushMatrix();
+            gl.glLineWidth(motionVectorLineWidthPixels);
+            // start arrow from event
 //        DrawGL.drawVector(gl, e.getX() + .5f, e.getY() + .5f, e.getVelocity().x, e.getVelocity().y, motionVectorLineWidthPixels, ppsScale);
-        // center arrow on location, rather that start from event location
-        float dx = e.getVelocity().x * ppsScale, dy = e.getVelocity().y * ppsScale;
-        float x0 = e.getX() - dx / 2 + .5f, y0 = e.getY() - dy / 2 + .5f;
-        DrawGL.drawVector(gl, x0, y0, dx, dy, motionVectorLineWidthPixels, .5f);
-        gl.glPopMatrix();
+            // center arrow on location, rather that start from event location
+            float dx = e.getVelocity().x * ppsScale, dy = e.getVelocity().y * ppsScale;
+            float x0 = e.getX() - (dx / 2) + .5f, y0 = e.getY() - (dy / 2) + .5f;
+            DrawGL.drawVector(gl, x0, y0, dx, dy, motionVectorLineWidthPixels, 1);
+            gl.glPopMatrix();
+        } 
+        if (displayVectorsAsColorDots) {
+            gl.glPointSize(motionVectorLineWidthPixels*5);
+            gl.glEnable(GL2.GL_POINT_SMOOTH);
+            gl.glBegin(GL.GL_POINTS);
+            gl.glVertex2f(e.getX(), e.getY());
+            gl.glEnd();
+        }
     }
 
     protected float[] motionColor(float angle) {
@@ -743,7 +754,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
 
         // Draw individual motion vectors
-        if (dirPacket != null && isDisplayVectorsEnabled()) {
+        if (dirPacket != null && (displayVectorsEnabled || displayVectorsAsColorDots)) {
             gl.glLineWidth(2f);
             boolean timeoutEnabled = dirPacket.isTimeLimitEnabled();
             dirPacket.setTimeLimitEnabled(false);
@@ -774,7 +785,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             gl.glTranslatef(-20, chip.getSizeY() / 2, 0);
             gl.glScalef(scale, scale, 1);
             for (float val01 = 0; val01 < 1; val01 += 1f / segments) {
-                float[] rgb = motionColor((float) ((val01-.5f) * 2 * Math.PI),1f,.5f);
+                float[] rgb = motionColor((float) ((val01 - .5f) * 2 * Math.PI), 1f, .5f);
                 gl.glColor3fv(rgb, 0);
 //                gl.glLineWidth(motionVectorLineWidthPixels);
 //                final double angleRad = 2*Math.PI*(val01-.5f);
@@ -1813,10 +1824,26 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
 
     /**
-     * @param outlierMotionFilteringEnabled the outlierMotionFilteringEnabled to set
+     * @param outlierMotionFilteringEnabled the outlierMotionFilteringEnabled to
+     * set
      */
     public void setOutlierMotionFilteringEnabled(boolean outlierMotionFilteringEnabled) {
         this.outlierMotionFilteringEnabled = outlierMotionFilteringEnabled;
+    }
+
+    /**
+     * @return the displayVectorsAsColorDots
+     */
+    public boolean isDisplayVectorsAsColorDots() {
+        return displayVectorsAsColorDots;
+    }
+
+    /**
+     * @param displayVectorsAsColorDots the displayVectorsAsColorDots to set
+     */
+    public void setDisplayVectorsAsColorDots(boolean displayVectorsAsColorDots) {
+        this.displayVectorsAsColorDots = displayVectorsAsColorDots;
+        putBoolean("displayVectorsAsColorDots", displayVectorsAsColorDots);
     }
 
 }
