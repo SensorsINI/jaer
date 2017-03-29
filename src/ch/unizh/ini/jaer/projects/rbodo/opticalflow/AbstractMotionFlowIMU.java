@@ -167,7 +167,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // outlier filtering that only allows through motion events that agree with at least N most-recent neigbor events 
     // in max angle difference
-    protected boolean outlierMotionFilteringEnabled = getBoolean("outlierMotionFilteringEnabled", false);
+    private boolean outlierMotionFilteringEnabled = getBoolean("outlierMotionFilteringEnabled", false);
     protected float outlierMotionFilteringMaxAngleDifferenceDeg = getFloat("outlierMotionFilteringMaxAngleDifferenceDeg", 30f);
     protected int outlierMotionFilteringSubsampleShift = getInt("outlierMotionFilteringSubsampleShift", 1);
     protected int outlierMotionFilteringMinSameAngleInNeighborhood = getInt("outlierMotionFilteringMinSameAngleInNeighborhood", 2);
@@ -1803,6 +1803,20 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     public void setDisplayZeroLengthVectorsEnabled(boolean displayZeroLengthVectorsEnabled) {
         this.displayZeroLengthVectorsEnabled = displayZeroLengthVectorsEnabled;
         putBoolean("displayZeroLengthVectorsEnabled", displayZeroLengthVectorsEnabled);
+    }
+
+    /**
+     * @return the outlierMotionFilteringEnabled
+     */
+    public boolean isOutlierMotionFilteringEnabled() {
+        return outlierMotionFilteringEnabled;
+    }
+
+    /**
+     * @param outlierMotionFilteringEnabled the outlierMotionFilteringEnabled to set
+     */
+    public void setOutlierMotionFilteringEnabled(boolean outlierMotionFilteringEnabled) {
+        this.outlierMotionFilteringEnabled = outlierMotionFilteringEnabled;
     }
 
 }
