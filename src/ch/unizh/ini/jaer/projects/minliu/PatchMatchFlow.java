@@ -77,6 +77,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private boolean[][][] bitmaps = null;
     private boolean[][] currentBitmap, tm1Bitmap, tm2Bitmap;
     private final SADResult tmpSadResult = new SADResult(0, 0, 0); // used to pass data back from min distance computation
+    private SADResult lastGoodSadResult = new SADResult(0, 0, 0); // used for consistency check
     private int patchDimension = getInt("patchDimension", 9);
 //    private int eventPatchDimension = getInt("eventPatchDimension", 3);
 //    private int forwardEventNum = getInt("forwardEventNum", 10);
@@ -190,6 +191,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "processingTimeLimitMs", "<html>time limit for processing packet in ms to process OF events (events still accumulate). <br> Set to 0 to disable. <p>Alternative to the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events");
         setPropertyTooltip(patchTT, "outputSearchErrorInfo", "enables displaying the search method error information");
         setPropertyTooltip(patchTT, "showSliceBitMap", "enables displaying the slices' bitmap");
+        setPropertyTooltip(patchTT, "outlierMotionFilteringEnabled", "discards first optical flow event that points in opposite direction as previous one (dot product is negative)");
 
 //        setPropertyTooltip(eventSqeMatching, "cost", "The cost to translation one event to the other position");
 //        setPropertyTooltip(eventSqeMatching, "thresholdTime", "The threshold value of interval time between the first event and the last event");
@@ -311,15 +313,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             if (!extractEventInfo(ein)) {
                 continue;
             }
-//            ApsDvsEvent apsDvsEvent = (ApsDvsEvent) ein;
-//            if (apsDvsEvent.isImuSample()) {
-//                IMUSample s = apsDvsEvent.getImuSample();
-//                continue;
-//            }
-//            if (apsDvsEvent.isApsData()) {
-//                continue;
-//            }
-            // inItr = in.inputIterator;
             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                 imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
                 setGroundTruth();
@@ -358,7 +351,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             switch (patchCompareMethod) {
                 case HammingDistance:
                     maybeRotateSlices();
-                    if (!accumulateEvent(in)) {
+                    if (!accumulateEvent(in)) { // maybe skip events here
                         break;
                     }
 //                    if (preProcessEnable) {
@@ -514,11 +507,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 continue;
             }
 
+            if (filterOutInconsistentEvent(result)) {
+                continue;
+            }
+
             if (resultHistogram != null) {
                 resultHistogram[result.xidx][result.yidx]++;
                 resultHistogramCount++;
             }
             processGoodEvent();
+            lastGoodSadResult.set(result);
+
         }
 
         if (rewindFlg) {
@@ -1331,6 +1330,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             this.sadValue = sadValue;
         }
 
+        public void set(SADResult s) {
+            this.dx = s.dx;
+            this.dy = s.dy;
+            this.sadValue = this.sadValue;
+            this.xidx = s.xidx;
+            this.yidx = s.yidx;
+        }
+
         @Override
         public String toString() {
             return String.format("dx,dy=%d,%5 SAD=%d", dx, dy, sadValue);
@@ -1600,6 +1607,22 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         this.weightDistance = weightDistance;
         putFloat("weightDistance", weightDistance);
+    }
+
+    private int totalFlowEvents=0, filteredOutFlowEvents=0;
+    private boolean filterOutInconsistentEvent(SADResult result) {
+        if (!isOutlierMotionFilteringEnabled()) {
+            return false;
+        }
+        totalFlowEvents++;
+        if (lastGoodSadResult == null) {
+            return false;
+        }
+        if (result.dx * lastGoodSadResult.dx + result.dy * lastGoodSadResult.dy >= 0) {
+            return false;
+        }
+        filteredOutFlowEvents++;
+        return true;
     }
 
     private void checkArrays() {
