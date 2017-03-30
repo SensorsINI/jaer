@@ -267,6 +267,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(motionFieldTT, "consistentWithNeighbors", "Motion field value must be consistent with several neighbors if this option is selected.");
         setPropertyTooltip(motionFieldTT, "consistentWithCurrentAngle", "Motion field value is only updated if flow event angle is in same half plane as current estimate, i.e. has non-negative dot product.");
         setPropertyTooltip(motionFieldTT, "motionFieldTimeConstantMs", "Motion field low pass filter time constant in ms.");
+        setPropertyTooltip(motionFieldTT, "displayMotionFieldColorBlobs", "Shows color blobs for motion field as well as the flow vector arrows");
+        setPropertyTooltip(motionFieldTT, "displayMotionFieldUsingColor", "Shows motion field flow vectors in color; otherwise shown as monochrome color arrows");
         File lf = new File(loggingFolder);
         if (!lf.exists() || !lf.isDirectory()) {
             log.log(Level.WARNING, "loggingFolder {0} doesn't exist or isn't a directory, defaulting to {1}", new Object[]{lf, lf});
@@ -677,9 +679,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             float x0 = e.getX() - (dx / 2) + .5f, y0 = e.getY() - (dy / 2) + .5f;
             DrawGL.drawVector(gl, x0, y0, dx, dy, motionVectorLineWidthPixels, 1);
             gl.glPopMatrix();
-        } 
+        }
         if (displayVectorsAsColorDots) {
-            gl.glPointSize(motionVectorLineWidthPixels*5);
+            gl.glPointSize(motionVectorLineWidthPixels * 5);
             gl.glEnable(GL2.GL_POINT_SMOOTH);
             gl.glBegin(GL.GL_POINTS);
             gl.glVertex2f(e.getX(), e.getY());
@@ -1363,6 +1365,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         private boolean consistentWithNeighbors = getBoolean("motionFieldConsistentWithNeighbors", false);
         private boolean consistentWithCurrentAngle = getBoolean("motionFieldConsistentWithCurrentAngle", false);
         private boolean displayMotionField = getBoolean("displayMotionField", false);
+        private boolean displayMotionFieldColorBlobs=getBoolean("displayMotionFieldColorBlobs", false);;
+        private boolean displayMotionFieldUsingColor=getBoolean("displayMotionFieldUsingColor", true);;
 
         public MotionField() {
         }
@@ -1521,23 +1525,29 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     if (brightness > 1) {
                         brightness = 1;
                     }
-                    final float angle01 = (float) (Math.atan2(vy, vx) / (2 * Math.PI) + 0.5); // atan2 returns -pi to +pi, so dividing by 2*pi gives -.5 to +.5. Adding .5 gives range 0 to 1.
-//                    angle01=.5f; // debug
-                    final int rgbValue = Color.HSBtoRGB(angle01, 1, brightness);
-                    final Color color = new Color(rgbValue);
-                    final float[] rgb = color.getRGBComponents(null);
+                    // TODO use motionColor()
+                    float[] rgb;
+                    if(displayMotionFieldUsingColor){
+                        rgb=motionColor(vx, vy, 1, 1);
+                    }else{
+                        rgb=new float[]{0,0,1};
+                    }
+                    
                     gl.glColor4f(rgb[0], rgb[1], rgb[2], 1f);
+                    gl.glLineWidth(motionVectorLineWidthPixels);
 //                    gl.glColor4f(angle, 1 - angle, 1 / (1 + 10 * angle), .5f);
                     gl.glPushMatrix();
-                    DrawGL.drawVector(gl, x, y, vx, vy, 3, ppsScale);
+                    DrawGL.drawVector(gl, x, y, vx*ppsScale, vy*ppsScale, motionVectorLineWidthPixels, 1);
                     gl.glPopMatrix();
-                    gl.glColor4f(rgb[0], rgb[1], rgb[2], .01f);
-                    final float s = shift / 4;
-                    // draw a blurred square showing motion field direction
-                    // TODO add brightness to show magnitude somehow
-                    for (float dxx = -shift; dxx < shift; dxx += s) {
-                        for (float dyy = -shift; dyy < shift; dyy += s) {
-                            gl.glRectf(x - shift + dxx, y - shift + dyy, x + shift + dxx, y + shift + dyy);
+                    if (displayMotionFieldColorBlobs) {
+                        gl.glColor4f(rgb[0], rgb[1], rgb[2], .01f);
+                        final float s = shift / 4;
+                        // draw a blurred square showing motion field direction
+                        // TODO add brightness to show magnitude somehow
+                        for (float dxx = -shift; dxx < shift; dxx += s) {
+                            for (float dyy = -shift; dyy < shift; dyy += s) {
+                                gl.glRectf(x - shift + dxx, y - shift + dyy, x + shift + dxx, y + shift + dyy);
+                            }
                         }
                     }
                 }
@@ -1687,6 +1697,36 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 //                    f.setTauMs(motionFieldTimeConstantMs);
 //                }
 //            }
+        }
+
+        /**
+         * @return the displayMotionFieldColorBlobs
+         */
+        public boolean isDisplayMotionFieldColorBlobs() {
+            return displayMotionFieldColorBlobs;
+        }
+
+        /**
+         * @param displayMotionFieldColorBlobs the displayMotionFieldColorBlobs to set
+         */
+        public void setDisplayMotionFieldColorBlobs(boolean displayMotionFieldColorBlobs) {
+            this.displayMotionFieldColorBlobs = displayMotionFieldColorBlobs;
+            putBoolean("displayMotionFieldColorBlobs",displayMotionFieldColorBlobs);
+        }
+
+        /**
+         * @return the displayMotionFieldUsingColor
+         */
+        public boolean isDisplayMotionFieldUsingColor() {
+            return displayMotionFieldUsingColor;
+        }
+
+        /**
+         * @param displayMotionFieldUsingColor the displayMotionFieldUsingColor to set
+         */
+        public void setDisplayMotionFieldUsingColor(boolean displayMotionFieldUsingColor) {
+            this.displayMotionFieldUsingColor = displayMotionFieldUsingColor;
+            putBoolean("displayMotionFieldUsingColor",displayMotionFieldUsingColor);
         }
 
     } // MotionField
@@ -1845,5 +1885,24 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         this.displayVectorsAsColorDots = displayVectorsAsColorDots;
         putBoolean("displayVectorsAsColorDots", displayVectorsAsColorDots);
     }
+
+    public boolean isDisplayMotionFieldColorBlobs() {
+        return motionField.isDisplayMotionFieldColorBlobs();
+    }
+
+    public void setDisplayMotionFieldColorBlobs(boolean displayMotionFieldColorBlobs) {
+        motionField.setDisplayMotionFieldColorBlobs(displayMotionFieldColorBlobs);
+    }
+
+    public boolean isDisplayMotionFieldUsingColor() {
+        return motionField.isDisplayMotionFieldUsingColor();
+    }
+
+    public void setDisplayMotionFieldUsingColor(boolean displayMotionFieldUsingColor) {
+        motionField.setDisplayMotionFieldUsingColor(displayMotionFieldUsingColor);
+    }
+    
+    
+    
 
 }
