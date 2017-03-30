@@ -177,6 +177,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                         grayBuffer.put(1.0f);
                         grayBuffer.put(1.0f);
                         grayBuffer.put(1.0f);
+                    }else if (colorMode == ColorMode.HotCode) {
+                        grayBuffer.put(0);
+                        grayBuffer.put(0);
+                        grayBuffer.put(.5f);
+                        grayBuffer.put(.5f);
                     } else {
                         grayBuffer.put(grayValue);
                         grayBuffer.put(grayValue);
@@ -261,7 +266,17 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 offColor[2] = 0.0f;
                 offColor[3] = 0.0f;
                 break;
-            case RedGreen:
+            case HotCode:
+                onColor[0] = 1.0f;
+                onColor[1] = 1.0f;
+                onColor[2] = 1.0f;
+                onColor[3] = 0.0f;
+                offColor[0] = 0.0f;
+                offColor[1] = 0.0f;
+                offColor[2] = 0.0f;
+                offColor[3] = 0.0f;
+                break;
+           case RedGreen:
             default:
                 onColor[0] = 0.0f;
                 onColor[1] = 1.0f;
@@ -560,6 +575,20 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             map[index + 1] = timeColors[ind][1];
             map[index + 2] = timeColors[ind][2];
             map[index + 3] = 0.5f;
+        } else if (colorMode == ColorMode.HotCode) {
+            final float alpha = map[index + 3] + (1.0f / colorScale);
+            map[index + 3] = normalizeEvent(alpha);
+            int ind = (int) Math.floor(((AEChipRenderer.NUM_TIME_COLORS - 1) * alpha));
+
+            if (ind < 0) {
+                ind = 0;
+            } else if (ind >= timeColors.length) {
+                ind = timeColors.length - 1;
+            }
+
+            map[index] = timeColors[ind][0];
+            map[index + 1] = timeColors[ind][1];
+            map[index + 2] = timeColors[ind][2];
         } else if (colorMode == ColorMode.GrayTime) {
             final int ts0 = packet.getFirstTimestamp();
             final float dt = packet.getDurationUs();
@@ -573,7 +602,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
                 map[index] = onColor[0];
                 map[index + 1] = onColor[1];
-                map[index + 2] = onColor[2];
+                map[index + 2] = onColor[2]; // if using gray/contrast rendering, then just use onMap and onColor, and set alpaha up or down from .5 below
             } else {
                 map[index] = offColor[0];
                 map[index + 1] = offColor[1];
@@ -1106,7 +1135,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 dvsDownsamplingValue = 5;
             }
         } else if (skipLess) {
-            dvsDownsamplingValue = (int)(0.5f * dvsDownsamplingValue);
+            dvsDownsamplingValue = (int) (0.5f * dvsDownsamplingValue);
             if (dvsDownsamplingValue < 0) {
                 dvsDownsamplingValue = 0;
             }
