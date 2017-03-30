@@ -696,7 +696,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
 
     protected float[] motionColor(MotionOrientationEventInterface e1) {
-        return motionColor(e1.getVelocity().x, e1.getVelocity().y, 1, e1.getSpeed() * ppsScale / 40);
+        return motionColor(e1.getVelocity().x, e1.getVelocity().y, 1, 1);
     }
 
     protected float[] motionColor(float x, float y, float saturation, float brightness) {
