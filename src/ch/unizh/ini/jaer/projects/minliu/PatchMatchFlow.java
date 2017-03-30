@@ -64,25 +64,27 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     {2, 0}, {-1, 1}, {1, 1}, {0, 2}};
     private static final int SDSP[][] = {{0, -1}, {-1, 0}, {0, 0}, {1, 0}, {0, 1}};
 
-    private int[][][] histograms = null;
+//    private int[][][] histograms = null;
     private static final int NUM_SLICES = 3;
 //    private int sx, sy;
-    private int tMinus2SliceIdx = 0, tMinus1SliceIdx = 1, currentSliceIdx = 2;
-    private int[][] currentSlice = null, tMinus1Slice = null, tMinus2Slice = null;
+    private int currentSliceIdx = 0;
+//    private int tMinus2SliceIdx = 0, tMinus1SliceIdx = 1, currentSliceIdx = 2;
+//    private int[][] currentSlice = null, tMinus1Slice = null, tMinus2Slice = null;
+//    private int[][] currentSlice = null;
 //    private ArrayList<Integer[]>[][] spikeTrains = null;   // Spike trains for one block
 //    private ArrayList<int[][]>[] histogramsAL = null;
 //    private ArrayList<int[][]> currentAL = null, previousAL = null, previousMinus1AL = null; // One is for current, the second is for previous, the third is for the one before previous one
 //    private BitSet[] histogramsBitSet = null;
 //    private BitSet currentSli = null, tMinus1Sli = null, tMinus2Sli = null;
     private boolean[][][] bitmaps = null;
-    private boolean[][] currentBitmap, tm1Bitmap, tm2Bitmap;
+    private boolean[][] currentBitmap;
     private final SADResult tmpSadResult = new SADResult(0, 0, 0); // used to pass data back from min distance computation
     private SADResult lastGoodSadResult = new SADResult(0, 0, 0); // used for consistency check
     private int patchDimension = getInt("patchDimension", 9);
 //    private int eventPatchDimension = getInt("eventPatchDimension", 3);
 //    private int forwardEventNum = getInt("forwardEventNum", 10);
     private float cost = getFloat("cost", 0.001f);
-    private float confidenceThreshold = getFloat("confidenceThreshold", .3f);
+    private float confidenceThreshold = getFloat("confidenceThreshold", .5f);
     private float validPixOccupancy = getFloat("validPixOccupancy", 0.01f);  // threshold for valid pixel percent for one block
     private float weightDistance = getFloat("weightDistance", 0.95f);        // confidence value consists of the distance and the dispersion, this value set the distance value
 //    private int thresholdTime = getInt("thresholdTime", 1000000);
@@ -111,6 +113,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //    private float lastErrSign = Math.signum(1);
 //    private final String outputFilename;
     private int sliceDeltaT;    //  The time difference between two slices used for velocity caluction. For constantDuration, this one is equal to the duration. For constantEventNumber, this value will change.
+    private int MIN_SLICE_DURATION=1000;
+    private int MAX_SLICE_DURATION=500000;
 
     public enum PatchCompareMethod {
         JaccardDistance, HammingDistance/*, SAD, EventSqeDistance*/
@@ -122,7 +126,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     };
     private SearchMethod searchMethod = SearchMethod.valueOf(getString("searchMethod", SearchMethod.DiamondSearch.toString()));
 
-    private int sliceDurationUs = getInt("sliceDurationUs", 40000);
+    private int sliceDurationUs = getInt("sliceDurationUs",20000);
     private int sliceEventCount = getInt("sliceEventCount", 10000);
     private boolean rewindFlg = false; // The flag to indicate the rewind event.
     private FilterChain filterChain;
@@ -158,11 +162,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         // filterChain.add(cameraMotion);
         setEnclosedFilterChain(filterChain);
 
-        setSliceDurationUs(40000);   // 40ms is good for the start of the slice duration adatative since 4ms is too fast and 500ms is too slow.
-        // Save the result to the file
-        Format formatter = new SimpleDateFormat("YYYY-MM-dd_hh-mm-ss");
-        // Instantiate a Date object
-        Date date = new Date();
+        setSliceDurationUs(getSliceDurationUs());   // 40ms is good for the start of the slice duration adatative since 4ms is too fast and 500ms is too slow.
+//        // Save the result to the file
+//        Format formatter = new SimpleDateFormat("YYYY-MM-dd_hh-mm-ss");
+//        // Instantiate a Date object
+//        Date date = new Date();
 
         // Log file for the OF distribution's statistics
 //        outputFilename = "PMF_HistStdDev" + formatter.format(date) + ".txt";
@@ -364,9 +368,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                        }
 //                    } else {
 //                    result = minHammingDistance(x, y, tMinus2Sli, tMinus1Sli);
-                    result = minHammingDistance(x, y, tm2Bitmap, tm1Bitmap);
+                    result = minHammingDistance(x, y, bitmaps[sliceIndex(1)], bitmaps[sliceIndex(2)]);
                     if (showSliceBitMap) {
-                        showBitmaps(x, y, (int) result.dx, (int) result.dy, tm1Bitmap, tm2Bitmap);
+                        showBitmaps(x, y, (int) result.dx, (int) result.dy, bitmaps[sliceIndex(2)], bitmaps[sliceIndex(1)]);
                     }
                     result.dx = (result.dx / deltaTime) * 1000000; // hack, convert to pix/second
                     result.dy = (result.dy / deltaTime) * 1000000;
@@ -409,7 +413,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                        }
 //                    } else {
 //                    result = minJaccardDistance(x, y, tMinus2Sli, tMinus1Sli);
-                    result = minJaccardDistance(x, y, tm2Bitmap, tm1Bitmap);
+                    result = minJaccardDistance(x, y, bitmaps[sliceIndex(2)], bitmaps[sliceIndex(1)]);
                     result.dx = (result.dx / deltaTime) * 1000000;
                     result.dy = (result.dy / deltaTime) * 1000000;
 //                    }
@@ -597,9 +601,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 DrawGL.drawCircle(gl, searchDistance + .5f, searchDistance + .5f, avgMatchDistance, 16);
             }
             // a bunch of cryptic crap to draw a string the same width as the histogram...
-            gl.glTranslatef(-dim / 2, dim / 2, 0); // translate to UL corner of histogram
+            gl.glTranslatef(0, dim , 0); // translate to UL corner of histogram
             textRenderer.begin3DRendering();
-            String s = String.format("d=%s ms", engFmt.format(1e-3f * sliceDurationUs));
+            String s = String.format("d=%s ms", engFmt.format(1e-3f * sliceDeltaT));
 //            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getSizeX(), .1f);
             // determine width of string in pixels and scale accordingly
             FontRenderContext frc = textRenderer.getFontRenderContext();
@@ -626,17 +630,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         eventCounter = 0;
         lastTs = Integer.MIN_VALUE;
 
-        if ((histograms == null) || (histograms.length != subSizeX) || (histograms[0].length != subSizeY)) {
-            if ((NUM_SLICES == 0) && (subSizeX == 0) && (subSizeX == 0)) {
-                return;
-            }
-            histograms = new int[NUM_SLICES][subSizeX][subSizeY];
-        }
-        for (int[][] a : histograms) {
-            for (int[] b : a) {
-                Arrays.fill(b, 0);
-            }
-        }
+//        if ((histograms == null) || (histograms.length != subSizeX) || (histograms[0].length != subSizeY)) {
+//            if ((NUM_SLICES == 0) && (subSizeX == 0) && (subSizeX == 0)) {
+//                return;
+//            }
+//            histograms = new int[NUM_SLICES][subSizeX][subSizeY];
+//        }
+//        for (int[][] a : histograms) {
+//            for (int[] b : a) {
+//                Arrays.fill(b, 0);
+//            }
+//        }
 //        if (histogramsBitSet == null) {
 //            histogramsBitSet = new BitSet[NUM_SLICES];
 //        }
@@ -672,10 +676,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 ////                }
 ////            }
 //        }
-        tMinus2SliceIdx = 0;
-        tMinus1SliceIdx = 1;
-        currentSliceIdx = 2;
-        assignSliceReferences();
+//        tMinus2SliceIdx = 0;
+//        tMinus1SliceIdx = 1;
+        currentSliceIdx = 0;  // start by filling slice 0
+        currentBitmap=bitmaps[currentSliceIdx];
+//        assignSliceReferences();
 
         sliceLastTs = 0;
         rewindFlg = true;
@@ -728,33 +733,49 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
            next t2 = previous t1 = histogram(previous t2 idx + 1);
            next t1 = previous current = histogram(previous t1 idx + 1);
          */
-        currentSliceIdx = (currentSliceIdx + 1) % NUM_SLICES;
-        tMinus1SliceIdx = (tMinus1SliceIdx + 1) % NUM_SLICES;
-        tMinus2SliceIdx = (tMinus2SliceIdx + 1) % NUM_SLICES;
+        rotateSlices();
+//        currentSliceIdx = (currentSliceIdx + 1) % NUM_SLICES;
+//        tMinus1SliceIdx = (tMinus1SliceIdx + 1) % NUM_SLICES;
+//        tMinus2SliceIdx = (tMinus2SliceIdx + 1) % NUM_SLICES;
         eventCounter = 0;
         sliceDeltaT = ts - sliceLastTs;
         sliceLastTs = ts;
-        assignSliceReferences();
+       
+    }
+    
+    private void rotateSlices(){
+        currentSliceIdx=(++currentSliceIdx)%NUM_SLICES;
+        currentBitmap=bitmaps[currentSliceIdx];
+         clearBitmap(currentBitmap);
+    }
+    
+    /** Returns index to slice
+     * 
+     * @param pointer 0 for current slice (one being currently filled), 1 for next oldest, 2 for 2nd next oldest.
+     * @return 
+     */
+    private int sliceIndex(int pointer){
+        return (currentSliceIdx+pointer)%NUM_SLICES;
     }
 
 //    private int updateAdaptDuration() {
 //        return 1000;
 //    }
-    private void assignSliceReferences() {
-        currentSlice = histograms[currentSliceIdx];
-        tMinus1Slice = histograms[tMinus1SliceIdx];
-        tMinus2Slice = histograms[tMinus2SliceIdx];
-
-//        currentSli = histogramsBitSet[currentSliceIdx];
-//        tMinus1Sli = histogramsBitSet[tMinus1SliceIdx];
-//        tMinus2Sli = histogramsBitSet[tMinus2SliceIdx];
-//        currentSli.clear();
-        currentBitmap = bitmaps[currentSliceIdx];
-        tm1Bitmap = bitmaps[tMinus1SliceIdx];
-        tm2Bitmap = bitmaps[tMinus2SliceIdx];
-        clearBitmap(currentBitmap);
-
-    }
+//    private void assignSliceReferences() {
+////        currentSlice = histograms[currentSliceIdx];
+////        tMinus1Slice = histograms[tMinus1SliceIdx];
+////        tMinus2Slice = histograms[tMinus2SliceIdx];
+//
+////        currentSli = histogramsBitSet[currentSliceIdx];
+////        tMinus1Sli = histogramsBitSet[tMinus1SliceIdx];
+////        tMinus2Sli = histogramsBitSet[tMinus2SliceIdx];
+////        currentSli.clear();
+//        currentBitmap = bitmaps[currentSliceIdx];
+//        tm1Bitmap = bitmaps[tMinus1SliceIdx];
+//        tm2Bitmap = bitmaps[tMinus2SliceIdx];
+//        clearBitmap(currentBitmap);
+//
+//    }
 
     /**
      * Accumulates the current event to the current slice
@@ -765,9 +786,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private boolean accumulateEvent(EventPacket in) {
         switch (patchCompareMethod) {
 //            case SAD:
-            case JaccardDistance:
-                currentSlice[x][y] += e.getPolaritySignum();
-                break;
+//            case JaccardDistance:
+//                currentSlice[x][y] += e.getPolaritySignum();
+//                break;
             case HammingDistance:
 //                currentSli.set((x + 1) + (y * subSizeX));  // All events wheather 0 or 1 will be set in the BitSet Slice
                 currentBitmap[x][y] = true;
@@ -785,11 +806,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         return true;
     }
 
-    private void clearSlice(int idx) {
-        for (int[] a : histograms[idx]) {
-            Arrays.fill(a, 0);
-        }
-    }
+//    private void clearSlice(int idx) {
+//        for (int[] a : histograms[idx]) {
+//            Arrays.fill(a, 0);
+//        }
+//    }
 
     private float sumArray[][] = null;
 
@@ -1530,10 +1551,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
     public void setSliceDurationUs(int sliceDurationUs) {
         int old = this.sliceDurationUs;
-        if (sliceDurationUs < 4000) {
-            sliceDurationUs = 4000;
-        } else if (sliceDurationUs > 500000) {
-            sliceDurationUs = 500000; // limit it to one second
+        if (sliceDurationUs < MIN_SLICE_DURATION) {
+            sliceDurationUs = MIN_SLICE_DURATION;
+        } else if (sliceDurationUs > MAX_SLICE_DURATION) {
+            sliceDurationUs = MAX_SLICE_DURATION; // limit it to one second
         }
         this.sliceDurationUs = sliceDurationUs;
 
