@@ -805,6 +805,7 @@ public class RectangularClusterTracker extends EventFilter2D
 	 */
 	synchronized protected EventPacket<? extends BasicEvent> track(EventPacket<?> in) {
 		boolean updatedClusterList = false;
+                checkOutputPacketEventType(RectangularClusterTrackerEvent.class);
 		OutputEventIterator outItr = out.outputIterator();
 		int sx = chip.getSizeX(), sy = chip.getSizeY();
 
