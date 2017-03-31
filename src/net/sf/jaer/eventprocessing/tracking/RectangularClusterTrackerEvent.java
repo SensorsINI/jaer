@@ -6,6 +6,7 @@
 package net.sf.jaer.eventprocessing.tracking;
 
 import com.jogamp.opengl.GLAutoDrawable;
+import net.sf.jaer.event.ApsDvsEvent;
 
 import net.sf.jaer.event.TypedEvent;
 
@@ -13,7 +14,7 @@ import net.sf.jaer.event.TypedEvent;
  * Extends an event of a named type to include a reference to a RectangularClusterTracker.Cluster.
  * @author tobi
  */
-public class RectangularClusterTrackerEvent extends TypedEvent {
+public class RectangularClusterTrackerEvent extends ApsDvsEvent {
 
     protected RectangularClusterTracker.Cluster cluster;
 
