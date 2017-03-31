@@ -304,17 +304,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         break;
                     }
                     SADResult sliceResult = null;
-                    for (int k = 1; k < numSlices - 1; k++) {
-                        sliceResult = minHammingDistance(x, y, bitmaps[sliceIndex(1)], bitmaps[sliceIndex(2)]);
+                    int minDistSliceIdx=1;
+                    for (int k = 1; k < numSlices - 1; k++) { // for numSlices=3, does only once
+                        sliceResult = minHammingDistance(x, y, bitmaps[sliceIndex(1)], bitmaps[sliceIndex(k+1)]); // from ref slice to past slice k+1
                         if (result == null || sliceResult.sadValue < result.sadValue) {
-                            result = sliceResult;
+                            result = sliceResult; // result holds the overall min sad result
+                            minDistSliceIdx=k+1;
                         }
                     }
                     if (showSliceBitMap) {
                         showBitmaps(x, y, (int) result.dx, (int) result.dy, bitmaps[sliceIndex(1)], bitmaps[sliceIndex(2)]);
                     }
-                    result.dx = (result.dx / deltaTime) * 1000000; // hack, convert to pix/second
-                    result.dy = (result.dy / deltaTime) * 1000000;
+                    result.dx = result.dx / (deltaTime*(minDistSliceIdx-1)) * 1000000; // hack, convert to pix/second
+                    result.dy = result.dy / (deltaTime*(minDistSliceIdx-1)) * 1000000; // TODO clean up, make time for each slice, since could be different when const num events
 
                     break;
                 case JaccardDistance:
@@ -501,7 +503,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         rotateSlices();
         eventCounter = 0;
-        sliceDeltaT = ts - sliceLastTs;
+        sliceDeltaT = dt;
         sliceLastTs = ts;
 
     }
@@ -1653,4 +1655,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         this.numSlices = numSlices;
         putInt("numSlices", numSlices);
     }
+
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes); //To change body of generated methods, choose Tools | Templates.
+        if(cameraCalibration!=null) cameraCalibration.setFilterEnabled(false); // disable camera cameraCalibration; force user to enable it every time
+    }
+    
+    
 }
