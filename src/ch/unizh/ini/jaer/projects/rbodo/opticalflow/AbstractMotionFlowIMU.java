@@ -240,7 +240,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(dispTT, "displayColorWheelLegend", "Plots a color wheel to show flow direction colors.");
         setPropertyTooltip(dispTT, "measureGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
         setPropertyTooltip(dispTT, "displayRawInput", "shows the input events, instead of the motion types");
-        setPropertyTooltip(dispTT, "displayMotionField", "computes and shows the average motion field (see MotionField section)");
         setPropertyTooltip(dispTT, "xMin", "events with x-coordinate below this are filtered out.");
         setPropertyTooltip(dispTT, "xMax", "events with x-coordinate above this are filtered out.");
         setPropertyTooltip(dispTT, "yMin", "events with y-coordinate below this are filtered out.");
@@ -261,6 +260,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(imuTT, "resetGroundTruth", "Resets the ground truth optical flow that was imported from matlab. Used in the measureAccuracy option.");
         setPropertyTooltip(imuTT, "selectLoggingFolder", "Allows selection of the folder to store the measured accuracies and optical flow events.");
 //        setPropertyTooltip(motionFieldTT, "motionFieldMixingFactor", "Flow events are mixed with the motion field with this factor. Use 1 to replace field content with each event, or e.g. 0.01 to update only by 1%.");
+        setPropertyTooltip(motionFieldTT, "displayMotionField", "computes and shows the average motion field (see MotionField section)");
         setPropertyTooltip(motionFieldTT, "motionFieldSubsamplingShift", "The motion field is computed at this subsampled resolution, e.g. 1 means 1 motion field vector for each 2x2 pixel area.");
         setPropertyTooltip(motionFieldTT, "maxAgeUs", "Maximum age of motion field value for display and for unconditionally replacing with latest flow event");
         setPropertyTooltip(motionFieldTT, "minSpeedPpsToDrawMotionField", "Motion field locations where speed in pixels/second is less than this quantity are not drawn");
@@ -269,6 +269,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(motionFieldTT, "motionFieldTimeConstantMs", "Motion field low pass filter time constant in ms.");
         setPropertyTooltip(motionFieldTT, "displayMotionFieldColorBlobs", "Shows color blobs for motion field as well as the flow vector arrows");
         setPropertyTooltip(motionFieldTT, "displayMotionFieldUsingColor", "Shows motion field flow vectors in color; otherwise shown as monochrome color arrows");
+        setPropertyTooltip(motionFieldTT, "motionFieldDiffusionEnabled", "Enables an event-driven diffusive averaging of motion field values");
         File lf = new File(loggingFolder);
         if (!lf.exists() || !lf.isDirectory()) {
             log.log(Level.WARNING, "loggingFolder {0} doesn't exist or isn't a directory, defaulting to {1}", new Object[]{lf, lf});
@@ -1365,8 +1366,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         private boolean consistentWithNeighbors = getBoolean("motionFieldConsistentWithNeighbors", false);
         private boolean consistentWithCurrentAngle = getBoolean("motionFieldConsistentWithCurrentAngle", false);
         private boolean displayMotionField = getBoolean("displayMotionField", false);
-        private boolean displayMotionFieldColorBlobs=getBoolean("displayMotionFieldColorBlobs", false);;
-        private boolean displayMotionFieldUsingColor=getBoolean("displayMotionFieldUsingColor", true);;
+        private boolean displayMotionFieldColorBlobs = getBoolean("displayMotionFieldColorBlobs", false);
+        ;
+        private boolean displayMotionFieldUsingColor = getBoolean("displayMotionFieldUsingColor", true);
+        ;
+        private boolean motionFieldDiffusionEnabled = getBoolean("motionFieldDiffusionEnabled", false);
 
         public MotionField() {
         }
@@ -1441,7 +1445,31 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             }
             if (checkConsistent(timestamp, x1, y1, vx, vy)) {
                 velocities[x1][y1].filter(vx, vy, speed, timestamp);
-//                speeds[x1][y1].filter(speed, timestamp);
+                if (motionFieldDiffusionEnabled) {
+                    // diffuse by average of neighbors and ourselves
+                    int n = 0;
+                    float dvx=0, dvy=0, dvs=0;
+                    for (int dx = -1; dx <= 1; dx ++) {
+                        int x2 = x1 + dx;
+                        if (x2 >= 0 && x2 < velocities.length) {
+                            for (int dy = -1; dy <= 1; dy ++) {
+                                int y2 = y1 + dy;
+                                if(dx==0 && dy==0) continue; // don't count ourselves
+                                if (y2 >= 0 && y2 < velocities[0].length) {
+                                    n++;
+                                    Point3D p=velocities[x2][y2].getValue3D();
+                                    dvx+=p.x;
+                                    dvy+=p.y;
+                                    dvs+=p.z;
+                                }
+                            }
+                        }
+                    }
+                    float r=1f/n; // recip of sum to compute average
+                    LowpassFilter3D v=velocities[x1][y1];
+                    Point3D c=v.getValue3D();
+                    v.setInternalValue3D(.5f*(c.x+r*dvx), .5f*(c.y+r*dvy),.5f*( c.z+r*dvs));
+                }
             }
             lastTs[x1][y1] = ts;
         }
@@ -1527,17 +1555,17 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     }
                     // TODO use motionColor()
                     float[] rgb;
-                    if(displayMotionFieldUsingColor){
-                        rgb=motionColor(vx, vy, 1, 1);
-                    }else{
-                        rgb=new float[]{0,0,1};
+                    if (displayMotionFieldUsingColor) {
+                        rgb = motionColor(vx, vy, 1, 1);
+                    } else {
+                        rgb = new float[]{0, 0, 1};
                     }
-                    
+
                     gl.glColor4f(rgb[0], rgb[1], rgb[2], 1f);
                     gl.glLineWidth(motionVectorLineWidthPixels);
 //                    gl.glColor4f(angle, 1 - angle, 1 / (1 + 10 * angle), .5f);
                     gl.glPushMatrix();
-                    DrawGL.drawVector(gl, x, y, vx*ppsScale, vy*ppsScale, motionVectorLineWidthPixels, 1);
+                    DrawGL.drawVector(gl, x, y, vx * ppsScale, vy * ppsScale, motionVectorLineWidthPixels, 1);
                     gl.glPopMatrix();
                     if (displayMotionFieldColorBlobs) {
                         gl.glColor4f(rgb[0], rgb[1], rgb[2], .01f);
@@ -1707,11 +1735,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
 
         /**
-         * @param displayMotionFieldColorBlobs the displayMotionFieldColorBlobs to set
+         * @param displayMotionFieldColorBlobs the displayMotionFieldColorBlobs
+         * to set
          */
         public void setDisplayMotionFieldColorBlobs(boolean displayMotionFieldColorBlobs) {
             this.displayMotionFieldColorBlobs = displayMotionFieldColorBlobs;
-            putBoolean("displayMotionFieldColorBlobs",displayMotionFieldColorBlobs);
+            putBoolean("displayMotionFieldColorBlobs", displayMotionFieldColorBlobs);
         }
 
         /**
@@ -1722,11 +1751,28 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
 
         /**
-         * @param displayMotionFieldUsingColor the displayMotionFieldUsingColor to set
+         * @param displayMotionFieldUsingColor the displayMotionFieldUsingColor
+         * to set
          */
         public void setDisplayMotionFieldUsingColor(boolean displayMotionFieldUsingColor) {
             this.displayMotionFieldUsingColor = displayMotionFieldUsingColor;
-            putBoolean("displayMotionFieldUsingColor",displayMotionFieldUsingColor);
+            putBoolean("displayMotionFieldUsingColor", displayMotionFieldUsingColor);
+        }
+
+        /**
+         * @return the motionFieldDiffusionEnabled
+         */
+        public boolean isMotionFieldDiffusionEnabled() {
+            return motionFieldDiffusionEnabled;
+        }
+
+        /**
+         * @param motionFieldDiffusionEnabled the motionFieldDiffusionEnabled to
+         * set
+         */
+        public void setMotionFieldDiffusionEnabled(boolean motionFieldDiffusionEnabled) {
+            this.motionFieldDiffusionEnabled = motionFieldDiffusionEnabled;
+            putBoolean("motionFieldDiffusionEnabled", motionFieldDiffusionEnabled);
         }
 
     } // MotionField
@@ -1901,8 +1947,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     public void setDisplayMotionFieldUsingColor(boolean displayMotionFieldUsingColor) {
         motionField.setDisplayMotionFieldUsingColor(displayMotionFieldUsingColor);
     }
-    
-    
-    
+
+    public boolean isMotionFieldDiffusionEnabled() {
+        return motionField.isMotionFieldDiffusionEnabled();
+    }
+
+    public void setMotionFieldDiffusionEnabled(boolean motionFieldDiffusionEnabled) {
+        motionField.setMotionFieldDiffusionEnabled(motionFieldDiffusionEnabled);
+    }
 
 }
