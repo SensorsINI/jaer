@@ -199,7 +199,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     protected static String smoothingTT = "Smoothing";
     protected static String motionFieldTT = "Motion field";
 
-    private SingleCameraCalibration calibration = null;
+    protected SingleCameraCalibration cameraCalibration = null;
     int uidx;
 
     public AbstractMotionFlowIMU(AEChip chip) {
@@ -215,12 +215,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
         FilterChain chain = new FilterChain(chip);
         try {
-            calibration = new SingleCameraCalibration(chip);
-            calibration.setRealtimePatternDetectionEnabled(false);
-            calibration.setFilterEnabled(false);
+            cameraCalibration = new SingleCameraCalibration(chip);
+            cameraCalibration.setRealtimePatternDetectionEnabled(false);
+            cameraCalibration.setFilterEnabled(false);
 
             getSupport().addPropertyChangeListener(SingleCameraCalibration.EVENT_NEW_CALIBRATION, this);
-            chain.add(calibration);
+            chain.add(cameraCalibration);
         } catch (Exception e) {
             log.warning("could not add calibration for DVS128");
         }
@@ -422,7 +422,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         private boolean initialized = false;
 
         // Calibration
-        private boolean calibrating = false; // used to flag calibration state
+        private boolean calibrating = false; // used to flag cameraCalibration state
         private int calibrationSamples = getInt("calibrationSamples", 100); // number of samples, typically they come at 1kHz
         private final Measurand panCalibrator, tiltCalibrator, rollCalibrator;
         private float panOffset;
@@ -440,7 +440,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             panCalibrator = new Measurand();
             tiltCalibrator = new Measurand();
             rollCalibrator = new Measurand();
-            // Some initial IMU calibration values.
+            // Some initial IMU cameraCalibration values.
             // Will be overwritten when calibrating IMU
             panOffset = 0.7216f;
             tiltOffset = 3.4707f;
@@ -901,8 +901,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      *
      * @param ein input event
      * @return true if result is in-bounds, false if not, which can occur when
-     * the camera calibration magnifies the address beyond the sensor
-     * coordinates
+ the camera cameraCalibration magnifies the address beyond the sensor
+ coordinates
      */
     protected synchronized boolean extractEventInfo(Object ein) {
         e = (PolarityEvent) ein;
