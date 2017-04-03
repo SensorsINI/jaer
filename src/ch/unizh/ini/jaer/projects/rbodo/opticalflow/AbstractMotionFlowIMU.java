@@ -11,7 +11,6 @@ import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.gl2.GLUT;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.Color;
-import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -41,8 +40,6 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
-import net.sf.jaer.util.filter.LowpassFilter;
-import net.sf.jaer.util.filter.LowpassFilter2D;
 import net.sf.jaer.util.filter.LowpassFilter3D;
 import net.sf.jaer.util.filter.LowpassFilter3D.Point3D;
 
@@ -64,7 +61,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     int numInputTypes;
 
     /**
-     * Basic event information.
+     * Basic event information. Type is event polarity value, 0=OFF and 1=ON, typically but not always
      */
     protected int x, y, ts, type, lastTs;
 
