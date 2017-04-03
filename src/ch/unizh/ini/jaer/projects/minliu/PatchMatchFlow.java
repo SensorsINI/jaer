@@ -22,9 +22,6 @@ import java.awt.event.WindowEvent;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
-import java.text.Format;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.logging.Level;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
@@ -35,11 +32,10 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
-import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.TimeLimiter;
-import net.sf.jaer.eventprocessing.filter.Steadicam;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -68,9 +64,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int numSlices = getInt("numSlices", 3);
 //    private int sx, sy;
     private int currentSliceIdx = 0;
-    private boolean[][][] bitmaps = null;
+    private byte[][][] slices = null;
     private int[] sliceStartTimeUs; // holds the time interval between reference slice and this slice
-    private boolean[][] currentBitmap;
+    private byte[][] currentSlice;
     private SADResult lastGoodSadResult = new SADResult(0, 0, 0); // used for consistency check
     private int patchDimension = getInt("patchDimension", 9);
     private float cost = getFloat("cost", 0.001f);
@@ -87,6 +83,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private boolean showSliceBitMap = getBoolean("showSliceBitMap", false); // Display the bitmaps
     private float adapativeSliceDurationProportionalErrorGain = 0.01f; // factor by which an error signal on match distance changes slice duration
     private int processingTimeLimitMs = getInt("processingTimeLimitMs", 100); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
+    private int sliceMaxValue = getInt("sliceMaxValue", 1);
+    private boolean rectifyPolarties = getBoolean("rectifyPolarties", true);
     private TimeLimiter timeLimiter = new TimeLimiter();
 
     // results histogram for each packet
@@ -103,9 +101,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int MAX_SLICE_DURATION = 500000;
 
     public enum PatchCompareMethod {
-        JaccardDistance, HammingDistance/*, SAD, EventSqeDistance*/
+        /*JaccardDistance,*/ /*HammingDistance*/
+        SAD/*, EventSqeDistance*/
     };
-    private PatchCompareMethod patchCompareMethod = PatchCompareMethod.valueOf(getString("patchCompareMethod", PatchCompareMethod.HammingDistance.toString()));
+    private PatchCompareMethod patchCompareMethod = null;
 
     public enum SearchMethod {
         FullSearch, DiamondSearch, CrossDiamondSearch
@@ -143,6 +142,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        String eventSqeMatching = "Event squence matching";
 //        String preProcess = "Denoise";
         String metricConfid = "Confidence of current metric";
+        try {
+            patchCompareMethod = PatchCompareMethod.valueOf(getString("patchCompareMethod", PatchCompareMethod.SAD.toString()));
+        } catch (IllegalArgumentException e) {
+            patchCompareMethod = PatchCompareMethod.SAD;
+        }
 
         chip.addObserver(this); // to allocate memory once chip size is known
         setPropertyTooltip(metricConfid, "confidenceThreshold", "<html>Confidence threshold for rejecting unresonable value; Range from 0 to 1. <p>Higher value means it is harder to accept the event. <br>Set to 0 to accept all results.");
@@ -150,7 +154,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(metricConfid, "weightDistance", "<html>The confidence value consists of the distance and the dispersion; <br>weightDistance sets the weighting of the distance value compared with the dispersion value; Range from 0 to 1. <p>To count only e.g. hamming distance, set weighting to 1. <p> To count only dispersion, set to 0.");
         setPropertyTooltip(patchTT, "patchDimension", "linear dimenion of patches to match, in pixels");
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
-        setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches");
+        setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches; SAD=sum of absolute differences, HammingDistance is same as SAD for binary bitmaps");
         setPropertyTooltip(patchTT, "searchMethod", "method to search patches");
         setPropertyTooltip(patchTT, "sliceDurationUs", "duration of bitmaps in us, also called sample interval, when ConstantDuration method is used");
         setPropertyTooltip(patchTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
@@ -164,6 +168,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "showSliceBitMap", "enables displaying the slices' bitmap");
         setPropertyTooltip(patchTT, "outlierMotionFilteringEnabled", "(Currently has no effect) discards first optical flow event that points in opposite direction as previous one (dot product is negative)");
         setPropertyTooltip(patchTT, "numSlices", "<html>Number of bitmaps to use.  <p>At least 3: 1 to collect on, and two more to match on. <br>If >3, then best match is found between last slice reference block and all previous slices.");
+        setPropertyTooltip(patchTT, "numSlices", "<html>Number of bitmaps to use.  <p>At least 3: 1 to collect on, and two more to match on. <br>If >3, then best match is found between last slice reference block and all previous slices.");
+        setPropertyTooltip(patchTT, "sliceMaxValue", "\"<html> the maximum value used to represent each pixel in the time slice:<br>1 for binary or signed binary slice, (in conjunction with rectifyEventPolarities), etc, up to 127 by these byte values");
+        setPropertyTooltip(patchTT, "rectifyPolarties", "<html> whether to rectify ON and OFF polarities to unsigned counts; true ignores polarity for block matching, false uses polarity with sliceNumBits>1");
 
         setPropertyTooltip(dispTT, "displayOutputVectors", "display the output motion vectors or not");
         setPropertyTooltip(dispTT, "displayResultHistogram", "display the output motion vectors histogram to show disribution of results for each packet. Only implemented for HammingDistance");
@@ -270,7 +277,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
 
         for (Object o : in) { // to support pure DVS like DVS128
-            BasicEvent ein = (BasicEvent) o;
+            PolarityEvent ein = (PolarityEvent) o;
             if (ein == null) {
                 log.warning("null event passed in, returning input packet");
                 return in;
@@ -293,38 +300,38 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             SADResult result = null;
 
             switch (patchCompareMethod) {
-                case HammingDistance:
+                case SAD:
                     maybeRotateSlices();
-                    if (!accumulateEvent(in)) { // maybe skip events here
+                    if (!accumulateEvent(ein)) { // maybe skip events here
                         break;
                     }
                     SADResult sliceResult = null;
                     int minDistSliceIdx = 1;
                     for (int k = 1; k < numSlices - 1; k++) { // for numSlices=3, does only once
-                        sliceResult = minHammingDistance(x, y, bitmaps[sliceIndex(1)], bitmaps[sliceIndex(k + 1)]); // from ref slice to past slice k+1
+                        sliceResult = minSADDistance(x, y, slices[sliceIndex(1)], slices[sliceIndex(k + 1)]); // from ref slice to past slice k+1
                         if (result == null || sliceResult.sadValue < result.sadValue) {
                             result = sliceResult; // result holds the overall min sad result
                             minDistSliceIdx = k + 1;
                         }
                     }
                     if (showSliceBitMap) {
-                        showBitmaps(x, y, (int) result.dx, (int) result.dy, bitmaps[sliceIndex(1)], bitmaps[sliceIndex(2)]);
+                        showMatching(x, y, (int) result.dx, (int) result.dy, slices[sliceIndex(1)], slices[sliceIndex(2)]);
                     }
-                    float dt=(sliceDeltaTimeUs(minDistSliceIdx) * 1e-6f);
-                    result.dx = result.dx / dt ; // hack, convert to pix/second
-                    result.dy = result.dy / dt ; // TODO clean up, make time for each slice, since could be different when const num events
+                    float dt = (sliceDeltaTimeUs(minDistSliceIdx) * 1e-6f);
+                    result.dx = result.dx / dt; // hack, convert to pix/second
+                    result.dy = result.dy / dt; // TODO clean up, make time for each slice, since could be different when const num events
 
                     break;
-                case JaccardDistance:
-                    maybeRotateSlices();
-                    if (!accumulateEvent(in)) {
-                        break;
-                    }
-                    result = minJaccardDistance(x, y, bitmaps[sliceIndex(2)], bitmaps[sliceIndex(1)]);
-                    float dtj=(sliceDeltaTimeUs(2) * 1e-6f);
-                    result.dx = result.dx / dtj;
-                    result.dy = result.dy / dtj;
-                    break;
+//                case JaccardDistance:
+//                    maybeRotateSlices();
+//                    if (!accumulateEvent(in)) {
+//                        break;
+//                    }
+//                    result = minJaccardDistance(x, y, bitmaps[sliceIndex(2)], bitmaps[sliceIndex(1)]);
+//                    float dtj=(sliceDeltaTimeUs(2) * 1e-6f);
+//                    result.dx = result.dx / dtj;
+//                    result.dy = result.dy / dtj;
+//                    break;
             }
             if (result == null) {
                 continue; // maybe some property change caused this
@@ -445,12 +452,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         lastTs = Integer.MIN_VALUE;
 
         checkArrays();
-        for (boolean[][] b : bitmaps) {
-            clearBitmap(b);
+        for (byte[][] b : slices) {
+            clearSlice(b);
         }
 
         currentSliceIdx = 0;  // start by filling slice 0
-        currentBitmap = bitmaps[currentSliceIdx];
+        currentSlice = slices[currentSliceIdx];
 
         sliceLastTs = 0;
         rewindFlg = true;
@@ -519,10 +526,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         currentSliceIdx--;
         if (currentSliceIdx < 0) {
             currentSliceIdx = numSlices - 1;
-        } 
-        currentBitmap = bitmaps[currentSliceIdx];
-        sliceStartTimeUs[currentSliceIdx]=ts; // current event timestamp
-        clearBitmap(currentBitmap);
+        }
+        currentSlice = slices[currentSliceIdx];
+        sliceStartTimeUs[currentSliceIdx] = ts; // current event timestamp
+        clearSlice(currentSlice);
     }
 
     /**
@@ -541,16 +548,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     /**
      * returns slice delta time in us from reference slice
-     *  
+     *
      * @param pointer how many slices in the past to index for. I.e.. 0 for
      * current slice (one being currently filled), 1 for next oldest, 2 for
-     * oldest (when using NUM_SLICES=3). Only meaningful for pointer>=2 && pointer<numSlices;;
-     * @return slice delta time in us
-     * @see #sliceIndex(int) 
+     * oldest (when using NUM_SLICES=3). Only meaningful for pointer>=2 &&
+     * pointer<numSlices;; @ret urn slice delta time in us @see #sliceIndex(int)
      */
     private int sliceDeltaTimeUs(int pointer) {
-        System.out.println("dt("+pointer+")="+(sliceStartTimeUs[sliceIndex(1)]-sliceStartTimeUs[sliceIndex(pointer)]));
-        return sliceStartTimeUs[sliceIndex(1)]-sliceStartTimeUs[sliceIndex(pointer)];
+        System.out.println("dt(" + pointer + ")=" + (sliceStartTimeUs[sliceIndex(1)] - sliceStartTimeUs[sliceIndex(pointer)]));
+        return sliceStartTimeUs[sliceIndex(1)] - sliceStartTimeUs[sliceIndex(pointer)];
     }
 
     /**
@@ -559,15 +565,23 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @return true if subsequent processing should done, false if it should be
      * skipped for efficiency
      */
-    private boolean accumulateEvent(EventPacket in) {
+    private boolean accumulateEvent(PolarityEvent e) {
         switch (patchCompareMethod) {
-//            case SAD:
+            case SAD:
 //            case JaccardDistance:
 //                currentSlice[x][y] += e.getPolaritySignum();
 //                break;
-            case HammingDistance:
+//            case HammingDistance:
 //                currentSli.set((x + 1) + (y * subSizeX));  // All events wheather 0 or 1 will be set in the BitSet Slice
-                currentBitmap[x][y] = true;
+                int v = currentSlice[x][y];
+                v += rectifyPolarties ? 1 : (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
+                if (v > sliceMaxValue) {
+                    v = sliceMaxValue;
+                } else if (v < -sliceMaxValue) {
+                    v = -sliceMaxValue;
+                }
+                currentSlice[x][y] = (byte) v;
+                break;
         }
         if (timeLimiter.isTimedOut()) {
             return false;
@@ -600,7 +614,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @return SADResult that provides the shift and SAD value
      */
 //    private SADResult minHammingDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
-    private SADResult minHammingDistance(int x, int y, boolean[][] curSlice, boolean[][] prevSlice) {
+    private SADResult minSADDistance(int x, int y, byte[][] curSlice, byte[][] prevSlice) {
         SADResult result = new SADResult();
         float minSum = Integer.MAX_VALUE, minSum1 = Integer.MAX_VALUE, sum = 0;
 
@@ -624,7 +638,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             case FullSearch:
                 for (int dx = -searchDistance; dx <= searchDistance; dx++) {
                     for (int dy = -searchDistance; dy <= searchDistance; dy++) {
-                        sum = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
+                        sum = sadDistance(x, y, dx, dy, prevSlice, curSlice);
                         sumArray[dx + searchDistance][dy + searchDistance] = sum;
                         if (sum <= minSum1) {
 //                            if (sum == minSum1 && minSum1 != Integer.MAX_VALUE) {
@@ -696,7 +710,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                         /* We just calculate the blocks that haven't been calculated before */
                         if (computedFlg[xidx][yidx] == false) {
-                            sumArray[xidx][yidx] = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
+                            sumArray[xidx][yidx] = sadDistance(x, y, dx, dy, prevSlice, curSlice);
                             computedFlg[xidx][yidx] = true;
                             if (outputSearchErrorInfo) {
                                 DSAverageNum++;
@@ -739,7 +753,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                     /* We just calculate the blocks that haven't been calculated before */
                     if (computedFlg[xidx][yidx] == false) {
-                        sumArray[xidx][yidx] = hammingDistance(x, y, dx, dy, prevSlice, curSlice);
+                        sumArray[xidx][yidx] = sadDistance(x, y, dx, dy, prevSlice, curSlice);
                         computedFlg[xidx][yidx] = true;
                         if (outputSearchErrorInfo) {
                             DSAverageNum++;
@@ -803,8 +817,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * all the same
      */
 //    private float hammingDistance(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
-    private float hammingDistance(int x, int y, int dx, int dy, boolean[][] prevSlice, boolean[][] curSlice) {
-        int hd = 0;
+    private float sadDistance(int x, int y, int dx, int dy, byte[][] prevSlice, byte[][] curSlice) {
+        int sumDist = 0;
         final int blockRadius = patchDimension / 2;
         float validPixNumCurrSli = 0, validPixNumPrevSli = 0; // The valid pixel number in the current block
 
@@ -818,15 +832,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             for (int yy = y - blockRadius; yy <= (y + blockRadius); yy++) {
 //                boolean currSlicePol = curSlice.get((xx + 1) + ((yy) * subSizeX)); // binary value on (xx, yy) for current slice
 //                boolean prevSlicePol = prevSlice.get(((xx + 1) - dx) + ((yy - dy) * subSizeX)); // binary value on (xx, yy) for previous slice
-                boolean currSlicePol = curSlice[xx][yy]; // binary value on (xx, yy) for current slice
-                boolean prevSlicePol = prevSlice[xx - dx][yy - dy]; // binary value on (xx, yy) for previous slice
-                if (currSlicePol != prevSlicePol) {
-                    hd += 1;
+                byte currSliceVal = curSlice[xx][yy]; // binary value on (xx, yy) for current slice
+                byte prevSliceVal = prevSlice[xx - dx][yy - dy]; // binary value on (xx, yy) for previous slice
+                byte dist = (byte)(currSliceVal - prevSliceVal);
+                if (dist < 0) {
+                    dist = (byte) (-dist);
                 }
-                if (currSlicePol == true) {
+                sumDist += dist;
+//                if (currSlicePol != prevSlicePol) {
+//                    hd += 1;
+//                }
+                if (currSliceVal != 0) {
                     validPixNumCurrSli++;
                 }
-                if (prevSlicePol == true) {
+                if (prevSliceVal != 0) {
                     validPixNumPrevSli++;
                 }
             }
@@ -845,7 +864,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             Here we use the difference between validPixNumCurrSli and validPixNumPrevSli to calculate the dispersion.
             Inspired by paper "Measuring the spatial dispersion of evolutionist search process: application to Walksat" by Alain Sidaner.
              */
-            return ((hd * weightDistance) + (Math.abs(validPixNumCurrSli - validPixNumPrevSli) * (1 - weightDistance))) / blockArea;
+            return ((sumDist * weightDistance) + (Math.abs(validPixNumCurrSli - validPixNumPrevSli) * (1 - weightDistance))) / blockArea;
         }
     }
 
@@ -860,24 +879,23 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @return SADResult that provides the shift and SAD value
      */
 //    private SADResult minJaccardDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
-    private SADResult minJaccardDistance(int x, int y, boolean[][] prevSlice, boolean[][] curSlice) {
-        float minSum = Integer.MAX_VALUE, sum = 0;
-        SADResult sadResult = new SADResult(0, 0, 0);
-        for (int dx = -searchDistance; dx <= searchDistance; dx++) {
-            for (int dy = -searchDistance; dy <= searchDistance; dy++) {
-                sum = jaccardDistance(x, y, dx, dy, prevSlice, curSlice);
-                if (sum <= minSum) {
-                    minSum = sum;
-                    sadResult.dx = dx;
-                    sadResult.dy = dy;
-                    sadResult.sadValue = minSum;
-                }
-            }
-        }
-
-        return sadResult;
-    }
-
+//    private SADResult minJaccardDistance(int x, int y, byte[][] prevSlice, byte[][] curSlice) {
+//        float minSum = Integer.MAX_VALUE, sum = 0;
+//        SADResult sadResult = new SADResult(0, 0, 0);
+//        for (int dx = -searchDistance; dx <= searchDistance; dx++) {
+//            for (int dy = -searchDistance; dy <= searchDistance; dy++) {
+//                sum = jaccardDistance(x, y, dx, dy, prevSlice, curSlice);
+//                if (sum <= minSum) {
+//                    minSum = sum;
+//                    sadResult.dx = dx;
+//                    sadResult.dy = dy;
+//                    sadResult.sadValue = minSum;
+//                }
+//            }
+//        }
+//
+//        return sadResult;
+//    }
     /**
      * computes Hamming distance centered on x,y with patch of patchSize for
      * prevSliceIdx relative to curSliceIdx patch.
@@ -1389,8 +1407,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private void checkArrays() {
 
         numSlices = getInt("numSlices", 3); // since resetFilter is called in super before numSlices is even initialized
-        if (bitmaps == null || bitmaps.length != numSlices || bitmaps[0].length != subSizeX || bitmaps[0][0].length != subSizeY) {
-            bitmaps = new boolean[numSlices][subSizeX][subSizeY];
+        if (slices == null || slices.length != numSlices || slices[0].length != subSizeX || slices[0][0].length != subSizeY) {
+            slices = new byte[numSlices][subSizeX][subSizeY];
             sliceStartTimeUs = new int[numSlices];
         }
         if (lastTimesMap != null) {
@@ -1567,15 +1585,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         super.propertyChange(evt); // resets filter on rewind, etc
     }
 
-    private void clearBitmap(boolean[][] bitmap) {
-        for (boolean[] b : bitmap) {
-            Arrays.fill(b, false);
+    private void clearSlice(byte[][] bitmap) {
+        for (byte[] b : bitmap) {
+            Arrays.fill(b, (byte) 0);
         }
     }
 
     private int dim = patchDimension + 2 * searchDistance;
 
-    private void showBitmaps(int x, int y, int dx, int dy, boolean[][] tm1Bitmap, boolean[][] tm2Bitmap) {
+    private void showMatching(int x, int y, int dx, int dy, byte[][] tm1Bitmap, byte[][] tm2Bitmap) {
         int dimNew = patchDimension + 2 * searchDistance;
         if (Frame == null) {
             String windowName = "Slice bitmaps";
@@ -1620,7 +1638,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             for (int i = searchDistance; i < patchDimension + searchDistance; i++) {
                 for (int j = searchDistance; j < patchDimension + searchDistance; j++) {
                     float[] f = display.getPixmapRGB(i, j);
-                    f[0] = tm1Bitmap[x - patchDimension / 2 + i - searchDistance][y - patchDimension / 2 + j - searchDistance] ? 1 : 0;
+                    f[0] = tm1Bitmap[x - patchDimension / 2 + i - searchDistance][y - patchDimension / 2 + j - searchDistance] > 0 ? 1 : 0;
                     display.setPixmapRGB(i, j, f);
                 }
             }
@@ -1629,7 +1647,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             for (int i = 0; i < 2 * radiaus + 1; i++) {
                 for (int j = 0; j < 2 * radiaus + 1; j++) {
                     float[] f = display.getPixmapRGB(i, j);
-                    f[1] = tm2Bitmap[x - radiaus + i][y - radiaus + j] ? 1 : 0;
+                    f[1] = tm2Bitmap[x - radiaus + i][y - radiaus + j] > 0 ? 1 : 0;
                     display.setPixmapRGB(i, j, f);
                 }
             }
@@ -1638,7 +1656,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             for (int i = searchDistance + dx; i < patchDimension + searchDistance + dx; i++) {
                 for (int j = searchDistance + dy; j < patchDimension + searchDistance + dy; j++) {
                     float[] f = display.getPixmapRGB(i, j);
-                    f[2] = tm2Bitmap[x - patchDimension / 2 + i - searchDistance][y - patchDimension / 2 + j - searchDistance] ? 1 : 0;
+                    f[2] = tm2Bitmap[x - patchDimension / 2 + i - searchDistance][y - patchDimension / 2 + j - searchDistance] > 0 ? 1 : 0;
                     display.setPixmapRGB(i, j, f);
                 }
             }
@@ -1674,6 +1692,41 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (cameraCalibration != null) {
             cameraCalibration.setFilterEnabled(false); // disable camera cameraCalibration; force user to enable it every time
         }
+    }
+
+    /**
+     * @return the sliceNumBits
+     */
+    public int getSliceMaxValue() {
+        return sliceMaxValue;
+    }
+
+    /**
+     * @param sliceMaxValue the sliceMaxValue to set
+     */
+    public void setSliceMaxValue(int sliceMaxValue) {
+        if (sliceMaxValue < 1) {
+            sliceMaxValue = 1;
+        } else if (sliceMaxValue > 127) {
+            sliceMaxValue = 7;
+        }
+        this.sliceMaxValue = sliceMaxValue;
+        putInt("sliceMaxValue", sliceMaxValue);
+    }
+
+    /**
+     * @return the rectifyPolarties
+     */
+    public boolean isRectifyPolarties() {
+        return rectifyPolarties;
+    }
+
+    /**
+     * @param rectifyPolarties the rectifyPolarties to set
+     */
+    public void setRectifyPolarties(boolean rectifyPolarties) {
+        this.rectifyPolarties = rectifyPolarties;
+        putBoolean("rectifyPolarties", rectifyPolarties);
     }
 
 }
