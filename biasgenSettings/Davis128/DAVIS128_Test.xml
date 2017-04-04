@@ -228,8 +228,8 @@
                 <entry key="Davis128.VDACBias.ApsCas.VdacBitValue" value="21"/>
                 <entry key="Davis128.VDACBias.apsOverflowLevel.BufBitValue" value="6"/>
                 <entry key="Davis128.VDACBias.apsOverflowLevel.VdacBitValue" value="27"/>
-                <entry key="Davis128.VideoControl.autoWhiteBalance" value="true"/>
-                <entry key="Davis128.VideoControl.colorCorrection" value="true"/>
+                <entry key="Davis128.VideoControl.autoWhiteBalance" value="false"/>
+                <entry key="Davis128.VideoControl.colorCorrection" value="false"/>
                 <entry key="Davis128.VideoControl.displayEvents" value="true"/>
                 <entry key="Davis128.VideoControl.displayFrames" value="true"/>
                 <entry key="Davis128.VideoControl.separateAPSByColor" value="false"/>
