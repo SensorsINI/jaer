@@ -13,21 +13,21 @@
             <map/>
             <node name="davis">
               <map>
-                <entry key="CPLDByte.imu0_PWR_MGMT_1" value="2"/>
-                <entry key="CPLDByte.imu1_CONFIG" value="0"/>
-                <entry key="CPLDByte.imu2_SMPLRT_DIV" value="0"/>
-                <entry key="CPLDByte.imu3_GYRO_CONFIG" value="16"/>
-                <entry key="CPLDByte.imu4_ACCEL_CONFIG" value="16"/>
-                <entry key="CPLDByte.imu_RUN" value="1"/>
-                <entry key="CPLDByte.miscControlBits" value="0"/>
-                <entry key="CPLDInt.colSettle" value="30"/>
-                <entry key="CPLDInt.exposure" value="6100"/>
-                <entry key="CPLDInt.frameDelay" value="0"/>
-                <entry key="CPLDInt.nullSettle" value="5"/>
-                <entry key="CPLDInt.pad" value="0"/>
-                <entry key="CPLDInt.resSettle" value="10"/>
-                <entry key="CPLDInt.rowSettle" value="20"/>
-                <entry key="Davis128.AERnArow" value="false"/>
+                <entry key="Davis128.APS.ColumnSettle" value="30"/>
+                <entry key="Davis128.APS.Exposure" value="5000"/>
+                <entry key="Davis128.APS.FrameDelay" value="1000"/>
+                <entry key="Davis128.APS.GlobalShutter" value="true"/>
+                <entry key="Davis128.APS.NullSettle" value="3"/>
+                <entry key="Davis128.APS.RampReset" value="10"/>
+                <entry key="Davis128.APS.RampShortReset" value="false"/>
+                <entry key="Davis128.APS.ResetRead" value="true"/>
+                <entry key="Davis128.APS.ResetSettle" value="10"/>
+                <entry key="Davis128.APS.RowSettle" value="10"/>
+                <entry key="Davis128.APS.Run" value="true"/>
+                <entry key="Davis128.APS.SampleEnable" value="true"/>
+                <entry key="Davis128.APS.SampleSettle" value="30"/>
+                <entry key="Davis128.APS.UseInternalADC" value="true"/>
+                <entry key="Davis128.APS.WaitOnTransferStall" value="true"/>
                 <entry key="Davis128.AddressedIPotCF.ADCcompBp.BitValueCoarse" value="2"/>
                 <entry key="Davis128.AddressedIPotCF.ADCcompBp.BitValueFine" value="20"/>
                 <entry key="Davis128.AddressedIPotCF.ADCcompBp.Enabled" value="true"/>
@@ -58,42 +58,6 @@
                 <entry key="Davis128.AddressedIPotCF.ApsROSFBn.LowCurrent" value="false"/>
                 <entry key="Davis128.AddressedIPotCF.ApsROSFBn.Sex" value="N"/>
                 <entry key="Davis128.AddressedIPotCF.ApsROSFBn.Type" value="NORMAL"/>
-                <entry key="Davis128.AddressedIPotCF.Blk1N.BitValueCoarse" value="0"/>
-                <entry key="Davis128.AddressedIPotCF.Blk1N.BitValueFine" value="0"/>
-                <entry key="Davis128.AddressedIPotCF.Blk1N.Enabled" value="false"/>
-                <entry key="Davis128.AddressedIPotCF.Blk1N.LowCurrent" value="false"/>
-                <entry key="Davis128.AddressedIPotCF.Blk1N.Sex" value="N"/>
-                <entry key="Davis128.AddressedIPotCF.Blk1N.Type" value="NORMAL"/>
-                <entry key="Davis128.AddressedIPotCF.Blk1P.BitValueCoarse" value="0"/>
-                <entry key="Davis128.AddressedIPotCF.Blk1P.BitValueFine" value="0"/>
-                <entry key="Davis128.AddressedIPotCF.Blk1P.Enabled" value="false"/>
-                <entry key="Davis128.AddressedIPotCF.Blk1P.LowCurrent" value="false"/>
-                <entry key="Davis128.AddressedIPotCF.Blk1P.Sex" value="P"/>
-                <entry key="Davis128.AddressedIPotCF.Blk1P.Type" value="NORMAL"/>
-                <entry key="Davis128.AddressedIPotCF.Blk2N.BitValueCoarse" value="0"/>
-                <entry key="Davis128.AddressedIPotCF.Blk2N.BitValueFine" value="0"/>
-                <entry key="Davis128.AddressedIPotCF.Blk2N.Enabled" value="false"/>
-                <entry key="Davis128.AddressedIPotCF.Blk2N.LowCurrent" value="false"/>
-                <entry key="Davis128.AddressedIPotCF.Blk2N.Sex" value="N"/>
-                <entry key="Davis128.AddressedIPotCF.Blk2N.Type" value="NORMAL"/>
-                <entry key="Davis128.AddressedIPotCF.Blk2P.BitValueCoarse" value="0"/>
-                <entry key="Davis128.AddressedIPotCF.Blk2P.BitValueFine" value="0"/>
-                <entry key="Davis128.AddressedIPotCF.Blk2P.Enabled" value="false"/>
-                <entry key="Davis128.AddressedIPotCF.Blk2P.LowCurrent" value="false"/>
-                <entry key="Davis128.AddressedIPotCF.Blk2P.Sex" value="P"/>
-                <entry key="Davis128.AddressedIPotCF.Blk2P.Type" value="NORMAL"/>
-                <entry key="Davis128.AddressedIPotCF.Blk3N.BitValueCoarse" value="0"/>
-                <entry key="Davis128.AddressedIPotCF.Blk3N.BitValueFine" value="0"/>
-                <entry key="Davis128.AddressedIPotCF.Blk3N.Enabled" value="false"/>
-                <entry key="Davis128.AddressedIPotCF.Blk3N.LowCurrent" value="false"/>
-                <entry key="Davis128.AddressedIPotCF.Blk3N.Sex" value="N"/>
-                <entry key="Davis128.AddressedIPotCF.Blk3N.Type" value="NORMAL"/>
-                <entry key="Davis128.AddressedIPotCF.Blk4N.BitValueCoarse" value="0"/>
-                <entry key="Davis128.AddressedIPotCF.Blk4N.BitValueFine" value="0"/>
-                <entry key="Davis128.AddressedIPotCF.Blk4N.Enabled" value="false"/>
-                <entry key="Davis128.AddressedIPotCF.Blk4N.LowCurrent" value="false"/>
-                <entry key="Davis128.AddressedIPotCF.Blk4N.Sex" value="N"/>
-                <entry key="Davis128.AddressedIPotCF.Blk4N.Type" value="NORMAL"/>
                 <entry key="Davis128.AddressedIPotCF.ColSelLowBn.BitValueCoarse" value="7"/>
                 <entry key="Davis128.AddressedIPotCF.ColSelLowBn.BitValueFine" value="1"/>
                 <entry key="Davis128.AddressedIPotCF.ColSelLowBn.Enabled" value="true"/>
@@ -190,24 +154,61 @@
                 <entry key="Davis128.AddressedIPotCF.biasBuffer.LowCurrent" value="false"/>
                 <entry key="Davis128.AddressedIPotCF.biasBuffer.Sex" value="N"/>
                 <entry key="Davis128.AddressedIPotCF.biasBuffer.Type" value="NORMAL"/>
-                <entry key="Davis128.GlobalShutter" value="true"/>
-                <entry key="Davis128.ResetCalibNeuron" value="true"/>
-                <entry key="Davis128.ResetTestPixel" value="true"/>
-                <entry key="Davis128.SelectGrayCounter" value="true"/>
-                <entry key="Davis128.ShiftedSourceBias.ADC_RefHigh.BufBitValue" value="7"/>
-                <entry key="Davis128.ShiftedSourceBias.ADC_RefHigh.VdacBitValue" value="30"/>
-                <entry key="Davis128.ShiftedSourceBias.ADC_RefLow.BufBitValue" value="7"/>
-                <entry key="Davis128.ShiftedSourceBias.ADC_RefLow.VdacBitValue" value="1"/>
-                <entry key="Davis128.ShiftedSourceBias.AdcTestVoltagexAI.BufBitValue" value="7"/>
-                <entry key="Davis128.ShiftedSourceBias.AdcTestVoltagexAI.VdacBitValue" value="21"/>
-                <entry key="Davis128.ShiftedSourceBias.ApsCas.BufBitValue" value="6"/>
-                <entry key="Davis128.ShiftedSourceBias.ApsCas.VdacBitValue" value="21"/>
-                <entry key="Davis128.ShiftedSourceBias.BlkV1.BufBitValue" value="0"/>
-                <entry key="Davis128.ShiftedSourceBias.BlkV1.VdacBitValue" value="0"/>
-                <entry key="Davis128.ShiftedSourceBias.BlkV2.BufBitValue" value="0"/>
-                <entry key="Davis128.ShiftedSourceBias.BlkV2.VdacBitValue" value="0"/>
-                <entry key="Davis128.ShiftedSourceBias.BlkV3.BufBitValue" value="0"/>
-                <entry key="Davis128.ShiftedSourceBias.BlkV3.VdacBitValue" value="0"/>
+                <entry key="Davis128.Chip.AERnArow" value="false"/>
+                <entry key="Davis128.Chip.AnalogMux0" value="0"/>
+                <entry key="Davis128.Chip.AnalogMux1" value="0"/>
+                <entry key="Davis128.Chip.AnalogMux2" value="0"/>
+                <entry key="Davis128.Chip.BiasMux0" value="0"/>
+                <entry key="Davis128.Chip.DigitalMux0" value="0"/>
+                <entry key="Davis128.Chip.DigitalMux1" value="0"/>
+                <entry key="Davis128.Chip.DigitalMux2" value="0"/>
+                <entry key="Davis128.Chip.DigitalMux3" value="0"/>
+                <entry key="Davis128.Chip.ResetCalibNeuron" value="true"/>
+                <entry key="Davis128.Chip.ResetTestPixel" value="true"/>
+                <entry key="Davis128.Chip.SelectGrayCounter" value="true"/>
+                <entry key="Davis128.Chip.TestADC" value="false"/>
+                <entry key="Davis128.Chip.TypeNCalibNeuron" value="false"/>
+                <entry key="Davis128.Chip.UseAOut" value="false"/>
+                <entry key="Davis128.DVS.AckDelayColumn" value="0"/>
+                <entry key="Davis128.DVS.AckDelayRow" value="4"/>
+                <entry key="Davis128.DVS.AckExtensionColumn" value="0"/>
+                <entry key="Davis128.DVS.AckExtensionRow" value="1"/>
+                <entry key="Davis128.DVS.ExternalAERControl" value="false"/>
+                <entry key="Davis128.DVS.FilterBackgroundActivity" value="false"/>
+                <entry key="Davis128.DVS.FilterBackgroundActivityDeltaTime" value="20000"/>
+                <entry key="Davis128.DVS.FilterRowOnlyEvents" value="true"/>
+                <entry key="Davis128.DVS.Run" value="true"/>
+                <entry key="Davis128.DVS.WaitOnTransferStall" value="false"/>
+                <entry key="Davis128.ExtInput.DetectFallingEdges" value="false"/>
+                <entry key="Davis128.ExtInput.DetectPulseLength" value="120"/>
+                <entry key="Davis128.ExtInput.DetectPulsePolarity" value="true"/>
+                <entry key="Davis128.ExtInput.DetectPulses" value="true"/>
+                <entry key="Davis128.ExtInput.DetectRisingEdges" value="false"/>
+                <entry key="Davis128.ExtInput.GeneratePulseInterval" value="120"/>
+                <entry key="Davis128.ExtInput.GeneratePulseLength" value="60"/>
+                <entry key="Davis128.ExtInput.GeneratePulsePolarity" value="false"/>
+                <entry key="Davis128.ExtInput.GenerateUseCustomSignal" value="false"/>
+                <entry key="Davis128.ExtInput.RunDetector" value="false"/>
+                <entry key="Davis128.ExtInput.RunGenerator" value="false"/>
+                <entry key="Davis128.IMU.AccelFullScale" value="2"/>
+                <entry key="Davis128.IMU.AccelScale" value="ImuAccelScaleG8"/>
+                <entry key="Davis128.IMU.DigitalLowPassFilter" value="1"/>
+                <entry key="Davis128.IMU.GyroFullScale" value="2"/>
+                <entry key="Davis128.IMU.GyroScale" value="GyroFullScaleDegPerSec1000"/>
+                <entry key="Davis128.IMU.LPCycle" value="false"/>
+                <entry key="Davis128.IMU.LPWakeup" value="1"/>
+                <entry key="Davis128.IMU.Run" value="false"/>
+                <entry key="Davis128.IMU.SampleRateDivider" value="0"/>
+                <entry key="Davis128.IMU.TempStandby" value="false"/>
+                <entry key="Davis128.IMU.displayEnabled" value="true"/>
+                <entry key="Davis128.Masterbias.internalResistorUsed" value="false"/>
+                <entry key="Davis128.Masterbias.rint" value="46000.0"/>
+                <entry key="Davis128.Masterbias.rx" value="8200.0"/>
+                <entry key="Davis128.Mux.DropAPSOnTransferStall" value="false"/>
+                <entry key="Davis128.Mux.DropDVSOnTransferStall" value="true"/>
+                <entry key="Davis128.Mux.DropExtInputOnTransferStall" value="true"/>
+                <entry key="Davis128.Mux.DropIMUOnTransferStall" value="false"/>
+                <entry key="Davis128.Mux.ForceChipBiasEnable" value="false"/>
                 <entry key="Davis128.ShiftedSourceBias.SSN.OperatingMode" value="ShiftedSource"/>
                 <entry key="Davis128.ShiftedSourceBias.SSN.RefValue" value="1"/>
                 <entry key="Davis128.ShiftedSourceBias.SSN.RegBitValue" value="33"/>
@@ -216,34 +217,26 @@
                 <entry key="Davis128.ShiftedSourceBias.SSP.RefValue" value="1"/>
                 <entry key="Davis128.ShiftedSourceBias.SSP.RegBitValue" value="33"/>
                 <entry key="Davis128.ShiftedSourceBias.SSP.VoltageLevel" value="SplitGate"/>
-                <entry key="Davis128.ShiftedSourceBias.apsOverflowLevel.BufBitValue" value="6"/>
-                <entry key="Davis128.ShiftedSourceBias.apsOverflowLevel.VdacBitValue" value="27"/>
-                <entry key="Davis128.TestADC" value="false"/>
-                <entry key="Davis128.TypeNCalibNeuron" value="false"/>
-                <entry key="Davis128.UseAOut" value="false"/>
-                <entry key="Davis128.globalShutter" value="true"/>
-                <entry key="Davis128.hotPixelSuppression" value="false"/>
-                <entry key="Davis128.nArow" value="false"/>
-                <entry key="Davis128.nChipReset" value="true"/>
-                <entry key="Davis128.powerDown" value="false"/>
-                <entry key="Davis128.resetCalib" value="true"/>
-                <entry key="Davis128.resetTestpixel" value="true"/>
-                <entry key="Davis128.runAdc" value="true"/>
-                <entry key="Davis128.runCpld" value="true"/>
-                <entry key="Davis128.typeNCalib" value="false"/>
-                <entry key="Davis128.useAout" value="false"/>
-                <entry key="DigitalOutputMux.BiasOutMux.selectedChannel" value="-1"/>
-                <entry key="DigitalOutputMux.DigMux0.selectedChannel" value="-1"/>
-                <entry key="DigitalOutputMux.DigMux1.selectedChannel" value="-1"/>
-                <entry key="DigitalOutputMux.DigMux2.selectedChannel" value="-1"/>
-                <entry key="DigitalOutputMux.DigMux3.selectedChannel" value="-1"/>
-                <entry key="aeReaderFifoSize" value="16384"/>
-                <entry key="aeReaderNumBuffers" value="16"/>
-                <entry key="autoExposureEnabled" value="false"/>
-                <entry key="displayEvents" value="true"/>
-                <entry key="displayFrames" value="true"/>
-                <entry key="showImageHistogram" value="false"/>
-                <entry key="translateRowOnlyEvents" value="false"/>
+                <entry key="Davis128.USB.EarlyPacketDelay" value="8"/>
+                <entry key="Davis128.VDACBias.ADC_RefHigh.BufBitValue" value="7"/>
+                <entry key="Davis128.VDACBias.ADC_RefHigh.VdacBitValue" value="30"/>
+                <entry key="Davis128.VDACBias.ADC_RefLow.BufBitValue" value="7"/>
+                <entry key="Davis128.VDACBias.ADC_RefLow.VdacBitValue" value="1"/>
+                <entry key="Davis128.VDACBias.AdcTestVoltage.BufBitValue" value="7"/>
+                <entry key="Davis128.VDACBias.AdcTestVoltage.VdacBitValue" value="21"/>
+                <entry key="Davis128.VDACBias.ApsCas.BufBitValue" value="6"/>
+                <entry key="Davis128.VDACBias.ApsCas.VdacBitValue" value="21"/>
+                <entry key="Davis128.VDACBias.apsOverflowLevel.BufBitValue" value="6"/>
+                <entry key="Davis128.VDACBias.apsOverflowLevel.VdacBitValue" value="27"/>
+                <entry key="Davis128.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="Davis128.VideoControl.colorCorrection" value="true"/>
+                <entry key="Davis128.VideoControl.displayEvents" value="true"/>
+                <entry key="Davis128.VideoControl.displayFrames" value="true"/>
+                <entry key="Davis128.VideoControl.separateAPSByColor" value="false"/>
+                <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="0"/>
+                <entry key="FilterChain.timeLimitEnabled" value="false"/>
+                <entry key="FilterChain.timeLimitMs" value="10"/>
+                <entry key="Info.useLocalTimeZone" value="true"/>
               </map>
             </node>
           </node>
