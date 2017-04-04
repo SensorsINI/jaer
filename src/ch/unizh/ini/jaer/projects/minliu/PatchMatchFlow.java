@@ -315,7 +315,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         }
                     }
                     if (showSliceBitMap) {
-                        showMatching(x, y, (int) result.dx, (int) result.dy, slices[sliceIndex(1)], slices[sliceIndex(2)]);
+                        // TODO danger, drawing outside AWT thread
+                        drawMatching(x, y, (int) result.dx, (int) result.dy, slices[sliceIndex(1)], slices[sliceIndex(2)]);
                     }
                     float dt = (sliceDeltaTimeUs(minDistSliceIdx) * 1e-6f);
                     result.dx = result.dx / dt; // hack, convert to pix/second
@@ -813,14 +814,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param dy
      * @param prevSlice
      * @param curSlice
-     * @return Hamming Distance value, max 1 when all bits differ, min 0 when
-     * all the same
+     * @return Distance value, max 1 when all pixels differ, min 0 when all the same
      */
 //    private float hammingDistance(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
     private float sadDistance(int x, int y, int dx, int dy, byte[][] prevSlice, byte[][] curSlice) {
         int sumDist = 0;
         final int blockRadius = patchDimension / 2;
-        float validPixNumCurrSli = 0, validPixNumPrevSli = 0; // The valid pixel number in the current block
+        int validPixNumCurSlice = 0, validPixNumPrevSlice = 0; // The valid pixel number in the current block
 
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
         if ((x < (blockRadius + dx)) || (x >= ((subSizeX - blockRadius) + dx)) || (x < blockRadius) || (x >= (subSizeX - blockRadius))
@@ -834,7 +834,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                boolean prevSlicePol = prevSlice.get(((xx + 1) - dx) + ((yy - dy) * subSizeX)); // binary value on (xx, yy) for previous slice
                 byte currSliceVal = curSlice[xx][yy]; // binary value on (xx, yy) for current slice
                 byte prevSliceVal = prevSlice[xx - dx][yy - dy]; // binary value on (xx, yy) for previous slice
-                byte dist = (byte)(currSliceVal - prevSliceVal);
+                byte dist = (byte) (currSliceVal - prevSliceVal);
                 if (dist < 0) {
                     dist = (byte) (-dist);
                 }
@@ -842,11 +842,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                if (currSlicePol != prevSlicePol) {
 //                    hd += 1;
 //                }
-                if (currSliceVal != 0) {
-                    validPixNumCurrSli++;
+
+                if (currSliceVal !=0 ) {
+                    validPixNumCurSlice++; // pixels that are not saturated
                 }
-                if (prevSliceVal != 0) {
-                    validPixNumPrevSli++;
+                if (prevSliceVal !=0 ) {
+                    validPixNumPrevSlice++;
                 }
             }
         }
@@ -854,9 +855,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         int blockArea = ((2 * blockRadius) + 1) * ((2 * blockRadius) + 1);
         // TODD: NEXT WORK IS TO DO THE RESEARCH ON WEIGHTED HAMMING DISTANCE
         // Calculate the metric confidence value
-        float validPixNum = this.validPixOccupancy * blockArea;
-        if ((validPixNumCurrSli <= validPixNum) || (validPixNumPrevSli <= validPixNum)
-                || (validPixNumCurrSli == blockArea) || (validPixNumPrevSli == blockArea)) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
+        int validPixNum = (int)(this.validPixOccupancy * blockArea);
+        // if current or previous block has insufficient pixels with values or if all the pixels are filled up, then reject match
+        if ((validPixNumCurSlice < validPixNum) || (validPixNumPrevSlice < validPixNum)
+                || (validPixNumCurSlice == blockArea) || (validPixNumPrevSlice == blockArea)) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
             return 1;
         } else {
             /*
@@ -864,7 +866,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             Here we use the difference between validPixNumCurrSli and validPixNumPrevSli to calculate the dispersion.
             Inspired by paper "Measuring the spatial dispersion of evolutionist search process: application to Walksat" by Alain Sidaner.
              */
-            return ((sumDist * weightDistance) + (Math.abs(validPixNumCurrSli - validPixNumPrevSli) * (1 - weightDistance))) / blockArea;
+            return ((sumDist * weightDistance) + (Math.abs(validPixNumCurSlice - validPixNumPrevSlice) * (1 - weightDistance))) / blockArea;
         }
     }
 
@@ -1593,7 +1595,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     private int dim = patchDimension + 2 * searchDistance;
 
-    private void showMatching(int x, int y, int dx, int dy, byte[][] tm1Bitmap, byte[][] tm2Bitmap) {
+    private void drawMatching(int x, int y, int dx, int dy, byte[][] refBlock, byte[][] searchBlock) {
         int dimNew = patchDimension + 2 * searchDistance;
         if (Frame == null) {
             String windowName = "Slice bitmaps";
@@ -1606,6 +1608,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             display.setBorderSpacePixels(10);
             display.setImageSize(dimNew, dimNew);
             display.setSize(200, 200);
+            display.setGrayValue(0);
             panel.add(display);
 
             Frame.getContentPane().add(panel);
@@ -1628,17 +1631,18 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         /* Reset the image first */
         for (int i = 0; i < 2 * radiaus + 1; i++) {
             for (int j = 0; j < 2 * radiaus + 1; j++) {
-                display.setPixmapRGB(i, j, 0, 0, 0);
+                display.clearImage();
+//                display.setPixmapRGB(i, j, 0, 0, 0);
             }
         }
-
+        float scale = 1f / getSliceMaxValue();
         if ((x >= radiaus) && (x + radiaus < subSizeX)
                 && (y >= radiaus) && (y + radiaus < subSizeY)) {
             /* Rendering the reference patch in t-d slice, it's on the center with color red */
             for (int i = searchDistance; i < patchDimension + searchDistance; i++) {
                 for (int j = searchDistance; j < patchDimension + searchDistance; j++) {
                     float[] f = display.getPixmapRGB(i, j);
-                    f[0] = tm1Bitmap[x - patchDimension / 2 + i - searchDistance][y - patchDimension / 2 + j - searchDistance] > 0 ? 1 : 0;
+                    f[0] = scale * Math.abs(refBlock[x - patchDimension / 2 + i - searchDistance][y - patchDimension / 2 + j - searchDistance]);
                     display.setPixmapRGB(i, j, f);
                 }
             }
@@ -1647,7 +1651,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             for (int i = 0; i < 2 * radiaus + 1; i++) {
                 for (int j = 0; j < 2 * radiaus + 1; j++) {
                     float[] f = display.getPixmapRGB(i, j);
-                    f[1] = tm2Bitmap[x - radiaus + i][y - radiaus + j] > 0 ? 1 : 0;
+                    f[1] = scale * Math.abs(searchBlock[x - radiaus + i][y - radiaus + j]);
                     display.setPixmapRGB(i, j, f);
                 }
             }
@@ -1656,7 +1660,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             for (int i = searchDistance + dx; i < patchDimension + searchDistance + dx; i++) {
                 for (int j = searchDistance + dy; j < patchDimension + searchDistance + dy; j++) {
                     float[] f = display.getPixmapRGB(i, j);
-                    f[2] = tm2Bitmap[x - patchDimension / 2 + i - searchDistance][y - patchDimension / 2 + j - searchDistance] > 0 ? 1 : 0;
+                    f[2] = scale * Math.abs(searchBlock[x - patchDimension / 2 + i - searchDistance][y - patchDimension / 2 + j - searchDistance]);
                     display.setPixmapRGB(i, j, f);
                 }
             }
