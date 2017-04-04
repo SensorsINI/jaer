@@ -1395,4 +1395,18 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
 
     }
 
+    /**
+     * @return the grayValue
+     */
+    public float getGrayValue() {
+        return grayValue;
+    }
+
+    /** Sets the value that image is cleared to as a gray value
+     * @param grayValue the grayValue to set
+     */
+    public void setGrayValue(float grayValue) {
+        this.grayValue = grayValue;
+    }
+
 }
