@@ -61,7 +61,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     int numInputTypes;
 
     /**
-     * Basic event information. Type is event polarity value, 0=OFF and 1=ON, typically but not always
+     * Basic event information. Type is event polarity value, 0=OFF and 1=ON,
+     * typically but not always
      */
     protected int x, y, ts, type, lastTs;
 
@@ -267,6 +268,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(motionFieldTT, "displayMotionFieldColorBlobs", "Shows color blobs for motion field as well as the flow vector arrows");
         setPropertyTooltip(motionFieldTT, "displayMotionFieldUsingColor", "Shows motion field flow vectors in color; otherwise shown as monochrome color arrows");
         setPropertyTooltip(motionFieldTT, "motionFieldDiffusionEnabled", "Enables an event-driven diffusive averaging of motion field values");
+        setPropertyTooltip(motionFieldTT, "decayTowardsZeroPeridiclly", "Decays motion field values periodically (with update interval of the time constant) towards zero velocity, i.e. enforce zero flow prior");
         File lf = new File(loggingFolder);
         if (!lf.exists() || !lf.isDirectory()) {
             log.log(Level.WARNING, "loggingFolder {0} doesn't exist or isn't a directory, defaulting to {1}", new Object[]{lf, lf});
@@ -898,8 +900,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      *
      * @param ein input event
      * @return true if result is in-bounds, false if not, which can occur when
- the camera cameraCalibration magnifies the address beyond the sensor
- coordinates
+     * the camera cameraCalibration magnifies the address beyond the sensor
+     * coordinates
      */
     protected synchronized boolean extractEventInfo(Object ein) {
         e = (PolarityEvent) ein;
@@ -1354,7 +1356,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         private LowpassFilter3D[][] velocities;
 //        private LowpassFilter[][] speeds;
         private int[][] lastTs;
-        private int lastUpdateTimestamp = Integer.MAX_VALUE;
+        private int lastDecayTimestamp = Integer.MAX_VALUE;
         private int motionFieldSubsamplingShift = getInt("motionFieldSubsamplingShift", 3);
 //        private float motionFieldMixingFactor = getFloat("motionFieldMixingFactor", 1e-1f);
         private int motionFieldTimeConstantMs = getInt("motionFieldTimeConstantMs", 100);
@@ -1368,6 +1370,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         private boolean displayMotionFieldUsingColor = getBoolean("displayMotionFieldUsingColor", true);
         ;
         private boolean motionFieldDiffusionEnabled = getBoolean("motionFieldDiffusionEnabled", false);
+        private boolean decayTowardsZeroPeridiclly = getBoolean("decayTowardsZeroPeridiclly", false);
 
         public MotionField() {
         }
@@ -1403,7 +1406,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             if (chip.getNumPixels() == 0) {
                 return;
             }
-            lastUpdateTimestamp = Integer.MAX_VALUE;
+            lastDecayTimestamp = Integer.MIN_VALUE;
 
             checkArrays();
             for (int[] a : lastTs) {
@@ -1423,6 +1426,19 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
 
         /**
+         * Decays all values towards zero
+         *
+         * @param timestamp current time in us
+         */
+        public void decayAllTowardsZero(int timestamp) {
+            for (LowpassFilter3D[] a : velocities) {
+                for (LowpassFilter3D f : a) {
+                    f.filter(0, 0, 0, timestamp);
+                }
+            }
+        }
+
+        /**
          * updates motion field
          *
          * @param timestamp in us
@@ -1435,7 +1451,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             if (!displayMotionField) {
                 return;
             }
-            lastUpdateTimestamp = timestamp;
+            int dtDecay=timestamp - lastDecayTimestamp;
+            if ( decayTowardsZeroPeridiclly  && dtDecay > motionFieldTimeConstantMs * 1000  || dtDecay<0) {
+                decayAllTowardsZero(timestamp);
+                lastDecayTimestamp = timestamp;
+            }
             int x1 = x >> motionFieldSubsamplingShift, y1 = y >> motionFieldSubsamplingShift;
             if (x1 < 0 || x1 >= velocities.length || y1 < 0 || y1 >= velocities[0].length) {
                 return;
@@ -1445,27 +1465,29 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 if (motionFieldDiffusionEnabled) {
                     // diffuse by average of neighbors and ourselves
                     int n = 0;
-                    float dvx=0, dvy=0, dvs=0;
-                    for (int dx = -1; dx <= 1; dx ++) {
+                    float dvx = 0, dvy = 0, dvs = 0;
+                    for (int dx = -1; dx <= 1; dx++) {
                         int x2 = x1 + dx;
                         if (x2 >= 0 && x2 < velocities.length) {
-                            for (int dy = -1; dy <= 1; dy ++) {
+                            for (int dy = -1; dy <= 1; dy++) {
                                 int y2 = y1 + dy;
-                                if(dx==0 && dy==0) continue; // don't count ourselves
+                                if (dx == 0 && dy == 0) {
+                                    continue; // don't count ourselves
+                                }
                                 if (y2 >= 0 && y2 < velocities[0].length) {
                                     n++;
-                                    Point3D p=velocities[x2][y2].getValue3D();
-                                    dvx+=p.x;
-                                    dvy+=p.y;
-                                    dvs+=p.z;
+                                    Point3D p = velocities[x2][y2].getValue3D();
+                                    dvx += p.x;
+                                    dvy += p.y;
+                                    dvs += p.z;
                                 }
                             }
                         }
                     }
-                    float r=1f/n; // recip of sum to compute average
-                    LowpassFilter3D v=velocities[x1][y1];
-                    Point3D c=v.getValue3D();
-                    v.setInternalValue3D(.5f*(c.x+r*dvx), .5f*(c.y+r*dvy),.5f*( c.z+r*dvs));
+                    float r = 1f / n; // recip of sum to compute average
+                    LowpassFilter3D v = velocities[x1][y1];
+                    Point3D c = v.getValue3D();
+                    v.setInternalValue3D(.5f * (c.x + r * dvx), .5f * (c.y + r * dvy), .5f * (c.z + r * dvs));
                 }
             }
             lastTs[x1][y1] = ts;
@@ -1772,6 +1794,22 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             putBoolean("motionFieldDiffusionEnabled", motionFieldDiffusionEnabled);
         }
 
+        /**
+         * @return the decayTowardsZeroPeridiclly
+         */
+        public boolean isDecayTowardsZeroPeridiclly() {
+            return decayTowardsZeroPeridiclly;
+        }
+
+        /**
+         * @param decayTowardsZeroPeridiclly the decayTowardsZeroPeridiclly to
+         * set
+         */
+        public void setDecayTowardsZeroPeridiclly(boolean decayTowardsZeroPeridiclly) {
+            this.decayTowardsZeroPeridiclly = decayTowardsZeroPeridiclly;
+            putBoolean("decayTowardsZeroPeridiclly", decayTowardsZeroPeridiclly);
+        }
+
     } // MotionField
 
     public boolean isDisplayMotionField() {
@@ -1951,6 +1989,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     public void setMotionFieldDiffusionEnabled(boolean motionFieldDiffusionEnabled) {
         motionField.setMotionFieldDiffusionEnabled(motionFieldDiffusionEnabled);
+    }
+
+    public boolean isDecayTowardsZeroPeridiclly() {
+        return motionField.isDecayTowardsZeroPeridiclly();
+    }
+
+    public void setDecayTowardsZeroPeridiclly(boolean decayTowardsZeroPeridiclly) {
+        motionField.setDecayTowardsZeroPeridiclly(decayTowardsZeroPeridiclly);
     }
 
 }
