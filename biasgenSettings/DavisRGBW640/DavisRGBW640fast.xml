@@ -1880,7 +1880,7 @@
                 <entry key="DAVIS240B.SpecialPixelControl" value="false"/>
                 <entry key="DAVIS240B.TypeNCalibNeuron" value="false"/>
                 <entry key="DAVIS240B.UseAOut" value="false"/>
-                <entry key="DAViS240.autoshotThresholdEvents" value="1024"/>
+                <entry key="DAViS240.autoshotThresholdEvents" value="0"/>
                 <entry key="DataLogger.maxLogFileSizeMB" value="104"/>
                 <entry key="FaceDetectionAPS.displayBrightness" value="1.3400954"/>
                 <entry key="FaceDetectionAPS.displayContrast" value="1.904762"/>

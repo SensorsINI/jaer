@@ -1885,7 +1885,7 @@
                 <entry key="DAVIS240B.SpecialPixelControl" value="false"/>
                 <entry key="DAVIS240B.TypeNCalibNeuron" value="false"/>
                 <entry key="DAVIS240B.UseAOut" value="false"/>
-                <entry key="DAViS240.autoshotThresholdEvents" value="1024"/>
+                <entry key="DAViS240.autoshotThresholdEvents" value="0"/>
                 <entry key="DataLogger.maxLogFileSizeMB" value="104"/>
                 <entry key="FaceDetectionAPS.displayBrightness" value="1.3400954"/>
                 <entry key="FaceDetectionAPS.displayContrast" value="1.904762"/>
@@ -2303,7 +2303,7 @@
                 <entry key="DavisRGBW640.Masterbias.rx" value="8200.0"/>
                 <entry key="DavisRGBW640.Masterbias.rint" value="46000.0"/>
                 <entry key="DavisRGBW640.Masterbias.internalResistorUsed" value="false"/>
-                <entry key="DavisBaseCamera.autoshotThresholdEvents" value="102400"/>
+                <entry key="DavisBaseCamera.autoshotThresholdEvents" value="0"/>
                 <entry key="DavisAutoShooter.filterEnabled" value="false"/>
                 <entry key="DavisAutoShooter.useEventCount" value="false"/>
                 <entry key="DavisAutoShooter.useEventRateThreshold" value="true"/>

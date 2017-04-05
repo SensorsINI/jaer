@@ -640,7 +640,7 @@
                 <entry key="DAVIS240C.typePCalib" value="false"/>
                 <entry key="DAVIS240C.useAout" value="false"/>
                 <entry key="DAVIS240C.useC" value="false"/>
-                <entry key="DAViS240.autoshotThresholdEvents" value="1024"/>
+                <entry key="DAViS240.autoshotThresholdEvents" value="0"/>
                 <entry key="DAViS240.bgTabbedPaneSelectedIndex" value="4"/>
                 <entry key="DAViS240.showImageHistogram" value="true"/>
                 <entry key="DataLogger.maxLogFileSizeMB" value="104"/>
