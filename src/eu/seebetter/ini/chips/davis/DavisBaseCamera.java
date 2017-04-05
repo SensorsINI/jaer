@@ -57,6 +57,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3.SPIConfigSe
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.TextRendererScale;
+import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.histogram.AbstractHistogram;
 
 /**
@@ -208,6 +209,11 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     public void setAutoshotThresholdEvents(int thresholdEvents) {
         if (thresholdEvents < 0) {
             thresholdEvents = 0;
+        } else if ((thresholdEvents>>10) >= 1000) {
+            WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null, false, "Long autoshot threshold",
+                    "<html>You have selected <i>Auto-Shot kevents/frame</i> mode, so that an APS frame is triggered every "+(thresholdEvents>>10)+" <b>thousand<b> events. <p>Selecting a large"
+                            + "number here will make it appear that frame capture is not working");
+            d.setVisible(true);
         }
 
         autoshotThresholdEvents = thresholdEvents;
@@ -463,7 +469,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     // DVS event
                     final ApsDvsEvent e = nextApsDvsEvent(outItr); // imu sample possibly contained here set to null by
                     // this method
-                    if ((data & DavisChip.EXTERNAL_INPUT_EVENT_ADDR ) !=0) { // tobi changed to detect just bit set to transmit rising falling and pulse events
+                    if ((data & DavisChip.EXTERNAL_INPUT_EVENT_ADDR) != 0) { // tobi changed to detect just bit set to transmit rising falling and pulse events
 //                    if ((data & DavisChip.EVENT_TYPE_MASK) == DavisChip.EXTERNAL_INPUT_EVENT_ADDR) {
                         e.setReadoutType(ReadoutType.DVS);
                         e.setSpecial(true);
@@ -1016,15 +1022,15 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             }
 
             if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
-				final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
+                final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
 
-				if (fx3HwIntf.isTimestampMaster() == false) {
-					exposureRenderer.setColor(Color.WHITE);
-					exposureRenderer.begin3DRendering();
-					exposureRenderer.draw3D("Slave camera", 0, -(DavisDisplayMethod.FONTSIZE / 2), 0, 0.4f);
-					exposureRenderer.end3DRendering();
-				}
-			}
+                if (fx3HwIntf.isTimestampMaster() == false) {
+                    exposureRenderer.setColor(Color.WHITE);
+                    exposureRenderer.begin3DRendering();
+                    exposureRenderer.draw3D("Slave camera", 0, -(DavisDisplayMethod.FONTSIZE / 2), 0, 0.4f);
+                    exposureRenderer.end3DRendering();
+                }
+            }
 
             if ((getDavisConfig().getVideoControl() != null) && getDavisConfig().getVideoControl().isDisplayFrames()) {
                 final GL2 gl = drawable.getGL().getGL2();
@@ -1067,7 +1073,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             gl.glLineWidth(3);
 
             final float vectorScale = 1f;
-            final float textScale = TextRendererScale.draw3dScale(imuTextRenderer, 
+            final float textScale = TextRendererScale.draw3dScale(imuTextRenderer,
                     "XXX.XXf,%XXX.XXf dps", getChipCanvas().getScale(),
                     getSizeX(), .3f);
             final float trans = .9f;
@@ -1142,7 +1148,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 //            final String ratestr = String.format("IMU: timestamp=%+9.3fs last dtMs=%6.1fms  avg dtMs=%6.1fms deg C=%5.1fC",
 //                    1e-6f * imuSampleRender.getTimestampUs(), imuSampleRender.getDeltaTimeUs() * .001f,
 //                    IMUSample.getAverageSampleIntervalUs() / 1000, imuSampleRender.getTemperature());
-           final String ratestr = String.format("IMU: last dt=%6.1fms temperature=%5.1fC",
+            final String ratestr = String.format("IMU: last dt=%6.1fms temperature=%5.1fC",
                     imuSampleRender.getDeltaTimeUs() * .001f,
                     imuSampleRender.getTemperature());
             final Rectangle2D raterect = imuTextRenderer.getBounds(ratestr);
@@ -1167,7 +1173,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     getFrameRateHz());
             final float scale = TextRendererScale.draw3dScale(exposureRenderer, s, getChipCanvas().getScale(), getSizeX(), 1f);
             // determine width of string in pixels and scale accordingly
-            exposureRenderer.draw3D(s, 0, getSizeY() + (DavisDisplayMethod.FONTSIZE / 2)*scale, 0, scale);
+            exposureRenderer.draw3D(s, 0, getSizeY() + (DavisDisplayMethod.FONTSIZE / 2) * scale, 0, scale);
             exposureRenderer.end3DRendering();
 
             final int nframes = getFrameCount() % DavisDisplayMethod.FRAME_COUNTER_BAR_LENGTH_FRAMES;
@@ -1313,8 +1319,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         final String c = command.getCmdName();
         if (c.equals(CMD_EXPOSURE)) {
             getDavisConfig().setExposureDelayMs(v);
-        } else if(c.equals(CMD_GET_IMU_TEMPERATURE_C)){
-            return String.format("%.3f",getImuSample().getTemperature());
+        } else if (c.equals(CMD_GET_IMU_TEMPERATURE_C)) {
+            return String.format("%.3f", getImuSample().getTemperature());
         }
         return "successfully processed command " + input;
     }
@@ -1528,10 +1534,12 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         @Override
         public void actionPerformed(ActionEvent e) {
             try {
-                int expUsNow=(int)(1000*getDavisConfig().getExposureDelayMs());
-                int expUsNew=(int)(expUsNow*exposureChangeFactor);
-                if(expUsNew==expUsNow) expUsNew++; // solve problem of being stuck as 1us
-                getDavisConfig().setExposureDelayMs(0.001f*expUsNew);
+                int expUsNow = (int) (1000 * getDavisConfig().getExposureDelayMs());
+                int expUsNew = (int) (expUsNow * exposureChangeFactor);
+                if (expUsNew == expUsNow) {
+                    expUsNew++; // solve problem of being stuck as 1us
+                }
+                getDavisConfig().setExposureDelayMs(0.001f * expUsNew);
             } catch (IllegalArgumentException ex) {
             }
             final String s = "set exposure delay = " + getDavisConfig().getExposureDelayMs() + " ms";
@@ -1557,9 +1565,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         public void actionPerformed(ActionEvent e) {
             try {
                 float d = getDavisConfig().getFrameDelayMs() * exposureChangeFactor;
-                if(d<.1f) {
-					d=.1f;
-				}
+                if (d < .1f) {
+                    d = .1f;
+                }
                 getDavisConfig().setFrameDelayMs(d);
             } catch (IllegalArgumentException ex) {
 
