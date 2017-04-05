@@ -212,7 +212,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         } else if ((thresholdEvents>>10) >= 1000) {
             WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null, false, "Long autoshot threshold",
                     "<html>You have selected <i>Auto-Shot kevents/frame</i> mode, so that an APS frame is triggered every "+(thresholdEvents>>10)+" <b>thousand<b> events. <p>Selecting a large"
-                            + "number here will make it appear that frame capture is not working");
+                            + " number here will make it appear that frame capture is not working");
             d.setVisible(true);
         }
 
