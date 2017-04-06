@@ -1064,6 +1064,11 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             generateUndistortedAddressLUT();
         }
         int uidx = 2 * (e.y + (sy * e.x));
+        if(uidx>undistortedAddressLUT.length-1){
+            log.warning("bad DVS address, outside of LUT table, filtering out; event ="+e);
+            e.setFilteredOut(true);
+            return false;
+        }
         e.x = getUndistortedAddressFromLUT(uidx);
         e.y = getUndistortedAddressFromLUT(uidx + 1);
         if (xeob(e.x) || yeob(e.y)) {
