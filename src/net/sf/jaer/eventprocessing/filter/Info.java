@@ -668,7 +668,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 //        glut.glutBitmapString(font, s);
     }
 
-    private void drawRateSamples(GLAutoDrawable drawable) {
+    public void drawRateSamples(GLAutoDrawable drawable) {
         if (!showRateTrace) {
             return;
         }
