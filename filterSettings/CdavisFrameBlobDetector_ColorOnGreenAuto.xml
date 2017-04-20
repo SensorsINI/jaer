@@ -160,7 +160,7 @@
                 <entry key="AutomaticReplayPlayer.filterEnabled" value="false"/>
                 <entry key="BackgroundActivityFilter.dt" value="8000"/>
                 <entry key="BackgroundActivityFilter.filterEnabled" value="true"/>
-                <entry key="BackgroundActivityFilter.subsampleBy" value="1"/>
+                <entry key="BackgroundActivityFilter.subsampleBy" value="2"/>
                 <entry key="BinaryFeatureDetector.filterEnabled" value="false"/>
                 <entry key="CPLDByte.imu0_PWR_MGMT_1" value="2"/>
                 <entry key="CPLDByte.imu1_CONFIG" value="0"/>
@@ -2394,7 +2394,7 @@
                 <entry key="SingleCameraCalibration.showUndistortedFrames" value="false"/>
                 <entry key="CdavisFrameBlobDetector.hueLowerBound" value="110"/>
                 <entry key="CdavisFrameBlobDetector.hueUpperBound" value="115"/>
-                <entry key="CdavisFrameBlobDetector.areaLowerBound" value="400"/>
+                <entry key="CdavisFrameBlobDetector.areaLowerBound" value="420"/>
                 <entry key="CdavisFrameBlobDetector.gaussianBlurKernalRadius" value="60"/>
                 <entry key="CdavisFrameBlobDetector.areaUpperBound" value="2000"/>
                 <entry key="CdavisFrameBlobDetector.convexityLowerBound" value="0.0"/>
@@ -3359,6 +3359,313 @@
                 <entry key="VisualiseSteeringConvNet.dvsColorScale" value="199"/>
                 <entry key="DavisBaseCamera.showImageHistogram" value="false"/>
                 <entry key="ApsNoiseStatistics.useZeroOriginForTemporalNoise" value="true"/>
+                <entry key="ApsNoiseStatistics.adcVref" value="1.29"/>
+                <entry key="BackgroundActivityFilter.letFirstEventThrough" value="true"/>
+                <entry key="CellStatsProber.countDVSEventsBetweenExternalPinEvents" value="true"/>
+                <entry key="CellStatsProber.rateTauMs" value="99.05948"/>
+                <entry key="CellStatsProber.showLatencyHistogramToExternalInputEvents" value="false"/>
+                <entry key="DAVIS240B.APS.ColumnSettle" value="30"/>
+                <entry key="DAVIS240B.APS.Exposure" value="4000"/>
+                <entry key="DAVIS240B.APS.FrameDelay" value="1000"/>
+                <entry key="DAVIS240B.APS.GlobalShutter" value="true"/>
+                <entry key="DAVIS240B.APS.NullSettle" value="3"/>
+                <entry key="DAVIS240B.APS.ResetRead" value="true"/>
+                <entry key="DAVIS240B.APS.ResetSettle" value="10"/>
+                <entry key="DAVIS240B.APS.RowSettle" value="10"/>
+                <entry key="DAVIS240B.APS.Run" value="false"/>
+                <entry key="DAVIS240B.APS.WaitOnTransferStall" value="true"/>
+                <entry key="DAVIS240B.Chip.AERnArow" value="false"/>
+                <entry key="DAVIS240B.Chip.AnalogMux0" value="0"/>
+                <entry key="DAVIS240B.Chip.AnalogMux1" value="0"/>
+                <entry key="DAVIS240B.Chip.AnalogMux2" value="0"/>
+                <entry key="DAVIS240B.Chip.BiasMux0" value="0"/>
+                <entry key="DAVIS240B.Chip.DigitalMux0" value="0"/>
+                <entry key="DAVIS240B.Chip.DigitalMux1" value="0"/>
+                <entry key="DAVIS240B.Chip.DigitalMux2" value="0"/>
+                <entry key="DAVIS240B.Chip.DigitalMux3" value="0"/>
+                <entry key="DAVIS240B.Chip.ResetCalibNeuron" value="true"/>
+                <entry key="DAVIS240B.Chip.ResetTestPixel" value="true"/>
+                <entry key="DAVIS240B.Chip.SpecialPixelControl" value="false"/>
+                <entry key="DAVIS240B.Chip.TypeNCalibNeuron" value="false"/>
+                <entry key="DAVIS240B.Chip.UseAOut" value="false"/>
+                <entry key="DAVIS240B.DVS.AckDelayColumn" value="0"/>
+                <entry key="DAVIS240B.DVS.AckDelayRow" value="4"/>
+                <entry key="DAVIS240B.DVS.AckExtensionColumn" value="0"/>
+                <entry key="DAVIS240B.DVS.AckExtensionRow" value="1"/>
+                <entry key="DAVIS240B.DVS.ExternalAERControl" value="false"/>
+                <entry key="DAVIS240B.DVS.FilterBackgroundActivity" value="false"/>
+                <entry key="DAVIS240B.DVS.FilterBackgroundActivityDeltaTime" value="20000"/>
+                <entry key="DAVIS240B.DVS.FilterRowOnlyEvents" value="true"/>
+                <entry key="DAVIS240B.DVS.Run" value="true"/>
+                <entry key="DAVIS240B.DVS.WaitOnTransferStall" value="false"/>
+                <entry key="DAVIS240B.ExtInput.DetectFallingEdges" value="false"/>
+                <entry key="DAVIS240B.ExtInput.DetectPulseLength" value="60"/>
+                <entry key="DAVIS240B.ExtInput.DetectPulsePolarity" value="true"/>
+                <entry key="DAVIS240B.ExtInput.DetectPulses" value="true"/>
+                <entry key="DAVIS240B.ExtInput.DetectRisingEdges" value="false"/>
+                <entry key="DAVIS240B.ExtInput.GeneratePulseDutyCycle" value="50"/>
+                <entry key="DAVIS240B.ExtInput.GeneratePulseFrequency" value="1000000"/>
+                <entry key="DAVIS240B.ExtInput.GeneratePulseInterval" value="60"/>
+                <entry key="DAVIS240B.ExtInput.GeneratePulseLength" value="30"/>
+                <entry key="DAVIS240B.ExtInput.GeneratePulsePolarity" value="false"/>
+                <entry key="DAVIS240B.ExtInput.GenerateUseCustomSignal" value="false"/>
+                <entry key="DAVIS240B.ExtInput.RunDetector" value="false"/>
+                <entry key="DAVIS240B.ExtInput.RunGenerator" value="false"/>
+                <entry key="DAVIS240B.IMU.AccelFullScale" value="2"/>
+                <entry key="DAVIS240B.IMU.AccelScale" value="ImuAccelScaleG8"/>
+                <entry key="DAVIS240B.IMU.DigitalLowPassFilter" value="1"/>
+                <entry key="DAVIS240B.IMU.GyroFullScale" value="2"/>
+                <entry key="DAVIS240B.IMU.GyroScale" value="GyroFullScaleDegPerSec1000"/>
+                <entry key="DAVIS240B.IMU.LPCycle" value="false"/>
+                <entry key="DAVIS240B.IMU.LPWakeup" value="1"/>
+                <entry key="DAVIS240B.IMU.Run" value="false"/>
+                <entry key="DAVIS240B.IMU.SampleRateDivider" value="0"/>
+                <entry key="DAVIS240B.IMU.TempStandby" value="false"/>
+                <entry key="DAVIS240B.IMU.displayEnabled" value="false"/>
+                <entry key="DAVIS240B.Masterbias.internalResistorUsed" value="false"/>
+                <entry key="DAVIS240B.Masterbias.rint" value="46000.0"/>
+                <entry key="DAVIS240B.Masterbias.rx" value="8200.0"/>
+                <entry key="DAVIS240B.Mux.DropAPSOnTransferStall" value="false"/>
+                <entry key="DAVIS240B.Mux.DropDVSOnTransferStall" value="true"/>
+                <entry key="DAVIS240B.Mux.DropExtInputOnTransferStall" value="true"/>
+                <entry key="DAVIS240B.Mux.DropIMUOnTransferStall" value="false"/>
+                <entry key="DAVIS240B.Mux.ForceChipBiasEnable" value="false"/>
+                <entry key="DAVIS240B.USB.EarlyPacketDelay" value="8"/>
+                <entry key="Davis208PixelParade.APS.ColumnSettle" value="30"/>
+                <entry key="Davis208PixelParade.APS.Exposure" value="5000"/>
+                <entry key="Davis208PixelParade.APS.FrameDelay" value="1000"/>
+                <entry key="Davis208PixelParade.APS.GlobalShutter" value="true"/>
+                <entry key="Davis208PixelParade.APS.NullSettle" value="3"/>
+                <entry key="Davis208PixelParade.APS.RampReset" value="10"/>
+                <entry key="Davis208PixelParade.APS.RampShortReset" value="false"/>
+                <entry key="Davis208PixelParade.APS.ResetRead" value="true"/>
+                <entry key="Davis208PixelParade.APS.ResetSettle" value="10"/>
+                <entry key="Davis208PixelParade.APS.RowSettle" value="10"/>
+                <entry key="Davis208PixelParade.APS.Run" value="false"/>
+                <entry key="Davis208PixelParade.APS.SampleEnable" value="true"/>
+                <entry key="Davis208PixelParade.APS.SampleSettle" value="30"/>
+                <entry key="Davis208PixelParade.APS.UseInternalADC" value="true"/>
+                <entry key="Davis208PixelParade.APS.WaitOnTransferStall" value="true"/>
+                <entry key="Davis208PixelParade.AddressedIPotCF.ReadoutBufBP.BitValueCoarse" value="1"/>
+                <entry key="Davis208PixelParade.AddressedIPotCF.ReadoutBufBP.BitValueFine" value="20"/>
+                <entry key="Davis208PixelParade.AddressedIPotCF.ReadoutBufBP.Enabled" value="true"/>
+                <entry key="Davis208PixelParade.AddressedIPotCF.ReadoutBufBP.LowCurrent" value="false"/>
+                <entry key="Davis208PixelParade.AddressedIPotCF.ReadoutBufBP.Sex" value="P"/>
+                <entry key="Davis208PixelParade.AddressedIPotCF.ReadoutBufBP.Type" value="NORMAL"/>
+                <entry key="Davis208PixelParade.AddressedIPotCF.biasBuffer.BitValueCoarse" value="0"/>
+                <entry key="Davis208PixelParade.AddressedIPotCF.biasBuffer.BitValueFine" value="255"/>
+                <entry key="Davis208PixelParade.AddressedIPotCF.biasBuffer.Enabled" value="true"/>
+                <entry key="Davis208PixelParade.AddressedIPotCF.biasBuffer.LowCurrent" value="false"/>
+                <entry key="Davis208PixelParade.AddressedIPotCF.biasBuffer.Sex" value="N"/>
+                <entry key="Davis208PixelParade.AddressedIPotCF.biasBuffer.Type" value="NORMAL"/>
+                <entry key="Davis208PixelParade.Chip.AERnArow" value="false"/>
+                <entry key="Davis208PixelParade.Chip.AnalogMux0" value="0"/>
+                <entry key="Davis208PixelParade.Chip.AnalogMux1" value="0"/>
+                <entry key="Davis208PixelParade.Chip.AnalogMux2" value="0"/>
+                <entry key="Davis208PixelParade.Chip.BiasMux0" value="0"/>
+                <entry key="Davis208PixelParade.Chip.DigitalMux0" value="0"/>
+                <entry key="Davis208PixelParade.Chip.DigitalMux1" value="0"/>
+                <entry key="Davis208PixelParade.Chip.DigitalMux2" value="0"/>
+                <entry key="Davis208PixelParade.Chip.DigitalMux3" value="0"/>
+                <entry key="Davis208PixelParade.Chip.ResetCalibNeuron" value="true"/>
+                <entry key="Davis208PixelParade.Chip.ResetTestPixel" value="true"/>
+                <entry key="Davis208PixelParade.Chip.SelBiasRefxD" value="true"/>
+                <entry key="Davis208PixelParade.Chip.SelHpxD" value="false"/>
+                <entry key="Davis208PixelParade.Chip.SelPosFbxD" value="false"/>
+                <entry key="Davis208PixelParade.Chip.SelPreAmpAvgxD" value="false"/>
+                <entry key="Davis208PixelParade.Chip.SelSensexD" value="true"/>
+                <entry key="Davis208PixelParade.Chip.SelectGrayCounter" value="true"/>
+                <entry key="Davis208PixelParade.Chip.TestADC" value="false"/>
+                <entry key="Davis208PixelParade.Chip.TypeNCalibNeuron" value="false"/>
+                <entry key="Davis208PixelParade.Chip.UseAOut" value="false"/>
+                <entry key="Davis208PixelParade.DVS.AckDelayColumn" value="0"/>
+                <entry key="Davis208PixelParade.DVS.AckDelayRow" value="4"/>
+                <entry key="Davis208PixelParade.DVS.AckExtensionColumn" value="0"/>
+                <entry key="Davis208PixelParade.DVS.AckExtensionRow" value="1"/>
+                <entry key="Davis208PixelParade.DVS.ExternalAERControl" value="false"/>
+                <entry key="Davis208PixelParade.DVS.FilterBackgroundActivity" value="false"/>
+                <entry key="Davis208PixelParade.DVS.FilterBackgroundActivityDeltaTime" value="100"/>
+                <entry key="Davis208PixelParade.DVS.FilterRowOnlyEvents" value="true"/>
+                <entry key="Davis208PixelParade.DVS.Run" value="true"/>
+                <entry key="Davis208PixelParade.DVS.WaitOnTransferStall" value="false"/>
+                <entry key="Davis208PixelParade.ExtInput.DetectFallingEdges" value="false"/>
+                <entry key="Davis208PixelParade.ExtInput.DetectPulseLength" value="120"/>
+                <entry key="Davis208PixelParade.ExtInput.DetectPulsePolarity" value="true"/>
+                <entry key="Davis208PixelParade.ExtInput.DetectPulses" value="true"/>
+                <entry key="Davis208PixelParade.ExtInput.DetectRisingEdges" value="false"/>
+                <entry key="Davis208PixelParade.ExtInput.GeneratePulseInterval" value="120"/>
+                <entry key="Davis208PixelParade.ExtInput.GeneratePulseLength" value="60"/>
+                <entry key="Davis208PixelParade.ExtInput.GeneratePulsePolarity" value="false"/>
+                <entry key="Davis208PixelParade.ExtInput.GenerateUseCustomSignal" value="false"/>
+                <entry key="Davis208PixelParade.ExtInput.RunDetector" value="false"/>
+                <entry key="Davis208PixelParade.ExtInput.RunGenerator" value="false"/>
+                <entry key="Davis208PixelParade.IMU.AccelFullScale" value="2"/>
+                <entry key="Davis208PixelParade.IMU.AccelScale" value="ImuAccelScaleG8"/>
+                <entry key="Davis208PixelParade.IMU.DigitalLowPassFilter" value="1"/>
+                <entry key="Davis208PixelParade.IMU.GyroFullScale" value="2"/>
+                <entry key="Davis208PixelParade.IMU.GyroScale" value="GyroFullScaleDegPerSec1000"/>
+                <entry key="Davis208PixelParade.IMU.LPCycle" value="false"/>
+                <entry key="Davis208PixelParade.IMU.LPWakeup" value="1"/>
+                <entry key="Davis208PixelParade.IMU.Run" value="false"/>
+                <entry key="Davis208PixelParade.IMU.SampleRateDivider" value="0"/>
+                <entry key="Davis208PixelParade.IMU.TempStandby" value="false"/>
+                <entry key="Davis208PixelParade.IMU.displayEnabled" value="true"/>
+                <entry key="Davis208PixelParade.Masterbias.internalResistorUsed" value="false"/>
+                <entry key="Davis208PixelParade.Masterbias.rint" value="46000.0"/>
+                <entry key="Davis208PixelParade.Masterbias.rx" value="8200.0"/>
+                <entry key="Davis208PixelParade.Mux.DropAPSOnTransferStall" value="false"/>
+                <entry key="Davis208PixelParade.Mux.DropDVSOnTransferStall" value="true"/>
+                <entry key="Davis208PixelParade.Mux.DropExtInputOnTransferStall" value="true"/>
+                <entry key="Davis208PixelParade.Mux.DropIMUOnTransferStall" value="false"/>
+                <entry key="Davis208PixelParade.Mux.ForceChipBiasEnable" value="false"/>
+                <entry key="Davis208PixelParade.USB.EarlyPacketDelay" value="8"/>
+                <entry key="Davis208PixelParade.VDACBias.ADC_RefHigh.BufBitValue" value="7"/>
+                <entry key="Davis208PixelParade.VDACBias.ADC_RefHigh.VdacBitValue" value="30"/>
+                <entry key="Davis208PixelParade.VDACBias.ADC_RefLow.BufBitValue" value="7"/>
+                <entry key="Davis208PixelParade.VDACBias.ADC_RefLow.VdacBitValue" value="1"/>
+                <entry key="Davis208PixelParade.VDACBias.AdcTestVoltage.BufBitValue" value="7"/>
+                <entry key="Davis208PixelParade.VDACBias.AdcTestVoltage.VdacBitValue" value="21"/>
+                <entry key="Davis208PixelParade.VDACBias.ApsCas.BufBitValue" value="6"/>
+                <entry key="Davis208PixelParade.VDACBias.ApsCas.VdacBitValue" value="21"/>
+                <entry key="Davis208PixelParade.VDACBias.RefSsbxBv.BufBitValue" value="5"/>
+                <entry key="Davis208PixelParade.VDACBias.RefSsbxBv.VdacBitValue" value="11"/>
+                <entry key="Davis208PixelParade.VDACBias.ResetHpxBv.BufBitValue" value="7"/>
+                <entry key="Davis208PixelParade.VDACBias.ResetHpxBv.VdacBitValue" value="63"/>
+                <entry key="Davis208PixelParade.VDACBias.apsOverflowLevel.BufBitValue" value="6"/>
+                <entry key="Davis208PixelParade.VDACBias.apsOverflowLevel.VdacBitValue" value="27"/>
+                <entry key="Davis208PixelParade.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="Davis208PixelParade.VideoControl.colorCorrection" value="true"/>
+                <entry key="Davis208PixelParade.VideoControl.displayEvents" value="true"/>
+                <entry key="Davis208PixelParade.VideoControl.displayFrames" value="true"/>
+                <entry key="Davis208PixelParade.VideoControl.separateAPSByColor" value="false"/>
+                <entry key="Davis208PixelParadeColor.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="Davis208PixelParadeColor.VideoControl.colorCorrection" value="true"/>
+                <entry key="Davis208PixelParadeColor.VideoControl.displayEvents" value="false"/>
+                <entry key="Davis208PixelParadeColor.VideoControl.displayFrames" value="false"/>
+                <entry key="Davis208PixelParadeColor.VideoControl.separateAPSByColor" value="false"/>
+                <entry key="Davis346B.APS.ADCTestMode" value="false"/>
+                <entry key="Davis346B.ExtInput.GeneratePulseDutyCycle" value="50"/>
+                <entry key="Davis346B.ExtInput.GeneratePulseFrequency" value="1000000"/>
+                <entry key="Davis640.ExtInput.GeneratePulseDutyCycle" value="50"/>
+                <entry key="Davis640.ExtInput.GeneratePulseFrequency" value="1000000"/>
+                <entry key="DavisDeepLearnCnnProcessor.dvsMinEvents" value="2000"/>
+                <entry key="DavisDeepLearnCnnProcessor.lastAPSNetXMLFilename" value="/media/iulialexandra/Storage/datasets/roshambo/saved_nets/8/xml/LP_Roshambo_NullHop_deploy.prototxt_jAER.xml"/>
+                <entry key="DavisDeepLearnCnnProcessor.measurePerformance" value="true"/>
+                <entry key="DavisDeepLearnCnnProcessor.normalizeDVSForZsNullhop" value="true"/>
+                <entry key="DavisDeepLearnCnnProcessor.processAPSFrames" value="true"/>
+                <entry key="DavisDeepLearnCnnProcessor.showOutputAsBarChart" value="true"/>
+                <entry key="DavisDeepLearnCnnProcessor.softMaxOutput" value="true"/>
+                <entry key="DavisDeepLearnCnnProcessor.zeroPadding" value="false"/>
+                <entry key="DirectionSelectiveFlow.minSpeedPpsToDrawMotionField" value="27.597582"/>
+                <entry key="DirectionSelectiveFlow.motionFieldConsistentWithCurrentAngle" value="false"/>
+                <entry key="DirectionSelectiveFlow.motionFieldConsistentWithNeighbors" value="false"/>
+                <entry key="DirectionSelectiveFlow.motionFieldMaxAgeUs" value="29530"/>
+                <entry key="DirectionSelectiveFlow.motionFieldMixingFactor" value="0.020789267"/>
+                <entry key="DirectionSelectiveFlow.motionFieldShowMotionField" value="true"/>
+                <entry key="DirectionSelectiveFlow.motionFieldSubsamplingShift" value="4"/>
+                <entry key="DvsSliceAviWriter.closeOnRewind" value="true"/>
+                <entry key="DvsSliceAviWriter.compressionQuality" value="1.0"/>
+                <entry key="DvsSliceAviWriter.dimx" value="64"/>
+                <entry key="DvsSliceAviWriter.frameRate" value="1"/>
+                <entry key="DvsSliceAviWriter.frameRateEstimatorTimeConstantMs" value="10.0"/>
+                <entry key="DvsSliceAviWriter.fullRectifyOutput" value="true"/>
+                <entry key="DvsSliceAviWriter.maxFrames" value="0"/>
+                <entry key="DvsSliceAviWriter.normalizeFrame" value="true"/>
+                <entry key="DvsSliceAviWriter.writeDvsSliceImageOnApsFrame" value="false"/>
+                <entry key="DvsSliceAviWriter.writeOnlyWhenMousePressed" value="true"/>
+                <entry key="DvsSliceAviWriter.writeTimecodeFile" value="false"/>
+                <entry key="FaceDetectorConvNet.decisionLowPassMixingFactor" value="1.0"/>
+                <entry key="FaceDetectorConvNet.dvsMinEvents" value="7462"/>
+                <entry key="FaceDetectorConvNet.faceDetectionThreshold" value="0.5788124"/>
+                <entry key="FaceDetectorConvNet.hideOutput" value="false"/>
+                <entry key="FaceDetectorConvNet.measurePerformance" value="false"/>
+                <entry key="FaceDetectorConvNet.playSpikeSounds" value="true"/>
+                <entry key="FaceDetectorConvNet.processAPSFrames" value="true"/>
+                <entry key="FaceDetectorConvNet.showAnalogDecisionOutput" value="true"/>
+                <entry key="FaceDetectorConvNet.showOutputAsBarChart" value="true"/>
+                <entry key="FaceDetectorConvNet.softMaxOutput" value="true"/>
+                <entry key="FaceDetectorConvNet.zeroPadding" value="false"/>
+                <entry key="FordVIVisualizer.filterEnabled" value="false"/>
+                <entry key="FordVIVisualizer.lastFordVIFile" value="D:\BitTorrent Sync\Recordings\DrivingFordMondeo\FordVI-2016-12-15-rec01-to-airport-and-back.dat"/>
+                <entry key="FordVIVisualizer.showText" value="false"/>
+                <entry key="FordVIVisualizer.showTime" value="true"/>
+                <entry key="HoughLineTracker.filterEnabled" value="false"/>
+                <entry key="MeanTracker.alpha" value="0.015513277"/>
+                <entry key="MeanTracker.filterEnabled" value="false"/>
+                <entry key="MeanTracker.radius" value="55.160057"/>
+                <entry key="MedianTracker.numStdDevsForBoundingBox" value="1.05"/>
+                <entry key="PatchMatchFlow.filterEnabled" value="false"/>
+                <entry key="PatchMatchFlow.measureAccuracy" value="false"/>
+                <entry key="PatchMatchFlow.measureGlobalMotion" value="true"/>
+                <entry key="PatchMatchFlow.measureProcessingTime" value="false"/>
+                <entry key="PatchMatchFlow.minSpeedPpsToDrawMotionField" value="0.78352636"/>
+                <entry key="PatchMatchFlow.motionFieldShowMotionField" value="false"/>
+                <entry key="PatchMatchFlow.patchCompareMethod" value="HammingDistance"/>
+                <entry key="PatchMatchFlow.patchDimension" value="9"/>
+                <entry key="PatchMatchFlow.ppsScale" value="0.25"/>
+                <entry key="PatchMatchFlow.searchDistance" value="1"/>
+                <entry key="PatchMatchFlow.sliceDurationUs" value="40000"/>
+                <entry key="ProbFPNCorrectionFilter.alpha" value="0.16316153"/>
+                <entry key="ProbFPNCorrectionFilter.filterEnabled" value="false"/>
+                <entry key="ProbFPNCorrectionFilter.mixingFactor" value="0.045380335"/>
+                <entry key="RectangularClusterTracker.surroundInhibitionCost" value="0.67683965"/>
+                <entry key="RectangularClusterTrackerWithUDPClusterOutput.clusterLoggingMethod" value="LogClusters"/>
+                <entry key="RectangularClusterTrackerWithUDPClusterOutput.clusterMassDecayTauUs" value="7107"/>
+                <entry key="RectangularClusterTrackerWithUDPClusterOutput.colorClustersDifferentlyEnabled" value="false"/>
+                <entry key="RectangularClusterTrackerWithUDPClusterOutput.filterEventsEnabled" value="true"/>
+                <entry key="RectangularClusterTrackerWithUDPClusterOutput.frictionTauMs" value="1.0"/>
+                <entry key="RectangularClusterTrackerWithUDPClusterOutput.growMergedSizeEnabled" value="true"/>
+                <entry key="RectangularClusterTrackerWithUDPClusterOutput.pathLength" value="127"/>
+                <entry key="RectangularClusterTrackerWithUDPClusterOutput.port" value="9309"/>
+                <entry key="RectangularClusterTrackerWithUDPClusterOutput.showAllClusters" value="true"/>
+                <entry key="RectangularClusterTrackerWithUDPClusterOutput.showPaths" value="false"/>
+                <entry key="RectangularClusterTrackerWithUDPClusterOutput.thresholdMassForVisibleCluster" value="1"/>
+                <entry key="RoShamBoCNN.decisionLowPassMixingFactor" value="0.37310782"/>
+                <entry key="RoShamBoCNN.dvsColorScale" value="209"/>
+                <entry key="RoShamBoCNN.dvsMinEvents" value="2000"/>
+                <entry key="RoShamBoCNN.filterEnabled" value="false"/>
+                <entry key="RoShamBoCNN.lastAPSNetXMLFilename" value="C:\Users\Tobi Delbruck\Google Drive\~my projects\NPP\NPP project shared\NIPS Demo\RoShamBo\network_v3\xml\NullHop.prototxt_jAER.xml"/>
+                <entry key="RoShamBoCNN.measurePerformance" value="true"/>
+                <entry key="RoShamBoCNN.normalizeDVSForZsNullhop" value="false"/>
+                <entry key="RoShamBoCNN.processAPSFrames" value="false"/>
+                <entry key="RoShamBoCNN.processDVSTimeSlices" value="true"/>
+                <entry key="RoShamBoCNN.rectifyPolarities" value="true"/>
+                <entry key="RoShamBoCNN.serialPortCommandsEnabled" value="true"/>
+                <entry key="RoShamBoCNN.serialPortName" value="COM4"/>
+                <entry key="RoShamBoCNN.showOutputAsBarChart" value="true"/>
+                <entry key="RoShamBoCNN.softMaxOutput" value="true"/>
+                <entry key="RoShamBoCNN.zeroPadding" value="false"/>
+                <entry key="RoShamBoCNN4.dvsColorScale" value="281"/>
+                <entry key="RoShamBoCNN4.dvsMinEvents" value="7835"/>
+                <entry key="RoShamBoCNN4.filterEnabled" value="false"/>
+                <entry key="RoShamBoCNN4.lastAPSNetXMLFilename" value="/media/iulialexandra/Storage/datasets/roshambo/saved_nets/11/xml/NullHop.prototxt_jAER.xml"/>
+                <entry key="SingleCameraCalibration.autocaptureCalibrationFrameDelayMs" value="2265"/>
+                <entry key="SingleCameraCalibration.numAutoCaptureFrames" value="30"/>
+                <entry key="SingleCameraCalibration.patternHeight" value="4"/>
+                <entry key="SingleCameraCalibration.patternWidth" value="5"/>
+                <entry key="SingleCameraCalibration.rectangleHeightMm" value="28"/>
+                <entry key="SingleCameraCalibration.rectangleWidthMm" value="28"/>
+                <entry key="SubSampler.bits" value="1"/>
+                <entry key="SubSampler.filterEnabled" value="false"/>
+                <entry key="TargetLabeler.editTargetRadius" value="false"/>
+                <entry key="TargetLabeler.hashmap" value="rO0ABXNyABFqYXZhLnV0aWwuSGFzaE1hcAUH2sHDFmDRAwACRgAKbG9hZEZhY3RvckkACXRocmVzaG9sZHhwP0AAAAAAABh3CAAAACAAAAAUcHQAbUM6XFVzZXJzXHRvYmlcRHJvcGJveFxWaXN1YWxpc2VTdGVlcmluZ0NOTlxQcmVkYXRvci1QcmV5IFJlY29yZGluZ3NcVHJpYWwgUnVuIDEgd2l0aG91dCBmaWx0ZXJzIDAtdGFyZ2V0cy50eHR0AJVDOlxVc2Vyc1x0b2JpXERyb3Bib3hcVmlzdWFsaXNlU3RlZXJpbmdDTk5cUHJlZGF0b3ItUHJleSBSZWNvcmRpbmdzXFRyaWFsIFJ1biA3IHdpdGggZmlsdGVycyAybXBzXERBVklTMjQwQy0yMDE2LTAzLTE2VDEwLTEwLTQxKzAwMDAtMDQwMTAwNTgtMC5hZWRhdHQAq0M6XFVzZXJzXHRvYmlcRHJvcGJveFxWaXN1YWxpc2VTdGVlcmluZ0NOTlxQcmVkYXRvci1QcmV5IFJlY29yZGluZ3NcVHJpYWwgUnVuIDcgd2l0aCBmaWx0ZXJzIDJtcHNcREFWSVMyNDBDLTIwMTYtMDMtMTZUMTAtMTAtNDErMDAwMC0wNDAxMDA1OC0wLXRhcmdldHMtcmVzaXplZC10YXJnZXRzLnR4dHQAj0M6XFVzZXJzXHRvYmlcRHJvcGJveFxWaXN1YWxpc2VTdGVlcmluZ0NOTlxQcmVkYXRvci1QcmV5IFJlY29yZGluZ3NcUmVjb3JkaW5nIDJcREFWSVMyNDBDLTIwMTYtMDEtMTFUMTUtNTAtMTErMDAwMC0wNDAxMDA1OC0wX3JlY29yZGluZ18yLmFlZGF0dAClQzpcVXNlcnNcdG9iaVxEcm9wYm94XFZpc3VhbGlzZVN0ZWVyaW5nQ05OXFByZWRhdG9yLVByZXkgUmVjb3JkaW5nc1xSZWNvcmRpbmcgMlxEQVZJUzI0MEMtMjAxNi0wMS0xMVQxNS01MC0xMSswMDAwLTA0MDEwMDU4LTBfcmVjb3JkaW5nXzItdGFyZ2V0cy1yZXNpemVkLXRhcmdldHMudHh0dACRQzpcVXNlcnNcdG9iaVxEcm9wYm94XFZpc3VhbGlzZVN0ZWVyaW5nQ05OXFByZWRhdG9yLVByZXkgUmVjb3JkaW5nc1xSZWNvcmRpbmcgMTNcREFWSVMyNDBDLTIwMTYtMDItMjNUMTMtNDgtMzYrMDAwMC0wNDAxMDA1OC0wX3JlY29yZGluZ18xMy5hZWRhdHQAp0M6XFVzZXJzXHRvYmlcRHJvcGJveFxWaXN1YWxpc2VTdGVlcmluZ0NOTlxQcmVkYXRvci1QcmV5IFJlY29yZGluZ3NcUmVjb3JkaW5nIDEzXERBVklTMjQwQy0yMDE2LTAyLTIzVDEzLTQ4LTM2KzAwMDAtMDQwMTAwNTgtMF9yZWNvcmRpbmdfMTMtdGFyZ2V0cy1yZWlzemVkLXRhcmdldHMudHh0dACVQzpcVXNlcnNcdG9iaVxEcm9wYm94XFZpc3VhbGlzZVN0ZWVyaW5nQ05OXFByZWRhdG9yLVByZXkgUmVjb3JkaW5nc1xUcmlhbCBSdW4gNiB3aXRoIGZpbHRlcnMgMW1wc1xEQVZJUzI0MEMtMjAxNi0wMy0xNlQxMC0wNC0zOCswMDAwLTA0MDEwMDU4LTAuYWVkYXR0AKtDOlxVc2Vyc1x0b2JpXERyb3Bib3hcVmlzdWFsaXNlU3RlZXJpbmdDTk5cUHJlZGF0b3ItUHJleSBSZWNvcmRpbmdzXFRyaWFsIFJ1biA2IHdpdGggZmlsdGVycyAxbXBzXERBVklTMjQwQy0yMDE2LTAzLTE2VDEwLTA0LTM4KzAwMDAtMDQwMTAwNTgtMC10YXJnZXRzLXJlc2l6ZWQtdGFyZ2V0cy50eHR0AI9DOlxVc2Vyc1x0b2JpXERyb3Bib3hcVmlzdWFsaXNlU3RlZXJpbmdDTk5cUHJlZGF0b3ItUHJleSBSZWNvcmRpbmdzXFJlY29yZGluZyA3XERBVklTMjQwQy0yMDE2LTAxLTE1VDEwLTM5LTE1KzAwMDAtMDQwMTAwNTgtMF9yZWNvcmRpbmdfNy5hZWRhdHQApUM6XFVzZXJzXHRvYmlcRHJvcGJveFxWaXN1YWxpc2VTdGVlcmluZ0NOTlxQcmVkYXRvci1QcmV5IFJlY29yZGluZ3NcUmVjb3JkaW5nIDdcREFWSVMyNDBDLTIwMTYtMDEtMTVUMTAtMzktMTUrMDAwMC0wNDAxMDA1OC0wX3JlY29yZGluZ183LXRhcmdldHMtcmVzaXplZC10YXJnZXRzLnR4dHQAkUM6XFVzZXJzXHRvYmlcRHJvcGJveFxWaXN1YWxpc2VTdGVlcmluZ0NOTlxQcmVkYXRvci1QcmV5IFJlY29yZGluZ3NcUmVjb3JkaW5nIDE4XERBVklTMjQwQy0yMDE2LTAyLTI2VDEwLTIyLTMyKzAwMDAtMDQwMTAwNTgtMF9yZWNvcmRpbmdfMTguYWVkYXR0AKdDOlxVc2Vyc1x0b2JpXERyb3Bib3hcVmlzdWFsaXNlU3RlZXJpbmdDTk5cUHJlZGF0b3ItUHJleSBSZWNvcmRpbmdzXFJlY29yZGluZyAxOFxEQVZJUzI0MEMtMjAxNi0wMi0yNlQxMC0yMi0zMiswMDAwLTA0MDEwMDU4LTBfcmVjb3JkaW5nXzE4LXRhcmdldHMtcmVzaXplZC10YXJnZXRzLnR4dHQAj0M6XFVzZXJzXHRvYmlcRHJvcGJveFxWaXN1YWxpc2VTdGVlcmluZ0NOTlxQcmVkYXRvci1QcmV5IFJlY29yZGluZ3NcUmVjb3JkaW5nIDNcREFWSVMyNDBDLTIwMTYtMDEtMTFUMTUtNTMtNDIrMDAwMC0wNDAxMDA1OC0wX3JlY29yZGluZ18zLmFlZGF0dAClQzpcVXNlcnNcdG9iaVxEcm9wYm94XFZpc3VhbGlzZVN0ZWVyaW5nQ05OXFByZWRhdG9yLVByZXkgUmVjb3JkaW5nc1xSZWNvcmRpbmcgM1xEQVZJUzI0MEMtMjAxNi0wMS0xMVQxNS01My00MiswMDAwLTA0MDEwMDU4LTBfcmVjb3JkaW5nXzMtdGFyZ2V0cy1yZXNpemVkLXRhcmdldHMudHh0dACXQzpcVXNlcnNcdG9iaVxEcm9wYm94XFZpc3VhbGlzZVN0ZWVyaW5nQ05OXFByZWRhdG9yLVByZXkgUmVjb3JkaW5nc1xUcmlhbCBSdW4gMiB3aXRoIGZpbHRlcnMgMC41bXBzXERBVklTMjQwQy0yMDE2LTAzLTExVDEwLTUxLTQ1KzAwMDAtMDQwMTAwNTgtMC5hZWRhdHQAakM6XFVzZXJzXHRvYmlcRHJvcGJveFxWaXN1YWxpc2VTdGVlcmluZ0NOTlxQcmVkYXRvci1QcmV5IFJlY29yZGluZ3NcVHJpYWwgUnVuIDIgd2l0aCBmaWx0ZXJzIDAtdGFyZ2V0cy50eHR0AI9DOlxVc2Vyc1x0b2JpXERyb3Bib3hcVmlzdWFsaXNlU3RlZXJpbmdDTk5cUHJlZGF0b3ItUHJleSBSZWNvcmRpbmdzXFJlY29yZGluZyA5XERBVklTMjQwQy0yMDE2LTAyLTIzVDEyLTQ0LTI1KzAwMDAtMDQwMTAwNTgtMF9yZWNvcmRpbmdfOS5hZWRhdHQApUM6XFVzZXJzXHRvYmlcRHJvcGJveFxWaXN1YWxpc2VTdGVlcmluZ0NOTlxQcmVkYXRvci1QcmV5IFJlY29yZGluZ3NcUmVjb3JkaW5nIDlcREFWSVMyNDBDLTIwMTYtMDItMjNUMTItNDQtMjUrMDAwMC0wNDAxMDA1OC0wX3JlY29yZGluZ185LXRhcmdldHMtcmVzaXplZC10YXJnZXRzLnR4dHQAj0M6XFVzZXJzXHRvYmlcRHJvcGJveFxWaXN1YWxpc2VTdGVlcmluZ0NOTlxQcmVkYXRvci1QcmV5IFJlY29yZGluZ3NcUmVjb3JkaW5nIDhcREFWSVMyNDBDLTIwMTYtMDItMjNUMTItNDItMTQrMDAwMC0wNDAxMDA1OC0wX3JlY29yZGluZ184LmFlZGF0dAClQzpcVXNlcnNcdG9iaVxEcm9wYm94XFZpc3VhbGlzZVN0ZWVyaW5nQ05OXFByZWRhdG9yLVByZXkgUmVjb3JkaW5nc1xSZWNvcmRpbmcgOFxEQVZJUzI0MEMtMjAxNi0wMi0yM1QxMi00Mi0xNCswMDAwLTA0MDEwMDU4LTBfcmVjb3JkaW5nXzgtdGFyZ2V0cy1yZXNpemVkLXRhcmdldHMudHh0dACRQzpcVXNlcnNcdG9iaVxEcm9wYm94XFZpc3VhbGlzZVN0ZWVyaW5nQ05OXFByZWRhdG9yLVByZXkgUmVjb3JkaW5nc1xSZWNvcmRpbmcgMTFcREFWSVMyNDBDLTIwMTYtMDItMjNUMTMtMzktMjkrMDAwMC0wNDAxMDA1OC0wX3JlY29yZGluZ18xMS5hZWRhdHQAp0M6XFVzZXJzXHRvYmlcRHJvcGJveFxWaXN1YWxpc2VTdGVlcmluZ0NOTlxQcmVkYXRvci1QcmV5IFJlY29yZGluZ3NcUmVjb3JkaW5nIDExXERBVklTMjQwQy0yMDE2LTAyLTIzVDEzLTM5LTI5KzAwMDAtMDQwMTAwNTgtMF9yZWNvcmRpbmdfMTEtdGFyZ2V0cy1yZXNpemVkLXRhcmdldHMudHh0dACRQzpcVXNlcnNcdG9iaVxEcm9wYm94XFZpc3VhbGlzZVN0ZWVyaW5nQ05OXFByZWRhdG9yLVByZXkgUmVjb3JkaW5nc1xSZWNvcmRpbmcgMTBcREFWSVMyNDBDLTIwMTYtMDItMjNUMTMtMDMtNTYrMDAwMC0wNDAxMDA1OC0wX3JlY29yZGluZ18xMC5hZWRhdHQAp0M6XFVzZXJzXHRvYmlcRHJvcGJveFxWaXN1YWxpc2VTdGVlcmluZ0NOTlxQcmVkYXRvci1QcmV5IFJlY29yZGluZ3NcUmVjb3JkaW5nIDEwXERBVklTMjQwQy0yMDE2LTAyLTIzVDEzLTAzLTU2KzAwMDAtMDQwMTAwNTgtMF9yZWNvcmRpbmdfMTAtdGFyZ2V0cy1yZXNpemVkLXRhcmdldHMudHh0dACXQzpcVXNlcnNcdG9iaVxEcm9wYm94XFZpc3VhbGlzZVN0ZWVyaW5nQ05OXFByZWRhdG9yLVByZXkgUmVjb3JkaW5nc1xUcmlhbCBSdW4gNCB3aXRoIGZpbHRlcnMgMC41bXBzXERBVklTMjQwQy0yMDE2LTAzLTE2VDA5LTM4LTI4KzAwMDAtMDQwMTAwNTgtMC5hZWRhdHQAakM6XFVzZXJzXHRvYmlcRHJvcGJveFxWaXN1YWxpc2VTdGVlcmluZ0NOTlxQcmVkYXRvci1QcmV5IFJlY29yZGluZ3NcVHJpYWwgUnVuIDQgd2l0aCBmaWx0ZXJzIDAtdGFyZ2V0cy50eHR0AJFDOlxVc2Vyc1x0b2JpXERyb3Bib3hcVmlzdWFsaXNlU3RlZXJpbmdDTk5cUHJlZGF0b3ItUHJleSBSZWNvcmRpbmdzXFJlY29yZGluZyAxNVxEQVZJUzI0MEMtMjAxNi0wMi0yNlQxMC0wMy01OSswMDAwLTA0MDEwMDU4LTBfcmVjb3JkaW5nXzE1LmFlZGF0dACnQzpcVXNlcnNcdG9iaVxEcm9wYm94XFZpc3VhbGlzZVN0ZWVyaW5nQ05OXFByZWRhdG9yLVByZXkgUmVjb3JkaW5nc1xSZWNvcmRpbmcgMTVcREFWSVMyNDBDLTIwMTYtMDItMjZUMTAtMDMtNTkrMDAwMC0wNDAxMDA1OC0wX3JlY29yZGluZ18xNS10YXJnZXRzLXJlc2l6ZWQtdGFyZ2V0cy50eHR0AJFDOlxVc2Vyc1x0b2JpXERyb3Bib3hcVmlzdWFsaXNlU3RlZXJpbmdDTk5cUHJlZGF0b3ItUHJleSBSZWNvcmRpbmdzXFJlY29yZGluZyAxNlxEQVZJUzI0MEMtMjAxNi0wMi0yNlQxMC0xNC00OSswMDAwLTA0MDEwMDU4LTBfcmVjb3JkaW5nXzE2LmFlZGF0dACnQzpcVXNlcnNcdG9iaVxEcm9wYm94XFZpc3VhbGlzZVN0ZWVyaW5nQ05OXFByZWRhdG9yLVByZXkgUmVjb3JkaW5nc1xSZWNvcmRpbmcgMTZcREFWSVMyNDBDLTIwMTYtMDItMjZUMTAtMTQtNDkrMDAwMC0wNDAxMDA1OC0wX3JlY29yZGluZ18xNi10YXJnZXRzLXJlc2l6ZWQtdGFyZ2V0cy50eHR0AJFDOlxVc2Vyc1x0b2JpXERyb3Bib3hcVmlzdWFsaXNlU3RlZXJpbmdDTk5cUHJlZGF0b3ItUHJleSBSZWNvcmRpbmdzXFJlY29yZGluZyAxN1xEQVZJUzI0MEMtMjAxNi0wMi0yNlQxMC0xOS0zNyswMDAwLTA0MDEwMDU4LTBfcmVjb3JkaW5nXzE3LmFlZGF0dACnQzpcVXNlcnNcdG9iaVxEcm9wYm94XFZpc3VhbGlzZVN0ZWVyaW5nQ05OXFByZWRhdG9yLVByZXkgUmVjb3JkaW5nc1xSZWNvcmRpbmcgMTdcREFWSVMyNDBDLTIwMTYtMDItMjZUMTAtMTktMzcrMDAwMC0wNDAxMDA1OC0wX3JlY29yZGluZ18xNy10YXJnZXRzLXJlc2l6ZWQtdGFyZ2V0cy50eHR0AJFDOlxVc2Vyc1x0b2JpXERyb3Bib3hcVmlzdWFsaXNlU3RlZXJpbmdDTk5cUHJlZGF0b3ItUHJleSBSZWNvcmRpbmdzXFJlY29yZGluZyAxMlxEQVZJUzI0MEMtMjAxNi0wMi0yM1QxMy00Mi0zNiswMDAwLTA0MDEwMDU4LTBfcmVjb3JkaW5nXzEyLmFlZGF0dACnQzpcVXNlcnNcdG9iaVxEcm9wYm94XFZpc3VhbGlzZVN0ZWVyaW5nQ05OXFByZWRhdG9yLVByZXkgUmVjb3JkaW5nc1xSZWNvcmRpbmcgMTJcREFWSVMyNDBDLTIwMTYtMDItMjNUMTMtNDItMzYrMDAwMC0wNDAxMDA1OC0wX3JlY29yZGluZ18xMi10YXJnZXRzLXJlc2l6ZWQtdGFyZ2V0cy50eHR0AJpDOlxVc2Vyc1x0b2JpXERyb3Bib3hcVmlzdWFsaXNlU3RlZXJpbmdDTk5cUHJlZGF0b3ItUHJleSBSZWNvcmRpbmdzXFRyaWFsIFJ1biAzIHdpdGhvdXQgZmlsdGVycyAwLjVtcHNcREFWSVMyNDBDLTIwMTYtMDMtMTZUMDktMzUtMjIrMDAwMC0wNDAxMDA1OC0wLmFlZGF0dABtQzpcVXNlcnNcdG9iaVxEcm9wYm94XFZpc3VhbGlzZVN0ZWVyaW5nQ05OXFByZWRhdG9yLVByZXkgUmVjb3JkaW5nc1xUcmlhbCBSdW4gMyB3aXRob3V0IGZpbHRlcnMgMC10YXJnZXRzLnR4dHQAlUM6XFVzZXJzXHRvYmlcRHJvcGJveFxWaXN1YWxpc2VTdGVlcmluZ0NOTlxQcmVkYXRvci1QcmV5IFJlY29yZGluZ3NcVHJpYWwgUnVuIDUgd2l0aCBmaWx0ZXJzIDFtcHNcREFWSVMyNDBDLTIwMTYtMDMtMTZUMDktNDQtNDUrMDAwMC0wNDAxMDA1OC0wLmFlZGF0dACrQzpcVXNlcnNcdG9iaVxEcm9wYm94XFZpc3VhbGlzZVN0ZWVyaW5nQ05OXFByZWRhdG9yLVByZXkgUmVjb3JkaW5nc1xUcmlhbCBSdW4gNSB3aXRoIGZpbHRlcnMgMW1wc1xEQVZJUzI0MEMtMjAxNi0wMy0xNlQwOS00NC00NSswMDAwLTA0MDEwMDU4LTAtdGFyZ2V0cy1yZXNpemVkLXRhcmdldHMudHh0eA=="/>
+                <entry key="TargetLabeler.maxTimeLastTargetLocationValidUs" value="99069"/>
+                <entry key="TargetLabeler.minTargetPointIntervalUs" value="4811"/>
+                <entry key="TargetLabeler.showHelpText" value="false"/>
+                <entry key="TargetLabeler.showStatistics" value="true"/>
+                <entry key="TargetLabeler.targetRadius" value="23"/>
+                <entry key="TimeLapse.filterEnabled" value="true"/>
+                <entry key="TimeLapse.frameRateHz" value="0.66225135"/>
+                <entry key="TimestampCalibrator.correctTimestampEnabled" value="true"/>
+                <entry key="TimestampCalibrator.filterEnabled" value="false"/>
+                <entry key="TimestampCalibrator.minTimeForCalibrationS" value="1"/>
+                <entry key="TimestampCalibrator.ppmTimestampTooFastError" value="7960.439"/>
+                <entry key="VisualiseSteeringConvNet.LCRNstep" value="0.5846796"/>
+                <entry key="VisualiseSteeringConvNet.networkWithDistance" value="true"/>
+                <entry key="VisualiseSteeringConvNet.renderingCyclesDecision" value="0"/>
+                <entry key="VisualiseSteeringConvNet.softMaxOutput" value="true"/>
+                <entry key="YuhuangBoundingboxDisplay.GTFilename" value="C:\Users\tobi\Desktop\vot-gt\basketball-groundtruth.txt"/>
+                <entry key="YuhuangBoundingboxDisplay.filterEnabled" value="false"/>
               </map>
               <node name="ch">
                 <map/>
@@ -3394,30 +3701,32 @@
                                 <entry key="RectangularClusterTracker.vanishingPoint.y" value="NaN"/>
                                 <entry key="RectangularClusterTracker.clusterMassDecayTauUs" value="2000000"/>
                                 <entry key="RectangularClusterTracker.maxNumClusters" value="0"/>
-                                <entry key="RectangularClusterTracker.clusterSize" value="0.05"/>
+                                <entry key="RectangularClusterTracker.clusterSize" value="0.064"/>
                                 <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
                                 <entry key="RectangularClusterTracker.thresholdMassForVisibleCluster" value="100"/>
                                 <entry key="RectangularClusterTracker.showAllClusters" value="true"/>
                                 <entry key="RectangularClusterTracker.colorClustersDifferentlyEnabled" value="false"/>
                                 <entry key="RectangularClusterTracker.showClusterEps" value="false"/>
-                                <entry key="RectangularClusterTracker.showClusterMass" value="true"/>
+                                <entry key="RectangularClusterTracker.showClusterMass" value="false"/>
                                 <entry key="RectangularClusterTracker.showPaths" value="true"/>
                                 <entry key="RectangularClusterTracker.showClusterVelocity" value="false"/>
                                 <entry key="RectangularClusterTracker.showClusterRadius" value="false"/>
                                 <entry key="RectangularClusterTracker.showClusterNumber" value="false"/>
                                 <entry key="RectangularClusterTracker.useEllipticalClusters" value="false"/>
-                                <entry key="RectangularClusterTracker.velocityVectorScaling" value="0.90702957"/>
+                                <entry key="RectangularClusterTracker.velocityVectorScaling" value="1.0"/>
                                 <entry key="RectangularClusterTracker.filterEventsEnabled" value="false"/>
                                 <entry key="RectangularClusterTracker.surround" value="1.1693592"/>
                                 <entry key="RectangularClusterTracker.enableClusterExitPurging" value="true"/>
                                 <entry key="RectangularClusterTracker.useNearestCluster" value="false"/>
                                 <entry key="ApsFrameExtractor.showAPSFrameDisplay" value="false"/>
-                                <entry key="RectangularClusterTracker.mixingFactor" value="0.01"/>
+                                <entry key="RectangularClusterTracker.mixingFactor" value="0.016"/>
                                 <entry key="RectangularClusterTracker.pathLength" value="100"/>
                                 <entry key="RectangularClusterTracker.aspectRatio" value="1.0"/>
                                 <entry key="RectangularClusterTracker.thresholdVelocityForVisibleCluster" value="0.0"/>
                                 <entry key="RectangularClusterTracker.dontMergeEver" value="false"/>
                                 <entry key="RectangularClusterTracker.dynamicAngleEnabled" value="true"/>
+                                <entry key="RectangularClusterTracker.angleFollowsVelocity" value="true"/>
+                                <entry key="RectangularClusterTracker.velocityTauMs" value="60.0"/>
                               </map>
                             </node>
                           </node>
@@ -3479,7 +3788,9 @@
                       <node name="filter">
                         <map/>
                         <node name="ApsNoiseStatistics">
-                          <map/>
+                          <map>
+                            <entry key="ApsFrameExtractor.edgePixelMethod" value="CDSframe"/>
+                          </map>
                         </node>
                         <node name="Info">
                           <map/>
