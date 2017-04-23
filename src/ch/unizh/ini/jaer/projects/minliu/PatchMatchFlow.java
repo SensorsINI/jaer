@@ -169,7 +169,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "outlierMotionFilteringEnabled", "(Currently has no effect) discards first optical flow event that points in opposite direction as previous one (dot product is negative)");
         setPropertyTooltip(patchTT, "numSlices", "<html>Number of bitmaps to use.  <p>At least 3: 1 to collect on, and two more to match on. <br>If >3, then best match is found between last slice reference block and all previous slices.");
         setPropertyTooltip(patchTT, "numSlices", "<html>Number of bitmaps to use.  <p>At least 3: 1 to collect on, and two more to match on. <br>If >3, then best match is found between last slice reference block and all previous slices.");
-        setPropertyTooltip(patchTT, "sliceMaxValue", "<html> the maximum value used to represent each pixel in the time slice:<br>1 for binary or signed binary slice, (in conjunction with rectifyEventPolarities), etc, up to 127 by these byte values");
+        setPropertyTooltip(patchTT, "sliceMaxValue", "<html> the maximum value used to represent each pixel in the time slice:<br>1 for binary or signed binary slice, (in conjunction with rectifyEventPolarities==true), etc, <br>up to 127 by these byte values");
         setPropertyTooltip(patchTT, "rectifyPolarties", "<html> whether to rectify ON and OFF polarities to unsigned counts; true ignores polarity for block matching, false uses polarity with sliceNumBits>1");
 
         setPropertyTooltip(dispTT, "displayOutputVectors", "display the output motion vectors or not");
