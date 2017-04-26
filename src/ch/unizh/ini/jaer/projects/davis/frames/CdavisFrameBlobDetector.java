@@ -319,6 +319,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
             }
         }
         tracker.annotate(drawable);
+        System.out.println(tracker.getClusters().toString());
     }
 
     @Override
