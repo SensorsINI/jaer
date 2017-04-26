@@ -2286,8 +2286,8 @@ public class RectangularClusterTracker extends EventFilter2D
 		@Override
 		public String toString() {
 			return String.format(
-				"Cluster number=#%d numEvents=%d location(x,y)=(%d,%d) radius(x,y)=(%.1f,%.1f) angle=%.1f mass=%.1f lifetime=%d visible=%s speedPPS=%.2f",
-				getClusterNumber(), numEvents, (int) location.x, (int) location.y, radiusX, radiusY, angle, getMass(), getLifetime(),
+				"Cluster number=%d numEvents=%d location(x,y)=%d %d timestamp=%d radius(x,y)=%.1f %.1f angle=%.1f mass=%.1f lifetime=%d visible=%s speedPPS=%.2f",
+				getClusterNumber(), numEvents, (int) location.x, (int) location.y, lastUpdateTime, radiusX, radiusY, angle, getMass(), getLifetime(),
 				isVisible(), getSpeedPPS());
 		}
 
