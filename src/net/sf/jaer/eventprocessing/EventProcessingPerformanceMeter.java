@@ -98,9 +98,10 @@ public class EventProcessingPerformanceMeter {
 //    }
     
     public String toString(){
-        String s=String.format("%s: %9d events, %8.3f ms, %8.2g eps, %8.1f ns/event (Average %8.1f +/- %-6.1f ns/event, N=%d samples), ", 
+        String s=String.format("%s: %9d events, start %16d ns, duration %8.3f ms, %8.2g eps, %8.1f ns/event (Average %8.1f +/- %-6.1f ns/event, N=%d samples), ", 
                 filterClassName,
-                size, 
+                size,
+                startTimeNs,
                 durationNs*1e-6f,
                 eps(),
                 NSPS*sPerEvent(),
