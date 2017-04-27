@@ -1501,12 +1501,14 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // specifically, the end of header section is line "#End Of ASCII Header" followed by CRLF
         if (s.toLowerCase().equals(AEDataFile.END_OF_HEADER_STRING.toLowerCase())) {
             numHeaderLines++;
-            log.info("On line " + numHeaderLines + " detected end of header section string \"" + AEDataFile.END_OF_HEADER_STRING + "\"");
             headerOffset += s.length() + NUMBER_LINE_SEPARATORS + 1; // adds comment char (1) and trailing CRLF (2) plus the string length,
+            int nextChar = reader.read();
+            log.info("On line " + numHeaderLines + " detected end of header section string \"" + AEDataFile.END_OF_HEADER_STRING + "\"; next character has decimal value " + nextChar);
             return null;
         }
         if (c != AEDataFile.COMMENT_CHAR || flag == false) { // if it's not a comment char
-            log.info("On line " + numHeaderLines + " detected line not starting with comment character, ending header read");
+            int nextChar = reader.read();
+            log.info("On line " + numHeaderLines + " detected line not starting with comment character, ending header read; next character has decimal value " + nextChar);
             return null; // return a null header line
         }
         // reader.reset(); // reset to start of header/comment line
