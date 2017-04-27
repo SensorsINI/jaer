@@ -110,7 +110,7 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 
     /**
      * Writes a comment header line. Writes the string with prepended '#' and
-     * appended '\r\n'
+     * appended '\r\n' (CRLF)
      *
      * @param s the string to write
      * @throws java.io.IOException when we try to write header but have already
