@@ -96,9 +96,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     // AEInputStream
     // public final static long MAX_FILE_SIZE=200000000;
 
-    private static final int NUMBER_LINE_SEPARATORS = 2; // number of line separators which AEFileOutputStream
-    // (writeHeaderLine) is writing to ae data files.
-    // important for calculation of header offset
+    /**
+     * number of line separator characters which AEFileOutputStream
+     * (writeHeaderLine) is writing to AE data files. important for calculation
+     * of header offset. Since CRLF is used for line separation, this is set to
+     * 2.
+     */
+    private static final int NUMBER_LINE_SEPARATORS = 2;
 
     public static int NUM_HEADER_LINES_TO_PRINT = 15;
 
@@ -156,7 +160,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * the size of the memory mapped part of the input file. This window is
      * centered over the file position except at the start and end of the file.
      */
-    private long CHUNK_SIZE_EVENTS = Integer.MAX_VALUE/EVENT32_SIZE;
+    private long CHUNK_SIZE_EVENTS = Integer.MAX_VALUE / EVENT32_SIZE;
     private long chunkSizeBytes = CHUNK_SIZE_EVENTS * EVENT32_SIZE; // size of memory mapped file chunk, depends on event 
     // size and number of events to map, initialized as
     // though we didn't have a file header. Max value is Integer.MAX_VALUE however. Will generate illegalargument exception if we try to allowcate larger chunk
@@ -1436,7 +1440,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                     Jaer3BufferParser.JAER3POLSHIFT = 1;
                     Jaer3BufferParser.JAER3POLMASK = 1 << Jaer3BufferParser.JAER3POLSHIFT;
                     log.info("File format AER-DAT-3.1");
-                } else if (Math.round((version - 3.0) * 10) == 0){
+                } else if (Math.round((version - 3.0) * 10) == 0) {
                     Jaer3BufferParser.JAER3XSHIFT = 18;
                     Jaer3BufferParser.JAER3XMASK = 0x3fff << Jaer3BufferParser.JAER3XSHIFT;
                     Jaer3BufferParser.JAER3YSHIFT = 4;
@@ -1477,7 +1481,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // StringBuffer s = new StringBuffer();
         // read header lines from fileInputStream, not byteBuffer, since we have not mapped file yet
         // reader.mark(1); // max header line length in chars
-        int c = reader.read(); // read single char
+        int c = reader.read(); // read single char, # if header line
+        // reads rest of line, ending either with \n or \r or \r\n but not including line ending char(s). Does NOT include the comment char.
         String s = reader.readLine();
 
         boolean flag = true;
@@ -1493,10 +1498,11 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //            }
 //        }
 
-        if (s.equals(AEDataFile.END_OF_HEADER_STRING)) {
+        // specifically, the end of header section is line "#End Of ASCII Header" followed by CRLF
+        if (s.toLowerCase().equals(AEDataFile.END_OF_HEADER_STRING.toLowerCase())) {
             numHeaderLines++;
             log.info("On line " + numHeaderLines + " detected end of header section string \"" + AEDataFile.END_OF_HEADER_STRING + "\"");
-            headerOffset += s.length() + NUMBER_LINE_SEPARATORS + 1; // adds comment char and trailing CRLF newline,
+            headerOffset += s.length() + NUMBER_LINE_SEPARATORS + 1; // adds comment char (1) and trailing CRLF (2) plus the string length,
             return null;
         }
         if (c != AEDataFile.COMMENT_CHAR || flag == false) { // if it's not a comment char
