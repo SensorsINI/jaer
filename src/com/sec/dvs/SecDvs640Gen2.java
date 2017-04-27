@@ -35,9 +35,9 @@ public class SecDvs640Gen2 extends AETemporalConstastRetina{
         public SecDvs640Gen2EventExtractor(AEChip aechip) {
             super(aechip);
             setXshift((byte)1);
-            setYshift((byte)10);
-            setXmask(0x3ff);
-            setYmask(0x7ff);
+            setYshift((byte)11);
+            setXmask(0x7ff);
+            setYmask(0xff800);
             setTypemask(1);
         }
      
