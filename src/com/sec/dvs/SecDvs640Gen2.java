@@ -9,6 +9,7 @@ import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.RetinaExtractor;
 import net.sf.jaer.chip.TypedEventExtractor;
 import net.sf.jaer.event.PolarityEvent;
 
@@ -25,13 +26,14 @@ public class SecDvs640Gen2 extends AETemporalConstastRetina{
     public SecDvs640Gen2() {
         setSizeX(640);
         setSizeY(480);
+        setNumCellTypes(2);
+        setEventClass(PolarityEvent.class);
         setPixelHeightUm(9);
         setPixelWidthUm(9);
         setEventExtractor(new SecDvs640Gen2EventExtractor(this));
-        
     }
 
-    private final class SecDvs640Gen2EventExtractor extends TypedEventExtractor<PolarityEvent> {
+    private final class SecDvs640Gen2EventExtractor extends RetinaExtractor {
 
         public SecDvs640Gen2EventExtractor(AEChip aechip) {
             super(aechip);
@@ -40,6 +42,7 @@ public class SecDvs640Gen2 extends AETemporalConstastRetina{
             setXmask(0x7ff);
             setYmask(0xff800);
             setTypemask(1);
+            setTypeshift((byte) 0);
         }
      
     }
