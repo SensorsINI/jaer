@@ -425,6 +425,11 @@ public class AEUnicastOutput implements AEUnicastSettings {
         prefs.putBoolean("AEUnicastOutput.spinnakerProtocolEnabled", yes);
     }
 
+    @Override
+    public void setSecDvsProtocolEnabled(boolean yes) {
+        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
     class Consumer implements Runnable {
 
         private final Exchanger<ByteBuffer> exchanger;

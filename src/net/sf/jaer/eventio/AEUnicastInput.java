@@ -85,6 +85,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private boolean use4ByteAddrTs = prefs.getBoolean("AEUnicastInput.use4ByteAddrTs", DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);
     private boolean localTimestampsEnabled = prefs.getBoolean("AEUnicastOutput.localTimestampsEnabled", false);
     private boolean spinnakerProtocolEnabled = prefs.getBoolean("AEUnicastInput.spinnakerProtocolEnabled", false);
+    private boolean secDvsProtocolEnabled = prefs.getBoolean("AEUnicastInput.secDvsProtocolEnabled", false);
     boolean stopme = false;
     private DatagramChannel channel;
     private int datagramCounter = 0;
@@ -910,6 +911,22 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
         prefs.putBoolean("AEUnicastInput.spinnakerProtocolEnabled", yes);
     }
 
+    /**
+     * @return the secDvsProtocolEnabled
+     */
+    public boolean isSecDvsProtocolEnabled() {
+        return secDvsProtocolEnabled;
+    }
+
+    /**
+     * @param secDvsProtocolEnabled the secDvsProtocolEnabled to set
+     */
+    public void setSecDvsProtocolEnabled(boolean secDvsProtocolEnabled) {
+        this.secDvsProtocolEnabled = secDvsProtocolEnabled;
+        prefs.putBoolean("AEUnicastInput.secDvsProtocolEnabled",secDvsProtocolEnabled);
+
+    }
+
     private class Reader extends Thread {
 
         volatile boolean maxSizeExceeded = false;
@@ -959,4 +976,5 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             cleanup();
         }
     };
+
 }

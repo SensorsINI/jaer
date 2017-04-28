@@ -145,6 +145,7 @@ public class AEUnicastDialog extends javax.swing.JDialog{
         useLocalTimestampsEnabledCheckBox = new javax.swing.JCheckBox();
         spinnakerProtocolEnabledCB = new javax.swing.JCheckBox();
         cAERDisplayEnabledCheckBox = new javax.swing.JCheckBox();
+        secDvsButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("AEUnicastDialog");
@@ -286,6 +287,17 @@ public class AEUnicastDialog extends javax.swing.JDialog{
             }
         });
 
+        secDvsButton.setMnemonic('d');
+        secDvsButton.setText("SEC DVS defaults ");
+        secDvsButton.setToolTipText("Load default values for ARC smart eye TDS sensor into dialog");
+        secDvsButton.setActionCommand("set options for SEC DVS UDP input");
+        secDvsButton.setDefaultCapable(false);
+        secDvsButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                secDvsDefaultsButAction(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -310,7 +322,9 @@ public class AEUnicastDialog extends javax.swing.JDialog{
                                 .addComponent(tdsDefaultsButton)
                                 .addGap(48, 48, 48)
                                 .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(18, 18, 18)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(secDvsButton)
+                                .addGap(143, 143, 143)
                                 .addComponent(applyButton)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                                 .addComponent(cancelButton)))
@@ -376,8 +390,9 @@ public class AEUnicastDialog extends javax.swing.JDialog{
                     .addComponent(cancelButton)
                     .addComponent(tdsDefaultsButton)
                     .addComponent(okButton)
-                    .addComponent(applyButton))
-                .addContainerGap())
+                    .addComponent(applyButton)
+                    .addComponent(secDvsButton))
+                .addGap(29, 29, 29))
         );
 
         pack();
@@ -472,6 +487,10 @@ private void applyButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-
         // TODO add your handling code here:
     }//GEN-LAST:event_swapBytesCheckBoxActionPerformed
 
+    private void secDvsDefaultsButAction(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_secDvsDefaultsButAction
+        unicastInterface.setSecDvsProtocolEnabled(secDvsButton.isSelected());
+    }//GEN-LAST:event_secDvsDefaultsButAction
+
     private void doClose (int retStatus){
         returnStatus = retStatus;
         setVisible(false);
@@ -492,6 +511,7 @@ private void applyButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-
     private javax.swing.JLabel jLabel5;
     private javax.swing.JButton okButton;
     private javax.swing.JTextField portTextField;
+    private javax.swing.JButton secDvsButton;
     private javax.swing.JCheckBox sequenceNumberEnabledCheckBox;
     private javax.swing.JCheckBox spinnakerProtocolEnabledCB;
     private javax.swing.JCheckBox swapBytesCheckBox;

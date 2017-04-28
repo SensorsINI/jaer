@@ -48,7 +48,9 @@
                               <Component id="tdsDefaultsButton" min="-2" max="-2" attributes="0"/>
                               <EmptySpace min="-2" pref="48" max="-2" attributes="0"/>
                               <Component id="okButton" min="-2" pref="67" max="-2" attributes="0"/>
-                              <EmptySpace type="separate" max="-2" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Component id="secDvsButton" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace min="-2" pref="143" max="-2" attributes="0"/>
                               <Component id="applyButton" min="-2" max="-2" attributes="0"/>
                               <EmptySpace type="unrelated" max="-2" attributes="0"/>
                               <Component id="cancelButton" min="-2" max="-2" attributes="0"/>
@@ -131,8 +133,9 @@
                   <Component id="tdsDefaultsButton" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="okButton" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="applyButton" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="secDvsButton" alignment="3" min="-2" max="-2" attributes="0"/>
               </Group>
-              <EmptySpace max="-2" attributes="0"/>
+              <EmptySpace min="-2" pref="29" max="-2" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -312,6 +315,18 @@
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="cAERDisplayEnabledCheckBoxActionPerformed"/>
+      </Events>
+    </Component>
+    <Component class="javax.swing.JButton" name="secDvsButton">
+      <Properties>
+        <Property name="mnemonic" type="int" value="100"/>
+        <Property name="text" type="java.lang.String" value="SEC DVS defaults "/>
+        <Property name="toolTipText" type="java.lang.String" value="Load default values for ARC smart eye TDS sensor into dialog"/>
+        <Property name="actionCommand" type="java.lang.String" value="set options for SEC DVS UDP input"/>
+        <Property name="defaultCapable" type="boolean" value="false"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="secDvsDefaultsButAction"/>
       </Events>
     </Component>
   </SubComponents>
