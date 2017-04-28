@@ -13,12 +13,13 @@ import net.sf.jaer.chip.TypedEventExtractor;
 import net.sf.jaer.event.PolarityEvent;
 
 /**
- * SEC DVS 640x480 Gen2 AEChip - just for displaying recorded data so far
+ * SEC DVS 640x480 Gen2 AEChip - just for displaying recorded data, in conjuction with the conversion program 
+ * https://svn.code.sf.net/p/jaer/code/scripts/c/converters/SEC-DVS/binToAEDATconversion.cpp
  * 
- * @author Tobi Delbruck, Lior Zamir, CNE 2017
+ * @author Lior Zamir, Tobi Delbruck, CNE 2017
  */
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-@Description("SEC DVS 640x480 Gen2 AEChip - just for displaying recorded data")
+@Description("SEC DVS 640x480 Gen2 AEChip - just for displaying recorded data wtih data converted using  https://svn.code.sf.net/p/jaer/code/scripts/c/converters/SEC-DVS/binToAEDATconversion.cpp ")
 public class SecDvs640Gen2 extends AETemporalConstastRetina{
 
     public SecDvs640Gen2() {
