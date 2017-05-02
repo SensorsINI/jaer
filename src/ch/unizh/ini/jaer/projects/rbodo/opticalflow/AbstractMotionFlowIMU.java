@@ -90,6 +90,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // Display
     private boolean displayVectorsEnabled = getBoolean("displayVectorsEnabled", true);
+    private boolean displayVectorsAsUnitVectors = getBoolean("displayVectorsAsUnitVectors", false);
     private boolean displayVectorsAsColorDots = getBoolean("displayVectorsAsColorDots", false);
     private boolean displayZeroLengthVectorsEnabled = getBoolean("displayZeroLengthVectorsEnabled", true);
     private boolean displayRawInput = getBoolean("displayRawInput", true);
@@ -234,6 +235,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(dispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
         setPropertyTooltip(dispTT, "displayVectorsEnabled", "shows local motion vector evemts as arrows");
         setPropertyTooltip(dispTT, "displayVectorsAsColorDots", "shows local motion vector events as color dots, rather than arrows");
+        setPropertyTooltip(dispTT, "displayVectorsAsUnitVectors", "shows local motion vector events with unit vector length");
         setPropertyTooltip(dispTT, "displayZeroLengthVectorsEnabled", "shows local motion vector evemts even if they indicate zero motion (stationary features)");
         setPropertyTooltip(dispTT, "displayColorWheelLegend", "Plots a color wheel to show flow direction colors.");
         setPropertyTooltip(dispTT, "measureGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
@@ -675,7 +677,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             // start arrow from event
 //        DrawGL.drawVector(gl, e.getX() + .5f, e.getY() + .5f, e.getVelocity().x, e.getVelocity().y, motionVectorLineWidthPixels, ppsScale);
             // center arrow on location, rather that start from event location
-            float dx = e.getVelocity().x * ppsScale, dy = e.getVelocity().y * ppsScale;
+            float dx, dy;
+            dx = e.getVelocity().x * ppsScale;
+            dy = e.getVelocity().y * ppsScale;
+            if (displayVectorsAsUnitVectors) {
+                float s = 100*ppsScale / (float) Math.sqrt(dx * dx + dy * dy);
+                dx *= s;
+                dy *= s;
+            }
+
             float x0 = e.getX() - (dx / 2) + .5f, y0 = e.getY() - (dy / 2) + .5f;
             DrawGL.drawVector(gl, x0, y0, dx, dy, motionVectorLineWidthPixels, 1);
             gl.glPopMatrix();
@@ -805,7 +815,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
 
         gl.glLineWidth(2f);
-        gl.glColor3f(0, 0, 1);
+        gl.glColor3f(1, 1, 1);
 
         // Display statistics
         if (measureProcessingTime) {
@@ -820,16 +830,16 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
         if (measureAccuracy) {
             gl.glPushMatrix();
-            gl.glRasterPos2i(chip.getSizeX(), 10);
+            gl.glRasterPos2i(chip.getSizeX()/2, -10);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("%4.2f +/- %5.2f pixel/s", new Object[]{
+                    String.format("AEE: %4.2f +/- %5.2f pixel/s", new Object[]{
                 motionFlowStatistics.endpointErrorAbs.getMean(),
                 motionFlowStatistics.endpointErrorAbs.getStdDev()}));
             gl.glPopMatrix();
             gl.glPushMatrix();
-            gl.glRasterPos2i(chip.getSizeX(), 20);
+            gl.glRasterPos2i(chip.getSizeX()/2, -20);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("%4.2f +/- %5.2f °", new Object[]{
+                    String.format("AAE: %4.2f +/- %5.2f °", new Object[]{
                 motionFlowStatistics.angularError.getMean(),
                 motionFlowStatistics.angularError.getStdDev()}));
             gl.glPopMatrix();
@@ -1451,8 +1461,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             if (!displayMotionField) {
                 return;
             }
-            int dtDecay=timestamp - lastDecayTimestamp;
-            if ( decayTowardsZeroPeridiclly  && dtDecay > motionFieldTimeConstantMs * 1000  || dtDecay<0) {
+            int dtDecay = timestamp - lastDecayTimestamp;
+            if (decayTowardsZeroPeridiclly && dtDecay > motionFieldTimeConstantMs * 1000 || dtDecay < 0) {
                 decayAllTowardsZero(timestamp);
                 lastDecayTimestamp = timestamp;
             }
@@ -1997,6 +2007,21 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     public void setDecayTowardsZeroPeridiclly(boolean decayTowardsZeroPeridiclly) {
         motionField.setDecayTowardsZeroPeridiclly(decayTowardsZeroPeridiclly);
+    }
+
+    /**
+     * @return the displayVectorsAsUnitVectors
+     */
+    public boolean isDisplayVectorsAsUnitVectors() {
+        return displayVectorsAsUnitVectors;
+    }
+
+    /**
+     * @param displayVectorsAsUnitVectors the displayVectorsAsUnitVectors to set
+     */
+    public void setDisplayVectorsAsUnitVectors(boolean displayVectorsAsUnitVectors) {
+        this.displayVectorsAsUnitVectors = displayVectorsAsUnitVectors;
+        putBoolean("displayVectorsAsUnitVectors", displayVectorsAsUnitVectors);
     }
 
 }
