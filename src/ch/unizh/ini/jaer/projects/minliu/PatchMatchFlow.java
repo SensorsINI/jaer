@@ -671,7 +671,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //    private SADResult minHammingDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
     private SADResult minSADDistance(int x, int y, byte[][][] curSlice, byte[][][] prevSlice, int subSampleBy) {
         SADResult result = new SADResult();
-        float minSum = Integer.MAX_VALUE, minSum1 = Integer.MAX_VALUE, sum = 0;
+        float minSum = Float.MAX_VALUE, minSum1 = Float.MAX_VALUE, sum = 0;
 
         float FSDx = 0, FSDy = 0, DSDx = 0, DSDy = 0;  // This is for testing the DS search accuracy.
         final int searchRange = (2 * searchDistance) + 1; // The maximum search distance in this subSampleBy slice
@@ -766,7 +766,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         SDSPFlg = false;
                     }
                     if(--maxIterations<=0){
-//                        log.warning("something is wrong with diamond search; did not find min in SDSP search");
+                        log.warning("something is wrong with diamond search; did not find min in SDSP search");
                         SDSPFlg=true;
                     }
                 }
