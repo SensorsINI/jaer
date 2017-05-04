@@ -175,9 +175,9 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 			CypressFX3.FPGA_DVS, (short) 10, false, this));
 
 		// TODO: new boards only.
-		dvsControl.add(new SPIConfigBit("DVS.FilterBackgroundActivity", "Filter background events using hardware filter.",
+		dvsControl.add(new SPIConfigBit("DVS.FilterBackgroundActivity", "Filter background events using hardware filter. Only does something on cameras with large FPGA, such as the experimental large PCBs hosting Davis346 / Davis640 / CDAVIS development kits",
 			CypressFX3.FPGA_DVS, (short) 29, false, this));
-		dvsControl.add(new SPIConfigInt("DVS.FilterBackgroundActivityDeltaTime", "Hardware background events filter delta time (in µs).",
+		dvsControl.add(new SPIConfigInt("DVS.FilterBackgroundActivityDeltaTime", "Hardware background events filter delta time (in µs). Only does something on cameras with large FPGA, such as the experimental large PCBs hosting Davis346 / Davis640 / CDAVIS development kits",
 			CypressFX3.FPGA_DVS, (short) 30, 16, 20000, this));
 
 		for (final SPIConfigValue cfgVal : dvsControl) {
