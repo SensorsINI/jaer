@@ -1000,6 +1000,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     @Override
     public void setSpinnakerProtocolEnabled(boolean yes) {
         spinnakerProtocolEnabled = yes;
+        setSecDvsProtocolEnabled(false);
         prefs.putBoolean("AEUnicastInput.spinnakerProtocolEnabled", yes);
     }
 
@@ -1015,8 +1016,8 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
      */
     public void setSecDvsProtocolEnabled(boolean secDvsProtocolEnabled) {
         this.secDvsProtocolEnabled = secDvsProtocolEnabled;
+        setSpinnakerProtocolEnabled(false);
         prefs.putBoolean("AEUnicastInput.secDvsProtocolEnabled",secDvsProtocolEnabled);
-
     }
 
     private class Reader extends Thread {
