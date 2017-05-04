@@ -61,8 +61,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private static final int SDSP[][] = {{0, -1}, {-1, 0}, {0, 0}, {1, 0}, {0, 1}};
 
 //    private int[][][] histograms = null;
-    private int numSlices = 3; //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
-    private int numScales = getInt("numScales", 1); //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
+    volatile private int numSlices = 3; //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
+    volatile private int numScales = getInt("numScales", 1); //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
 //    private int sx, sy;
     private int currentSliceIdx = 0; // the slice we are currently filling with events
     /**
@@ -203,6 +203,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             timeLimiter.setEnabled(false);
         }
 
+        for (int[] h : resultHistogram) {
+            Arrays.fill(h, 0);
+        }
+        resultHistogramCount = 0;
         int minDistScale = 0;
         for (Object o : in) { // to support pure DVS like DVS128
             PolarityEvent ein = (PolarityEvent) o;
@@ -395,10 +399,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             }
 // clear histograms for each packet so that we accumulate OF distribution for this packet
         }
-        for (int[] h : resultHistogram) {
-            Arrays.fill(h, 0);
-        }
-        resultHistogramCount = 0;
+
     }
 
     private EngineeringFormat engFmt = new EngineeringFormat();
@@ -624,6 +625,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                break;
 //            case HammingDistance:
 //                currentSli.set((x + 1) + (y * subSizeX));  // All events wheather 0 or 1 will be set in the BitSet Slice
+                if (currentSlice.length != numScales) {
+                    checkArrays(); // TODO shouldn't need this since method is synchronized and so is filter packet...
+                }
                 for (int s = 0; s < numScales; s++) {
                     final int xx = e.x >> s;
                     final int yy = e.y >> s;
@@ -722,7 +726,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     SDSPFlg = true;
                 }
 
-                int maxIterations=blockDimension*blockDimension;
+                int maxIterations = blockDimension * blockDimension;
                 while (!SDSPFlg) {
                     /* 1. LDSP search */
                     for (int pointIdx = 0; pointIdx < LDSP.length; pointIdx++) {
@@ -765,9 +769,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     } else {
                         SDSPFlg = false;
                     }
-                    if(--maxIterations<=0){
+                    if (--maxIterations <= 0) {
                         log.warning("something is wrong with diamond search; did not find min in SDSP search");
-                        SDSPFlg=true;
+                        SDSPFlg = true;
                     }
                 }
 
@@ -912,7 +916,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         final int ysub = yfull >> subsampleBy;
         final int blockRadius = ((blockDimension) / 2);
         int validPixNumCurSlice = 0, validPixNumPrevSlice = 0; // The valid pixel number in the current block
-        int subx=subSizeX>>subsampleBy, suby=subSizeY>>subsampleBy;
+        int subx = subSizeX >> subsampleBy, suby = subSizeY >> subsampleBy;
 
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
         if ((xsub <= (blockRadius + dx)) || (xsub >= ((subx - blockRadius) + dx)) || (xsub <= blockRadius) || (xsub >= (subx - blockRadius))
@@ -925,13 +929,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                boolean currSlicePol = curSlice.get((xx + 1) + ((yy) * subSizeX)); // binary value on (xx, yy) for current slice
 //                boolean prevSlicePol = prevSlice.get(((xx + 1) - dx) + ((yy - dy) * subSizeX)); // binary value on (xx, yy) for previous slice
                 // debug
-                if(xx<0 || yy<0 || xx>=subSizeX>>subsampleBy || yy>=subSizeY>>subsampleBy
-                        || xx+dx<0 || yy+dy<0 || xx+dx>=subSizeX>>subsampleBy || yy+dy>=subSizeY>>subsampleBy){
+                if (xx < 0 || yy < 0 || xx >= subSizeX >> subsampleBy || yy >= subSizeY >> subsampleBy
+                        || xx + dx < 0 || yy + dy < 0 || xx + dx >= subSizeX >> subsampleBy || yy + dy >= subSizeY >> subsampleBy) {
 //                    log.warning("out of bounds slice access; something wrong"); // TODO fix this check above
                     continue;
                 }
                 int currSliceVal = curSlice[subsampleBy][xx][yy]; // binary value on (xx, yy) for current slice
-                int prevSliceVal = prevSlice[subsampleBy][xx-dx][yy-dy]; // binary value on (xx, yy) for previous slice
+                int prevSliceVal = prevSlice[subsampleBy][xx - dx][yy - dy]; // binary value on (xx, yy) for previous slice
                 int dist = (currSliceVal - prevSliceVal);
                 if (dist < 0) {
                     dist = (-dist);
@@ -965,7 +969,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             Here we use the difference between validPixNumCurrSli and validPixNumPrevSli to calculate the dispersion.
             Inspired by paper "Measuring the spatial dispersion of evolutionist search process: application to Walksat" by Alain Sidaner.
              */
-            final float finalDistance=((sumDist * weightDistance) + (Math.abs(validPixNumCurSlice - validPixNumPrevSlice) * (1 - weightDistance))) / blockArea;
+            final float finalDistance = ((sumDist * weightDistance) + (Math.abs(validPixNumCurSlice - validPixNumPrevSlice) * (1 - weightDistance))) / blockArea;
             return finalDistance;
         }
     }
@@ -1507,22 +1511,30 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        filteredOutFlowEvents++;
 //        return true;
 //    }
-    private void checkArrays() {
+    synchronized private void checkArrays() {
 
-        numSlices = getInt("numSlices", 3); // since resetFilter is called in super before numSlices is even initialized
-        if ((slices == null) || (slices.length != numSlices) || (slices[0].length != numScales) || (slices[0][0].length != subSizeX) || (slices[0][0][0].length != subSizeY)) {
-            if (subSizeX == 0 || subSizeY == 0) {
-                return; // don't do on init when chip is not known yet
-            }
+        if (subSizeX == 0 || subSizeY == 0) {
+            return; // don't do on init when chip is not known yet
+        }
+//        numSlices = getInt("numSlices", 3); // since resetFilter is called in super before numSlices is even initialized
+        if (slices == null || slices.length != numSlices
+                || slices[0] == null || slices[0].length != numScales
+                || slices[0][0] == null || slices[0][0].length != subSizeX
+                || slices[0][0][0] == null || slices[0][0][0].length != subSizeY) {
             slices = new byte[numSlices][numScales][][];
             for (int n = 0; n < numSlices; n++) {
                 for (int s = 0; s < numScales; s++) {
                     slices[n][s] = new byte[subSizeX >> s][subSizeY >> s];
                 }
             }
+            currentSliceIdx = 0;  // start by filling slice 0
+            currentSlice = slices[currentSliceIdx];
+
+            sliceLastTs = 0;
             sliceStartTimeUs = new int[numSlices];
             sliceSummedSADValues = new float[numSlices];
             sliceSummedSADCounts = new int[numSlices];
+//            log.info("allocated slice memory");
         }
         if (lastTimesMap != null) {
             lastTimesMap = null; // save memory
@@ -1883,7 +1895,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         this.numScales = numScales;
         putInt("numScales", numScales);
-        checkArrays(); // TODO should not be needed since filterPacket and this method are both synchronized
+//        log.info("set numScales");
     }
 
     /**
