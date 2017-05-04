@@ -103,6 +103,8 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private int jaer3PktSize = 0, jaer3PktNum = 0;
     private long jaer3EventsNum = 0;
     private Jaer3BufferParser j3Parser;
+    private int secGen2TimestampMSB = 0;
+    private int secGen2TimestampLSB = 0;
 
     /**
      * Constructs an instance of AEUnicastInput and binds it to the default
@@ -433,7 +435,97 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                 timestamps[startingIndex + i] = eventRaw.timestamp;
             }
             packet.setNumEvents(newPacketLength);
-        } else {
+        }
+        else if( isSecDvsProtocolEnabled() )
+        {
+            int nEventsInPacket = (buffer.limit() ) / 4;    // 28 is the byte numbers of cAER Header
+            final int startingIndex = packet.getNumEvents();
+            int newPacketLength = startingIndex + nEventsInPacket;
+            packet.ensureCapacity(newPacketLength*8);
+            int[] addresses = packet.getAddresses();
+            int[] timestamps = packet.getTimestamps();
+            
+            int eventcounter=0;
+            int column=-1;
+            //for (int i = 0; i < nEventsInPacket; i++) 
+            while(buffer.hasRemaining())
+            {
+                //get 4 byte word
+                byte byte0 = buffer.get();
+                byte byte1 = buffer.get();
+                byte byte2 = buffer.get();
+                byte byte3 = buffer.get();
+                
+                if(byte0==102)
+                {
+                    //int timestamp = 0;
+                }
+                else
+                {
+                    //interpretPstartGen2
+                    if((byte0&0xff)==153)//start address packet
+                    {
+              		column = (byte3&0xff) + ((byte2 & 0x3) << 8);
+        		//		timestamp = ((w3 & 252) >> 2) + (w2 << 6);
+                	int timestamp = ((byte1 & 0xf) << 6) + ((byte2&0xff) >> 2);
+                        if(timestamp < secGen2TimestampLSB)
+                        {
+                            secGen2TimestampMSB = secGen2TimestampMSB+1;
+                        }
+                        secGen2TimestampLSB = timestamp;
+                    }
+                    else if(column>-1)
+                    {
+                        if((byte0&0xff)==204)
+                        {
+                            int base_row = ( (byte1&0xff) & 0x3f) * 8 + 1;// bitand(word(mapp(2)), 63) * 8 + 1;
+                            for (int ii = 0; ii < 8; ii++)
+                            {
+                                if (((byte3&0xff)&(1 << ii)) > 0)
+                                {
+                                    int row = base_row + ii;
+                                    row = 480-row;
+                                    int polarity = 1;
+                                    int address = row<<11;
+                                    address = address + (column<<1);
+                                    address = address + polarity;
+                                    
+                                    if(row>=0 && row<480 && column>=0 && column<640)
+                                    {
+                                        addresses[startingIndex + eventcounter] = address;
+                                        timestamps[startingIndex + eventcounter] = secGen2TimestampMSB*1000 + secGen2TimestampLSB;
+                                        eventcounter=eventcounter+1;
+                                    }
+
+                                }
+                                if (((byte2&0xff)&(1 << ii)) > 0)
+                                {
+                                    int row = base_row + ii;
+                                    row = 480-row;
+                                    int polarity = 0;
+                                    int address = row<<11;
+                                    address = address + (column<<1);
+                                    address = address + polarity;
+                                    
+                                    if(row>=0 && row<480 && column>=0 && column<640)
+                                    {
+                                        addresses[startingIndex + eventcounter] = address;
+                                        timestamps[startingIndex + eventcounter] = secGen2TimestampMSB*1000 + secGen2TimestampLSB;                                        
+                                        eventcounter=eventcounter+1;
+                                    }
+                                }
+
+                            }
+                            
+                        }
+                    }
+                }
+                
+            }
+            packet.setNumEvents(newPacketLength);
+            
+        }
+        else {
             // extract the ae data and add events to the packet we are presently filling
             int seqNumLength = sequenceNumberEnabled ? Integer.SIZE / 8 : 0;
             int eventSize = eventSize();
