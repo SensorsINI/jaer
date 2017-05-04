@@ -482,6 +482,7 @@ private void applyButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-
 
     private void secDvsDefaultsButAction(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_secDvsDefaultsButAction
         unicastInterface.setSecDvsProtocolEnabled(secDvsButton.isSelected());
+        portTextField.setText(Integer.toString(AEUnicastSettings.SEC_DVS_STREAMER_PORT));
     }//GEN-LAST:event_secDvsDefaultsButAction
 
     private void doClose (int retStatus){
