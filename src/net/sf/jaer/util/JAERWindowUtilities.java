@@ -20,6 +20,7 @@ import java.awt.Insets;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
+import java.util.HashMap;
 import java.util.logging.Logger;
 
 import javax.swing.JFrame;
@@ -35,9 +36,9 @@ public class JAERWindowUtilities {
     final static int WINDOWS_TASK_BAR_HEIGHT = 100; // accounts for task bar at bottom, don't want window to underlap it
     private static int lowerInset = WINDOWS_TASK_BAR_HEIGHT; // filled in from windows screen inset
     private static Logger log = Logger.getLogger("JAERWindowUtilities");
-    private static int resizeCounter=0;
-    final static int STOP_TRYING_THRESHOLD=30;  // after this many calls on same window, give up, some feedback loop with underlying window manager such as Windows tablet mode
-    private static JFrame lastFrame=null;
+//    private static int resizeCounter=0;
+    final static int STOP_TRYING_THRESHOLD = 30;  // after this many calls on same window, give up, some feedback loop with underlying window manager such as Windows tablet mode
+    private final static HashMap<JFrame, Integer> resizingCountMap = new HashMap<JFrame, Integer>();
 
     /**
      * Creates a new instance of JAERWindowUtilities
@@ -54,15 +55,16 @@ public class JAERWindowUtilities {
      */
     public static void constrainFrameSizeToScreenSize(final JFrame frame) {
         boolean resize = false; // set true if window is too big for screen
-        
-        if(lastFrame!=null && lastFrame==frame){
-            resizeCounter++;
-            if(resizeCounter>=STOP_TRYING_THRESHOLD){
-                log.info("won't try to constrain window size anymore; could be some loop with underlying window manager. Try disabling tablet mode.");
-                return;
-            }
+
+        if (resizingCountMap.get(frame) == null) {
+            resizingCountMap.put(frame, new Integer(0));
         }
-        lastFrame=frame;
+        int count = resizingCountMap.get(frame);
+        if (++count >= STOP_TRYING_THRESHOLD) {
+            log.info("won't try to constrain window size anymore; could be some loop with underlying window manager. Try disabling tablet mode.");
+            return;
+        }
+        resizingCountMap.put(frame, count);
 
         try {
             Point loc = frame.getLocationOnScreen();
@@ -99,9 +101,9 @@ public class JAERWindowUtilities {
 //            log.info("window extends over edge of screen, moving back to origin");
 //            x=y=0;
 //        }
-            if (h+y > sd.height - lowerInset) {
+            if (h + y > sd.height - lowerInset) {
                 log.info("window height (" + h + ") is bigger than screen height minus WINDOWS_TASK_BAR_HEIGHT (" + (sd.height - WINDOWS_TASK_BAR_HEIGHT) + "), resizing height");
-                h = sd.height - lowerInset-y;
+                h = sd.height - lowerInset - y;
                 resize = true;
             }
             if (w > sd.width) {
