@@ -376,7 +376,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         modeMenu.add(jSeparator1);
 
         measurePerformanceCheckBoxMenuItem.setMnemonic('p');
-        measurePerformanceCheckBoxMenuItem.setText("Measure filter performance");
+        measurePerformanceCheckBoxMenuItem.setText("Measure filter processing time");
         measurePerformanceCheckBoxMenuItem.setToolTipText("Enables instrumentation of filter performance. Filter processing time statistics are printed to System.out. They appear in netbeans IDE console, for example, but not in built-in jAER console, which does not show System.out.");
         measurePerformanceCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

@@ -101,7 +101,7 @@
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="measurePerformanceCheckBoxMenuItem">
               <Properties>
                 <Property name="mnemonic" type="int" value="112"/>
-                <Property name="text" type="java.lang.String" value="Measure filter performance"/>
+                <Property name="text" type="java.lang.String" value="Measure filter processing time"/>
                 <Property name="toolTipText" type="java.lang.String" value="Enables instrumentation of filter performance. Filter processing time statistics are printed to System.out. They appear in netbeans IDE console, for example, but not in built-in jAER console, which does not show System.out."/>
               </Properties>
               <Events>
