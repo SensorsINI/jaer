@@ -681,7 +681,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             dx = e.getVelocity().x * ppsScale;
             dy = e.getVelocity().y * ppsScale;
             if (displayVectorsAsUnitVectors) {
-                float s = 100*ppsScale / (float) Math.sqrt(dx * dx + dy * dy);
+                float s = 100 * ppsScale / (float) Math.sqrt(dx * dx + dy * dy);
                 dx *= s;
                 dy *= s;
             }
@@ -830,14 +830,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
         if (measureAccuracy) {
             gl.glPushMatrix();
-            gl.glRasterPos2i(chip.getSizeX()/2, -10);
+            gl.glRasterPos2i(chip.getSizeX() / 2, -10);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("AEE: %4.2f +/- %5.2f pixel/s", new Object[]{
                 motionFlowStatistics.endpointErrorAbs.getMean(),
                 motionFlowStatistics.endpointErrorAbs.getStdDev()}));
             gl.glPopMatrix();
             gl.glPushMatrix();
-            gl.glRasterPos2i(chip.getSizeX()/2, -20);
+            gl.glRasterPos2i(chip.getSizeX() / 2, -20);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("AAE: %4.2f +/- %5.2f °", new Object[]{
                 motionFlowStatistics.angularError.getMean(),
@@ -1390,8 +1390,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 return;
             }
 
-            int newsx = (chip.getSizeX() >> motionFieldSubsamplingShift) + 1;
-            int newsy = (chip.getSizeY() >> motionFieldSubsamplingShift) + 1;
+            int newsx = (chip.getSizeX() >> motionFieldSubsamplingShift);
+            int newsy = (chip.getSizeY() >> motionFieldSubsamplingShift);
 
             if (newsx == 0 || newsy == 0) {
                 return; // not yet
@@ -1567,7 +1567,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             for (int ix = 0; ix < sx; ix++) {
                 float x = (ix << motionFieldSubsamplingShift) + shift;
                 for (int iy = 0; iy < sy; iy++) {
+                    final float y = (iy << motionFieldSubsamplingShift) + shift;
                     final int dt = ts - lastTs[ix][iy]; // use last timestamp of any event that is processed by extractEventInfo
+                    gl.glColor4f(0, 0, 1, 1f);
+                    final float dotRadius = .75f;
+                    gl.glRectf(x - dotRadius, y - dotRadius, x + dotRadius, y + dotRadius);
                     if (dt > maxAgeUs || dt < 0) {
                         continue;
                     }
@@ -1575,7 +1579,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     if (speed < minSpeedPpsToDrawMotionField) {
                         continue;
                     }
-                    final float y = (iy << motionFieldSubsamplingShift) + shift;
                     final Point3D p = velocities[ix][iy].getValue3D();
                     final float vx = p.x, vy = p.y;
                     float brightness = p.z * saturationSpeedScaleInversePixels;
