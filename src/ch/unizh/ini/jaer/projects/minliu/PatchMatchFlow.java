@@ -673,7 +673,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //    private SADResult minHammingDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
     private SADResult minSADDistance(int x, int y, byte[][][] curSlice, byte[][][] prevSlice, int subSampleBy) {
         SADResult result = new SADResult();
-        float minSum = Float.MAX_VALUE, minSum1 = Float.MAX_VALUE, sum = 0;
+        float minSum = Float.MAX_VALUE, sum = 0;
 
         float FSDx = 0, FSDy = 0, DSDx = 0, DSDy = 0;  // This is for testing the DS search accuracy.
         final int searchRange = (2 * searchDistance) + 1; // The maximum search distance in this subSampleBy slice
@@ -818,11 +818,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     for (dy = -searchDistance; dy <= searchDistance; dy++) {
                         sum = sadDistance(x, y, dx, dy, curSlice,prevSlice,  subSampleBy);
                         sumArray[dx + searchDistance][dy + searchDistance] = sum;
-                        if (sum <= minSum1) {
-                            minSum1 = sum;
+                        if (sum <= minSum) {
+                            minSum = sum;
                             result.dx = -dx; // minus is because result points to the past slice and motion is in the other direction
                             result.dy = -dy;
-                            result.sadValue = minSum1;
+                            result.sadValue = minSum;
                         }
                     }
                 }
@@ -915,9 +915,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         for (int xx = xsub - blockRadius; xx <= (xsub + blockRadius); xx++) {
             for (int yy = ysub - blockRadius; yy <= (ysub + blockRadius); yy++) {
-//                boolean currSlicePol = curSlice.get((xx + 1) + ((yy) * subSizeX)); // binary value on (xx, yy) for current slice
-//                boolean prevSlicePol = prevSlice.get(((xx + 1) - dx) + ((yy - dy) * subSizeX)); // binary value on (xx, yy) for previous slice
-                // debug
                 if (xx < 0 || yy < 0 || xx >= subx || yy >= suby
                         || xx + dx < 0 || yy + dy < 0 || xx + dx >= subx || yy + dy >= suby) {
 //                    log.warning("out of bounds slice access; something wrong"); // TODO fix this check above
