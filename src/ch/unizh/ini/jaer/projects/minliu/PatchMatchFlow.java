@@ -242,7 +242,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     }
                     SADResult sliceResult = null;
                     minDistScale = 0;
-                    for (int scale = 1 ; scale < (numScales); scale++) {
+                    for (int scale = 0 ; scale < (numScales); scale++) {
                         sliceResult = minSADDistance(ein.x, ein.y, slices[sliceIndex(1)], slices[sliceIndex(scale + 1 + 1)], scale); // from ref slice to past slice k+1, using scale 0,1,....
 //                        sliceSummedSADValues[sliceIndex(scale + 2)] += sliceResult.sadValue; // accumulate SAD for this past slice
 //                        sliceSummedSADCounts[sliceIndex(scale + 2)]++; // accumulate SAD count for this past slice
