@@ -26,60 +26,51 @@
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" attributes="0">
-              <EmptySpace max="-2" attributes="0"/>
+              <EmptySpace max="32767" attributes="0"/>
               <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" alignment="1" attributes="0">
-                      <Group type="103" groupAlignment="1" attributes="0">
-                          <Group type="102" alignment="1" attributes="0">
-                              <Group type="103" groupAlignment="0" attributes="0">
-                                  <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
-                                  <Component id="hostnameTextField" max="32767" attributes="1"/>
-                              </Group>
-                              <EmptySpace max="-2" attributes="0"/>
-                              <Group type="103" groupAlignment="0" attributes="0">
-                                  <Component id="jLabel5" alignment="0" min="-2" max="-2" attributes="0"/>
-                                  <Component id="portTextField" min="-2" pref="105" max="-2" attributes="1"/>
-                              </Group>
-                          </Group>
-                          <Component id="swapBytesCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
+                  <Component id="swapBytesCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
+                  <Component id="spinnakerProtocolEnabledCB" min="-2" max="-2" attributes="0"/>
+                  <Component id="useLocalTimestampsEnabledCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
+                  <Component id="use4ByteAddrTsCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
+                  <Component id="addressFirstEnabledCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
+                  <Component id="sequenceNumberEnabledCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
+                  <Component id="includeTimestampsCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
+                  <Group type="102" alignment="0" attributes="0">
+                      <Group type="103" groupAlignment="1" max="-2" attributes="0">
+                          <Component id="jLabel3" alignment="1" min="-2" max="-2" attributes="0"/>
+                          <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Component id="bufferSizeTextBox" alignment="0" min="-2" pref="90" max="-2" attributes="0"/>
+                          <Component id="timestampMultiplierTextBox" alignment="0" min="-2" pref="90" max="-2" attributes="0"/>
+                      </Group>
+                  </Group>
+                  <Component id="cAERDisplayEnabledCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
+                  <Group type="102" alignment="0" attributes="0">
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Component id="hostnameTextField" alignment="0" min="-2" pref="416" max="-2" attributes="1"/>
+                          <Component id="jLabel1" alignment="0" min="-2" max="-2" attributes="0"/>
                           <Group type="102" alignment="0" attributes="0">
                               <Component id="jAERDefaultsButton" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
                               <Component id="tdsDefaultsButton" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace min="-2" pref="48" max="-2" attributes="0"/>
-                              <Component id="okButton" min="-2" pref="67" max="-2" attributes="0"/>
-                              <EmptySpace max="-2" attributes="0"/>
-                              <Component id="secDvsButton" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace min="-2" pref="143" max="-2" attributes="0"/>
-                              <Component id="applyButton" min="-2" max="-2" attributes="0"/>
                               <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                              <Component id="secDvsButton" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                      </Group>
+                      <EmptySpace type="separate" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" attributes="0">
+                              <Component id="okButton" min="-2" pref="67" max="-2" attributes="0"/>
+                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                              <Component id="applyButton" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
                               <Component id="cancelButton" min="-2" max="-2" attributes="0"/>
                           </Group>
+                          <Component id="jLabel5" min="-2" max="-2" attributes="0"/>
+                          <Component id="portTextField" min="-2" pref="105" max="-2" attributes="1"/>
                       </Group>
-                      <EmptySpace min="-2" pref="171" max="-2" attributes="0"/>
-                  </Group>
-                  <Group type="102" attributes="0">
-                      <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="spinnakerProtocolEnabledCB" min="-2" max="-2" attributes="0"/>
-                          <Component id="useLocalTimestampsEnabledCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
-                          <Component id="use4ByteAddrTsCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
-                          <Component id="addressFirstEnabledCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
-                          <Component id="sequenceNumberEnabledCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
-                          <Component id="includeTimestampsCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
-                          <Group type="102" alignment="0" attributes="0">
-                              <Group type="103" groupAlignment="1" max="-2" attributes="0">
-                                  <Component id="jLabel3" alignment="1" min="-2" max="-2" attributes="0"/>
-                                  <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
-                              </Group>
-                              <EmptySpace max="-2" attributes="0"/>
-                              <Group type="103" groupAlignment="0" attributes="0">
-                                  <Component id="bufferSizeTextBox" alignment="0" min="-2" pref="90" max="-2" attributes="0"/>
-                                  <Component id="timestampMultiplierTextBox" alignment="0" min="-2" pref="90" max="-2" attributes="0"/>
-                              </Group>
-                          </Group>
-                          <Component id="cAERDisplayEnabledCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
-                      </Group>
-                      <EmptySpace max="32767" attributes="0"/>
                   </Group>
               </Group>
           </Group>
@@ -89,16 +80,14 @@
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="0" attributes="0">
               <EmptySpace max="-2" attributes="0"/>
-              <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" attributes="0">
-                      <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="3" attributes="0">
-                          <Component id="hostnameTextField" alignment="3" min="-2" max="-2" attributes="0"/>
-                          <Component id="portTextField" alignment="3" min="-2" max="-2" attributes="0"/>
-                      </Group>
-                  </Group>
-                  <Component id="jLabel5" alignment="0" min="-2" max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="jLabel1" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="jLabel5" alignment="3" min="-2" max="-2" attributes="0"/>
+              </Group>
+              <EmptySpace max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="hostnameTextField" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="portTextField" alignment="3" min="-2" max="-2" attributes="0"/>
               </Group>
               <EmptySpace type="unrelated" max="-2" attributes="0"/>
               <Component id="sequenceNumberEnabledCheckBox" min="-2" max="-2" attributes="0"/>
@@ -321,7 +310,7 @@
       <Properties>
         <Property name="mnemonic" type="int" value="100"/>
         <Property name="text" type="java.lang.String" value="SEC DVS defaults "/>
-        <Property name="toolTipText" type="java.lang.String" value="Load default values for ARC smart eye TDS sensor into dialog"/>
+        <Property name="toolTipText" type="java.lang.String" value="Load defaults for recieving data from SEC DVS via Gen2 streamer via UDP"/>
         <Property name="actionCommand" type="java.lang.String" value="set options for SEC DVS UDP input"/>
         <Property name="defaultCapable" type="boolean" value="false"/>
       </Properties>
