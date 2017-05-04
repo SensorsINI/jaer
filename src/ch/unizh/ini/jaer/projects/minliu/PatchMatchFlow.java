@@ -242,12 +242,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     }
                     SADResult sliceResult = null;
                     minDistScale = 0;
-                    for (int scale = 0; scale < (numScales); scale++) {
+                    for (int scale = 1 ; scale < (numScales); scale++) {
                         sliceResult = minSADDistance(ein.x, ein.y, slices[sliceIndex(1)], slices[sliceIndex(scale + 1 + 1)], scale); // from ref slice to past slice k+1, using scale 0,1,....
-                        if (Math.abs(sliceResult.dx) == 1 && Math.abs(sliceResult.dy) == 1) {
-                            sliceSummedSADValues[sliceIndex(scale + 2)] += sliceResult.sadValue; // accumulate SAD for this past slice
-                            sliceSummedSADCounts[sliceIndex(scale + 2)]++; // accumulate SAD for this past slice
-                        }
+//                        sliceSummedSADValues[sliceIndex(scale + 2)] += sliceResult.sadValue; // accumulate SAD for this past slice
+//                        sliceSummedSADCounts[sliceIndex(scale + 2)]++; // accumulate SAD count for this past slice
                         // sliceSummedSADValues should end up filling 2 values for 4 slices 
                         if ((result == null) || (sliceResult.sadValue < result.sadValue)) {
                             result = sliceResult; // result holds the overall min sad result
@@ -683,7 +681,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             sumArray = new float[searchRange][searchRange];
         } else {
             for (float[] row : sumArray) {
-                Arrays.fill(row, Integer.MAX_VALUE);
+                Arrays.fill(row, Float.MAX_VALUE);
             }
         }
 
@@ -743,7 +741,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                         /* We just calculate the blocks that haven't been calculated before */
                         if (computedFlg[xidx][yidx] == false) {
-                            sumArray[xidx][yidx] = sadDistance(x, y, dx, dy, prevSlice, curSlice, subSampleBy);
+                            sumArray[xidx][yidx] = sadDistance(x, y, dx, dy,curSlice,prevSlice, subSampleBy);
                             computedFlg[xidx][yidx] = true;
                             if (outputSearchErrorInfo) {
                                 DSAverageNum++;
@@ -790,7 +788,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                     /* We just calculate the blocks that haven't been calculated before */
                     if (computedFlg[xidx][yidx] == false) {
-                        sumArray[xidx][yidx] = sadDistance(x, y, dx, dy, prevSlice, curSlice, getSubSampleShift());
+                        sumArray[xidx][yidx] = sadDistance(x, y, dx, dy, curSlice,prevSlice, subSampleBy);
                         computedFlg[xidx][yidx] = true;
                         if (outputSearchErrorInfo) {
                             DSAverageNum++;
@@ -804,8 +802,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                     if (sumArray[xidx][yidx] <= minSum) {
                         minSum = sumArray[xidx][yidx];
-                        result.dx = dx;
-                        result.dy = dy;
+                        result.dx = -dx;  // minus is because result points to the past slice and motion is in the other direction
+                        result.dy = -dy;
                         result.sadValue = minSum;
                     }
                 }
@@ -818,27 +816,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             case FullSearch:
                 for (dx = -searchDistance; dx <= searchDistance; dx++) {
                     for (dy = -searchDistance; dy <= searchDistance; dy++) {
-                        sum = sadDistance(x, y, dx, dy, prevSlice, curSlice, subSampleBy);
-//                        System.out.println(String.format("dx=%d dy=%d sum=%f",dx,dy,sum));
+                        sum = sadDistance(x, y, dx, dy, curSlice,prevSlice,  subSampleBy);
                         sumArray[dx + searchDistance][dy + searchDistance] = sum;
                         if (sum <= minSum1) {
-//                            if (sum == minSum1 && minSum1 != Integer.MAX_VALUE) {
-//                                tmpSadResult.minSearchedFlg = true;
-//                            } else {
-//                                tmpSadResult.minSearchedFlg = false;
-//                            }
                             minSum1 = sum;
-                            result.dx = dx;
-                            result.dy = dy;
+                            result.dx = -dx; // minus is because result points to the past slice and motion is in the other direction
+                            result.dy = -dy;
                             result.sadValue = minSum1;
                         }
                     }
                 }
-//                System.out.println("");
-//                System.out.println("result="+result);
-//                if (tmpSadResult.minSearchedFlg) {
-//                    tmpSadResult.sadValue = Integer.MAX_VALUE;     // This minimum is not a unique minimum, we should reject this event.
-//                }
                 if (outputSearchErrorInfo) {
                     FSCnt += 1;
                     FSDx = result.dx;
@@ -858,8 +845,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         // shows results over all scales.
 
         // convert dx in search steps to dx in pixels including subsampling
-        // this is size of hist array
-//        final int maxIdx = (searchDistance << (numScales - 1)) * 2 + 1; //  i.e. for searchRange=1, numScales=2, maxIdx=5
         // compute index assuming no subsampling or centering
         result.xidx = result.dx + searchDistance;
         result.yidx = result.dy + searchDistance;
@@ -901,7 +886,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      *
      * @param xfull coordinate x in full resolution
      * @param yfull coordinate y in full resolution
-     * @param dx the offset in pixels in the subsampled space
+     * @param dx the offset in pixels in the subsampled space of the past slice. The motion vector is then *from* this position *to* the current slice.
      * @param dy
      * @param prevSlice
      * @param curSlice
@@ -910,7 +895,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * same
      */
 //    private float hammingDistance(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
-    private float sadDistance(final int xfull, final int yfull, final int dx, final int dy, final byte[][][] prevSlice, final byte[][][] curSlice, final int subsampleBy) {
+    private float sadDistance(final int xfull, final int yfull,
+            final int dx, final int dy,
+            final byte[][][] curSlice,
+            final byte[][][] prevSlice,
+            final int subsampleBy) {
         int sumDist = 0;
         final int xsub = xfull >> subsampleBy;
         final int ysub = yfull >> subsampleBy;
@@ -929,13 +918,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                boolean currSlicePol = curSlice.get((xx + 1) + ((yy) * subSizeX)); // binary value on (xx, yy) for current slice
 //                boolean prevSlicePol = prevSlice.get(((xx + 1) - dx) + ((yy - dy) * subSizeX)); // binary value on (xx, yy) for previous slice
                 // debug
-                if (xx < 0 || yy < 0 || xx >= subSizeX >> subsampleBy || yy >= subSizeY >> subsampleBy
-                        || xx + dx < 0 || yy + dy < 0 || xx + dx >= subSizeX >> subsampleBy || yy + dy >= subSizeY >> subsampleBy) {
+                if (xx < 0 || yy < 0 || xx >= subx || yy >= suby
+                        || xx + dx < 0 || yy + dy < 0 || xx + dx >= subx || yy + dy >= suby) {
 //                    log.warning("out of bounds slice access; something wrong"); // TODO fix this check above
                     continue;
                 }
                 int currSliceVal = curSlice[subsampleBy][xx][yy]; // binary value on (xx, yy) for current slice
-                int prevSliceVal = prevSlice[subsampleBy][xx - dx][yy - dy]; // binary value on (xx, yy) for previous slice
+                int prevSliceVal = prevSlice[subsampleBy][xx + dx][yy + dy]; // binary value on (xx, yy) for previous slice at offset dx,dy in (possibly subsampled) slice
                 int dist = (currSliceVal - prevSliceVal);
                 if (dist < 0) {
                     dist = (-dist);
@@ -953,6 +942,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 }
             }
         }
+        // debug
+//        if(dx==-1 && dy==-1) return 0; else return Float.MAX_VALUE;
+        
         final int blockDim = (2 * blockRadius) + 1;
 
         int blockArea = (blockDim) * (blockDim); // TODO check math here for fraction correct with subsampling
@@ -1238,7 +1230,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //    }
     private class SADResult {
 
-        int dx, dy; // best match offset in pixels from reference block
+        int dx, dy; // best match offset in pixels to reference block from past slice block, i.e. motion vector points in this direction
         float vx, vy; // optical flow in pixels/second corresponding to this match
         float sadValue; // sum of absolute difference for this best match
         int xidx, yidx; // x and y indices into 2d matrix of result. 0,0 corresponds to motion SW. dx, dy may be negative, like (-1, -1) represents SW.
