@@ -107,7 +107,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //    private final String outputFilename;
     private int sliceDeltaT;    //  The time difference between two slices used for velocity caluction. For constantDuration, this one is equal to the duration. For constantEventNumber, this value will change.
     private int MIN_SLICE_DURATION = 1000;
-    private int MAX_SLICE_DURATION = 100000;
+    private int MAX_SLICE_DURATION = 200000;
 
     public enum PatchCompareMethod {
         /*JaccardDistance,*/ /*HammingDistance*/
