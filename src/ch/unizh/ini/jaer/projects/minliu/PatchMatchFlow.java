@@ -616,29 +616,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * skipped for efficiency
      */
     synchronized private boolean accumulateEvent(PolarityEvent e) {
-        switch (patchCompareMethod) {
-            case SAD:
-//            case JaccardDistance:
-//                currentSlice[x][y] += e.getPolaritySignum();
-//                break;
-//            case HammingDistance:
-//                currentSli.set((x + 1) + (y * subSizeX));  // All events wheather 0 or 1 will be set in the BitSet Slice
-                if (currentSlice.length != numScales) {
-                    checkArrays(); // TODO shouldn't need this since method is synchronized and so is filter packet...
-                }
-                for (int s = 0; s < numScales; s++) {
-                    final int xx = e.x >> s;
-                    final int yy = e.y >> s;
-                    int cv = currentSlice[s][xx][yy];
-                    cv += rectifyPolarties ? 1 : (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
-                    if (cv > sliceMaxValue) {
-                        cv = sliceMaxValue;
-                    } else if (cv < -sliceMaxValue) {
-                        cv = -sliceMaxValue;
-                    }
-                    currentSlice[s][xx][yy] = (byte) cv;
-                }
-                break;
+        for (int s = 0; s < numScales; s++) {
+            final int xx = e.x >> s;
+            final int yy = e.y >> s;
+            int cv = currentSlice[s][xx][yy];
+            cv += rectifyPolarties ? 1 : (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
+            if (cv > sliceMaxValue) {
+                cv = sliceMaxValue;
+            } else if (cv < -sliceMaxValue) {
+                cv = -sliceMaxValue;
+            }
+            currentSlice[s][xx][yy] = (byte) cv;
         }
         if (timeLimiter.isTimedOut()) {
             return false;
