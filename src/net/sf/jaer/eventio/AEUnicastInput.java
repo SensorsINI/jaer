@@ -522,7 +522,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                 }
                 
             }
-            packet.setNumEvents(newPacketLength);
+            packet.setNumEvents(startingIndex + eventcounter);
             
         }
         else {
