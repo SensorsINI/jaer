@@ -61,7 +61,7 @@ public interface AEUnicastSettings {
     /**
      * default port for streaming AE Events from SEC DVS Gen2 sensor
      */
-    public static final int SEC_DVS_STREAMER_PORT = 12345; // TODO set correctly
+    public static final int SEC_DVS_STREAMER_PORT = 8991; // TODO set correctly
 
     /**
      * timestamp multiplier for ARC TDS smart eye sensor streaming data
