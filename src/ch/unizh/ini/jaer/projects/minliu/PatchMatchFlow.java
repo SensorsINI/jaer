@@ -39,6 +39,7 @@ import net.sf.jaer.eventprocessing.TimeLimiter;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
+import net.sf.jaer.graphics.ImageDisplay.Legend;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.filter.LowpassFilter;
@@ -89,7 +90,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private boolean adaptiveSliceDuration = getBoolean("adaptiveSliceDuration", false);
     private boolean useSubsampling = getBoolean("useSubsampling", false);
     private int adaptiveSliceDurationMinVectorsToControl = getInt("adaptiveSliceDurationMinVectorsToControl", 10);
-    private boolean showSliceBitMap = getBoolean("showSliceBitMap", false); // Display the bitmaps
+    private boolean showSliceBitMap = false; // Display the bitmaps
     private float adapativeSliceDurationProportionalErrorGain = 0.01f; // factor by which an error signal on match distance changes slice duration
     private int processingTimeLimitMs = getInt("processingTimeLimitMs", 100); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
     private int sliceMaxValue = getInt("sliceMaxValue", 1);
@@ -133,8 +134,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int eventCounter = 0;
     private int sliceLastTs = 0;
 
-    ImageDisplay display; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
-    private JFrame Frame = null;
+    private ImageDisplay sliceBitmapImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+    private JFrame sliceBitMapFrame = null;
+    private Legend sliceBitmapLegend;
 
     public PatchMatchFlow(AEChip chip) {
         super(chip);
@@ -240,9 +242,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     if (!accumulateEvent(ein)) { // maybe skip events here
                         break;
                     }
-                    SADResult sliceResult = null;
+                    SADResult sliceResult;
                     minDistScale = 0;
-                    for (int scale = 0; scale < (numScales); scale++) {
+                    for (int scale = 1; scale < (numScales); scale++) {
                         sliceResult = minSADDistance(ein.x, ein.y, slices[sliceIndex(1)], slices[sliceIndex(2)], scale); // from ref slice to past slice k+1, using scale 0,1,....
 //                        sliceSummedSADValues[sliceIndex(scale + 2)] += sliceResult.sadValue; // accumulate SAD for this past slice
 //                        sliceSummedSADCounts[sliceIndex(scale + 2)]++; // accumulate SAD count for this past slice
@@ -253,12 +255,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         }
                         if (result != null && showSliceBitMap) {
                             // TODO danger, drawing outside AWT thread
-                            drawMatching(ein.x, ein.y, (int) result.dx, (int) result.dy, slices[sliceIndex(1)][scale], slices[sliceIndex(2)][scale]);
+                            drawMatching(ein.x >> scale, ein.y >> scale, (int) result.dx >> scale, (int) result.dy >> scale, slices[sliceIndex(1)][scale], slices[sliceIndex(2)][scale], scale);
                         }
                     }
                     float dt = (sliceDeltaTimeUs(2) * 1e-6f);
-                    result.vx = result.dx / dt; // hack, convert to pix/second
-                    result.vy = result.dy / dt; // TODO clean up, make time for each slice, since could be different when const num events
+                    if (result != null) {
+                        result.vx = result.dx / dt; // hack, convert to pix/second
+                        result.vy = result.dy / dt; // TODO clean up, make time for each slice, since could be different when const num events
+                    }
 
                     break;
 //                case JaccardDistance:
@@ -298,7 +302,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         if (rewindFlg) {
             rewindFlg = false;
-            sliceLastTs = 0;
+            sliceLastTs = Integer.MAX_VALUE;
 
         }
         motionFlowStatistics.updatePacket(countIn, countOut);
@@ -318,11 +322,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //            int maxRadius = (int) Math.ceil(Math.sqrt(2 * searchDistance * searchDistance));
 //            int countSum = 0;
             final int totSD = searchDistance << (numScales - 1);
-            for (int x = -totSD; x <= totSD; x++) {
-                for (int y = -totSD; y <= totSD; y++) {
-                    int count = resultHistogram[x + totSD][y + totSD];
+            for (int xx = -totSD; xx <= totSD; xx++) {
+                for (int yy = -totSD; yy <= totSD; yy++) {
+                    int count = resultHistogram[xx + totSD][yy + totSD];
                     if (count > 0) {
-                        final float radius = (float) Math.sqrt((x * x) + (y * y));
+                        final float radius = (float) Math.sqrt((xx * xx) + (yy * yy));
                         countSum += count;
                         radiusSum += radius * count;
                     }
@@ -410,46 +414,52 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             GL2 gl = drawable.getGL().getGL2();
             // draw histogram as shaded in 2d hist above color wheel
             // normalize hist
-            int max = 0;
-            for (int[] h : resultHistogram) {
-                for (int v : h) {
-                    if (v > max) {
-                        max = v;
-                    }
-                }
-            }
-            if (max == 0) {
-                return;
-            }
-            final float maxRecip = 1f / max;
-            int dim = resultHistogram.length; // 2*(searchDistance<<numScales)+1
+            int rhDim = resultHistogram.length; // 2*(searchDistance<<numScales)+1
             gl.glPushMatrix();
-            final float scale = 30f / dim; // size same as the color wheel
+            final float scale = 30f / rhDim; // size same as the color wheel
             gl.glTranslatef(-35, .65f * chip.getSizeY(), 0);  // center above color wheel
             gl.glScalef(scale, scale, 1);
             gl.glColor3f(0, 0, 1);
             gl.glLineWidth(2f);
             gl.glBegin(GL.GL_LINE_LOOP);
             gl.glVertex2f(0, 0);
-            gl.glVertex2f(dim, 0);
-            gl.glVertex2f(dim, dim);
-            gl.glVertex2f(0, dim);
+            gl.glVertex2f(rhDim, 0);
+            gl.glVertex2f(rhDim, rhDim);
+            gl.glVertex2f(0, rhDim);
             gl.glEnd();
-            for (int x = 0; x < dim; x++) {
-                for (int y = 0; y < dim; y++) {
-                    float g = maxRecip * resultHistogram[x][y];
+            if (textRenderer == null) {
+                textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 64));
+            }
+            int max = 0;
+            for (int[] h : resultHistogram) {
+                for (int vv : h) {
+                    if (vv > max) {
+                        max = vv;
+                    }
+                }
+            }
+            if (max == 0) {
+                gl.glTranslatef(0, rhDim / 2, 0); // translate to UL corner of histogram
+                textRenderer.begin3DRendering();
+                textRenderer.draw3D("No data", 0, 0, 0, .07f);
+                textRenderer.end3DRendering();
+                return;
+            }
+            final float maxRecip = 1f / max;
+            gl.glPushMatrix();
+            for (int xx = 0; xx < rhDim; xx++) {
+                for (int yy = 0; yy < rhDim; yy++) {
+                    float g = maxRecip * resultHistogram[xx][yy];
                     gl.glColor3f(g, g, g);
                     gl.glBegin(GL2ES3.GL_QUADS);
-                    gl.glVertex2f(x, y);
-                    gl.glVertex2f(x + 1, y);
-                    gl.glVertex2f(x + 1, y + 1);
-                    gl.glVertex2f(x, y + 1);
+                    gl.glVertex2f(xx, yy);
+                    gl.glVertex2f(xx + 1, yy);
+                    gl.glVertex2f(xx + 1, yy + 1);
+                    gl.glVertex2f(xx, yy + 1);
                     gl.glEnd();
                 }
             }
-            if (textRenderer == null) {
-                textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 48));
-            }
+            gl.glPopMatrix();
             if (avgMatchDistance > 0) {
                 gl.glColor3f(1, 0, 0);
                 gl.glLineWidth(5f);
@@ -457,7 +467,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgMatchDistance, 16);
             }
             // a bunch of cryptic crap to draw a string the same width as the histogram...
-            gl.glTranslatef(0, dim, 0); // translate to UL corner of histogram
             textRenderer.begin3DRendering();
             String s = String.format("d=%s ms", engFmt.format(1e-3f * sliceDeltaT));
 //            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getSizeX(), .1f);
@@ -467,7 +476,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             Rectangle2D rt = frc.getTransform().createTransformedShape(r).getBounds2D(); // get bounds in textrenderer coordinates
 //            float ps = chip.getCanvas().getScale();
             float w = (float) rt.getWidth(); // width of text in textrenderer, i.e. histogram cell coordinates (1 unit = 1 histogram cell)
-            float sc = dim / w; // scale to histogram width
+            float sc = rhDim / w; // scale to histogram width
+            gl.glTranslatef(0, rhDim, 0); // translate to UL corner of histogram
             textRenderer.draw3D(s, 0, 0, 0, sc);
             textRenderer.end3DRendering();
             String s2 = String.format("skip %d", skipProcessingEventsCount);
@@ -497,7 +507,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         currentSliceIdx = 0;  // start by filling slice 0
         currentSlice = slices[currentSliceIdx];
 
-        sliceLastTs = 0;
+        sliceLastTs = Integer.MAX_VALUE;
         rewindFlg = true;
         if (adaptiveEventSkippingUpdateCounterLPFilter != null) {
             adaptiveEventSkippingUpdateCounterLPFilter.reset();
@@ -522,7 +532,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
     private boolean maybeRotateSlices() {
         int dt = ts - sliceLastTs;
-        if (dt < 0) {
+        if (dt < 0) { // handle timestamp wrapping
             rotateSlices();
             eventCounter = 0;
             sliceDeltaT = dt;
@@ -619,6 +629,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         for (int s = 0; s < numScales; s++) {
             final int xx = e.x >> s;
             final int yy = e.y >> s;
+//            if(xx>=currentSlice[s].length || yy>currentSlice[s][xx].length){
+//                log.warning("event out of range");
+//                return false;
+//            }
             int cv = currentSlice[s][xx][yy];
             cv += rectifyPolarties ? 1 : (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
             if (cv > sliceMaxValue) {
@@ -661,7 +675,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //    private SADResult minHammingDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
     private SADResult minSADDistance(int x, int y, byte[][][] curSlice, byte[][][] prevSlice, int subSampleBy) {
         SADResult result = new SADResult();
-        float minSum = Float.MAX_VALUE, sum = 0;
+        float minSum = Float.MAX_VALUE, sum;
 
         float FSDx = 0, FSDy = 0, DSDx = 0, DSDy = 0;  // This is for testing the DS search accuracy.
         final int searchRange = (2 * searchDistance) + 1; // The maximum search distance in this subSampleBy slice
@@ -735,7 +749,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                                 DSAverageNum++;
                             }
                             if (outputSearchErrorInfo) {
-                                if (sumArray[xidx][yidx] != sumArray[xidx][yidx]) {
+                                if (sumArray[xidx][yidx] != sumArray[xidx][yidx]) { // TODO huh?  this is never true, compares to itself
                                     log.warning("It seems that there're some bugs in the DS algorithm.");
                                 }
                             }
@@ -752,8 +766,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     yCenter = yCenter + LDSP[minPointIdx][1];
                     if (minPointIdx == 4) { // It means it's in the center, so we should break the loop and go to SDSP search.
                         SDSPFlg = true;
-                    } else {
-                        SDSPFlg = false;
                     }
                     if (--maxIterations <= 0) {
                         log.warning("something is wrong with diamond search; did not find min in SDSP search");
@@ -806,7 +818,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     for (dy = -searchDistance; dy <= searchDistance; dy++) {
                         sum = sadDistance(x, y, dx, dy, curSlice, prevSlice, subSampleBy);
                         sumArray[dx + searchDistance][dy + searchDistance] = sum;
-                        if (sum <= minSum) {
+                        if (sum < minSum) {
                             minSum = sum;
                             result.dx = -dx; // minus is because result points to the past slice and motion is in the other direction
                             result.dy = -dy;
@@ -993,7 +1005,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
 //    private float jaccardDistance(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
     private float jaccardDistance(int x, int y, int dx, int dy, boolean[][] prevSlice, boolean[][] curSlice) {
-        float retVal = 0;
         float M01 = 0, M10 = 0, M11 = 0;
         int blockRadius = blockDimension / 2;
 
@@ -1026,6 +1037,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                }
             }
         }
+        float retVal;
         if (0 == (M01 + M10 + M11)) {
             retVal = 0;
         } else {
@@ -1496,19 +1508,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
 //        numSlices = getInt("numSlices", 3); // since resetFilter is called in super before numSlices is even initialized
         if (slices == null || slices.length != numSlices
-                || slices[0] == null || slices[0].length != numScales
-                || slices[0][0] == null || slices[0][0].length != subSizeX
-                || slices[0][0][0] == null || slices[0][0][0].length != subSizeY) {
+                || slices[0] == null || slices[0].length != numScales) {
             slices = new byte[numSlices][numScales][][];
             for (int n = 0; n < numSlices; n++) {
                 for (int s = 0; s < numScales; s++) {
-                    slices[n][s] = new byte[subSizeX >> s][subSizeY >> s];
+                    int nx = (subSizeX >> s) + 1, ny = (subSizeY >> s) + 1;
+                    if (slices[n][s] == null || slices[n][s].length != nx
+                            || slices[n][s][0] == null || slices[n][s][0].length != ny) {
+                        slices[n][s] = new byte[nx][ny];
+                    }
                 }
             }
             currentSliceIdx = 0;  // start by filling slice 0
             currentSlice = slices[currentSliceIdx];
 
-            sliceLastTs = 0;
+            sliceLastTs = Integer.MAX_VALUE;
             sliceStartTimeUs = new int[numSlices];
             sliceSummedSADValues = new float[numSlices];
             sliceSummedSADCounts = new int[numSlices];
@@ -1517,9 +1531,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (lastTimesMap != null) {
             lastTimesMap = null; // save memory
         }
-        int dim = (2 * (searchDistance << (numScales - 1))) + 1; // e.g. search distance 1, dim=3, 3x3 possibilties (including zero motion)
-        if ((resultHistogram == null) || (resultHistogram.length != dim)) {
-            resultHistogram = new int[dim][dim];
+        int rhDim = (2 * (searchDistance << (numScales - 1))) + 1; // e.g. search distance 1, dim=3, 3x3 possibilties (including zero motion)
+        if ((resultHistogram == null) || (resultHistogram.length != rhDim)) {
+            resultHistogram = new int[rhDim][rhDim];
             resultHistogramCount = 0;
         }
     }
@@ -1530,7 +1544,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @return the confidence of the result. True means it's not good and should
      * be rejected, false means we should accept it.
      */
-    public synchronized boolean isNotSufficientlyAccurate(SADResult distResult) {
+    private synchronized boolean isNotSufficientlyAccurate(SADResult distResult) {
         boolean retVal = super.accuracyTests();  // check accuracy in super, if reject returns true
 
         // additional test, normalized blaock distance must be small enough
@@ -1607,14 +1621,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     /**
-     *
-     * @param showSliceBitMpa the option of displaying bitmap
+     * @param showSliceBitMap
+     * @param showSliceBitMap the option of displaying bitmap
      */
     public void setShowSliceBitMap(boolean showSliceBitMap) {
         boolean old = this.showSliceBitMap;
         this.showSliceBitMap = showSliceBitMap;
         getSupport().firePropertyChange("showSliceBitMap", old, this.showSliceBitMap);
-        putBoolean("showSliceBitMap", showSliceBitMap);
     }
 
     synchronized public void setOutputSearchErrorInfo(boolean outputSearchErrorInfo) {
@@ -1708,80 +1721,89 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     private int dim = blockDimension + (2 * searchDistance);
 
-    private void drawMatching(int x, int y, int dx, int dy, byte[][] refBlock, byte[][] searchBlock) {
-        int dimNew = blockDimension + (2 * searchDistance);
-        if (Frame == null) {
+    protected static final String G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH = "G: search area\nR: ref block area\nB: best match";
+
+    synchronized private void drawMatching(int x, int y, int dx, int dy, byte[][] refBlock, byte[][] searchBlock, int subSampleBy) {
+        int dimNew = blockDimension + (2 * (searchDistance));
+        if (sliceBitMapFrame == null) {
             String windowName = "Slice bitmaps";
-            Frame = new JFrame(windowName);
-            Frame.setLayout(new BoxLayout(Frame.getContentPane(), BoxLayout.Y_AXIS));
-            Frame.setPreferredSize(new Dimension(600, 600));
+            sliceBitMapFrame = new JFrame(windowName);
+            sliceBitMapFrame.setLayout(new BoxLayout(sliceBitMapFrame.getContentPane(), BoxLayout.Y_AXIS));
+            sliceBitMapFrame.setPreferredSize(new Dimension(600, 600));
             JPanel panel = new JPanel();
             panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
-            display = ImageDisplay.createOpenGLCanvas();
-            display.setBorderSpacePixels(10);
-            display.setImageSize(dimNew, dimNew);
-            display.setSize(200, 200);
-            display.setGrayValue(0);
-            panel.add(display);
+            sliceBitmapImageDisplay = ImageDisplay.createOpenGLCanvas();
+            sliceBitmapImageDisplay.setBorderSpacePixels(10);
+            sliceBitmapImageDisplay.setImageSize(dimNew, dimNew);
+            sliceBitmapImageDisplay.setSize(200, 200);
+            sliceBitmapImageDisplay.setGrayValue(0);
+            sliceBitmapLegend = sliceBitmapImageDisplay.addLegend(G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
+            panel.add(sliceBitmapImageDisplay);
 
-            Frame.getContentPane().add(panel);
-            Frame.pack();
-            Frame.addWindowListener(new WindowAdapter() {
+            sliceBitMapFrame.getContentPane().add(panel);
+            sliceBitMapFrame.pack();
+            sliceBitMapFrame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent e) {
                     setShowSliceBitMap(false);
                 }
             });
         }
-        if (!Frame.isVisible()) {
-            Frame.setVisible(true);
+        if (!sliceBitMapFrame.isVisible()) {
+            sliceBitMapFrame.setVisible(true);
         }
-        if (dimNew != dim) {
+        if (dimNew != sliceBitmapImageDisplay.getSizeX()) {
             dim = dimNew;
-            display.setImageSize(dimNew, dimNew);
+            sliceBitmapImageDisplay.setImageSize(dimNew, dimNew);
+            sliceBitmapImageDisplay.clearLegends();
+            sliceBitmapLegend = sliceBitmapImageDisplay.addLegend(G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
         }
         final int radius = (blockDimension / 2) + searchDistance;
 
+//        TextRenderer textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 12));
+
         /* Reset the image first */
-        for (int i = 0; i < ((2 * radius) + 1); i++) {
-            for (int j = 0; j < ((2 * radius) + 1); j++) {
-                display.clearImage();
-//                display.setPixmapRGB(i, j, 0, 0, 0);
-            }
-        }
+        sliceBitmapImageDisplay.clearImage();
+
         float scale = 1f / getSliceMaxValue();
-        if ((x >= radius) && ((x + radius) < subSizeX)
-                && (y >= radius) && ((y + radius) < subSizeY)) {
-            /* Rendering the reference patch in t-d slice, it's on the center with color red */
-            for (int i = searchDistance; i < (blockDimension + searchDistance); i++) {
-                for (int j = searchDistance; j < (blockDimension + searchDistance); j++) {
-                    float[] f = display.getPixmapRGB(i, j);
-                    f[0] = scale * Math.abs(refBlock[((x - (blockDimension / 2)) + i) - searchDistance][((y - (blockDimension / 2)) + j) - searchDistance]);
-                    display.setPixmapRGB(i, j, f);
+        try {
+            if ((x >= radius) && ((x + radius) < subSizeX)
+                    && (y >= radius) && ((y + radius) < subSizeY)) {
+                /* Rendering the reference patch in t-d slice, it's on the center with color red */
+                for (int i = searchDistance; i < (blockDimension + searchDistance); i++) {
+                    for (int j = searchDistance; j < (blockDimension + searchDistance); j++) {
+                        float[] f = sliceBitmapImageDisplay.getPixmapRGB(i, j);
+                        f[0] = scale * Math.abs(refBlock[((x - (blockDimension / 2)) + i) - searchDistance][((y - (blockDimension / 2)) + j) - searchDistance]);
+                        sliceBitmapImageDisplay.setPixmapRGB(i, j, f);
+                    }
                 }
-            }
 
-            /* Rendering the area within search distance in t-2d slice, it's full of the whole image with color green */
-            for (int i = 0; i < ((2 * radius) + 1); i++) {
-                for (int j = 0; j < ((2 * radius) + 1); j++) {
-                    float[] f = display.getPixmapRGB(i, j);
-                    f[1] = scale * Math.abs(searchBlock[(x - radius) + i][(y - radius) + j]);
-                    display.setPixmapRGB(i, j, f);
+                /* Rendering the area within search distance in t-2d slice, it's full of the whole search area with color green */
+                for (int i = 0; i < ((2 * radius) + 1); i++) {
+                    for (int j = 0; j < ((2 * radius) + 1); j++) {
+                        float[] f = sliceBitmapImageDisplay.getPixmapRGB(i, j);
+                        f[1] = scale * Math.abs(searchBlock[(x - radius) + i][(y - radius) + j]);
+                        sliceBitmapImageDisplay.setPixmapRGB(i, j, f);
+                    }
                 }
-            }
 
-            /* Rendering the best matching patch in t-2d slice, it's on the shifted position related to the center location with color blue */
-            for (int i = searchDistance + dx; i < (blockDimension + searchDistance + dx); i++) {
-                for (int j = searchDistance + dy; j < (blockDimension + searchDistance + dy); j++) {
-                    float[] f = display.getPixmapRGB(i, j);
-                    f[2] = scale * Math.abs(searchBlock[((x - (blockDimension / 2)) + i) - searchDistance][((y - (blockDimension / 2)) + j) - searchDistance]);
-                    display.setPixmapRGB(i, j, f);
+                /* Rendering the best matching patch in t-2d slice, it's on the shifted position related to the center location with color blue */
+                for (int i = searchDistance + dx; i < (blockDimension + searchDistance + dx); i++) {
+                    for (int j = searchDistance + dy; j < (blockDimension + searchDistance + dy); j++) {
+                        float[] f = sliceBitmapImageDisplay.getPixmapRGB(i, j);
+                        f[2] = scale * Math.abs(searchBlock[((x - (blockDimension / 2)) + i) - searchDistance][((y - (blockDimension / 2)) + j) - searchDistance]);
+                        sliceBitmapImageDisplay.setPixmapRGB(i, j, f);
+                    }
                 }
             }
+            if (sliceBitmapLegend != null) {
+                sliceBitmapLegend.s = G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH + "\nScale: " + subSampleBy;
+            }
+        } catch (ArrayIndexOutOfBoundsException e) {
+
         }
 
-//        gl.glPopMatrix();
-        display.repaint();
+        sliceBitmapImageDisplay.repaint();
     }
 
 //    /**
