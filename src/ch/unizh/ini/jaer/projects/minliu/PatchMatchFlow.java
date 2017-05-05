@@ -28,6 +28,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
+import java.util.StringTokenizer;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -62,8 +63,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private static final int SDSP[][] = {{0, -1}, {-1, 0}, {0, 0}, {1, 0}, {0, 1}};
 
 //    private int[][][] histograms = null;
-    volatile private int numSlices = 3; //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
+    private int numSlices = 3; //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
     volatile private int numScales = getInt("numScales", 1); //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
+    private String scalesToCompute = getString("scalesToCompute", ""); //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
+    private int[] scalesToComputeArray = null;
 //    private int sx, sy;
     private int currentSliceIdx = 0; // the slice we are currently filling with events
     /**
@@ -142,11 +145,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         super(chip);
 
         setSliceDurationUs(getSliceDurationUs());   // 40ms is good for the start of the slice duration adatative since 4ms is too fast and 500ms is too slow.
+        setDefaultScalesToCompute();
+
 //        // Save the result to the file
 //        Format formatter = new SimpleDateFormat("YYYY-MM-dd_hh-mm-ss");
 //        // Instantiate a Date object
 //        Date date = new Date();
-
         // Log file for the OF distribution's statistics
 //        outputFilename = "PMF_HistStdDev" + formatter.format(date) + ".txt";
         String patchTT = "Block matching";
@@ -184,6 +188,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "numScales", "<html>Number of scales to search over for minimum SAD value; 1 for single full resolution scale, 2 for full + 2x2 subsampling, etc.");
         setPropertyTooltip(patchTT, "sliceMaxValue", "<html> the maximum value used to represent each pixel in the time slice:<br>1 for binary or signed binary slice, (in conjunction with rectifyEventPolarities==true), etc, <br>up to 127 by these byte values");
         setPropertyTooltip(patchTT, "rectifyPolarties", "<html> whether to rectify ON and OFF polarities to unsigned counts; true ignores polarity for block matching, false uses polarity with sliceNumBits>1");
+        setPropertyTooltip(patchTT, "scalesToCompute", "Scales to compute, e.g. 1,2; blank for all scales. 0 is full resolution, 1 is subsampled 2x2, etc");
 
         setPropertyTooltip(dispTT, "displayOutputVectors", "display the output motion vectors or not");
         setPropertyTooltip(dispTT, "displayResultHistogram", "display the output motion vectors histogram to show disribution of results for each packet. Only implemented for HammingDistance");
@@ -244,7 +249,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     }
                     SADResult sliceResult;
                     minDistScale = 0;
-                    for (int scale = 1; scale < (numScales); scale++) {
+                    for (int scale : scalesToComputeArray) {
+                        if (scale >= numScales) {
+                            log.warning("scale " + scale + " is out of range of " + numScales + "; fix scalesToCompute for example by clearing it");
+                            break;
+                        }
                         sliceResult = minSADDistance(ein.x, ein.y, slices[sliceIndex(1)], slices[sliceIndex(2)], scale); // from ref slice to past slice k+1, using scale 0,1,....
 //                        sliceSummedSADValues[sliceIndex(scale + 2)] += sliceResult.sadValue; // accumulate SAD for this past slice
 //                        sliceSummedSADCounts[sliceIndex(scale + 2)]++; // accumulate SAD count for this past slice
@@ -1895,11 +1904,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     synchronized public void setNumScales(int numScales) {
         if (numScales < 1) {
             numScales = 1;
-        } else if (numScales > 3) {
-            numScales = 3;
+        } else if (numScales > 4) {
+            numScales = 4;
         }
         this.numScales = numScales;
         putInt("numScales", numScales);
+        setDefaultScalesToCompute();
 //        log.info("set numScales");
     }
 
@@ -1929,6 +1939,49 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 }
             }
             return sum;
+        }
+    }
+
+    /**
+     * @return the scalesToCompute
+     */
+    public String getScalesToCompute() {
+        return scalesToCompute;
+    }
+
+    /**
+     * @param scalesToCompute the scalesToCompute to set
+     */
+    synchronized public void setScalesToCompute(String scalesToCompute) {
+        this.scalesToCompute = scalesToCompute;
+        if (scalesToCompute == null || scalesToCompute.isEmpty()) {
+
+            setDefaultScalesToCompute();
+        } else {
+            StringTokenizer st = new StringTokenizer(scalesToCompute, ", ", false);
+            int n = st.countTokens();
+            if (n == 0) {
+                setDefaultScalesToCompute();
+            } else {
+                scalesToComputeArray = new int[n];
+                int i = 0;
+                while (st.hasMoreTokens()) {
+                    try {
+                        int scale = Integer.parseInt(st.nextToken());
+                        scalesToComputeArray[i++] = scale;
+                    } catch (NumberFormatException e) {
+                        log.warning("bad string in scalesToCompute field, use blank or 0,2 for example");
+                        setDefaultScalesToCompute();
+                    }
+                }
+            }
+        }
+    }
+
+    private void setDefaultScalesToCompute() {
+        scalesToComputeArray = new int[numScales];
+        for (int i = 0; i < numScales; i++) {
+            scalesToComputeArray[i] = i;
         }
     }
 
