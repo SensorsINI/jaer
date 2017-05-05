@@ -452,6 +452,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 textRenderer.begin3DRendering();
                 textRenderer.draw3D("No data", 0, 0, 0, .07f);
                 textRenderer.end3DRendering();
+                gl.glPopMatrix();
                 return;
             }
             final float maxRecip = 1f / max;
