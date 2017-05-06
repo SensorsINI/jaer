@@ -66,7 +66,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int numSlices = 3; //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
     volatile private int numScales = getInt("numScales", 1); //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
     private String scalesToCompute = getString("scalesToCompute", ""); //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
-    private int[] scalesToComputeArray = null;
+    private int[] scalesToComputeArray = null; // holds array of scales to actually compute, for debugging
+    private int[] scaleResultCounts = new int[numScales]; // holds counts at each scale for min SAD results
 //    private int sx, sy;
     private int currentSliceIdx = 0; // the slice we are currently filling with events
     /**
@@ -214,6 +215,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             Arrays.fill(h, 0);
         }
         resultHistogramCount = 0;
+        Arrays.fill(scaleResultCounts, 0);
         int minDistScale = 0;
         for (Object o : in) { // to support pure DVS like DVS128
             PolarityEvent ein = (PolarityEvent) o;
@@ -267,6 +269,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                             drawMatching(ein.x >> scale, ein.y >> scale, (int) result.dx >> scale, (int) result.dy >> scale, slices[sliceIndex(1)][scale], slices[sliceIndex(2)][scale], scale);
                         }
                     }
+                    scaleResultCounts[minDistScale]++;
                     float dt = (sliceDeltaTimeUs(2) * 1e-6f);
                     if (result != null) {
                         result.vx = result.dx / dt; // hack, convert to pix/second
@@ -469,15 +472,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     gl.glEnd();
                 }
             }
-            gl.glPopMatrix();
-            if (avgMatchDistance > 0) {
+             if (avgMatchDistance > 0) {
                 gl.glColor3f(1, 0, 0);
                 gl.glLineWidth(5f);
                 final int tsd = searchDistance << (numScales - 1);
                 DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgMatchDistance, 16);
             }
             // a bunch of cryptic crap to draw a string the same width as the histogram...
-            textRenderer.begin3DRendering();
+            gl.glPopMatrix();
+           textRenderer.begin3DRendering();
             String s = String.format("d=%s ms", engFmt.format(1e-3f * sliceDeltaT));
 //            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getSizeX(), .1f);
             // determine width of string in pixels and scale accordingly
@@ -489,11 +492,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             float sc = rhDim / w; // scale to histogram width
             gl.glTranslatef(0, rhDim, 0); // translate to UL corner of histogram
             textRenderer.draw3D(s, 0, 0, 0, sc);
-            textRenderer.end3DRendering();
             String s2 = String.format("skip %d", skipProcessingEventsCount);
-            gl.glTranslatef(0f, (float) (rt.getHeight()) * sc, 0);
-            textRenderer.begin3DRendering();
-            textRenderer.draw3D(s2, 0, 0, 0, sc);
+            textRenderer.draw3D(s2, 0, (float) (rt.getHeight()) * sc, 0, sc);
+            StringBuilder sb=new StringBuilder("Scale counts: ");
+            for(int c:scaleResultCounts){
+                sb.append(String.format("%d ",c));
+            }
+            textRenderer.draw3D(sb.toString(), 0, (float) (2*rt.getHeight()) * sc, 0, sc);
             textRenderer.end3DRendering();
             gl.glPopMatrix();
 
@@ -1911,6 +1916,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         this.numScales = numScales;
         putInt("numScales", numScales);
         setDefaultScalesToCompute();
+        scaleResultCounts = new int[numScales];
 //        log.info("set numScales");
     }
 
