@@ -535,6 +535,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (adaptiveEventSkippingUpdateCounterLPFilter != null) {
             adaptiveEventSkippingUpdateCounterLPFilter.reset();
         }
+        clearAreaCounts();
     }
 
     @Override
@@ -555,7 +556,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
     private boolean maybeRotateSlices() {
         int dt = ts - sliceLastTs;
-        if (dt < 0) { // handle timestamp wrapping
+        if (dt < 0 || rewindFlg) { // handle timestamp wrapping
             rotateSlices();
             eventCounter = 0;
             sliceDeltaT = dt;
@@ -563,9 +564,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             return true;
         }
 
-        if (rewindFlg) {
-            return false;
-        }
         switch (sliceMethod) {
             case ConstantDuration:
                 if ((dt < sliceDurationUs)) {
@@ -2044,6 +2042,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         this.areaEventNumberSubsampling = areaEventNumberSubsampling;
         putInt("areaEventNumberSubsampling", areaEventNumberSubsampling);
+        clearAreaCounts();
     }
 
     private void clearAreaCounts() {
