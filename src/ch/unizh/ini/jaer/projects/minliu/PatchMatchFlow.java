@@ -132,9 +132,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private boolean displayResultHistogram = getBoolean("displayResultHistogram", true);
 
     public enum SliceMethod {
-        ConstantDuration, ConstantEventNumber, AdaptationDuration
+        ConstantDuration, ConstantEventNumber, AreaEventNumber
     };
     private SliceMethod sliceMethod = SliceMethod.valueOf(getString("sliceMethod", SliceMethod.ConstantDuration.toString()));
+    private int areaEventNumberSubsampling = getInt("areaEventNumberSubsampling", 4);
+    private int[][] areaCounts = null;
+    private boolean areaCountExceeded = false;
+
     private int eventCounter = 0;
     private int sliceLastTs = 0;
 
@@ -175,7 +179,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "sliceDurationUs", "duration of bitmaps in us, also called sample interval, when ConstantDuration method is used");
         setPropertyTooltip(patchTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
         setPropertyTooltip(patchTT, "sliceEventCount", "number of events collected to fill a slice, when ConstantEventNumber method is used");
-        setPropertyTooltip(patchTT, "sliceMethod", "set method for determining time slice duration for block matching");
+        setPropertyTooltip(patchTT, "sliceMethod", "<html>Method for determining time slice duration for block matching<ul>"
+                + "<li>ConstantDuration: slices are fixed time duration"
+                + "<li>ConstantEventNumber: slices are fixed event number"
+                + "<li>AreaEventNumber: slices are fixed event number in any subsampled area defined by areaEventNumberSubsampling");
+        setPropertyTooltip(patchTT, "areaEventNumberSubsampling", "<html>how to subsample total area to count events per unit subsampling blocks for AreaEventNumber method. <p>For example, if areaEventNumberSubsampling=5, <br> then events falling into 32x32 blocks of pixels are counted <br>to determine when they exceed sliceEventCount to make new slice");
         setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
         setPropertyTooltip(patchTT, "adaptiveEventSkipping", "enables adaptive event skipping depending on free time left in AEViewer animation loop");
         setPropertyTooltip(patchTT, "adaptiveSliceDuration", "<html>enables adaptive slice duration using feedback control, <br> based on average match search distance compared with total search distance. <p>If the match is too close short, increaes duration, and if too far, decreases duration");
@@ -555,26 +563,24 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             return true;
         }
 
+        if (rewindFlg) {
+            return false;
+        }
         switch (sliceMethod) {
             case ConstantDuration:
-                if (rewindFlg) {
-                    return false;
-                }
                 if ((dt < sliceDurationUs)) {
                     return false;
                 }
                 break;
             case ConstantEventNumber:
-                if (rewindFlg) {
-                    return false;
-                }
                 if (eventCounter++ < sliceEventCount) {
                     return false;
                 }
                 break;
-            case AdaptationDuration:
-                log.warning("The adaptation method is not supported yet.");
-                return false;
+            case AreaEventNumber:
+                if (!areaCountExceeded) {
+                    return false;
+                }
         }
 
         rotateSlices();
@@ -605,6 +611,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         currentSlice = slices[currentSliceIdx];
         sliceStartTimeUs[currentSliceIdx] = ts; // current event timestamp
         clearSlice(currentSlice);
+        clearAreaCounts();
     }
 
     /**
@@ -656,6 +663,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 cv = -sliceMaxValue;
             }
             currentSlice[s][xx][yy] = (byte) cv;
+        }
+        if (sliceMethod == SliceMethod.AreaEventNumber) {
+            if (areaCounts == null) {
+                clearAreaCounts();
+            }
+            int c = ++areaCounts[e.x >> areaEventNumberSubsampling][e.y >> areaEventNumberSubsampling];
+            if (c >= sliceEventCount) {
+                areaCountExceeded = true;
+            }
         }
         if (timeLimiter.isTimedOut()) {
             return false;
@@ -1390,7 +1406,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     /**
      * @param sliceMethod the sliceMethod to set
      */
-    public void setSliceMethod(SliceMethod sliceMethod) {
+    synchronized public void setSliceMethod(SliceMethod sliceMethod) {
         this.sliceMethod = sliceMethod;
         putString("sliceMethod", sliceMethod.toString());
     }
@@ -2008,6 +2024,40 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         for (int i = 0; i < numScales; i++) {
             scalesToComputeArray[i] = i;
         }
+    }
+
+    /**
+     * @return the areaEventNumberSubsampling
+     */
+    public int getAreaEventNumberSubsampling() {
+        return areaEventNumberSubsampling;
+    }
+
+    /**
+     * @param areaEventNumberSubsampling the areaEventNumberSubsampling to set
+     */
+    synchronized public void setAreaEventNumberSubsampling(int areaEventNumberSubsampling) {
+        if (areaEventNumberSubsampling < 3) {
+            areaEventNumberSubsampling = 3;
+        } else if (areaEventNumberSubsampling > 7) {
+            areaEventNumberSubsampling = 7;
+        }
+        this.areaEventNumberSubsampling = areaEventNumberSubsampling;
+        putInt("areaEventNumberSubsampling", areaEventNumberSubsampling);
+    }
+
+    private void clearAreaCounts() {
+        if (sliceMethod != SliceMethod.AreaEventNumber) {
+            return;
+        }
+        if (areaCounts == null || areaCounts.length != 1 + (subSizeX >> areaEventNumberSubsampling)) {
+            areaCounts = new int[1 + (subSizeX >> areaEventNumberSubsampling)][1 + (subSizeY >> areaEventNumberSubsampling)];
+        } else {
+            for (int[] i : areaCounts) {
+                Arrays.fill(i, 0);
+            }
+        }
+        areaCountExceeded = false;
     }
 
 }
