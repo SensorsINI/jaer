@@ -988,7 +988,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         // normalize by dimesion of subsampling, with idea that subsampling increases SAD 
         //by sqrt(area) because of Gaussian distribution of SAD values 
-//        sumDist = sumDist >> (subsampleBy << 0);
+        sumDist = sumDist >> (subsampleBy << 0);
         final int blockDim = (2 * r) + 1;
 
         final int blockArea = (blockDim) * (blockDim); // TODO check math here for fraction correct with subsampling
@@ -996,6 +996,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         // Calculate the metric confidence value
         final int minValidPixNum = (int) (this.validPixOccupancy * blockArea);
         final int maxSaturatedPixNum = (int) ((1 - this.validPixOccupancy) * blockArea);
+        final float sadNormalizer=1f/(blockArea*(rectifyPolarties?2:1)*sliceMaxValue);
         // if current or previous block has insufficient pixels with values or if all the pixels are filled up, then reject match
         if ((validPixNumCurSlice < minValidPixNum) || (validPixNumPrevSlice < minValidPixNum)
                 || (saturatedPixNumCurSlice >= maxSaturatedPixNum) || (saturatedPixNumPrevSlice >= maxSaturatedPixNum)) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
@@ -1006,7 +1007,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             Here we use the difference between validPixNumCurrSli and validPixNumPrevSli to calculate the dispersion.
             Inspired by paper "Measuring the spatial dispersion of evolutionist search process: application to Walksat" by Alain Sidaner.
              */
-            final float finalDistance = ((sumDist * weightDistance) + (Math.abs(validPixNumCurSlice - validPixNumPrevSlice) * (1 - weightDistance))) / blockArea;
+            final float finalDistance = sadNormalizer*((sumDist * weightDistance) + (Math.abs(validPixNumCurSlice - validPixNumPrevSlice) * (1 - weightDistance)));
             return finalDistance;
         }
     }
