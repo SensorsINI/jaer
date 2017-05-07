@@ -472,7 +472,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     gl.glEnd();
                 }
             }
-             if (avgMatchDistance > 0) {
+            if (avgMatchDistance > 0) {
                 gl.glColor3f(1, 0, 0);
                 gl.glLineWidth(5f);
                 final int tsd = searchDistance << (numScales - 1);
@@ -480,7 +480,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             }
             // a bunch of cryptic crap to draw a string the same width as the histogram...
             gl.glPopMatrix();
-           textRenderer.begin3DRendering();
+            textRenderer.begin3DRendering();
             String s = String.format("d=%s ms", engFmt.format(1e-3f * sliceDeltaT));
 //            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getSizeX(), .1f);
             // determine width of string in pixels and scale accordingly
@@ -494,11 +494,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             textRenderer.draw3D(s, 0, 0, 0, sc);
             String s2 = String.format("skip %d", skipProcessingEventsCount);
             textRenderer.draw3D(s2, 0, (float) (rt.getHeight()) * sc, 0, sc);
-            StringBuilder sb=new StringBuilder("Scale counts: ");
-            for(int c:scaleResultCounts){
-                sb.append(String.format("%d ",c));
+            StringBuilder sb = new StringBuilder("Scale counts: ");
+            for (int c : scaleResultCounts) {
+                sb.append(String.format("%d ", c));
             }
-            textRenderer.draw3D(sb.toString(), 0, (float) (2*rt.getHeight()) * sc, 0, sc);
+            textRenderer.draw3D(sb.toString(), 0, (float) (2 * rt.getHeight()) * sc, 0, sc);
             textRenderer.end3DRendering();
             gl.glPopMatrix();
 
@@ -910,32 +910,36 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @return Distance value, max 1 when all pixels differ, min 0 when all the
      * same
      */
-//    private float hammingDistance(int x, int y, int dx, int dy, BitSet prevSlice, BitSet curSlice) {
     private float sadDistance(final int xfull, final int yfull,
             final int dx, final int dy,
             final byte[][][] curSlice,
             final byte[][][] prevSlice,
             final int subsampleBy) {
-        int sumDist = 0;
-        final int xsub = xfull >> subsampleBy;
-        final int ysub = yfull >> subsampleBy;
-        final int blockRadius = ((blockDimension) / 2);
-        int validPixNumCurSlice = 0, validPixNumPrevSlice = 0; // The valid pixel number in the current block
-        int subx = subSizeX >> subsampleBy, suby = subSizeY >> subsampleBy;
+        final int x = xfull >> subsampleBy;
+        final int y = yfull >> subsampleBy;
+        final int r = ((blockDimension) / 2);
+        int w = subSizeX >> subsampleBy, h = subSizeY >> subsampleBy;
+        int adx = dx > 0 ? dx : -dx; // abs val of dx and dy, to compute limits
+        int ady = dy > 0 ? dy : -dy;
 
-        // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
-        if ((xsub <= (blockRadius + dx)) || (xsub >= ((subx - blockRadius) + dx)) || (xsub <= blockRadius) || (xsub >= (subx - blockRadius))
-                || (ysub <= (blockRadius + dy)) || (ysub >= ((suby - blockRadius) + dy)) || (ysub <= blockRadius) || (ysub >= (suby - blockRadius))) {
+        // Make sure both ref block and past slice block are in bounds on all sides or there'll be arrayIndexOutOfBoundary exception.
+        // Also we don't want to match ref block only on inner sides or there will be a bias towards motion towards middle
+        if (x - r - adx < 0 || x + r + adx >= w
+                || y - r - ady < 0 || y + r + ady >= h) {
             return Float.MAX_VALUE; // return very large distance for this match so it is not selected
         }
 
-        for (int xx = xsub - blockRadius; xx <= (xsub + blockRadius); xx++) {
-            for (int yy = ysub - blockRadius; yy <= (ysub + blockRadius); yy++) {
-                if (xx < 0 || yy < 0 || xx >= subx || yy >= suby
-                        || xx + dx < 0 || yy + dy < 0 || xx + dx >= subx || yy + dy >= suby) {
-//                    log.warning("out of bounds slice access; something wrong"); // TODO fix this check above
-                    continue;
-                }
+        int validPixNumCurSlice = 0, validPixNumPrevSlice = 0; // The valid pixel number in the current block
+        int saturatedPixNumCurSlice = 0, saturatedPixNumPrevSlice = 0; // The valid pixel number in the current block
+        int sumDist = 0;
+//        try {
+        for (int xx = x - r; xx <= (x + r); xx++) {
+            for (int yy = y - r; yy <= (y + r); yy++) {
+//                if (xx < 0 || yy < 0 || xx >= w || yy >= h
+//                        || xx + dx < 0 || yy + dy < 0 || xx + dx >= w || yy + dy >= h) {
+////                    log.warning("out of bounds slice access; something wrong"); // TODO fix this check above
+//                    continue;
+//                }
                 int currSliceVal = curSlice[subsampleBy][xx][yy]; // binary value on (xx, yy) for current slice
                 int prevSliceVal = prevSlice[subsampleBy][xx + dx][yy + dy]; // binary value on (xx, yy) for previous slice at offset dx,dy in (possibly subsampled) slice
                 int dist = (currSliceVal - prevSliceVal);
@@ -947,6 +951,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    hd += 1;
 //                }
 
+                if (currSliceVal == sliceMaxValue || currSliceVal == -sliceMaxValue) {
+                    saturatedPixNumCurSlice++; // pixels that are not saturated
+                }
+                if (prevSliceVal == sliceMaxValue || prevSliceVal == -sliceMaxValue) {
+                    saturatedPixNumPrevSlice++;
+                }
                 if (currSliceVal != 0) {
                     validPixNumCurSlice++; // pixels that are not saturated
                 }
@@ -955,18 +965,26 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 }
             }
         }
+//        } catch (ArrayIndexOutOfBoundsException ex) {
+//            log.warning(ex.toString());
+//
+//        }
         // debug
 //        if(dx==-1 && dy==-1) return 0; else return Float.MAX_VALUE;
 
-        final int blockDim = (2 * blockRadius) + 1;
+        // normalize by dimesion of subsampling, with idea that subsampling increases SAD 
+        //by sqrt(area) because of Gaussian distribution of SAD values 
+//        sumDist = sumDist >> (subsampleBy << 0);
+        final int blockDim = (2 * r) + 1;
 
         final int blockArea = (blockDim) * (blockDim); // TODO check math here for fraction correct with subsampling
         // TODD: NEXT WORK IS TO DO THE RESEARCH ON WEIGHTED HAMMING DISTANCE
         // Calculate the metric confidence value
-        final int validPixNum = (int) (this.validPixOccupancy * blockArea);
+        final int minValidPixNum = (int) (this.validPixOccupancy * blockArea);
+        final int maxSaturatedPixNum = (int) ((1 - this.validPixOccupancy) * blockArea);
         // if current or previous block has insufficient pixels with values or if all the pixels are filled up, then reject match
-        if ((validPixNumCurSlice < validPixNum) || (validPixNumPrevSlice < validPixNum)
-                || (validPixNumCurSlice >= blockArea) || (validPixNumPrevSlice >= blockArea)) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
+        if ((validPixNumCurSlice < minValidPixNum) || (validPixNumPrevSlice < minValidPixNum)
+                || (saturatedPixNumCurSlice >= maxSaturatedPixNum) || (saturatedPixNumPrevSlice >= maxSaturatedPixNum)) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
             return Float.MAX_VALUE;
         } else {
             /*
@@ -1619,10 +1637,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     /**
      * @param adaptiveEventSkipping the adaptiveEventSkipping to set
      */
-    public void setAdaptiveEventSkipping(boolean adaptiveEventSkipping) {
+    synchronized public void setAdaptiveEventSkipping(boolean adaptiveEventSkipping) {
         this.adaptiveEventSkipping = adaptiveEventSkipping;
         putBoolean("adaptiveEventSkipping", adaptiveEventSkipping);
-        if (adaptiveEventSkipping) {
+        if (adaptiveEventSkipping && adaptiveEventSkippingUpdateCounterLPFilter != null) {
             adaptiveEventSkippingUpdateCounterLPFilter.reset();
         }
     }
@@ -1676,7 +1694,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         } else if (skipLess) {
             newSkipCount = adaptiveEventSkippingUpdateCounterLPFilter.filter((skipProcessingEventsCount / skipChangeFactor) - 1, 1000 * (int) System.currentTimeMillis());
         }
-        skipProcessingEventsCount = (int) newSkipCount;
+        skipProcessingEventsCount = Math.round(newSkipCount);
         if (skipProcessingEventsCount > MAX_SKIP_COUNT) {
             skipProcessingEventsCount = MAX_SKIP_COUNT;
         } else if (skipProcessingEventsCount < 0) {
@@ -1696,7 +1714,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     /**
      * @param adaptiveSliceDuration the adaptiveSliceDuration to set
      */
-    public void setAdaptiveSliceDuration(boolean adaptiveSliceDuration) {
+    synchronized public void setAdaptiveSliceDuration(boolean adaptiveSliceDuration) {
         this.adaptiveSliceDuration = adaptiveSliceDuration;
         putBoolean("adaptiveSliceDuration", adaptiveSliceDuration);
     }
