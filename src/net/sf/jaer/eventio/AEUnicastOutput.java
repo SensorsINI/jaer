@@ -146,7 +146,6 @@ public class AEUnicastOutput implements AEUnicastSettings {
         buf.put((byte) 0);
     }
 
-    
 //    //debug
 //    private AEPacketRaw debugPacket=new AEPacketRaw();
 //    private EventRaw debugEvent=new EventRaw(0, 0);
@@ -182,7 +181,6 @@ public class AEUnicastOutput implements AEUnicastSettings {
 //        debugPacket.clear();
 //        debugPacket.addEvent(debugEvent);
 //        ae=debugPacket;
-        
         if (ae == null) {
             return;
         }
@@ -427,7 +425,12 @@ public class AEUnicastOutput implements AEUnicastSettings {
 
     @Override
     public void setSecDvsProtocolEnabled(boolean yes) {
-        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        log.warning("setting SEC DVS protocol has no effect on AEUnicastOutput");
+    }
+
+    @Override
+    public boolean isSecDvsProtocolEnabled() {
+        return false;
     }
 
     class Consumer implements Runnable {

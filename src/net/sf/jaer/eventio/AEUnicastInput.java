@@ -137,7 +137,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
         availableBufferQueue.clear();
         for (int i = 0; i < NBUFFERS; i++) {
             ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
-            buffer.order(swapBytesEnabled || spinnakerProtocolEnabled ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN); //spinnaker always uses little endian
+            buffer.order(swapBytesEnabled || spinnakerProtocolEnabled || secDvsProtocolEnabled ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN); //spinnaker always uses little endian
             availableBufferQueue.add(buffer);
         }
         filledBufferQueue.clear();
@@ -236,7 +236,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                 log.warning("unknown type of client address - should be InetSocketAddress: " + client);
             }
             buffer.flip();
-            if (!spinnakerProtocolEnabled) {
+            if (!spinnakerProtocolEnabled && !secDvsProtocolEnabled) {
                 checkSequenceNumber(buffer);
             }
 //            if(exchanger.size()>10){
@@ -438,7 +438,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
         }
         else if( isSecDvsProtocolEnabled() )
         {
-            int nEventsInPacket = (buffer.limit() ) / 4;    // 28 is the byte numbers of cAER Header
+            int nEventsInPacket = (buffer.limit() ) / 4;
             final int startingIndex = packet.getNumEvents();
             int newPacketLength = startingIndex + nEventsInPacket;
             packet.ensureCapacity(newPacketLength*8);
@@ -525,7 +525,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             packet.setNumEvents(startingIndex + eventcounter);
             
         }
-        else {
+        else { // normal jAER/cAER packet
             // extract the ae data and add events to the packet we are presently filling
             int seqNumLength = sequenceNumberEnabled ? Integer.SIZE / 8 : 0;
             int eventSize = eventSize();
@@ -1001,7 +1001,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     public void setSpinnakerProtocolEnabled(boolean yes) {
         spinnakerProtocolEnabled = yes;
         secDvsProtocolEnabled=false;
-        prefs.putBoolean("AEUnicastInput.spinnakerProtocolEnabled", yes);
+        prefs.putBoolean("AEUnicastInput.secDvsProtocolEnabled", yes);
     }
 
     /**

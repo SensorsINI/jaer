@@ -278,10 +278,17 @@ public interface AEUnicastSettings {
     public void setSpinnakerProtocolEnabled(boolean yes);
 
     /**
-     * Sets SEC DVS protocol enabled
+     * Sets SEC DVS protocol enabled.
      *
      * @param yes true
      */
     public void setSecDvsProtocolEnabled(boolean yes);
+
+    /**
+     * Is SEC DVS protocol enabled
+     *
+     * @return true if enabled
+     */
+    public boolean isSecDvsProtocolEnabled();
 
 }
