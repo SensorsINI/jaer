@@ -101,6 +101,8 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         unicastInterface.setAddressFirstEnabled(addressFirstEnabledCheckBox.isSelected());
         unicastInterface.setSequenceNumberEnabled(sequenceNumberEnabledCheckBox.isSelected());
         unicastInterface.setCAERDisplayEnabled(caerDispRB.isSelected());
+        unicastInterface.setSpinnakerProtocolEnabled(spinProtRB.isSelected());
+        unicastInterface.setSecDvsProtocolEnabled(secProtRB.isSelected());
         unicastInterface.setSwapBytesEnabled(swapBytesCheckBox.isSelected());
         unicastInterface.set4ByteAddrTimestampEnabled(use4ByteAddrTsCheckBox.isSelected());
         unicastInterface.setTimestampsEnabled(includeTimestampsCheckBox.isSelected());
@@ -121,12 +123,6 @@ public class AEUnicastDialog extends javax.swing.JDialog {
             timestampMultiplierTextBox.selectAll();
             return false;
         }
-//        try{
-//            unicastInterface.open();
-//        } catch ( IOException e ){
-//            log.warning(e.toString());
-//            return false;
-//        }
         return true;
     }
 
@@ -162,6 +158,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         spinProtRB = new javax.swing.JRadioButton();
         secProtRB = new javax.swing.JRadioButton();
         caerDispRB = new javax.swing.JRadioButton();
+        jaerProtRB = new javax.swing.JRadioButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("AEUnicastDialog");
@@ -204,11 +201,6 @@ public class AEUnicastDialog extends javax.swing.JDialog {
 
         hostnameTextField.setText("localhost");
         hostnameTextField.setToolTipText("host from which to recieve events");
-        hostnameTextField.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                hostnameTextFieldActionPerformed(evt);
-            }
-        });
 
         portTextField.setToolTipText("port number on host");
         portTextField.addActionListener(new java.awt.event.ActionListener() {
@@ -290,6 +282,20 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         protGroup.add(caerDispRB);
         caerDispRB.setText("cAERDisplayEnabled (experimental)");
         caerDispRB.setToolTipText("Sets input to parse cAER UDP output (experimental)");
+        caerDispRB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                caerDispRBActionPerformed(evt);
+            }
+        });
+
+        protGroup.add(jaerProtRB);
+        jaerProtRB.setText("Use normal jAER UDP protocol");
+        jaerProtRB.setToolTipText("Disables special modes below");
+        jaerProtRB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jaerProtRBActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -300,59 +306,68 @@ public class AEUnicastDialog extends javax.swing.JDialog {
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(spinProtRB)
                     .addComponent(secProtRB)
-                    .addComponent(caerDispRB))
-                .addContainerGap(51, Short.MAX_VALUE))
+                    .addComponent(caerDispRB)
+                    .addComponent(jaerProtRB))
+                .addContainerGap(144, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
+                .addContainerGap(11, Short.MAX_VALUE)
+                .addComponent(jaerProtRB)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(spinProtRB)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(secProtRB)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(caerDispRB)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(useLocalTimestampsEnabledCheckBox)
-                    .addComponent(swapBytesCheckBox)
-                    .addComponent(use4ByteAddrTsCheckBox)
-                    .addComponent(addressFirstEnabledCheckBox)
-                    .addComponent(sequenceNumberEnabledCheckBox)
-                    .addComponent(includeTimestampsCheckBox)
-                    .addComponent(hostnameTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 416, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel1)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(jAERDefaultsButton)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(tdsDefaultsButton))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel3)
-                            .addComponent(jLabel2))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addGap(0, 0, Short.MAX_VALUE)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(timestampMultiplierTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(bufferSizeTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(18, 18, 18)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(useLocalTimestampsEnabledCheckBox)
+                            .addComponent(swapBytesCheckBox)
+                            .addComponent(use4ByteAddrTsCheckBox)
+                            .addComponent(addressFirstEnabledCheckBox)
+                            .addComponent(sequenceNumberEnabledCheckBox)
+                            .addComponent(includeTimestampsCheckBox)
+                            .addComponent(hostnameTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 416, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jLabel1)
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(jAERDefaultsButton)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(tdsDefaultsButton)))
+                        .addGap(18, 18, 18)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addComponent(applyButton)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(cancelButton))
+                            .addComponent(jLabel5)
+                            .addComponent(portTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE)))
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(applyButton)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(cancelButton))
-                    .addComponent(jLabel5)
-                    .addComponent(portTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGroup(layout.createSequentialGroup()
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(jLabel3)
+                                    .addComponent(jLabel2))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(timestampMultiplierTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(bufferSizeTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                        .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -384,10 +399,10 @@ public class AEUnicastDialog extends javax.swing.JDialog {
                         .addComponent(use4ByteAddrTsCheckBox)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(includeTimestampsCheckBox)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(useLocalTimestampsEnabledCheckBox)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jLabel3)
@@ -396,7 +411,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jLabel2)
                             .addComponent(timestampMultiplierTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jAERDefaultsButton)
                             .addComponent(tdsDefaultsButton))))
@@ -467,10 +482,6 @@ private void applyButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-
     applyChanges();
 }//GEN-LAST:event_applyButtonActionPerformed
 
-    private void hostnameTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hostnameTextFieldActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_hostnameTextFieldActionPerformed
-
     private void spinProtRBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_spinProtRBActionPerformed
         unicastInterface.setSpinnakerProtocolEnabled(spinProtRB.isSelected());
     }//GEN-LAST:event_spinProtRBActionPerformed
@@ -479,6 +490,16 @@ private void applyButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-
         unicastInterface.setSecDvsProtocolEnabled(secProtRB.isSelected());
         portTextField.setText(Integer.toString(AEUnicastSettings.SEC_DVS_STREAMER_PORT));
     }//GEN-LAST:event_secProtRBActionPerformed
+
+    private void jaerProtRBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jaerProtRBActionPerformed
+        // automatically will set other modes false by radio button group
+    }//GEN-LAST:event_jaerProtRBActionPerformed
+
+    private void caerDispRBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_caerDispRBActionPerformed
+        unicastInterface.setCAERDisplayEnabled(caerDispRB.isSelected());  
+        unicastInterface.setSpinnakerProtocolEnabled(false);
+        unicastInterface.setSecDvsProtocolEnabled(false);
+    }//GEN-LAST:event_caerDispRBActionPerformed
 
     private void doClose(int retStatus) {
         returnStatus = retStatus;
@@ -499,6 +520,7 @@ private void applyButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel5;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JRadioButton jaerProtRB;
     private javax.swing.JButton okButton;
     private javax.swing.JTextField portTextField;
     private javax.swing.ButtonGroup protGroup;

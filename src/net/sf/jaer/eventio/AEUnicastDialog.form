@@ -29,48 +29,58 @@
   <Layout>
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Group type="102" alignment="1" attributes="0">
-              <EmptySpace max="32767" attributes="0"/>
+          <Group type="102" attributes="0">
+              <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="0" attributes="0">
-                  <Component id="useLocalTimestampsEnabledCheckBox" min="-2" max="-2" attributes="0"/>
-                  <Component id="swapBytesCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
-                  <Component id="use4ByteAddrTsCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
-                  <Component id="addressFirstEnabledCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
-                  <Component id="sequenceNumberEnabledCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
-                  <Component id="includeTimestampsCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
-                  <Component id="hostnameTextField" alignment="0" min="-2" pref="416" max="-2" attributes="1"/>
-                  <Component id="jLabel1" alignment="0" min="-2" max="-2" attributes="0"/>
-                  <Group type="102" alignment="0" attributes="0">
-                      <Component id="jAERDefaultsButton" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Component id="tdsDefaultsButton" min="-2" max="-2" attributes="0"/>
+                  <Group type="102" alignment="1" attributes="0">
+                      <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Component id="useLocalTimestampsEnabledCheckBox" min="-2" max="-2" attributes="0"/>
+                          <Component id="swapBytesCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="use4ByteAddrTsCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="addressFirstEnabledCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="sequenceNumberEnabledCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="includeTimestampsCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="hostnameTextField" alignment="0" min="-2" pref="416" max="-2" attributes="1"/>
+                          <Component id="jLabel1" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Group type="102" alignment="0" attributes="0">
+                              <Component id="jAERDefaultsButton" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Component id="tdsDefaultsButton" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                      </Group>
+                      <EmptySpace type="separate" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" alignment="0" attributes="0">
+                              <Component id="okButton" min="-2" pref="67" max="-2" attributes="0"/>
+                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                              <Component id="applyButton" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Component id="cancelButton" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                          <Component id="jLabel5" min="-2" max="-2" attributes="0"/>
+                          <Component id="portTextField" min="-2" pref="105" max="-2" attributes="1"/>
+                      </Group>
                   </Group>
                   <Group type="102" attributes="0">
-                      <Group type="103" groupAlignment="1" attributes="0">
-                          <Component id="jLabel3" min="-2" max="-2" attributes="0"/>
-                          <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
-                      </Group>
-                      <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="timestampMultiplierTextBox" min="-2" pref="90" max="-2" attributes="0"/>
-                          <Component id="bufferSizeTextBox" min="-2" pref="90" max="-2" attributes="0"/>
+                          <Component id="jPanel1" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Group type="102" alignment="0" attributes="0">
+                              <Group type="103" groupAlignment="1" attributes="0">
+                                  <Component id="jLabel3" min="-2" max="-2" attributes="0"/>
+                                  <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Component id="timestampMultiplierTextBox" min="-2" pref="90" max="-2" attributes="0"/>
+                                  <Component id="bufferSizeTextBox" min="-2" pref="90" max="-2" attributes="0"/>
+                              </Group>
+                          </Group>
                       </Group>
+                      <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
                   </Group>
-                  <Component id="jPanel1" min="-2" max="-2" attributes="0"/>
               </Group>
-              <EmptySpace type="separate" max="-2" attributes="0"/>
-              <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" alignment="0" attributes="0">
-                      <Component id="okButton" min="-2" pref="67" max="-2" attributes="0"/>
-                      <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                      <Component id="applyButton" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Component id="cancelButton" min="-2" max="-2" attributes="0"/>
-                  </Group>
-                  <Component id="jLabel5" min="-2" max="-2" attributes="0"/>
-                  <Component id="portTextField" min="-2" pref="105" max="-2" attributes="1"/>
-              </Group>
-              <EmptySpace min="-2" max="-2" attributes="0"/>
+              <EmptySpace max="-2" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -105,10 +115,10 @@
                       <Component id="use4ByteAddrTsCheckBox" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
                       <Component id="includeTimestampsCheckBox" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace max="32767" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
                       <Component id="useLocalTimestampsEnabledCheckBox" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
-                      <Component id="jPanel1" min="-2" pref="90" max="-2" attributes="0"/>
+                      <Component id="jPanel1" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="3" attributes="0">
                           <Component id="jLabel3" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -119,7 +129,7 @@
                           <Component id="jLabel2" alignment="3" min="-2" max="-2" attributes="0"/>
                           <Component id="timestampMultiplierTextBox" alignment="3" min="-2" max="-2" attributes="0"/>
                       </Group>
-                      <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                      <EmptySpace max="32767" attributes="0"/>
                       <Group type="103" groupAlignment="3" attributes="0">
                           <Component id="jAERDefaultsButton" alignment="3" min="-2" max="-2" attributes="0"/>
                           <Component id="tdsDefaultsButton" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -175,9 +185,6 @@
         <Property name="text" type="java.lang.String" value="localhost"/>
         <Property name="toolTipText" type="java.lang.String" value="host from which to recieve events"/>
       </Properties>
-      <Events>
-        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="hostnameTextFieldActionPerformed"/>
-      </Events>
     </Component>
     <Component class="javax.swing.JTextField" name="portTextField">
       <Properties>
@@ -296,21 +303,24 @@
                       <Component id="spinProtRB" alignment="0" min="-2" max="-2" attributes="0"/>
                       <Component id="secProtRB" alignment="0" min="-2" max="-2" attributes="0"/>
                       <Component id="caerDispRB" alignment="0" min="-2" max="-2" attributes="0"/>
+                      <Component id="jaerProtRB" alignment="0" min="-2" max="-2" attributes="0"/>
                   </Group>
-                  <EmptySpace pref="51" max="32767" attributes="0"/>
+                  <EmptySpace pref="144" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
         <DimensionLayout dim="1">
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" alignment="0" attributes="0">
-                  <EmptySpace max="-2" attributes="0"/>
+                  <EmptySpace pref="11" max="32767" attributes="0"/>
+                  <Component id="jaerProtRB" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
                   <Component id="spinProtRB" min="-2" max="-2" attributes="0"/>
                   <EmptySpace type="unrelated" max="-2" attributes="0"/>
                   <Component id="secProtRB" min="-2" max="-2" attributes="0"/>
                   <EmptySpace type="unrelated" max="-2" attributes="0"/>
                   <Component id="caerDispRB" min="-2" max="-2" attributes="0"/>
-                  <EmptySpace max="32767" attributes="0"/>
+                  <EmptySpace max="-2" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -348,6 +358,21 @@
             <Property name="text" type="java.lang.String" value="cAERDisplayEnabled (experimental)"/>
             <Property name="toolTipText" type="java.lang.String" value="Sets input to parse cAER UDP output (experimental)"/>
           </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="caerDispRBActionPerformed"/>
+          </Events>
+        </Component>
+        <Component class="javax.swing.JRadioButton" name="jaerProtRB">
+          <Properties>
+            <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
+              <ComponentRef name="protGroup"/>
+            </Property>
+            <Property name="text" type="java.lang.String" value="Use normal jAER UDP protocol"/>
+            <Property name="toolTipText" type="java.lang.String" value="Disables special modes below"/>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jaerProtRBActionPerformed"/>
+          </Events>
         </Component>
       </SubComponents>
     </Container>
