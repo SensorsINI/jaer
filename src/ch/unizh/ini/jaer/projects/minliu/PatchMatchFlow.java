@@ -29,6 +29,8 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import java.util.StringTokenizer;
+import java.util.Timer;
+import java.util.TimerTask;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -138,6 +140,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int areaEventNumberSubsampling = getInt("areaEventNumberSubsampling", 4);
     private int[][] areaCounts = null;
     private boolean areaCountExceeded = false;
+    private volatile boolean showAreaCountAreasTemporarily = false;
+    private volatile Timer showAreaCountsAreasTimer = null;
 
     private int eventCounter = 0;
     private int sliceLastTs = 0;
@@ -430,8 +434,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
+        GL2 gl = drawable.getGL().getGL2();
         if (displayResultHistogram && (resultHistogram != null)) {
-            GL2 gl = drawable.getGL().getGL2();
             // draw histogram as shaded in 2d hist above color wheel
             // normalize hist
             int rhDim = resultHistogram.length; // 2*(searchDistance<<numScales)+1
@@ -510,6 +514,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             textRenderer.end3DRendering();
             gl.glPopMatrix();
 
+        }
+        if (sliceMethod == SliceMethod.AreaEventNumber && showAreaCountAreasTemporarily) {
+            int d = 1 << areaEventNumberSubsampling;
+            gl.glLineWidth(2f);
+            gl.glColor3f(1, 1, 1);
+            gl.glBegin(GL.GL_LINES);
+            for (int x = 0; x <= subSizeX; x += d) {
+                gl.glVertex2f(x, 0);
+                gl.glVertex2f(x, subSizeY);
+            }
+            for (int y = 0; y <= subSizeY; y += d) {
+                gl.glVertex2f(0, y);
+                gl.glVertex2f(subSizeX, y);
+            }
+            gl.glEnd();
         }
     }
 
@@ -996,7 +1015,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         // Calculate the metric confidence value
         final int minValidPixNum = (int) (this.validPixOccupancy * blockArea);
         final int maxSaturatedPixNum = (int) ((1 - this.validPixOccupancy) * blockArea);
-        final float sadNormalizer=1f/(blockArea*(rectifyPolarties?2:1)*sliceMaxValue);
+        final float sadNormalizer = 1f / (blockArea * (rectifyPolarties ? 2 : 1) * sliceMaxValue);
         // if current or previous block has insufficient pixels with values or if all the pixels are filled up, then reject match
         if ((validPixNumCurSlice < minValidPixNum) || (validPixNumPrevSlice < minValidPixNum)
                 || (saturatedPixNumCurSlice >= maxSaturatedPixNum) || (saturatedPixNumPrevSlice >= maxSaturatedPixNum)) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
@@ -1007,7 +1026,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             Here we use the difference between validPixNumCurrSli and validPixNumPrevSli to calculate the dispersion.
             Inspired by paper "Measuring the spatial dispersion of evolutionist search process: application to Walksat" by Alain Sidaner.
              */
-            final float finalDistance = sadNormalizer*((sumDist * weightDistance) + (Math.abs(validPixNumCurSlice - validPixNumPrevSlice) * (1 - weightDistance)));
+            final float finalDistance = sadNormalizer * ((sumDist * weightDistance) + (Math.abs(validPixNumCurSlice - validPixNumPrevSlice) * (1 - weightDistance)));
             return finalDistance;
         }
     }
@@ -1557,23 +1576,25 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        numSlices = getInt("numSlices", 3); // since resetFilter is called in super before numSlices is even initialized
         if (slices == null || slices.length != numSlices
                 || slices[0] == null || slices[0].length != numScales) {
-            slices = new byte[numSlices][numScales][][];
-            for (int n = 0; n < numSlices; n++) {
-                for (int s = 0; s < numScales; s++) {
-                    int nx = (subSizeX >> s) + 1, ny = (subSizeY >> s) + 1;
-                    if (slices[n][s] == null || slices[n][s].length != nx
-                            || slices[n][s][0] == null || slices[n][s][0].length != ny) {
-                        slices[n][s] = new byte[nx][ny];
+            if (numScales > 0 && numSlices > 0) { // deal with filter reconstruction where these fields are not set
+                slices = new byte[numSlices][numScales][][];
+                for (int n = 0; n < numSlices; n++) {
+                    for (int s = 0; s < numScales; s++) {
+                        int nx = (subSizeX >> s) + 1, ny = (subSizeY >> s) + 1;
+                        if (slices[n][s] == null || slices[n][s].length != nx
+                                || slices[n][s][0] == null || slices[n][s][0].length != ny) {
+                            slices[n][s] = new byte[nx][ny];
+                        }
                     }
                 }
-            }
-            currentSliceIdx = 0;  // start by filling slice 0
-            currentSlice = slices[currentSliceIdx];
+                currentSliceIdx = 0;  // start by filling slice 0
+                currentSlice = slices[currentSliceIdx];
 
-            sliceLastTs = Integer.MAX_VALUE;
-            sliceStartTimeUs = new int[numSlices];
-            sliceSummedSADValues = new float[numSlices];
-            sliceSummedSADCounts = new int[numSlices];
+                sliceLastTs = Integer.MAX_VALUE;
+                sliceStartTimeUs = new int[numSlices];
+                sliceSummedSADValues = new float[numSlices];
+                sliceSummedSADCounts = new int[numSlices];
+            }
 //            log.info("allocated slice memory");
         }
         if (lastTimesMap != null) {
@@ -2043,6 +2064,18 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         this.areaEventNumberSubsampling = areaEventNumberSubsampling;
         putInt("areaEventNumberSubsampling", areaEventNumberSubsampling);
+        TimerTask stopShowingAreaTask = new TimerTask() {
+            @Override
+            public void run() {
+                showAreaCountAreasTemporarily = false;
+            }
+        };
+        if (showAreaCountsAreasTimer != null) {
+            showAreaCountsAreasTimer.cancel();
+        }
+        showAreaCountsAreasTimer = new Timer();
+        showAreaCountAreasTemporarily = true;
+        showAreaCountsAreasTimer.schedule(stopShowingAreaTask, 3000);
         clearAreaCounts();
     }
 
