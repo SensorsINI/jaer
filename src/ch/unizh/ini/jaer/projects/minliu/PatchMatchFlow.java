@@ -53,7 +53,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
  *
  * @author Tobi and Min, Jan 2016
  */
-@Description("Computes optical flow with vector direction using binary block matching")
+@Description("Computes optical flow with vector direction using block matching")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class PatchMatchFlow extends AbstractMotionFlow implements Observer, FrameAnnotater {
 
@@ -101,7 +101,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int processingTimeLimitMs = getInt("processingTimeLimitMs", 100); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
     private int sliceMaxValue = getInt("sliceMaxValue", 1);
     private boolean rectifyPolarties = getBoolean("rectifyPolarties", true);
-    private TimeLimiter timeLimiter = new TimeLimiter();
+    private TimeLimiter timeLimiter = new TimeLimiter(); // private instance used to accumulate events to slices even if packet has timed out
 
     // results histogram for each packet
     private int[][] resultHistogram = null;
@@ -688,6 +688,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             int c = ++areaCounts[e.x >> areaEventNumberSubsampling][e.y >> areaEventNumberSubsampling];
             if (c >= sliceEventCount) {
                 areaCountExceeded = true;
+//                int count=0, sum=0, sum2=0;
+//                StringBuilder sb=new StringBuilder("Area counts:\n");
+//                for(int[] i:areaCounts){
+//                    for(int j:i){
+//                        count++;
+//                        sum+=j;
+//                        sum2+=j*j;
+//                        sb.append(String.format("%6d ",j));
+//                    }
+//                    sb.append("\n");
+//                }
+//                float m=(float)sum/count;
+//                float s=(float)Math.sqrt((float)sum2/count-m*m);
+//                sb.append(String.format("mean=%.1f, std=%.1f",m,s));
+//                log.info("area count stats "+sb.toString());
             }
         }
         if (timeLimiter.isTimedOut()) {
@@ -1427,6 +1442,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     synchronized public void setSliceMethod(SliceMethod sliceMethod) {
         this.sliceMethod = sliceMethod;
         putString("sliceMethod", sliceMethod.toString());
+        if (sliceMethod == SliceMethod.AreaEventNumber) {
+            showAreasForAreaCountsTemporarily();
+        }
     }
 
     public PatchCompareMethod getPatchCompareMethod() {
@@ -2064,6 +2082,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         this.areaEventNumberSubsampling = areaEventNumberSubsampling;
         putInt("areaEventNumberSubsampling", areaEventNumberSubsampling);
+        showAreasForAreaCountsTemporarily();
+        clearAreaCounts();
+        if(sliceMethod!=SliceMethod.AreaEventNumber){
+            log.warning("AreaEventNumber method is not currently selected as sliceMethod");
+        }
+    }
+
+    private void showAreasForAreaCountsTemporarily() {
         TimerTask stopShowingAreaTask = new TimerTask() {
             @Override
             public void run() {
@@ -2076,7 +2102,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         showAreaCountsAreasTimer = new Timer();
         showAreaCountAreasTemporarily = true;
         showAreaCountsAreasTimer.schedule(stopShowingAreaTask, 3000);
-        clearAreaCounts();
     }
 
     private void clearAreaCounts() {
