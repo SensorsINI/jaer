@@ -18,7 +18,7 @@
                   <entry key="FilterChain.timeLimitEnabled" value="false"/>
                   <entry key="FilterChain.timeLimitMs" value="10"/>
                   <entry key="Info.useLocalTimeZone" value="true"/>
-                  <entry key="SampleProbControlPanel.bgTabbedPaneSelectedIndex" value="0"/>
+                  <entry key="SampleProbControlPanel.bgTabbedPaneSelectedIndex" value="3"/>
                   <entry key="SPIConfigBit.DACRun" value="true"/>
                   <entry key="SPIConfigBit.ForceBiasEnable" value="false"/>
                   <entry key="SPIConfigBit.AERRun" value="true"/>
@@ -114,13 +114,13 @@
                   <entry key="SampleProb.IPot.VHazardresBp10" value="0"/>
                   <entry key="SampleProb.IPot.VHazardresBp9" value="0"/>
                   <entry key="SampleProb.IPot.VHazardresBp8" value="0"/>
-                  <entry key="SampleProb.IPot.VHazardresBp7" value="610"/>
+                  <entry key="SampleProb.IPot.VHazardresBp7" value="2250"/>
                   <entry key="SampleProb.IPot.VHazardresBp6" value="0"/>
-                  <entry key="SampleProb.IPot.VHazardresBp5" value="470"/>
+                  <entry key="SampleProb.IPot.VHazardresBp5" value="1750"/>
                   <entry key="SampleProb.IPot.VHazardresBp4" value="0"/>
                   <entry key="SampleProb.IPot.VHazardresBp3" value="0"/>
-                  <entry key="SampleProb.IPot.VHazardresBp2" value="590"/>
-                  <entry key="SampleProb.IPot.VHazardresBp1" value="460"/>
+                  <entry key="SampleProb.IPot.VHazardresBp2" value="2200"/>
+                  <entry key="SampleProb.IPot.VHazardresBp1" value="1850"/>
                   <entry key="SampleProb.IPot.VHazardresBp0" value="0"/>
                   <entry key="SampleProb.IPot.VreqPuTxBp" value="3145728"/>
                   <entry key="SampleProb.IPot.VfollBn" value="786432"/>
