@@ -28,6 +28,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
+import com.jogamp.opengl.GLException;
 import java.util.StringTokenizer;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -45,6 +46,7 @@ import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.ImageDisplay.Legend;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.EngineeringFormat;
+import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
@@ -94,10 +96,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private float skipChangeFactor = (float) Math.sqrt(2); // by what factor to change the skip count if too slow or too fast
     private boolean outputSearchErrorInfo = false; // make user choose this slow down every time
     private boolean adaptiveSliceDuration = getBoolean("adaptiveSliceDuration", false);
+    private boolean adaptiveSliceDurationLogging = true;
+    private TobiLogger adaptiveSliceDurationLogger = null;
+    private int adaptiveSliceDurationPacketCount = 0;
     private boolean useSubsampling = getBoolean("useSubsampling", false);
     private int adaptiveSliceDurationMinVectorsToControl = getInt("adaptiveSliceDurationMinVectorsToControl", 10);
     private boolean showSliceBitMap = false; // Display the bitmaps
-    private float adapativeSliceDurationProportionalErrorGain = 0.01f; // factor by which an error signal on match distance changes slice duration
+    private float adapativeSliceDurationProportionalErrorGain = 0.05f; // factor by which an error signal on match distance changes slice duration
     private int processingTimeLimitMs = getInt("processingTimeLimitMs", 100); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
     private int sliceMaxValue = getInt("sliceMaxValue", 1);
     private boolean rectifyPolarties = getBoolean("rectifyPolarties", true);
@@ -420,12 +425,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                lastErrSign = errSign;
 // problem with following is that if sliceDurationUs gets really big, then of course the avgMatchDistance becomes small because
 // of the biased-towards-zero search policy that selects the closest match
-                int durChange = (int) (errSign * adapativeSliceDurationProportionalErrorGain * sliceDurationUs);
-                setSliceDurationUs(sliceDurationUs + durChange);
+                switch (sliceMethod) {
+                    case ConstantDuration:
+                        int durChange = (int) (errSign * adapativeSliceDurationProportionalErrorGain * sliceDurationUs);
+                        setSliceDurationUs(sliceDurationUs + durChange);
+                        break;
+                    case ConstantEventNumber:
+                    case AreaEventNumber:
+                        setSliceEventCount(Math.round(sliceEventCount * (1 + adapativeSliceDurationProportionalErrorGain * errSign)));
+                }
+                if (adaptiveSliceDurationLogger != null && adaptiveSliceDurationLogger.isEnabled()) {
+                    adaptiveSliceDurationLogger.log(String.format("%d\t%f\t%f\t%d\t%d", adaptiveSliceDurationPacketCount++, avgMatchDistance, err, sliceDurationUs, sliceEventCount));
+                }
             }
-// clear histograms for each packet so that we accumulate OF distribution for this packet
         }
-
     }
 
     private EngineeringFormat engFmt = new EngineeringFormat();
@@ -435,7 +448,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     synchronized public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
-        if (displayResultHistogram && (resultHistogram != null)) {
+            try {
+                gl.glEnable(GL.GL_BLEND);
+                gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+                gl.glBlendEquation(GL.GL_FUNC_ADD);
+            } catch (GLException e) {
+                e.printStackTrace();
+            }
+       if (displayResultHistogram && (resultHistogram != null)) {
             // draw histogram as shaded in 2d hist above color wheel
             // normalize hist
             int rhDim = resultHistogram.length; // 2*(searchDistance<<numScales)+1
@@ -1525,8 +1545,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param sliceEventCount the sliceEventCount to set
      */
     public void setSliceEventCount(int sliceEventCount) {
+        int old = this.sliceEventCount;
         this.sliceEventCount = sliceEventCount;
         putInt("sliceEventCount", sliceEventCount);
+        getSupport().firePropertyChange("sliceEventCount", old, this.sliceEventCount);
     }
 
     public float getConfidenceThreshold() {
@@ -1771,6 +1793,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     synchronized public void setAdaptiveSliceDuration(boolean adaptiveSliceDuration) {
         this.adaptiveSliceDuration = adaptiveSliceDuration;
         putBoolean("adaptiveSliceDuration", adaptiveSliceDuration);
+        if (adaptiveSliceDurationLogging) {
+            if (adaptiveSliceDurationLogger == null) {
+                adaptiveSliceDurationLogger = new TobiLogger("PatchMatchFlow-SliceDurationControl", "slice duration or event count control logging");
+                adaptiveSliceDurationLogger.setHeaderLine("packetNumber,avgMatchDistance matchRadiusError sliceDurationUs sliceEventCount");
+            }
+            adaptiveSliceDurationLogger.setEnabled(adaptiveSliceDuration);
+        }
     }
 
     /**
@@ -2084,7 +2113,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         putInt("areaEventNumberSubsampling", areaEventNumberSubsampling);
         showAreasForAreaCountsTemporarily();
         clearAreaCounts();
-        if(sliceMethod!=SliceMethod.AreaEventNumber){
+        if (sliceMethod != SliceMethod.AreaEventNumber) {
             log.warning("AreaEventNumber method is not currently selected as sliceMethod");
         }
     }
