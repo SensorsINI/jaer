@@ -100,7 +100,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
      * @param resetPerformanceMeasurementStatistics the
      * resetPerformanceMeasurementStatistics to set
      */
-    public void resetResetPerformanceMeasurementStatistics() {
+    synchronized public void resetResetPerformanceMeasurementStatistics() {
         this.resetPerformanceMeasurementStatistics = true;
     }
 
@@ -193,10 +193,16 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         } else {
             in.setTimeLimitEnabled(false);
         }
-        for (EventFilter2D f : this) {
-            if (measurePerformanceEnabled && f.perf != null && (!f.isFilterEnabled() || resetPerformanceMeasurementStatistics)) { // check to reset performance meter
-                f.perf.resetStatistics();
+        if (resetPerformanceMeasurementStatistics) {
+            for (EventFilter2D f : this) {
+                if (f.perf != null && f.isFilterEnabled()) { // check to reset performance meter
+                    f.perf.resetStatistics();
+                }
             }
+            log.info("compute performance statistics reset");
+            resetPerformanceMeasurementStatistics = false;
+        }
+        for (EventFilter2D f : this) {
             if (!f.isFilterEnabled() || in == null) {
                 continue;  // tobi added so that each filter doesn't need to check if enabled and non-null packet
             }
@@ -214,10 +220,6 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             }
             in = out;
         }
-        if(resetPerformanceMeasurementStatistics){
-            log.info("compute performance statistics reset");
-        }
-        resetPerformanceMeasurementStatistics = false;
         return in;
     }
 
