@@ -18,7 +18,7 @@
                   <entry key="FilterChain.timeLimitEnabled" value="false"/>
                   <entry key="FilterChain.timeLimitMs" value="10"/>
                   <entry key="Info.useLocalTimeZone" value="true"/>
-                  <entry key="SampleProbControlPanel.bgTabbedPaneSelectedIndex" value="3"/>
+                  <entry key="SampleProbControlPanel.bgTabbedPaneSelectedIndex" value="1"/>
                   <entry key="SPIConfigBit.DACRun" value="true"/>
                   <entry key="SPIConfigBit.ForceBiasEnable" value="false"/>
                   <entry key="SPIConfigBit.AERRun" value="true"/>
@@ -56,21 +56,21 @@
                   <entry key="SampleProb.IPot.Bias20" value="3145728"/>
                   <entry key="SampleProb.IPot.Bias21" value="786432"/>
                   <entry key="SampleProb.IPot.Bias22" value="786432"/>
-                  <entry key="SampleProb.VPot.VHazardrefD00" value="15090"/>
-                  <entry key="SampleProb.VPot.VHazardrefD01" value="15090"/>
-                  <entry key="SampleProb.VPot.VHazardrefD02" value="15090"/>
-                  <entry key="SampleProb.VPot.VHazardrefD03" value="15090"/>
-                  <entry key="SampleProb.VPot.VHazardrefD04" value="15090"/>
-                  <entry key="SampleProb.VPot.VHazardrefD05" value="15090"/>
-                  <entry key="SampleProb.VPot.VHazardrefD06" value="15090"/>
-                  <entry key="SampleProb.VPot.VHazardrefD07" value="15090"/>
-                  <entry key="SampleProb.VPot.VHazardrefD08" value="15090"/>
-                  <entry key="SampleProb.VPot.VHazardrefD09" value="15090"/>
-                  <entry key="SampleProb.VPot.VHazardrefD10" value="15090"/>
-                  <entry key="SampleProb.VPot.VHazardrefD11" value="15090"/>
-                  <entry key="SampleProb.VPot.VHazardrefD12" value="15090"/>
-                  <entry key="SampleProb.VPot.VHazardrefD13" value="15090"/>
-                  <entry key="SampleProb.VPot.VHazardrefD14" value="15090"/>
+                  <entry key="SampleProb.VPot.VHazardrefD00" value="16383"/>
+                  <entry key="SampleProb.VPot.VHazardrefD01" value="16383"/>
+                  <entry key="SampleProb.VPot.VHazardrefD02" value="16383"/>
+                  <entry key="SampleProb.VPot.VHazardrefD03" value="16383"/>
+                  <entry key="SampleProb.VPot.VHazardrefD04" value="16383"/>
+                  <entry key="SampleProb.VPot.VHazardrefD05" value="16383"/>
+                  <entry key="SampleProb.VPot.VHazardrefD06" value="16383"/>
+                  <entry key="SampleProb.VPot.VHazardrefD07" value="16383"/>
+                  <entry key="SampleProb.VPot.VHazardrefD08" value="16383"/>
+                  <entry key="SampleProb.VPot.VHazardrefD09" value="16383"/>
+                  <entry key="SampleProb.VPot.VHazardrefD10" value="16383"/>
+                  <entry key="SampleProb.VPot.VHazardrefD11" value="16383"/>
+                  <entry key="SampleProb.VPot.VHazardrefD12" value="16383"/>
+                  <entry key="SampleProb.VPot.VHazardrefD13" value="16383"/>
+                  <entry key="SampleProb.VPot.VHazardrefD14" value="15016"/>
                   <entry key="SampleProb.VPot.Vsrc1Bns" value="1960"/>
                   <entry key="SampleProb.VPot.VnoiseExt04" value="16383"/>
                   <entry key="SampleProb.VPot.VnoiseExt00" value="16383"/>
@@ -85,12 +85,12 @@
                   <entry key="SampleProb.VPot.VnoiseExt10" value="16383"/>
                   <entry key="SampleProb.VPot.VnoiseExt11" value="16383"/>
                   <entry key="SampleProb.VPot.VnoiseExt13" value="16383"/>
-                  <entry key="SampleProb.VPot.VnoiseExt14" value="16209"/>
+                  <entry key="SampleProb.VPot.VnoiseExt14" value="16383"/>
                   <entry key="SampleProb.VPot.VnoiseExt15" value="16383"/>
                   <entry key="SampleProb.VPot.VnoiseExt09" value="16383"/>
-                  <entry key="SampleProb.VPot.VRVGrefh" value="0"/>
-                  <entry key="SampleProb.VPot.VRVGrefl" value="0"/>
-                  <entry key="SampleProb.VPot.VRVGrefm" value="0"/>
+                  <entry key="SampleProb.VPot.VRVGrefh" value="15441"/>
+                  <entry key="SampleProb.VPot.VRVGrefl" value="7250"/>
+                  <entry key="SampleProb.VPot.VRVGrefm" value="11346"/>
                   <entry key="Masterbias.rx" value="8200.0"/>
                   <entry key="Masterbias.rint" value="46000.0"/>
                   <entry key="Masterbias.internalResistorUsed" value="false"/>
@@ -101,13 +101,13 @@
                   <entry key="HotPixelFilter.filterEnabled" value="false"/>
                   <entry key="Info.filterEnabled" value="false"/>
                   <entry key="JaerAviWriter.filterEnabled" value="false"/>
-                  <entry key="SampleProbControlPanel.inputDataFile" value="C:\Users\chenhan\Dropbox\Document_ETH&amp;INI\ETH_Research\20150407_SampleProbFG\Test\RS_Input_Sequence\AllCh_triangle_01.txt"/>
+                  <entry key="SampleProbControlPanel.inputDataFile" value="C:\Users\chenhan\Dropbox\Document_ETH&amp;INI\ETH_Research\20150407_SampleProbFG\Test\RS_Input_Sequence\Uniform\AllCh_07.txt"/>
                   <entry key="SampleProb.IPot.VpdbiasTxBn" value="3145728"/>
                   <entry key="SampleProb.IPot.VaBp" value="3145728"/>
                   <entry key="SampleProb.IPot.VbBp" value="327680"/>
                   <entry key="SampleProb.IPot.VcBp" value="409600"/>
                   <entry key="SampleProb.IPot.VHazardresBp15" value="0"/>
-                  <entry key="SampleProb.IPot.VHazardresBp14" value="0"/>
+                  <entry key="SampleProb.IPot.VHazardresBp14" value="404"/>
                   <entry key="SampleProb.IPot.VHazardresBp13" value="0"/>
                   <entry key="SampleProb.IPot.VHazardresBp12" value="0"/>
                   <entry key="SampleProb.IPot.VHazardresBp11" value="0"/>
@@ -134,13 +134,13 @@
                   <entry key="SampleProb.AERExternalAERControl" value="false"/>
                   <entry key="SampleProb.MasterBias" value="255"/>
                   <entry key="SampleProb.SelSpikeExtend" value="1"/>
-                  <entry key="SampleProb.SelHazardIV" value="127"/>
+                  <entry key="SampleProb.SelHazardIV" value="107"/>
                   <entry key="SampleProb.SelCH" value="false"/>
-                  <entry key="SampleProb.SelNS" value="false"/>
-                  <entry key="SampleProb.ClockEnable" value="false"/>
+                  <entry key="SampleProb.SelNS" value="true"/>
+                  <entry key="SampleProb.ClockEnable" value="true"/>
                   <entry key="SampleProb.ClockPeriod" value="200"/>
                   <entry key="SampleProb.DACRandomRun" value="false"/>
-                  <entry key="SampleProb.UseLandscapeSamplingVerilog" value="true"/>
+                  <entry key="SampleProb.UseLandscapeSamplingVerilog" value="false"/>
                   <entry key="SampleProb.VPot.DACRandomLowerLimit" value="0"/>
                   <entry key="SampleProb.VPot.DACRandomUpperLimit" value="0"/>
                   <entry key="SampleProb.Masterbias.rx" value="8200.0"/>
