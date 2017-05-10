@@ -96,7 +96,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private float skipChangeFactor = (float) Math.sqrt(2); // by what factor to change the skip count if too slow or too fast
     private boolean outputSearchErrorInfo = false; // make user choose this slow down every time
     private boolean adaptiveSliceDuration = getBoolean("adaptiveSliceDuration", false);
-    private boolean adaptiveSliceDurationLogging = true;
+    private boolean adaptiveSliceDurationLogging = false; // for debugging and analyzing control of slice event number/duration
     private TobiLogger adaptiveSliceDurationLogger = null;
     private int adaptiveSliceDurationPacketCount = 0;
     private boolean useSubsampling = getBoolean("useSubsampling", false);
