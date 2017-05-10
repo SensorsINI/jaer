@@ -435,8 +435,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         setSliceEventCount(Math.round(sliceEventCount * (1 + adapativeSliceDurationProportionalErrorGain * errSign)));
                 }
                 if (adaptiveSliceDurationLogger != null && adaptiveSliceDurationLogger.isEnabled()) {
-                    if(!isMeasureGlobalMotion()) setMeasureGlobalMotion(true);
-                    adaptiveSliceDurationLogger.log(String.format("%d\t%f\t%f\t%f\t%d\t%d", adaptiveSliceDurationPacketCount++, avgMatchDistance, err, motionFlowStatistics.getGlobalMotion().getGlobalTranslationSpeed(),sliceDurationUs, sliceEventCount));
+                    if (!isMeasureGlobalMotion()) {
+                        setMeasureGlobalMotion(true);
+                    }
+                    adaptiveSliceDurationLogger.log(String.format("%d\t%f\t%f\t%f\t%d\t%d", adaptiveSliceDurationPacketCount++, avgMatchDistance, err, motionFlowStatistics.getGlobalMotion().getGlobalTranslationSpeed(), sliceDurationUs, sliceEventCount));
                 }
             }
         }
@@ -449,14 +451,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     synchronized public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
-            try {
-                gl.glEnable(GL.GL_BLEND);
-                gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
-                gl.glBlendEquation(GL.GL_FUNC_ADD);
-            } catch (GLException e) {
-                e.printStackTrace();
-            }
-       if (displayResultHistogram && (resultHistogram != null)) {
+        try {
+            gl.glEnable(GL.GL_BLEND);
+            gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+            gl.glBlendEquation(GL.GL_FUNC_ADD);
+        } catch (GLException e) {
+            e.printStackTrace();
+        }
+        if (displayResultHistogram && (resultHistogram != null)) {
             // draw histogram as shaded in 2d hist above color wheel
             // normalize hist
             int rhDim = resultHistogram.length; // 2*(searchDistance<<numScales)+1
@@ -489,52 +491,52 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 textRenderer.draw3D("No data", 0, 0, 0, .07f);
                 textRenderer.end3DRendering();
                 gl.glPopMatrix();
-                return;
-            }
-            final float maxRecip = 1f / max;
-            gl.glPushMatrix();
-            for (int xx = 0; xx < rhDim; xx++) {
-                for (int yy = 0; yy < rhDim; yy++) {
-                    float g = maxRecip * resultHistogram[xx][yy];
-                    gl.glColor3f(g, g, g);
-                    gl.glBegin(GL2ES3.GL_QUADS);
-                    gl.glVertex2f(xx, yy);
-                    gl.glVertex2f(xx + 1, yy);
-                    gl.glVertex2f(xx + 1, yy + 1);
-                    gl.glVertex2f(xx, yy + 1);
-                    gl.glEnd();
-                }
-            }
-            if (avgMatchDistance > 0) {
-                gl.glColor3f(1, 0, 0);
-                gl.glLineWidth(5f);
-                final int tsd = searchDistance << (numScales - 1);
-                DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgMatchDistance, 16);
-            }
-            // a bunch of cryptic crap to draw a string the same width as the histogram...
-            gl.glPopMatrix();
-            textRenderer.begin3DRendering();
-            String s = String.format("d=%s ms", engFmt.format(1e-3f * sliceDeltaT));
-//            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getSizeX(), .1f);
-            // determine width of string in pixels and scale accordingly
-            FontRenderContext frc = textRenderer.getFontRenderContext();
-            Rectangle2D r = textRenderer.getBounds(s); // bounds in java2d coordinates, downwards more positive
-            Rectangle2D rt = frc.getTransform().createTransformedShape(r).getBounds2D(); // get bounds in textrenderer coordinates
-//            float ps = chip.getCanvas().getScale();
-            float w = (float) rt.getWidth(); // width of text in textrenderer, i.e. histogram cell coordinates (1 unit = 1 histogram cell)
-            float sc = rhDim / w; // scale to histogram width
-            gl.glTranslatef(0, rhDim, 0); // translate to UL corner of histogram
-            textRenderer.draw3D(s, 0, 0, 0, sc);
-            String s2 = String.format("skip %d", skipProcessingEventsCount);
-            textRenderer.draw3D(s2, 0, (float) (rt.getHeight()) * sc, 0, sc);
-            StringBuilder sb = new StringBuilder("Scale counts: ");
-            for (int c : scaleResultCounts) {
-                sb.append(String.format("%d ", c));
-            }
-            textRenderer.draw3D(sb.toString(), 0, (float) (2 * rt.getHeight()) * sc, 0, sc);
-            textRenderer.end3DRendering();
-            gl.glPopMatrix();
 
+            } else {
+                final float maxRecip = 1f / max;
+                gl.glPushMatrix();
+                for (int xx = 0; xx < rhDim; xx++) {
+                    for (int yy = 0; yy < rhDim; yy++) {
+                        float g = maxRecip * resultHistogram[xx][yy];
+                        gl.glColor3f(g, g, g);
+                        gl.glBegin(GL2ES3.GL_QUADS);
+                        gl.glVertex2f(xx, yy);
+                        gl.glVertex2f(xx + 1, yy);
+                        gl.glVertex2f(xx + 1, yy + 1);
+                        gl.glVertex2f(xx, yy + 1);
+                        gl.glEnd();
+                    }
+                }
+                if (avgMatchDistance > 0) {
+                    gl.glColor3f(1, 0, 0);
+                    gl.glLineWidth(5f);
+                    final int tsd = searchDistance << (numScales - 1);
+                    DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgMatchDistance, 16);
+                }
+                // a bunch of cryptic crap to draw a string the same width as the histogram...
+                gl.glPopMatrix();
+                textRenderer.begin3DRendering();
+                String s = String.format("d=%s ms", engFmt.format(1e-3f * sliceDeltaT));
+//            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getSizeX(), .1f);
+                // determine width of string in pixels and scale accordingly
+                FontRenderContext frc = textRenderer.getFontRenderContext();
+                Rectangle2D r = textRenderer.getBounds(s); // bounds in java2d coordinates, downwards more positive
+                Rectangle2D rt = frc.getTransform().createTransformedShape(r).getBounds2D(); // get bounds in textrenderer coordinates
+//            float ps = chip.getCanvas().getScale();
+                float w = (float) rt.getWidth(); // width of text in textrenderer, i.e. histogram cell coordinates (1 unit = 1 histogram cell)
+                float sc = rhDim / w; // scale to histogram width
+                gl.glTranslatef(0, rhDim, 0); // translate to UL corner of histogram
+                textRenderer.draw3D(s, 0, 0, 0, sc);
+                String s2 = String.format("skip %d", skipProcessingEventsCount);
+                textRenderer.draw3D(s2, 0, (float) (rt.getHeight()) * sc, 0, sc);
+                StringBuilder sb = new StringBuilder("Scale counts: ");
+                for (int c : scaleResultCounts) {
+                    sb.append(String.format("%d ", c));
+                }
+                textRenderer.draw3D(sb.toString(), 0, (float) (2 * rt.getHeight()) * sc, 0, sc);
+                textRenderer.end3DRendering();
+                gl.glPopMatrix();
+            }
         }
         if (sliceMethod == SliceMethod.AreaEventNumber && showAreaCountAreasTemporarily) {
             int d = 1 << areaEventNumberSubsampling;
@@ -555,6 +557,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     @Override
     public synchronized void resetFilter() {
+        setSubSampleShift(0); // filter breaks with super's bit shift subsampling
         super.resetFilter();
         eventCounter = 0;
         lastTs = Integer.MIN_VALUE;
@@ -689,10 +692,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         for (int s = 0; s < numScales; s++) {
             final int xx = e.x >> s;
             final int yy = e.y >> s;
-//            if(xx>=currentSlice[s].length || yy>currentSlice[s][xx].length){
-//                log.warning("event out of range");
-//                return false;
-//            }
+            if (xx >= currentSlice[s].length || yy > currentSlice[s][xx].length) {
+                log.warning("event out of range");
+                return false;
+            }
             int cv = currentSlice[s][xx][yy];
             cv += rectifyPolarties ? 1 : (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
             if (cv > sliceMaxValue) {
@@ -1616,7 +1619,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
 //        numSlices = getInt("numSlices", 3); // since resetFilter is called in super before numSlices is even initialized
         if (slices == null || slices.length != numSlices
-                || slices[0] == null || slices[0].length != numScales) {
+                || slices[0] == null || slices[0].length != numScales || slices[0][0] == null
+                || (subSizeX > 0 && slices[0][0].length != subSizeX)) {
             if (numScales > 0 && numSlices > 0) { // deal with filter reconstruction where these fields are not set
                 slices = new byte[numSlices][numScales][][];
                 for (int n = 0; n < numSlices; n++) {
