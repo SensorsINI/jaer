@@ -111,7 +111,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     // results histogram for each packet
     private int[][] resultHistogram = null;
     private int resultHistogramCount;
-    private float avgMatchDistance = 0; // stores average match distance for rendering it
+    private volatile float avgMatchDistance = 0; // stores average match distance for rendering it
     private float histStdDev = 0, lastHistStdDev = 0;
     private float FSCnt = 0, DSCorrectCnt = 0;
     float DSAverageNum = 0, DSAveError[] = {0, 0};           // Evaluate DS cost average number and the error.
@@ -491,7 +491,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 textRenderer.draw3D("No data", 0, 0, 0, .07f);
                 textRenderer.end3DRendering();
                 gl.glPopMatrix();
-
             } else {
                 final float maxRecip = 1f / max;
                 gl.glPushMatrix();
@@ -600,6 +599,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private boolean maybeRotateSlices() {
         int dt = ts - sliceLastTs;
         if (dt < 0 || rewindFlg) { // handle timestamp wrapping
+        System.out.println("rotated slices at ");
+        System.out.println("rotated slices with dt= "+dt);
             rotateSlices();
             eventCounter = 0;
             sliceDeltaT = dt;
@@ -692,10 +693,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         for (int s = 0; s < numScales; s++) {
             final int xx = e.x >> s;
             final int yy = e.y >> s;
-            if (xx >= currentSlice[s].length || yy > currentSlice[s][xx].length) {
-                log.warning("event out of range");
-                return false;
-            }
+//            if (xx >= currentSlice[s].length || yy > currentSlice[s][xx].length) {
+//                log.warning("event out of range");
+//                return false;
+//            }
             int cv = currentSlice[s][xx][yy];
             cv += rectifyPolarties ? 1 : (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
             if (cv > sliceMaxValue) {
@@ -1550,6 +1551,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
     public void setSliceEventCount(int sliceEventCount) {
         int old = this.sliceEventCount;
+        if (sliceEventCount < 100) {
+            sliceEventCount = 100;
+        } else if (sliceEventCount > 100000) {
+            sliceEventCount = 100000;
+        }
         this.sliceEventCount = sliceEventCount;
         putInt("sliceEventCount", sliceEventCount);
         getSupport().firePropertyChange("sliceEventCount", old, this.sliceEventCount);
@@ -1619,8 +1625,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
 //        numSlices = getInt("numSlices", 3); // since resetFilter is called in super before numSlices is even initialized
         if (slices == null || slices.length != numSlices
-                || slices[0] == null || slices[0].length != numScales || slices[0][0] == null
-                || (subSizeX > 0 && slices[0][0].length != subSizeX)) {
+                || slices[0] == null || slices[0].length != numScales ) {
             if (numScales > 0 && numSlices > 0) { // deal with filter reconstruction where these fields are not set
                 slices = new byte[numSlices][numScales][][];
                 for (int n = 0; n < numSlices; n++) {
