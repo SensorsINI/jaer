@@ -38,7 +38,7 @@
 	</classpathentry>
 	<classpathentry kind="lib" path="jars/comm.jar"/>
 	<classpathentry kind="lib" path="jars/betterbeansbinding-1.3.0-all.jar"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
 	<classpathentry kind="lib" path="jars/jblas-1.2.4.jar"/>
 	<classpathentry kind="lib" path="jars/JEvtLearn.jar"/>
 	<classpathentry kind="lib" path="jars/uncommons-maths-1.2.3.jar"/>
