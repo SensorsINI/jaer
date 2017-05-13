@@ -200,8 +200,8 @@ public class MotionFlowStatistics {
     public class GlobalMotion {
 
         float meanGlobalVx, sdGlobalVx, meanGlobalVy, sdGlobalVy, meanGlobalRotation,
-                sdGlobalRotation, meanGlobalExpansion, sdGlobalExpansion, meanGlobalSpeed;
-        private final Measurand globalVx, globalVy, globalRotation, globalExpansion;
+                sdGlobalRotation, meanGlobalExpansion, sdGlobalExpansion, meanGlobalSpeed, sdGlobalSpeed;
+        private final Measurand globalVx, globalVy, globalRotation, globalExpansion,globalSpeed;
         private int rx, ry;
         private int subSizeX, subSizeY;
 
@@ -218,6 +218,7 @@ public class MotionFlowStatistics {
             globalVy = new Measurand();
             globalRotation = new Measurand();
             globalExpansion = new Measurand();
+            globalSpeed = new Measurand();
         }
 
         void reset(int sX, int sY) {
@@ -227,6 +228,7 @@ public class MotionFlowStatistics {
             globalVy.reset();
             globalRotation.reset();
             globalExpansion.reset();
+            globalSpeed.reset();
         }
 
         void update(float vx, float vy, float v, int x, int y) {
@@ -280,7 +282,9 @@ public class MotionFlowStatistics {
             if (rx > -2 && rx < 2 && ry > -2 && ry < 2) {
                 return; // Don't add singular event at origin.
             }
-            globalExpansion.update((vx * rx + vy * ry) / (rx * rx + ry * ry));
+            final float speed = vx * rx + vy * ry;
+            globalExpansion.update(speed / (rx * rx + ry * ry));
+            globalSpeed.update(speed);
         }
 
         void bufferMean() {
@@ -292,6 +296,8 @@ public class MotionFlowStatistics {
             sdGlobalRotation = globalRotation.getStdErr();
             meanGlobalExpansion = globalExpansion.getMean();
             sdGlobalExpansion = globalExpansion.getStdErr();
+            meanGlobalSpeed=(float)Math.sqrt(meanGlobalVx*meanGlobalVx+meanGlobalVy*meanGlobalVy);
+            sdGlobalSpeed=(float)Math.sqrt(sdGlobalVx*sdGlobalVx+sdGlobalVy*sdGlobalVy);
 
             // Call resets here because global motion should in general not
             // be averaged over more than one packet.
@@ -299,6 +305,7 @@ public class MotionFlowStatistics {
             globalVy.reset();
             globalRotation.reset();
             globalExpansion.reset();
+            globalSpeed.reset();
         }
 
         @Override
@@ -343,8 +350,8 @@ public class MotionFlowStatistics {
          *
          * @return
          */
-        public float getGlobalTranslationSpeed() {
-            return (float) Math.sqrt(meanGlobalVx * meanGlobalVx + meanGlobalVy * meanGlobalVy);
+        public Measurand getGlobalSpeed() {
+            return globalSpeed;
         }
     }
 

@@ -200,6 +200,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     protected SingleCameraCalibration cameraCalibration = null;
     int uidx;
+    protected boolean useColorForMotionVectors = getBoolean("useColorForMotionVectors", true);
 
     public AbstractMotionFlowIMU(AEChip chip) {
         super(chip);
@@ -245,6 +246,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(dispTT, "yMin", "events with y-coordinate below this are filtered out.");
         setPropertyTooltip(dispTT, "yMax", "events with y-coordinate above this are filtered out.");
         setPropertyTooltip(dispTT, "motionVectorLineWidthPixels", "line width to draw motion vectors");
+        setPropertyTooltip(dispTT, "useColorForMotionVectors", "display the output motion vectors in color");
         setPropertyTooltip(smoothingTT, "subSampleShift", "shift subsampled timestamp map stores by this many bits");
         setPropertyTooltip(smoothingTT, "refractoryPeriodUs", "compute no flow vector if a flow vector has already been computed within this period at the same location.");
         setPropertyTooltip(smoothingTT, "speedControlEnabled", "enables filtering of excess speeds");
@@ -400,6 +402,21 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     synchronized public void doResetGroundTruth() {
         resetGroundTruth();
+    }
+
+    /**
+     * @return the useColorForMotionVectors
+     */
+    public boolean isUseColorForMotionVectors() {
+        return useColorForMotionVectors;
+    }
+
+    /**
+     * @param useColorForMotionVectors the useColorForMotionVectors to set
+     */
+    public void setUseColorForMotionVectors(boolean useColorForMotionVectors) {
+        this.useColorForMotionVectors = useColorForMotionVectors;
+        putBoolean("useColorForMotionVectors", useColorForMotionVectors);
     }
 
     // <editor-fold defaultstate="collapsed" desc="ImuFlowEstimator Class">    
@@ -669,8 +686,17 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      * @param e the event
      */
     protected void drawMotionVector(GL2 gl, MotionOrientationEventInterface e) {
-        float[] rgb = motionColor(e);
+        float[] rgb = null;
+        if (useColorForMotionVectors) {
+            rgb = motionColor(e);
+        } else {
+            rgb = new float[]{0, 0, 1};
+        }
         gl.glColor3fv(rgb, 0);
+        float scale = ppsScale;
+//        if (measureGlobalMotion) {
+//            scale = scale / motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
+//        }
         if (displayVectorsEnabled) {
             gl.glPushMatrix();
             gl.glLineWidth(motionVectorLineWidthPixels);
@@ -678,10 +704,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 //        DrawGL.drawVector(gl, e.getX() + .5f, e.getY() + .5f, e.getVelocity().x, e.getVelocity().y, motionVectorLineWidthPixels, ppsScale);
             // center arrow on location, rather that start from event location
             float dx, dy;
-            dx = e.getVelocity().x * ppsScale;
-            dy = e.getVelocity().y * ppsScale;
+            dx = e.getVelocity().x * scale;
+            dy = e.getVelocity().y * scale;
             if (displayVectorsAsUnitVectors) {
-                float s = 100 * ppsScale / (float) Math.sqrt(dx * dx + dy * dy);
+                float s = 100 * scale / (float) Math.sqrt(dx * dx + dy * dy);
                 dx *= s;
                 dy *= s;
             }
