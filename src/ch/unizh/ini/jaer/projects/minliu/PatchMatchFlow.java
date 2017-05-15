@@ -194,7 +194,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "areaEventNumberSubsampling", "<html>how to subsample total area to count events per unit subsampling blocks for AreaEventNumber method. <p>For example, if areaEventNumberSubsampling=5, <br> then events falling into 32x32 blocks of pixels are counted <br>to determine when they exceed sliceEventCount to make new slice");
         setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
         setPropertyTooltip(patchTT, "adaptiveEventSkipping", "enables adaptive event skipping depending on free time left in AEViewer animation loop");
-        setPropertyTooltip(patchTT, "adaptiveSliceDuration", "<html>enables adaptive slice duration using feedback control, <br> based on average match search distance compared with total search distance. <p>If the match is too close short, increaes duration, and if too far, decreases duration");
+        setPropertyTooltip(patchTT, "adaptiveSliceDuration", "<html>Enables adaptive slice duration using feedback control, <br> based on average match search distance compared with total search distance. <p>If the match distance is too small, increaes duration or event count, and if too far, decreases duration or event count.<p>If using event count rotation method, don't increase count if actual duration is already longer than <i>sliceDurationUs</i>");
         setPropertyTooltip(patchTT, "useSubsampling", "<html>Enables using both full and subsampled block matching; <p>when using adaptiveSliceDuration, enables adaptive slice duration using feedback controlusing difference between full and subsampled resolution slice matching");
         setPropertyTooltip(patchTT, "adaptiveSliceDurationMinVectorsToControl", "<html>Min flow vectors computed in packet to control slice duration, increase to reject control during idle periods");
         setPropertyTooltip(patchTT, "processingTimeLimitMs", "<html>time limit for processing packet in ms to process OF events (events still accumulate). <br> Set to 0 to disable. <p>Alternative to the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events");
@@ -401,7 +401,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 // If err<0 it means the average match distance is larger than target avg match distance, so we need to reduce slice duration
 // If err>0, it means the avg match distance is too short, so increse time slice
 // TODO some bug in following
-                final float err = ((searchDistance << (numScales-1)) / 4) - avgMatchDistance;
+                final float err = ((searchDistance << (numScales - 1)) / 4) - avgMatchDistance;
 //                final float lastErr = searchDistance / 2 - lastHistStdDev;
 //                final double err = histMean - 1/ (rstHist1D.length * rstHist1D.length);
                 float errSign = Math.signum(err);
@@ -432,9 +432,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         break;
                     case ConstantEventNumber:
                     case AreaEventNumber:
-//                        if (errSign > 0 && sliceDeltaTimeUs(2) < getSliceDurationUs()) {
-                            setSliceEventCount(Math.round(sliceEventCount * (1 + adapativeSliceDurationProportionalErrorGain * errSign)));
-//                        }
+                        if (errSign > 0 && sliceDeltaTimeUs(2) < getSliceDurationUs()) { // don't increase slice past the sliceDurationUs limit
+                            // match too short, increase count
+                            setSliceEventCount(Math.round(sliceEventCount * (1 + adapativeSliceDurationProportionalErrorGain)));
+                        } else {
+                            setSliceEventCount(Math.round(sliceEventCount * (1 - adapativeSliceDurationProportionalErrorGain)));
+                        }
                 }
                 if (adaptiveSliceDurationLogger != null && adaptiveSliceDurationLogger.isEnabled()) {
                     if (!isMeasureGlobalMotion()) {
@@ -2177,6 +2180,5 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         areaCountExceeded = false;
     }
-   
 
 }
