@@ -22,6 +22,8 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Level;
 import javax.swing.JFileChooser;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -793,15 +795,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             // draw scale bar vector at bottom
             gl.glPushMatrix();
             final float speed = motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
-            DvsMotionOrientationEvent e=new DvsMotionOrientationEvent();
+            DvsMotionOrientationEvent e = new DvsMotionOrientationEvent();
             e.setVelocity(speed, 0);
-            final int px=10, py=-3;
-           
-            e.setX((short)px);
-            e.setY((short)py);
+            final int px = 10, py = -3;
+
+            e.setX((short) px);
+            e.setY((short) py);
             drawMotionVector(gl, e);
 //            DrawGL.drawVector(gl, 10, -3, speed, 0, 4, ppsScale);
-            gl.glRasterPos2f(px + 100*ppsScale, py ); // use same scaling
+            gl.glRasterPos2f(px + 100 * ppsScale, py); // use same scaling
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%.1f pps avg. speed and OF vector scale", speed));
             gl.glPopMatrix();
 
@@ -1040,14 +1042,23 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
     // </editor-fold>
 
+    WarningDialogWithDontShowPreference imuWarningDialog;
+
     // <editor-fold defaultstate="collapsed" desc="Statistics logging trigger button">
     synchronized public void doPrintStatistics() {
         log.log(Level.INFO, "{0}\n{1}", new Object[]{this.getClass().getSimpleName(), motionFlowStatistics.toString()});
         if (!imuFlowEstimator.isCalibrationSet()) {
             log.warning("IMU has not been calibrated yet! Load a file with no camera motion and hit the StartIMUCalibration button");
-            WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null, false, "Uncalibrated IMU",
-                    "<html>IMU has not been calibrated yet! <p>Load a file with no camera motion and hit the StartIMUCalibration button");
-            d.setVisible(true);
+            if (imuWarningDialog == null) {
+                imuWarningDialog = new WarningDialogWithDontShowPreference(null, false, "Uncalibrated IMU",
+                        "<html>IMU has not been calibrated yet! <p>Load a file with no camera motion and hit the StartIMUCalibration button");
+            }
+            SwingUtilities.invokeLater(new Runnable() {
+                public void run() {
+                    imuWarningDialog.setVisible(true);
+
+                }
+            });
         }
     }
     // </editor-fold>
