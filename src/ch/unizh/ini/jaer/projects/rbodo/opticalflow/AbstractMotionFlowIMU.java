@@ -30,6 +30,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.orientation.ApsDvsMotionOrientationEvent;
+import net.sf.jaer.event.orientation.DvsMotionOrientationEvent;
 import net.sf.jaer.event.orientation.MotionOrientationEventInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
@@ -792,9 +793,16 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             // draw scale bar vector at bottom
             gl.glPushMatrix();
             final float speed = motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
-            DrawGL.drawVector(gl, 10, -3, speed, 0, 4, ppsScale);
-            gl.glRasterPos2f(10 + ppsScale*motionFlowStatistics.getGlobalMotion().meanGlobalSpeed, -3 );
-            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%.1f pps avg. speed", speed));
+            DvsMotionOrientationEvent e=new DvsMotionOrientationEvent();
+            e.setVelocity(speed, 0);
+            final int px=10, py=-3;
+           
+            e.setX((short)px);
+            e.setY((short)py);
+            drawMotionVector(gl, e);
+//            DrawGL.drawVector(gl, 10, -3, speed, 0, 4, ppsScale);
+            gl.glRasterPos2f(px + 100*ppsScale, py ); // use same scaling
+            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%.1f pps avg. speed and OF vector scale", speed));
             gl.glPopMatrix();
 
         }
