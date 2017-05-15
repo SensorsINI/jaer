@@ -450,6 +450,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         private float panOffset;
         private float tiltOffset;
         private float rollOffset;
+        private boolean calibrated=false;
 
         // Deal with leftover IMU data after timestamps reset
         private static final int FLUSH_COUNT = 1;
@@ -464,9 +465,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             rollCalibrator = new Measurand();
             // Some initial IMU cameraCalibration values.
             // Will be overwritten when calibrating IMU
-            panOffset = 0.7216f;
-            tiltOffset = 3.4707f;
-            rollOffset = -0.2576f;
+            panOffset = 0;
+            tiltOffset = 0;
+            rollOffset = 0; // tobi set back to zero rather than using hard coded values.
             reset();
         }
 
@@ -498,7 +499,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
 
         boolean isCalibrationSet() {
-            return rollOffset != 0 || tiltOffset != 0 || panOffset != 0;
+            return calibrated;
         }
 
         /**
@@ -541,6 +542,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     rollOffset = rollCalibrator.getMean();
                     log.info(String.format("calibration finished. %d samples averaged"
                             + " to (pan,tilt,roll)=(%.3f,%.3f,%.3f)", getCalibrationSamples(), panOffset, tiltOffset, rollOffset));
+                    calibrated=true;
                 } else {
                     panCalibrator.update(panRate);
                     tiltCalibrator.update(tiltRate);
@@ -1024,6 +1026,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     // <editor-fold defaultstate="collapsed" desc="IMUCalibration Start and Reset buttons">
     synchronized public void doStartIMUCalibration() {
         imuFlowEstimator.calibrating = true;
+        imuFlowEstimator.calibrated=false;
         imuFlowEstimator.panCalibrator.reset();
         imuFlowEstimator.tiltCalibrator.reset();
         imuFlowEstimator.rollCalibrator.reset();
@@ -1038,6 +1041,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         imuFlowEstimator.panOffset = 0;
         imuFlowEstimator.tiltOffset = 0;
         imuFlowEstimator.rollOffset = 0;
+        imuFlowEstimator.calibrated=false;
         log.info("IMU calibration erased");
     }
     // </editor-fold>
