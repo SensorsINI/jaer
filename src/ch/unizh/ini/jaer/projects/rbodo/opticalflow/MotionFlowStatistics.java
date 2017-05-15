@@ -17,7 +17,7 @@ import static net.sf.jaer.eventprocessing.EventFilter.log;
  * optical flow performance: The average angular error, (relative) average end-
  * point error, processing time, and event density (fraction of events that
  * successfully passed the filter). It also computes global motion averages
- * (translation, rotation and expansion). For global translation, rotation and
+ * (translation, rotation, expansion and speed). For global translation, rotation and
  * expansion we average over all the individual translation (expansion,
  * rotation) values of one packet. We compute the Standard Deviation (not
  * Standard Error) because we are interested in how much the individual
@@ -199,8 +199,11 @@ public class MotionFlowStatistics {
      */
     public class GlobalMotion {
 
-        float meanGlobalVx, sdGlobalVx, meanGlobalVy, sdGlobalVy, meanGlobalRotation,
-                sdGlobalRotation, meanGlobalExpansion, sdGlobalExpansion, meanGlobalSpeed, sdGlobalSpeed;
+        /** Means and standard deviations of flow. meanGlobalTrans is the average translational flow. meanGlobalSpeed is the average magnitude of the flow vector.
+         * meanGlobalExpansion is the average flow projected onto radii from center, and meanGlobalRotation is the average projected onto circumferences around center.
+         */
+        public float meanGlobalVx, sdGlobalVx, meanGlobalVy, sdGlobalVy, meanGlobalRotation, meanGlobalTrans,sdGlobalTrans,
+                sdGlobalRotation, meanGlobalExpansion, sdGlobalExpansion, meanGlobalSpeed;
         private final Measurand globalVx, globalVy, globalRotation, globalExpansion,globalSpeed;
         private int rx, ry;
         private int subSizeX, subSizeY;
@@ -238,6 +241,8 @@ public class MotionFlowStatistics {
             }
             globalVx.update(vx);
             globalVy.update(vy);
+            final float speed = (float)Math.sqrt(vx*vx+vy*vy);
+            globalSpeed.update(speed);
 
             // Rotation
             // <editor-fold defaultstate="collapsed" desc="Comment">
@@ -262,7 +267,7 @@ public class MotionFlowStatistics {
             }
             globalRotation.update((float) (180 / Math.PI) * (vy * rx - vx * ry) / (rx * rx + ry * ry));
 
-            // Expansion
+            // Expansion, project onto radius
             // <editor-fold defaultstate="collapsed" desc="Comment">
             /*
              * Each event implies a certain expansion contribution.
@@ -282,9 +287,9 @@ public class MotionFlowStatistics {
             if (rx > -2 && rx < 2 && ry > -2 && ry < 2) {
                 return; // Don't add singular event at origin.
             }
-            final float speed = vx * rx + vy * ry;
-            globalExpansion.update(speed / (rx * rx + ry * ry));
-            globalSpeed.update(speed);
+            final float exProj = (vx * rx + vy * ry);
+            globalExpansion.update(exProj / (rx * rx + ry * ry));
+            
         }
 
         void bufferMean() {
@@ -292,12 +297,13 @@ public class MotionFlowStatistics {
             sdGlobalVx = globalVx.getStdErr();
             meanGlobalVy = globalVy.getMean();
             sdGlobalVy = globalVy.getStdErr();
+            meanGlobalTrans=(float)Math.sqrt(meanGlobalVx*meanGlobalVx+meanGlobalVy*meanGlobalVy);
+            sdGlobalTrans=(float)Math.sqrt(sdGlobalVx*sdGlobalVx+sdGlobalVy*sdGlobalVy);
             meanGlobalRotation = globalRotation.getMean();
             sdGlobalRotation = globalRotation.getStdErr();
             meanGlobalExpansion = globalExpansion.getMean();
             sdGlobalExpansion = globalExpansion.getStdErr();
-            meanGlobalSpeed=(float)Math.sqrt(meanGlobalVx*meanGlobalVx+meanGlobalVy*meanGlobalVy);
-            sdGlobalSpeed=(float)Math.sqrt(sdGlobalVx*sdGlobalVx+sdGlobalVy*sdGlobalVy);
+            meanGlobalSpeed=globalSpeed.getMean();
 
             // Call resets here because global motion should in general not
             // be averaged over more than one packet.
@@ -346,13 +352,14 @@ public class MotionFlowStatistics {
         }
 
         /**
-         * Computes and returns the mean translational speed
+         * Computes and returns the mean speed; magnitude of flow vectors
          *
          * @return
          */
         public Measurand getGlobalSpeed() {
             return globalSpeed;
         }
+        
     }
 
     public class AngularError extends Measurand {

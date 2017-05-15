@@ -233,7 +233,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(measureTT, "measureAccuracy", "<html> Writes a txt file with various motion statistics, by comparing the ground truth <br>(either estimated online using an embedded IMUFlow or loaded from file) <br> with the measured optical flow events.  <br>This measurment function is called for every event to assign the local ground truth<br> (vxGT,vyGT) at location (x,y) a value from the imported ground truth field (vxGTframe,vyGTframe).");
         setPropertyTooltip(measureTT, "measureProcessingTime", "writes a text file with timestamp filename with the packet's mean processing time of an event. Processing time is also logged to console.");
         setPropertyTooltip(measureTT, "loggingFolder", "directory to store logged data files");
-        setPropertyTooltip(dispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
+        setPropertyTooltip(dispTT, "ppsScale", "<html>When <i>measureGlobalMotion=false</i>, then this is <br>scale of pixels per second to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
+                + "When <i>measureGlobalMotion=true</i>, then local motion vectors are scaled by average speed of flow");
         setPropertyTooltip(dispTT, "displayVectorsEnabled", "shows local motion vector evemts as arrows");
         setPropertyTooltip(dispTT, "displayVectorsAsColorDots", "shows local motion vector events as color dots, rather than arrows");
         setPropertyTooltip(dispTT, "displayVectorsAsUnitVectors", "shows local motion vector events with unit vector length");
@@ -694,9 +695,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
         gl.glColor3fv(rgb, 0);
         float scale = ppsScale;
-//        if (measureGlobalMotion) {
-//            scale = scale / motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
-//        }
+        if (measureGlobalMotion) {
+            scale = 100 * ppsScale / motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
+        }
         if (displayVectorsEnabled) {
             gl.glPushMatrix();
             gl.glLineWidth(motionVectorLineWidthPixels);
@@ -734,7 +735,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
 
     protected float[] motionColor(MotionOrientationEventInterface e1) {
-        return motionColor(e1.getVelocity().x, e1.getVelocity().y, 1, 1);
+        return motionColor(e1.getVelocity().x, e1.getVelocity().y, 1, .5f); // use brightness 0.5 to match color wheel and render full gamut
     }
 
     protected float[] motionColor(float x, float y, float saturation, float brightness) {
@@ -772,9 +773,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     4, ppsScale * GLOBAL_MOTION_DRAWING_SCALE);
             gl.glRasterPos2i(2, 10);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("glob. speed=%.2f pps ", Math.sqrt(
-                            Math.pow(motionFlowStatistics.getGlobalMotion().meanGlobalVx, 2)
-                            + Math.pow(motionFlowStatistics.getGlobalMotion().meanGlobalVy, 2))));
+                    String.format("glob. trans.=%.2f pps ", motionFlowStatistics.getGlobalMotion().meanGlobalTrans));
             gl.glPopMatrix();
 
             // Draw global rotation vector as line left/right
@@ -789,6 +788,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             DrawGL.drawCircle(gl, sizex / 2, sizey / 2, ppsScale * GLOBAL_MOTION_DRAWING_SCALE
                     * (1 + motionFlowStatistics.getGlobalMotion().meanGlobalExpansion), 15);
             gl.glPopMatrix();
+
+            // draw scale bar vector at bottom
+            gl.glPushMatrix();
+            final float speed = motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
+            DrawGL.drawVector(gl, 10, -3, speed, 0, 4, ppsScale);
+            gl.glRasterPos2f(10 + ppsScale*motionFlowStatistics.getGlobalMotion().meanGlobalSpeed, -3 );
+            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%.1f pps avg. speed", speed));
+            gl.glPopMatrix();
+
         }
 
         // Draw individual motion vectors
