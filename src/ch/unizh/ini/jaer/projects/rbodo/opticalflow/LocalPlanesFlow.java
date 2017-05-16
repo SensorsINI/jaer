@@ -428,40 +428,47 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         setupFilter(in);
         firstTs = in.getFirstTimestamp();
 
-//        if (!(in instanceof ApsDvsEventPacket)) {
-//            throw new RuntimeException("in packet is not an ApsDvsEventPacket; cannot extract ImuSamples from it");
-//        }
-//        ApsDvsEventPacket packet = (ApsDvsEventPacket) in;
-//        Iterator itr = packet.fullIterator(); // the full iterator definitely passes us all the data, but also the APS samples
-//        while (itr.hasNext()) {
-        for (Object o : in) {
+        // following awkward block needed to deal with DVS/DAVIS and IMU/APS events
+        // block STARTS
+        Iterator i = null;
+        if (in instanceof ApsDvsEventPacket) {
+            i = ((ApsDvsEventPacket) in).fullIterator();
+        } else {
+            i = ((ApsDvsEventPacket) in).inputIterator();
+        }
 
-//            ApsDvsEvent ein = (ApsDvsEvent) itr.next();
-            ApsDvsEvent ein = (ApsDvsEvent) o;
+        while (i.hasNext()) {
+            ApsDvsEvent ein = (ApsDvsEvent) i.next();
+            if (ein == null) {
+                log.warning("null event passed in, returning input packet");
+                return in;
+            }
+            if (ein.isApsData()) {
+                continue;
+            }
+
             if (!extractEventInfo(ein)) {
                 continue;
             }
-            if (!ein.isApsData()) { // should pass on IMU samples
-                if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
-                    imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
-                    setGroundTruth();
-                }
-                if (isInvalidAddress(searchDistance)) {
-                    continue;
-                }
-                if (isInvalidTimestamp()) {
-                    continue;
-                }
-                if (xyFilter()) {
-                    continue;
-                }
-                countIn++;
-                computePlaneEstimate();
-                if (accuracyTests()) {
-                    continue;
-                }
-                processGoodEvent();
+            if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
+                imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
             }
+            // block ENDS
+            if (isInvalidAddress(searchDistance)) {
+                continue;
+            }
+            if (isInvalidTimestamp()) {
+                continue;
+            }
+            if (xyFilter()) {
+                continue;
+            }
+            countIn++;
+            computePlaneEstimate();
+            if (accuracyTests()) {
+                continue;
+            }
+            processGoodEvent();
         }
         getMotionFlowStatistics().updatePacket(countIn, countOut);
         return isDisplayRawInput() ? in : dirPacket;

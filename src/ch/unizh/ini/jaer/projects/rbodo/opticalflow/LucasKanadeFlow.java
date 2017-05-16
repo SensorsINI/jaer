@@ -4,14 +4,17 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.logging.Level;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.orientation.MotionOrientationEventInterface;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 
 /**
  * Draws individual optical flow vectors and computes global motion, rotation
@@ -57,7 +60,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
             centralFiniteDifferenceSecondOrder,
             secondTempDerivative;
 
-    // Current pixel location in middle of 1-d array containing all pixels of neighborhood.
+    // Current pixel location in middle of 1-imuWarningDialog array containing all pixels of neighborhood.
     private int currPix;
 
     // Additional spacing to border of chip. Needed for finite difference methods.    
@@ -65,7 +68,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
 
     private int[] neighb;
     private String deriv;
-    
+
     // If enabled, the AEViewer draws an event-histogram in the neighborhood of the event.
     // Used for debugging and visualization of the algorithm.
     private boolean drawCollectedEventsHistogramEnabled;
@@ -86,10 +89,10 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
         setPropertyTooltip("Lucas Kanade", "secondTempDerivative", "Use second temporal derivative"); // TODO what does this parameter do exactly, and is it described in paper? If not remove it.
         setPropertyTooltip("Lucas Kanade", "drawCollectedEventsHistogramEnabled", "Draws the collected 2D event histogram on output of sensor to allow visualizing the data");
         setPropertyTooltip("Lucas Kanade", "derivativeEstimator", "<html>Method of computing spatial derivative of collected 2D event histogram<ul><li>"
-                + "BackwardFiniteDifference: Original method, has bias to left and downwards" +
-"<li>CentralFiniteDifferenceFirstOrder: First order centered derivative estimate" +
-"<li>CentralFiniteDifferenceSecondOrder: 2nd order centered derivative estimate" +
-"<li>SavitzkyGolayFilter: Smoothed derivative estimate that estimates derivative by smoothing it in perpindicular direction</ul>");
+                + "BackwardFiniteDifference: Original method, has bias to left and downwards"
+                + "<li>CentralFiniteDifferenceFirstOrder: First order centered derivative estimate"
+                + "<li>CentralFiniteDifferenceSecondOrder: 2nd order centered derivative estimate"
+                + "<li>SavitzkyGolayFilter: Smoothed derivative estimate that estimates derivative by smoothing it in perpindicular direction</ul>");
     }
 
     @Override
@@ -99,30 +102,37 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
         // Draws an event-histogram in the neighborhood of the event.
         // Used for debugging and visualization of the algorithm.
         if (isDrawCollectedEventsHistogramEnabled()) {
-            if (!isFilterEnabled()) return;
+            if (!isFilterEnabled()) {
+                return;
+            }
             GL2 gl = drawable.getGL().getGL2();
-            if (gl == null) return;
+            if (gl == null) {
+                return;
+            }
             checkBlend(gl);
             ArrayDeque<Integer>[][][] timest = timestamps.clone();
-            for (i = 0; i < sizex; i++)
+            for (i = 0; i < sizex; i++) {
                 for (j = 0; j < sizey; j++) {
-                    while (!timest[i][j][1].isEmpty() && dirPacket.getLastTimestamp() 
-                          > timest[i][j][1].peekFirst()+maxDtThreshold)
-                            timest[i][j][1].removeFirst();
+                    while (!timest[i][j][1].isEmpty() && dirPacket.getLastTimestamp()
+                            > timest[i][j][1].peekFirst() + maxDtThreshold) {
+                        timest[i][j][1].removeFirst();
+                    }
                     gl.glPushMatrix();
-                    gl.glColor4f(timest[i][j][1].size()/10f,timest[i][j][1].size()/10f, 0, 0.25f);
-                    gl.glRectf(i,j,i+1,j+1);
+                    gl.glColor4f(timest[i][j][1].size() / 10f, timest[i][j][1].size() / 10f, 0, 0.25f);
+                    gl.glRectf(i, j, i + 1, j + 1);
                     gl.glPopMatrix();
                 }
+            }
 
-            for(Object o : dirPacket){
+            for (Object o : dirPacket) {
                 gl.glPushMatrix();
                 MotionOrientationEventInterface ei = (MotionOrientationEventInterface) o;
-                for (j = -searchDistance; j <= searchDistance; j++)
+                for (j = -searchDistance; j <= searchDistance; j++) {
                     for (i = -searchDistance; i <= searchDistance; i++) {
-                        gl.glColor4f(timestamps[ei.getX()+i][ei.getY()+j][ei.getType()].size()/100f,timestamps[ei.getX()+i][ei.getY()+j][ei.getType()].size()/100f, 0, 0.25f);
-                        gl.glRectf(ei.getX()+i, ei.getY()+j, ei.getX()+i+1, ei.getY()+j+1);
+                        gl.glColor4f(timestamps[ei.getX() + i][ei.getY() + j][ei.getType()].size() / 100f, timestamps[ei.getX() + i][ei.getY() + j][ei.getType()].size() / 100f, 0, 0.25f);
+                        gl.glRectf(ei.getX() + i, ei.getY() + j, ei.getX() + i + 1, ei.getY() + j + 1);
                     }
+                }
                 gl.glPopMatrix();
             }
         }
@@ -148,17 +158,19 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
     }
 
     synchronized private void computeFittingParameters() {
-        /** This function computes the parameters that fit in the Least-Squares
-         * sense a polynomial of order "fitOrder" to the data, which in this case
-         * consists of the number of events ("timestamps[x][y][pol].size()") at
-         * each pixel location (x,y). The underlying method is the convolution of
-         * a patch of the datafunction with a Savitzky-Golay smoothing kernel.
-         * Important assumption for calculating the fitting parameters:
-         * All points in the neighborhood must exist and be valid. In contrast to
-         * the LocalPlanes method, the data function of the LucasKanade algorithm
-         * satisfies this condition always.
+        /**
+         * This function computes the parameters that fit in the Least-Squares
+         * sense a polynomial of order "fitOrder" to the data, which in this
+         * case consists of the number of events
+         * ("timestamps[x][y][pol].size()") at each pixel location (x,y). The
+         * underlying method is the convolution of a patch of the datafunction
+         * with a Savitzky-Golay smoothing kernel. Important assumption for
+         * calculating the fitting parameters: All points in the neighborhood
+         * must exist and be valid. In contrast to the LocalPlanes method, the
+         * data function of the LucasKanade algorithm satisfies this condition
+         * always.
          */
-        
+
         jj = 0;
         if (fitOrder == 1) {
             a[0][1] = 0;
@@ -306,7 +318,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
                 // which was not specified further (how do the units match up??).
                 // A heuristic solution is to combine those two factors into this:
                 tempDerivNeighb[ii] *= 20;
-                
+
                 ii++;
             }
         }
@@ -317,7 +329,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
     }
 
     public final synchronized void setDerivativeEstimator(DerivativeEstimator derivator) {
-        DerivativeEstimator old=this.derivator;
+        DerivativeEstimator old = this.derivator;
         this.derivator = derivator;
         putString("derivator", derivator.toString());
         backwardFiniteDifference = false;
@@ -351,7 +363,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
                 resetFilter();
                 break;
         }
-        getSupport().firePropertyChange("derivativeEstimator",old,derivator);
+        getSupport().firePropertyChange("derivativeEstimator", old, derivator);
     }
     // </editor-fold>
 
@@ -377,25 +389,53 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
     synchronized public EventPacket filterPacket(EventPacket in) {
         float p, q, tmp, tmp2, sx2, sy2, sxy, sxt, syt;
         setupFilter(in);
-       motionField.checkArrays();
+        motionField.checkArrays();
 
-        for (Object ein : in) {
-            if(!extractEventInfo(ein)) continue;
+        // following awkward block needed to deal with DVS/DAVIS and IMU/APS events
+        // block STARTS
+        Iterator i = null;
+        if (in instanceof ApsDvsEventPacket) {
+            i = ((ApsDvsEventPacket) in).fullIterator();
+        } else {
+            i = ((ApsDvsEventPacket) in).inputIterator();
+        }
+
+        while (i.hasNext()) {
+            ApsDvsEvent ein = (ApsDvsEvent) i.next();
+            if (ein == null) {
+                log.warning("null event passed in, returning input packet");
+                return in;
+            }
+            if (ein.isApsData()) {
+                continue;
+            }
+
+            if (!extractEventInfo(ein)) {
+                continue;
+            }
             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                 imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
-                setGroundTruth();
             }
-            if (isInvalidAddress(searchDistance + d)) continue;
+            // block ENDS
+            if (isInvalidAddress(searchDistance + d)) {
+                continue;
+            }
             timestamps[x][y][type].add(ts); // Add most recent event to queue.
             timestamps2[x][y][type].add(ts);
-            if (isInvalidTimestamp()) continue;
-            if (xyFilter()) continue;
+            if (isInvalidTimestamp()) {
+                continue;
+            }
+            if (xyFilter()) {
+                continue;
+            }
             countIn++;
-            
-            if (SavitzkyGolayFilter) computeFittingParameters();
-            
+
+            if (SavitzkyGolayFilter) {
+                computeFittingParameters();
+            }
+
             computeDerivatives();
-            
+
             // <editor-fold defaultstate="collapsed" desc="Solve for optical flow with LS">
             /**
              * With the least squares principle applied to data (A,b) the
@@ -414,12 +454,12 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
             sxy = 0;
             sxt = 0;
             syt = 0;
-            for (i = 0; i < spatDerivNeighb.length; i++) {
-                sx2 += spatDerivNeighb[i][0] * spatDerivNeighb[i][0];
-                sy2 += spatDerivNeighb[i][1] * spatDerivNeighb[i][1];
-                sxy += spatDerivNeighb[i][0] * spatDerivNeighb[i][1];
-                sxt += spatDerivNeighb[i][0] * tempDerivNeighb[i];
-                syt += spatDerivNeighb[i][1] * tempDerivNeighb[i];
+            for (int j = 0; j < spatDerivNeighb.length; j++) {
+                sx2 += spatDerivNeighb[j][0] * spatDerivNeighb[j][0];
+                sy2 += spatDerivNeighb[j][1] * spatDerivNeighb[j][1];
+                sxy += spatDerivNeighb[j][0] * spatDerivNeighb[j][1];
+                sxt += spatDerivNeighb[j][0] * tempDerivNeighb[j];
+                syt += spatDerivNeighb[j][1] * tempDerivNeighb[j];
             }
             p = sx2 + sy2;
             q = sx2 * sy2 - sxy * sxy;
@@ -446,8 +486,10 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
             v = (float) Math.sqrt(vx * vx + vy * vy);
             // </editor-fold>
 
-            if (accuracyTests()) continue;
-            
+            if (accuracyTests()) {
+                continue;
+            }
+
             processGoodEvent();
         }
         getMotionFlowStatistics().updatePacket(countIn, countOut);
@@ -484,7 +526,8 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
     }
 
     /**
-     * @param drawCollectedEventsHistogramEnabled the drawCollectedEventsHistogramEnabled to set
+     * @param drawCollectedEventsHistogramEnabled the
+     * drawCollectedEventsHistogramEnabled to set
      */
     public void setDrawCollectedEventsHistogramEnabled(boolean drawCollectedEventsHistogramEnabled) {
         this.drawCollectedEventsHistogramEnabled = drawCollectedEventsHistogramEnabled;

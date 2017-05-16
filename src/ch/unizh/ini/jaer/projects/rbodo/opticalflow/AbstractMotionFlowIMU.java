@@ -375,25 +375,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
     }
 
-    // This function is called for every event to assign the local ground truth
-    // (vxGT,vyGT) at location (x,y) a value from the imported ground truth field
-    // (vxGTframe,vyGTframe).
-    public void setGroundTruth() {
-        if (importedGTfromMatlab) {
-            if (ts >= tsGTframe[0][0] && ts < tsGTframe[0][1]) {
-                vxGT = (float) vxGTframe[y][x];
-                vyGT = (float) vyGTframe[y][x];
-            } else {
-                vxGT = 0;
-                vyGT = 0;
-            }
-        } else {
-            vxGT = imuFlowEstimator.getVx();
-            vyGT = imuFlowEstimator.getVy();
-        }
-        vGT = (float) Math.sqrt(vxGT * vxGT + vyGT * vyGT);
-    }
-
+ 
     void resetGroundTruth() {
         importedGTfromMatlab = false;
         vxGTframe = null;
@@ -450,7 +432,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         private float panOffset;
         private float tiltOffset;
         private float rollOffset;
-        private boolean calibrated=false;
+        private boolean calibrated = false;
 
         // Deal with leftover IMU data after timestamps reset
         private static final int FLUSH_COUNT = 1;
@@ -542,7 +524,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     rollOffset = rollCalibrator.getMean();
                     log.info(String.format("calibration finished. %d samples averaged"
                             + " to (pan,tilt,roll)=(%.3f,%.3f,%.3f)", getCalibrationSamples(), panOffset, tiltOffset, rollOffset));
-                    calibrated=true;
+                    calibrated = true;
                 } else {
                     panCalibrator.update(panRate);
                     tiltCalibrator.update(tiltRate);
@@ -562,10 +544,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
          * motion flow by comparing transformed to old event.
          *
          * @param pe PolarityEvent
+         * @return true if event is an IMU event, so enclosing loop can continue
+         * to next event. Return false if event is not IMU event.
          */
-        public void calculateImuFlow(ApsDvsEvent pe) {
+        public boolean calculateImuFlow(ApsDvsEvent pe) {
             if (pe.isImuSample()) {
                 updateTransform(pe.getImuSample());
+                return true;
             }
             if (dtS == 0) {
                 dtS = 1;
@@ -580,6 +565,20 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             vx = (nx - newx) / dtS;
             vy = (ny - newy) / dtS;
             v = (float) Math.sqrt(vx * vx + vy * vy);
+            if (importedGTfromMatlab) {
+                if (ts >= tsGTframe[0][0] && ts < tsGTframe[0][1]) {
+                    vxGT = (float) vxGTframe[y][x];
+                    vyGT = (float) vyGTframe[y][x];
+                } else {
+                    vxGT = 0;
+                    vyGT = 0;
+                }
+            } else {
+                vxGT = imuFlowEstimator.getVx();
+                vyGT = imuFlowEstimator.getVy();
+            }
+            vGT = (float) Math.sqrt(vxGT * vxGT + vyGT * vyGT);
+            return false;
         }
 
         /**
@@ -1026,7 +1025,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     // <editor-fold defaultstate="collapsed" desc="IMUCalibration Start and Reset buttons">
     synchronized public void doStartIMUCalibration() {
         imuFlowEstimator.calibrating = true;
-        imuFlowEstimator.calibrated=false;
+        imuFlowEstimator.calibrated = false;
         imuFlowEstimator.panCalibrator.reset();
         imuFlowEstimator.tiltCalibrator.reset();
         imuFlowEstimator.rollCalibrator.reset();
@@ -1041,7 +1040,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         imuFlowEstimator.panOffset = 0;
         imuFlowEstimator.tiltOffset = 0;
         imuFlowEstimator.rollOffset = 0;
-        imuFlowEstimator.calibrated=false;
+        imuFlowEstimator.calibrated = false;
         log.info("IMU calibration erased");
     }
     // </editor-fold>

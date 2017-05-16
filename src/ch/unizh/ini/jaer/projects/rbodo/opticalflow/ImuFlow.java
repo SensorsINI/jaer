@@ -64,8 +64,8 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             vx = imuFlowEstimator.getVx();
             vy = imuFlowEstimator.getVy();
             v = imuFlowEstimator.getV();
-            if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
-                setGroundTruth();
+             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
+                if(imuFlowEstimator.calculateImuFlow((ApsDvsEvent) ein)) continue;
             }
             if (accuracyTests()) {
                 continue;

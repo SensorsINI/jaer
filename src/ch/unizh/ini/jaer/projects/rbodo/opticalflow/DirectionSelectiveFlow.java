@@ -92,8 +92,7 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
         for (Object ein : oriPacket) {
             if(!extractEventInfo(ein)) continue;
             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
-                imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
-                setGroundTruth();
+                if(imuFlowEstimator.calculateImuFlow((ApsDvsEvent) ein)) continue;
             }
             if (isInvalidAddress(searchDistance)) continue;
             if (isInvalidTimestamp()) continue;

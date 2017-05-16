@@ -29,6 +29,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import com.jogamp.opengl.GLException;
+import java.util.Iterator;
 import java.util.StringTokenizer;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -36,6 +37,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEInputStream;
@@ -234,11 +236,23 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         resultHistogramCount = 0;
         Arrays.fill(scaleResultCounts, 0);
         int minDistScale = 0;
-        for (Object o : in) { // to support pure DVS like DVS128
-            PolarityEvent ein = (PolarityEvent) o;
+        // following awkward block needed to deal with DVS/DAVIS and IMU/APS events
+        // block STARTS
+        Iterator i = null;
+        if (in instanceof ApsDvsEventPacket) {
+            i = ((ApsDvsEventPacket) in).fullIterator();
+        } else {
+            i = ((ApsDvsEventPacket) in).inputIterator();
+        }
+
+        while (i.hasNext()) {
+            ApsDvsEvent ein = (ApsDvsEvent) i.next();
             if (ein == null) {
                 log.warning("null event passed in, returning input packet");
                 return in;
+            }
+            if (ein.isApsData()) {
+                continue;
             }
 
             if (!extractEventInfo(ein)) {
@@ -246,8 +260,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             }
             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                 imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
-                setGroundTruth();
             }
+            // block ENDS
 
             if (xyFilter()) {
                 continue;
@@ -1322,17 +1336,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                boolean currSlicePol = curSlice.get((xx + 1) + ((yy) * subSizeX)); // binary value on (xx, yy) for current slice
 //                boolean prevSlicePol = prevSlice.get(((xx + 1) - dx) + ((yy - dy) * subSizeX)); // binary value on (xx, yy) for previous slice
 //
-//                int d = (currSlicePol ? 1 : 0) - (prevSlicePol ? 1 : 0);
+//                int imuWarningDialog = (currSlicePol ? 1 : 0) - (prevSlicePol ? 1 : 0);
 //                if (currSlicePol == true) {
 //                    validPixNumCurrSli += 1;
 //                }
 //                if (prevSlicePol == true) {
 //                    validPixNumPrevSli += 1;
 //                }
-//                if (d <= 0) {
-//                    d = -d;
+//                if (imuWarningDialog <= 0) {
+//                    imuWarningDialog = -imuWarningDialog;
 //                }
-//                sad += d;
+//                sad += imuWarningDialog;
 //            }
 //        }
 //
@@ -1919,7 +1933,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                 /* Reset the image first */
                 sliceBitmapImageDisplay.clearImage();
-                /* Rendering the reference patch in t-d slice, it's on the center with color red */
+                /* Rendering the reference patch in t-imuWarningDialog slice, it's on the center with color red */
                 for (int i = searchDistance; i < (blockDimension + searchDistance); i++) {
                     for (int j = searchDistance; j < (blockDimension + searchDistance); j++) {
                         float[] f = sliceBitmapImageDisplay.getPixmapRGB(i, j);
