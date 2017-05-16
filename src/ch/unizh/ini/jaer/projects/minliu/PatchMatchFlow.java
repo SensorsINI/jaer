@@ -1379,7 +1379,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             this.sadValue = s.sadValue;
             this.xidx = s.xidx;
             this.yidx = s.yidx;
-            this.scale = scale;
+            this.scale = s.scale;
         }
 
         @Override
