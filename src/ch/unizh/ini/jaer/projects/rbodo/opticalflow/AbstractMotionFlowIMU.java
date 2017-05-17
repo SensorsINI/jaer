@@ -100,13 +100,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     private boolean displayColorWheelLegend = getBoolean("displayColorWheelLegend", true);
 
     private float ppsScale = getFloat("ppsScale", .1f);
+    private boolean ppsScaleDisplayRelativeOFLength=getBoolean("ppsScaleDisplayRelativeOFLength",true);
 
     // A pixel can fire an event only after this period. Used for smoother flow
     // and speedup.
     private int refractoryPeriodUs = getInt("refractoryPeriodUs", 0);
 
     // Global translation, rotation and expansion.
-    private boolean measureGlobalMotion = getBoolean("measureGlobalMotion", true);
+    private boolean displayGlobalMotion = getBoolean("displayGlobalMotion", true);
 
     /**
      * The output events, also used for rendering output events.
@@ -180,7 +181,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     // MotionField that aggregates motion
     protected MotionField motionField = new MotionField();
 
-    protected static final float GLOBAL_MOTION_DRAWING_SCALE = 5;
+    /** Relative scale of displayed global flow vector */
+    protected static final float GLOBAL_MOTION_DRAWING_SCALE = 1;
 
     /**
      * Used for logging motion vector events to a text log file
@@ -214,7 +216,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         motionFlowStatistics = new MotionFlowStatistics(filterClassName, subSizeX, subSizeY);
         setMeasureAccuracy(getBoolean("measureAccuracy", false));
         setMeasureProcessingTime(getBoolean("measureProcessingTime", false));
-        setMeasureGlobalMotion(getBoolean("measureGlobalMotion", false));
+        setDisplayGlobalMotion(getBoolean("displayGlobalMotion", false));
 
         FilterChain chain = new FilterChain(chip);
         try {
@@ -236,14 +238,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(measureTT, "measureAccuracy", "<html> Writes a txt file with various motion statistics, by comparing the ground truth <br>(either estimated online using an embedded IMUFlow or loaded from file) <br> with the measured optical flow events.  <br>This measurment function is called for every event to assign the local ground truth<br> (vxGT,vyGT) at location (x,y) a value from the imported ground truth field (vxGTframe,vyGTframe).");
         setPropertyTooltip(measureTT, "measureProcessingTime", "writes a text file with timestamp filename with the packet's mean processing time of an event. Processing time is also logged to console.");
         setPropertyTooltip(measureTT, "loggingFolder", "directory to store logged data files");
-        setPropertyTooltip(dispTT, "ppsScale", "<html>When <i>measureGlobalMotion=false</i>, then this is <br>scale of pixels per second to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
-                + "When <i>measureGlobalMotion=true</i>, then local motion vectors are scaled by average speed of flow");
+        setPropertyTooltip(dispTT, "ppsScale", "<html>When <i>ppsScaleDisplayRelativeOFLength=false</i>, then this is <br>scale of pixels per second to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
+                + "When <i>ppsScaleDisplayRelativeOFLength=true</i>, then local motion vectors are scaled by average speed of flow");
+        setPropertyTooltip(dispTT, "ppsScaleDisplayRelativeOFLength", "<html>Display flow vector lengths relative to global average speed");
         setPropertyTooltip(dispTT, "displayVectorsEnabled", "shows local motion vector evemts as arrows");
         setPropertyTooltip(dispTT, "displayVectorsAsColorDots", "shows local motion vector events as color dots, rather than arrows");
         setPropertyTooltip(dispTT, "displayVectorsAsUnitVectors", "shows local motion vector events with unit vector length");
         setPropertyTooltip(dispTT, "displayZeroLengthVectorsEnabled", "shows local motion vector evemts even if they indicate zero motion (stationary features)");
         setPropertyTooltip(dispTT, "displayColorWheelLegend", "Plots a color wheel to show flow direction colors.");
-        setPropertyTooltip(dispTT, "measureGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
+        setPropertyTooltip(dispTT, "displayGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
         setPropertyTooltip(dispTT, "displayRawInput", "shows the input events, instead of the motion types");
         setPropertyTooltip(dispTT, "xMin", "events with x-coordinate below this are filtered out.");
         setPropertyTooltip(dispTT, "xMax", "events with x-coordinate above this are filtered out.");
@@ -699,7 +702,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
         gl.glColor3fv(rgb, 0);
         float scale = ppsScale;
-        if (measureGlobalMotion) {
+        if (ppsScaleDisplayRelativeOFLength && displayGlobalMotion) {
             scale = 100 * ppsScale / motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
         }
         if (displayVectorsEnabled) {
@@ -765,7 +768,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
         checkBlend(gl);
 
-        if (isMeasureGlobalMotion()) {
+        if (isDisplayGlobalMotion()) {
             gl.glLineWidth(4f);
             gl.glColor3f(1, 1, 1);
 
@@ -990,7 +993,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
         }
 
-        if (measureGlobalMotion) {
+        if (displayGlobalMotion || ppsScaleDisplayRelativeOFLength) {
             motionFlowStatistics.getGlobalMotion().update(vx, vy, v, eout.x, eout.y);
         }
         if (motionVectorEventLogger != null && motionVectorEventLogger.isEnabled()) {
@@ -1221,17 +1224,17 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --measureGlobalMotion--">
-    public boolean isMeasureGlobalMotion() {
-        return measureGlobalMotion;
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --displayGlobalMotion--">
+    public boolean isDisplayGlobalMotion() {
+        return displayGlobalMotion;
     }
 
-    public void setMeasureGlobalMotion(boolean measureGlobalMotion) {
-        motionFlowStatistics.setMeasureGlobalMotion(measureGlobalMotion);
-        support.firePropertyChange("measureGlobalMotion", this.measureGlobalMotion, measureGlobalMotion);
-        this.measureGlobalMotion = measureGlobalMotion;
-        putBoolean("measureGlobalMotion", measureGlobalMotion);
-        if (measureGlobalMotion) {
+    public void setDisplayGlobalMotion(boolean displayGlobalMotion) {
+        motionFlowStatistics.setMeasureGlobalMotion(displayGlobalMotion);
+        support.firePropertyChange("displayGlobalMotion", this.displayGlobalMotion, displayGlobalMotion);
+        this.displayGlobalMotion = displayGlobalMotion;
+        putBoolean("displayGlobalMotion", displayGlobalMotion);
+        if (displayGlobalMotion) {
             resetFilter();
         }
     }
@@ -2081,6 +2084,21 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     public void setDisplayVectorsAsUnitVectors(boolean displayVectorsAsUnitVectors) {
         this.displayVectorsAsUnitVectors = displayVectorsAsUnitVectors;
         putBoolean("displayVectorsAsUnitVectors", displayVectorsAsUnitVectors);
+    }
+
+    /**
+     * @return the ppsScaleDisplayRelativeOFLength
+     */
+    public boolean isPpsScaleDisplayRelativeOFLength() {
+        return ppsScaleDisplayRelativeOFLength;
+    }
+
+    /**
+     * @param ppsScaleDisplayRelativeOFLength the ppsScaleDisplayRelativeOFLength to set
+     */
+    public void setPpsScaleDisplayRelativeOFLength(boolean ppsScaleDisplayRelativeOFLength) {
+        this.ppsScaleDisplayRelativeOFLength = ppsScaleDisplayRelativeOFLength;
+        putBoolean("ppsScaleDisplayRelativeOFLength", ppsScaleDisplayRelativeOFLength);
     }
 
 }

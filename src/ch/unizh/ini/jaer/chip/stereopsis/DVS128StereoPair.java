@@ -61,15 +61,15 @@ public class DVS128StereoPair extends DVS128 implements StereoChipInterface{
         setBiasgen(new Biasgen(this));
         setLeft(left);
         setRight(right);
-        ArrayList<DisplayMethod> ms=getCanvas().getDisplayMethods();
-        DisplayMethod rgbaDm=null;
-        for(DisplayMethod m:ms){
-            if(m instanceof ChipRendererDisplayMethodRGBA) rgbaDm=m;
-        }
-        if(rgbaDm!=null) getCanvas().removeDisplayMethod(rgbaDm);
-        DisplayMethod m = new ChipRendererDisplayMethod(this.getCanvas()); // remove method that is incompatible with renderer
-        getCanvas().addDisplayMethod(m);
-        getCanvas().setDisplayMethod(m);
+//        ArrayList<DisplayMethod> ms=getCanvas().getDisplayMethods();
+//        DisplayMethod rgbaDm=null;
+//        for(DisplayMethod m:ms){
+//            if(m instanceof ChipRendererDisplayMethodRGBA) rgbaDm=m;
+//        }
+//        if(rgbaDm!=null) getCanvas().removeDisplayMethod(rgbaDm);
+//        DisplayMethod m = new ChipRendererDisplayMethod(this.getCanvas()); // remove method that is incompatible with renderer
+//        getCanvas().addDisplayMethod(m);
+//        getCanvas().setDisplayMethod(m);
         
 
 //        getFilterChain().add(new StereoTranslateRotate(this));

@@ -122,8 +122,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int sliceDeltaT;    //  The time difference between two slices used for velocity caluction. For constantDuration, this one is equal to the duration. For constantEventNumber, this value will change.
     private int MIN_SLICE_DURATION = 1000;
     private int MAX_SLICE_DURATION = 200000;
-    private boolean showBlockSizeAndSearchAreaTemporarily;
-    private Timer showBlockSizeAndSearchAreaTimer;
 
     public enum PatchCompareMethod {
         /*JaccardDistance,*/ /*HammingDistance*/
@@ -149,8 +147,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int areaEventNumberSubsampling = getInt("areaEventNumberSubsampling", 4);
     private int[][] areaCounts = null;
     private boolean areaCountExceeded = false;
+    // timers and flags for showing filter properties temporarily
+    private final int SHOW_STUFF_DURATION_MS=6000;
+    private volatile TimerTask stopShowingStuffTask = null;
+    private boolean showBlockSizeAndSearchAreaTemporarily=false;
     private volatile boolean showAreaCountAreasTemporarily = false;
-    private volatile Timer showAreaCountsAreasTimer = null;
 
     private int eventCounter = 0;
     private int sliceLastTs = 0;
@@ -456,8 +457,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         }
                 }
                 if (adaptiveSliceDurationLogger != null && adaptiveSliceDurationLogger.isEnabled()) {
-                    if (!isMeasureGlobalMotion()) {
-                        setMeasureGlobalMotion(true);
+                    if (!isDisplayGlobalMotion()) {
+                        setDisplayGlobalMotion(true);
                     }
                     adaptiveSliceDurationLogger.log(String.format("%d\t%f\t%f\t%f\t%d\t%d", adaptiveSliceDurationPacketCount++, avgMatchDistance, err, motionFlowStatistics.getGlobalMotion().getGlobalSpeed().getMean(), sliceDurationUs, sliceEventCount));
                 }
@@ -587,7 +588,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             gl.glEnd();
             // show search area
             gl.glColor3f(0, 1, 0);
-            final int sd = d+(searchDistance << (numScales - 1));
+            final int sd = d + (searchDistance << (numScales - 1));
             gl.glBegin(GL.GL_LINE_LOOP);
             gl.glVertex2f(xx - sd, yy - sd);
             gl.glVertex2f(xx + sd, yy - sd);
@@ -2194,33 +2195,33 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     private void showAreasForAreaCountsTemporarily() {
-        TimerTask stopShowingAreaTask = new TimerTask() {
+        if (stopShowingStuffTask != null) {
+            stopShowingStuffTask.cancel();
+        }
+        stopShowingStuffTask = new TimerTask() {
             @Override
             public void run() {
                 showAreaCountAreasTemporarily = false;
             }
         };
-        if (showAreaCountsAreasTimer != null) {
-            showAreaCountsAreasTimer.cancel();
-        }
-        showAreaCountsAreasTimer = new Timer();
+        Timer showAreaCountsAreasTimer = new Timer();
         showAreaCountAreasTemporarily = true;
-        showAreaCountsAreasTimer.schedule(stopShowingAreaTask, 3000);
+        showAreaCountsAreasTimer.schedule(stopShowingStuffTask, SHOW_STUFF_DURATION_MS);
     }
 
     private void showBlockSizeAndSearchAreaTemporarily() {
-        TimerTask stopShowingAreaTask = new TimerTask() {
+        if (stopShowingStuffTask != null) {
+            stopShowingStuffTask.cancel();
+        }
+        stopShowingStuffTask = new TimerTask() {
             @Override
             public void run() {
                 showBlockSizeAndSearchAreaTemporarily = false;
             }
         };
-        if (showAreaCountsAreasTimer != null) {
-            showAreaCountsAreasTimer.cancel();
-        }
-        showBlockSizeAndSearchAreaTimer = new Timer();
+        Timer showBlockSizeAndSearchAreaTimer = new Timer();
         showBlockSizeAndSearchAreaTemporarily = true;
-        showBlockSizeAndSearchAreaTimer.schedule(stopShowingAreaTask, 6000);
+        showBlockSizeAndSearchAreaTimer.schedule(stopShowingStuffTask, SHOW_STUFF_DURATION_MS);
     }
 
     private void clearAreaCounts() {
