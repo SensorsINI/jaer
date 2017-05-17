@@ -7,6 +7,8 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import org.bytedeco.javacpp.opencv_core.Mat;
 
 /**
@@ -32,25 +34,34 @@ public class ImuFlow extends AbstractMotionFlowIMU {
     synchronized public EventPacket filterPacket(EventPacket in) {
         setupFilter(in);
 
+        // following awkward block needed to deal with DVS/DAVIS and IMU/APS events
+        // block STARTS
         Iterator i = null;
         if (in instanceof ApsDvsEventPacket) {
             i = ((ApsDvsEventPacket) in).fullIterator();
         } else {
-            i = ((ApsDvsEventPacket) in).inputIterator();
+            i = ((EventPacket) in).inputIterator();
         }
 
         while (i.hasNext()) {
-            Object ein = i.next();
-            ApsDvsEvent apsDvsEvent = (ApsDvsEvent) ein;
-            if (apsDvsEvent.isApsData()) {
+            Object o=i.next();
+             if (o == null) {
+                log.warning("null event passed in, returning input packet");
+                return in;
+            }
+             if ((o instanceof ApsDvsEvent) && ((ApsDvsEvent)o).isApsData()) {
                 continue;
             }
-            if(!extractEventInfo(ein)) continue;
-            imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
+            PolarityEvent ein = (PolarityEvent) i.next();
+           
+            if (!extractEventInfo(o)) {
+                continue;
+            }
+            if ( measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
+                if(imuFlowEstimator.calculateImuFlow(o)) continue;
+            }
+            // block ENDS
 
-            if (apsDvsEvent.isImuSample()) {
-                continue;
-            }
             if (isInvalidAddress(0)) {
                 continue;
             }

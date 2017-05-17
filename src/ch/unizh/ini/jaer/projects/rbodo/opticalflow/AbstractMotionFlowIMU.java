@@ -548,9 +548,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
          *
          * @param pe PolarityEvent
          * @return true if event is an IMU event, so enclosing loop can continue
-         * to next event. Return false if event is not IMU event.
+         * to next event, skipping flow processing of this IMU event. Return false if event is not IMU event.
          */
-        public boolean calculateImuFlow(ApsDvsEvent e) {
+        public boolean calculateImuFlow(Object o) {
+            if(!(o instanceof ApsDvsEvent)) return true; // continue processing this event outside
+            ApsDvsEvent e=(ApsDvsEvent)o;
             if (e.isImuSample()) {
                 updateTransform(e.getImuSample());
                 return true;

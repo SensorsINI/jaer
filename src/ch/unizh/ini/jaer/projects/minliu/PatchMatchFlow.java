@@ -245,24 +245,25 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (in instanceof ApsDvsEventPacket) {
             i = ((ApsDvsEventPacket) in).fullIterator();
         } else {
-            i = ((ApsDvsEventPacket) in).inputIterator();
+            i = ((EventPacket) in).inputIterator();
         }
 
         while (i.hasNext()) {
-            ApsDvsEvent ein = (ApsDvsEvent) i.next();
-            if (ein == null) {
+            Object o=i.next();
+             if (o == null) {
                 log.warning("null event passed in, returning input packet");
                 return in;
             }
-            if (ein.isApsData()) {
+             if ((o instanceof ApsDvsEvent) && ((ApsDvsEvent)o).isApsData()) {
                 continue;
             }
-
-            if (!extractEventInfo(ein)) {
+            PolarityEvent ein = (PolarityEvent) i.next();
+           
+            if (!extractEventInfo(o)) {
                 continue;
             }
-            if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
-                imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
+            if ( measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
+                if(imuFlowEstimator.calculateImuFlow(o)) continue;
             }
             // block ENDS
 

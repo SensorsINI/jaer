@@ -13,6 +13,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.orientation.MotionOrientationEventInterface;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 
@@ -397,27 +398,28 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
         if (in instanceof ApsDvsEventPacket) {
             i = ((ApsDvsEventPacket) in).fullIterator();
         } else {
-            i = ((ApsDvsEventPacket) in).inputIterator();
+            i = ((EventPacket) in).inputIterator();
         }
 
         while (i.hasNext()) {
-            ApsDvsEvent ein = (ApsDvsEvent) i.next();
-            if (ein == null) {
+            Object o=i.next();
+             if (o == null) {
                 log.warning("null event passed in, returning input packet");
                 return in;
             }
-            if (ein.isApsData()) {
+             if ((o instanceof ApsDvsEvent) && ((ApsDvsEvent)o).isApsData()) {
                 continue;
             }
-
-            if (!extractEventInfo(ein)) {
+            PolarityEvent ein = (PolarityEvent) i.next();
+           
+            if (!extractEventInfo(o)) {
                 continue;
             }
-            if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
-                imuFlowEstimator.calculateImuFlow((ApsDvsEvent) inItr.next());
+            if ( measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
+                if(imuFlowEstimator.calculateImuFlow(o)) continue;
             }
             // block ENDS
-            if (isInvalidAddress(searchDistance + d)) {
+           if (isInvalidAddress(searchDistance + d)) {
                 continue;
             }
             timestamps[x][y][type].add(ts); // Add most recent event to queue.
