@@ -122,6 +122,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int sliceDeltaT;    //  The time difference between two slices used for velocity caluction. For constantDuration, this one is equal to the duration. For constantEventNumber, this value will change.
     private int MIN_SLICE_DURATION = 1000;
     private int MAX_SLICE_DURATION = 200000;
+    private boolean showBlockSizeAndSearchAreaTemporarily;
+    private Timer showBlockSizeAndSearchAreaTimer;
 
     public enum PatchCompareMethod {
         /*JaccardDistance,*/ /*HammingDistance*/
@@ -569,6 +571,28 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 gl.glVertex2f(0, y);
                 gl.glVertex2f(subSizeX, y);
             }
+            gl.glEnd();
+        }
+
+        if (showBlockSizeAndSearchAreaTemporarily) {
+            gl.glLineWidth(2f);
+            gl.glColor3f(1, 0, 0);
+            // show block size
+            final int xx = subSizeX / 2, yy = subSizeY / 2, d = blockDimension / 2;
+            gl.glBegin(GL.GL_LINE_LOOP);
+            gl.glVertex2f(xx - d, yy - d);
+            gl.glVertex2f(xx + d, yy - d);
+            gl.glVertex2f(xx + d, yy + d);
+            gl.glVertex2f(xx - d, yy + d);
+            gl.glEnd();
+            // show search area
+            gl.glColor3f(0, 1, 0);
+            final int sd = d+(searchDistance << (numScales - 1));
+            gl.glBegin(GL.GL_LINE_LOOP);
+            gl.glVertex2f(xx - sd, yy - sd);
+            gl.glVertex2f(xx + sd, yy - sd);
+            gl.glVertex2f(xx + sd, yy + sd);
+            gl.glVertex2f(xx - sd, yy + sd);
             gl.glEnd();
         }
     }
@@ -1485,6 +1509,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         this.blockDimension = blockDimension;
         support.firePropertyChange("blockDimension", old, blockDimension);
         putInt("blockDimension", blockDimension);
+        showBlockSizeAndSearchAreaTemporarily();
     }
 
     /**
@@ -1544,6 +1569,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         putInt("searchDistance", searchDistance);
         support.firePropertyChange("searchDistance", old, searchDistance);
         resetFilter();
+        showBlockSizeAndSearchAreaTemporarily();
     }
 
     /**
@@ -2066,6 +2092,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         putInt("numScales", numScales);
         setDefaultScalesToCompute();
         scaleResultCounts = new int[numScales];
+        showBlockSizeAndSearchAreaTemporarily();
 //        log.info("set numScales");
     }
 
@@ -2179,6 +2206,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         showAreaCountsAreasTimer = new Timer();
         showAreaCountAreasTemporarily = true;
         showAreaCountsAreasTimer.schedule(stopShowingAreaTask, 3000);
+    }
+
+    private void showBlockSizeAndSearchAreaTemporarily() {
+        TimerTask stopShowingAreaTask = new TimerTask() {
+            @Override
+            public void run() {
+                showBlockSizeAndSearchAreaTemporarily = false;
+            }
+        };
+        if (showAreaCountsAreasTimer != null) {
+            showAreaCountsAreasTimer.cancel();
+        }
+        showBlockSizeAndSearchAreaTimer = new Timer();
+        showBlockSizeAndSearchAreaTemporarily = true;
+        showBlockSizeAndSearchAreaTimer.schedule(stopShowingAreaTask, 6000);
     }
 
     private void clearAreaCounts() {
