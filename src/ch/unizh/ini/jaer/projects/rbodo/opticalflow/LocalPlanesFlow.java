@@ -447,7 +447,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
              if ((o instanceof ApsDvsEvent) && ((ApsDvsEvent)o).isApsData()) {
                 continue;
             }
-            PolarityEvent ein = (PolarityEvent) i.next();
+            PolarityEvent ein = (PolarityEvent) o;
            
             if (!extractEventInfo(o)) {
                 continue;
