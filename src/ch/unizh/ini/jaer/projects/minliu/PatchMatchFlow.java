@@ -70,7 +70,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
 //    private int[][][] histograms = null;
     private int numSlices = 3; //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
-    volatile private int numScales = getInt("numScales", 1); //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
+    volatile private int numScales = getInt("numScales", 3); //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
     private String scalesToCompute = getString("scalesToCompute", ""); //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
     private int[] scalesToComputeArray = null; // holds array of scales to actually compute, for debugging
     private int[] scaleResultCounts = new int[numScales]; // holds counts at each scale for min SAD results
@@ -86,7 +86,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int[] sliceStartTimeUs; // holds the time interval between reference slice and this slice
     private byte[][][] currentSlice;
     private SADResult lastGoodSadResult = new SADResult(0, 0, 0, 0); // used for consistency check
-    private int blockDimension = getInt("blockDimension", 17);
+    private int blockDimension = getInt("blockDimension", 23);
 //    private float cost = getFloat("cost", 0.001f);
     private float maxAllowedSadDistance = getFloat("maxAllowedSadDistance", .5f);
     private float validPixOccupancy = getFloat("validPixOccupancy", 0.01f);  // threshold for valid pixel percent for one block
@@ -94,10 +94,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private static final int MAX_SKIP_COUNT = 1000;
     private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
     private int skipCounter = 0;
-    private boolean adaptiveEventSkipping = getBoolean("adaptiveEventSkipping", false);
+    private boolean adaptiveEventSkipping = getBoolean("adaptiveEventSkipping", true);
     private float skipChangeFactor = (float) Math.sqrt(2); // by what factor to change the skip count if too slow or too fast
     private boolean outputSearchErrorInfo = false; // make user choose this slow down every time
-    private boolean adaptiveSliceDuration = getBoolean("adaptiveSliceDuration", false);
+    private boolean adaptiveSliceDuration = getBoolean("adaptiveSliceDuration", true);
     private boolean adaptiveSliceDurationLogging = false; // for debugging and analyzing control of slice event number/duration
     private TobiLogger adaptiveSliceDurationLogger = null;
     private int adaptiveSliceDurationPacketCount = 0;
@@ -106,8 +106,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private boolean showSliceBitMap = false; // Display the bitmaps
     private float adapativeSliceDurationProportionalErrorGain = 0.05f; // factor by which an error signal on match distance changes slice duration
     private int processingTimeLimitMs = getInt("processingTimeLimitMs", 100); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
-    private int sliceMaxValue = getInt("sliceMaxValue", 1);
-    private boolean rectifyPolarties = getBoolean("rectifyPolarties", true);
+    private int sliceMaxValue = getInt("sliceMaxValue", 7);
+    private boolean rectifyPolarties = getBoolean("rectifyPolarties", false);
     private TimeLimiter timeLimiter = new TimeLimiter(); // private instance used to accumulate events to slices even if packet has timed out
 
     // results histogram for each packet
@@ -135,7 +135,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private SearchMethod searchMethod = SearchMethod.valueOf(getString("searchMethod", SearchMethod.DiamondSearch.toString()));
 
     private int sliceDurationUs = getInt("sliceDurationUs", 20000);
-    private int sliceEventCount = getInt("sliceEventCount", 10000);
+    private int sliceEventCount = getInt("sliceEventCount", 1000);
     private boolean rewindFlg = false; // The flag to indicate the rewind event.
 
     private boolean displayResultHistogram = getBoolean("displayResultHistogram", true);
@@ -143,8 +143,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     public enum SliceMethod {
         ConstantDuration, ConstantEventNumber, AreaEventNumber
     };
-    private SliceMethod sliceMethod = SliceMethod.valueOf(getString("sliceMethod", SliceMethod.ConstantDuration.toString()));
-    private int areaEventNumberSubsampling = getInt("areaEventNumberSubsampling", 4);
+    private SliceMethod sliceMethod = SliceMethod.valueOf(getString("sliceMethod", SliceMethod.AreaEventNumber.toString()));
+    private int areaEventNumberSubsampling = getInt("areaEventNumberSubsampling", 5);
     private int[][] areaCounts = null;
     private boolean areaCountExceeded = false;
     // timers and flags for showing filter properties temporarily
