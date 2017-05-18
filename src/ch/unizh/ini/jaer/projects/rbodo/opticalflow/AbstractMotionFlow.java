@@ -250,13 +250,16 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
 
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
-        super.setFilterEnabled(yes); //To change body of generated methods, choose Tools | Templates.
+        super.setFilterEnabled(yes); 
         AEChipRenderer renderer;
         renderer = (AEChipRenderer) chip.getRenderer();
         if (renderer == null) {
             return;
         }
         renderer.setExternalRenderer(showTimestampMap && yes);
-    }
+        if (cameraCalibration != null) {
+            cameraCalibration.setFilterEnabled(false); // disable camera cameraCalibration; force user to enable it every time
+        }
+     }
 
 }
