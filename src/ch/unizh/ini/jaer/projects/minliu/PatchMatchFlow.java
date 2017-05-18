@@ -148,9 +148,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int[][] areaCounts = null;
     private boolean areaCountExceeded = false;
     // timers and flags for showing filter properties temporarily
-    private final int SHOW_STUFF_DURATION_MS=6000;
+    private final int SHOW_STUFF_DURATION_MS = 6000;
     private volatile TimerTask stopShowingStuffTask = null;
-    private boolean showBlockSizeAndSearchAreaTemporarily=false;
+    private boolean showBlockSizeAndSearchAreaTemporarily = false;
     private volatile boolean showAreaCountAreasTemporarily = false;
 
     private int eventCounter = 0;
@@ -249,21 +249,23 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
 
         while (i.hasNext()) {
-            Object o=i.next();
-             if (o == null) {
+            Object o = i.next();
+            if (o == null) {
                 log.warning("null event passed in, returning input packet");
                 return in;
             }
-             if ((o instanceof ApsDvsEvent) && ((ApsDvsEvent)o).isApsData()) {
+            if ((o instanceof ApsDvsEvent) && ((ApsDvsEvent) o).isApsData()) {
                 continue;
             }
-            PolarityEvent ein = (PolarityEvent) i.next();
-           
+            PolarityEvent ein = (PolarityEvent)o;
+
             if (!extractEventInfo(o)) {
                 continue;
             }
-            if ( measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
-                if(imuFlowEstimator.calculateImuFlow(o)) continue;
+            if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
+                if (imuFlowEstimator.calculateImuFlow(o)) {
+                    continue;
+                }
             }
             // block ENDS
 
@@ -281,6 +283,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     if (rotated) {
                         adaptSliceDuration();
                     }
+//                    if (ein.x >= subSizeX || ein.y > subSizeY) {
+//                        log.warning("event out of range");
+//                        continue;
+//                    }
                     if (!accumulateEvent(ein)) { // maybe skip events here
                         break;
                     }
