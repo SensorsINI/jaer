@@ -38,6 +38,7 @@ import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
@@ -2101,6 +2102,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     public void setPpsScaleDisplayRelativeOFLength(boolean ppsScaleDisplayRelativeOFLength) {
         this.ppsScaleDisplayRelativeOFLength = ppsScaleDisplayRelativeOFLength;
         putBoolean("ppsScaleDisplayRelativeOFLength", ppsScaleDisplayRelativeOFLength);
+    }
+
+       @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes);
+        if (cameraCalibration != null) {
+            cameraCalibration.setFilterEnabled(false); // disable camera cameraCalibration; force user to enable it every time
+        }
     }
 
 }

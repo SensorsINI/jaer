@@ -21,7 +21,9 @@ import net.sf.jaer.util.jama.Matrix;
 @DevelopmentStatus(DevelopmentStatus.Status.Abstract)
 abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
 
-    /** The search distance on each side of event in pixels */
+    /**
+     * The search distance on each side of event in pixels
+     */
     protected int searchDistance = getInt("searchDistance", 3);
 
     /* Events must occur in this time interval before curernt event to be considered. */
@@ -250,16 +252,13 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
 
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
-        super.setFilterEnabled(yes); 
+        super.setFilterEnabled(yes);
         AEChipRenderer renderer;
         renderer = (AEChipRenderer) chip.getRenderer();
         if (renderer == null) {
             return;
         }
         renderer.setExternalRenderer(showTimestampMap && yes);
-        if (cameraCalibration != null) {
-            cameraCalibration.setFilterEnabled(false); // disable camera cameraCalibration; force user to enable it every time
-        }
-     }
+    }
 
 }
