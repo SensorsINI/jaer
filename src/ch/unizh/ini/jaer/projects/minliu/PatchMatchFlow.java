@@ -2023,14 +2023,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        this.numSlices = numSlices;
 //        putInt("numSlices", numSlices);
 //    }
-    @Override
-    public synchronized void setFilterEnabled(boolean yes) {
-        super.setFilterEnabled(yes); //To change body of generated methods, choose Tools | Templates.
-        if (cameraCalibration != null) {
-            cameraCalibration.setFilterEnabled(false); // disable camera cameraCalibration; force user to enable it every time
-        }
-    }
-
+ 
     /**
      * @return the sliceNumBits
      */
