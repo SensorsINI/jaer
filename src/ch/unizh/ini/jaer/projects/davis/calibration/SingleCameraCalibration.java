@@ -1196,5 +1196,4 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         this.numAutoCaptureFrames = numAutoCaptureFrames;
         putInt("numAutoCaptureFrames", numAutoCaptureFrames);
     }
-
 }
