@@ -104,7 +104,9 @@ public class AutoExposureController extends Observable implements HasPropertyToo
         stats.setLowBoundary(lowBoundary);
         stats.setHighBoundary(highBoundary);
         hist.computeStatistics();
-        final float currentExposure = davisChip.getDavisConfig().getExposureDelayMs();
+        final DavisConfig davisConfig = davisChip.getDavisConfig();
+        final float exposureFrameDelayQuantizationMs = davisConfig.getExposureFrameDelayQuantizationMs();
+        final float currentExposure = davisConfig.getExposureDelayMs();
         float newExposure = 0;
         float expChange = expDelta;
         if (pidControllerEnabled && (stats.maxNonZeroBin > 0)) {
@@ -115,27 +117,27 @@ public class AutoExposureController extends Observable implements HasPropertyToo
         }
         if ((stats.fracLow >= underOverFractionThreshold) && (stats.fracHigh < underOverFractionThreshold)) {
             newExposure = currentExposure * (1 + expChange);
-            if (newExposure == currentExposure) {
-                newExposure += 1e-3f; // ensure increase
+            if (newExposure < currentExposure + exposureFrameDelayQuantizationMs) {
+                newExposure = currentExposure + exposureFrameDelayQuantizationMs; // ensure increase
             }
             if (newExposure != currentExposure) {
-                davisChip.getDavisConfig().setExposureDelayMs(newExposure);
+                davisConfig.setExposureDelayMs(newExposure);
             }
-            float actualExposure = davisChip.getDavisConfig().getExposureDelayMs();
+            float actualExposure = davisConfig.getExposureDelayMs();
             davisChip.getLog().log(Level.INFO, "Underexposed: {0} {1}", new Object[]{stats.toString(),
                 String.format("expChange=%.2f (oldExposure=%10.6fs newExposure=%10.6fs)", expChange, currentExposure, actualExposure)});
         } else if ((stats.fracLow < underOverFractionThreshold) && (stats.fracHigh >= underOverFractionThreshold)) {
             newExposure = currentExposure * (1 - expChange);
-            if (newExposure == currentExposure) {
-                newExposure -= 1e-3f; // ensure decrease even with rounding.
+            if (newExposure > currentExposure - exposureFrameDelayQuantizationMs) {
+                newExposure =currentExposure-exposureFrameDelayQuantizationMs; // ensure decrease even with rounding.
             }
             if (newExposure < 0) {
                 newExposure = 0;
             }
             if (newExposure != currentExposure) {
-                davisChip.getDavisConfig().setExposureDelayMs(newExposure);
+                davisConfig.setExposureDelayMs(newExposure);
             }
-            float actualExposure = davisChip.getDavisConfig().getExposureDelayMs();
+            float actualExposure = davisConfig.getExposureDelayMs();
             davisChip.getLog().log(Level.INFO, "Overexposed: {0} {1}", new Object[]{stats.toString(),
                 String.format("expChange=%.2f (oldExposure=%10.6fs newExposure=%10.6fs)", expChange, currentExposure, actualExposure)});
         } else {
