@@ -34,6 +34,7 @@ public class AutoExposureController extends Observable implements HasPropertyToo
     private float highBoundary;
     private boolean pidControllerEnabled;
     protected boolean centerWeighted;
+    private boolean debuggingLogEnabled = false;
 
     public AutoExposureController(final DavisBaseCamera davisChip) {
         super();
@@ -46,6 +47,7 @@ public class AutoExposureController extends Observable implements HasPropertyToo
         // total pixels
         // that are
         // underexposed
+        debuggingLogEnabled = davisChip.getPrefs().getBoolean("AutoExposureController.debuggingLogEnabled", false);
         lowBoundary = davisChip.getPrefs().getFloat("AutoExposureController.lowBoundary", 0.25F);
         highBoundary = davisChip.getPrefs().getFloat("AutoExposureController.highBoundary", 0.75F);
         pidControllerEnabled = davisChip.getPrefs().getBoolean("pidControllerEnabled", false);
@@ -60,6 +62,8 @@ public class AutoExposureController extends Observable implements HasPropertyToo
                 "<html>Enable proportional integral derivative (actually just proportional) controller rather than fixed-size step control. <p><i>expDelta</i> is multiplied by the fractional error from mid-range exposure when <i>pidControllerEnabled</i> is set");
         tooltipSupport.setPropertyTooltip("centerWeighted",
                 "<html>Enable center-weighted control so that center of image is weighted more heavily in controlling exposure");
+        tooltipSupport.setPropertyTooltip("debuggingLogEnabled",
+                "Enable logging of autoexposure control. See console for this output.");
     }
 
     @Override
@@ -124,12 +128,14 @@ public class AutoExposureController extends Observable implements HasPropertyToo
                 davisConfig.setExposureDelayMs(newExposure);
             }
             float actualExposure = davisConfig.getExposureDelayMs();
-            davisChip.getLog().log(Level.INFO, "Underexposed: {0} {1}", new Object[]{stats.toString(),
-                String.format("expChange=%.2f (oldExposure=%10.6fs newExposure=%10.6fs)", expChange, currentExposure, actualExposure)});
+            if (debuggingLogEnabled) {
+                davisChip.getLog().log(Level.INFO, "Underexposed: {0} {1}", new Object[]{stats.toString(),
+                    String.format("expChange=%.2f (oldExposure=%10.6fs newExposure=%10.6fs)", expChange, currentExposure, actualExposure)});
+            }
         } else if ((stats.fracLow < underOverFractionThreshold) && (stats.fracHigh >= underOverFractionThreshold)) {
             newExposure = currentExposure * (1 - expChange);
             if (newExposure > currentExposure - exposureFrameDelayQuantizationMs) {
-                newExposure =currentExposure-exposureFrameDelayQuantizationMs; // ensure decrease even with rounding.
+                newExposure = currentExposure - exposureFrameDelayQuantizationMs; // ensure decrease even with rounding.
             }
             if (newExposure < 0) {
                 newExposure = 0;
@@ -138,8 +144,10 @@ public class AutoExposureController extends Observable implements HasPropertyToo
                 davisConfig.setExposureDelayMs(newExposure);
             }
             float actualExposure = davisConfig.getExposureDelayMs();
-            davisChip.getLog().log(Level.INFO, "Overexposed: {0} {1}", new Object[]{stats.toString(),
-                String.format("expChange=%.2f (oldExposure=%10.6fs newExposure=%10.6fs)", expChange, currentExposure, actualExposure)});
+            if (debuggingLogEnabled) {
+                davisChip.getLog().log(Level.INFO, "Overexposed: {0} {1}", new Object[]{stats.toString(),
+                    String.format("expChange=%.2f (oldExposure=%10.6fs newExposure=%10.6fs)", expChange, currentExposure, actualExposure)});
+            }
         } else {
             // log.info(stats.toString());
         }
@@ -232,6 +240,23 @@ public class AutoExposureController extends Observable implements HasPropertyToo
      */
     public void setCenterWeighted(final boolean centerWeighted) {
         this.centerWeighted = centerWeighted;
+    }
+
+    /**
+     * @return the debuggingLogEnabled
+     */
+    public boolean isDebuggingLogEnabled() {
+        return debuggingLogEnabled;
+    }
+
+    /**
+     * @param debuggingLogEnabled the debuggingLogEnabled to set
+     */
+    public void setDebuggingLogEnabled(boolean debuggingLogEnabled) {
+        this.debuggingLogEnabled = debuggingLogEnabled;
+        if (davisChip != null) {
+            davisChip.getPrefs().putBoolean("AutoExposureController.debuggingLogEnabled", debuggingLogEnabled);
+        }
     }
 
 }
