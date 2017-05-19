@@ -699,6 +699,14 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		getImuControl().setDisplayImu(yes);
 	}
 
+        /** Returns the quantization value of the frame and exposure delay minimum size step in milliseconds
+         * 
+         * @return 
+         */
+        public float getExposureFrameDelayQuantizationMs(){
+            return 1e-3f;
+        }
+        
         /** Sets the exposure delay (approximately but not exactly the exposure duration). 
          * The true exposure is computed from the returned APS frame exposure start and exposure end timestamps.
          * 
@@ -712,12 +720,18 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 
         /** Returns the exposure delay setting in float ms.
          * 
-         * @return value of exposure delay. It is quantized by apsExposure to be a multiple of 1ms.
+         * @return value of exposure delay. It is quantized by apsExposure to be a multiple of quantization.
+         * @see #getExposureFrameDelayQuantizationMs() 
          */
 	public float getExposureDelayMs() {
 		return apsExposure.get() * .001f;
 	}
 
+       /** Returns the frame delay setting in float ms.
+         * 
+         * @return value of exposure delay. It is quantized by apsExposure to be a multiple of 1us.
+         * @see #getExposureFrameDelayQuantizationMs() 
+         */
 	public void setFrameDelayMs(final float ms) {
 		final int fdUs = Math.round (ms * 1000);
 		apsFrameDelay.set(fdUs);
