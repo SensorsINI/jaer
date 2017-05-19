@@ -217,7 +217,7 @@
           <Component id="scrollPane" max="32767" attributes="0"/>
           <Group type="102" alignment="0" attributes="0">
               <Component id="toolBar1" min="-2" max="-2" attributes="0"/>
-              <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
+              <EmptySpace min="0" pref="271" max="32767" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -244,11 +244,23 @@
       <SubComponents>
         <Component class="javax.swing.JToggleButton" name="disableFilteringToggleButton">
           <Properties>
-            <Property name="text" type="java.lang.String" value="Disable Filters"/>
+            <Property name="text" type="java.lang.String" value="Disable all"/>
             <Property name="toolTipText" type="java.lang.String" value="Temporarily disables all filters"/>
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="disableFilteringToggleButtonActionPerformed"/>
+          </Events>
+        </Component>
+        <Component class="javax.swing.JButton" name="resetAllButton">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="Reset  all"/>
+            <Property name="toolTipText" type="java.lang.String" value="Resets all filters in chain that are enabled"/>
+            <Property name="focusable" type="boolean" value="false"/>
+            <Property name="horizontalTextPosition" type="int" value="0"/>
+            <Property name="verticalTextPosition" type="int" value="3"/>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="resetAllButtonActionPerformed"/>
           </Events>
         </Component>
         <Container class="javax.swing.JPanel" name="jPanel1">

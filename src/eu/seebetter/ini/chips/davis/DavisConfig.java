@@ -705,7 +705,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
          * @param ms exposure delay in ms. If ms<0.001, then it is clipped to 1us to prevent 0 exposures
          */
 	public void setExposureDelayMs(final float ms) {
-		int expUs = (int) (ms * 1000);
+		int expUs = Math.round (ms * 1000);
                 if(expUs<1) expUs=1;
 		apsExposure.set(expUs);
 	}
@@ -719,7 +719,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 	}
 
 	public void setFrameDelayMs(final float ms) {
-		final int fdUs = (int) (ms * 1000);
+		final int fdUs = Math.round (ms * 1000);
 		apsFrameDelay.set(fdUs);
 	}
 
