@@ -120,8 +120,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //    private float lastErrSign = Math.signum(1);
 //    private final String outputFilename;
     private int sliceDeltaT;    //  The time difference between two slices used for velocity caluction. For constantDuration, this one is equal to the duration. For constantEventNumber, this value will change.
-    private int MIN_SLICE_DURATION = 1000;
-    private int MAX_SLICE_DURATION = 200000;
+    private int MIN_SLICE_DURATION_US = 1000;
+    private int MAX_SLICE_DURATION_US = 300000;
 
     public enum PatchCompareMethod {
         /*JaccardDistance,*/ /*HammingDistance*/
@@ -154,7 +154,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private volatile boolean showAreaCountAreasTemporarily = false;
 
     private int eventCounter = 0;
-    private int sliceLastTs = 0;
+    private int sliceLastTs = Integer.MAX_VALUE;
 
     private ImageDisplay sliceBitmapImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
     private JFrame sliceBitMapFrame = null;
@@ -671,7 +671,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 }
                 break;
             case AreaEventNumber:
-                if (!areaCountExceeded) {
+                if (!areaCountExceeded && dt<MAX_SLICE_DURATION_US) {
                     return false;
                 }
         }
@@ -1592,10 +1592,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
     public void setSliceDurationUs(int sliceDurationUs) {
         int old = this.sliceDurationUs;
-        if (sliceDurationUs < MIN_SLICE_DURATION) {
-            sliceDurationUs = MIN_SLICE_DURATION;
-        } else if (sliceDurationUs > MAX_SLICE_DURATION) {
-            sliceDurationUs = MAX_SLICE_DURATION; // limit it to one second
+        if (sliceDurationUs < MIN_SLICE_DURATION_US) {
+            sliceDurationUs = MIN_SLICE_DURATION_US;
+        } else if (sliceDurationUs > MAX_SLICE_DURATION_US) {
+            sliceDurationUs = MAX_SLICE_DURATION_US; // limit it to one second
         }
         this.sliceDurationUs = sliceDurationUs;
 
