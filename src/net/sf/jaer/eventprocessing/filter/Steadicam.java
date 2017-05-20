@@ -294,7 +294,8 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
                                     // immediately set this to be the transform, assuming that next rendering cycle will draw this new frame
                                 }
                             }
-                            continue; // next event
+//                            pushEvent(ev);
+//                            continue; // next event
                         }
 
                         break;
