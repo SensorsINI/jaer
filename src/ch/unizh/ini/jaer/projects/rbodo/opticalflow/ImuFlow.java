@@ -57,7 +57,7 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             if (!extractEventInfo(o)) {
                 continue;
             }
-            if ( measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
+            if ( isDisplayGlobalMotion()|| measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                 if(imuFlowEstimator.calculateImuFlow(o)) continue;
             }
             // block ENDS
@@ -75,9 +75,6 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             vx = imuFlowEstimator.getVx();
             vy = imuFlowEstimator.getVy();
             v = imuFlowEstimator.getV();
-             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
-                if(imuFlowEstimator.calculateImuFlow((ApsDvsEvent) ein)) continue;
-            }
             if (accuracyTests()) {
                 continue;
             }
