@@ -15,6 +15,33 @@ import javax.swing.SwingUtilities;
 
 /**
  * A warning dialog with a check box to let users choose to not show the warning in the future.
+ * <p>
+ * <h2>Usage:</h2>
+ * If the warning dialog is just shown once, then handling can be as simple as following
+ *<pre>
+ * </pre>
+ *                new WarningDialogWithDontShowPreference(null, false, "Usbio Library warning", s).setVisible(true);
+ 
+ * <p>
+ * If the warning dialog is to be shown repeatedly, the following code will make the previous instance disappear and a new one appear. 
+ * This handling is necessary because once the OK button is pressed, no more actions are generated from it, so it cannot simply be made visible again.
+ * Note also how the Swing code is called in the AWT thread safely using SwingUtilities. A reference to the dialog must be kept so that it can be later used to check
+ * for a previous instance and to close it.
+ * <pre>
+ *            if(imuWarningDialog!=null){
+                imuWarningDialog.setVisible(false);
+                imuWarningDialog.dispose();
+            }
+            SwingUtilities.invokeLater(new Runnable() {
+                public void run() {
+                    imuWarningDialog=new WarningDialogWithDontShowPreference(null, false, "Uncalibrated IMU",
+                        "<html>IMU has not been calibrated yet! <p>Load a file with no camera motion and hit the StartIMUCalibration button");
+                    imuWarningDialog.setVisible(true);
+
+                }
+            });
+</pre>
+* 
  * 
  * @author  tobi
  */
@@ -50,7 +77,6 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
         key = title;
         setTitle(title);
         optionPane.setMessageType(JOptionPane.WARNING_MESSAGE);
-//        validate();
         pack();
     }
 
