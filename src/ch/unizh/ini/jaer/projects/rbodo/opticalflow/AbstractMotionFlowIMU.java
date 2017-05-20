@@ -1058,12 +1058,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         log.log(Level.INFO, "{0}\n{1}", new Object[]{this.getClass().getSimpleName(), motionFlowStatistics.toString()});
         if (!imuFlowEstimator.isCalibrationSet()) {
             log.warning("IMU has not been calibrated yet! Load a file with no camera motion and hit the StartIMUCalibration button");
-            if (imuWarningDialog == null) {
-                imuWarningDialog = new WarningDialogWithDontShowPreference(null, false, "Uncalibrated IMU",
-                        "<html>IMU has not been calibrated yet! <p>Load a file with no camera motion and hit the StartIMUCalibration button");
+            if(imuWarningDialog!=null){
+                imuWarningDialog.setVisible(false);
+                imuWarningDialog.dispose();
             }
             SwingUtilities.invokeLater(new Runnable() {
                 public void run() {
+                    imuWarningDialog=new WarningDialogWithDontShowPreference(null, false, "Uncalibrated IMU",
+                        "<html>IMU has not been calibrated yet! <p>Load a file with no camera motion and hit the StartIMUCalibration button");
                     imuWarningDialog.setVisible(true);
 
                 }
