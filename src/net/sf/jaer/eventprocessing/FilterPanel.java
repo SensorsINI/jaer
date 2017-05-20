@@ -288,6 +288,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             props = info.getPropertyDescriptors();
             methods = filter.getClass().getMethods();
             control = new JPanel();
+            control.setLayout(new BoxLayout(control, BoxLayout.Y_AXIS));
             int numDoButtons = 0;
             // first add buttons when the method name starts with "do". These methods are by convention associated with actions.
             // these methods, e.g. "void doDisableServo()" do an action.
@@ -1484,7 +1485,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private void initComponents() {
         bindingGroup = new org.jdesktop.beansbinding.BindingGroup();
 
-        jPanel1 = new javax.swing.JPanel();
+        enableResetControlsHelpPanel = new javax.swing.JPanel();
         enabledCheckBox = new javax.swing.JCheckBox();
         resetButton = new javax.swing.JButton();
         showControlsToggleButton = new javax.swing.JToggleButton();
@@ -1492,9 +1493,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
 
-        jPanel1.setAlignmentX(1.0F);
-        jPanel1.setPreferredSize(new java.awt.Dimension(100, 23));
-        jPanel1.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 2, 2));
+        enableResetControlsHelpPanel.setAlignmentX(1.0F);
+        enableResetControlsHelpPanel.setPreferredSize(new java.awt.Dimension(100, 23));
+        enableResetControlsHelpPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 2, 2));
 
         enabledCheckBox.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
         enabledCheckBox.setToolTipText("Enable or disable the filter");
@@ -1504,7 +1505,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 enabledCheckBoxActionPerformed(evt);
             }
         });
-        jPanel1.add(enabledCheckBox);
+        enableResetControlsHelpPanel.add(enabledCheckBox);
 
         resetButton.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
         resetButton.setText("Reset");
@@ -1515,7 +1516,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 resetButtonActionPerformed(evt);
             }
         });
-        jPanel1.add(resetButton);
+        enableResetControlsHelpPanel.add(resetButton);
 
         showControlsToggleButton.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
         showControlsToggleButton.setText("Controls");
@@ -1525,7 +1526,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${controlsVisible}"), showControlsToggleButton, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
-        jPanel1.add(showControlsToggleButton);
+        enableResetControlsHelpPanel.add(showControlsToggleButton);
 
         helpBut.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
         helpBut.setText("?");
@@ -1536,9 +1537,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 helpButActionPerformed(evt);
             }
         });
-        jPanel1.add(helpBut);
+        enableResetControlsHelpPanel.add(helpBut);
 
-        add(jPanel1);
+        add(enableResetControlsHelpPanel);
 
         bindingGroup.bind();
     }// </editor-fold>//GEN-END:initComponents
@@ -1599,9 +1600,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             controlPanel.setVisible(visible);
         }
 
-        if (c instanceof Window) {
-            ((Window) c).pack();
-        }
+//        if (c instanceof Window) {
+//            ((Window) c).pack();
+//        }
 
         if (!getFilter().isEnclosed()) { // store last selected top level filter
             if (visible) {
@@ -1678,9 +1679,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }//GEN-LAST:event_helpButActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    protected javax.swing.JPanel enableResetControlsHelpPanel;
     protected javax.swing.JCheckBox enabledCheckBox;
     private javax.swing.JButton helpBut;
-    protected javax.swing.JPanel jPanel1;
     private javax.swing.JButton resetButton;
     private javax.swing.JToggleButton showControlsToggleButton;
     private org.jdesktop.beansbinding.BindingGroup bindingGroup;
