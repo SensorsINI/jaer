@@ -1311,7 +1311,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     boolean shift = evt.isShiftDown();
                     float floatFactor = factor;
                     if (shift) {
-                        floatFactor = wheelFactor;
+                        floatFactor = 1+((wheelFactor-1)/4);
                     }
                     if (code == KeyEvent.VK_UP) {
                         try {
