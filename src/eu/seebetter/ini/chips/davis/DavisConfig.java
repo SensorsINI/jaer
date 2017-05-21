@@ -159,13 +159,13 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		dvsRun = new SPIConfigBit("DVS.Run", "Enable DVS.", CypressFX3.FPGA_DVS, (short) 3, false, this);
 		dvsControl.add(dvsRun);
 		dvsControl
-			.add(new SPIConfigInt("DVS.AckDelayRow", "Delay Row AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 4, 5, 4, this));
+			.add(new SPIConfigInt("DVS.AckDelayRow", "Delay Row AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 4, 4, 4, this));
 		dvsControl.add(new SPIConfigInt("DVS.AckDelayColumn", "Delay Column AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 5,
-			5, 0, this));
+			4, 0, this));
 		dvsControl.add(
-			new SPIConfigInt("DVS.AckExtensionRow", "Extend Row AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 6, 5, 1, this));
+			new SPIConfigInt("DVS.AckExtensionRow", "Extend Row AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 6, 4, 1, this));
 		dvsControl.add(new SPIConfigInt("DVS.AckExtensionColumn", "Extend Column AER ACK by this many cycles.", CypressFX3.FPGA_DVS,
-			(short) 7, 5, 0, this));
+			(short) 7, 4, 0, this));
 		dvsControl.add(new SPIConfigBit("DVS.WaitOnTransferStall",
 			"On event FIFO full, wait to ACK until again empty if true, or just continue ACKing if false.", CypressFX3.FPGA_DVS, (short) 8,
 			false, this));
@@ -202,10 +202,10 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 			1000, this);
 		apsControl.add(apsFrameDelay);
 		apsControl
-			.add(new SPIConfigInt("APS.ResetSettle", "Set reset settle time (in cycles).", CypressFX3.FPGA_APS, (short) 15, 7, 10, this));
+			.add(new SPIConfigInt("APS.ResetSettle", "Set reset settle time (in cycles).", CypressFX3.FPGA_APS, (short) 15, 5, 10, this));
 		apsControl
-			.add(new SPIConfigInt("APS.ColumnSettle", "Set column settle time (in cycles).", CypressFX3.FPGA_APS, (short) 16, 7, 30, this));
-		apsControl.add(new SPIConfigInt("APS.RowSettle", "Set row settle time (in cycles).", CypressFX3.FPGA_APS, (short) 17, 6, 10, this));
+			.add(new SPIConfigInt("APS.ColumnSettle", "Set column settle time (in cycles).", CypressFX3.FPGA_APS, (short) 16, 6, 30, this));
+		apsControl.add(new SPIConfigInt("APS.RowSettle", "Set row settle time (in cycles).", CypressFX3.FPGA_APS, (short) 17, 5, 10, this));
 		apsControl
 			.add(new SPIConfigInt("APS.NullSettle", "Set null settle time (in cycles).", CypressFX3.FPGA_APS, (short) 18, 5, 3, this));
 
@@ -700,37 +700,39 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 	}
 
         /** Returns the quantization value of the frame and exposure delay minimum size step in milliseconds
-         * 
-         * @return 
+         *
+         * @return
          */
         public float getExposureFrameDelayQuantizationMs(){
             return 1e-3f;
         }
-        
-        /** Sets the exposure delay (approximately but not exactly the exposure duration). 
+
+        /** Sets the exposure delay (approximately but not exactly the exposure duration).
          * The true exposure is computed from the returned APS frame exposure start and exposure end timestamps.
-         * 
+         *
          * @param ms exposure delay in ms. If ms<0.001, then it is clipped to 1us to prevent 0 exposures
          */
 	public void setExposureDelayMs(final float ms) {
 		int expUs = Math.round (ms * 1000);
-                if(expUs<1) expUs=1;
+                if(expUs<1) {
+					expUs=1;
+				}
 		apsExposure.set(expUs);
 	}
 
         /** Returns the exposure delay setting in float ms.
-         * 
+         *
          * @return value of exposure delay. It is quantized by apsExposure to be a multiple of quantization.
-         * @see #getExposureFrameDelayQuantizationMs() 
+         * @see #getExposureFrameDelayQuantizationMs()
          */
 	public float getExposureDelayMs() {
 		return apsExposure.get() * .001f;
 	}
 
        /** Returns the frame delay setting in float ms.
-         * 
+         *
          * @return value of exposure delay. It is quantized by apsExposure to be a multiple of 1us.
-         * @see #getExposureFrameDelayQuantizationMs() 
+         * @see #getExposureFrameDelayQuantizationMs()
          */
 	public void setFrameDelayMs(final float ms) {
 		final int fdUs = Math.round (ms * 1000);

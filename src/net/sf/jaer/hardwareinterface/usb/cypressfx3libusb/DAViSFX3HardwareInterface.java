@@ -45,8 +45,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	static public final short PID_FX2 = (short) 0x841B;
 	static public final int REQUIRED_FIRMWARE_VERSION_FX3 = 3;
 	static public final int REQUIRED_FIRMWARE_VERSION_FX2 = 3;
-	static public final int REQUIRED_LOGIC_REVISION_FX3 = 9538;
-	static public final int REQUIRED_LOGIC_REVISION_FX2 = 7449;
+	static public final int REQUIRED_LOGIC_REVISION_FX3 = 9880;
+	static public final int REQUIRED_LOGIC_REVISION_FX2 = 9880;
+
+	static public final int FX2_USB_CLOCK_FREQ = 30;
+	static public final int FX3_USB_CLOCK_FREQ = 80;
 
 	/**
 	 * Starts reader buffer pool thread and enables in endpoints for AEs. This
@@ -77,6 +80,16 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		if ((moduleAddr == FPGA_APS) && (paramAddr == 14)) {
 			// FrameDelay multiplied by clock.
 			return (param * adcClockFreq);
+		}
+
+		if ((moduleAddr == FPGA_USB) && (paramAddr == 1)) {
+			// Early packet delay is 125µs slices on host, but in cycles
+			// @ USB_CLOCK_FREQ on FPGA, so we must multiply here.
+			if (getPID() == PID_FX2) {
+				return (param * (125 * FX2_USB_CLOCK_FREQ));
+			}
+
+			return (param * (125 * FX3_USB_CLOCK_FREQ));
 		}
 
 		// No change by default.
@@ -125,7 +138,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private final boolean apsFlipY;
 		private final int apsSizeX;
 		private final int apsSizeY;
-		private int apsADCShift;
 
 		private static final int APS_ROI_REGIONS_MAX = 4;
 		private int apsROIUpdate;
@@ -172,8 +184,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 			apsSizeX = spiConfigReceive(CypressFX3.FPGA_APS, (short) 0);
 			apsSizeY = spiConfigReceive(CypressFX3.FPGA_APS, (short) 1);
-
-			apsADCShift = 0;
 
 			// Set intial ROI sizes.
 			apsROIPositionX[0] = 0;
@@ -489,6 +499,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										apsROIPositionX[3] = apsROIPositionY[3] = 0;
 										break;
 
+									case 48:
+										// TODO: APS Exposure Information, ignore for now.
+										break;
+
 									default:
 										CypressFX3.log.severe("Caught special event that can't be handled.");
 										break;
@@ -616,13 +630,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									buffer.getAddresses()[eventCounter] = DavisChip.ADDRESS_TYPE_APS
 										| ((yPos << DavisChip.YSHIFT) & DavisChip.YMASK) | ((xPos << DavisChip.XSHIFT) & DavisChip.XMASK)
 										| ((apsCurrentReadoutType << DavisChip.ADC_READCYCLE_SHIFT) & DavisChip.ADC_READCYCLE_MASK)
-										| ((data >>> apsADCShift) & DavisChip.ADC_DATA_MASK);
+										| (data & DavisChip.ADC_DATA_MASK);
 									buffer.getTimestamps()[eventCounter++] = currentTimestamp;
 								}
 								break;
 
-							case 5: // Misc 8bit data, used currently only
-								// for IMU events in DAVIS FX3 boards.
+							case 5: // Misc 8bit data.
 								final byte misc8Code = (byte) ((data & 0x0F00) >>> 8);
 								final byte misc8Data = (byte) (data & 0x00FF);
 
@@ -750,13 +763,24 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										break;
 									}
 
-									case 3: {
-										apsADCShift = misc8Data - 10;
-										break;
-									}
-
 									default:
 										CypressFX3.log.severe("Caught Misc8 event that can't be handled.");
+										break;
+								}
+
+								break;
+
+							case 6: // Misc 10bit data.
+								final byte misc10Code = (byte) ((data & 0x0C00) >>> 10);
+								final short misc10Data = (short) (data & 0x03FF);
+
+								switch (misc10Code) {
+									case 0:
+										// TODO: APS Exposure Information, ignore for now.
+										break;
+
+									default:
+										CypressFX3.log.severe("Caught Misc10 event that can't be handled.");
 										break;
 								}
 

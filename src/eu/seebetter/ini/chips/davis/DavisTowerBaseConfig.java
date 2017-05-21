@@ -78,9 +78,9 @@ public class DavisTowerBaseConfig extends DavisConfig {
 		apsControlLocal
 			.add(new SPIConfigBit("APS.SampleEnable", "Enable Sample&Hold circuitry.", CypressFX3.FPGA_APS, (short) 35, true, this));
 		apsControlLocal
-			.add(new SPIConfigInt("APS.SampleSettle", "Sample hold time (in cycles).", CypressFX3.FPGA_APS, (short) 36, 8, 30, this));
+			.add(new SPIConfigInt("APS.SampleSettle", "Sample hold time (in cycles).", CypressFX3.FPGA_APS, (short) 36, 6, 30, this));
 		apsControlLocal
-			.add(new SPIConfigInt("APS.RampReset", "Ramp reset time (in cycles).", CypressFX3.FPGA_APS, (short) 37, 8, 10, this));
+			.add(new SPIConfigInt("APS.RampReset", "Ramp reset time (in cycles).", CypressFX3.FPGA_APS, (short) 37, 6, 10, this));
 		apsControlLocal.add(new SPIConfigBit("APS.RampShortReset", "Only go through half the ramp for reset read.", CypressFX3.FPGA_APS,
 			(short) 38, false, this));
 		apsControlLocal.add(new SPIConfigBit("APS.ADCTestMode", "Put all APS pixels in permanent reset for ADC testing.",
