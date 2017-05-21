@@ -69,7 +69,7 @@ public class MultiInputPanel extends FilterPanel {
 //        
 ////        this.add(sourcePanel,BoxLayout.PAGE_AXIS);
 //        
-        this.jPanel1.add(sourcePanel);
+        this.enableResetControlsHelpPanel.add(sourcePanel);
 //        
 ////        controlPanel=new JPanel(); 
 ////        controlPanel.setLayout(new BoxLayout(controlPanel,BoxLayout.Y_AXIS));
@@ -82,9 +82,9 @@ public class MultiInputPanel extends FilterPanel {
         
         Dimension size2=sourcePanel.getPreferredSize();
         
-        Dimension size=jPanel1.getPreferredSize();
+        Dimension size=enableResetControlsHelpPanel.getPreferredSize();
         
-        jPanel1.setPreferredSize(new Dimension(size.width,size2.height));
+        enableResetControlsHelpPanel.setPreferredSize(new Dimension(size.width,size2.height));
         
 //        Container c=this.getTopLevelAncestor();
 //        if (c instanceof Window)
