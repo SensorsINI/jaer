@@ -425,7 +425,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 // If err<0 it means the average match distance is larger than target avg match distance, so we need to reduce slice duration
 // If err>0, it means the avg match distance is too short, so increse time slice
 // TODO some bug in following
-                final float err = ((searchDistance << (numScales - 1)) / 4) - avgMatchDistance;
+                final float err = ((searchDistance << (numScales - 1)) / 2) - avgMatchDistance;
 //                final float lastErr = searchDistance / 2 - lastHistStdDev;
 //                final double err = histMean - 1/ (rstHist1D.length * rstHist1D.length);
                 float errSign = Math.signum(err);
