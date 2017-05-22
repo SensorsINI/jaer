@@ -74,6 +74,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private String scalesToCompute = getString("scalesToCompute", ""); //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
     private int[] scalesToComputeArray = null; // holds array of scales to actually compute, for debugging
     private int[] scaleResultCounts = new int[numScales]; // holds counts at each scale for min SAD results
+    /**
+     * The computed average possible match distance from 0 motion
+     */
+    protected float avgPossibleMatchDistance;
+
 //    private int sx, sy;
     private int currentSliceIdx = 0; // the slice we are currently filling with events
     /**
@@ -220,6 +225,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWIND, this);
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP, this);
+        avgPossibleMatchDistance = computeAveragePossibleMatchDistance();
     }
 
     @Override
@@ -257,7 +263,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             if ((o instanceof ApsDvsEvent) && ((ApsDvsEvent) o).isApsData()) {
                 continue;
             }
-            PolarityEvent ein = (PolarityEvent)o;
+            PolarityEvent ein = (PolarityEvent) o;
 
             if (!extractEventInfo(o)) {
                 continue;
@@ -425,7 +431,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 // If err<0 it means the average match distance is larger than target avg match distance, so we need to reduce slice duration
 // If err>0, it means the avg match distance is too short, so increse time slice
 // TODO some bug in following
-                final float err = ((searchDistance << (numScales - 1)) / 2) - avgMatchDistance;
+                final float err = avgPossibleMatchDistance - avgMatchDistance;
+//                final float err = ((searchDistance << (numScales - 1)) / 2) - avgMatchDistance;
 //                final float lastErr = searchDistance / 2 - lastHistStdDev;
 //                final double err = histMean - 1/ (rstHist1D.length * rstHist1D.length);
                 float errSign = Math.signum(err);
@@ -671,7 +678,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 }
                 break;
             case AreaEventNumber:
-                if (!areaCountExceeded && dt<MAX_SLICE_DURATION_US) {
+                if (!areaCountExceeded && dt < MAX_SLICE_DURATION_US) {
                     return false;
                 }
         }
@@ -1564,6 +1571,24 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         putString("searchMethod", searchMethod.toString());
     }
 
+    private float computeAveragePossibleMatchDistance() {
+        int n = 0;
+        double s = 0;
+        for (int x = -searchDistance; x <= searchDistance; x++) {
+            for (int y = -searchDistance; y <= searchDistance; y++) {
+                n++;
+                s += Math.sqrt(x * x + y * y);
+            }
+        }
+        double d = s / n; // avg for one scale
+        double s2 = 0;
+        for (int i = 0; i < numScales; i++) {
+            s2 += d * (1 << i);
+        }
+        double d2 = s2 / numScales;
+        return (float) d2;
+    }
+
     @Override
     public synchronized void setSearchDistance(int searchDistance) {
         int old = this.searchDistance;
@@ -1578,6 +1603,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         support.firePropertyChange("searchDistance", old, searchDistance);
         resetFilter();
         showBlockSizeAndSearchAreaTemporarily();
+        avgPossibleMatchDistance = computeAveragePossibleMatchDistance();
     }
 
     /**
@@ -2023,7 +2049,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        this.numSlices = numSlices;
 //        putInt("numSlices", numSlices);
 //    }
- 
     /**
      * @return the sliceNumBits
      */
@@ -2094,7 +2119,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setDefaultScalesToCompute();
         scaleResultCounts = new int[numScales];
         showBlockSizeAndSearchAreaTemporarily();
-//        log.info("set numScales");
+        avgPossibleMatchDistance = computeAveragePossibleMatchDistance();
     }
 
     /**
