@@ -230,7 +230,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        in=cameraCalibration.filterPacket(in);
+        if (cameraCalibration.isFilterEnabled()) {
+            in = cameraCalibration.filterPacket(in);
+        }
         setupFilter(in);
         checkArrays();
         if (processingTimeLimitMs > 0) {
