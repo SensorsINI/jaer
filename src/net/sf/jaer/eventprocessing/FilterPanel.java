@@ -288,7 +288,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             props = info.getPropertyDescriptors();
             methods = filter.getClass().getMethods();
             control = new JPanel();
-            control.setLayout(new BoxLayout(control, BoxLayout.Y_AXIS));
+            control.setLayout(new BoxLayout(control, BoxLayout.X_AXIS));
             int numDoButtons = 0;
             // first add buttons when the method name starts with "do". These methods are by convention associated with actions.
             // these methods, e.g. "void doDisableServo()" do an action.
@@ -401,14 +401,15 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 tb.getBorderInsets(this).set(1, 1, 1, 1);
                 control.setBorder(tb);
                 control.setMinimumSize(new Dimension(0, 0));
+                control.setLayout(new GridLayout(0, 3, 3, 3));
+
                 add(control);
                 controls.add(control);
             }
 
-            if (numDoButtons > 3) {
-                control.setLayout(new GridLayout(0, 3, 3, 3));
-            }
-
+//            if (numDoButtons > 3) {
+//                control.setLayout(new GridLayout(0, 3, 3, 3));
+//            }
             // next add enclosed Filter and enclosed FilterChain so they appear at top of list (they are processed first)
             for (PropertyDescriptor p : props) {
                 Class c = p.getPropertyType();
@@ -1311,7 +1312,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     boolean shift = evt.isShiftDown();
                     float floatFactor = factor;
                     if (shift) {
-                        floatFactor = 1+((wheelFactor-1)/4);
+                        floatFactor = 1 + ((wheelFactor - 1) / 4);
                     }
                     if (code == KeyEvent.VK_UP) {
                         try {
@@ -1603,7 +1604,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //        if (c instanceof Window) {
 //            ((Window) c).pack();
 //        }
-
         if (!getFilter().isEnclosed()) { // store last selected top level filter
             if (visible) {
                 getFilter().getChip().getPrefs().put(FilterFrame.LAST_FILTER_SELECTED_KEY, getFilter().getClass().toString());
