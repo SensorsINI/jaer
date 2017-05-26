@@ -225,7 +225,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWIND, this);
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP, this);
-        avgPossibleMatchDistance = computeAveragePossibleMatchDistance();
+        computeAveragePossibleMatchDistance();
     }
 
     @Override
@@ -433,8 +433,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 // compute error signal.
 // If err<0 it means the average match distance is larger than target avg match distance, so we need to reduce slice duration
 // If err>0, it means the avg match distance is too short, so increse time slice
-// TODO some bug in following
-                final float err = avgPossibleMatchDistance - avgMatchDistance;
+                final float err = avgPossibleMatchDistance/2 - avgMatchDistance; // use target that is smaller than average possible to bound excursions to large slices better
 //                final float err = ((searchDistance << (numScales - 1)) / 2) - avgMatchDistance;
 //                final float lastErr = searchDistance / 2 - lastHistStdDev;
 //                final double err = histMean - 1/ (rstHist1D.length * rstHist1D.length);
@@ -545,11 +544,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         gl.glEnd();
                     }
                 }
+                final int tsd = searchDistance << (numScales - 1);
                 if (avgMatchDistance > 0) {
+                    gl.glPushMatrix();
                     gl.glColor3f(1, 0, 0);
                     gl.glLineWidth(5f);
-                    final int tsd = searchDistance << (numScales - 1);
                     DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgMatchDistance, 16);
+                    gl.glPopMatrix();
+                }
+                if (avgPossibleMatchDistance > 0) {
+                    gl.glPushMatrix();
+                    gl.glColor3f(0, 1, 0);
+                    gl.glLineWidth(5f);
+                    DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgPossibleMatchDistance, 16);
+                    gl.glPopMatrix();
                 }
                 // a bunch of cryptic crap to draw a string the same width as the histogram...
                 gl.glPopMatrix();
@@ -1574,13 +1582,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         putString("searchMethod", searchMethod.toString());
     }
 
-    private float computeAveragePossibleMatchDistance() {
+    private void computeAveragePossibleMatchDistance() {
         int n = 0;
         double s = 0;
-        for (int x = -searchDistance; x <= searchDistance; x++) {
-            for (int y = -searchDistance; y <= searchDistance; y++) {
+        for (int xx = -searchDistance; xx <= searchDistance; xx++) {
+            for (int yy = -searchDistance; yy <= searchDistance; yy++) {
                 n++;
-                s += Math.sqrt(x * x + y * y);
+                s += Math.sqrt((xx * xx) + (yy * yy));
             }
         }
         double d = s / n; // avg for one scale
@@ -1589,7 +1597,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             s2 += d * (1 << i);
         }
         double d2 = s2 / numScales;
-        return (float) d2;
+        d2=d2;
+        log.info(String.format("searchDistance=%d numScales=%d: avgPossibleMatchDistance=%.1f", searchDistance, numScales, avgPossibleMatchDistance));
+        avgPossibleMatchDistance= (float) d2;
     }
 
     @Override
@@ -1606,7 +1616,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         support.firePropertyChange("searchDistance", old, searchDistance);
         resetFilter();
         showBlockSizeAndSearchAreaTemporarily();
-        avgPossibleMatchDistance = computeAveragePossibleMatchDistance();
+        computeAveragePossibleMatchDistance();
     }
 
     /**
@@ -2122,7 +2132,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setDefaultScalesToCompute();
         scaleResultCounts = new int[numScales];
         showBlockSizeAndSearchAreaTemporarily();
-        avgPossibleMatchDistance = computeAveragePossibleMatchDistance();
+        computeAveragePossibleMatchDistance();
     }
 
     /**
