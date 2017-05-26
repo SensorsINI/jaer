@@ -37,7 +37,7 @@ public class JaerAviWriter extends AbstractAviWriter {
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        if (aviOutputStream == null && isWriteEnabled()) {
+        if (aviOutputStream == null ) {
             return;
         }
         GL2 gl = drawable.getGL().getGL2();
@@ -45,7 +45,9 @@ public class JaerAviWriter extends AbstractAviWriter {
 
         try {
             aviOutputStream.writeFrame(bi);
-            writeTimecode(chip.getAeViewer().getAePlayer().getTime());
+            if (isWriteTimecodeFile()) {
+                writeTimecode(chip.getAeViewer().getAePlayer().getTime());
+            }
             incrementFramecountAndMaybeCloseOutput();
 
         } catch (Exception e) {
@@ -53,7 +55,5 @@ public class JaerAviWriter extends AbstractAviWriter {
             doCloseFile();
         }
     }
-
-  
 
 }
