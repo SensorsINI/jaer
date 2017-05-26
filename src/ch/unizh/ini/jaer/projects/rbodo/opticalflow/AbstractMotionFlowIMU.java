@@ -101,7 +101,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     private boolean displayColorWheelLegend = getBoolean("displayColorWheelLegend", true);
 
     private float ppsScale = getFloat("ppsScale", .1f);
-    private boolean ppsScaleDisplayRelativeOFLength=getBoolean("ppsScaleDisplayRelativeOFLength",true);
+    private boolean ppsScaleDisplayRelativeOFLength = getBoolean("ppsScaleDisplayRelativeOFLength", true);
 
     // A pixel can fire an event only after this period. Used for smoother flow
     // and speedup.
@@ -182,7 +182,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     // MotionField that aggregates motion
     protected MotionField motionField = new MotionField();
 
-    /** Relative scale of displayed global flow vector */
+    /**
+     * Relative scale of displayed global flow vector
+     */
     protected static final float GLOBAL_MOTION_DRAWING_SCALE = 1;
 
     /**
@@ -379,7 +381,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
     }
 
- 
     void resetGroundTruth() {
         importedGTfromMatlab = false;
         vxGTframe = null;
@@ -549,11 +550,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
          *
          * @param pe PolarityEvent
          * @return true if event is an IMU event, so enclosing loop can continue
-         * to next event, skipping flow processing of this IMU event. Return false if event is not IMU event.
+         * to next event, skipping flow processing of this IMU event. Return
+         * false if event is not IMU event.
          */
         public boolean calculateImuFlow(Object o) {
-            if(!(o instanceof ApsDvsEvent)) return true; // continue processing this event outside
-            ApsDvsEvent e=(ApsDvsEvent)o;
+            if (!(o instanceof ApsDvsEvent)) {
+                return true; // continue processing this event outside
+            }
+            ApsDvsEvent e = (ApsDvsEvent) o;
             if (e.isImuSample()) {
                 updateTransform(e.getImuSample());
                 return true;
@@ -1058,14 +1062,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         log.log(Level.INFO, "{0}\n{1}", new Object[]{this.getClass().getSimpleName(), motionFlowStatistics.toString()});
         if (!imuFlowEstimator.isCalibrationSet()) {
             log.warning("IMU has not been calibrated yet! Load a file with no camera motion and hit the StartIMUCalibration button");
-            if(imuWarningDialog!=null){
-                imuWarningDialog.setVisible(false);
-                imuWarningDialog.dispose();
-            }
+
             SwingUtilities.invokeLater(new Runnable() {
                 public void run() {
-                    imuWarningDialog=new WarningDialogWithDontShowPreference(null, false, "Uncalibrated IMU",
-                        "<html>IMU has not been calibrated yet! <p>Load a file with no camera motion and hit the StartIMUCalibration button");
+                    if (imuWarningDialog != null) {
+                        imuWarningDialog.setVisible(false);
+                        imuWarningDialog.dispose();
+                    }
+                    imuWarningDialog = new WarningDialogWithDontShowPreference(null, false, "Uncalibrated IMU",
+                            "<html>IMU has not been calibrated yet! <p>Load a file with no camera motion and hit the StartIMUCalibration button");
                     imuWarningDialog.setVisible(true);
 
                 }
@@ -2099,14 +2104,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
 
     /**
-     * @param ppsScaleDisplayRelativeOFLength the ppsScaleDisplayRelativeOFLength to set
+     * @param ppsScaleDisplayRelativeOFLength the
+     * ppsScaleDisplayRelativeOFLength to set
      */
     public void setPpsScaleDisplayRelativeOFLength(boolean ppsScaleDisplayRelativeOFLength) {
         this.ppsScaleDisplayRelativeOFLength = ppsScaleDisplayRelativeOFLength;
         putBoolean("ppsScaleDisplayRelativeOFLength", ppsScaleDisplayRelativeOFLength);
     }
 
-       @Override
+    @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
         if (cameraCalibration != null) {
