@@ -1597,7 +1597,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             s2 += d * (1 << i);
         }
         double d2 = s2 / numScales;
-        d2=d2;
         log.info(String.format("searchDistance=%d numScales=%d: avgPossibleMatchDistance=%.1f", searchDistance, numScales, avgPossibleMatchDistance));
         avgPossibleMatchDistance= (float) d2;
     }
