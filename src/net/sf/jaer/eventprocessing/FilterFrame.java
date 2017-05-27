@@ -183,6 +183,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         toolBar1 = new javax.swing.JToolBar();
         disableFilteringToggleButton = new javax.swing.JToggleButton();
         resetAllButton = new javax.swing.JButton();
+        overviewButton = new javax.swing.JButton();
         jPanel1 = new javax.swing.JPanel();
         updateIntervalLabel = new javax.swing.JLabel();
         updateIntervalField = new javax.swing.JTextField();
@@ -250,6 +251,18 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             }
         });
         toolBar1.add(resetAllButton);
+
+        overviewButton.setText("Overview");
+        overviewButton.setToolTipText("Shows overview of all filters");
+        overviewButton.setFocusable(false);
+        overviewButton.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        overviewButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        overviewButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                overviewButtonActionPerformed(evt);
+            }
+        });
+        toolBar1.add(overviewButton);
 
         jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.LINE_AXIS));
 
@@ -468,7 +481,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             .addComponent(scrollPane)
             .addGroup(layout.createSequentialGroup()
                 .addComponent(toolBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(0, 271, Short.MAX_VALUE))
+                .addGap(0, 218, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -765,6 +778,12 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         filterChain.reset();
     }//GEN-LAST:event_resetAllButtonActionPerformed
 
+    private void overviewButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_overviewButtonActionPerformed
+        for (FilterPanel f : filterPanels) {
+            f.setControlsVisible(false); // hide controls for all filters, exposing chain
+        }
+    }//GEN-LAST:event_overviewButtonActionPerformed
+
     private void filterVisibleBiases(String string) {
         if ((string == null) || string.isEmpty()) {
             for (FilterPanel p : filterPanels) {
@@ -851,7 +870,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                 b.setTitleColor(Color.red);
                 highlightedFilter = f;
                 getFilterPanelForFilter(f).repaint();
-                
+
             }
         }
     }
@@ -895,6 +914,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JCheckBoxMenuItem measurePerformanceCheckBoxMenuItem;
     private javax.swing.ButtonGroup modeButtonGroup;
     private javax.swing.JMenu modeMenu;
+    private javax.swing.JButton overviewButton;
     private javax.swing.JRadioButtonMenuItem renderingModeMenuItem;
     private javax.swing.JButton resetAllButton;
     private javax.swing.JMenuItem resetPerformanceMeasurementMI;
