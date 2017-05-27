@@ -78,6 +78,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * The computed average possible match distance from 0 motion
      */
     protected float avgPossibleMatchDistance;
+    private static final int MIN_SLICE_EVENT_COUNT_FULL_FRAME = 100;
+    private static final int MAX_SLICE_EVENT_COUNT_FULL_FRAME = 100000;
 
 //    private int sx, sy;
     private int currentSliceIdx = 0; // the slice we are currently filling with events
@@ -215,6 +217,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "sliceMaxValue", "<html> the maximum value used to represent each pixel in the time slice:<br>1 for binary or signed binary slice, (in conjunction with rectifyEventPolarities==true), etc, <br>up to 127 by these byte values");
         setPropertyTooltip(patchTT, "rectifyPolarties", "<html> whether to rectify ON and OFF polarities to unsigned counts; true ignores polarity for block matching, false uses polarity with sliceNumBits>1");
         setPropertyTooltip(patchTT, "scalesToCompute", "Scales to compute, e.g. 1,2; blank for all scales. 0 is full resolution, 1 is subsampled 2x2, etc");
+        setPropertyTooltip(patchTT, "defaults", "Sets reasonable defaults");
 
         setPropertyTooltip(dispTT, "showSliceBitMap", "enables displaying the slices' bitmap");
         setPropertyTooltip(dispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
@@ -373,6 +376,24 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         return isDisplayRawInput() ? in : dirPacket;
     }
 
+    public void doDefaults() {
+        setSearchMethod(SearchMethod.DiamondSearch);
+        setBlockDimension(21);
+        setNumScales(2);
+        setSearchDistance(4);
+        setAdaptiveEventSkipping(true);
+        setAdaptiveSliceDuration(true);
+        setMaxAllowedSadDistance(.5f);
+        setSliceMaxValue(7);
+        setRectifyPolarties(true);
+        setValidPixOccupancy(.02f);
+        setSliceMethod(SliceMethod.AreaEventNumber);
+        int ss = (int) (Math.log(blockDimension - 1) / Math.log(2));
+        setAreaEventNumberSubsampling(ss);
+        // set event count so that count=block area * sliceMaxValue/2;
+        setSliceEventCount(((blockDimension * blockDimension) * sliceMaxValue) / 2);
+    }
+
     private void adaptSliceDuration() {
         {
             // measure last hist to get control signal on slice duration
@@ -433,7 +454,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 // compute error signal.
 // If err<0 it means the average match distance is larger than target avg match distance, so we need to reduce slice duration
 // If err>0, it means the avg match distance is too short, so increse time slice
-                final float err = avgPossibleMatchDistance/2 - avgMatchDistance; // use target that is smaller than average possible to bound excursions to large slices better
+                final float err = avgPossibleMatchDistance / 2 - avgMatchDistance; // use target that is smaller than average possible to bound excursions to large slices better
 //                final float err = ((searchDistance << (numScales - 1)) / 2) - avgMatchDistance;
 //                final float lastErr = searchDistance / 2 - lastHistStdDev;
 //                final double err = histMean - 1/ (rstHist1D.length * rstHist1D.length);
@@ -1533,7 +1554,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             blockDimension = 63;
         }
         this.blockDimension = blockDimension;
-        support.firePropertyChange("blockDimension", old, blockDimension);
+        getSupport().firePropertyChange("blockDimension", old, blockDimension);
         putInt("blockDimension", blockDimension);
         showBlockSizeAndSearchAreaTemporarily();
     }
@@ -1549,11 +1570,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param sliceMethod the sliceMethod to set
      */
     synchronized public void setSliceMethod(SliceMethod sliceMethod) {
+        SliceMethod old=this.sliceMethod;
         this.sliceMethod = sliceMethod;
         putString("sliceMethod", sliceMethod.toString());
         if (sliceMethod == SliceMethod.AreaEventNumber) {
             showAreasForAreaCountsTemporarily();
         }
+        getSupport().firePropertyChange("sliceMethod", old, this.sliceMethod);
     }
 
     public PatchCompareMethod getPatchCompareMethod() {
@@ -1578,8 +1601,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param searchMethod the method to be used for searching
      */
     public void setSearchMethod(SearchMethod searchMethod) {
+        SearchMethod old=this.searchMethod;
         this.searchMethod = searchMethod;
         putString("searchMethod", searchMethod.toString());
+        getSupport().firePropertyChange("searchMethod", old, this.searchMethod);
     }
 
     private void computeAveragePossibleMatchDistance() {
@@ -1598,7 +1623,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         double d2 = s2 / numScales;
         log.info(String.format("searchDistance=%d numScales=%d: avgPossibleMatchDistance=%.1f", searchDistance, numScales, avgPossibleMatchDistance));
-        avgPossibleMatchDistance= (float) d2;
+        avgPossibleMatchDistance = (float) d2;
     }
 
     @Override
@@ -1612,7 +1637,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         this.searchDistance = searchDistance;
         putInt("searchDistance", searchDistance);
-        support.firePropertyChange("searchDistance", old, searchDistance);
+        getSupport().firePropertyChange("searchDistance", old, searchDistance);
         resetFilter();
         showBlockSizeAndSearchAreaTemporarily();
         computeAveragePossibleMatchDistance();
@@ -1656,10 +1681,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
     public void setSliceEventCount(int sliceEventCount) {
         int old = this.sliceEventCount;
-        if (sliceEventCount < 100) {
-            sliceEventCount = 100;
-        } else if (sliceEventCount > 100000) {
-            sliceEventCount = 100000;
+        if (sliceEventCount < MIN_SLICE_EVENT_COUNT_FULL_FRAME) {
+            sliceEventCount = MIN_SLICE_EVENT_COUNT_FULL_FRAME;
+        } else if (sliceEventCount > MAX_SLICE_EVENT_COUNT_FULL_FRAME) {
+            sliceEventCount = MAX_SLICE_EVENT_COUNT_FULL_FRAME;
         }
         this.sliceEventCount = sliceEventCount;
         putInt("sliceEventCount", sliceEventCount);
@@ -1671,6 +1696,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     public void setMaxAllowedSadDistance(float maxAllowedSadDistance) {
+        float old = this.maxAllowedSadDistance;
         if (maxAllowedSadDistance < 0) {
             maxAllowedSadDistance = 0;
         } else if (maxAllowedSadDistance > 1) {
@@ -1678,6 +1704,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         this.maxAllowedSadDistance = maxAllowedSadDistance;
         putFloat("maxAllowedSadDistance", maxAllowedSadDistance);
+        getSupport().firePropertyChange("maxAllowedSadDistance", old, this.maxAllowedSadDistance);
     }
 
     public float getValidPixOccupancy() {
@@ -1685,6 +1712,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     public void setValidPixOccupancy(float validPixOccupancy) {
+        float old=this.validPixOccupancy;
         if (validPixOccupancy < 0) {
             validPixOccupancy = 0;
         } else if (validPixOccupancy > 1) {
@@ -1692,6 +1720,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         this.validPixOccupancy = validPixOccupancy;
         putFloat("validPixOccupancy", validPixOccupancy);
+        getSupport().firePropertyChange("validPixOccupancy", old, this.validPixOccupancy);
     }
 
     public float getWeightDistance() {
@@ -1829,11 +1858,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param adaptiveEventSkipping the adaptiveEventSkipping to set
      */
     synchronized public void setAdaptiveEventSkipping(boolean adaptiveEventSkipping) {
+        boolean old = this.adaptiveEventSkipping;
         this.adaptiveEventSkipping = adaptiveEventSkipping;
         putBoolean("adaptiveEventSkipping", adaptiveEventSkipping);
         if (adaptiveEventSkipping && adaptiveEventSkippingUpdateCounterLPFilter != null) {
             adaptiveEventSkippingUpdateCounterLPFilter.reset();
         }
+        getSupport().firePropertyChange("adaptiveEventSkipping", old, this.adaptiveEventSkipping);
     }
 
     public boolean isOutputSearchErrorInfo() {
@@ -1910,6 +1941,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param adaptiveSliceDuration the adaptiveSliceDuration to set
      */
     synchronized public void setAdaptiveSliceDuration(boolean adaptiveSliceDuration) {
+        boolean old = this.adaptiveSliceDuration;
         this.adaptiveSliceDuration = adaptiveSliceDuration;
         putBoolean("adaptiveSliceDuration", adaptiveSliceDuration);
         if (adaptiveSliceDurationLogging) {
@@ -1919,6 +1951,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             }
             adaptiveSliceDurationLogger.setEnabled(adaptiveSliceDuration);
         }
+        getSupport().firePropertyChange("adaptiveSliceDuration", old, this.adaptiveSliceDuration);
     }
 
     /**
@@ -2072,6 +2105,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param sliceMaxValue the sliceMaxValue to set
      */
     public void setSliceMaxValue(int sliceMaxValue) {
+        int old = this.sliceMaxValue;
         if (sliceMaxValue < 1) {
             sliceMaxValue = 1;
         } else if (sliceMaxValue > 127) {
@@ -2079,6 +2113,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         this.sliceMaxValue = sliceMaxValue;
         putInt("sliceMaxValue", sliceMaxValue);
+        getSupport().firePropertyChange("sliceMaxValue", old, this.sliceMaxValue);
     }
 
     /**
@@ -2092,8 +2127,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param rectifyPolarties the rectifyPolarties to set
      */
     public void setRectifyPolarties(boolean rectifyPolarties) {
+        boolean old = this.rectifyPolarties;
         this.rectifyPolarties = rectifyPolarties;
         putBoolean("rectifyPolarties", rectifyPolarties);
+        getSupport().firePropertyChange("rectifyPolarties", old, this.rectifyPolarties);
     }
 
     /**
@@ -2121,6 +2158,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param numScales the numScales to set
      */
     synchronized public void setNumScales(int numScales) {
+        int old = this.numScales;
         if (numScales < 1) {
             numScales = 1;
         } else if (numScales > 4) {
@@ -2132,6 +2170,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         scaleResultCounts = new int[numScales];
         showBlockSizeAndSearchAreaTemporarily();
         computeAveragePossibleMatchDistance();
+        getSupport().firePropertyChange("numScales", old, this.numScales);
     }
 
     /**
@@ -2217,6 +2256,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param areaEventNumberSubsampling the areaEventNumberSubsampling to set
      */
     synchronized public void setAreaEventNumberSubsampling(int areaEventNumberSubsampling) {
+        int old = this.areaEventNumberSubsampling;
         if (areaEventNumberSubsampling < 3) {
             areaEventNumberSubsampling = 3;
         } else if (areaEventNumberSubsampling > 7) {
@@ -2229,6 +2269,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (sliceMethod != SliceMethod.AreaEventNumber) {
             log.warning("AreaEventNumber method is not currently selected as sliceMethod");
         }
+        getSupport().firePropertyChange("areaEventNumberSubsampling", old, this.areaEventNumberSubsampling);
     }
 
     private void showAreasForAreaCountsTemporarily() {
