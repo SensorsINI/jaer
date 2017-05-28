@@ -1240,13 +1240,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
 
     public void setDisplayGlobalMotion(boolean displayGlobalMotion) {
+        boolean old=this.displayGlobalMotion;
         motionFlowStatistics.setMeasureGlobalMotion(displayGlobalMotion);
-        support.firePropertyChange("displayGlobalMotion", this.displayGlobalMotion, displayGlobalMotion);
         this.displayGlobalMotion = displayGlobalMotion;
         putBoolean("displayGlobalMotion", displayGlobalMotion);
         if (displayGlobalMotion) {
             resetFilter();
         }
+        getSupport().firePropertyChange("displayGlobalMotion", old, displayGlobalMotion);
     }
     // </editor-fold>
 
@@ -1256,8 +1257,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
 
     public void setDisplayVectorsEnabled(boolean displayVectorsEnabled) {
+        boolean old=this.displayVectorsEnabled;
         this.displayVectorsEnabled = displayVectorsEnabled;
         putBoolean("displayVectorsEnabled", displayVectorsEnabled);
+        getSupport().firePropertyChange("displayVectorsEnabled", old, displayVectorsEnabled);
     }
     // </editor-fold>
 
@@ -1272,8 +1275,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      * @param ppsScale
      */
     public void setPpsScale(float ppsScale) {
+        float old=this.ppsScale;
         this.ppsScale = ppsScale;
         putFloat("ppsScale", ppsScale);
+        getSupport().firePropertyChange("ppsScale", old, this.ppsScale);
     }
     // </editor-fold>
 
@@ -2108,8 +2113,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      * ppsScaleDisplayRelativeOFLength to set
      */
     public void setPpsScaleDisplayRelativeOFLength(boolean ppsScaleDisplayRelativeOFLength) {
+        boolean old=this.ppsScaleDisplayRelativeOFLength;
         this.ppsScaleDisplayRelativeOFLength = ppsScaleDisplayRelativeOFLength;
         putBoolean("ppsScaleDisplayRelativeOFLength", ppsScaleDisplayRelativeOFLength);
+        getSupport().firePropertyChange("ppsScaleDisplayRelativeOFLength", old, ppsScaleDisplayRelativeOFLength);
     }
 
     @Override
