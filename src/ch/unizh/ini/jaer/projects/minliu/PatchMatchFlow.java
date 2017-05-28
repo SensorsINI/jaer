@@ -155,7 +155,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int[][] areaCounts = null;
     private boolean areaCountExceeded = false;
     // timers and flags for showing filter properties temporarily
-    private final int SHOW_STUFF_DURATION_MS = 6000;
+    private final int SHOW_STUFF_DURATION_MS = 4000;
     private volatile TimerTask stopShowingStuffTask = null;
     private boolean showBlockSizeAndSearchAreaTemporarily = false;
     private volatile boolean showAreaCountAreasTemporarily = false;
@@ -233,7 +233,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        if (cameraCalibration.isFilterEnabled()) {
+        if (cameraCalibration != null && cameraCalibration.isFilterEnabled()) {
             in = cameraCalibration.filterPacket(in);
         }
         setupFilter(in);
@@ -384,14 +384,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setAdaptiveEventSkipping(true);
         setAdaptiveSliceDuration(true);
         setMaxAllowedSadDistance(.5f);
+        setDisplayVectorsEnabled(true);
+        setPpsScaleDisplayRelativeOFLength(true);
+        setDisplayGlobalMotion(true);
+        setPpsScale(.1f);
         setSliceMaxValue(7);
         setRectifyPolarties(true);
         setValidPixOccupancy(.02f);
         setSliceMethod(SliceMethod.AreaEventNumber);
+        // compute nearest power of two over block dimension
         int ss = (int) (Math.log(blockDimension - 1) / Math.log(2));
         setAreaEventNumberSubsampling(ss);
-        // set event count so that count=block area * sliceMaxValue/2;
-        setSliceEventCount(((blockDimension * blockDimension) * sliceMaxValue) / 2);
+        // set event count so that count=block area * sliceMaxValue/4; 
+        // i.e. set count to roll over when pixels are half full if they are half filled
+        setSliceEventCount(((blockDimension * blockDimension) * sliceMaxValue) / 4);
     }
 
     private void adaptSliceDuration() {
@@ -1570,7 +1576,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param sliceMethod the sliceMethod to set
      */
     synchronized public void setSliceMethod(SliceMethod sliceMethod) {
-        SliceMethod old=this.sliceMethod;
+        SliceMethod old = this.sliceMethod;
         this.sliceMethod = sliceMethod;
         putString("sliceMethod", sliceMethod.toString());
         if (sliceMethod == SliceMethod.AreaEventNumber) {
@@ -1601,7 +1607,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param searchMethod the method to be used for searching
      */
     public void setSearchMethod(SearchMethod searchMethod) {
-        SearchMethod old=this.searchMethod;
+        SearchMethod old = this.searchMethod;
         this.searchMethod = searchMethod;
         putString("searchMethod", searchMethod.toString());
         getSupport().firePropertyChange("searchMethod", old, this.searchMethod);
@@ -1712,7 +1718,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     public void setValidPixOccupancy(float validPixOccupancy) {
-        float old=this.validPixOccupancy;
+        float old = this.validPixOccupancy;
         if (validPixOccupancy < 0) {
             validPixOccupancy = 0;
         } else if (validPixOccupancy > 1) {
@@ -2279,6 +2285,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         stopShowingStuffTask = new TimerTask() {
             @Override
             public void run() {
+                showBlockSizeAndSearchAreaTemporarily = false; // in case we are canceling a task that would clear this
                 showAreaCountAreasTemporarily = false;
             }
         };
@@ -2294,6 +2301,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         stopShowingStuffTask = new TimerTask() {
             @Override
             public void run() {
+                showAreaCountAreasTemporarily = false; // in case we are canceling a task that would clear this
                 showBlockSizeAndSearchAreaTemporarily = false;
             }
         };
