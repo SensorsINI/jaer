@@ -59,7 +59,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
 	/**
 	 * Choose whether to bin the data from both ears, when false the chooseEar variable chooses which ear to bin from
 	 */
-	private boolean useBothEars = getBoolean("useBothEars", false);
+	private boolean useBothEars = getBoolean("useBothEars", true);
 	/**
 	 * If data from only one ear is chosen, this variable gets the preference from the user
 	 */
@@ -68,7 +68,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
 	 * Choose whether to bin the data from all the neurons, when false the chooseNeuron variable chooses the appropriate
 	 * neuron
 	 */
-	private boolean useAllNeurons = getBoolean("useAllNeurons", false);
+	private boolean useAllNeurons = getBoolean("useAllNeurons", true);
 	/**
 	 * If data from only one neuron is chosen, this variable gets the preference from the user
 	 */
@@ -78,7 +78,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
 	 * Choose whether to bin data from both the filter types, when false the chooseFilterType chooses the appropriate
 	 * filter type
 	 */
-	private boolean useBothFilterTypes = getBoolean("useBothFilterTypes", false);
+	private boolean useBothFilterTypes = getBoolean("useBothFilterTypes", true);
 	/**
 	 * If data from only one filter type is to be binned, this variable gets the preference from the user
 	 */
@@ -234,7 +234,7 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
 		setPropertyTooltip(parameters, "useAllNeurons", "Choose whether to process the events from all the neurons");
 		setPropertyTooltip(parameters, "chooseNeuron",
 			"If events from all neurons are not to be processed, which neuron's events should be chosen, choose a value in {0,1,2,3}");
-		setPropertyTooltip(parameters, "useBothFilterTypes", "Choose whether to process the events from both the filter types");
+		setPropertyTooltip(parameters, "useBothFilterTypes", "Choose whether to process the events from both the cochlea outputs (lowpass and bandpass types)");
 		setPropertyTooltip(parameters, "chooseFilterType",
 			"If processing is to be done only on one filter type, which filter type should be chosen; 0 for low pass and 1 for band pass");
 		setPropertyTooltip(function, "clickToProcess",
@@ -254,22 +254,25 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
 		GL2 gl = drawable.getGL().getGL2();
 		if (chip.getCanvas().getDisplayMethod() instanceof RollingCochleaGramDisplayMethod) {
 			// what to display on rolling cochlea gram display
-			return;
-		}
-                // prints the name of the network being used, and if the network is processing it also prints the time for which the network was being processed
-		if ((this.rnnetwork != null) & (this.rnnetwork.netname != null)) {
-			MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .1f);
-			MultilineAnnotationTextRenderer.setScale(.1f);
-			if (this.isProcessingEnabled()) {
-				int timeElapsed = this.lastEventTime - this.firstEventTime;
-				timeElapsed = timeElapsed / 1000;
-				MultilineAnnotationTextRenderer.renderMultilineString(
+	               return;
+            }
+            // prints the name of the network being used, and if the network is processing it also prints the time for which the network was being processed
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1.2f);
+            MultilineAnnotationTextRenderer.setScale(.08f);
+            if ((this.rnnetwork != null) & (this.rnnetwork.netname != null)) {
+                if (this.isProcessingEnabled()) {
+                    int timeElapsed = this.lastEventTime - this.firstEventTime;
+                    timeElapsed = timeElapsed / 1000;
+                   	MultilineAnnotationTextRenderer.renderMultilineString(
 					StringUtils.join("Network: ", this.rnnetwork.netname, "  ;  ", "Time elapsed:", Float.toString(timeElapsed), "ms"));
 			}
 			else {
 				MultilineAnnotationTextRenderer.renderMultilineString(this.rnnetwork.netname);
 			}
-		}
+		}else{
+                    MultilineAnnotationTextRenderer.renderMultilineString("No network is loaded yet.\nUse the LoadFromXML button to load an RNN."
+                            + "\nThere is sample RNN in the jaer filterSettings folder.");
+                }
                 // 
 		if (this.networkOutput != null) {
 			float prediction_probability_percentage = RNNfilter.maxValue(this.networkOutput) * 100;
@@ -289,7 +292,9 @@ public class RNNfilter extends EventFilter2D implements FrameAnnotater, Property
 					MultilineAnnotationTextRenderer.renderMultilineString(Integer.toString(this.label));
 				}
 			}
-		}
+		}else{
+                    MultilineAnnotationTextRenderer.renderMultilineString("Network is loaded but RNN produced no output.\nClick RunRNN or deselect clickToProcess.\nCheck your properties;\nYou might be filtering out cochlea events.");
+                }
 		if ((this.networkOutput != null) & this.isDisplayActivations()) {
 			this.showActivations(gl, chip.getSizeX(), chip.getSizeY());
 		}
