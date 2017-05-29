@@ -389,15 +389,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setDisplayGlobalMotion(true);
         setPpsScale(.1f);
         setSliceMaxValue(7);
-        setRectifyPolarties(true);
-        setValidPixOccupancy(.02f);
+        setRectifyPolarties(true); // rectify to better handle cases of steadicam where pan/tilt flips event polarities
+        setValidPixOccupancy(.01f); // at least this fraction of pixels from each block must both have nonzero values
         setSliceMethod(SliceMethod.AreaEventNumber);
         // compute nearest power of two over block dimension
         int ss = (int) (Math.log(blockDimension - 1) / Math.log(2));
         setAreaEventNumberSubsampling(ss);
         // set event count so that count=block area * sliceMaxValue/4; 
-        // i.e. set count to roll over when pixels are half full if they are half filled
-        setSliceEventCount(((blockDimension * blockDimension) * sliceMaxValue) / 4);
+        // i.e. set count to roll over when slice pixels from most subsampled scale are half full if they are half stimulated
+        final int eventCount=(((blockDimension * blockDimension) * sliceMaxValue) / 2 )>>(numScales-1);
+        setSliceEventCount(eventCount);
+        setSliceDurationUs(50000); // set a bit smaller max duration in us to avoid instability where count gets too high with sparse input
     }
 
     private void adaptSliceDuration() {
