@@ -177,7 +177,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     protected int outlierMotionFilteringSubsampleShift = getInt("outlierMotionFilteringSubsampleShift", 1);
     protected int outlierMotionFilteringMinSameAngleInNeighborhood = getInt("outlierMotionFilteringMinSameAngleInNeighborhood", 2);
     protected int[][] outlierMotionFilteringLastAngles = null;
-    private float motionVectorLineWidthPixels = getFloat("motionVectorLineWidthPixels", 2);
+    private float motionVectorLineWidthPixels = getFloat("motionVectorLineWidthPixels", 4);
 
     // MotionField that aggregates motion
     protected MotionField motionField = new MotionField();
