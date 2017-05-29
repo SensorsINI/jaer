@@ -105,14 +105,29 @@ public class AEChip extends Chip2D {
     }
 
     /**
-     * add a filter that is available by default
+     * Adds a filter that is available by default
+     * @param f the event filter to add
      */
-    public void addDefaultEventFilter(Class f) {
+    public void addDefaultEventFilter(Class<? extends EventFilter> f) {
         if (!EventFilter.class.isAssignableFrom(f)) {
             log.warning("In trying to addDefaultEventFilter, " + f + " is not an EventFilter, ignoring");
             return;
         }
         defaultEventFilters.add(f);
+    }
+    
+    /**
+     * Removes a filter that is available by default, for example to reorder list to put a desired filter at the end of the default filter chain
+     * @param f the EventFilter to remove
+     */
+    public void removeDefaultEventFilter(Class<? extends EventFilter> f){
+        if(defaultEventFilters==null){
+            log.warning("null defaultEventFilters, doing nothing");
+            return;
+        }
+        if(defaultEventFilters.remove(f)){
+            log.info("removed "+f+" from defaultEventFilters");
+        }
     }
 
     /**

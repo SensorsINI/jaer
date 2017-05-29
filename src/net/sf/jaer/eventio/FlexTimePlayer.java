@@ -29,7 +29,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  * @author tobid
  */
 @Description("Plays DAVIS recordings with APS frames at constant DVS event number per returned packet")
-@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
 
     private int nEventsPerPacket = getInt("nEventsPerPacket", 10000);

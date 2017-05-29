@@ -9,8 +9,10 @@ import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.frames.DavisFrameAviWriter;
 import eu.seebetter.ini.chips.davis.AutoExposureController;
 import eu.seebetter.ini.chips.davis.DavisAutoShooter;
+import net.sf.jaer.eventio.FlexTimePlayer;
 import net.sf.jaer.eventprocessing.filter.ApsDvsEventFilter;
 import net.sf.jaer.eventprocessing.label.SimpleOrientationFilter;
+import net.sf.jaer.util.avioutput.JaerAviWriter;
 
 /**
  * Constants for DAVIS AE data format such as raw address encodings. 
@@ -70,9 +72,11 @@ abstract public class DavisChip extends AETemporalConstastRetina {
 	public DavisChip() {
 		addDefaultEventFilter(ApsDvsEventFilter.class);
 		addDefaultEventFilter(ApsFrameExtractor.class);
+		addDefaultEventFilter(FlexTimePlayer.class);
 		addDefaultEventFilter(DavisAutoShooter.class);
-		addDefaultEventFilter(SimpleOrientationFilter.class);
 		addDefaultEventFilter(DavisFrameAviWriter.class);
+                removeDefaultEventFilter(JaerAviWriter.class);
+		addDefaultEventFilter(JaerAviWriter.class);
 	}
 
 	/**
