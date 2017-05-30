@@ -270,7 +270,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
     private void addIntrospectedControls() {
-        add(Box.createVerticalGlue());
+        add(Box.createVerticalStrut(0));
         ungroupedControls = new JPanel();
         String u = "(Ungrouped)";
         ungroupedControls.setName(u);
@@ -579,6 +579,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
 //        add(Box.createHorizontalGlue());
         if (ungroupedControls.getComponentCount() > 0) {
+            add(Box.createVerticalStrut(0));
             add(ungroupedControls);
         }
         add(Box.createHorizontalStrut(0));  // use up vertical space to get components to top
@@ -613,8 +614,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         label.setForeground(Color.BLUE);
 
     }
+    
+    class MyControl extends JPanel{
+        public Dimension getMaximumSize(){
+            return getPreferredSize();
+        }
+    }
 
-    class EnumControl extends JPanel implements HasSetter {
+    class EnumControl extends MyControl implements HasSetter {
 
         Method write, read;
         EventFilter filter;
@@ -671,7 +678,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
     }
 
-    class StringControl extends JPanel implements HasSetter {
+    class StringControl extends MyControl implements HasSetter {
 
         Method write, read;
         EventFilter filter;
@@ -795,7 +802,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
     }
 
-    class IntSliderControl extends JPanel implements HasSetter {
+    class IntSliderControl extends MyControl implements HasSetter {
 
         Method write, read;
         EventFilter filter;
@@ -876,7 +883,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
     }
 
-    class FloatSliderControl extends JPanel implements HasSetter {
+    class FloatSliderControl extends MyControl implements HasSetter {
 
         Method write, read;
         EventFilter filter;
@@ -953,7 +960,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
     }
 
-    class IntControl extends JPanel implements HasSetter {
+    class IntControl extends MyControl implements HasSetter {
 
         Method write, read;
         EventFilter filter;
@@ -1228,7 +1235,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
     }
 
-    class FloatControl extends JPanel implements HasSetter {
+    class FloatControl extends MyControl implements HasSetter {
 
         EngineeringFormat engFmt = new EngineeringFormat();
 //        final String format="%.6f";
@@ -1741,7 +1748,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
     }
 
-    class Point2DControl extends JPanel implements HasSetter {
+    class Point2DControl extends MyControl implements HasSetter {
 
         Method write, read;
         EventFilter filter;
