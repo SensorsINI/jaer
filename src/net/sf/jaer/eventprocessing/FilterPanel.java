@@ -9,6 +9,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.KeyboardFocusManager;
@@ -180,7 +181,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         void set(Object o);
     }
-    static final float ALIGNMENT = Component.LEFT_ALIGNMENT;
+    static final float LEFT_ALIGNMENT = Component.LEFT_ALIGNMENT;
     private BeanInfo info;
     private PropertyDescriptor[] props;
     private Method[] methods;
@@ -192,6 +193,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private HashMap<String, HasSetter> setterMap = new HashMap<String, HasSetter>(); // map from filter to property, to apply property change events to control
     protected java.util.ArrayList<JComponent> controls = new ArrayList<JComponent>();
     private HashMap<String, Container> groupContainerMap = new HashMap();
+    private JComponent ungroupedControls = null;
     private JPanel inheritedPanel = null;
     private float DEFAULT_REAL_VALUE = 0.01f; // value jumped to from zero on key or wheel up
 
@@ -243,23 +245,15 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
     // checks for group container and adds to that if needed.
     private void myadd(JComponent comp, String propertyName, boolean inherited) {
-        JPanel pan = new JPanel();
-        pan.setLayout(new BoxLayout(pan, BoxLayout.X_AXIS));
-        controls.add(pan);
         if (!getFilter().hasPropertyGroups()) {
-            pan.add(comp);
-//        if(inherited){
-//            pan.setBorder(BorderFactory.createLineBorder(Color.yellow) );
-//        }
-            pan.add(Box.createVerticalStrut(0));
-            add(pan);
+            ungroupedControls.add(comp);
             controls.add(comp);
             return;
         }
         String groupName = getFilter().getPropertyGroup(propertyName);
         if (groupName != null) {
             Container container = groupContainerMap.get(groupName);
-            comp.setAlignmentX(Component.LEFT_ALIGNMENT);
+//            comp.setAlignmentX(Component.LEFT_ALIGNMENT);
 //            if(inherited){
 //                JPanel inherPan=new JPanel();
 //                inherPan.setBorder(BorderFactory.createLineBorder(Color.yellow) );
@@ -269,17 +263,20 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             container.add(comp);
 //            }
         } else {
-//            add(Box.createHorizontalGlue());
-            comp.setAlignmentX(Component.LEFT_ALIGNMENT);
-            pan.add(comp);
-            pan.add(Box.createVerticalStrut(0));
+            ungroupedControls.add(comp);
         }
-        add(pan); // to fix horizontal all left alignment
         controls.add(comp);
     }
 
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
     private void addIntrospectedControls() {
+        add(Box.createVerticalGlue());
+        ungroupedControls = new JPanel();
+        String u = "(Ungrouped)";
+        ungroupedControls.setName(u);
+        ungroupedControls.setBorder(new TitledBorder(u));
+        ungroupedControls.setLayout(new GridLayout(0, 1));
+        controls.add(ungroupedControls);
         JPanel control = null;
         EventFilter filter = getFilter();
         try {
@@ -287,8 +284,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             // TODO check if class is public, otherwise we can't access methods usually
             props = info.getPropertyDescriptors();
             methods = filter.getClass().getMethods();
-            control = new JPanel();
-            control.setLayout(new BoxLayout(control, BoxLayout.X_AXIS));
             int numDoButtons = 0;
             // first add buttons when the method name starts with "do". These methods are by convention associated with actions.
             // these methods, e.g. "void doDisableServo()" do an action.
@@ -391,20 +386,28 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             };
 
             Collections.sort(doButList, butComp);
-            for (AbstractButton b : doButList) {
-                control.add(b);
-            }
+            if (!doButList.isEmpty()) {
 
-            //if at least one button then we show the actions panel
-            if (control.getComponentCount() > 0) {
+                JPanel buttons = new JPanel() {
+                    @Override
+                    public Dimension getMaximumSize() {
+                        return getPreferredSize();
+                    }
+                };
+                for (AbstractButton b : doButList) {
+                    buttons.add(b);
+                }
+
+                //if at least one button then we show the actions panel
+//                buttons.setMinimumSize(new Dimension(0, 0));
+                buttons.setLayout(new GridLayout(0, 3, 3, 3));
+                JPanel butPanel = new JPanel(new FlowLayout(FlowLayout.LEADING));
+                butPanel.add(buttons);
                 TitledBorder tb = new TitledBorder("Filter Actions");
                 tb.getBorderInsets(this).set(1, 1, 1, 1);
-                control.setBorder(tb);
-                control.setMinimumSize(new Dimension(0, 0));
-                control.setLayout(new GridLayout(0, 3, 3, 3));
-
-                add(control);
-                controls.add(control);
+                butPanel.setBorder(tb);
+                add(butPanel);
+                controls.add(butPanel);
             }
 
 //            if (numDoButtons > 3) {
@@ -574,9 +577,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             e.printStackTrace();
         }
 
-        add(Box.createHorizontalGlue());
-        setControlsVisible(
-                false);
+//        add(Box.createHorizontalGlue());
+        if (ungroupedControls.getComponentCount() > 0) {
+            add(ungroupedControls);
+        }
+        add(Box.createHorizontalStrut(0));  // use up vertical space to get components to top
+        setControlsVisible(false);
 //        System.out.println("added glue to "+this);
     }
 
@@ -627,9 +633,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             write = w;
             read = r;
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-            setAlignmentX(ALIGNMENT);
+            setAlignmentX(LEFT_ALIGNMENT);
             final JLabel label = new JLabel(name);
-            label.setAlignmentX(ALIGNMENT);
+            label.setAlignmentX(LEFT_ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
             addTip(f, label);
             add(label);
@@ -687,9 +693,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             write = w;
             read = r;
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-            setAlignmentX(ALIGNMENT);
+            setAlignmentX(LEFT_ALIGNMENT);
             final JLabel label = new JLabel(name);
-            label.setAlignmentX(ALIGNMENT);
+            label.setAlignmentX(LEFT_ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
             addTip(f, label);
             add(label);
@@ -742,14 +748,15 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             write = w;
             read = r;
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-            setAlignmentX(ALIGNMENT);
+            setAlignmentX(LEFT_ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
             checkBox = new JCheckBox(name);
-            checkBox.setAlignmentX(ALIGNMENT);
+            checkBox.setAlignmentX(LEFT_ALIGNMENT);
             checkBox.setFont(checkBox.getFont().deriveFont(fontSize));
             checkBox.setHorizontalTextPosition(SwingConstants.LEFT);
             addTip(f, checkBox);
             add(checkBox);
+//            add(Box.createVerticalStrut(0));
             try {
                 Boolean x = (Boolean) r.invoke(filter);
                 if (x == null) {
@@ -812,7 +819,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             write = w;
             read = r;
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-            setAlignmentX(ALIGNMENT);
+            setAlignmentX(LEFT_ALIGNMENT);
 
             final IntControl ic = new IntControl(f, name, w, r);
 
@@ -900,7 +907,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             write = w;
             read = r;
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-            setAlignmentX(ALIGNMENT);
+            setAlignmentX(LEFT_ALIGNMENT);
 
             fc = new FloatControl(f, name, w, r);
             add(fc);
@@ -969,10 +976,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             write = w;
             read = r;
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-            setAlignmentX(ALIGNMENT);
+            setAlignmentX(LEFT_ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
             JLabel label = new JLabel(name);
-            label.setAlignmentX(ALIGNMENT);
+            label.setAlignmentX(LEFT_ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
             addTip(f, label);
             add(label);
@@ -1246,10 +1253,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             write = w;
             read = r;
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-            setAlignmentX(ALIGNMENT);
+            setAlignmentX(LEFT_ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
             JLabel label = new JLabel(name);
-            label.setAlignmentX(ALIGNMENT);
+            label.setAlignmentX(LEFT_ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
             addTip(f, label);
             add(label);
@@ -1817,10 +1824,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             write = w;
             read = r;
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-            setAlignmentX(ALIGNMENT);
+            setAlignmentX(LEFT_ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
             JLabel label = new JLabel(name);
-            label.setAlignmentX(ALIGNMENT);
+            label.setAlignmentX(LEFT_ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
             addTip(f, label);
             add(label);
