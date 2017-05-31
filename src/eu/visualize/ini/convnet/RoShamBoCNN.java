@@ -22,6 +22,10 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import gnu.io.NRSerialPort;
+import java.io.File;
+import java.net.URL;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -30,6 +34,8 @@ import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.PlayWavFile;
+import net.sf.jaer.util.SoundWavFilePlayer;
 import net.sf.jaer.util.SpikeSound;
 
 /**
@@ -56,16 +62,18 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     private int serialBaudRate = getInt("serialBaudRate", 115200);
     private DataOutputStream serialPortOutputStream = null;
     private Enumeration portList = null;
+    private boolean playSounds = getBoolean("playSounds", false);
+    private SoundPlayer soundPlayer = null;
 
     /**
      * output units
      */
-    private static final int DECISION_PAPER = 0, DECISION_SCISSORS = 1, DECISION_ROCK = 2, DECISION_BACKGROUND = 3; 
+    private static final int DECISION_PAPER = 0, DECISION_SCISSORS = 1, DECISION_ROCK = 2, DECISION_BACKGROUND = 3;
     private static final String[] DECISION_STRINGS = {"Paper", "Scissors", "Rock", "Background"};
 
     public RoShamBoCNN(AEChip chip) {
         super(chip);
-        String roshambo = "RoShamBo";
+        String roshambo = "0. RoShamBo";
         setPropertyTooltip(roshambo, "showAnalogDecisionOutput", "Shows face detection as analog activation of face unit in softmax of network output");
         setPropertyTooltip(roshambo, "hideOutput", "Hides output face detection indications");
         setPropertyTooltip(roshambo, "decisionLowPassMixingFactor", "The softmax outputs of the CNN are low pass filtered using this mixing factor; reduce decisionLowPassMixingFactor to filter more decisions");
@@ -73,10 +81,11 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         setPropertyTooltip(roshambo, "serialPortName", "Name of serial port to send robot commands to");
         setPropertyTooltip(roshambo, "serialPortCommandsEnabled", "Send commands to serial port for Arduino Nano hand robot");
         setPropertyTooltip(roshambo, "serialBaudRate", "Baud rate (default 115200), upper limit 12000000");
+        setPropertyTooltip(roshambo, "playSounds", "Play sound effects");
         FilterChain chain = new FilterChain(chip);
         setEnclosedFilterChain(chain);
         apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, statistics);
-     }
+    }
 
     @Override
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -89,7 +98,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         super.resetFilter();
         statistics.reset();
     }
-    
+
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, statistics);
@@ -100,7 +109,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
             try {
                 openSerial();
             } catch (Exception ex) {
-                log.warning("caught exception enabling serial port when filter was enabled: "+ex.toString());
+                log.warning("caught exception enabling serial port when filter was enabled: " + ex.toString());
             }
         }
     }
@@ -140,6 +149,12 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         if ((statistics.maxUnit >= 0) && (statistics.maxUnit < DECISION_STRINGS.length)) {
             Rectangle2D r = textRenderer.getBounds(DECISION_STRINGS[statistics.maxUnit]);
             textRenderer.draw(DECISION_STRINGS[statistics.maxUnit], (width / 2) - ((int) r.getWidth() / 2), height / 2);
+            if (playSounds) {
+                if (soundPlayer == null) {
+                    soundPlayer = new SoundPlayer();
+                }
+                soundPlayer.playSound(statistics.maxUnit);
+            }
         }
         textRenderer.endRendering();
 //        gl.glPopMatrix();
@@ -241,9 +256,9 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     public void setSerialPortCommandsEnabled(boolean serialPortCommandsEnabled) {
         this.serialPortCommandsEnabled = serialPortCommandsEnabled;
         putBoolean("serialPortCommandsEnabled", serialPortCommandsEnabled);
-        if(!isFilterEnabled()) {
-			return;
-		}
+        if (!isFilterEnabled()) {
+            return;
+        }
         if (!serialPortCommandsEnabled) {
             closeSerial();
             return;
@@ -266,14 +281,14 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
             sb.append(s).append(" ");
         }
         log.info(sb.toString());
-        if(!availableSerialPorts.contains(serialPortName)){
-            log.warning(serialPortName+" is not in avaiable "+sb.toString());
+        if (!availableSerialPorts.contains(serialPortName)) {
+            log.warning(serialPortName + " is not in avaiable " + sb.toString());
             return;
         }
 
         serialPort = new NRSerialPort(serialPortName, serialBaudRate);
-        if(serialPort==null){
-            log.warning("null serial port returned when trying to open "+serialPortName+"; available "+sb.toString());
+        if (serialPort == null) {
+            log.warning("null serial port returned when trying to open " + serialPortName + "; available " + sb.toString());
             return;
         }
         serialPort.connect();
@@ -316,6 +331,23 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         } catch (IOException ex) {
             Logger.getLogger(RoShamBoCNN.class.getName()).log(Level.SEVERE, null, ex);
         }
+    }
+
+    /**
+     * @return the playSounds
+     */
+    public boolean isPlaySounds() {
+        return playSounds;
+    }
+
+    /**
+     * @param playSounds the playSounds to set
+     */
+    public void setPlaySounds(boolean playSounds) {
+        boolean old = this.playSounds;
+        this.playSounds = playSounds;
+        putBoolean("playSounds", playSounds);
+        getSupport().firePropertyChange("playSounds", old, this.playSounds); // in case disabled by error loading file
     }
 
     private class Statistics implements PropertyChangeListener {
@@ -412,7 +444,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                             break;
                         case DECISION_BACKGROUND:
                             cmd = '1';
-                            break;                            
+                            break;
                         default:
                             log.warning("maxUnit=" + maxUnit + " is not a valid network output state");
                     }
@@ -422,7 +454,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                         log.warning(ex.toString());
                     }
                 }
-            }else if(evt.getPropertyName()==AEViewer.EVENT_FILEOPEN){
+            } else if (evt.getPropertyName() == AEViewer.EVENT_FILEOPEN) {
                 reset();
             }
         }
@@ -432,6 +464,55 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
             MultilineAnnotationTextRenderer.renderMultilineString(toString());
         }
 
+    }
+
+    private class SoundPlayer {
+
+        private String[] soundFiles = {"paper.wav", "scissors.wav", "rock.wav"};
+        private long minTimeIntervalMs = 4000, lastTimePlayed = Integer.MIN_VALUE, lastSymbolPlayed = -1, lastInput = -1;
+        private SoundWavFilePlayer[] soundPlayers = new SoundWavFilePlayer[soundFiles.length];
+        private String path = "/eu/visualize/ini/convnet/resources/";
+
+        public SoundPlayer() {
+            for (int i = 0; i < soundPlayers.length; i++) {
+                try {
+                    soundPlayers[i] = new SoundWavFilePlayer(path + soundFiles[i]);
+                } catch (Exception ex) {
+                    log.warning("couldn't load " + path + soundFiles[i] + ": caught " + ex + "; disabling playSounds");
+                    setPlaySounds(false);
+                }
+            }
+        }
+
+        void playSound(int symbol) {
+            if (soundPlayers[symbol] == null) {
+                log.warning("No player for symbol " + symbol);
+                return;
+            }
+
+            if (soundPlayers[symbol].isPlaying()) {
+                return;
+            }
+            if (symbol < 0 || symbol >= soundFiles.length) {
+                return;
+            }
+            minTimeIntervalMs = 500;
+            long now = System.currentTimeMillis();
+            if (now - lastTimePlayed < minTimeIntervalMs) {
+                return;
+            }
+
+            if (soundPlayers[symbol].isPlaying()) {
+                return;
+            }
+            if(symbol==lastSymbolPlayed){
+                return;
+            }
+            lastInput = symbol;
+            lastTimePlayed = now;
+            lastSymbolPlayed = symbol;
+            soundPlayers[symbol].play();
+        }
     }
 
 }
