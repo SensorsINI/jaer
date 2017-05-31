@@ -208,6 +208,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //        log.info("building FilterPanel for "+f);
         this.setFilter(f);
         initComponents();
+        Dimension d=enableResetControlsHelpPanel.getPreferredSize();
+        enableResetControlsHelpPanel.setMaximumSize(new Dimension(1000,d.height)); // keep from stretching
         String cn = getFilter().getClass().getName();
         int lastdot = cn.lastIndexOf('.');
         String name = cn.substring(lastdot + 1);
@@ -271,7 +273,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
     private void addIntrospectedControls() {
         add(Box.createVerticalStrut(0));
-        ungroupedControls = new JPanel();
+        ungroupedControls = new MyControl();
         String u = "(Ungrouped)";
         ungroupedControls.setName(u);
         ungroupedControls.setBorder(new TitledBorder(u));
@@ -401,7 +403,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 //if at least one button then we show the actions panel
 //                buttons.setMinimumSize(new Dimension(0, 0));
                 buttons.setLayout(new GridLayout(0, 3, 3, 3));
-                JPanel butPanel = new JPanel(new FlowLayout(FlowLayout.LEADING));
+                JPanel butPanel = new MyControl();
+                butPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
                 butPanel.add(buttons);
                 TitledBorder tb = new TitledBorder("Filter Actions");
                 tb.getBorderInsets(this).set(1, 1, 1, 1);
@@ -476,7 +479,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 setList.addAll(groupSet);
                 Collections.sort(setList);
                 for (String s : setList) {
-                    JPanel groupPanel = new JPanel();
+                    JPanel groupPanel = new MyControl();
                     groupPanel.setName(s);
                     groupPanel.setBorder(new TitledBorder(s));
                     groupPanel.setLayout(new GridLayout(0, 1));
@@ -617,7 +620,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     
     class MyControl extends JPanel{
         public Dimension getMaximumSize(){
-            return getPreferredSize();
+           Dimension d= getPreferredSize();
+           d.setSize(1000, d.getHeight());
+           return d;
         }
     }
 
@@ -833,7 +838,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             tf = ic.tf;
             add(ic);
             slider = new JSlider(params.minIntValue, params.maxIntValue);
-            slider.setMaximumSize(new Dimension(200, 50));
+            slider.setMaximumSize(new Dimension(300, 50));
 
             try {
                 Integer x = (Integer) r.invoke(filter); // read int value
@@ -1218,6 +1223,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 }
             }
             );
+            setMaximumSize(getPreferredSize());
         }
     }
 
@@ -1508,6 +1514,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
 
+        enableResetControlsHelpPanel.setToolTipText("Generic controls for this EventFilter");
         enableResetControlsHelpPanel.setAlignmentX(1.0F);
         enableResetControlsHelpPanel.setPreferredSize(new java.awt.Dimension(100, 23));
         enableResetControlsHelpPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 2, 2));
