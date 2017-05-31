@@ -103,8 +103,10 @@ public class DeepLearnCnnNetwork {
     private boolean softMaxOutput = false;
     private boolean zeroPadding = true;
     private boolean normalizeDVSForZsNullhop = false; // uses DvsSubsamplerToFrame normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1
-    private EngineeringFormat engFmt=new EngineeringFormat();
-    
+    private EngineeringFormat engFmt = new EngineeringFormat();
+    /** Height of final output layer histogram as fraction of AEChip display height */
+    public static final float HISTOGRAM_HEIGHT_FRACTION = 0.9f;
+
     /**
      * This flag is set true once the network has run once. Some constants are
      * not set until then
@@ -324,7 +326,7 @@ public class DeepLearnCnnNetwork {
      */
     public String getPerformanceString() {
         return String.format("%s ops in %s s: %s ops/sec",
-                engFmt.format(operationCounter), engFmt.format(processingTimeNs*1e-9f), engFmt.format(operationCounter / (1e-9f * processingTimeNs)));
+                engFmt.format(operationCounter), engFmt.format(processingTimeNs * 1e-9f), engFmt.format(operationCounter / (1e-9f * processingTimeNs)));
     }
 
     private float[] readFloatArray(EasyXMLReader layerReader, String name) {
@@ -569,7 +571,7 @@ public class DeepLearnCnnNetwork {
             if (normalizeDVSForZsNullhop) {
                 subsampler.normalizeFrame(); // this option uses the same normalization to 0-1 range as in DvsSliceAVIWriter
                 // note that if rectifyPolarties is true, then subsampler will create 0-1 pixmap with zero-event pixels having value 0
-                final float zeroValue =  subsampler.getZeroCountPixelValue(), fullscale = 1 - zeroValue;
+                final float zeroValue = subsampler.getZeroCountPixelValue(), fullscale = 1 - zeroValue;
                 for (int y = 0; y < dimy; y++) {
                     for (int x = 0; x < dimy; x++) {
                         // rectifyPolarties=false: range is 0-1 in subsampler after normalization; move it to range -1 to 1. Zero count pixels have value 127/255.
@@ -1116,10 +1118,10 @@ public class DeepLearnCnnNetwork {
 
         @Override
         synchronized public void cleanupGraphics() {
-            activationDisplays=null;
-            kernelDisplays=null;
+            activationDisplays = null;
+            kernelDisplays = null;
         }
-        
+
         @Override
         public void drawActivations() {
             if (!isVisible() || (activations == null)) {
@@ -1449,7 +1451,7 @@ public class DeepLearnCnnNetwork {
                 return;
             }
             float dx = (float) (width) / (activations.length);
-            float sy = (float) 0.9f * (height);
+            float sy = (float) HISTOGRAM_HEIGHT_FRACTION * (height);
 
 //            gl.glBegin(GL.GL_LINES);
 //            gl.glVertex2f(1, 1);
@@ -1748,7 +1750,7 @@ public class DeepLearnCnnNetwork {
                 layers[i] = null;
             }
         }
-        outputLayer=null;
+        outputLayer = null;
         layers = new Layer[nLayers];
 
         for (int i = 0; i <= nLayers; i++) { // we need one more layer here (<=) to get the output layer
@@ -1921,7 +1923,7 @@ public class DeepLearnCnnNetwork {
             kernelsFrame.dispose();
             kernelsFrame = null;
         }
-        for(Layer l:layers){
+        for (Layer l : layers) {
             l.cleanupGraphics();
         }
     }
