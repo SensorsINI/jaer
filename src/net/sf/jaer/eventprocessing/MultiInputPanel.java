@@ -202,9 +202,9 @@ public class MultiInputPanel extends FilterPanel {
             super();
             filter = f;
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-            setAlignmentX(ALIGNMENT);
+            setAlignmentX(LEFT_ALIGNMENT);
             final JLabel label = new JLabel(name);
-            label.setAlignmentX(ALIGNMENT);
+            label.setAlignmentX(LEFT_ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
 //            addTip(f, label);
                         
