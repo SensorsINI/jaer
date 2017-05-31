@@ -5,6 +5,7 @@
  */
 package eu.visualize.ini.convnet;
 
+import com.jogamp.opengl.GL;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
@@ -22,10 +23,6 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import gnu.io.NRSerialPort;
-import java.io.File;
-import java.net.URL;
-import javax.sound.sampled.LineUnavailableException;
-import javax.sound.sampled.UnsupportedAudioFileException;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -34,7 +31,6 @@ import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
-import net.sf.jaer.util.PlayWavFile;
 import net.sf.jaer.util.SoundWavFilePlayer;
 import net.sf.jaer.util.SpikeSound;
 
@@ -63,6 +59,8 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     private DataOutputStream serialPortOutputStream = null;
     private Enumeration portList = null;
     private boolean playSounds = getBoolean("playSounds", false);
+    private int playSoundsMinIntervalMs = getInt("playSoundsMinIntervalMs", 1000);
+    private float playSoundsThresholdActivation = getFloat("playSoundsThresholdActivation", .7f);
     private SoundPlayer soundPlayer = null;
 
     /**
@@ -81,7 +79,9 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         setPropertyTooltip(roshambo, "serialPortName", "Name of serial port to send robot commands to");
         setPropertyTooltip(roshambo, "serialPortCommandsEnabled", "Send commands to serial port for Arduino Nano hand robot");
         setPropertyTooltip(roshambo, "serialBaudRate", "Baud rate (default 115200), upper limit 12000000");
-        setPropertyTooltip(roshambo, "playSounds", "Play sound effects");
+        setPropertyTooltip(roshambo, "playSounds", "Play sound effects (Rock/Scissors/Paper) every time the decision changes and playSoundsMinIntervalMs has intervened");
+        setPropertyTooltip(roshambo, "playSoundsMinIntervalMs", "Minimum time inteval for playing sound effects in ms");
+        setPropertyTooltip(roshambo, "playSoundsThresholdActivation", "Minimum winner activation to play the sound");
         FilterChain chain = new FilterChain(chip);
         setEnclosedFilterChain(chain);
         apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, statistics);
@@ -126,6 +126,14 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
             drawDecisionOutput(gl, drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
         }
         statistics.draw(gl);
+        if(playSounds && isShowOutputAsBarChart()){
+            gl.glColor3f(.5f,0,0);
+            gl.glBegin(GL.GL_LINES);
+            final float h=playSoundsThresholdActivation*DeepLearnCnnNetwork.HISTOGRAM_HEIGHT_FRACTION*chip.getSizeY();
+            gl.glVertex2f(0,h);
+            gl.glVertex2f(chip.getSizeX(),h);
+            gl.glEnd();
+        }
     }
 
     private TextRenderer textRenderer = null;
@@ -149,7 +157,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         if ((statistics.maxUnit >= 0) && (statistics.maxUnit < DECISION_STRINGS.length)) {
             Rectangle2D r = textRenderer.getBounds(DECISION_STRINGS[statistics.maxUnit]);
             textRenderer.draw(DECISION_STRINGS[statistics.maxUnit], (width / 2) - ((int) r.getWidth() / 2), height / 2);
-            if (playSounds) {
+            if (playSounds && statistics.maxUnit >= 0 && statistics.maxUnit < 3 && statistics.maxActivation > playSoundsThresholdActivation) {
                 if (soundPlayer == null) {
                     soundPlayer = new SoundPlayer();
                 }
@@ -469,7 +477,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     private class SoundPlayer {
 
         private String[] soundFiles = {"paper.wav", "scissors.wav", "rock.wav"};
-        private long minTimeIntervalMs = 4000, lastTimePlayed = Integer.MIN_VALUE, lastSymbolPlayed = -1, lastInput = -1;
+        private long lastTimePlayed = Integer.MIN_VALUE, lastSymbolPlayed = -1, lastInput = -1;
         private SoundWavFilePlayer[] soundPlayers = new SoundWavFilePlayer[soundFiles.length];
         private String path = "/eu/visualize/ini/convnet/resources/";
 
@@ -485,6 +493,9 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         }
 
         void playSound(int symbol) {
+            if (symbol < 0 || symbol >= soundFiles.length) {
+                return;
+            }
             if (soundPlayers[symbol] == null) {
                 log.warning("No player for symbol " + symbol);
                 return;
@@ -493,19 +504,15 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
             if (soundPlayers[symbol].isPlaying()) {
                 return;
             }
-            if (symbol < 0 || symbol >= soundFiles.length) {
-                return;
-            }
-            minTimeIntervalMs = 500;
             long now = System.currentTimeMillis();
-            if (now - lastTimePlayed < minTimeIntervalMs) {
+            if (now - lastTimePlayed < playSoundsMinIntervalMs) {
                 return;
             }
 
             if (soundPlayers[symbol].isPlaying()) {
                 return;
             }
-            if(symbol==lastSymbolPlayed){
+            if (symbol == lastSymbolPlayed) {
                 return;
             }
             lastInput = symbol;
@@ -513,6 +520,42 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
             lastSymbolPlayed = symbol;
             soundPlayers[symbol].play();
         }
+    }
+
+    /**
+     * @return the playSoundsMinIntervalMs
+     */
+    public int getPlaySoundsMinIntervalMs() {
+        return playSoundsMinIntervalMs;
+    }
+
+    /**
+     * @param playSoundsMinIntervalMs the playSoundsMinIntervalMs to set
+     */
+    public void setPlaySoundsMinIntervalMs(int playSoundsMinIntervalMs) {
+        this.playSoundsMinIntervalMs = playSoundsMinIntervalMs;
+        putInt("playSoundsMinIntervalMs", playSoundsMinIntervalMs);
+    }
+
+    /**
+     * @return the playSoundsThresholdActivation
+     */
+    public float getPlaySoundsThresholdActivation() {
+        return playSoundsThresholdActivation;
+    }
+
+    /**
+     * @param playSoundsThresholdActivation the playSoundsThresholdActivation to
+     * set
+     */
+    public void setPlaySoundsThresholdActivation(float playSoundsThresholdActivation) {
+        if (playSoundsThresholdActivation > 1) {
+            playSoundsThresholdActivation = 1;
+        } else if (playSoundsThresholdActivation < 0) {
+            playSoundsThresholdActivation = 0;
+        }
+        this.playSoundsThresholdActivation = playSoundsThresholdActivation;
+        putFloat("playSoundsThresholdActivation", playSoundsThresholdActivation);
     }
 
 }
