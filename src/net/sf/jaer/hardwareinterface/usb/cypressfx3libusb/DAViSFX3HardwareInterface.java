@@ -45,11 +45,14 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	static public final short PID_FX2 = (short) 0x841B;
 	static public final int REQUIRED_FIRMWARE_VERSION_FX3 = 3;
 	static public final int REQUIRED_FIRMWARE_VERSION_FX2 = 3;
-	static public final int REQUIRED_LOGIC_REVISION_FX3 = 9880;
+	static public final int REQUIRED_LOGIC_REVISION_FX3 = 9910;
 	static public final int REQUIRED_LOGIC_REVISION_FX2 = 9880;
 
-	static public final int FX2_USB_CLOCK_FREQ = 30;
-	static public final int FX3_USB_CLOCK_FREQ = 80;
+	static public final float FX2_USB_CLOCK_FREQ = 30.0f;
+	static public final float FX3_CLOCK_CORRECTION = 1.008f;
+	static public final float FX3_USB_CLOCK_FREQ = 80.0f * FX3_CLOCK_CORRECTION;
+
+	public float adcClockFreq = 30.0f;
 
 	/**
 	 * Starts reader buffer pool thread and enables in endpoints for AEs. This
@@ -61,35 +64,38 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		setAeReader(new RetinaAEReader(this));
 		allocateAEBuffers();
 
-		// Update global information.
-		adcClockFreq = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 4);
+		// Update ADC clock frequency information.
+		if (getPID() == PID_FX2) {
+			adcClockFreq = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 4);
+		}
+		else {
+			adcClockFreq = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 4) * FX3_CLOCK_CORRECTION;
+		}
 
 		getAeReader().startThread(); // arg is number of errors before giving up
 		HardwareInterfaceException.clearException();
 	}
 
-	public int adcClockFreq = 30;
-
 	@Override
 	protected int adjustHWParam(final short moduleAddr, final short paramAddr, int param) {
 		if ((moduleAddr == FPGA_APS) && (paramAddr == 13)) {
 			// Exposure multiplied by clock.
-			return (param * adcClockFreq);
+			return (int) (param * adcClockFreq);
 		}
 
 		if ((moduleAddr == FPGA_APS) && (paramAddr == 14)) {
 			// FrameDelay multiplied by clock.
-			return (param * adcClockFreq);
+			return (int) (param * adcClockFreq);
 		}
 
 		if ((moduleAddr == FPGA_USB) && (paramAddr == 1)) {
 			// Early packet delay is 125µs slices on host, but in cycles
 			// @ USB_CLOCK_FREQ on FPGA, so we must multiply here.
 			if (getPID() == PID_FX2) {
-				return (param * (125 * FX2_USB_CLOCK_FREQ));
+				return (int) (param * (125.0f * FX2_USB_CLOCK_FREQ));
 			}
 
-			return (param * (125 * FX3_USB_CLOCK_FREQ));
+			return (int) (param * (125.0f * FX3_USB_CLOCK_FREQ));
 		}
 
 		// No change by default.
