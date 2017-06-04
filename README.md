@@ -13,3 +13,8 @@ The soureforge jaer has a useful past help forum at https://sourceforge.net/p/ja
 There is also a (slightly less useful) sourceforge jaer developer forum at https://sourceforge.net/p/jaer/discussion/631959/
 
 New forum posts should use the github jaer issues page https://github.com/SensorsINI/jaer/issues
+
+![DVS128 cameras](/images/dvs128cameras.jpg)
+
+![Hotel bar scene with DAVIS140C](/images/HotelBarDavis.png)
+
