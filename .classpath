@@ -6,7 +6,7 @@
 	<classpathentry kind="lib" path="jars/javacv/javacv.jar"/>
 	<classpathentry kind="lib" path="jars/swing-layout-1.0.4.jar"/>
 	<classpathentry kind="lib" path="jars/UsbIoJava.jar"/>
-	<classpathentry kind="lib" path="jars/commons-net-3.4.jar">
+	<classpathentry kind="lib" path="jars/commons-net-3.6.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="http://commons.apache.org/proper/commons-net/apidocs/"/>
 		</attributes>
@@ -51,8 +51,8 @@
 	<classpathentry kind="lib" path="jars/usb4java/libusb4java-1.2.0-windows-x86_64.jar"/>
 	<classpathentry kind="lib" path="jars/usb4java/libusb4java-1.2.0-windows-x86.jar"/>
 	<classpathentry kind="lib" path="jars/usb4java/usb4java-1.2.0.jar"/>
-	<classpathentry kind="lib" path="jars/commons-lang3-3.4.jar"/>
-	<classpathentry kind="lib" path="jars/nrjavaserial-3.12.0.jar"/>
+	<classpathentry kind="lib" path="jars/commons-lang3-3.5.jar"/>
+	<classpathentry kind="lib" path="jars/nrjavaserial-3.13.0.jar"/>
 	<classpathentry kind="lib" path="jars/javacv/opencv-linux-x86_64.jar"/>
 	<classpathentry kind="lib" path="jars/javacv/opencv-linux-x86.jar"/>
 	<classpathentry kind="lib" path="jars/javacv/opencv-macosx-x86_64.jar"/>
