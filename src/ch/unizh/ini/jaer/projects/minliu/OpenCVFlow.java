@@ -41,9 +41,11 @@ import org.opencv.imgproc.Imgproc;
 public class OpenCVFlow {
     
     static { 
+    String jvmVersion = System.getProperty("sun.arch.data.model");
+        
     try {
     System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-    System.loadLibrary("opencv_ffmpeg320_64");   // Notice, cannot put the file type extension (.dll) here, it will add it automatically. 
+    System.loadLibrary("opencv_ffmpeg320_" + jvmVersion);   // Notice, cannot put the file type extension (.dll) here, it will add it automatically. 
     } catch (UnsatisfiedLinkError e) {
         System.err.println("Native code library failed to load.\n" + e);
         System.exit(1);
@@ -84,7 +86,7 @@ public class OpenCVFlow {
             Mat old_gray = new Mat();
             MatOfPoint p0 = new MatOfPoint();
             
-            final boolean result = cap.open("E:/workspace/jAER_github/jaer/bardow.avi");
+            final boolean result = cap.open("bardow.avi");
             System.out.println(result);
             boolean ret = cap.read(old_frame);
             Imgproc.cvtColor(old_gray,old_gray,Imgproc.COLOR_BGR2GRAY);
