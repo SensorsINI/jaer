@@ -585,11 +585,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     gl.glPushMatrix();
                     gl.glColor3f(0, 1, 0);
                     gl.glLineWidth(5f);
-                    DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgPossibleMatchDistance, 16);
+                    DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgPossibleMatchDistance/2, 16); // draw circle at target match distance
                     gl.glPopMatrix();
                 }
                 // a bunch of cryptic crap to draw a string the same width as the histogram...
                 gl.glPopMatrix();
+                gl.glPopMatrix(); // back to original chip coordinates
+                gl.glPushMatrix();
                 textRenderer.begin3DRendering();
                 String s = String.format("d=%s ms", engFmt.format(1e-3f * sliceDeltaT));
 //            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getSizeX(), .1f);
@@ -599,18 +601,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 Rectangle2D rt = frc.getTransform().createTransformedShape(r).getBounds2D(); // get bounds in textrenderer coordinates
 //            float ps = chip.getCanvas().getScale();
                 float w = (float) rt.getWidth(); // width of text in textrenderer, i.e. histogram cell coordinates (1 unit = 1 histogram cell)
-                float sc = rhDim / w; // scale to histogram width
-                gl.glTranslatef(0, rhDim, 0); // translate to UL corner of histogram
+                float sc = subSizeX / w/6; // scale to histogram width
+                gl.glTranslatef(0, .65f*subSizeY, 0); // translate to UL corner of histogram
                 textRenderer.draw3D(s, 0, 0, 0, sc);
-                String s2 = String.format("skip %d", skipProcessingEventsCount);
+                String s2 = String.format("skip: %d", skipProcessingEventsCount);
                 textRenderer.draw3D(s2, 0, (float) (rt.getHeight()) * sc, 0, sc);
+                String s3 = String.format("events: %d", sliceEventCount);
+                textRenderer.draw3D(s3, 0, 2*(float) (rt.getHeight()) * sc, 0, sc);
                 StringBuilder sb = new StringBuilder("Scale counts: ");
                 for (int c : scaleResultCounts) {
                     sb.append(String.format("%d ", c));
                 }
-                textRenderer.draw3D(sb.toString(), 0, (float) (2 * rt.getHeight()) * sc, 0, sc);
+                textRenderer.draw3D(sb.toString(), 0, (float) (3 * rt.getHeight()) * sc, 0, sc);
                 textRenderer.end3DRendering();
-                gl.glPopMatrix();
+                gl.glPopMatrix(); // back to original chip coordinates
             }
         }
         if (sliceMethod == SliceMethod.AreaEventNumber && showAreaCountAreasTemporarily) {
