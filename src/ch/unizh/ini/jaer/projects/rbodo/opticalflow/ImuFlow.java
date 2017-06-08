@@ -21,7 +21,7 @@ import org.bytedeco.javacpp.opencv_core.Mat;
  */
 @Description("Class for amplitude and orientation of local motion optical flow using IMU gyro sensors.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-@SuppressWarnings( "deprecation" ) // tobi added for getFloatBuffer
+@SuppressWarnings("deprecation") // tobi added for getFloatBuffer
 public class ImuFlow extends AbstractMotionFlowIMU {
 
     public ImuFlow(AEChip chip) {
@@ -44,24 +44,22 @@ public class ImuFlow extends AbstractMotionFlowIMU {
         }
 
         while (i.hasNext()) {
-            Object o=i.next();
-             if (o == null) {
+            Object o = i.next();
+            if (o == null) {
                 log.warning("null event passed in, returning input packet");
                 return in;
             }
-             if ((o instanceof ApsDvsEvent) && ((ApsDvsEvent)o).isApsData()) {
+            if ((o instanceof ApsDvsEvent) && ((ApsDvsEvent) o).isApsData()) {
                 continue;
             }
             PolarityEvent ein = (PolarityEvent) o;
-           
+
             if (!extractEventInfo(o)) {
                 continue;
             }
-            if ( isDisplayGlobalMotion()|| measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
-                if(imuFlowEstimator.calculateImuFlow(o)) continue;
+            if (imuFlowEstimator.calculateImuFlow(o)) {
+                continue; // skip rest if IMU sample
             }
-            // block ENDS
-
             if (isInvalidAddress(0)) {
                 continue;
             }
@@ -82,8 +80,8 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             //exportFlowToMatlab(1360000,1430000); // for IMU_APS_rotDisk
             //exportFlowToMatlab(295500000,296500000); // for IMU_APS_translBoxes
             processGoodEvent();
-         }
-        
+        }
+
         getMotionFlowStatistics().updatePacket(countIn, countOut);
         return isDisplayRawInput() ? in : dirPacket;
     }
