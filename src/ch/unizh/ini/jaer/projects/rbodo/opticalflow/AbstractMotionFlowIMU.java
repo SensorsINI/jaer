@@ -787,7 +787,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     4, ppsScale * GLOBAL_MOTION_DRAWING_SCALE);
             gl.glRasterPos2i(2, 10);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("glob. trans.=%.2f pps ", motionFlowStatistics.getGlobalMotion().meanGlobalTrans));
+                    String.format("glob. trans.=%.2f pps (local: %s)", motionFlowStatistics.getGlobalMotion().meanGlobalTrans,ppsScaleDisplayRelativeOFLength?"rel.":"abs."));
             gl.glPopMatrix();
 
             // Draw global rotation vector as line left/right
