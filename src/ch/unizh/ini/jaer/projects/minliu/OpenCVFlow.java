@@ -32,6 +32,7 @@ import org.opencv.video.Video;
 import org.opencv.videoio.VideoCapture;
 import java.util.Random;
 import org.bytedeco.javacpp.opencv_videoio.VideoWriter;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 /**
@@ -45,7 +46,7 @@ public class OpenCVFlow {
         
     try {
     System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-    System.loadLibrary("opencv_ffmpeg320_" + jvmVersion);   // Notice, cannot put the file type extension (.dll) here, it will add it automatically. 
+    // System.loadLibrary("opencv_ffmpeg320_" + jvmVersion);   // Notice, cannot put the file type extension (.dll) here, it will add it automatically. 
     } catch (UnsatisfiedLinkError e) {
         System.err.println("Native code library failed to load.\n" + e);
         System.exit(1);
@@ -58,11 +59,6 @@ public class OpenCVFlow {
 
             Mat m = new Mat(5, 5, CvType.CV_8UC1, new Scalar(1));
             System.out.println("OpenCV Mat: " + m);
-            
-            MatOfPoint2f m2 = new MatOfPoint2f();
-
-            MatOfByte status = new MatOfByte();
-            MatOfFloat err = new MatOfFloat();
             
             VideoCapture cap  = new VideoCapture("slow.flv");
             
@@ -85,16 +81,71 @@ public class OpenCVFlow {
             Mat old_frame = new Mat();
             Mat old_gray = new Mat();
             MatOfPoint p0 = new MatOfPoint();
-            
-            final boolean result = cap.open("bardow.avi");
-            System.out.println(result);
+
             boolean ret = cap.read(old_frame);
-            Imgproc.cvtColor(old_gray,old_gray,Imgproc.COLOR_BGR2GRAY);
-            Imgproc.goodFeaturesToTrack(old_gray, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance);
+            if(old_frame.empty() || ret == false) {
+                System.out.println("The frame cannot be read or the frame is empty.\n");
+                System.exit(1);                
+            }
             
-            Video.calcOpticalFlowPyrLK(m, m, m2, m2, status, err);
-           
-        }
+            // Convert it to grayscale and find the good features.
+            Imgproc.cvtColor(old_frame,old_gray,Imgproc.COLOR_BGR2GRAY);
+            Imgproc.goodFeaturesToTrack(old_gray, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance); 
+            
+            while(true) {
+                Mat frame = new Mat();
+                Mat frame_gray = new Mat();
+                for(int skipNum = 0; skipNum <= 20; skipNum ++) {
+                    ret = cap.read(frame);                    
+                }
+                if(frame.empty() || ret == false) {
+                    System.out.println("The frame cannot be read or the frame is empty.\n");
+                    System.exit(1);                
+                }            
+                
+                Imgproc.cvtColor(frame,frame_gray,Imgproc.COLOR_BGR2GRAY);
+                Imgproc.goodFeaturesToTrack(old_gray, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance); 
+
+                MatOfPoint2f prevPts = new MatOfPoint2f(p0.toArray());
+                MatOfPoint2f nextPts = new MatOfPoint2f();
+                MatOfByte status = new MatOfByte();
+                MatOfFloat err = new MatOfFloat();
+
+                int featureNum = prevPts.checkVector(2, CvType.CV_32F, true);
+                System.out.println("The number of feature detected is : " + featureNum);
+
+                try {
+                    Video.calcOpticalFlowPyrLK(old_gray, frame_gray, prevPts, nextPts, status, err);            
+                } catch (Exception e) {
+                    System.err.println(e);
+                    frame_gray.copyTo(old_gray);
+                    continue;
+                }
+
+                // TODO: Select good points 
+
+                // draw the tracks
+                Point[] prevPoints = prevPts.toArray();
+                Point[] nextPoints = nextPts.toArray();
+                byte[] st = status.toArray();
+                float[] er = err.toArray();    
+                Mat mask = new Mat(old_gray.rows(), old_gray.cols(), CvType.CV_8UC1);
+                for (int i = 0; i < prevPoints.length; i++) {
+                    Imgproc.line(frame, prevPoints[i], nextPoints[i], new Scalar(color[i][0],color[i][1],color[i][2]), 2);  
+                    Imgproc.circle(frame,prevPoints[i],5,new Scalar(color[i][0],color[i][1],color[i][2]),-1);
+                }
+
+                // Save the frames.
+                // Imgcodecs.imwrite("tmpfiles/old_frame.jpg", old_frame);
+                Imgcodecs.imwrite("tmpfiles/frame.jpg", frame);  
+                
+                // Now update the previous frame and previous points
+                frame_gray.copyTo(old_gray);
+                p0 = new MatOfPoint(nextPts.toArray());
+            }
+
+            // Imgcodecs.imwrite("tmpfiles/OF.jpg", mask);                 
+    }
     
     public static class FeatureParams {
         
