@@ -83,10 +83,11 @@ final public class TimeLimiter extends Timer{
     
     /** sets the time limit in ms, but does not start timer
      * 
-     * @param timeLimitMs 
+     * @param timeLimitMs - if value is zero, then timeLimiter is disabled
      */
     final public void setTimeLimitMs(int timeLimitMs) {
         this.timeLimitMs = timeLimitMs;
+        if(timeLimitMs==0) setEnabled(false);
     }
     
     final public boolean isEnabled() {

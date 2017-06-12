@@ -280,6 +280,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     }
 
     private void openSerial() throws IOException {
+        if(!isSerialPortCommandsEnabled()) return;
         if (serialPort != null) {
             closeSerial();
         }
