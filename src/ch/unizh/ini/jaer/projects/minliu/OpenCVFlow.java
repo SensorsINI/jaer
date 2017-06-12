@@ -5,6 +5,7 @@
  */
 package ch.unizh.ini.jaer.projects.minliu;
 
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import java.awt.FlowLayout;
 import java.awt.HeadlessException;
 import java.awt.Image;
@@ -22,6 +23,8 @@ import static java.rmi.Naming.list;
 import java.util.ArrayList;
 import static java.util.Collections.list;
 import java.util.List;
+import java.util.Observable;
+import java.util.Observer;
 import org.opencv.core.Core; 
 import org.opencv.core.CvType; 
 import org.opencv.core.Mat; 
@@ -42,6 +45,11 @@ import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.ImageDisplay;
 import org.bytedeco.javacpp.opencv_videoio.VideoWriter;
 import org.opencv.imgcodecs.Imgcodecs;
@@ -51,9 +59,10 @@ import org.opencv.imgproc.Imgproc;
  *
  * @author minliu
  */
-public class OpenCVFlow {
-    
-    static ImageDisplay display;
+@Description("Optical Flow methods based on OpenCV")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+public class OpenCVFlow extends EventFilter2D 
+                        implements Observer /* Observer needed to get change events on chip construction */ {
 
     static { 
     String jvmVersion = System.getProperty("sun.arch.data.model");
@@ -63,107 +72,127 @@ public class OpenCVFlow {
     // System.loadLibrary("opencv_ffmpeg320_" + jvmVersion);   // Notice, cannot put the file type extension (.dll) here, it will add it automatically. 
     } catch (UnsatisfiedLinkError e) {
         System.err.println("Native code library failed to load.\n" + e);
-        System.exit(1);
+        // System.exit(1);
         }
     }
     
-    public static void main(String[] args) throws Exception {
+    private ApsFrameExtractor apsFrameExtractor;
 
-            System.out.println("Welcome to OpenCV " + Core.VERSION);
+    public OpenCVFlow(AEChip chip) {
+        super(chip);
+        apsFrameExtractor = new ApsFrameExtractor(chip);
+    }
 
-            Mat m = new Mat(5, 5, CvType.CV_8UC1, new Scalar(1));
-            System.out.println("OpenCV Mat: " + m);
-            
-            VideoCapture cap  = new VideoCapture("slow.flv");
-            
-            // params for ShiTomasi corner detection
-            FeatureParams feature_params  = new FeatureParams(100, 0.3, 7, 7);
-            
-            // Parameters for lucas kanade optical flow
-            LKParams lk_params = new LKParams(15, 15, 2, new TermCriteria(TermCriteria.EPS | TermCriteria.COUNT, 10, 0.03));            
+    @Override
+    public EventPacket<?> filterPacket(EventPacket<?> in) {
+        System.out.println("Welcome to OpenCV " + Core.VERSION);
 
-            // Create some random colors
-            Random rand = new Random();         
-            int[][] color = new int[100][3];
-            for (int i = 0; i < 100; i++) {
-                for (int j = 0; j < 3; j++) {
-                    color[i][j] = rand.nextInt(255);
-                }
+        Mat m = new Mat(5, 5, CvType.CV_8UC1, new Scalar(1));
+        System.out.println("OpenCV Mat: " + m);
+
+        VideoCapture cap  = new VideoCapture("slow.flv");
+
+        // params for ShiTomasi corner detection
+        FeatureParams feature_params  = new FeatureParams(100, 0.3, 7, 7);
+
+        // Parameters for lucas kanade optical flow
+        LKParams lk_params = new LKParams(15, 15, 2, new TermCriteria(TermCriteria.EPS | TermCriteria.COUNT, 10, 0.03));            
+
+        // Create some random colors
+        Random rand = new Random();         
+        int[][] color = new int[100][3];
+        for (int i = 0; i < 100; i++) {
+            for (int j = 0; j < 3; j++) {
+                color[i][j] = rand.nextInt(255);
             }
-            
-            // Take first frame and find corners in it
-            Mat old_frame = new Mat();
-            Mat old_gray = new Mat();
-            MatOfPoint p0 = new MatOfPoint();
+        }
 
-            boolean ret = cap.read(old_frame);
-            if(old_frame.empty() || ret == false) {
+        // Take first frame and find corners in it
+        Mat old_frame = new Mat();
+        Mat old_gray = new Mat();
+        MatOfPoint p0 = new MatOfPoint();
+
+        boolean ret = cap.read(old_frame);
+        if(old_frame.empty() || ret == false) {
+            System.out.println("The frame cannot be read or the frame is empty.\n");
+            System.exit(1);                
+        }
+
+        // Convert it to grayscale and find the good features.
+        Imgproc.cvtColor(old_frame,old_gray,Imgproc.COLOR_BGR2GRAY);
+        Imgproc.goodFeaturesToTrack(old_gray, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance); 
+
+        while(true) {
+            Mat frame = new Mat();
+            Mat frame_gray = new Mat();
+            for(int skipNum = 0; skipNum <= 20; skipNum ++) {
+                ret = cap.read(frame);                    
+            }
+            if(frame.empty() || ret == false) {
                 System.out.println("The frame cannot be read or the frame is empty.\n");
                 System.exit(1);                
-            }
-            
-            // Convert it to grayscale and find the good features.
-            Imgproc.cvtColor(old_frame,old_gray,Imgproc.COLOR_BGR2GRAY);
+            }            
+
+            Imgproc.cvtColor(frame,frame_gray,Imgproc.COLOR_BGR2GRAY);
             Imgproc.goodFeaturesToTrack(old_gray, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance); 
-            
-            while(true) {
-                Mat frame = new Mat();
-                Mat frame_gray = new Mat();
-                for(int skipNum = 0; skipNum <= 20; skipNum ++) {
-                    ret = cap.read(frame);                    
-                }
-                if(frame.empty() || ret == false) {
-                    System.out.println("The frame cannot be read or the frame is empty.\n");
-                    System.exit(1);                
-                }            
-                
-                Imgproc.cvtColor(frame,frame_gray,Imgproc.COLOR_BGR2GRAY);
-                Imgproc.goodFeaturesToTrack(old_gray, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance); 
 
-                MatOfPoint2f prevPts = new MatOfPoint2f(p0.toArray());
-                MatOfPoint2f nextPts = new MatOfPoint2f();
-                MatOfByte status = new MatOfByte();
-                MatOfFloat err = new MatOfFloat();
+            MatOfPoint2f prevPts = new MatOfPoint2f(p0.toArray());
+            MatOfPoint2f nextPts = new MatOfPoint2f();
+            MatOfByte status = new MatOfByte();
+            MatOfFloat err = new MatOfFloat();
 
-                int featureNum = prevPts.checkVector(2, CvType.CV_32F, true);
-                System.out.println("The number of feature detected is : " + featureNum);
+            int featureNum = prevPts.checkVector(2, CvType.CV_32F, true);
+            System.out.println("The number of feature detected is : " + featureNum);
 
-                try {
-                    Video.calcOpticalFlowPyrLK(old_gray, frame_gray, prevPts, nextPts, status, err);            
-                } catch (Exception e) {
-                    System.err.println(e);
-                    frame_gray.copyTo(old_gray);
-                    continue;
-                }
-
-                // TODO: Select good points 
-
-                // draw the tracks
-                Point[] prevPoints = prevPts.toArray();
-                Point[] nextPoints = nextPts.toArray();
-                byte[] st = status.toArray();
-                float[] er = err.toArray();    
-                Mat mask = new Mat(old_gray.rows(), old_gray.cols(), CvType.CV_8UC1);
-                for (int i = 0; i < prevPoints.length; i++) {
-                    Imgproc.line(frame, prevPoints[i], nextPoints[i], new Scalar(color[i][0],color[i][1],color[i][2]), 2);  
-                    Imgproc.circle(frame,prevPoints[i],5,new Scalar(color[i][0],color[i][1],color[i][2]),-1);
-                }
-
-                // Save the frames.
-                // Imgcodecs.imwrite("tmpfiles/old_frame.jpg", old_frame);
-                Imgcodecs.imwrite("tmpfiles/frame.jpg", frame);  
-		// showResult(frame);
-                displayImage(Mat2BufferedImage(frame));
-                
-                // Now update the previous frame and previous points
+            try {
+                Video.calcOpticalFlowPyrLK(old_gray, frame_gray, prevPts, nextPts, status, err);            
+            } catch (Exception e) {
+                System.err.println(e);
                 frame_gray.copyTo(old_gray);
-                p0 = new MatOfPoint(nextPts.toArray());
+                continue;
             }
 
-            // Imgcodecs.imwrite("tmpfiles/OF.jpg", mask);                 
+            // TODO: Select good points 
+
+            // draw the tracks
+            Point[] prevPoints = prevPts.toArray();
+            Point[] nextPoints = nextPts.toArray();
+            byte[] st = status.toArray();
+            float[] er = err.toArray();    
+            Mat mask = new Mat(old_gray.rows(), old_gray.cols(), CvType.CV_8UC1);
+            for (int i = 0; i < prevPoints.length; i++) {
+                Imgproc.line(frame, prevPoints[i], nextPoints[i], new Scalar(color[i][0],color[i][1],color[i][2]), 2);  
+                Imgproc.circle(frame,prevPoints[i],5,new Scalar(color[i][0],color[i][1],color[i][2]),-1);
+            }
+
+            // Save the frames.
+            // Imgcodecs.imwrite("tmpfiles/old_frame.jpg", old_frame);
+            Imgcodecs.imwrite("tmpfiles/frame.jpg", frame);  
+            // showResult(frame);
+            // displayImage(Mat2BufferedImage(frame));
+
+            // Now update the previous frame and previous points
+            frame_gray.copyTo(old_gray);
+            p0 = new MatOfPoint(nextPts.toArray());
+        }
+    }
+
+    @Override
+    public void resetFilter() {
+        // throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void initFilter() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void update(Observable o, Object arg) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
     
-    public static class FeatureParams {
+    public class FeatureParams {
         
         int maxCorners;
         double qualityLevel;
@@ -178,7 +207,7 @@ public class OpenCVFlow {
         }
     }  
 
-    public static class LKParams {
+    public class LKParams {
         int winSizeX;
         int winSizeY;
         int maxLevel;
@@ -192,7 +221,7 @@ public class OpenCVFlow {
         }
     }
 
-    public static void showResult(Mat img) {
+    public void showResult(Mat img) {
         Imgproc.resize(img, img, new Size(640, 480));
         MatOfByte matOfByte = new MatOfByte();
         Imgcodecs.imencode(".jpg", img, matOfByte);
@@ -210,7 +239,7 @@ public class OpenCVFlow {
         }
     }
 
-    public static BufferedImage Mat2BufferedImage(Mat m){
+    public BufferedImage Mat2BufferedImage(Mat m){
         // source: http://answers.opencv.org/question/10344/opencv-java-load-image-to-gui/
         // Fastest code
         // The output can be assigned either to a BufferedImage or to an Image
@@ -229,7 +258,7 @@ public class OpenCVFlow {
 
     }
 
-    public static void displayImage(Image img2) {   
+    public void displayImage(Image img2) {   
         //BufferedImage img=ImageIO.read(new File("/HelloOpenCV/lena.png"));
         ImageIcon icon=new ImageIcon(img2);
         JFrame frame=new JFrame();
