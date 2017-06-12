@@ -294,15 +294,15 @@ public class MotionFlowStatistics {
 
         void bufferMean() {
             meanGlobalVx = globalVx.getMean();
-            sdGlobalVx = globalVx.getStdErr();
+            sdGlobalVx = globalVx.getStdDev();
             meanGlobalVy = globalVy.getMean();
-            sdGlobalVy = globalVy.getStdErr();
+            sdGlobalVy = globalVy.getStdDev();
             meanGlobalTrans=(float)Math.sqrt(meanGlobalVx*meanGlobalVx+meanGlobalVy*meanGlobalVy);
             sdGlobalTrans=(float)Math.sqrt(sdGlobalVx*sdGlobalVx+sdGlobalVy*sdGlobalVy);
             meanGlobalRotation = globalRotation.getMean();
-            sdGlobalRotation = globalRotation.getStdErr();
+            sdGlobalRotation = globalRotation.getStdDev();
             meanGlobalExpansion = globalExpansion.getMean();
-            sdGlobalExpansion = globalExpansion.getStdErr();
+            sdGlobalExpansion = globalExpansion.getStdDev();
             meanGlobalSpeed=globalSpeed.getMean();
 
             // Call resets here because global motion should in general not
@@ -600,7 +600,7 @@ public class MotionFlowStatistics {
                 logStream.println("Time slice [ms]: " + timeslice);
                 logStream.println();
                 for (i = 0; i < kepsBins; i++) {
-                    if (processingTimeEPS[i].n > 0) {
+                    if (processingTimeEPS[i].getN() > 0) {
                         logStream.println(processingTimeEPS[i] + " @ "
                                 + (int) ((kepsIncr * i + kepsInit) * timeslice) + " events/packet");
                     }

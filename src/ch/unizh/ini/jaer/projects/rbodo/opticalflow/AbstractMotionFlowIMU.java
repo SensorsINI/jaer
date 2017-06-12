@@ -486,11 +486,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             ApsDvsEvent e = (ApsDvsEvent) o;
             if (e.isImuSample()) {
                 IMUSample imuSample = e.getImuSample();
-                panRateDps = imuSample.getGyroYawY() - panOffset; // update pan tilt roll state from IMU
-                tiltRateDps = imuSample.getGyroTiltX() - tiltOffset;
-                rollRateDps = imuSample.getGyroRollZ() - rollOffset;
+                float panRateDpsSample = imuSample.getGyroYawY(); // update pan tilt roll state from IMU
+                float tiltRateDpsSample = imuSample.getGyroTiltX();
+                float rollRateDpsSample = imuSample.getGyroRollZ();
                 if (calibrating) {
-                    if (panCalibrator.n > getCalibrationSamples()) {
+                    if (panCalibrator.getN() > getCalibrationSamples()) {
                         calibrating = false;
                         panOffset = panCalibrator.getMean();
                         tiltOffset = tiltCalibrator.getMean();
@@ -499,12 +499,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                                 + " to (pan,tilt,roll)=(%.3f,%.3f,%.3f)", getCalibrationSamples(), panOffset, tiltOffset, rollOffset));
                         calibrated = true;
                     } else {
-                        panCalibrator.update(panRateDps);
-                        tiltCalibrator.update(tiltRateDps);
-                        rollCalibrator.update(rollRateDps);
+                        panCalibrator.update(panRateDpsSample);
+                        tiltCalibrator.update(tiltRateDpsSample);
+                        rollCalibrator.update(rollRateDpsSample);
                     }
                     return false;
                 }
+                panRateDps=panRateDpsSample-panOffset;
+                tiltRateDps=tiltRateDpsSample-tiltOffset;
+                rollRateDps=rollRateDpsSample-rollOffset;
 
                 return true;
             }
