@@ -118,7 +118,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private TimeLimiter timeLimiter = new TimeLimiter(); // private instance used to accumulate events to slices even if packet has timed out
 
     // results histogram for each packet
+//    private int ANGLE_HISTOGRAM_COUNT = 16;
+//    private int[] resultAngleHistogram = new int[ANGLE_HISTOGRAM_COUNT + 1];
     private int[][] resultHistogram = null;
+//    private int resultAngleHistogramCount = 0, resultAngleHistogramMax = 0;
     private int resultHistogramCount;
     private volatile float avgMatchDistance = 0; // stores average match distance for rendering it
     private float histStdDev = 0, lastHistStdDev = 0;
@@ -249,6 +252,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             Arrays.fill(h, 0);
         }
         resultHistogramCount = 0;
+//        Arrays.fill(resultAngleHistogram, 0);
+//        resultAngleHistogramCount = 0;
+//        resultAngleHistogramMax = Integer.MIN_VALUE;
         Arrays.fill(scaleResultCounts, 0);
         int minDistScale = 0;
         // following awkward block needed to deal with DVS/DAVIS and IMU/APS events
@@ -360,6 +366,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 resultHistogram[result.xidx][result.yidx]++;
                 resultHistogramCount++;
             }
+//            if (result.dx != 0 || result.dy != 0) {
+//                final int bin = (int) Math.round(ANGLE_HISTOGRAM_COUNT * (Math.atan2(result.dy, result.dx) + Math.PI) / (2 * Math.PI));
+//                int v = ++resultAngleHistogram[bin];
+//                resultAngleHistogramCount++;
+//                if (v > resultAngleHistogramMax) {
+//                    resultAngleHistogramMax = v;
+//                }
+//            }
             processGoodEvent();
             lastGoodSadResult.set(result);
 
@@ -397,7 +411,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setAreaEventNumberSubsampling(ss);
         // set event count so that count=block area * sliceMaxValue/4; 
         // i.e. set count to roll over when slice pixels from most subsampled scale are half full if they are half stimulated
-        final int eventCount=(((blockDimension * blockDimension) * sliceMaxValue) / 2 )>>(numScales-1);
+        final int eventCount = (((blockDimension * blockDimension) * sliceMaxValue) / 2) >> (numScales - 1);
         setSliceEventCount(eventCount);
         setSliceDurationUs(50000); // set a bit smaller max duration in us to avoid instability where count gets too high with sparse input
     }
@@ -561,6 +575,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             } else {
                 final float maxRecip = 2f / max;
                 gl.glPushMatrix();
+                // draw hist values
                 for (int xx = 0; xx < rhDim; xx++) {
                     for (int yy = 0; yy < rhDim; yy++) {
                         float g = maxRecip * resultHistogram[xx][yy];
@@ -576,16 +591,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 final int tsd = searchDistance << (numScales - 1);
                 if (avgMatchDistance > 0) {
                     gl.glPushMatrix();
-                    gl.glColor3f(1, 0, 0);
+                    gl.glColor4f(1f, 0, 0, .5f);
                     gl.glLineWidth(5f);
                     DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgMatchDistance, 16);
                     gl.glPopMatrix();
                 }
                 if (avgPossibleMatchDistance > 0) {
                     gl.glPushMatrix();
-                    gl.glColor3f(0, 1, 0);
+                    gl.glColor4f(0, 1f, 0, .5f);
                     gl.glLineWidth(5f);
-                    DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgPossibleMatchDistance/2, 16); // draw circle at target match distance
+                    DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgPossibleMatchDistance / 2, 16); // draw circle at target match distance
                     gl.glPopMatrix();
                 }
                 // a bunch of cryptic crap to draw a string the same width as the histogram...
@@ -601,13 +616,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 Rectangle2D rt = frc.getTransform().createTransformedShape(r).getBounds2D(); // get bounds in textrenderer coordinates
 //            float ps = chip.getCanvas().getScale();
                 float w = (float) rt.getWidth(); // width of text in textrenderer, i.e. histogram cell coordinates (1 unit = 1 histogram cell)
-                float sc = subSizeX / w/6; // scale to histogram width
-                gl.glTranslatef(0, .65f*subSizeY, 0); // translate to UL corner of histogram
+                float sc = subSizeX / w / 6; // scale to histogram width
+                gl.glTranslatef(0, .65f * subSizeY, 0); // translate to UL corner of histogram
                 textRenderer.draw3D(s, 0, 0, 0, sc);
                 String s2 = String.format("skip: %d", skipProcessingEventsCount);
                 textRenderer.draw3D(s2, 0, (float) (rt.getHeight()) * sc, 0, sc);
                 String s3 = String.format("events: %d", sliceEventCount);
-                textRenderer.draw3D(s3, 0, 2*(float) (rt.getHeight()) * sc, 0, sc);
+                textRenderer.draw3D(s3, 0, 2 * (float) (rt.getHeight()) * sc, 0, sc);
                 StringBuilder sb = new StringBuilder("Scale counts: ");
                 for (int c : scaleResultCounts) {
                     sb.append(String.format("%d ", c));
@@ -615,6 +630,24 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 textRenderer.draw3D(sb.toString(), 0, (float) (3 * rt.getHeight()) * sc, 0, sc);
                 textRenderer.end3DRendering();
                 gl.glPopMatrix(); // back to original chip coordinates
+
+//                // draw histogram of angles around center of image
+//                if (resultAngleHistogramCount > 0) {
+//                    gl.glPushMatrix();
+//                    gl.glTranslatef(subSizeX / 2, subSizeY / 2, 0);
+//                    gl.glLineWidth(getMotionVectorLineWidthPixels());
+//                    gl.glColor3f(1, 1, 1);
+//                    gl.glBegin(GL.GL_LINES);
+//                    for (int i = 0; i < ANGLE_HISTOGRAM_COUNT; i++) {
+//                        float l = ((float) resultAngleHistogram[i] / resultAngleHistogramMax) * chip.getMinSize() / 2; // bin 0 is angle -PI
+//                        double angle = ((2 * Math.PI * i) / ANGLE_HISTOGRAM_COUNT) - Math.PI;
+//                        float dx = (float) Math.cos(angle) * l, dy = (float) Math.sin(angle) * l;
+//                        gl.glVertex2f(0, 0);
+//                        gl.glVertex2f(dx, dy);
+//                    }
+//                    gl.glEnd();
+//                    gl.glPopMatrix();
+//                }
             }
         }
         if (sliceMethod == SliceMethod.AreaEventNumber && showAreaCountAreasTemporarily) {
