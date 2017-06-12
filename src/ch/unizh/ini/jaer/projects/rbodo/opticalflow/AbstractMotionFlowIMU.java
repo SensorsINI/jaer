@@ -1020,8 +1020,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 }
             });
         } else if (imuWarningDialog != null) {
-            imuWarningDialog.setVisible(false);
-            imuWarningDialog.dispose();
+             SwingUtilities.invokeLater(new Runnable() {
+                public void run() {
+                    if (imuWarningDialog != null) {
+                        imuWarningDialog.setVisible(false);
+                        imuWarningDialog.dispose();
+                    }
+                }
+            });
         }
     }
     // </editor-fold>
