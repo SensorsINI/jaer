@@ -5,11 +5,18 @@
  */
 package ch.unizh.ini.jaer.projects.minliu;
 
+import java.awt.FlowLayout;
+import java.awt.HeadlessException;
+import java.awt.Image;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import static java.nio.file.Files.list;
 import static java.rmi.Naming.list;
 import java.util.ArrayList;
@@ -31,6 +38,11 @@ import org.opencv.core.Size;
 import org.opencv.video.Video;
 import org.opencv.videoio.VideoCapture;
 import java.util.Random;
+import javax.imageio.ImageIO;
+import javax.swing.ImageIcon;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import net.sf.jaer.graphics.ImageDisplay;
 import org.bytedeco.javacpp.opencv_videoio.VideoWriter;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
@@ -41,6 +53,8 @@ import org.opencv.imgproc.Imgproc;
  */
 public class OpenCVFlow {
     
+    static ImageDisplay display;
+
     static { 
     String jvmVersion = System.getProperty("sun.arch.data.model");
         
@@ -138,6 +152,8 @@ public class OpenCVFlow {
                 // Save the frames.
                 // Imgcodecs.imwrite("tmpfiles/old_frame.jpg", old_frame);
                 Imgcodecs.imwrite("tmpfiles/frame.jpg", frame);  
+		// showResult(frame);
+                displayImage(Mat2BufferedImage(frame));
                 
                 // Now update the previous frame and previous points
                 frame_gray.copyTo(old_gray);
@@ -175,7 +191,57 @@ public class OpenCVFlow {
             this.criteria = criteria;
         }
     }
-    
+
+    public static void showResult(Mat img) {
+        Imgproc.resize(img, img, new Size(640, 480));
+        MatOfByte matOfByte = new MatOfByte();
+        Imgcodecs.imencode(".jpg", img, matOfByte);
+        byte[] byteArray = matOfByte.toArray();
+        BufferedImage bufImage = null;
+        try {
+            InputStream in = new ByteArrayInputStream(byteArray);
+            bufImage = ImageIO.read(in);
+            JFrame frame = new JFrame();
+            frame.getContentPane().add(new JLabel(new ImageIcon(bufImage)));
+            frame.pack();
+            frame.setVisible(true);
+        } catch (IOException | HeadlessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static BufferedImage Mat2BufferedImage(Mat m){
+        // source: http://answers.opencv.org/question/10344/opencv-java-load-image-to-gui/
+        // Fastest code
+        // The output can be assigned either to a BufferedImage or to an Image
+
+        int type = BufferedImage.TYPE_BYTE_GRAY;
+        if ( m.channels() > 1 ) {
+            type = BufferedImage.TYPE_3BYTE_BGR;
+        }
+        int bufferSize = m.channels()*m.cols()*m.rows();
+        byte [] b = new byte[bufferSize];
+        m.get(0,0,b); // get all the pixels
+        BufferedImage image = new BufferedImage(m.cols(),m.rows(), type);
+        final byte[] targetPixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
+        System.arraycopy(b, 0, targetPixels, 0, b.length);  
+        return image;
+
+    }
+
+    public static void displayImage(Image img2) {   
+        //BufferedImage img=ImageIO.read(new File("/HelloOpenCV/lena.png"));
+        ImageIcon icon=new ImageIcon(img2);
+        JFrame frame=new JFrame();
+        frame.setLayout(new FlowLayout());        
+        frame.setSize(img2.getWidth(null)+50, img2.getHeight(null)+50);     
+        JLabel lbl=new JLabel();
+        lbl.setIcon(icon);
+        frame.add(lbl);
+        frame.setVisible(true);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+    }    
 }
 
 
