@@ -23,7 +23,6 @@ import java.util.Observer;
 import java.util.logging.Level;
 import javax.swing.JFileChooser;
 import javax.swing.SwingUtilities;
-import javax.swing.SwingWorker;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -38,7 +37,6 @@ import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
@@ -418,17 +416,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         private float vy;
         private float v;
 
-        // Delta time between current timestamp and lastIMUTimestamp, in seconds.
-        private float dtS;
-        private int lastTsIMU;
-        private int tsIMU;
-
         // Highpass filters for angular rates.   
-        private float panRate, tiltRate, rollRate; // In deg/s
-        private float panTranslation;
-        private float tiltTranslation;
-        private float rollRotationRad;
-        private boolean initialized = false;
+        private float panRateDps, tiltRateDps, rollRateDps; // In deg/s
 
         // Calibration
         private boolean calibrating = false; // used to flag cameraCalibration state
@@ -442,9 +431,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         // Deal with leftover IMU data after timestamps reset
         private static final int FLUSH_COUNT = 1;
         private int flushCounter;
-
-        private int nx, ny;
-        private float newx, newy;
 
         protected ImuFlowEstimator() {
             panCalibrator = new Measurand();
@@ -460,14 +446,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
         protected final synchronized void reset() {
             flushCounter = FLUSH_COUNT;
-            panRate = 0;
-            tiltRate = 0;
-            rollRate = 0;
-            panTranslation = 0;
-            tiltTranslation = 0;
-            rollRotationRad = 0;
+            panRateDps = 0;
+            tiltRateDps = 0;
+            rollRateDps = 0;
             radPerPixel = (float) Math.atan(chip.getPixelWidthUm() / (1000 * lensFocalLengthMm));
-            initialized = false;
             vx = 0;
             vy = 0;
             v = 0;
@@ -490,65 +472,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
 
         /**
-         * Computes transform using current gyro outputs based on timestamp
-         * supplied.
+         * Calculate GT motion flow from IMU sample.
          *
-         * @param imuSample
-         * @return true if it updated the transformation.
-         */
-        synchronized protected boolean updateTransform(IMUSample imuSample) {
-            if (imuSample == null) {
-                return false;
-            }
-
-            // flush some samples if the timestamps have been reset 
-            // and we need to discard some samples here
-            if (flushCounter-- >= 0) {
-                return false;
-            }
-
-            tsIMU = imuSample.getTimestampUs();
-            dtS = (tsIMU - lastTsIMU) * 1e-6f;
-//            log.info("dT of IMU is "+dtS);  // debug
-            lastTsIMU = tsIMU;
-
-            if (!initialized) {
-                initialized = true;
-                return false;
-            }
-
-            panRate = imuSample.getGyroYawY();
-            tiltRate = imuSample.getGyroTiltX();
-            rollRate = imuSample.getGyroRollZ();
-
-            if (calibrating) {
-                if (panCalibrator.n > getCalibrationSamples()) {
-                    calibrating = false;
-                    panOffset = panCalibrator.getMean();
-                    tiltOffset = tiltCalibrator.getMean();
-                    rollOffset = rollCalibrator.getMean();
-                    log.info(String.format("calibration finished. %d samples averaged"
-                            + " to (pan,tilt,roll)=(%.3f,%.3f,%.3f)", getCalibrationSamples(), panOffset, tiltOffset, rollOffset));
-                    calibrated = true;
-                } else {
-                    panCalibrator.update(panRate);
-                    tiltCalibrator.update(tiltRate);
-                    rollCalibrator.update(rollRate);
-                }
-                return false;
-            }
-
-            panTranslation = (float) (Math.PI / 180) * (panRate - panOffset) * dtS / radPerPixel;
-            tiltTranslation = (float) (Math.PI / 180) * (tiltRate - tiltOffset) * dtS / radPerPixel;
-            rollRotationRad = (float) (Math.PI / 180) * (rollOffset - rollRate) * dtS;
-            return true;
-        }
-
-        /**
-         * Get translation and rotation from updateTransform(), then calculate
-         * motion flow by comparing transformed to old event.
-         *
-         * @param pe PolarityEvent
+         * @param o event
          * @return true if event is an IMU event, so enclosing loop can continue
          * to next event, skipping flow processing of this IMU event. Return
          * false if event is not IMU event.
@@ -559,35 +485,50 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             }
             ApsDvsEvent e = (ApsDvsEvent) o;
             if (e.isImuSample()) {
-                updateTransform(e.getImuSample());
+                IMUSample imuSample = e.getImuSample();
+                panRateDps = imuSample.getGyroYawY() - panOffset; // update pan tilt roll state from IMU
+                tiltRateDps = imuSample.getGyroTiltX() - tiltOffset;
+                rollRateDps = imuSample.getGyroRollZ() - rollOffset;
+                if (calibrating) {
+                    if (panCalibrator.n > getCalibrationSamples()) {
+                        calibrating = false;
+                        panOffset = panCalibrator.getMean();
+                        tiltOffset = tiltCalibrator.getMean();
+                        rollOffset = rollCalibrator.getMean();
+                        log.info(String.format("calibration finished. %d samples averaged"
+                                + " to (pan,tilt,roll)=(%.3f,%.3f,%.3f)", getCalibrationSamples(), panOffset, tiltOffset, rollOffset));
+                        calibrated = true;
+                    } else {
+                        panCalibrator.update(panRateDps);
+                        tiltCalibrator.update(tiltRateDps);
+                        rollCalibrator.update(rollRateDps);
+                    }
+                    return false;
+                }
+
                 return true;
             }
-            if (dtS == 0) {
-                dtS = 1;
-            }
-            // Apply transform R*e+T. 
-            // First center events from middle of array at (0,0), 
-            // then transform, then move them back to their origin.
-            nx = e.x - sizex / 2;
-            ny = e.y - sizey / 2;
-            newx = (float) (Math.cos(rollRotationRad) * nx - Math.sin(rollRotationRad) * ny + panTranslation);
-            newy = (float) (Math.sin(rollRotationRad) * nx + Math.cos(rollRotationRad) * ny + tiltTranslation);
-            vx = (nx - newx) / dtS;
-            vy = (ny - newy) / dtS;
-            v = (float) Math.sqrt(vx * vx + vy * vy);
             if (importedGTfromMatlab) {
                 if (ts >= tsGTframe[0][0] && ts < tsGTframe[0][1]) {
-                    vxGT = (float) vxGTframe[y][x];
-                    vyGT = (float) vyGTframe[y][x];
+                    vx = (float) vxGTframe[y][x];
+                    vy = (float) vyGTframe[y][x];
                 } else {
-                    vxGT = 0;
-                    vyGT = 0;
+                    vx = 0;
+                    vy = 0;
                 }
             } else {
-                vxGT = imuFlowEstimator.getVx();
-                vyGT = imuFlowEstimator.getVy();
+                // otherwise, if not IMU sample, use last IMU sample to compute GT flow from last IMU sample and event location
+                // then transform, then move them back to their origin.
+                int nx = e.x - sizex / 2; // TODO assumes principal point is at center of image
+                int ny = e.y - sizey / 2;
+                final float rrrad = -(float) (rollRateDps * Math.PI / 180);
+                final float radfac = (float) (Math.PI / 180);
+                final float pixfac = radfac / radPerPixel;
+
+                vx = -(float) (-ny * rrrad + panRateDps * pixfac);
+                vy = -(float) (nx * rrrad - tiltRateDps * pixfac);
+                v = (float) Math.sqrt(vx * vx + vy * vy);
             }
-            vGT = (float) Math.sqrt(vxGT * vxGT + vyGT * vyGT);
             return false;
         }
 
@@ -787,7 +728,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     4, ppsScale * GLOBAL_MOTION_DRAWING_SCALE);
             gl.glRasterPos2i(2, 10);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("glob. trans.=%.2f pps (local: %s)", motionFlowStatistics.getGlobalMotion().meanGlobalTrans,ppsScaleDisplayRelativeOFLength?"rel.":"abs."));
+                    String.format("glob. trans.=%.2f pps (local: %s)", motionFlowStatistics.getGlobalMotion().meanGlobalTrans, ppsScaleDisplayRelativeOFLength ? "rel." : "abs."));
             gl.glPopMatrix();
 
             // Draw global rotation vector as line left/right
@@ -997,6 +938,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             countOut++;
         }
         if (measureAccuracy) {
+            vxGT = imuFlowEstimator.getVx();
+            vyGT = imuFlowEstimator.getVy();
+            vGT = imuFlowEstimator.getV();
             getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
         }
 
@@ -1075,6 +1019,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
                 }
             });
+        } else if (imuWarningDialog != null) {
+            imuWarningDialog.setVisible(false);
+            imuWarningDialog.dispose();
         }
     }
     // </editor-fold>
@@ -1240,7 +1187,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
 
     public void setDisplayGlobalMotion(boolean displayGlobalMotion) {
-        boolean old=this.displayGlobalMotion;
+        boolean old = this.displayGlobalMotion;
         motionFlowStatistics.setMeasureGlobalMotion(displayGlobalMotion);
         this.displayGlobalMotion = displayGlobalMotion;
         putBoolean("displayGlobalMotion", displayGlobalMotion);
@@ -1257,7 +1204,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     }
 
     public void setDisplayVectorsEnabled(boolean displayVectorsEnabled) {
-        boolean old=this.displayVectorsEnabled;
+        boolean old = this.displayVectorsEnabled;
         this.displayVectorsEnabled = displayVectorsEnabled;
         putBoolean("displayVectorsEnabled", displayVectorsEnabled);
         getSupport().firePropertyChange("displayVectorsEnabled", old, displayVectorsEnabled);
@@ -1275,7 +1222,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      * @param ppsScale
      */
     public void setPpsScale(float ppsScale) {
-        float old=this.ppsScale;
+        float old = this.ppsScale;
         this.ppsScale = ppsScale;
         putFloat("ppsScale", ppsScale);
         getSupport().firePropertyChange("ppsScale", old, this.ppsScale);
@@ -2113,7 +2060,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      * ppsScaleDisplayRelativeOFLength to set
      */
     public void setPpsScaleDisplayRelativeOFLength(boolean ppsScaleDisplayRelativeOFLength) {
-        boolean old=this.ppsScaleDisplayRelativeOFLength;
+        boolean old = this.ppsScaleDisplayRelativeOFLength;
         this.ppsScaleDisplayRelativeOFLength = ppsScaleDisplayRelativeOFLength;
         putBoolean("ppsScaleDisplayRelativeOFLength", ppsScaleDisplayRelativeOFLength);
         getSupport().firePropertyChange("ppsScaleDisplayRelativeOFLength", old, ppsScaleDisplayRelativeOFLength);
