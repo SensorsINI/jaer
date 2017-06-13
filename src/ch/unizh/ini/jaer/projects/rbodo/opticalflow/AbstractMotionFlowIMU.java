@@ -524,6 +524,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 // then transform, then move them back to their origin.
                 int nx = e.x - sizex / 2; // TODO assumes principal point is at center of image
                 int ny = e.y - sizey / 2;
+//                panRateDps=0; tiltRateDps=0; // debug
                 final float rrrad = -(float) (rollRateDps * Math.PI / 180);
                 final float radfac = (float) (Math.PI / 180);
                 final float pixfac = radfac / radPerPixel;
@@ -829,14 +830,22 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
         if (measureAccuracy) {
             gl.glPushMatrix();
-            gl.glRasterPos2i(chip.getSizeX() / 2, -10);
+            final int offset=-7;
+            gl.glRasterPos2i(chip.getSizeX() / 2, offset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("AEE: %4.2f +/- %5.2f pixel/s", new Object[]{
                 motionFlowStatistics.endpointErrorAbs.getMean(),
                 motionFlowStatistics.endpointErrorAbs.getStdDev()}));
             gl.glPopMatrix();
             gl.glPushMatrix();
-            gl.glRasterPos2i(chip.getSizeX() / 2, -20);
+            gl.glRasterPos2i(chip.getSizeX() / 2, 2*offset);
+            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
+                    String.format("AEE COV: %4.2f%% +/- %5.2f%%°", new Object[]{
+                motionFlowStatistics.endpointErrorRel.getMean(),
+                motionFlowStatistics.endpointErrorRel.getStdDev()}));
+            gl.glPopMatrix();
+            gl.glPushMatrix();
+            gl.glRasterPos2i(chip.getSizeX() / 2, 3*offset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("AAE: %4.2f +/- %5.2f °", new Object[]{
                 motionFlowStatistics.angularError.getMean(),
