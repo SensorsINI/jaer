@@ -11,6 +11,7 @@ import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.gl2.GLUT;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.Color;
+import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -496,9 +497,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 if (calibrating) {
                     if (panCalibrator.getN() > getCalibrationSamples()) {
                         calibrating = false;
-                        panOffset = panCalibrator.getMean();
-                        tiltOffset = tiltCalibrator.getMean();
-                        rollOffset = rollCalibrator.getMean();
+                        panOffset = (float) panCalibrator.getMean();
+                        tiltOffset = (float) tiltCalibrator.getMean();
+                        rollOffset = (float) rollCalibrator.getMean();
                         log.info(String.format("calibration finished. %d samples averaged"
                                 + " to (pan,tilt,roll)=(%.3f,%.3f,%.3f)", getCalibrationSamples(), panOffset, tiltOffset, rollOffset));
                         calibrated = true;
@@ -506,9 +507,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                         putFloat("tiltOffset", tiltOffset);
                         putFloat("rollOffset", rollOffset);
                     } else {
-                        panCalibrator.update(panRateDpsSample);
-                        tiltCalibrator.update(tiltRateDpsSample);
-                        rollCalibrator.update(rollRateDpsSample);
+                        panCalibrator.addValue(panRateDpsSample);
+                        tiltCalibrator.addValue(tiltRateDpsSample);
+                        rollCalibrator.addValue(rollRateDpsSample);
                     }
                     return false;
                 }
@@ -534,7 +535,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 // smaller pixel spacing. i.e. the math is the following. 
                 // If the distance of the pixel from the middle of the image is l, the angle to the point is w, the focal length is f, then
                 // tan(w)=l/f, 
-                // and dl/dt=f dw/dt (1+tan^2(w))=f dw/dt (1+(l/f)^2)
+                // and dl/dt=f dw/dt (sec^2(w))
                 int nx = e.x - sizex / 2; // TODO assumes principal point is at center of image
                 int ny = e.y - sizey / 2;
 //                panRateDps=0; tiltRateDps=0; // debug
@@ -542,10 +543,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 final float radfac = (float) (Math.PI / 180);
                 final float pixfac = radfac / radPerPixel;
                 final float pixdim = chip.getPixelWidthUm() * 1e-3f;
-                final float tanx2 = (nx * pixdim / lensFocalLengthMm);
-                final float xprojfac = (1 + tanx2 * tanx2);
-                final float tany2 = (ny * pixdim / lensFocalLengthMm);
-                final float yprojfac = (1 + tany2 * tany2);
+                final float thetax = (float)Math.atan2(nx * pixdim, lensFocalLengthMm);
+                final float secx=(float)(1f/Math.cos(thetax));
+                final float xprojfac = (float)(secx*secx);
+                final float thetay = (float)Math.atan2(ny * pixdim, lensFocalLengthMm);
+                final float secy=(float)(1f/Math.cos(thetay));
+                final float yprojfac = (float)(secy*secy);
 
                 vx = -(float) (-ny * rrrad + panRateDps * pixfac) * xprojfac;
                 vy = -(float) (nx * rrrad - tiltRateDps * pixfac) * yprojfac;
@@ -629,8 +632,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         if ("DirectionSelectiveFlow".equals(filterClassName) && getEnclosedFilter() != null) {
             getEnclosedFilter().resetFilter();
         }
-//        setXMax(chip.getSizeX());
-//        setYMax(chip.getSizeY());
+        setXMax(chip.getSizeX());
+        setYMax(chip.getSizeY());
     }
 
     @Override
@@ -774,7 +777,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
             // Draw global rotation vector as line left/right
             gl.glPushMatrix();
-            DrawGL.drawLine(gl, sizex / 2, sizey * 3 / 4, -motionFlowStatistics.getGlobalMotion().getGlobalRotation().getMean(),
+            DrawGL.drawLine(gl,
+                    sizex / 2,
+                    sizey * 3 / 4,
+                    (float) (-motionFlowStatistics.getGlobalMotion().getGlobalRotation().getMean()),
                     0, ppsScale * GLOBAL_MOTION_DRAWING_SCALE);
             gl.glPopMatrix();
 
@@ -861,32 +867,26 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("%4.2f +/- %5.2f us", new Object[]{
                 motionFlowStatistics.processingTime.getMean(),
-                motionFlowStatistics.processingTime.getStdDev()}));
+                motionFlowStatistics.processingTime.getStandardDeviation()}));
             gl.glPopMatrix();
         }
 
         if (measureAccuracy) {
             gl.glPushMatrix();
-            final int offset = -7;
+            final int offset = -10;
             gl.glRasterPos2i(chip.getSizeX() / 2, offset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("AEE: %4.2f +/- %5.2f pixel/s", new Object[]{
-                motionFlowStatistics.endpointErrorAbs.getMean(),
-                motionFlowStatistics.endpointErrorAbs.getStdDev()}));
+                    motionFlowStatistics.endpointErrorAbs.graphicsString("AEE(abs):", "pps"));
             gl.glPopMatrix();
             gl.glPushMatrix();
             gl.glRasterPos2i(chip.getSizeX() / 2, 2 * offset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("AEE COV: %4.2f%% +/- %5.2f%%°", new Object[]{
-                motionFlowStatistics.endpointErrorRel.getMean(),
-                motionFlowStatistics.endpointErrorRel.getStdDev()}));
+                    motionFlowStatistics.endpointErrorRel.graphicsString("AEE(rel):", "%"));
             gl.glPopMatrix();
             gl.glPushMatrix();
             gl.glRasterPos2i(chip.getSizeX() / 2, 3 * offset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("AAE: %4.2f +/- %5.2f °", new Object[]{
-                motionFlowStatistics.angularError.getMean(),
-                motionFlowStatistics.angularError.getStdDev()}));
+                    motionFlowStatistics.angularError.graphicsString("AAE:", "deg"));
             gl.glPopMatrix();
         }
 
@@ -1029,9 +1029,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     synchronized public void doStartIMUCalibration() {
         imuFlowEstimator.calibrating = true;
         imuFlowEstimator.calibrated = false;
-        imuFlowEstimator.panCalibrator.reset();
-        imuFlowEstimator.tiltCalibrator.reset();
-        imuFlowEstimator.rollCalibrator.reset();
+        imuFlowEstimator.panCalibrator.clear();
+        imuFlowEstimator.tiltCalibrator.clear();
+        imuFlowEstimator.rollCalibrator.clear();
         if (measureAccuracy) {
             log.info("IMU calibration started");
         } else {
@@ -2036,7 +2036,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 //    public void setOutlierMotionFilteringEnabled(boolean outlierMotionFilteringEnabled) {
 //        this.outlierMotionFilteringEnabled = outlierMotionFilteringEnabled;
 //    }
-
     /**
      * @return the displayVectorsAsColorDots
      */

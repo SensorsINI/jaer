@@ -231,11 +231,11 @@ public class MotionFlowStatistics {
         void reset(int sX, int sY) {
             subSizeX = sX;
             subSizeY = sY;
-            globalVy.reset();
-            globalVy.reset();
-            globalRotation.reset();
-            globalExpansion.reset();
-            globalSpeed.reset();
+            globalVy.clear();
+            globalVy.clear();
+            globalRotation.clear();
+            globalExpansion.clear();
+            globalSpeed.clear();
         }
 
         void update(float vx, float vy, float v, int x, int y) {
@@ -243,10 +243,10 @@ public class MotionFlowStatistics {
             if (v == 0) {
                 return;
             }
-            globalVx.update(vx);
-            globalVy.update(vy);
+            globalVx.addValue(vx);
+            globalVy.addValue(vy);
             final float speed = (float) Math.sqrt(vx * vx + vy * vy);
-            globalSpeed.update(speed);
+            globalSpeed.addValue(speed);
 
             // Rotation
             // <editor-fold defaultstate="collapsed" desc="Comment">
@@ -269,7 +269,7 @@ public class MotionFlowStatistics {
             if (rx == 0 && ry == 0) {
                 return; // Don't add singular event at origin.
             }
-            globalRotation.update((float) (180 / Math.PI) * (vy * rx - vx * ry) / (rx * rx + ry * ry));
+            globalRotation.addValue((float) (180 / Math.PI) * (vy * rx - vx * ry) / (rx * rx + ry * ry));
 
             // Expansion, project onto radius
             // <editor-fold defaultstate="collapsed" desc="Comment">
@@ -292,30 +292,30 @@ public class MotionFlowStatistics {
                 return; // Don't add singular event at origin.
             }
             final float exProj = (vx * rx + vy * ry);
-            globalExpansion.update(exProj / (rx * rx + ry * ry));
+            globalExpansion.addValue(exProj / (rx * rx + ry * ry));
 
         }
 
         void bufferMean() {
-            meanGlobalVx = globalVx.getMean();
-            sdGlobalVx = globalVx.getStdDev();
-            meanGlobalVy = globalVy.getMean();
-            sdGlobalVy = globalVy.getStdDev();
+            meanGlobalVx = (float)globalVx.getMean();
+            sdGlobalVx = (float)globalVx.getStandardDeviation();
+            meanGlobalVy = (float)globalVy.getMean();
+            sdGlobalVy = (float)globalVy.getStandardDeviation();
             meanGlobalTrans = (float) Math.sqrt(meanGlobalVx * meanGlobalVx + meanGlobalVy * meanGlobalVy);
             sdGlobalTrans = (float) Math.sqrt(sdGlobalVx * sdGlobalVx + sdGlobalVy * sdGlobalVy);
-            meanGlobalRotation = globalRotation.getMean();
-            sdGlobalRotation = globalRotation.getStdDev();
-            meanGlobalExpansion = globalExpansion.getMean();
-            sdGlobalExpansion = globalExpansion.getStdDev();
-            meanGlobalSpeed = globalSpeed.getMean();
+            meanGlobalRotation = (float)globalRotation.getMean();
+            sdGlobalRotation = (float)globalRotation.getStandardDeviation();
+            meanGlobalExpansion = (float)globalExpansion.getMean();
+            sdGlobalExpansion = (float)globalExpansion.getStandardDeviation();
+            meanGlobalSpeed = (float)globalSpeed.getMean();
 
             // Call resets here because global motion should in general not
             // be averaged over more than one packet.
-            globalVx.reset();
-            globalVy.reset();
-            globalRotation.reset();
-            globalExpansion.reset();
-            globalSpeed.reset();
+            globalVx.clear();
+            globalVy.clear();
+            globalRotation.clear();
+            globalExpansion.clear();
+            globalSpeed.clear();
         }
 
         @Override
@@ -382,8 +382,8 @@ public class MotionFlowStatistics {
         }
 
         @Override
-        public void reset() {
-            super.reset();
+        public void clear() {
+            super.clear();
             histogram.reset();
         }
 
@@ -419,7 +419,7 @@ public class MotionFlowStatistics {
             if (tmp == 181) {
                 return;
             }
-            update(tmp);
+            addValue(tmp);
             histogram.update(tmp);
         }
 
@@ -428,7 +428,7 @@ public class MotionFlowStatistics {
             return !measureAccuracy ? "Angular error not measured. Select measureAccuracy.\n"
                     : String.format(Locale.ENGLISH, "%1$s: %2$4.2f +/- %3$5.2f °, %4$s, "
                             + "percentage above %5$2f °: %6$4.2f%%, above %7$2f °: %8$4.2f%%, above %9$2f °: %10$4.2f%% %n",
-                            getClass().getSimpleName(), getMean(), getStdDev(), histogram.toString(),
+                            getClass().getSimpleName(), getMean(), getStandardDeviation(), histogram.toString(),
                             X1, histogram.getPercentageAboveX(X1),
                             X2, histogram.getPercentageAboveX(X2),
                             X3, histogram.getPercentageAboveX(X3));
@@ -451,7 +451,8 @@ public class MotionFlowStatistics {
         }
 
         @Override
-        public void reset() {
+        public void clear() {
+            super.clear();
             histogram.reset();
         }
 
@@ -464,7 +465,7 @@ public class MotionFlowStatistics {
 //            if(getN()==0)System.out.println("EE pps: ");
 //            System.out.print(String.format("%6.2f ",tmp));
 //            if(getN()%20==0)System.out.println("");
-            update(tmp);
+            addValue(tmp);
             histogram.update(tmp);
         }
 
@@ -475,7 +476,7 @@ public class MotionFlowStatistics {
                             + "%4$s, percentage above %5$4.2f pixels/s: %6$4.2f%%, above %7$4.2f "
                             + "pixels/s: %8$4.2f%%, above %9$4.2f pixels/s: %10$4.2f%% %n",
                             getClass().getSimpleName(),
-                            getMean(), getStdDev(), histogram.toString(),
+                            getMean(), getStandardDeviation(), histogram.toString(),
                             X1, histogram.getPercentageAboveX(X1),
                             X2, histogram.getPercentageAboveX(X2),
                             X3, histogram.getPercentageAboveX(X3));
@@ -495,7 +496,8 @@ public class MotionFlowStatistics {
         }
 
         @Override
-        public void reset() {
+        public void clear() {
+            super.clear();
             histogram.reset();
         }
 
@@ -505,7 +507,7 @@ public class MotionFlowStatistics {
             }
             tmp = (float) Math.sqrt((vx - vxGT) * (vx - vxGT) + (vy - vyGT) * (vy - vyGT)) * 100 / vGT;
 //            tmp = (float) (Math.abs(vx - vxGT) + Math.abs(vy - vyGT)) * 100 / vGT;
-            update(tmp);
+            addValue(tmp);
             histogram.update(tmp);
         }
 
@@ -513,7 +515,7 @@ public class MotionFlowStatistics {
         public String toString() {
             return !measureAccuracy ? "Relative endpoint error not measured. Select measureAccuracy.\n"
                     : String.format(Locale.ENGLISH, "%1$s: %2$4.2f +/- %3$5.2f%%, %4$s %n",
-                            getClass().getSimpleName(), getMean(), getStdDev(), histogram.toString());
+                            getClass().getSimpleName(), getMean(), getStandardDeviation(), histogram.toString());
         }
     }
 
@@ -546,10 +548,10 @@ public class MotionFlowStatistics {
         }
 
         @Override
-        public void reset() {
-            super.reset();
+        public void clear() {
+            super.clear();
             for (i = 0; i < kepsBins; i++) {
-                processingTimeEPS[i].reset();
+                processingTimeEPS[i].clear();
             }
             meanProcessingTimePacket = 0;
         }
@@ -560,10 +562,10 @@ public class MotionFlowStatistics {
                 return;
             }
             meanProcessingTimePacket = (System.nanoTime() - startTime) * 1e-3f / (eventDensity.packetIn > 0 ? eventDensity.packetIn : 1);
-            update(meanProcessingTimePacket);
+            addValue(meanProcessingTimePacket);
             for (i = 0; i < kepsBins; i++) {
                 if (eventDensity.packetIn < (kepsIncr * i + kepsInit) * timeslice) {
-                    processingTimeEPS[i].update(meanProcessingTimePacket);
+                    processingTimeEPS[i].addValue(meanProcessingTimePacket);
                     break;
                 }
             }
@@ -641,7 +643,7 @@ public class MotionFlowStatistics {
         public String toString() {
             return !measureProcessingTime ? "Processing time not measured. Select measureProcessingTime\n"
                     : String.format(Locale.ENGLISH, "%1$s: %2$4.2f +/- %3$5.2f us/event %n",
-                            getClass().getSimpleName(), getMean(), getStdDev());
+                            getClass().getSimpleName(), getMean(), getStandardDeviation());
         }
     }
 }

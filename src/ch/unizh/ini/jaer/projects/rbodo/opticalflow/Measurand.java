@@ -1,65 +1,53 @@
 package ch.unizh.ini.jaer.projects.rbodo.opticalflow;
 
+import java.awt.geom.Point2D;
+import java.util.Random;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+
 /**
  * Tracks mean and variance statistics for optical flow methods.
  *
  * @author rbodo / tobi delbruck
  */
-public class Measurand {
+public class Measurand extends DescriptiveStatistics {
 
-    /** Number of samples. */
-    private int n=0;
-
-    /** Current sum of values */
-    private float sum=0;
-
-    // Sum of the square values.
-    private float sum2=0;
-
-    // sum of absolute deviations from mean, for more robust statistic
-    private float sumdev=0;
-    
-    public float getMean() {
-        return sum / n;
-    }
-
-    public float getStdDev() {
-        float m=getMean();
-        return (float) Math.sqrt((sum2 /n)- m*m);
-    }
-    
-    /** Computes the mean absolute deviation of samples from mean value 
-     * 
-     * @return the mean absolute deviation
-     */
-    public float getMeanAbsDev(){
-        return sumdev/n;
-    }
-
-    public void reset() {
-        n = 0;
-        sum = 0;
-        sum2 = 0;
-        sumdev=0;
-    }
-
-    public void update(float x) {
-    // another possibility is to compute running average with https://stackoverflow.com/questions/28820904/how-to-efficiently-compute-average-on-the-fly-moving-average
-        n++;
-        sum += x;
-        sum2 += x * x;
-        sumdev+=Math.abs(x-getMean());
+    public static final int WINDOW_SIZE=10000;
+    public Measurand() {
+        setWindowSize(WINDOW_SIZE);
     }
 
     @Override
     public String toString() {
-        return String.format("Mean %8.2f +/- %6.2f (SD) of %4d samples ", getMean(), getStdDev(), n);
+        return String.format("Mean %8.2f -%-6.2f +%-6.2f (SD) of %4d samples ", getMean(), getPercentile(.25), getPercentile(.75), getN());
     }
 
     /**
-     * @return the n
+     * Returns the 25% and 75% percentile values, i.e. between these two values,
+     * 50% of the data falls
+     *
+     * @return x=25%, y=75%
      */
-    public int getN() {
-        return n;
+    public Point2D.Float getQuartileErrors() {
+        return new Point2D.Float((float) getPercentile(25), (float) getPercentile(75));
     }
+
+    public String graphicsString(String header, String units) {
+        Point2D.Float q = getQuartileErrors();
+        return String.format("%s %4.2f -%5.2f +%5.2f %s", header, getMean(), q.x, q.y, units);
+    }
+
+    public static void main(String[] args) {
+        Measurand m = new Measurand();
+        Random r=new Random();
+        for(int i=0;i<1000;i++){
+            float v=r.nextFloat();
+            m.addValue(v);
+//            System.out.print(v+" ");
+        }
+        for(float p=10;p<=100;p+=10){
+            System.out.println(String.format("%f %f",p,m.getPercentile(p)));
+        }
+        System.out.println("\n"+m.toString());
+    }
+
 }
