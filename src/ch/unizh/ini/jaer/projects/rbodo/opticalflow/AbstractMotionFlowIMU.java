@@ -170,7 +170,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // outlier filtering that only allows through motion events that agree with at least N most-recent neigbor events 
     // in max angle difference
-    private boolean outlierMotionFilteringEnabled = getBoolean("outlierMotionFilteringEnabled", false);
+//    private boolean outlierMotionFilteringEnabled = getBoolean("outlierMotionFilteringEnabled", false);
     protected float outlierMotionFilteringMaxAngleDifferenceDeg = getFloat("outlierMotionFilteringMaxAngleDifferenceDeg", 30f);
     protected int outlierMotionFilteringSubsampleShift = getInt("outlierMotionFilteringSubsampleShift", 1);
     protected int outlierMotionFilteringMinSameAngleInNeighborhood = getInt("outlierMotionFilteringMinSameAngleInNeighborhood", 2);
@@ -265,7 +265,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(imuTT, "lensFocalLengthMm", "lens focal length in mm. Used for computing the IMU flow from pan and tilt camera rotations. 4.5mm is focal length for dataset data.");
         setPropertyTooltip(imuTT, "calibrationSamples", "number of IMU samples to average over for measuring IMU offset.");
         setPropertyTooltip(imuTT, "startIMUCalibration", "<html> Starts estimating the IMU offsets based on next calibrationSamples samples. Should be used only with stationary recording to store these offsets in the preferences. <p> <b>measureAccuracy</b> must be selected as well to actually do the calibration.");
-        setPropertyTooltip(imuTT, "resetIMUCalibration", "Resets the IMU offsets to zero. Can be used to observe effect of these offsets on a stationary recording in the IMUFlow filter.");
+        setPropertyTooltip(imuTT, "eraseIMUCalibration", "Erases the IMU offsets to zero. Can be used to observe effect of these offsets on a stationary recording in the IMUFlow filter.");
         setPropertyTooltip(imuTT, "importGTfromMatlab", "Allows importing two 2D-arrays containing the x-/y- components of the motion flow field used as ground truth.");
         setPropertyTooltip(imuTT, "resetGroundTruth", "Resets the ground truth optical flow that was imported from matlab. Used in the measureAccuracy option.");
         setPropertyTooltip(imuTT, "selectLoggingFolder", "Allows selection of the folder to store the measured accuracies and optical flow events.");
@@ -438,9 +438,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             rollCalibrator = new Measurand();
             // Some initial IMU cameraCalibration values.
             // Will be overwritten when calibrating IMU
-            panOffset = 0;
-            tiltOffset = 0;
-            rollOffset = 0; // tobi set back to zero rather than using hard coded values.
+            panOffset = getFloat("panOffset", 0);
+            tiltOffset = getFloat("tiltOffset", 0);
+            rollOffset = getFloat("rollOffset", 0); // tobi set back to zero rather than using hard coded values.
+            if (panOffset != 0 || rollOffset != 0 || tiltOffset != 0) {
+                log.warning("using existing calibration (offset) IMU rate gyro values stored in preferences: " + this.toString());
+                calibrated = true;
+            }
             reset();
         }
 
@@ -498,6 +502,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                         log.info(String.format("calibration finished. %d samples averaged"
                                 + " to (pan,tilt,roll)=(%.3f,%.3f,%.3f)", getCalibrationSamples(), panOffset, tiltOffset, rollOffset));
                         calibrated = true;
+                        putFloat("panOffset", panOffset);
+                        putFloat("tiltOffset", tiltOffset);
+                        putFloat("rollOffset", rollOffset);
                     } else {
                         panCalibrator.update(panRateDpsSample);
                         tiltCalibrator.update(tiltRateDpsSample);
@@ -505,9 +512,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     }
                     return false;
                 }
-                panRateDps=panRateDpsSample-panOffset;
-                tiltRateDps=tiltRateDpsSample-tiltOffset;
-                rollRateDps=rollRateDpsSample-rollOffset;
+                panRateDps = panRateDpsSample - panOffset;
+                tiltRateDps = tiltRateDpsSample - tiltOffset;
+                rollRateDps = rollRateDpsSample - rollOffset;
 
                 return true;
             }
@@ -522,15 +529,26 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             } else {
                 // otherwise, if not IMU sample, use last IMU sample to compute GT flow from last IMU sample and event location
                 // then transform, then move them back to their origin.
+                // 
+                // The flow is computed from trigonometry assuming a pinhole lens. This lens projects points at larger angular distance with 
+                // smaller pixel spacing. i.e. the math is the following. 
+                // If the distance of the pixel from the middle of the image is l, the angle to the point is w, the focal length is f, then
+                // tan(w)=l/f, 
+                // and dl/dt=f dw/dt (1+tan^2(w))=f dw/dt (1+(l/f)^2)
                 int nx = e.x - sizex / 2; // TODO assumes principal point is at center of image
                 int ny = e.y - sizey / 2;
 //                panRateDps=0; tiltRateDps=0; // debug
                 final float rrrad = -(float) (rollRateDps * Math.PI / 180);
                 final float radfac = (float) (Math.PI / 180);
                 final float pixfac = radfac / radPerPixel;
+                final float pixdim = chip.getPixelWidthUm() * 1e-3f;
+                final float tanx2 = (nx * pixdim / lensFocalLengthMm);
+                final float xprojfac = (1 + tanx2 * tanx2);
+                final float tany2 = (ny * pixdim / lensFocalLengthMm);
+                final float yprojfac = (1 + tany2 * tany2);
 
-                vx = -(float) (-ny * rrrad + panRateDps * pixfac);
-                vy = -(float) (nx * rrrad - tiltRateDps * pixfac);
+                vx = -(float) (-ny * rrrad + panRateDps * pixfac) * xprojfac;
+                vy = -(float) (nx * rrrad - tiltRateDps * pixfac) * yprojfac;
                 v = (float) Math.sqrt(vx * vx + vy * vy);
             }
             return false;
@@ -549,6 +567,24 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         public void setCalibrationSamples(int calibrationSamples) {
             this.calibrationSamples = calibrationSamples;
         }
+
+        @Override
+        public String toString() {
+            return "ImuFlowEstimator{" + "panOffset=" + panOffset + ", tiltOffset=" + tiltOffset + ", rollOffset=" + rollOffset + ", flushCounter=" + flushCounter + '}';
+        }
+
+        private void eraseIMUCalibration() {
+            panOffset = 0;
+            tiltOffset = 0;
+            rollOffset = 0;
+            calibrated = false;
+            putFloat("panOffset", panOffset);
+            putFloat("tiltOffset", tiltOffset);
+            putFloat("rollOffset", rollOffset);
+
+            log.info("IMU calibration erased (all offsets set to zero)");
+        }
+
     }
     // </editor-fold>
 
@@ -593,8 +629,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         if ("DirectionSelectiveFlow".equals(filterClassName) && getEnclosedFilter() != null) {
             getEnclosedFilter().resetFilter();
         }
-        setXMax(chip.getSizeX());
-        setYMax(chip.getSizeY());
+//        setXMax(chip.getSizeX());
+//        setYMax(chip.getSizeY());
     }
 
     @Override
@@ -734,6 +770,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("glob. trans.=%.2f pps (local: %s)", motionFlowStatistics.getGlobalMotion().meanGlobalTrans, ppsScaleDisplayRelativeOFLength ? "rel." : "abs."));
             gl.glPopMatrix();
+//            System.out.println(String.format("%5.3f\t%5.2f",ts*1e-6f, motionFlowStatistics.getGlobalMotion().meanGlobalTrans));  // debug
 
             // Draw global rotation vector as line left/right
             gl.glPushMatrix();
@@ -830,7 +867,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
         if (measureAccuracy) {
             gl.glPushMatrix();
-            final int offset=-7;
+            final int offset = -7;
             gl.glRasterPos2i(chip.getSizeX() / 2, offset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("AEE: %4.2f +/- %5.2f pixel/s", new Object[]{
@@ -838,14 +875,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 motionFlowStatistics.endpointErrorAbs.getStdDev()}));
             gl.glPopMatrix();
             gl.glPushMatrix();
-            gl.glRasterPos2i(chip.getSizeX() / 2, 2*offset);
+            gl.glRasterPos2i(chip.getSizeX() / 2, 2 * offset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("AEE COV: %4.2f%% +/- %5.2f%%°", new Object[]{
                 motionFlowStatistics.endpointErrorRel.getMean(),
                 motionFlowStatistics.endpointErrorRel.getStdDev()}));
             gl.glPopMatrix();
             gl.glPushMatrix();
-            gl.glRasterPos2i(chip.getSizeX() / 2, 3*offset);
+            gl.glRasterPos2i(chip.getSizeX() / 2, 3 * offset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     String.format("AAE: %4.2f +/- %5.2f °", new Object[]{
                 motionFlowStatistics.angularError.getMean(),
@@ -1002,12 +1039,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
     }
 
-    synchronized public void doResetIMUCalibration() {
-        imuFlowEstimator.panOffset = 0;
-        imuFlowEstimator.tiltOffset = 0;
-        imuFlowEstimator.rollOffset = 0;
-        imuFlowEstimator.calibrated = false;
-        log.info("IMU calibration erased");
+    synchronized public void doEraseIMUCalibration() {
+        imuFlowEstimator.eraseIMUCalibration();
     }
     // </editor-fold>
 
@@ -1032,7 +1065,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 }
             });
         } else if (imuWarningDialog != null) {
-             SwingUtilities.invokeLater(new Runnable() {
+            SwingUtilities.invokeLater(new Runnable() {
                 public void run() {
                     if (imuWarningDialog != null) {
                         imuWarningDialog.setVisible(false);
@@ -1989,20 +2022,20 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         putBoolean("displayZeroLengthVectorsEnabled", displayZeroLengthVectorsEnabled);
     }
 
-    /**
-     * @return the outlierMotionFilteringEnabled
-     */
-    public boolean isOutlierMotionFilteringEnabled() {
-        return outlierMotionFilteringEnabled;
-    }
-
-    /**
-     * @param outlierMotionFilteringEnabled the outlierMotionFilteringEnabled to
-     * set
-     */
-    public void setOutlierMotionFilteringEnabled(boolean outlierMotionFilteringEnabled) {
-        this.outlierMotionFilteringEnabled = outlierMotionFilteringEnabled;
-    }
+//    /**
+//     * @return the outlierMotionFilteringEnabled
+//     */
+//    public boolean isOutlierMotionFilteringEnabled() {
+//        return outlierMotionFilteringEnabled;
+//    }
+//
+//    /**
+//     * @param outlierMotionFilteringEnabled the outlierMotionFilteringEnabled to
+//     * set
+//     */
+//    public void setOutlierMotionFilteringEnabled(boolean outlierMotionFilteringEnabled) {
+//        this.outlierMotionFilteringEnabled = outlierMotionFilteringEnabled;
+//    }
 
     /**
      * @return the displayVectorsAsColorDots
