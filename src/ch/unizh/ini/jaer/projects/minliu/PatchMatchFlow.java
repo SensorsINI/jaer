@@ -169,7 +169,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private ImageDisplay sliceBitmapImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
     private JFrame sliceBitMapFrame = null;
     private Legend sliceBitmapLegend;
-
+    
+    /**
+     * A PropertyChangeEvent with this value is fired when the slices 
+     * has been rotated. The oldValue is t-2d slice. The newValue is the t-d slice.
+     */
+    
+    public static final String EVENT_NEW_SLICES = "eventNewSlices";
+    
     public PatchMatchFlow(AEChip chip) {
         super(chip);
 
@@ -245,8 +252,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             timeLimiter.setTimeLimitMs(processingTimeLimitMs);
             timeLimiter.restart();
         } else {
-            timeLimiter.setEnabled(false);
-        }
+            timeLimiter.setEnabled(false); 
+       }
 
         for (int[] h : resultHistogram) {
             Arrays.fill(h, 0);
@@ -761,6 +768,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
 
         rotateSlices();
+        /* Slices have been rotated */
+        getSupport().firePropertyChange(PatchMatchFlow.EVENT_NEW_SLICES, slices[sliceIndex(1)], slices[sliceIndex(2)]);
+
         eventCounter = 0;
         sliceDeltaT = dt;
         sliceLastTs = ts;

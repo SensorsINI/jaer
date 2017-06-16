@@ -5,6 +5,7 @@
  */
 package ch.unizh.ini.jaer.projects.minliu;
 
+import ch.unizh.ini.jaer.projects.davis.calibration.SingleCameraCalibration;
 import java.awt.FlowLayout;
 import java.awt.HeadlessException;
 import java.awt.Image;
@@ -68,7 +69,9 @@ import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
 
@@ -99,6 +102,7 @@ public class OpenCVFlow extends EventFilter2D
     protected boolean showAPSFrameDisplay = getBoolean("showAPSFrameDisplay", true);
     private int[][] color = new int[100][3];
     private float[] oldBuffer = null, newBuffer = null;
+    private PatchMatchFlow patchFlow;
     
     
     public OpenCVFlow(AEChip chip) {
@@ -116,13 +120,30 @@ public class OpenCVFlow extends EventFilter2D
             public void windowClosing(final WindowEvent e) {
                 setShowAPSFrameDisplay(false);
             }
-        });
-
+        });        
+        
+        FilterChain chain = new FilterChain(chip);        
+        try {
+            patchFlow = new PatchMatchFlow(chip);
+            patchFlow.setFilterEnabled(true);
+            chain.add(patchFlow);
+        } catch (Exception e) {
+            log.warning("could not setup PatchMatchFlow fiter.");
+        }        
+        setEnclosedFilterChain(chain);
+        
         apsFrameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);   
+        patchFlow.getSupport().addPropertyChangeListener(PatchMatchFlow.EVENT_NEW_SLICES,this);
+        chip.addObserver(this); // to allocate memory once chip size is known
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {                                
+    public EventPacket<?> filterPacket(EventPacket<?> in) {   
+        if(!isFilterEnabled()) {
+                return in;
+        }
+        getEnclosedFilterChain().filterPacket(in);        
+        
         apsFrameExtractor.apsDisplay.checkPixmapAllocation();
         apsFrame.setVisible(true);
         final ApsDvsEventPacket packet = (ApsDvsEventPacket) in;
@@ -287,10 +308,14 @@ public class OpenCVFlow extends EventFilter2D
             float[] return_buff = new float[(int) (newFrame.total() * 
                                             newFrame.channels())];
             newFrame.get(0, 0, return_buff);
-            apsFrameExtractor.apsDisplay.setPixmapFromGrayArray(return_buff);
-            
-
+            apsFrameExtractor.apsDisplay.setPixmapFromGrayArray(return_buff);           
         }
+        
+        if (evt.getPropertyName().equals(PatchMatchFlow.EVENT_NEW_SLICES)) {
+            byte[][][] tMinus2dSlice = (byte[][][]) evt.getOldValue();
+            byte[][][] tMinusdSlice = (byte[][][]) evt.getNewValue();
+        }
+        
     }
 
     public class FeatureParams {
