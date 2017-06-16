@@ -53,13 +53,17 @@ import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
+import com.jogamp.common.util.Bitstream.ByteStream;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -112,7 +116,7 @@ public class OpenCVFlow extends EventFilter2D
         apsFrameExtractor = new ApsFrameExtractor(chip);
         
         apsFrame = new JFrame("Optical Flow Result Frame");
-        apsFrame.setPreferredSize(new Dimension(400, 400));
+        apsFrame.setPreferredSize(new Dimension(800, 800));
         apsFrame.getContentPane().add(apsFrameExtractor.apsDisplay, BorderLayout.CENTER);
         apsFrame.pack();
         apsFrame.addWindowListener(new WindowAdapter() {
@@ -132,7 +136,7 @@ public class OpenCVFlow extends EventFilter2D
         }        
         setEnclosedFilterChain(chain);
         
-        apsFrameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);   
+        // apsFrameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);   
         patchFlow.getSupport().addPropertyChangeListener(PatchMatchFlow.EVENT_NEW_SLICES,this);
         chip.addObserver(this); // to allocate memory once chip size is known
     }
@@ -314,6 +318,74 @@ public class OpenCVFlow extends EventFilter2D
         if (evt.getPropertyName().equals(PatchMatchFlow.EVENT_NEW_SLICES)) {
             byte[][][] tMinus2dSlice = (byte[][][]) evt.getOldValue();
             byte[][][] tMinusdSlice = (byte[][][]) evt.getNewValue();
+            Mat newFrame = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_8U);
+            Mat oldFrame = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_8U);
+            
+//            /* An example to flatten the nested array to 1D array */
+//            double[][][] vals = {{{1.1, 2.1}, {3.2, 4.1}}, {{5.2, 6.1}, {7.1, 8.3}}};
+//
+//            double[] test = Arrays.stream(vals)
+//                    .flatMap(Arrays::stream)
+//                    .flatMapToDouble(Arrays::stream)
+//                    .toArray();
+//
+//            System.out.println(Arrays.toString(test));
+     
+
+            // Flatten the two arrays to 1D array
+            byte[] old1DArray = new byte[chip.getSizeY() * chip.getSizeX()], 
+                    new1DArray = new byte[chip.getSizeY() * chip.getSizeX()];
+            for (int i = 0; i < chip.getSizeY(); i++) {
+                for (int j = 0; j < chip.getSizeX(); j++) {
+                    old1DArray[chip.getSizeX()*i + j] = tMinus2dSlice[0][j][i];
+                    new1DArray[chip.getSizeX()*i + j] = tMinusdSlice[0][j][i];         
+                }
+            }
+
+            newFrame.put(0, 0, new1DArray);
+            oldFrame.put(0, 0, old1DArray);
+            
+            // params for ShiTomasi corner detection            
+            FeatureParams feature_params  = new FeatureParams(100, 0.3, 7, 7);
+            
+            // Feature extraction
+            MatOfPoint p0 = new MatOfPoint();
+            Imgproc.goodFeaturesToTrack(newFrame, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance);       
+
+            MatOfPoint2f prevPts = new MatOfPoint2f(p0.toArray());
+            MatOfPoint2f nextPts = new MatOfPoint2f();
+            MatOfByte status = new MatOfByte();
+            MatOfFloat err = new MatOfFloat();
+
+            int featureNum = prevPts.checkVector(2, CvType.CV_32F, true);
+            System.out.println("The number of feature detected is : " + featureNum);     
+
+            try {
+                Video.calcOpticalFlowPyrLK(oldFrame, newFrame, prevPts, nextPts, status, err);            
+            } catch (Exception e) {
+                System.err.println(e);
+                // newFrame.copyTo(oldFrame);
+            }            
+            
+            // TODO: Select good points 
+
+            // draw the tracks
+            Point[] prevPoints = prevPts.toArray();
+            // Point[] nextPoints = nextPts.toArray();
+            // byte[] st = status.toArray();
+            // float[] er = err.toArray();    
+            Mat mask = new Mat(newFrame.rows(), newFrame.cols(), CvType.CV_32F);
+            for (int i = 0; i < prevPoints.length; i++) {
+                // Imgproc.line(displayFrame, prevPoints[i], nextPoints[i], new Scalar(color[i][0],color[i][1],color[i][2]), 2);  
+                // Imgproc.circle(newFrame,prevPoints[i], 5, new Scalar(255,255,255),-1);
+            }  
+            // showResult(newFrame);
+
+            newFrame.convertTo(newFrame, CvType.CV_32F);            
+            float[] return_buff = new float[(int) (newFrame.total() * 
+                                            newFrame.channels())];
+            newFrame.get(0, 0, return_buff);
+            apsFrameExtractor.apsDisplay.setPixmapFromGrayArray(return_buff);               
         }
         
     }
