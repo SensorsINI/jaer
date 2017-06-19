@@ -61,6 +61,7 @@ import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -78,6 +79,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
+import org.apache.commons.lang3.ArrayUtils;
 
 
 /**
@@ -342,6 +344,18 @@ public class OpenCVFlow extends EventFilter2D
                 }
             }
 
+            List oldList = Arrays.asList(ArrayUtils.toObject(old1DArray));
+            float oldGrayScale = Collections.max((List<Byte>) oldList);     // Set the maximum of tha array as the scale value.
+            List newList = Arrays.asList(ArrayUtils.toObject(new1DArray));
+            float newGrayScale = Collections.max((List<Byte>) newList);     // Set the maximum of tha array as the scale value.
+
+//            for (int i = 0; i < chip.getSizeY(); i++) {
+//                for (int j = 0; j < chip.getSizeX(); j++) {
+//                    old1DArray[chip.getSizeX()*i + j] /= oldGrayScale;
+//                    new1DArray[chip.getSizeX()*i + j] /= newGrayScale;         
+//                }
+//            }            
+            
             newFrame.put(0, 0, new1DArray);
             oldFrame.put(0, 0, old1DArray);
             
