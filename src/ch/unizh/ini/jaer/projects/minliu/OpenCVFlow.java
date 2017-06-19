@@ -126,7 +126,7 @@ public class OpenCVFlow extends EventFilter2D
             public void windowClosing(final WindowEvent e) {
                 setShowAPSFrameDisplay(false);
             }
-        });        
+        }); 
         
         FilterChain chain = new FilterChain(chip);        
         try {
@@ -151,7 +151,6 @@ public class OpenCVFlow extends EventFilter2D
         getEnclosedFilterChain().filterPacket(in);        
         
         apsFrameExtractor.apsDisplay.checkPixmapAllocation();
-        apsFrame.setVisible(true);
         final ApsDvsEventPacket packet = (ApsDvsEventPacket) in;
         if (packet == null) {
             return null;
@@ -167,7 +166,9 @@ public class OpenCVFlow extends EventFilter2D
                 apsFrameExtractor.putAPSevent(e);
             }
         }
-        apsFrameExtractor.apsDisplay.repaint();
+        if(isShowAPSFrameDisplay()) {
+            apsFrameExtractor.apsDisplay.repaint();            
+        }
         
         return in;
         
@@ -378,16 +379,16 @@ public class OpenCVFlow extends EventFilter2D
                 Video.calcOpticalFlowPyrLK(oldFrame, newFrame, prevPts, nextPts, status, err);            
             } catch (Exception e) {
                 System.err.println(e);
-                // newFrame.copyTo(oldFrame);
+                return;
             }            
             
             // TODO: Select good points 
 
             // draw the tracks
             Point[] prevPoints = prevPts.toArray();
-            // Point[] nextPoints = nextPts.toArray();
-            // byte[] st = status.toArray();
-            // float[] er = err.toArray();    
+            Point[] nextPoints = nextPts.toArray();
+            byte[] st = status.toArray();
+            float[] er = err.toArray();    
             Mat mask = new Mat(newFrame.rows(), newFrame.cols(), CvType.CV_32F);
             for (int i = 0; i < prevPoints.length; i++) {
                 // Imgproc.line(displayFrame, prevPoints[i], nextPoints[i], new Scalar(color[i][0],color[i][1],color[i][2]), 2);  
