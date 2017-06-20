@@ -5,6 +5,7 @@
  */
 package ch.unizh.ini.jaer.projects.minliu;
 
+import ch.unizh.ini.jaer.projects.davis.calibration.SingleCameraCalibration;
 import java.awt.FlowLayout;
 import java.awt.HeadlessException;
 import java.awt.Image;
@@ -52,13 +53,18 @@ import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
+import com.jogamp.common.util.Bitstream.ByteStream;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -68,9 +74,12 @@ import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
+import org.apache.commons.lang3.ArrayUtils;
 
 
 /**
@@ -97,13 +106,19 @@ public class OpenCVFlow extends EventFilter2D
     private ApsFrameExtractor apsFrameExtractor;
     private JFrame apsFrame = null;
     protected boolean showAPSFrameDisplay = getBoolean("showAPSFrameDisplay", true);
-
+    private int[][] color = new int[100][3];
+    private float[] oldBuffer = null, newBuffer = null;
+    private PatchMatchFlow patchFlow;
+    
+    
     public OpenCVFlow(AEChip chip) {
         super(chip);
+        System.out.println("Welcome to OpenCV " + Core.VERSION);
+
         apsFrameExtractor = new ApsFrameExtractor(chip);
         
-        apsFrame = new JFrame("APS Frame");
-        apsFrame.setPreferredSize(new Dimension(400, 400));
+        apsFrame = new JFrame("Optical Flow Result Frame");
+        apsFrame.setPreferredSize(new Dimension(800, 800));
         apsFrame.getContentPane().add(apsFrameExtractor.apsDisplay, BorderLayout.CENTER);
         apsFrame.pack();
         apsFrame.addWindowListener(new WindowAdapter() {
@@ -111,54 +126,31 @@ public class OpenCVFlow extends EventFilter2D
             public void windowClosing(final WindowEvent e) {
                 setShowAPSFrameDisplay(false);
             }
-        });
+        }); 
         
-        // apsFrameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);
-        apsFrameExtractor.getSupport().addPropertyChangeListener(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
+        FilterChain chain = new FilterChain(chip);        
+        try {
+            patchFlow = new PatchMatchFlow(chip);
+            patchFlow.setFilterEnabled(true);
+            chain.add(patchFlow);
+        } catch (Exception e) {
+            log.warning("could not setup PatchMatchFlow fiter.");
+        }        
+        setEnclosedFilterChain(chain);
+        
+        // apsFrameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);   
+        patchFlow.getSupport().addPropertyChangeListener(PatchMatchFlow.EVENT_NEW_SLICES,this);
+        chip.addObserver(this); // to allocate memory once chip size is known
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
-        System.out.println("Welcome to OpenCV " + Core.VERSION);
-
-        Mat m = new Mat(5, 5, CvType.CV_8UC1, new Scalar(1));
-        System.out.println("OpenCV Mat: " + m);
-
-        VideoCapture cap  = new VideoCapture("slow.flv");
-
-        // params for ShiTomasi corner detection
-        FeatureParams feature_params  = new FeatureParams(100, 0.3, 7, 7);
-
-        // Parameters for lucas kanade optical flow
-        LKParams lk_params = new LKParams(15, 15, 2, new TermCriteria(TermCriteria.EPS | TermCriteria.COUNT, 10, 0.03));            
-
-        // Create some random colors
-        Random rand = new Random();         
-        int[][] color = new int[100][3];
-        for (int i = 0; i < 100; i++) {
-            for (int j = 0; j < 3; j++) {
-                color[i][j] = rand.nextInt(255);
-            }
+    public EventPacket<?> filterPacket(EventPacket<?> in) {   
+        if(!isFilterEnabled()) {
+                return in;
         }
-
-        // Take first frame and find corners in it
-        Mat old_frame = new Mat();
-        Mat old_gray = new Mat();
-        MatOfPoint p0 = new MatOfPoint();
-
-        boolean ret = cap.read(old_frame);
-        if(old_frame.empty() || ret == false) {
-            System.out.println("The frame cannot be read or the frame is empty.\n");
-            System.exit(1);                
-        }
-
-        // Convert it to grayscale and find the good features.
-        Imgproc.cvtColor(old_frame,old_gray,Imgproc.COLOR_BGR2GRAY);
-        Imgproc.goodFeaturesToTrack(old_gray, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance); 
-
-                            
+        getEnclosedFilterChain().filterPacket(in);        
+        
         apsFrameExtractor.apsDisplay.checkPixmapAllocation();
-        apsFrame.setVisible(true);
         final ApsDvsEventPacket packet = (ApsDvsEventPacket) in;
         if (packet == null) {
             return null;
@@ -174,7 +166,9 @@ public class OpenCVFlow extends EventFilter2D
                 apsFrameExtractor.putAPSevent(e);
             }
         }
-        apsFrameExtractor.apsDisplay.repaint();
+        if(isShowAPSFrameDisplay()) {
+            apsFrameExtractor.apsDisplay.repaint();            
+        }
         
         return in;
         
@@ -237,12 +231,12 @@ public class OpenCVFlow extends EventFilter2D
 
     @Override
     public void resetFilter() {
-        // throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        apsFrameExtractor.resetFilter();
     }
 
     @Override
     public void initFilter() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        resetFilter();
     }
 
     @Override
@@ -266,36 +260,149 @@ public class OpenCVFlow extends EventFilter2D
     
     @Override
     public synchronized void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName().equals(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)) {
-            int tmp = 1;
+        if (evt.getPropertyName().equals(ApsFrameExtractor.EVENT_NEW_FRAME)) {
+            if(newBuffer == null) {
+                newBuffer = (float[]) evt.getNewValue();                
+                return;
+            }
+            oldBuffer = newBuffer;
+            float[] buffer = apsFrameExtractor.apsDisplay.getPixmapArray();
+            byte[] byteBuffer = new byte[buffer.length];
+            for(int i=0; i<buffer.length;i++) {
+                byteBuffer[i] = (byte) (buffer[i] * 255);
+            }
+            newBuffer = (float[]) evt.getNewValue();
+            Mat newFrame = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_32F);
+            newFrame.put(0, 0, newBuffer);   
+            Mat oldFrame = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_32F);
+            oldFrame.put(0, 0, oldBuffer);       
+            
+            // params for ShiTomasi corner detection            
+            FeatureParams feature_params  = new FeatureParams(100, 0.3, 7, 7);
+            
+            // Feature extraction
+            MatOfPoint p0 = new MatOfPoint();
+            Imgproc.goodFeaturesToTrack(newFrame, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance);       
+
+            MatOfPoint2f prevPts = new MatOfPoint2f(p0.toArray());
+            MatOfPoint2f nextPts = new MatOfPoint2f();
+            MatOfByte status = new MatOfByte();
+            MatOfFloat err = new MatOfFloat();
+
+            int featureNum = prevPts.checkVector(2, CvType.CV_32F, true);
+            System.out.println("The number of feature detected is : " + featureNum);     
+
+            try {
+                Video.calcOpticalFlowPyrLK(oldFrame, newFrame, prevPts, nextPts, status, err);            
+            } catch (Exception e) {
+                System.err.println(e);
+                // newFrame.copyTo(oldFrame);
+            }            
+            
+            // TODO: Select good points 
+
+            // draw the tracks
+            Point[] prevPoints = prevPts.toArray();
+            // Point[] nextPoints = nextPts.toArray();
+            // byte[] st = status.toArray();
+            // float[] er = err.toArray();    
+            Mat mask = new Mat(newFrame.rows(), newFrame.cols(), CvType.CV_32F);
+            for (int i = 0; i < prevPoints.length; i++) {
+                // Imgproc.line(displayFrame, prevPoints[i], nextPoints[i], new Scalar(color[i][0],color[i][1],color[i][2]), 2);  
+                Imgproc.circle(newFrame,prevPoints[i], 5, new Scalar(255,255,255),-1);
+            }
+            
+            float[] return_buff = new float[(int) (newFrame.total() * 
+                                            newFrame.channels())];
+            newFrame.get(0, 0, return_buff);
+            apsFrameExtractor.apsDisplay.setPixmapFromGrayArray(return_buff);           
         }
-        float[] matBuffer = new float[chip.getSizeX()*chip.getSizeY()*3];
-        System.arraycopy(chip.getRenderer().getPixmap().array(), 0, matBuffer, 0, matBuffer.length);
         
-        // params for ShiTomasi corner detection
-        FeatureParams feature_params  = new FeatureParams(100, 0.3, 7, 7);
+        if (evt.getPropertyName().equals(PatchMatchFlow.EVENT_NEW_SLICES)) {
+            byte[][][] tMinus2dSlice = (byte[][][]) evt.getOldValue();
+            byte[][][] tMinusdSlice = (byte[][][]) evt.getNewValue();
+            Mat newFrame = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_8U);
+            Mat oldFrame = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_8U);
+            
+//            /* An example to flatten the nested array to 1D array */
+//            double[][][] vals = {{{1.1, 2.1}, {3.2, 4.1}}, {{5.2, 6.1}, {7.1, 8.3}}};
+//
+//            double[] test = Arrays.stream(vals)
+//                    .flatMap(Arrays::stream)
+//                    .flatMapToDouble(Arrays::stream)
+//                    .toArray();
+//
+//            System.out.println(Arrays.toString(test));
+     
 
-        // Parameters for lucas kanade optical flow
-        LKParams lk_params = new LKParams(15, 15, 2, new TermCriteria(TermCriteria.EPS | TermCriteria.COUNT, 10, 0.03));    
-        
-        Mat old_frame = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_32FC3);
-        old_frame.put(0, 0, matBuffer);
-        
-        Mat old_gray = new Mat();
-        MatOfPoint p0 = new MatOfPoint();
-        
-                // Convert it to grayscale and find the good features.
-        Imgproc.cvtColor(old_frame,old_gray,Imgproc.COLOR_BGR2GRAY);
-        Imgproc.goodFeaturesToTrack(old_gray, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance);       
-        
-        MatOfPoint2f prevPts = new MatOfPoint2f(p0.toArray());
-        MatOfPoint2f nextPts = new MatOfPoint2f();
-        MatOfByte status = new MatOfByte();
-        MatOfFloat err = new MatOfFloat();
+            // Flatten the two arrays to 1D array
+            byte[] old1DArray = new byte[chip.getSizeY() * chip.getSizeX()], 
+                    new1DArray = new byte[chip.getSizeY() * chip.getSizeX()];
+            for (int i = 0; i < chip.getSizeY(); i++) {
+                for (int j = 0; j < chip.getSizeX(); j++) {
+                    old1DArray[chip.getSizeX()*i + j] = tMinus2dSlice[0][j][i];
+                    new1DArray[chip.getSizeX()*i + j] = tMinusdSlice[0][j][i];         
+                }
+            }
 
-        int featureNum = prevPts.checkVector(2, CvType.CV_32F, true);
-        System.out.println("The number of feature detected is : " + featureNum);
+            List oldList = Arrays.asList(ArrayUtils.toObject(old1DArray));
+            float oldGrayScale = Collections.max((List<Byte>) oldList);     // Set the maximum of tha array as the scale value.
+            List newList = Arrays.asList(ArrayUtils.toObject(new1DArray));
+            float newGrayScale = Collections.max((List<Byte>) newList);     // Set the maximum of tha array as the scale value.
 
+//            for (int i = 0; i < chip.getSizeY(); i++) {
+//                for (int j = 0; j < chip.getSizeX(); j++) {
+//                    old1DArray[chip.getSizeX()*i + j] /= oldGrayScale;
+//                    new1DArray[chip.getSizeX()*i + j] /= newGrayScale;         
+//                }
+//            }            
+            
+            newFrame.put(0, 0, new1DArray);
+            oldFrame.put(0, 0, old1DArray);
+            
+            // params for ShiTomasi corner detection            
+            FeatureParams feature_params  = new FeatureParams(100, 0.3, 7, 7);
+            
+            // Feature extraction
+            MatOfPoint p0 = new MatOfPoint();
+            Imgproc.goodFeaturesToTrack(newFrame, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance);       
+
+            MatOfPoint2f prevPts = new MatOfPoint2f(p0.toArray());
+            MatOfPoint2f nextPts = new MatOfPoint2f();
+            MatOfByte status = new MatOfByte();
+            MatOfFloat err = new MatOfFloat();
+
+            int featureNum = prevPts.checkVector(2, CvType.CV_32F, true);
+            System.out.println("The number of feature detected is : " + featureNum);     
+
+            try {
+                Video.calcOpticalFlowPyrLK(oldFrame, newFrame, prevPts, nextPts, status, err);            
+            } catch (Exception e) {
+                System.err.println(e);
+                return;
+            }            
+            
+            // TODO: Select good points 
+
+            // draw the tracks
+            Point[] prevPoints = prevPts.toArray();
+            Point[] nextPoints = nextPts.toArray();
+            byte[] st = status.toArray();
+            float[] er = err.toArray();    
+            Mat mask = new Mat(newFrame.rows(), newFrame.cols(), CvType.CV_32F);
+            for (int i = 0; i < prevPoints.length; i++) {
+                // Imgproc.line(displayFrame, prevPoints[i], nextPoints[i], new Scalar(color[i][0],color[i][1],color[i][2]), 2);  
+                // Imgproc.circle(newFrame,prevPoints[i], 5, new Scalar(255,255,255),-1);
+            }  
+            // showResult(newFrame);
+
+            newFrame.convertTo(newFrame, CvType.CV_32F);            
+            float[] return_buff = new float[(int) (newFrame.total() * 
+                                            newFrame.channels())];
+            newFrame.get(0, 0, return_buff);
+            apsFrameExtractor.apsDisplay.setPixmapFromGrayArray(return_buff);               
+        }
+        
     }
 
     public class FeatureParams {
