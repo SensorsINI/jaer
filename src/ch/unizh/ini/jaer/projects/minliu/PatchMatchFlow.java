@@ -2373,4 +2373,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         areaCountExceeded = false;
     }
 
+    public int getSliceDeltaT() {
+        return sliceDeltaT;
+    }
+    
 }
