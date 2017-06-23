@@ -768,12 +768,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
 
         rotateSlices();
-        /* Slices have been rotated */
-        getSupport().firePropertyChange(PatchMatchFlow.EVENT_NEW_SLICES, slices[sliceIndex(1)], slices[sliceIndex(2)]);
 
         eventCounter = 0;
         sliceDeltaT = dt;
         sliceLastTs = ts;
+        
+        /* Slices have been rotated */
+        getSupport().firePropertyChange(PatchMatchFlow.EVENT_NEW_SLICES, slices[sliceIndex(1)], slices[sliceIndex(2)]);
         return true;
 
     }

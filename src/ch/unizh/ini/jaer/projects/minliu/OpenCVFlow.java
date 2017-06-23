@@ -183,11 +183,15 @@ public class OpenCVFlow extends AbstractMotionFlow
     public synchronized void resetFilter() {
         super.resetFilter();
         
-        apsFrameExtractor = new ApsFrameExtractor(chip);
-        apsFrameExtractor.resetFilter();
-        
-        patchFlow = new PatchMatchFlow(chip);
-        patchFlow.resetFilter();
+        if(apsFrameExtractor != null) {
+            apsFrameExtractor = new ApsFrameExtractor(chip);
+            apsFrameExtractor.resetFilter();            
+        }
+
+        if(patchFlow != null) {
+            patchFlow.resetFilter();            
+        }
+
     }
 
     @Override
@@ -321,7 +325,7 @@ public class OpenCVFlow extends AbstractMotionFlow
             
             // Feature extraction
             MatOfPoint p0 = new MatOfPoint();
-            Imgproc.goodFeaturesToTrack(newFrame, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance);       
+            Imgproc.goodFeaturesToTrack(oldFrame, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance);       
 
             MatOfPoint2f prevPts = new MatOfPoint2f(p0.toArray());
             MatOfPoint2f nextPts = new MatOfPoint2f();
