@@ -180,7 +180,7 @@ public class OpenCVFlow extends AbstractMotionFlow
     }
 
     @Override
-    public void resetFilter() {
+    public synchronized void resetFilter() {
         super.resetFilter();
         
         apsFrameExtractor = new ApsFrameExtractor(chip);
