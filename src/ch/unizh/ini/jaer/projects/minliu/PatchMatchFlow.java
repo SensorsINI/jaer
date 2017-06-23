@@ -151,7 +151,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private boolean displayResultHistogram = getBoolean("displayResultHistogram", true);
 
     public enum SliceMethod {
-        ConstantDuration, ConstantEventNumber, AreaEventNumber
+        ConstantDuration, ConstantEventNumber, AreaEventNumber, ConstantIntegratedFlow
     };
     private SliceMethod sliceMethod = SliceMethod.valueOf(getString("sliceMethod", SliceMethod.AreaEventNumber.toString()));
     private int areaEventNumberSubsampling = getInt("areaEventNumberSubsampling", 5);
@@ -169,14 +169,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private ImageDisplay sliceBitmapImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
     private JFrame sliceBitMapFrame = null;
     private Legend sliceBitmapLegend;
-    
+
     /**
-     * A PropertyChangeEvent with this value is fired when the slices 
-     * has been rotated. The oldValue is t-2d slice. The newValue is the t-d slice.
+     * A PropertyChangeEvent with this value is fired when the slices has been
+     * rotated. The oldValue is t-2d slice. The newValue is the t-d slice.
      */
-    
     public static final String EVENT_NEW_SLICES = "eventNewSlices";
-    
+
     public PatchMatchFlow(AEChip chip) {
         super(chip);
 
@@ -212,7 +211,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "sliceMethod", "<html>Method for determining time slice duration for block matching<ul>"
                 + "<li>ConstantDuration: slices are fixed time duration"
                 + "<li>ConstantEventNumber: slices are fixed event number"
-                + "<li>AreaEventNumber: slices are fixed event number in any subsampled area defined by areaEventNumberSubsampling");
+                + "<li>AreaEventNumber: slices are fixed event number in any subsampled area defined by areaEventNumberSubsampling"
+                + "<li>ConstantIntegratedFlow: slices are rotated when average speeds times delta time exceeds half the search distance");
         setPropertyTooltip(patchTT, "areaEventNumberSubsampling", "<html>how to subsample total area to count events per unit subsampling blocks for AreaEventNumber method. <p>For example, if areaEventNumberSubsampling=5, <br> then events falling into 32x32 blocks of pixels are counted <br>to determine when they exceed sliceEventCount to make new slice");
         setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
         setPropertyTooltip(patchTT, "adaptiveEventSkipping", "enables adaptive event skipping depending on free time left in AEViewer animation loop");
@@ -252,8 +252,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             timeLimiter.setTimeLimitMs(processingTimeLimitMs);
             timeLimiter.restart();
         } else {
-            timeLimiter.setEnabled(false); 
-       }
+            timeLimiter.setEnabled(false);
+        }
 
         for (int[] h : resultHistogram) {
             Arrays.fill(h, 0);
@@ -521,6 +521,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         } else {
                             setSliceEventCount(Math.round(sliceEventCount * (1 - adapativeSliceDurationProportionalErrorGain)));
                         }
+                        break;
+                    case ConstantIntegratedFlow:
+                        setSliceEventCount(eventCounter);
                 }
                 if (adaptiveSliceDurationLogger != null && adaptiveSliceDurationLogger.isEnabled()) {
                     if (!isDisplayGlobalMotion()) {
@@ -615,7 +618,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 gl.glPopMatrix(); // back to original chip coordinates
                 gl.glPushMatrix();
                 textRenderer.begin3DRendering();
-                String s = String.format("d=%s ms", engFmt.format(1e-3f * sliceDeltaT));
+                String s = String.format("d=%.1f ms", 1e-3f * sliceDeltaT);
 //            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getSizeX(), .1f);
                 // determine width of string in pixels and scale accordingly
                 FontRenderContext frc = textRenderer.getFontRenderContext();
@@ -673,6 +676,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             gl.glEnd();
         }
 
+        if (sliceMethod == SliceMethod.ConstantIntegratedFlow && showAreaCountAreasTemporarily) {
+            // TODO fill in what to draw
+        }
+
         if (showBlockSizeAndSearchAreaTemporarily) {
             gl.glLineWidth(2f);
             gl.glColor3f(1, 0, 0);
@@ -701,7 +708,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setSubSampleShift(0); // filter breaks with super's bit shift subsampling
         super.resetFilter();
         eventCounter = 0;
-        lastTs = Integer.MIN_VALUE;
+//        lastTs = Integer.MIN_VALUE;
 
         checkArrays();
         if (slices == null) {
@@ -733,6 +740,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
     }
 
+    private LowpassFilter speedFilter = new LowpassFilter();
+
     /**
      * uses the current event to maybe rotate the slices
      *
@@ -757,7 +766,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 }
                 break;
             case ConstantEventNumber:
-                if (eventCounter++ < sliceEventCount) {
+                if (eventCounter < sliceEventCount) {
                     return false;
                 }
                 break;
@@ -765,15 +774,34 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 if (!areaCountExceeded && dt < MAX_SLICE_DURATION_US) {
                     return false;
                 }
+                break;
+            case ConstantIntegratedFlow:
+                speedFilter.setTauMs(sliceDeltaTimeUs(2) >> 10);
+                final float meanGlobalSpeed = motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
+                if (!Float.isNaN(meanGlobalSpeed)) {
+                    speedFilter.filter(meanGlobalSpeed, ts);
+                }
+                final float filteredMeanGlobalSpeed = speedFilter.getValue();
+                final float totalMovement = filteredMeanGlobalSpeed * dt * 1e-6f;
+                if (Float.isNaN(meanGlobalSpeed)) { // we need to rotate slices somwhow even if there is no motion computed yet
+                    if (eventCounter < sliceEventCount) {
+                        return false;
+                    }
+                    if ((dt < sliceDurationUs)) {
+                        return false;
+                    }
+                    break;
+                }
+                if (totalMovement < searchDistance / 2 && dt < sliceDurationUs) {
+                    return false;
+                }
+                break;
         }
 
         rotateSlices();
         /* Slices have been rotated */
         getSupport().firePropertyChange(PatchMatchFlow.EVENT_NEW_SLICES, slices[sliceIndex(1)], slices[sliceIndex(2)]);
 
-        eventCounter = 0;
-        sliceDeltaT = dt;
-        sliceLastTs = ts;
         return true;
 
     }
@@ -796,9 +824,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             currentSliceIdx = numSlices - 1;
         }
         currentSlice = slices[currentSliceIdx];
-        sliceStartTimeUs[currentSliceIdx] = ts; // current event timestamp
+        //sliceStartTimeUs[currentSliceIdx] = ts; // current event timestamp; set on first event to slice
         clearSlice(currentSlice);
         clearAreaCounts();
+        eventCounter = 0;
+        sliceDeltaT = ts - sliceLastTs;
+        sliceLastTs = ts;
     }
 
     /**
@@ -836,6 +867,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * skipped for efficiency
      */
     synchronized private boolean accumulateEvent(PolarityEvent e) {
+        if (eventCounter++ == 0) {
+            sliceStartTimeUs[currentSliceIdx] = e.timestamp; // current event timestamp
+        }
         for (int s = 0; s < numScales; s++) {
             final int xx = e.x >> s;
             final int yy = e.y >> s;
@@ -1628,9 +1662,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         SliceMethod old = this.sliceMethod;
         this.sliceMethod = sliceMethod;
         putString("sliceMethod", sliceMethod.toString());
-        if (sliceMethod == SliceMethod.AreaEventNumber) {
+        if (sliceMethod == SliceMethod.AreaEventNumber || sliceMethod == SliceMethod.ConstantIntegratedFlow) {
             showAreasForAreaCountsTemporarily();
         }
+//        if(sliceMethod==SliceMethod.ConstantIntegratedFlow){
+//            setDisplayGlobalMotion(true);
+//        }
         getSupport().firePropertyChange("sliceMethod", old, this.sliceMethod);
     }
 
