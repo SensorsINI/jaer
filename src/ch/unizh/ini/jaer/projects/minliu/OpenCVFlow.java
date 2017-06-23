@@ -53,6 +53,11 @@ import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
+import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
+import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU;
+import static ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU.v;
+import static ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU.vx;
+import static ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU.vy;
 import com.jogamp.common.util.Bitstream.ByteStream;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -73,6 +78,8 @@ import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.event.orientation.ApsDvsMotionOrientationEvent;
 import net.sf.jaer.eventprocessing.EventFilter;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -88,7 +95,7 @@ import org.apache.commons.lang3.ArrayUtils;
  */
 @Description("Optical Flow methods based on OpenCV")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class OpenCVFlow extends EventFilter2D 
+public class OpenCVFlow extends AbstractMotionFlow 
                         implements PropertyChangeListener, Observer /* Observer needed to get change events on chip construction */ {
 
     static { 
@@ -144,11 +151,11 @@ public class OpenCVFlow extends EventFilter2D
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {   
+    public EventPacket filterPacket(EventPacket in) {   
         if(!isFilterEnabled()) {
                 return in;
         }
-        getEnclosedFilterChain().filterPacket(in);        
+        setupFilter(in);
         
         apsFrameExtractor.apsDisplay.checkPixmapAllocation();
         final ApsDvsEventPacket packet = (ApsDvsEventPacket) in;
@@ -169,69 +176,22 @@ public class OpenCVFlow extends EventFilter2D
         if(isShowAPSFrameDisplay()) {
             apsFrameExtractor.apsDisplay.repaint();            
         }
-        
-        return in;
-        
-//        while(true) {
-//            Mat frame = new Mat();
-//            Mat frame_gray = new Mat();
-//            for(int skipNum = 0; skipNum <= 20; skipNum ++) {
-//                ret = cap.read(frame);                    
-//            }
-//            if(frame.empty() || ret == false) {
-//                System.out.println("The frame cannot be read or the frame is empty.\n");
-//                System.exit(1);                
-//            }            
-//
-//            Imgproc.cvtColor(frame,frame_gray,Imgproc.COLOR_BGR2GRAY);
-//            Imgproc.goodFeaturesToTrack(old_gray, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance); 
-//
-//            MatOfPoint2f prevPts = new MatOfPoint2f(p0.toArray());
-//            MatOfPoint2f nextPts = new MatOfPoint2f();
-//            MatOfByte status = new MatOfByte();
-//            MatOfFloat err = new MatOfFloat();
-//
-//            int featureNum = prevPts.checkVector(2, CvType.CV_32F, true);
-//            System.out.println("The number of feature detected is : " + featureNum);
-//
-//            try {
-//                Video.calcOpticalFlowPyrLK(old_gray, frame_gray, prevPts, nextPts, status, err);            
-//            } catch (Exception e) {
-//                System.err.println(e);
-//                frame_gray.copyTo(old_gray);
-//                continue;
-//            }
-//
-//            // TODO: Select good points 
-//
-//            // draw the tracks
-//            Point[] prevPoints = prevPts.toArray();
-//            Point[] nextPoints = nextPts.toArray();
-//            byte[] st = status.toArray();
-//            float[] er = err.toArray();    
-//            Mat mask = new Mat(old_gray.rows(), old_gray.cols(), CvType.CV_8UC1);
-//            for (int i = 0; i < prevPoints.length; i++) {
-//                Imgproc.line(frame, prevPoints[i], nextPoints[i], new Scalar(color[i][0],color[i][1],color[i][2]), 2);  
-//                Imgproc.circle(frame,prevPoints[i],5,new Scalar(color[i][0],color[i][1],color[i][2]),-1);
-//            }
-//
-//            // Save the frames.
-//            // Imgcodecs.imwrite("tmpfiles/old_frame.jpg", old_frame);
-//            Imgcodecs.imwrite("tmpfiles/frame.jpg", frame);  
-//            // showResult(frame);
-//            // displayImage(Mat2BufferedImage(frame));
-//
-//            
-//            // Now update the previous frame and previous points
-//            frame_gray.copyTo(old_gray);
-//            p0 = new MatOfPoint(nextPts.toArray());
-//        }    
-        
+        return in;     
     }
 
     @Override
-    public void resetFilter() {
-        apsFrameExtractor.resetFilter();
+    public synchronized void resetFilter() {
+        super.resetFilter();
+        
+        if(apsFrameExtractor != null) {
+            apsFrameExtractor = new ApsFrameExtractor(chip);
+            apsFrameExtractor.resetFilter();            
+        }
+
+        if(patchFlow != null) {
+            patchFlow.resetFilter();            
+        }
+
     }
 
     @Override
@@ -365,7 +325,7 @@ public class OpenCVFlow extends EventFilter2D
             
             // Feature extraction
             MatOfPoint p0 = new MatOfPoint();
-            Imgproc.goodFeaturesToTrack(newFrame, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance);       
+            Imgproc.goodFeaturesToTrack(oldFrame, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance);       
 
             MatOfPoint2f prevPts = new MatOfPoint2f(p0.toArray());
             MatOfPoint2f nextPts = new MatOfPoint2f();
@@ -382,13 +342,29 @@ public class OpenCVFlow extends EventFilter2D
                 return;
             }            
             
-            // TODO: Select good points 
-
             // draw the tracks
             Point[] prevPoints = prevPts.toArray();
             Point[] nextPoints = nextPts.toArray();
             byte[] st = status.toArray();
-            float[] er = err.toArray();    
+            float[] er = err.toArray();
+
+            // Select good points  and copy them for output
+            int index = 0;
+            for(byte stTmp: st) {
+                if(stTmp == 1) {
+                    e = new PolarityEvent();
+                    x = (short)(prevPoints[index].x);
+                    y = (short)prevPoints[index].y;
+                    e.x = (short)x;
+                    e.y = (short)y;    // e, x and y all of them are used in processGoodEvent();
+                    vx = (float)(nextPoints[index].x - prevPoints[index].x) * 1000000 / patchFlow.getSliceDeltaT();
+                    vy = (float)(nextPoints[index].y - prevPoints[index].y) * 1000000 / patchFlow.getSliceDeltaT();
+                    v = (float) Math.sqrt(vx * vx + vy * vy);
+                    processGoodEvent();
+                    index++;
+                }
+            }
+           
             Mat mask = new Mat(newFrame.rows(), newFrame.cols(), CvType.CV_32F);
             for (int i = 0; i < prevPoints.length; i++) {
                 // Imgproc.line(displayFrame, prevPoints[i], nextPoints[i], new Scalar(color[i][0],color[i][1],color[i][2]), 2);  
@@ -502,7 +478,7 @@ public class OpenCVFlow extends EventFilter2D
             apsFrame.setVisible(showAPSFrameDisplay);
         }
         getSupport().firePropertyChange("showAPSFrameDisplay", null, showAPSFrameDisplay);
-    }
+    }    
 }
 
 
