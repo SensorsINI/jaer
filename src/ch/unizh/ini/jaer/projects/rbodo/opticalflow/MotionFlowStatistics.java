@@ -207,7 +207,8 @@ public class MotionFlowStatistics {
          * onto circumferences around center.
          */
         public float meanGlobalVx, sdGlobalVx, meanGlobalVy, sdGlobalVy, meanGlobalRotation, meanGlobalTrans, sdGlobalTrans,
-                sdGlobalRotation, meanGlobalExpansion, sdGlobalExpansion, meanGlobalSpeed;
+                sdGlobalRotation, meanGlobalExpansion, sdGlobalExpansion;
+        public float meanGlobalSpeed;
         private final Measurand globalVx, globalVy, globalRotation, globalExpansion, globalSpeed;
         private int rx, ry;
         private int subSizeX, subSizeY;
