@@ -1,9 +1,11 @@
 language: java
 script: ant jar
+before_deploy:
+  - zip jaer-dist.zip jAERViewer1.5_linux.sh jAERViewer1.5_win32.exe jAERViewer1.5_win64.exe SplashScreen.gif dist/jAER.jar jars/* jars/javacv/* jars/jogl/* jars/usb4java/*
 deploy:
   provider: releases
   api_key: $GITHUB_TOKEN
-  file: "dist/jAER.jar"
+  file: jaer-dist.zip
   skip_cleanup: true
   on:
     tags: true
