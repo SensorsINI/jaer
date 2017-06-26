@@ -1,5 +1,6 @@
 language: java
 script: ant jar
+jdk: oraclejdk8
 before_deploy:
   - zip jaer-dist.zip jAERViewer1.5_linux.sh jAERViewer1.5_win32.exe jAERViewer1.5_win64.exe SplashScreen.gif dist/jAER.jar jars/* jars/javacv/* jars/jogl/* jars/usb4java/*
 deploy:
