@@ -1,2 +1,9 @@
 language: java
 script: ant jar
+deploy:
+  provider: releases
+  api_key: $GITHUB_TOKEN
+  file: "dist/jAER.jar"
+  skip_cleanup: true
+  on:
+    tags: true
