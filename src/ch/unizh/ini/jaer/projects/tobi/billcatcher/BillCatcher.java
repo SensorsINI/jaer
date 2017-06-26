@@ -137,7 +137,7 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
     }
 
     boolean isBillFalling(EventPacket<?> in) {
-        translationalMotion = motionFilter.getMotionFlowStatistics().getGlobalMotion().getGlobalVy().getMean();
+        translationalMotion = (float)motionFilter.getMotionFlowStatistics().getGlobalMotion().getGlobalVy().getMean();
         boolean moving = (translationalMotion < -motionThresholdPixelsPerSec);
         float rate = in.getEventRateHz();
         return moving && (rate > (minkEPSToGrab * 1e3f));
