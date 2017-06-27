@@ -1,10 +1,22 @@
-# jaer
+# jAER
 Java tools for Address-Event Representation (AER) neuromorphic processing.
+
+[![Build Status](https://travis-ci.org/SensorsInI/jaer.svg?branch=master)](https://travis-ci.org/SensorsInI/jaer)
 
 Welcome to the jAER Open Source Project
 Real time sensory-motor processing for event-based sensors and systems
 Founded in 2007.
 This project has been moved here from SourceForge. Commits are now disabled there.
+
+## Download
+
+You can find the latest releases at <https://github.com/SensorsInI/jaer/releases>.
+
+To build yourself, close the repo and run
+
+    ant jar
+
+## Support
 
 See https://sourceforge.net/p/jaer/wiki/Home/ for user guide (ignoring the sourceforge subversion installation instructions there)
 
