@@ -300,8 +300,8 @@ public class OpenCVFlow extends AbstractMotionFlow
                     new1DArray = new byte[chip.getSizeY() * chip.getSizeX()];
             for (int i = 0; i < chip.getSizeY(); i++) {
                 for (int j = 0; j < chip.getSizeX(); j++) {
-                    old1DArray[chip.getSizeX()*i + j] = tMinus2dSlice[0][j][i];
-                    new1DArray[chip.getSizeX()*i + j] = tMinusdSlice[0][j][i];         
+                    old1DArray[chip.getSizeX()*i + j] = (byte)(tMinus2dSlice[0][j][i] * 20);  // Multiple the intensity so the feature can be extracted
+                    new1DArray[chip.getSizeX()*i + j] = (byte)(tMinusdSlice[0][j][i] * 20);         
                 }
             }
 
@@ -338,8 +338,16 @@ public class OpenCVFlow extends AbstractMotionFlow
             try {
                 Video.calcOpticalFlowPyrLK(oldFrame, newFrame, prevPts, nextPts, status, err);            
             } catch (Exception e) {
-                System.err.println(e);
+                System.err.println(e);                   
                 return;
+            } finally {
+                // showResult(newFrame);
+
+                newFrame.convertTo(newFrame, CvType.CV_32F);            
+                float[] return_buff = new float[(int) (newFrame.total() * 
+                                                newFrame.channels())];
+                newFrame.get(0, 0, return_buff);
+                apsFrameExtractor.apsDisplay.setPixmapFromGrayArray(return_buff);                   
             }            
             
             // draw the tracks
@@ -357,8 +365,8 @@ public class OpenCVFlow extends AbstractMotionFlow
                     y = (short)prevPoints[index].y;
                     e.x = (short)x;
                     e.y = (short)y;    // e, x and y all of them are used in processGoodEvent();
-                    vx = (float)(nextPoints[index].x - prevPoints[index].x) * 1000000 / patchFlow.getSliceDeltaT();
-                    vy = (float)(nextPoints[index].y - prevPoints[index].y) * 1000000 / patchFlow.getSliceDeltaT();
+                    vx = (float)(nextPoints[index].x - prevPoints[index].x) * 1000000 / -patchFlow.getSliceDeltaT();
+                    vy = (float)(nextPoints[index].y - prevPoints[index].y) * 1000000 / -patchFlow.getSliceDeltaT();
                     v = (float) Math.sqrt(vx * vx + vy * vy);
                     processGoodEvent();
                     index++;
@@ -370,13 +378,7 @@ public class OpenCVFlow extends AbstractMotionFlow
                 // Imgproc.line(displayFrame, prevPoints[i], nextPoints[i], new Scalar(color[i][0],color[i][1],color[i][2]), 2);  
                 // Imgproc.circle(newFrame,prevPoints[i], 5, new Scalar(255,255,255),-1);
             }  
-            // showResult(newFrame);
-
-            newFrame.convertTo(newFrame, CvType.CV_32F);            
-            float[] return_buff = new float[(int) (newFrame.total() * 
-                                            newFrame.channels())];
-            newFrame.get(0, 0, return_buff);
-            apsFrameExtractor.apsDisplay.setPixmapFromGrayArray(return_buff);               
+           
         }
         
     }
