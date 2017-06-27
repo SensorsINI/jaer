@@ -110,8 +110,9 @@ public class OpenCVFlow extends AbstractMotionFlow
         }
     }
     
-    private ApsFrameExtractor apsFrameExtractor;
-    private JFrame apsFrame = null;
+    private final ImageDisplay OFResultDisplay;
+    
+    private JFrame OFResultFrame = null;
     protected boolean showAPSFrameDisplay = getBoolean("showAPSFrameDisplay", true);
     private int[][] color = new int[100][3];
     private float[] oldBuffer = null, newBuffer = null;
@@ -122,13 +123,13 @@ public class OpenCVFlow extends AbstractMotionFlow
         super(chip);
         System.out.println("Welcome to OpenCV " + Core.VERSION);
 
-        apsFrameExtractor = new ApsFrameExtractor(chip);
+        OFResultDisplay = ImageDisplay.createOpenGLCanvas();
         
-        apsFrame = new JFrame("Optical Flow Result Frame");
-        apsFrame.setPreferredSize(new Dimension(800, 800));
-        apsFrame.getContentPane().add(apsFrameExtractor.apsDisplay, BorderLayout.CENTER);
-        apsFrame.pack();
-        apsFrame.addWindowListener(new WindowAdapter() {
+        OFResultFrame = new JFrame("Optical Flow Result Frame");
+        OFResultFrame.setPreferredSize(new Dimension(800, 800));
+        OFResultFrame.getContentPane().add(OFResultDisplay, BorderLayout.CENTER);
+        OFResultFrame.pack();
+        OFResultFrame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(final WindowEvent e) {
                 setShowAPSFrameDisplay(false);
@@ -157,24 +158,30 @@ public class OpenCVFlow extends AbstractMotionFlow
         }
         setupFilter(in);
         
-        apsFrameExtractor.apsDisplay.checkPixmapAllocation();
-        final ApsDvsEventPacket packet = (ApsDvsEventPacket) in;
-        if (packet == null) {
-            return null;
+        if (showAPSFrameDisplay && !OFResultFrame.isVisible()) {
+            OFResultFrame.setVisible(true);
         }
-        if (packet.getEventClass() != ApsDvsEvent.class) {
-            EventFilter.log.warning("wrong input event class, got " + packet.getEventClass() + " but we need to have " + ApsDvsEvent.class);
-            return null;
-        }
-        final Iterator apsItr = packet.fullIterator();
-        while (apsItr.hasNext()) {
-            final ApsDvsEvent e = (ApsDvsEvent) apsItr.next();
-            if (e.isApsData()) {
-                apsFrameExtractor.putAPSevent(e);
-            }
-        }
+        
+
+        OFResultDisplay.checkPixmapAllocation();       
+        
+//        final ApsDvsEventPacket packet = (ApsDvsEventPacket) in;
+//        if (packet == null) {
+//            return null;
+//        }
+//        if (packet.getEventClass() != ApsDvsEvent.class) {
+//            EventFilter.log.warning("wrong input event class, got " + packet.getEventClass() + " but we need to have " + ApsDvsEvent.class);
+//            return null;
+//        }
+//        final Iterator apsItr = packet.fullIterator();
+//        while (apsItr.hasNext()) {
+//            final ApsDvsEvent e = (ApsDvsEvent) apsItr.next();
+//            if (e.isApsData()) {
+//                apsFrameExtractor.putAPSevent(e);
+//            }
+//        }
         if(isShowAPSFrameDisplay()) {
-            apsFrameExtractor.apsDisplay.repaint();            
+            OFResultDisplay.repaint();            
         }
         return in;     
     }
@@ -182,16 +189,12 @@ public class OpenCVFlow extends AbstractMotionFlow
     @Override
     public synchronized void resetFilter() {
         super.resetFilter();
-        
-        if(apsFrameExtractor != null) {
-            apsFrameExtractor = new ApsFrameExtractor(chip);
-            apsFrameExtractor.resetFilter();            
-        }
 
         if(patchFlow != null) {
             patchFlow.resetFilter();            
         }
-
+        
+        OFResultDisplay.setImageSize(chip.getSizeX(), chip.getSizeY());
     }
 
     @Override
@@ -212,8 +215,8 @@ public class OpenCVFlow extends AbstractMotionFlow
     public synchronized void setFilterEnabled(final boolean yes) {
         super.setFilterEnabled(yes); // To change body of generated methods, choose Tools | Templates.
         if (!isFilterEnabled()) {
-            if (apsFrame != null) {
-                apsFrame.setVisible(false);
+            if (OFResultFrame != null) {
+                OFResultFrame.setVisible(false);
             }
         }
     } 
@@ -226,7 +229,7 @@ public class OpenCVFlow extends AbstractMotionFlow
                 return;
             }
             oldBuffer = newBuffer;
-            float[] buffer = apsFrameExtractor.apsDisplay.getPixmapArray();
+            float[] buffer = OFResultDisplay.getPixmapArray();
             byte[] byteBuffer = new byte[buffer.length];
             for(int i=0; i<buffer.length;i++) {
                 byteBuffer[i] = (byte) (buffer[i] * 255);
@@ -275,7 +278,7 @@ public class OpenCVFlow extends AbstractMotionFlow
             float[] return_buff = new float[(int) (newFrame.total() * 
                                             newFrame.channels())];
             newFrame.get(0, 0, return_buff);
-            apsFrameExtractor.apsDisplay.setPixmapFromGrayArray(return_buff);           
+            // OFResultDisplay.setPixmapFromGrayArray(return_buff);           
         }
         
         if (evt.getPropertyName().equals(PatchMatchFlow.EVENT_NEW_SLICES)) {
@@ -308,15 +311,8 @@ public class OpenCVFlow extends AbstractMotionFlow
             List oldList = Arrays.asList(ArrayUtils.toObject(old1DArray));
             float oldGrayScale = Collections.max((List<Byte>) oldList);     // Set the maximum of tha array as the scale value.
             List newList = Arrays.asList(ArrayUtils.toObject(new1DArray));
-            float newGrayScale = Collections.max((List<Byte>) newList);     // Set the maximum of tha array as the scale value.
-
-//            for (int i = 0; i < chip.getSizeY(); i++) {
-//                for (int j = 0; j < chip.getSizeX(); j++) {
-//                    old1DArray[chip.getSizeX()*i + j] /= oldGrayScale;
-//                    new1DArray[chip.getSizeX()*i + j] /= newGrayScale;         
-//                }
-//            }            
-            
+            float newGrayScale = Collections.max((List<Byte>) newList);     // Set the maximum of tha array as the scale value.        
+           
             newFrame.put(0, 0, new1DArray);
             oldFrame.put(0, 0, old1DArray);
             
@@ -343,11 +339,17 @@ public class OpenCVFlow extends AbstractMotionFlow
             } finally {
                 // showResult(newFrame);
 
-                newFrame.convertTo(newFrame, CvType.CV_32F);            
-                float[] return_buff = new float[(int) (newFrame.total() * 
+                
+                float[] new_slice_buff = new float[(int) (newFrame.total() * 
                                                 newFrame.channels())];
-                newFrame.get(0, 0, return_buff);
-                apsFrameExtractor.apsDisplay.setPixmapFromGrayArray(return_buff);                   
+                
+                for (int i = 0; i < chip.getSizeY(); i++) {
+                    for (int j = 0; j < chip.getSizeX(); j++) {
+                        new_slice_buff[chip.getSizeX()*i + j] = new1DArray[chip.getSizeX()*i + j]/newGrayScale;         
+                    }
+                }                  
+                
+                OFResultDisplay.setPixmapFromGrayArray(new_slice_buff);               
             }            
             
             // draw the tracks
@@ -476,8 +478,8 @@ public class OpenCVFlow extends AbstractMotionFlow
     public void setShowAPSFrameDisplay(final boolean showAPSFrameDisplay) {
         this.showAPSFrameDisplay = showAPSFrameDisplay;
         putBoolean("showAPSFrameDisplay", showAPSFrameDisplay);
-        if (apsFrame != null) {
-            apsFrame.setVisible(showAPSFrameDisplay);
+        if (OFResultFrame != null) {
+            OFResultFrame.setVisible(showAPSFrameDisplay);
         }
         getSupport().firePropertyChange("showAPSFrameDisplay", null, showAPSFrameDisplay);
     }    
