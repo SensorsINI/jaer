@@ -60,11 +60,7 @@
 	<classpathentry kind="lib" path="jars/javacv/opencv-windows-x86.jar"/>
 	<classpathentry kind="lib" path="jars/javacv/opencv.jar" sourcepath="jars/javacv/org.bytedeco.javacpp-opencv-core-src-1.1.zip"/>
 	<classpathentry kind="lib" path="jars/openni2/org.openni.jar"/>
-	<classpathentry kind="lib" path="filterSettings/OpenCV_Nets/lib/bin/opencv-300.jar">
-		<attributes>
-			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="jAER_1.5/filterSettings/OpenCV_Nets/lib/lib"/>
-		</attributes>
-	</classpathentry>
+	<classpathentry kind="lib" path="jars/opencv/opencv-320.jar"/>
 	<classpathentry kind="lib" path="jars/jmatio.jar"/>
 	<classpathentry kind="lib" path="jars/gson-2.8.0.jar"/>
 	<classpathentry kind="lib" path="jars/matlabcontrol-4.1.0.jar"/>
