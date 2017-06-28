@@ -64,5 +64,6 @@
 	<classpathentry kind="lib" path="jars/jmatio.jar"/>
 	<classpathentry kind="lib" path="jars/gson-2.8.0.jar"/>
 	<classpathentry kind="lib" path="jars/matlabcontrol-4.1.0.jar"/>
+	<classpathentry kind="lib" path="jars/commons-math3-3.6.1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
