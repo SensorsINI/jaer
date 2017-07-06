@@ -76,7 +76,9 @@ public class PllTracker extends RectangularClusterTracker {
         public void addEvent(BasicEvent event) {
             PolarityEvent e = (PolarityEvent) event;
             harmonicOscillator.update(e);
-            super.addEvent(event);
+            if (harmonicOscillator.acceptEvent(e)) {
+                super.addEvent(event);
+            }
         }
 
         @Override
@@ -92,7 +94,7 @@ public class PllTracker extends RectangularClusterTracker {
             final float GEARRATIO = 20; // chop up times between spikes by tau/GEARRATIO timesteps
             final int POWER_AVERAGING_CYCLES = 10; // number of cycles to smooth power measurement
             boolean wasReset = true;
-            private float f0 = prefs().getFloat("HarmonicFilter.frequency", 1000); // natural frequency in Hz
+            private float naturalFrequencyHz = prefs().getFloat("HarmonicFilter.frequency", 1000); // natural frequency in Hz
             private float tau, omega, tauoverq, reciptausq;
             private float dtlim;
             private float quality = prefs().getFloat("HarmonicFilter.quality", 3); // quality factor
@@ -109,20 +111,21 @@ public class PllTracker extends RectangularClusterTracker {
             //        private float measuredFreq=0;
             private float threshold = 0.1f; // TODO move to outer and make the transmission probabilistic
             final float TICK = 1e-6f;
+            int totalEvents = 0, acceptedEvents = 0, rejectedEvents = 0;
 
             public HarmonicOscillator() {
                 setQuality(quality);
-                setNaturalFrequency(f0); // needed to init vars
+                setNaturalFrequency(naturalFrequencyHz); // needed to init vars
             }
 
             synchronized void setNaturalFrequency(float f) {
-                f0 = f; // hz
-                omega = (float) (2 * Math.PI * f0);  // radians/sec
+                naturalFrequencyHz = f; // hz
+                omega = (float) (2 * Math.PI * naturalFrequencyHz);  // radians/sec
                 tau = 1f / omega; // seconds
                 tauoverq = tau / quality;
                 reciptausq = 1f / (tau * tau);
                 dtlim = tau / GEARRATIO;  // timestep must be at most this long or unstable numerically
-                prefs().putFloat("HarmonicFilter.frequency", f0);
+                prefs().putFloat("HarmonicFilter.frequency", naturalFrequencyHz);
             }
 
             synchronized void setQuality(float q) {
@@ -131,7 +134,25 @@ public class PllTracker extends RectangularClusterTracker {
                 prefs().putFloat("HarmonicFilter.quality", quality);
             }
 
+            /**
+             * reject event for moving cluster if inconsistent with current
+             * phase of oscillator
+             */
+            private boolean acceptEvent(PolarityEvent e) {
+                if (e.polarity == PolarityEvent.Polarity.On && y < 0) {
+                    rejectedEvents++;
+                    return false;
+                }
+                if (e.polarity == PolarityEvent.Polarity.Off && y > 0) {
+                    rejectedEvents++;
+                    return false;
+                }
+                acceptedEvents++;
+                return true;
+            }
+
             synchronized public void update(PolarityEvent e) {
+                totalEvents++;
                 int ts = e.timestamp;
                 int pol = (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
                 if (wasReset) {
@@ -167,7 +188,7 @@ public class PllTracker extends RectangularClusterTracker {
                 float sq = x * x; // instantaneous power
                 // compute avg power by lowpassing instantaneous power over POWER_AVERAGING_CYCLES time
                 // TODO is this a valid measure of instantaneous power?  shouldn't we be using amplitude and current position to filter events?
-                float alpha = (dt * f0) / POWER_AVERAGING_CYCLES; // mixing factor, take this much of new, 1-alpha of old
+                float alpha = (dt * naturalFrequencyHz) / POWER_AVERAGING_CYCLES; // mixing factor, take this much of new, 1-alpha of old
                 power = (power * (1 - alpha)) + (sq * alpha);
                 if (Float.isNaN(power)) {
                     log.warning("power is NaN, resetting oscillator");
@@ -206,6 +227,9 @@ public class PllTracker extends RectangularClusterTracker {
                 maxy = 0;
                 miny = 0;
                 wasReset = true;
+                totalEvents = 0;
+                acceptedEvents = 0;
+                rejectedEvents = 0;
             }
 
             public void draw(GL2 gl) {
@@ -236,7 +260,7 @@ public class PllTracker extends RectangularClusterTracker {
              * range 0-2*Pi, in radians.
              */
             public float getPhase(int t) {
-                float ph = PI * 2 * (t - lastPositiveZeroCrossingTime) * f0 * 1e-6f; // TODO needs TICK
+                float ph = PI * 2 * (t - lastPositiveZeroCrossingTime) * naturalFrequencyHz * 1e-6f; // TODO needs TICK
                 return ph;
             }
 
@@ -255,7 +279,7 @@ public class PllTracker extends RectangularClusterTracker {
             }
 
             public float getNaturalFrequency() {
-                return f0;
+                return naturalFrequencyHz;
             }
 
             public float getQuality() {
@@ -280,7 +304,7 @@ public class PllTracker extends RectangularClusterTracker {
 
             @Override
             public String toString() {
-                String s = String.format("bestFreq=%.1f Q=%.2g pos=%.1g vel=%.1g meanPower=%.1g maxPower=%.1g", f0, quality, x, y, power, maxPower);
+                String s = String.format("bestFreq=%.1f Q=%.2g pos=%.1g vel=%.1g meanPower=%.1g maxPower=%.1g", naturalFrequencyHz, quality, x, y, power, maxPower);
                 return s;
                 //            return  "bestFreq="+f0+" t=" + t + " pos=" +x+" vel="+y+" ampl="+amplitude + " meanPower=" + getMeanPower();
             }
@@ -298,6 +322,7 @@ public class PllTracker extends RectangularClusterTracker {
             public void setMaxPower(float maxPower) {
                 this.maxPower = maxPower;
             }
+
         }
     }
 
