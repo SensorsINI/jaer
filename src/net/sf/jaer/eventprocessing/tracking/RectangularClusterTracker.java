@@ -1713,18 +1713,7 @@ public class RectangularClusterTracker extends EventFilter2D
 			// if (showClusterRadius) cGLUT.glutBitmapString(font, String.format("rad=%.1f ", getRadius()));
 			if (showClusterEps) {
 				cGLUT.glutBitmapString(font, String.format("eps=%.0fk ", (getAvgEventRate() / (AEConstants.TICK_DEFAULT_US)) * 1e3f)); // annotate
-																																		// the
-																																		// cluster
-																																		// with
-																																		// the
-																																		// event
-																																		// rate
-																																		// computed
-																																		// as
-																																		// 1/(avg
-																																		// ISI)
-																																		// in
-																																		// keps
+                                // the cluster with the event rate computed as 1/(avg ISI) in keps
 			}
 			if (showClusterNumber) {
 				cGLUT.glutBitmapString(font, String.format("#=%d ", hashCode())); // annotate the cluster with hash ID
