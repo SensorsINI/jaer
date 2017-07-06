@@ -26,8 +26,64 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
  */
 public class PllTracker extends RectangularClusterTracker {
 
+    private float naturalFrequencyHz = prefs().getFloat("HarmonicFilter.frequency", 1000); // natural frequency in Hz
+    private float quality = prefs().getFloat("HarmonicFilter.quality", 3); // quality factor
+
+    /**
+     * Events of the HarmonicOscillator
+     */
+    public enum WaveformEvent {
+        None(), PositiveZeroCrossing(), NegativeZeroCrossing(), PositivePeak(), NegativePeak();
+        public int timestamp = Integer.MIN_VALUE;
+
+        WaveformEvent() {
+            this.timestamp = Integer.MIN_VALUE;
+        }
+
+        WaveformEvent(int timestamp) {
+            this.timestamp = timestamp;
+        }
+
+        public void setTimestamp(int timestamp) {
+            this.timestamp = timestamp;
+        }
+
+        public int getTimestamp() {
+            return timestamp;
+        }
+    };
+
     public PllTracker(AEChip chip) {
         super(chip);
+        String s = "0. PllTracker";
+        setPropertyTooltip(s, "naturalFrequencyHz", "resonant frequency of clusters");
+        setPropertyTooltip(s, "quality", "qualityf factor of resonant oscillators of clusters");
+    }
+
+    public synchronized void setNaturalFrequencyHz(float f) {
+        naturalFrequencyHz = f; // hz
+        prefs().putFloat("HarmonicFilter.frequency", naturalFrequencyHz);
+        for (RectangularClusterTracker.Cluster c : getClusters()) {
+            Cluster c2 = (Cluster) c;
+            c2.setNaturalFrequency(f);
+        }
+    }
+
+    public synchronized void setQuality(float q) {
+        quality = q;
+        prefs().putFloat("HarmonicFilter.quality", quality);
+        for (RectangularClusterTracker.Cluster c : getClusters()) {
+            Cluster c2 = (Cluster) c;
+            c2.setQuality(q);
+        }
+    }
+
+    public float getNaturalFrequencyHz() {
+        return naturalFrequencyHz;
+    }
+
+    public float getQuality() {
+        return quality;
     }
 
     // Override Factory Methods
@@ -94,10 +150,10 @@ public class PllTracker extends RectangularClusterTracker {
             final float GEARRATIO = 20; // chop up times between spikes by tau/GEARRATIO timesteps
             final int POWER_AVERAGING_CYCLES = 10; // number of cycles to smooth power measurement
             boolean wasReset = true;
-            private float naturalFrequencyHz = prefs().getFloat("HarmonicFilter.frequency", 1000); // natural frequency in Hz
+            private float naturalFrequencyHz = PllTracker.this.naturalFrequencyHz;
             private float tau, omega, tauoverq, reciptausq;
             private float dtlim;
-            private float quality = prefs().getFloat("HarmonicFilter.quality", 3); // quality factor
+            private float quality = PllTracker.this.quality; // quality factor
             private float amplitude;
             float y = 0, x = 0;  // x =position, y=velocity
             private int t = 0;  // present time in timestamp ticks, used for dt in update, then stores this last timestamp
@@ -106,12 +162,12 @@ public class PllTracker extends RectangularClusterTracker {
             float power = 0;
             float maxx, minx, maxy, miny;
             private float maxPower = 0;
-            private int lastPositiveZeroCrossingTime;
+            public WaveformEvent waveformEvent = WaveformEvent.None;
             final float PI = (float) Math.PI;
-            //        private float measuredFreq=0;
             private float threshold = 0.1f; // TODO move to outer and make the transmission probabilistic
             final float TICK = 1e-6f;
             int totalEvents = 0, acceptedEvents = 0, rejectedEvents = 0;
+            private int lastPositiveZeroCrossingTime;
 
             public HarmonicOscillator() {
                 setQuality(quality);
@@ -125,13 +181,11 @@ public class PllTracker extends RectangularClusterTracker {
                 tauoverq = tau / quality;
                 reciptausq = 1f / (tau * tau);
                 dtlim = tau / GEARRATIO;  // timestep must be at most this long or unstable numerically
-                prefs().putFloat("HarmonicFilter.frequency", naturalFrequencyHz);
             }
 
             synchronized void setQuality(float q) {
                 quality = q;
                 tauoverq = tau / quality;
-                prefs().putFloat("HarmonicFilter.quality", quality);
             }
 
             /**
@@ -139,11 +193,11 @@ public class PllTracker extends RectangularClusterTracker {
              * phase of oscillator
              */
             private boolean acceptEvent(PolarityEvent e) {
-                if (e.polarity == PolarityEvent.Polarity.On && y < 0) {
+                if (e.polarity == PolarityEvent.Polarity.On && (waveformEvent==WaveformEvent.NegativeZeroCrossing || waveformEvent==WaveformEvent.NegativePeak)) {
                     rejectedEvents++;
                     return false;
                 }
-                if (e.polarity == PolarityEvent.Polarity.Off && y > 0) {
+                if (e.polarity == PolarityEvent.Polarity.Off && (waveformEvent==WaveformEvent.PositiveZeroCrossing || waveformEvent==WaveformEvent.PositivePeak)) {
                     rejectedEvents++;
                     return false;
                 }
@@ -214,7 +268,18 @@ public class PllTracker extends RectangularClusterTracker {
                 t = ts;
 
                 if ((x > 0) && (lastx <= 0)) {
-                    lastPositiveZeroCrossingTime = ts;
+                    waveformEvent = WaveformEvent.PositiveZeroCrossing;
+                    waveformEvent.setTimestamp(ts);
+                    lastPositiveZeroCrossingTime=ts;
+                } else if (x < 0 && lastx >= 0) {
+                    waveformEvent = WaveformEvent.NegativeZeroCrossing;
+                    waveformEvent.setTimestamp(ts);
+                } else if (lasty > 0 && y < 0) {
+                    waveformEvent = WaveformEvent.PositivePeak;
+                    waveformEvent.setTimestamp(ts);
+                } else if (lasty < 0 && y > 0) {
+                    waveformEvent = WaveformEvent.NegativePeak;
+                    waveformEvent.setTimestamp(ts);
                 }
             }
 
@@ -234,15 +299,15 @@ public class PllTracker extends RectangularClusterTracker {
 
             public void draw(GL2 gl) {
                 GLUT cGLUT = chip.getCanvas().getGlut();
-                final int font = GLUT.BITMAP_HELVETICA_18;
-                cGLUT.glutBitmapString(font, String.format("amp=%.3g ", amplitude)); // annotate
+                final int font = GLUT.BITMAP_HELVETICA_12;
+                gl.glColor3f(1, 1, 1);
+                cGLUT.glutBitmapString(font, toString()); // annotate
                 gl.glRasterPos3f(location.x, location.y, 0);
                 float amplitude = 1000 * getAmplitude();
                 float phase = getPhase(0);
                 gl.glPushMatrix();
                 gl.glTranslatef(location.x, location.y, 0);
                 gl.glLineWidth(3);
-                gl.glColor3f(1, 1, 1);
                 gl.glBegin(GL.GL_LINES);
                 gl.glVertex2f(0, 0);
                 gl.glVertex2d(amplitude * Math.cos(phase), amplitude * Math.sin(phase));
@@ -272,7 +337,7 @@ public class PllTracker extends RectangularClusterTracker {
             }
 
             /**
-             * @return the current 'velocity' value of the osciallator
+             * @return the current 'velocity' value of the oscillator
              */
             public float getVelocity() {
                 return y;
@@ -304,7 +369,10 @@ public class PllTracker extends RectangularClusterTracker {
 
             @Override
             public String toString() {
-                String s = String.format("bestFreq=%.1f Q=%.2g pos=%.1g vel=%.1g meanPower=%.1g maxPower=%.1g", naturalFrequencyHz, quality, x, y, power, maxPower);
+//                String s = String.format("natFreq=%.1f Q=%.2g pos=%.1g vel=%.1g meanPow=%.1g maxPow=%.1g acceptRatio=%.1f", 
+//                        naturalFrequencyHz, quality, x, y, power, maxPower, (float)acceptedEvents/totalEvents);
+                String s = String.format("avgAmpl=%.1g acceptRatio=%.1f",
+                        amplitude, (float) acceptedEvents / totalEvents);
                 return s;
                 //            return  "bestFreq="+f0+" t=" + t + " pos=" +x+" vel="+y+" ampl="+amplitude + " meanPower=" + getMeanPower();
             }
@@ -324,6 +392,30 @@ public class PllTracker extends RectangularClusterTracker {
             }
 
         }
+
+        /**
+         * @return the harmonicOscillator
+         */
+        public HarmonicOscillator getHarmonicOscillator() {
+            return harmonicOscillator;
+        }
+
+        synchronized void setNaturalFrequency(float f) {
+            harmonicOscillator.setNaturalFrequency(f);
+        }
+
+        synchronized void setQuality(float q) {
+            harmonicOscillator.setQuality(q);
+        }
+
+        public float getNaturalFrequency() {
+            return harmonicOscillator.getNaturalFrequency();
+        }
+
+        public float getQuality() {
+            return harmonicOscillator.getQuality();
+        }
+
     }
 
 }
