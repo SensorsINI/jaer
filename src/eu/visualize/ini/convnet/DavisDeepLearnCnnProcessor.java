@@ -28,6 +28,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.TimeLimiter;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -69,6 +70,8 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     protected int lastProcessedEventTimestamp = 0;
     private String performanceString = null; // holds string representation of processing time
+    private TimeLimiter timeLimiter = new TimeLimiter(); // private instance used to accumulate events to slices even if packet has timed out
+    private int processingTimeLimitMs = getInt("processingTimeLimitMs", 100); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
 
     public DavisDeepLearnCnnProcessor(AEChip chip) {
         super(chip);
@@ -97,6 +100,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setPropertyTooltip(anal, "zeroPadding", "CNN uses zero padding; must be set properly according to CNN to run CNN");
         setPropertyTooltip(anal, "normalizeDVSForZsNullhop", "uses DvsSubsamplerToFrame normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1\n");
         setPropertyTooltip(anal, "rectifyPolarities", "Rectifies DVS ON and OFF event polarities to ON polarities; discards the sign of the brightness changes, which could improve lighting tolerance");
+        setPropertyTooltip(anal, "processingTimeLimitMs", "<html>time limit for processing packet in ms to process OF events (events still accumulate). <br> Set to 0 to disable. <p>Alternative to the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events");
         initFilter();
     }
 
@@ -194,10 +198,20 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             throw new RuntimeException("Null dvsSubsampler; this should not occur");
         }
 
+        if (processingTimeLimitMs > 0) {
+            timeLimiter.setTimeLimitMs(processingTimeLimitMs);
+            timeLimiter.restart();
+        } else {
+            timeLimiter.setEnabled(false);
+        }
         if ((apsDvsNet != null)) {
             final int sizeX = chip.getSizeX();
             final int sizeY = chip.getSizeY();
             for (BasicEvent e : in) {
+
+                if (timeLimiter.isTimedOut()) {
+                    break; // discard rest of this packet
+                }
                 lastProcessedEventTimestamp = e.getTimestamp();
                 PolarityEvent p = (PolarityEvent) e;
 
@@ -676,6 +690,21 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         if (showActivations && apsDvsNet != null) {
             apsDvsNet.cleanup();
         }
+    }
+
+    /**
+     * @return the processingTimeLimitMs
+     */
+    public int getProcessingTimeLimitMs() {
+        return processingTimeLimitMs;
+    }
+
+    /**
+     * @param processingTimeLimitMs the processingTimeLimitMs to set
+     */
+    public void setProcessingTimeLimitMs(int processingTimeLimitMs) {
+        this.processingTimeLimitMs = processingTimeLimitMs;
+        putInt("processingTimeLimitMs", processingTimeLimitMs);
     }
 
 }
