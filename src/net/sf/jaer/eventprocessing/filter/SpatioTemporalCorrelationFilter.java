@@ -44,6 +44,10 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
 
     private int totalEventCount = 0;
     private int filteredOutEventCount = 0;
+    private int activityBinDimBits = getInt("activityBinDimBits", 4);
+    private int[][] activityHistInput, activityHistFiltered;
+    private int binDim, nBinsX, nBinsY, nBinsTotal;
+    float entropyInput = 0, entropyFiltered = 0;
 
     /**
      * the amount to subsample x and y event location by in bit shifts when
@@ -83,6 +87,7 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         if (lastTimesMap == null) {
             allocateMaps(chip);
         }
+        resetActivityHistograms();
 
         // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
@@ -101,9 +106,17 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
             if ((x < 0) || (x >= sx) || (y < 0) || (y >= sy)) {
                 continue;
             }
-            if (letFirstEventThrough && lastTimesMap[x][y] == DEFAULT_TIMESTAMP) {
+            int ax = x >> activityBinDimBits, ay = y >> activityBinDimBits;
+            activityHistInput[ax][ay]++;
+            if (lastTimesMap[x][y] == DEFAULT_TIMESTAMP) {
                 lastTimesMap[x][y] = ts;
-                continue;
+                if (letFirstEventThrough) {
+                    activityHistFiltered[ax][ay]++;
+                    continue;
+                } else {
+                    e.setFilteredOut(true);
+                    continue;
+                }
             }
             int ncorrelated = 0;
             for (int xx = x - 1; xx <= x + 1; xx++) {
@@ -113,7 +126,7 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
                     }
                     final int lastT = lastTimesMap[xx][yy];
                     final int deltaT = (ts - lastT);
-                    if (deltaT < dt) {
+                    if (deltaT < dt && lastT!=DEFAULT_TIMESTAMP) {
                         ncorrelated++;
                     }
                 }
@@ -121,11 +134,15 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
             if (ncorrelated < numMustBeCorrelated) {
                 e.setFilteredOut(true);
                 filteredOutEventCount++;
+            } else {
+                activityHistFiltered[ax][ay]++;
             }
 
             // Bounds checking here to avoid throwing expensive exceptions.
             lastTimesMap[x][y] = ts;
         }
+
+        adaptFiltering();
 
         return in;
     }
@@ -156,6 +173,13 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
                 Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
             }
         }
+        binDim = 1 << activityBinDimBits;
+        nBinsX = chip.getSizeX() / binDim;
+        nBinsY = chip.getSizeY() / binDim;
+        nBinsTotal = nBinsX * nBinsY;
+        activityHistInput = new int[nBinsX + 1][nBinsY + 1];
+        activityHistFiltered = new int[nBinsX + 1][nBinsY + 1];
+
     }
 
     public Object getFilterState() {
@@ -254,10 +278,10 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         final GLUT glut = new GLUT();
         gl.glColor3f(1, 1, 1); // must set color before raster position (raster position is like glVertex)
         gl.glRasterPos3f(0, 0, 0);
-        final float filteredOutPercent=100*(float)filteredOutEventCount/totalEventCount;
+        final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                String.format("filteredOutPercent=%%%.2f",
-                        filteredOutPercent));
+                String.format("filteredOutPercent=%%%.1f, entropyInput=%.1f, entropyFiltered=%.1f",
+                        filteredOutPercent, entropyInput, entropyFiltered));
         gl.glPopMatrix();
     }
 
@@ -279,6 +303,74 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         }
         this.numMustBeCorrelated = numMustBeCorrelated;
         putInt("numMustBeCorrelated", numMustBeCorrelated);
+    }
+
+    private void adaptFiltering() {
+        // compute entropies of activities in input and filtered activity histograms
+        int sumInput = 0;
+        for (int[] i : activityHistInput) {
+            for (int ii : i) {
+                sumInput += ii;
+            }
+        }
+        int sumFiltered = 0;
+        for (int[] i : activityHistFiltered) {
+            for (int ii : i) {
+                sumFiltered += ii;
+            }
+        }
+        entropyInput = 0;
+        if (sumInput > 0) {
+            for (int[] i : activityHistInput) {
+                for (int ii : i) {
+                    final float p = (float) ii / sumInput;
+                    if (p > 0) {
+                        entropyInput += p * (float) Math.log(p);
+                    }
+                }
+            }
+        }
+        entropyFiltered = 0;
+        if (sumFiltered > 0) {
+            for (int[] i : activityHistFiltered) {
+                for (int ii : i) {
+                    final float p = (float) ii / sumFiltered;
+                    if (p > 0) {
+                        entropyFiltered += p * (float) Math.log(p);
+                    }
+                }
+            }
+        }
+        entropyFiltered = -entropyFiltered;
+        entropyInput = -entropyInput;
+
+    }
+
+    private void resetActivityHistograms() {
+        for (int[] i : activityHistInput) {
+            Arrays.fill(i, 0);
+        }
+        for (int[] i : activityHistFiltered) {
+            Arrays.fill(i, 0);
+        }
+    }
+
+    /**
+     * @return the activityBinDimBits
+     */
+    public int getActivityBinDimBits() {
+        return activityBinDimBits;
+    }
+
+    /**
+     * @param activityBinDimBits the activityBinDimBits to set
+     */
+    synchronized public void setActivityBinDimBits(int activityBinDimBits) {
+        int old = this.activityBinDimBits;
+        this.activityBinDimBits = activityBinDimBits;
+        if (old != activityBinDimBits) {
+            allocateMaps(chip);
+        }
     }
 
 }
