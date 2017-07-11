@@ -50,8 +50,9 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
     private float entropyInput = 0, entropyFiltered = 0;
     private float entropyReduction;
     private boolean adaptiveFilteringEnabled = getBoolean("adaptiveFilteringEnabled", false);
-    private float entropyDiffHighLimit = 1f;
-    private float entropyReductionLowLimit = .5f;
+    private float entropyReductionHighLimit = getFloat("entropyReductionHighLimit", .4f);
+    private float entropyReductionLowLimit = getFloat("entropyReductionLowLimit", .1f);
+    private float dtChangeFactor = getFloat("dtChangeFactor", 0.9f);
 
     /**
      * the amount to subsample x and y event location by in bit shifts when
@@ -65,18 +66,21 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
     private int ts = 0; // used to reset filter
     private int sx;
     private int sy;
-    private float dtChangeFactor = 0.9f;
 
     public SpatioTemporalCorrelationFilter(AEChip chip) {
         super(chip);
         chip.addObserver(this);
         initFilter();
-        setPropertyTooltip("dt", "Events with less than this delta time in us to neighbors pass through");
-        setPropertyTooltip("subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
-        setPropertyTooltip("letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
-        setPropertyTooltip("numMustBeCorrelated", "At least this number of 9 (3x3) neighbors (including our own event location) must have had event within past dt");
-        setPropertyTooltip("activityBinDimBits", "2^this is the size of rectangular blocks that histogram event activity for measuring entropy (structure) to evaluate effectiveness of filtering");
-        setPropertyTooltip("adaptiveFilteringEnabled", "enables adaptive control of dt to achieve a target entropyReduction between two limits");
+        String filt="1. basic params", adap="2. AdaptiveFiltering";
+        setPropertyTooltip(filt,"dt", "Events with less than this delta time in us to neighbors pass through");
+        setPropertyTooltip(filt,"subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
+        setPropertyTooltip(filt,"letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
+        setPropertyTooltip(filt,"numMustBeCorrelated", "At least this number of 9 (3x3) neighbors (including our own event location) must have had event within past dt");
+        setPropertyTooltip(adap,"activityBinDimBits", "2^this is the size of rectangular blocks that histogram event activity for measuring entropy (structure) to evaluate effectiveness of filtering");
+        setPropertyTooltip(adap,"adaptiveFilteringEnabled", "enables adaptive control of dt to achieve a target entropyReduction between two limits");
+        setPropertyTooltip(adap,"entropyReductionLowLimit", "if entropy reduction from filtering is below this limit, decrease dt");
+        setPropertyTooltip(adap,"entropyReductionHighLimit", "if entropy reduction from filtering is above this limit, increase dt");
+        setPropertyTooltip(adap,"dtChangeFactor", "factor by which dt is multiplied/divided if entropyReduction is too low/high");
     }
 
     /**
@@ -352,8 +356,7 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         entropyInput = -entropyInput;
         entropyReduction = entropyInput - entropyFiltered;
         if (adaptiveFilteringEnabled) {
-            dtChangeFactor = .95f;
-            if (entropyReduction > entropyDiffHighLimit) {
+            if (entropyReduction > entropyReductionHighLimit) {
                 setDt((int) (getDt() / dtChangeFactor)); // increase dt to force less correlation
 
             } else if (entropyReduction < entropyReductionLowLimit) {
@@ -407,17 +410,21 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
     }
 
     /**
-     * @return the entropyDiffHighLimit
+     * @return the entropyReductionHighLimit
      */
-    public float getEntropyDiffHighLimit() {
-        return entropyDiffHighLimit;
+    public float getEntropyReductionHighLimit() {
+        return entropyReductionHighLimit;
     }
 
     /**
-     * @param entropyDiffHighLimit the entropyDiffHighLimit to set
+     * @param entropyReductionHighLimit the entropyReductionHighLimit to set
      */
-    public void setEntropyDiffHighLimit(float entropyDiffHighLimit) {
-        this.entropyDiffHighLimit = entropyDiffHighLimit;
+    public void setEntropyReductionHighLimit(float entropyReductionHighLimit) {
+        if (entropyReductionHighLimit < entropyReductionLowLimit) {
+            entropyReductionHighLimit = entropyReductionLowLimit;
+        }
+        this.entropyReductionHighLimit = entropyReductionHighLimit;
+        putFloat("entropyReductionHighLimit", entropyReductionHighLimit);
     }
 
     /**
@@ -431,7 +438,24 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
      * @param entropyReductionLowLimit the entropyReductionLowLimit to set
      */
     public void setEntropyReductionLowLimit(float entropyReductionLowLimit) {
+        if(entropyReductionLowLimit>entropyReductionHighLimit)entropyReductionLowLimit=entropyReductionHighLimit;
         this.entropyReductionLowLimit = entropyReductionLowLimit;
+        putFloat("entropyReductionLowLimit",entropyReductionLowLimit);
+    }
+
+    /**
+     * @return the dtChangeFactor
+     */
+    public float getDtChangeFactor() {
+        return dtChangeFactor;
+    }
+
+    /**
+     * @param dtChangeFactor the dtChangeFactor to set
+     */
+    public void setDtChangeFactor(float dtChangeFactor) {
+        this.dtChangeFactor = dtChangeFactor;
+        putFloat("dtChangeFactor",dtChangeFactor);
     }
 
 }
