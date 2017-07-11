@@ -1,0 +1,47 @@
+body, td, th, p, ul, ol, div {
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+}
+
+a {
+    color:black;
+    background:transparent;
+    text-decoration:none;
+}
+
+a:link, a:visited { 
+    color: black 
+}
+
+#root {
+    color:black;
+    background:transparent;
+}
+
+.subtext {
+    color:black;
+    background:transparent;
+}
+
+a:hover {
+    color:#E10915;
+    background:transparent;
+}
+
+a.tracked {
+    color:#E10915;
+    font-weight:bold;
+    background:transparent;
+}
+
+a.subexpanded {
+    color:black;
+    background:transparent;
+}
+
+a.subclosed {
+    color:black;
+    background:transparent;
+}
+
+a:focus, a:hover, a:active { outline:none }

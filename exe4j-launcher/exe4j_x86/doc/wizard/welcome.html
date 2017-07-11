@@ -1,0 +1,105 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>exe4j Wizard - Step 1: Welcome</title>
+<link href="../../doc/help_common.css" type="text/css" rel="stylesheet">
+<link href="../../doc/help.css" type="text/css" rel="stylesheet">
+<script type="text/javascript">
+      function detectFrameset() {
+        framesetpage="../../doc/indexRedirect.html";
+        thispage=window.location.href;
+        if (thispage.indexOf('://')<0) {thispage="://"+thispage;};
+        prefix=thispage.substring(0,thispage.lastIndexOf('://'));
+        suffix=thispage.substring(thispage.lastIndexOf('://')+3,thispage.length);
+        if (parent.location.href==window.location.href) {
+          parent.location.href=framesetpage+"?"+prefix+"&&&"+suffix
+        } else {
+          for(i = 0; i < parent.frames.length; i++) {
+            if(parent.frames[i].name == "code" && parent.frames[i].MTMLoaded) {
+              parent.frames[i].MTMTrack = true;
+              setTimeout("parent.frames[" + i + "].MTMDisplayMenu()", 50);
+              break;
+            }
+          }
+        }
+      }
+    
+    </script>
+</head>
+<body onload="detectFrameset()">
+<table width="100%" border="0">
+<tr>
+<td>
+<h2>exe4j Wizard - Step 1: Welcome</h2>
+</td><td valign="top" align="right"><a href="../../doc/wizard/wizard.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_previous_16.png"></a>&nbsp;
+            <a href="../../doc/wizard/$folder$.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_up_16.png"></a>&nbsp;
+            <a href="../../doc/wizard/projectType.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_next_16.png"></a>&nbsp;
+            </td>
+</tr>
+</table>
+<hr>
+<br>
+<div>
+    
+      In this step of the <a href="../../doc/wizard/wizard.html">exe4j wizard</a>, you can open 
+      previously saved configurations and enter your exe4j license information.
+    <br>
+    
+<table style="margin-top: 1ex" cellpadding="3" cellspacing="0" border="0">
+<tr>
+<td valign="top"><img style="vertical-align: middle" border="0" src="../../doc/images/help_section_bullet_16.png">&nbsp;</td><td>
+      
+        To <b>load an existing configuration</b>, click on the 
+        <b>[Open]</b> button in the <tt>Open configuration</tt> section.
+        Locate the configuration file (extension <i><tt>*.exe4j</tt></i>) in the file
+        chooser and press <b>[OK]</b>. The path of the loaded configuration
+        will be displayed next to the <b>[Open]</b> button.
+      
+      <p>
+        exe4j remembers the last 10 previously loaded or saved configurations. To quickly
+        reopen one of these configurations, click on the <b>[Reopen]</b> button and
+        choose a configuration path from the popup menu that appears below the button. 
+        You can clear the contents of the popup menu by choosing the "Clear list" entry 
+        in the popup menu. If no configuration has been opened or saved with this copy of exe4j,
+        or if the list has been cleared, the <b>[Reopen]</b> button is disabled. 
+      </p>
+      
+<p>
+        To try out exe4j, the <i><tt>$EXE4J_HOME\demo</tt></i> directory contains three sample applications:
+        <ul>
+<li>a GUI application in the <i><tt>gui</tt></i> directory</li>
+<li>a command line application in the <i><tt>cli</tt></i> directory</li>
+<li>a service application in the <i><tt>service</tt></i> directory</li>
+</ul>
+      
+</p>
+    
+</td>
+</tr>
+</table>
+    
+<table style="margin-top: 1ex" cellpadding="3" cellspacing="0" border="0">
+<tr>
+<td valign="top"><img style="vertical-align: middle" border="0" src="../../doc/images/help_section_bullet_16.png">&nbsp;</td><td>
+      License information is displayed at the bottom and can be
+      <a href="../../doc/licensing.html">entered or changed</a> by clicking the 
+      <b>[Enter license]</b> or <b>[Change license]</b> buttons.
+    </td>
+</tr>
+</table>
+  
+</div>
+<br>
+<hr>
+<table width="100%" border="0">
+<tr>
+<td></td><td valign="top" align="right"><a href="../../doc/wizard/wizard.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_previous_16.png"></a>&nbsp;
+            <a href="../../doc/wizard/$folder$.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_up_16.png"></a>&nbsp;
+            <a href="../../doc/wizard/projectType.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_next_16.png"></a>&nbsp;
+            </td>
+</tr>
+</table>
+</body>
+</html>

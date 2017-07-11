@@ -1,0 +1,75 @@
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+      <title>Search sequence entry dialog</title>
+      <link rel="stylesheet" type="text/css" href="../../standalone/help_common.css">
+      <link rel="stylesheet" type="text/css" href="../../standalone/help.css"><script type="text/javascript">
+helpId = 'exe4j.wizard.dialogs.searchSequence';
+indexUrl= '../../index.html';
+</script><script type="text/javascript" src="../../standalone/jquery.min.js"></script><script type="text/javascript" src="../../standalone/tracking.js"></script></head>
+   <body>
+      <div class="header-container">
+         <div class="header-title">
+            <h2>Search Sequence Entry Dialog</h2>
+         </div>
+         <div class="header-nav">
+            <div class="nav-wrapper"><a class="nav-left" href="../../wizard/dialogs/classpath.html" title="key: j"></a></div>
+            <div class="nav-wrapper"><a class="nav-up" href="../../wizard/dialogs/$folder$.html" title="key: u"></a></div>
+            <div class="nav-wrapper"><a class="nav-right" href="../../wizard/dialogs/visual.html" title="key: k"></a></div>
+         </div>
+      </div>
+      <hr>
+      <div class="spacer"></div>
+      <div>
+         
+         <p>
+            The search sequence entry dialog is shown when clicking on the
+            <img src="../../images/add_16.png" border="0" align="middle" style="vertical-align: middle">&nbsp;add button in the
+            <a href="../../wizard/searchSequence.html">"configure search sequence" step</a> of the 
+            exe4j wizard. Upon closing this dialog with the <b>[OK]</b> button, 
+            a new search sequence entry will be appended to the bottom of the search sequence
+            list of that step.
+            
+         </p>
+         
+         <p>
+            To define a search sequence entry, you select the entry type and fill out 
+            the <tt>Detail</tt> section of the dialog which is dependent on the 
+            selected entry type. The following entry types are available:
+            
+         </p>
+         
+         <ul>
+            <li>
+               <img src="../../images/sse_registry_16.png" border="0" align="middle" style="vertical-align: middle">&nbsp;<b>Search registry</b><br>
+               Search the Windows registry for installed JREs and JDKs by Sun Microsystems.
+               
+            </li>
+            <li>
+               <img src="../../images/sse_directory_16.png" border="0" align="middle" style="vertical-align: middle">&nbsp;<b>Directory</b><br>
+               Look in the specified directory. This is especially useful if you distribute your
+               own JRE along with your application. In that case, be sure to supply a relative path.
+               Note that for path selections by means of the file chooser (<b>[...]</b> button),
+               exe4j will try to convert the path to be relative to the distribution source 
+               directory.
+               
+            </li>
+            <li>
+               <img src="../../images/sse_envvar_16.png" border="0" align="middle" style="vertical-align: middle">&nbsp;<b>Environment variable</b><br>
+               Look for a JRE of JDK in a location that is defined by an environment variable like
+               <tt>JAVA_HOME</tt> or <tt>MYAPP_JAVA_HOME</tt>.
+               
+            </li>
+         </ul>
+         
+         
+      </div><br><hr>
+      <div class="header-container">
+         <div class="header-nav">
+            <div class="nav-wrapper"><a class="nav-left" href="../../wizard/dialogs/classpath.html" title="key: j"></a></div>
+            <div class="nav-wrapper"><a class="nav-up" href="../../wizard/dialogs/$folder$.html" title="key: u"></a></div>
+            <div class="nav-wrapper"><a class="nav-right" href="../../wizard/dialogs/visual.html" title="key: k"></a></div>
+         </div>
+      </div>
+   </body>
+</html>

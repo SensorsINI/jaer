@@ -1,0 +1,125 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>@APPNAME@ help</title>
+<script src="mtmcode.js" type="text/javascript"></script><script type="text/javascript">
+
+var MTMTableWidth = "100%";
+
+var MTMenuFrame = "menu";
+
+var MTMSubsGetPlus = "Always";
+
+var MTMEmulateWE = true;
+
+var MTMenuImageDirectory = "../images/";
+
+var MTMBGColor = "#FFFFFF";
+var MTMBackground = "";
+var MTMTextColor = "black";
+
+var MTMLinkColor = "black";
+
+var MTMAhoverColor = "#F57F18";
+
+var MTMTrackColor = "red";
+var MTMSubExpandColor = "black";
+var MTMSubClosedColor = "black";
+
+var MTMRootIcon = "../images/help_root_18.png";
+var MTMenuText = "Help contents:";
+var MTMRootColor = "black";
+var MTMRootFont = "Verdana, Arial, Helvetica, sans-serif";
+var MTMRootCSSize = "10pt";
+var MTMRootFontSize = "-1";
+
+var MTMenuFont = "Verdana, Arial, Helvetica, sans-serif";
+var MTMenuCSSize = "10pt";
+var MTMenuFontSize = "-1";
+
+if (navigator.appName == "Microsoft Internet Explorer") {
+    var MTMLinkedSS = false;
+    var MTMSSHREF = "";
+} else {
+    var MTMLinkedSS = true;
+    var MTMSSHREF = "../help_menu.css";
+}
+
+var MTMHeader = "";
+var MTMFooter = "";
+
+var MTMSubsAutoClose = false;
+
+var MTMTimeOut = 5;
+
+var MTMUseCookies = false;
+var MTMCookieName = "MTMCookie";
+var MTMCookieDays = 3;
+
+var MTMUseToolTips = true;
+
+var MTMIconList = null;
+MTMIconList = new IconList();
+        
+var menu = null;
+menu = new MTMenu();
+
+menu.addItem("exe4j help", "../../doc/welcome.html", "text","","../../doc/images/help_overview_18.png");
+menu.addItem("Licensing", "../../doc/licensing.html", "text","","");
+menu.addItem("exe4j wizard", "../../doc/wizard/$folder$.html", "text","","");
+var menu_2 = null;
+menu_2 = new MTMenu();
+menu_2.addItem("Overview", "../../doc/wizard/wizard.html", "text","","../../doc/images/help_overview_18.png");
+menu_2.addItem("Step 1: Welcome", "../../doc/wizard/welcome.html", "text","","");
+menu_2.addItem("Step 2: Project Type", "../../doc/wizard/projectType.html", "text","","");
+menu_2.addItem("Step 3: Application Info", "../../doc/wizard/application.html", "text","","");
+menu_2.addItem("Step 4: Executable Info", "../../doc/wizard/executable.html", "text","","");
+menu_2.addItem("Step 5: Java Invocation", "../../doc/wizard/java.html", "text","","");
+menu_2.addItem("Step 6: JRE", "../../doc/wizard/jdk.html", "text","","");
+menu_2.addItem("Step 7: Splash Screen", "../../doc/wizard/splashScreen.html", "text","","");
+menu_2.addItem("Step 8: Messages", "../../doc/wizard/messages.html", "text","","");
+menu_2.addItem("Step 9: Compile Executable", "../../doc/wizard/compile.html", "text","","");
+menu_2.addItem("Step 10: Finish", "../../doc/wizard/finish.html", "text","","");
+menu_2.addItem("Advanced options", "../../doc/wizard/$advancedFolder$.html", "text","","");
+var menu_2_11 = null;
+menu_2_11 = new MTMenu();
+menu_2_11.addItem("Redirection", "../../doc/wizard/redirection.html", "text","","");
+menu_2_11.addItem("Service options", "../../doc/wizard/service.html", "text","","");
+menu_2_11.addItem("Version info", "../../doc/wizard/versionInfo.html", "text","","");
+menu_2_11.addItem("32-bit or 64-bit", "../../doc/wizard/64bit.html", "text","","");
+menu_2_11.addItem("Execution level", "../../doc/wizard/executionLevel.html", "text","","");
+menu_2_11.addItem("Native libraries", "../../doc/wizard/native.html", "text","","");
+menu_2_11.addItem("Search sequence", "../../doc/wizard/searchSequence.html", "text","","");
+menu_2_11.addItem("Preferred VM", "../../doc/wizard/vmType.html", "text","","");
+menu_2_11.addItem("Splash screen options", "../../doc/wizard/splashScreenOptions.html", "text","","");
+menu_2.makeLastSubmenu(menu_2_11);
+menu_2.addItem("Dialogs", "../../doc/wizard/dialogs/$folder$.html", "text","","");
+var menu_2_12 = null;
+menu_2_12 = new MTMenu();
+menu_2_12.addItem("Main class selection dialog", "../../doc/wizard/dialogs/mainClass.html", "text","","");
+menu_2_12.addItem("Class path dialog", "../../doc/wizard/dialogs/classpath.html", "text","","");
+menu_2_12.addItem("Search sequence dialog", "../../doc/wizard/dialogs/searchSequence.html", "text","","");
+menu_2_12.addItem("Visual positioning", "../../doc/wizard/dialogs/visual.html", "text","","");
+menu_2.makeLastSubmenu(menu_2_12);
+menu.makeLastSubmenu(menu_2);
+menu.addItem("exe4j launcher API", "../../doc/splash/$folder$.html", "text","","");
+var menu_3 = null;
+menu_3 = new MTMenu();
+menu_3.addItem("Controlling the splash screen", "../../doc/splash/splash.html", "text","","");
+menu_3.addItem("Receiving startup notifications", "../../doc/splash/singleInstance.html", "text","","");
+menu.makeLastSubmenu(menu_3);
+menu.addItem("exe4j command line compiler", "../../doc/cli/$folder$.html", "text","","");
+var menu_4 = null;
+menu_4 = new MTMenu();
+menu_4.addItem("Overview", "../../doc/cli/cli.html", "text","","../../doc/images/help_overview_18.png");
+menu_4.addItem("Options", "../../doc/cli/options.html", "text","","");
+menu_4.addItem("Using exe4J with ant", "../../doc/cli/ant.html", "text","","");
+menu_4.addItem("Relative resource paths", "../../doc/cli/relative.html", "text","","");
+menu.makeLastSubmenu(menu_4);
+</script>
+<style id="mtmsheet" type="text/css"></style>
+</head>
+<body onload="MTMStartMenu(true)" text="#FFFFFF" bgcolor="#FFFFFF">Empty document</body>
+</html>

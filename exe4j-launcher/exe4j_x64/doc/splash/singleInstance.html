@@ -1,0 +1,91 @@
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+      <title>Receiving startup events in single instance mode</title>
+      <link rel="stylesheet" type="text/css" href="../standalone/help_common.css">
+      <link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
+helpId = 'exe4j.api.singleInstance';
+indexUrl= '../index.html';
+</script><script type="text/javascript" src="../standalone/jquery.min.js"></script><script type="text/javascript" src="../standalone/tracking.js"></script></head>
+   <body>
+      <div class="header-container">
+         <div class="header-title">
+            <h2>Receiving Startup Events In Single Instance Mode</h2>
+         </div>
+         <div class="header-nav">
+            <div class="nav-wrapper"><a class="nav-left" href="../splash/splash.html" title="key: j"></a></div>
+            <div class="nav-wrapper"><a class="nav-up" href="../splash/$folder$.html" title="key: u"></a></div>
+            <div class="nav-wrapper"><a class="nav-right" href="../cli/cli.html" title="key: k"></a></div>
+         </div>
+      </div>
+      <hr>
+      <div class="spacer"></div>
+      <div>
+         
+         <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex">
+            <tr>
+               <td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;
+               </td>
+               <td>
+                  
+                  If you have enabled the <a href="../wizard/executable.html">single instance mode</a>
+                  for your executable, the application can only be started once. For a GUI application,
+                  the existing application window is brought to front when a user executes
+                  the launcher another time.
+                  
+                  
+                  <p>
+                     However, you might want to receive notifications about multiple startups together
+                     with the command line parameters. If you have associated you executable with
+                     a file extension, you will likely want to handle multiple invocations in the
+                     same instance of your application. Alternatively, you might want to perform
+                     some action when another startup occurs.
+                     
+                  </p>
+                  
+               </td>
+            </tr>
+         </table>
+         
+         <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex">
+            <tr>
+               <td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;
+               </td>
+               <td>
+                  
+                  With the <a href="../../javadoc/com/exe4j/Controller.html" target="_blank">exe4j launcher API</a> you can
+                  write a class that implements the <tt>com.exe4j.Controller.StartupListener</tt> interface
+                  and register it with
+                  <code>com.exe4j.Controller.registerStartupListener(StartupListener startupListener)</code>.
+                  Your implementation of <code>startupPerformed(String parameters)</code> of the
+                  <tt>StartupListener</tt> interface will then be notified if another startup occurs.
+                  
+                  
+                  <p>
+                     The launcher API of exe4j is
+                     contained in <tt>exe4jlib.jar</tt> which can be found in the top level directory
+                     of your exe4j installation.
+                     
+                  </p>
+                  
+                  <p>
+                     <b>Note:</b> you do <b>not</b> have to add it to the
+                     classpath of your application and distribute it along with it, since that file
+                     is always contained in the executable.
+                     
+                  </p>
+                  
+               </td>
+            </tr>
+         </table>
+         
+      </div><br><hr>
+      <div class="header-container">
+         <div class="header-nav">
+            <div class="nav-wrapper"><a class="nav-left" href="../splash/splash.html" title="key: j"></a></div>
+            <div class="nav-wrapper"><a class="nav-up" href="../splash/$folder$.html" title="key: u"></a></div>
+            <div class="nav-wrapper"><a class="nav-right" href="../cli/cli.html" title="key: k"></a></div>
+         </div>
+      </div>
+   </body>
+</html>

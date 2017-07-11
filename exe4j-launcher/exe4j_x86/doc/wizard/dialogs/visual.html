@@ -1,0 +1,80 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Visual positioning of text lines</title>
+<link href="../../../doc/help_common.css" type="text/css" rel="stylesheet">
+<link href="../../../doc/help.css" type="text/css" rel="stylesheet">
+<script type="text/javascript">
+      function detectFrameset() {
+        framesetpage="../../../doc/indexRedirect.html";
+        thispage=window.location.href;
+        if (thispage.indexOf('://')<0) {thispage="://"+thispage;};
+        prefix=thispage.substring(0,thispage.lastIndexOf('://'));
+        suffix=thispage.substring(thispage.lastIndexOf('://')+3,thispage.length);
+        if (parent.location.href==window.location.href) {
+          parent.location.href=framesetpage+"?"+prefix+"&&&"+suffix
+        } else {
+          for(i = 0; i < parent.frames.length; i++) {
+            if(parent.frames[i].name == "code" && parent.frames[i].MTMLoaded) {
+              parent.frames[i].MTMTrack = true;
+              setTimeout("parent.frames[" + i + "].MTMDisplayMenu()", 50);
+              break;
+            }
+          }
+        }
+      }
+    
+    </script>
+</head>
+<body onload="detectFrameset()">
+<table width="100%" border="0">
+<tr>
+<td>
+<h2>Visual positioning of text lines</h2>
+</td><td valign="top" align="right"><a href="../../../doc/wizard/dialogs/searchSequence.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../../doc/images/help_previous_16.png"></a>&nbsp;
+            <a href="../../../doc/wizard/dialogs/$folder$.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../../doc/images/help_up_16.png"></a>&nbsp;
+            </td>
+</tr>
+</table>
+<hr>
+<br>
+<div>
+    
+      The visual positioning dialog is shown when clicking on the
+      <b>[Position text lines visually]</b> button in the
+      <a href="../../../doc/wizard/splashScreen.html">"configure splash screen" step</a> of the 
+      exe4j wizard. Upon closing this dialog with the <b>[OK]</b> button,
+      the X/Y coordinate text fields will be updated for status and version text lines
+      in that step.
+    <br>
+    
+<p>
+      The visual positioning dialog displays the selected image with overlaid
+      status and text line placeholders that are surrounded on the left and bottom by
+      lines. These lines flash for the selected text line. You can position the selected
+      text line on the image by dragging it with the mouse or using the cursor
+      keys. Pressing <code>CTRL</code> with the cursor keys moves the text line in 
+      larger steps.
+    </p>
+    
+<p>
+      Please note that only the font color is reflected in the font of the text line
+      placeholders. Font weight, font size and font name are only used in the native 
+      runtime version of the splash screen.
+    </p>
+    
+  
+</div>
+<br>
+<hr>
+<table width="100%" border="0">
+<tr>
+<td></td><td valign="top" align="right"><a href="../../../doc/wizard/dialogs/searchSequence.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../../doc/images/help_previous_16.png"></a>&nbsp;
+            <a href="../../../doc/wizard/dialogs/$folder$.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../../doc/images/help_up_16.png"></a>&nbsp;
+            </td>
+</tr>
+</table>
+</body>
+</html>

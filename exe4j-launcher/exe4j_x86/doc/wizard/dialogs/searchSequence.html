@@ -1,0 +1,99 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Search sequence entry dialog</title>
+<link href="../../../doc/help_common.css" type="text/css" rel="stylesheet">
+<link href="../../../doc/help.css" type="text/css" rel="stylesheet">
+<script type="text/javascript">
+      function detectFrameset() {
+        framesetpage="../../../doc/indexRedirect.html";
+        thispage=window.location.href;
+        if (thispage.indexOf('://')<0) {thispage="://"+thispage;};
+        prefix=thispage.substring(0,thispage.lastIndexOf('://'));
+        suffix=thispage.substring(thispage.lastIndexOf('://')+3,thispage.length);
+        if (parent.location.href==window.location.href) {
+          parent.location.href=framesetpage+"?"+prefix+"&&&"+suffix
+        } else {
+          for(i = 0; i < parent.frames.length; i++) {
+            if(parent.frames[i].name == "code" && parent.frames[i].MTMLoaded) {
+              parent.frames[i].MTMTrack = true;
+              setTimeout("parent.frames[" + i + "].MTMDisplayMenu()", 50);
+              break;
+            }
+          }
+        }
+      }
+    
+    </script>
+</head>
+<body onload="detectFrameset()">
+<table width="100%" border="0">
+<tr>
+<td>
+<h2>Search sequence entry dialog</h2>
+</td><td valign="top" align="right"><a href="../../../doc/wizard/dialogs/classpath.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../../doc/images/help_previous_16.png"></a>&nbsp;
+            <a href="../../../doc/wizard/dialogs/$folder$.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../../doc/images/help_up_16.png"></a>&nbsp;
+            <a href="../../../doc/wizard/dialogs/visual.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../../doc/images/help_next_16.png"></a>&nbsp;
+            </td>
+</tr>
+</table>
+<hr>
+<br>
+<div>
+    
+      The search sequence entry dialog is shown when clicking on the
+      <img style="vertical-align: middle" align="middle" border="0" src="../../../doc/images/add_16.png">&nbsp;add button in the
+      <a href="../../../doc/wizard/searchSequence.html">"configure search sequence" step</a> of the 
+      exe4j wizard. Upon closing this dialog with the <b>[OK]</b> button, 
+      a new search sequence entry will be appended to the bottom of the search sequence
+      list of that step.
+    <br>
+    
+<p>
+      To define a search sequence entry, you select the entry type and fill out 
+      the <tt>Detail</tt> section of the dialog which is dependent on the 
+      selected entry type. The following entry types are available:
+    </p>
+    
+<ul>
+<li>
+        
+<img style="vertical-align: middle" align="middle" border="0" src="../../../doc/images/sse_registry_16.png">&nbsp;<b>Search registry</b>
+<br>
+        Search the Windows registry for installed JREs and JDKs by Sun Microsystems.
+      </li>
+<li>
+        
+<img style="vertical-align: middle" align="middle" border="0" src="../../../doc/images/sse_directory_16.png">&nbsp;<b>Directory</b>
+<br>
+        Look in the specified directory. This is especially useful if you distribute your
+        own JRE along with your application. In that case, be sure to supply a relative path.
+        Note that for path selections by means of the file chooser (<b>[...]</b> button),
+        exe4j will try to convert the path to be relative to the distribution source 
+        directory.
+      </li>
+<li>
+        
+<img style="vertical-align: middle" align="middle" border="0" src="../../../doc/images/sse_envvar_16.png">&nbsp;<b>Environment variable</b>
+<br>
+        Look for a JRE of JDK in a location that is defined by an environment variable like
+        <tt>JAVA_HOME</tt> or <tt>MYAPP_JAVA_HOME</tt>.
+      </li>
+</ul>
+    
+  
+</div>
+<br>
+<hr>
+<table width="100%" border="0">
+<tr>
+<td></td><td valign="top" align="right"><a href="../../../doc/wizard/dialogs/classpath.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../../doc/images/help_previous_16.png"></a>&nbsp;
+            <a href="../../../doc/wizard/dialogs/$folder$.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../../doc/images/help_up_16.png"></a>&nbsp;
+            <a href="../../../doc/wizard/dialogs/visual.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../../doc/images/help_next_16.png"></a>&nbsp;
+            </td>
+</tr>
+</table>
+</body>
+</html>
