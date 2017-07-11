@@ -47,7 +47,11 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
     private int activityBinDimBits = getInt("activityBinDimBits", 4);
     private int[][] activityHistInput, activityHistFiltered;
     private int binDim, nBinsX, nBinsY, nBinsTotal;
-    float entropyInput = 0, entropyFiltered = 0;
+    private float entropyInput = 0, entropyFiltered = 0;
+    private float entropyReduction;
+    private boolean adaptiveFilteringEnabled = getBoolean("adaptiveFilteringEnabled", false);
+    private float entropyDiffHighLimit = 1f;
+    private float entropyReductionLowLimit = .5f;
 
     /**
      * the amount to subsample x and y event location by in bit shifts when
@@ -61,6 +65,7 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
     private int ts = 0; // used to reset filter
     private int sx;
     private int sy;
+    private float dtChangeFactor = 0.9f;
 
     public SpatioTemporalCorrelationFilter(AEChip chip) {
         super(chip);
@@ -70,6 +75,8 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         setPropertyTooltip("subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
         setPropertyTooltip("letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
         setPropertyTooltip("numMustBeCorrelated", "At least this number of 9 (3x3) neighbors (including our own event location) must have had event within past dt");
+        setPropertyTooltip("activityBinDimBits", "2^this is the size of rectangular blocks that histogram event activity for measuring entropy (structure) to evaluate effectiveness of filtering");
+        setPropertyTooltip("adaptiveFilteringEnabled", "enables adaptive control of dt to achieve a target entropyReduction between two limits");
     }
 
     /**
@@ -126,7 +133,7 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
                     }
                     final int lastT = lastTimesMap[xx][yy];
                     final int deltaT = (ts - lastT);
-                    if (deltaT < dt && lastT!=DEFAULT_TIMESTAMP) {
+                    if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) {
                         ncorrelated++;
                     }
                 }
@@ -280,8 +287,8 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         gl.glRasterPos3f(0, 0, 0);
         final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                String.format("filteredOutPercent=%%%.1f, entropyInput=%.1f, entropyFiltered=%.1f",
-                        filteredOutPercent, entropyInput, entropyFiltered));
+                String.format("filteredOutPercent=%%%.1f, entropyReduction=%.1f",
+                        filteredOutPercent, entropyReduction));
         gl.glPopMatrix();
     }
 
@@ -343,6 +350,17 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         }
         entropyFiltered = -entropyFiltered;
         entropyInput = -entropyInput;
+        entropyReduction = entropyInput - entropyFiltered;
+        if (adaptiveFilteringEnabled) {
+            dtChangeFactor = .95f;
+            if (entropyReduction > entropyDiffHighLimit) {
+                setDt((int) (getDt() / dtChangeFactor)); // increase dt to force less correlation
+
+            } else if (entropyReduction < entropyReductionLowLimit) {
+                setDt((int) (getDt() * dtChangeFactor)); // decrease dt to force more correlation
+
+            }
+        }
 
     }
 
@@ -371,6 +389,49 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         if (old != activityBinDimBits) {
             allocateMaps(chip);
         }
+    }
+
+    /**
+     * @return the adaptiveFilteringEnabled
+     */
+    public boolean isAdaptiveFilteringEnabled() {
+        return adaptiveFilteringEnabled;
+    }
+
+    /**
+     * @param adaptiveFilteringEnabled the adaptiveFilteringEnabled to set
+     */
+    public void setAdaptiveFilteringEnabled(boolean adaptiveFilteringEnabled) {
+        this.adaptiveFilteringEnabled = adaptiveFilteringEnabled;
+        putBoolean("adaptiveFilteringEnabled", adaptiveFilteringEnabled);
+    }
+
+    /**
+     * @return the entropyDiffHighLimit
+     */
+    public float getEntropyDiffHighLimit() {
+        return entropyDiffHighLimit;
+    }
+
+    /**
+     * @param entropyDiffHighLimit the entropyDiffHighLimit to set
+     */
+    public void setEntropyDiffHighLimit(float entropyDiffHighLimit) {
+        this.entropyDiffHighLimit = entropyDiffHighLimit;
+    }
+
+    /**
+     * @return the entropyReductionLowLimit
+     */
+    public float getEntropyReductionLowLimit() {
+        return entropyReductionLowLimit;
+    }
+
+    /**
+     * @param entropyReductionLowLimit the entropyReductionLowLimit to set
+     */
+    public void setEntropyReductionLowLimit(float entropyReductionLowLimit) {
+        this.entropyReductionLowLimit = entropyReductionLowLimit;
     }
 
 }
