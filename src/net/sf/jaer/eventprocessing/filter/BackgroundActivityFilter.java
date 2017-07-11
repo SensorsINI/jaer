@@ -16,8 +16,8 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
- * An AE background that filters slow background activity by only passing
- * inPacket that are supported by another event in the past {@link #setDt dt} in
+ * An filter that filters slow background activity by only passing
+ * events that are supported by another event in the past {@link #setDt dt} in
  * the immediate spatial neighborhood, defined by a subsampling bit shift.
  *
  * @author tobi
