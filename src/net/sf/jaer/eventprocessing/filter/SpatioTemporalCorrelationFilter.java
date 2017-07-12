@@ -25,7 +25,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * {@link #setDt dt} in the immediate spatial neighborhood, defined by a
  * subsampling bit shift.
  *
- * @author tobi
+ * @author tobi, with discussion with moritz milde, dave karpul, elisabetta chicca, Telluride 2017
  */
 @Description("Filters out uncorrelated noise events")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
