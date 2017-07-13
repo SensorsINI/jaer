@@ -53,7 +53,7 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
     private boolean adaptiveFilteringEnabled = getBoolean("adaptiveFilteringEnabled", false);
     private float entropyReductionHighLimit = getFloat("entropyReductionHighLimit", .4f);
     private float entropyReductionLowLimit = getFloat("entropyReductionLowLimit", .1f);
-    private float dtChangeFactor = getFloat("dtChangeFactor", 0.9f);
+    private float dtChangeFraction = getFloat("dtChangeFraction", 0.01f);
 
     /**
      * the amount to subsample x and y event location by in bit shifts when
@@ -65,8 +65,6 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
 
     int[][] lastTimesMap;
     private int ts = 0; // used to reset filter
-    private int sx;
-    private int sy;
 
     public SpatioTemporalCorrelationFilter(AEChip chip) {
         super(chip);
@@ -81,7 +79,7 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         setPropertyTooltip(adap, "adaptiveFilteringEnabled", "enables adaptive control of dt to achieve a target entropyReduction between two limits");
         setPropertyTooltip(adap, "entropyReductionLowLimit", "if entropy reduction from filtering is below this limit, decrease dt");
         setPropertyTooltip(adap, "entropyReductionHighLimit", "if entropy reduction from filtering is above this limit, increase dt");
-        setPropertyTooltip(adap, "dtChangeFactor", "factor by which dt is multiplied/divided if entropyReduction is too low/high");
+        setPropertyTooltip(adap, "dtChangeFraction", "fraction by which dt is increased/decreased per packet if entropyReduction is too low/high");
     }
 
     /**
@@ -96,7 +94,9 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
     synchronized public EventPacket filterPacket(EventPacket in) {
         totalEventCount = 0;
         filteredOutEventCount = 0;
-        if (lastTimesMap == null) {
+        final int sx = chip.getSizeX() >> subsampleBy;
+        final int sy = chip.getSizeY() >> subsampleBy;
+        if (lastTimesMap == null || lastTimesMap.length != sx || lastTimesMap[0].length != sy) {
             allocateMaps(chip);
         }
         resetActivityHistograms();
@@ -114,8 +114,9 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
             totalEventCount++;
             int ts = e.timestamp;
 
-            final int x = (e.x >>> subsampleBy), y = (e.y >>> subsampleBy);
+            final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy);
             if ((x < 0) || (x >= sx) || (y < 0) || (y >= sy)) {
+                e.setFilteredOut(true);
                 continue;
             }
             int ax = x >> activityBinDimBits, ay = y >> activityBinDimBits;
@@ -133,7 +134,7 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
             int ncorrelated = 0;
             for (int xx = x - 1; xx <= x + 1; xx++) {
                 for (int yy = y - 1; yy <= y + 1; yy++) {
-                    if ((xx < 0) || (xx > sx) || (yy < 0) || (yy > sy)) {
+                    if ((xx < 0) || (xx >= sx) || (yy < 0) || (yy >= sy)) {
                         continue;
                     }
                     final int lastT = lastTimesMap[xx][yy];
@@ -149,13 +150,11 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
             } else {
                 activityHistFiltered[ax][ay]++;
             }
-
-            // Bounds checking here to avoid throwing expensive exceptions.
             lastTimesMap[x][y] = ts;
         }
-
-        adaptFiltering();
-
+        if (totalEventCount > 0) { // don't adjust if there were no DVS events (i.e. only APS turned on)
+            adaptFiltering();
+        }
         return in;
     }
 
@@ -174,13 +173,11 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
     @Override
     public final void initFilter() {
         allocateMaps(chip);
-        sx = chip.getSizeX() - 1;
-        sy = chip.getSizeY() - 1;
     }
 
     private void allocateMaps(AEChip chip) {
         if ((chip != null) && (chip.getNumCells() > 0)) {
-            lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()];
+            lastTimesMap = new int[chip.getSizeX() >> subsampleBy][chip.getSizeY() >> subsampleBy];
             for (int[] arrayRow : lastTimesMap) {
                 Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
             }
@@ -254,7 +251,7 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
      * @param subsampleBy the number of bits, 0 means no subsampling, 1 means
      * cut event time map resolution by a factor of two in x and in y
      */
-    public void setSubsampleBy(int subsampleBy) {
+    synchronized public void setSubsampleBy(int subsampleBy) {
         if (subsampleBy < 0) {
             subsampleBy = 0;
         } else if (subsampleBy > 4) {
@@ -294,7 +291,7 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         String s = null;
         if (adaptiveFilteringEnabled) {
             s = String.format("dt=%.1fms, filteredOutPercent=%%%.1f, entropyReduction=%.1f",
-                    dt*1e-3f, filteredOutPercent, entropyReduction);
+                    dt * 1e-3f, filteredOutPercent, entropyReduction);
         } else {
             s = String.format("filteredOutPercent=%%%.1f",
                     filteredOutPercent);
@@ -365,11 +362,20 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         entropyFiltered = -entropyFiltered;
         entropyInput = -entropyInput;
         entropyReduction = entropyInput - entropyFiltered;
+        int olddt = getDt();
         if (entropyReduction > entropyReductionHighLimit) {
-            setDt((int) (getDt() / dtChangeFactor)); // increase dt to force less correlation
+            int newdt = (int) (getDt() * (1 + dtChangeFraction));
+            if (newdt == olddt) {
+                newdt++;
+            }
+            setDt(newdt); // increase dt to force less correlation
 
         } else if (entropyReduction < entropyReductionLowLimit) {
-            setDt((int) (getDt() * dtChangeFactor)); // decrease dt to force more correlation
+            int newdt = (int) (getDt() * (1 - dtChangeFraction));
+            if (newdt == olddt) {
+                newdt--;
+            }
+            setDt(newdt); // decrease dt to force more correlation
 
         }
     }
@@ -399,6 +405,7 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         if (old != activityBinDimBits) {
             allocateMaps(chip);
         }
+        putInt("activityBinDimBits",activityBinDimBits);
     }
 
     /**
@@ -453,18 +460,18 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
     }
 
     /**
-     * @return the dtChangeFactor
+     * @return the dtChangeFraction
      */
-    public float getDtChangeFactor() {
-        return dtChangeFactor;
+    public float getDtChangeFraction() {
+        return dtChangeFraction;
     }
 
     /**
-     * @param dtChangeFactor the dtChangeFactor to set
+     * @param dtChangeFraction the dtChangeFraction to set
      */
-    public void setDtChangeFactor(float dtChangeFactor) {
-        this.dtChangeFactor = dtChangeFactor;
-        putFloat("dtChangeFactor", dtChangeFactor);
+    public void setDtChangeFraction(float dtChangeFraction) {
+        this.dtChangeFraction = dtChangeFraction;
+        putFloat("dtChangeFraction", dtChangeFraction);
     }
 
 }
