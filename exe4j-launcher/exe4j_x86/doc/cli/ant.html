@@ -1,0 +1,240 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Using exe4j with ant</title>
+<link href="../../doc/help_common.css" type="text/css" rel="stylesheet">
+<link href="../../doc/help.css" type="text/css" rel="stylesheet">
+<script type="text/javascript">
+      function detectFrameset() {
+        framesetpage="../../doc/indexRedirect.html";
+        thispage=window.location.href;
+        if (thispage.indexOf('://')<0) {thispage="://"+thispage;};
+        prefix=thispage.substring(0,thispage.lastIndexOf('://'));
+        suffix=thispage.substring(thispage.lastIndexOf('://')+3,thispage.length);
+        if (parent.location.href==window.location.href) {
+          parent.location.href=framesetpage+"?"+prefix+"&&&"+suffix
+        } else {
+          for(i = 0; i < parent.frames.length; i++) {
+            if(parent.frames[i].name == "code" && parent.frames[i].MTMLoaded) {
+              parent.frames[i].MTMTrack = true;
+              setTimeout("parent.frames[" + i + "].MTMDisplayMenu()", 50);
+              break;
+            }
+          }
+        }
+      }
+    
+    </script>
+</head>
+<body onload="detectFrameset()">
+<table width="100%" border="0">
+<tr>
+<td>
+<h2>Using exe4j with ant</h2>
+</td><td valign="top" align="right"><a href="../../doc/cli/options.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_previous_16.png"></a>&nbsp;
+            <a href="../../doc/cli/$folder$.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_up_16.png"></a>&nbsp;
+            <a href="../../doc/cli/relative.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_next_16.png"></a>&nbsp;
+            </td>
+</tr>
+</table>
+<hr>
+<br>
+<div>
+    
+<table style="margin-top: 1ex" cellpadding="3" cellspacing="0" border="0">
+<tr>
+<td valign="top"><img style="vertical-align: middle" border="0" src="../../doc/images/help_section_bullet_16.png">&nbsp;</td><td>
+      
+        Integrating exe4j with your ant script (read about ant at
+        <a target="_blank" href="http://ant.apache.org">http://ant.apache.org</a>)
+        is easy. Just use the <b><tt>exe4j</tt></b> task 
+        that is provided in <i><tt>{exe4j installation directory}/bin/ant.jar</tt></i>
+        and set the <tt>projectfile</tt> parameter to the exe4j config 
+        file that you want to build.
+      
+      <p>
+        To make the <b><tt>exe4j</tt></b> task available to ant, you
+        must first insert a <b><tt>taskdef</tt></b> element that tells
+        ant where to find the task definition. Here is an example of using the
+        task in an ant build file:
+      </p>
+      
+<pre>
+      &lt;taskdef name="exe4j"
+               classname="com.exe4j.Exe4JTask"
+               classpath="C:\Program Files\exe4j\bin\ant.jar"/&gt;
+               
+      &lt;target name="launcher"&gt;
+        &lt;exe4j projectfile="myapp.exe4j"/&gt;
+      &lt;/target&gt;
+      </pre>
+      
+<p>
+        The <b><tt>taskdef</tt></b> definition must occur only once per
+        ant-build file and can appear anywhere on the top level below the 
+        <b><tt>project</tt></b> element.
+      </p>
+      
+<p>
+        
+<b>Note:</b> it is <b>not possible</b> to copy the <i><tt>ant.jar</tt></i> archive to
+        the <i><tt>lib</tt></i> folder of your ant distribution. You have to reference a full
+        installation of exe4j in the task definition.
+      </p>
+    
+</td>
+</tr>
+</table>
+    
+<table style="margin-top: 1ex" cellpadding="3" cellspacing="0" border="0">
+<tr>
+<td valign="top"><img style="vertical-align: middle" border="0" src="../../doc/images/help_section_bullet_16.png">&nbsp;</td><td>
+      
+        The exe4j task supports the following parameters:
+      <div>&nbsp;</div>
+      
+<table cellpadding="4" border="1">
+        
+        
+        
+<tr>
+          
+<th align="">Attribute</th>
+          <th align="">Description</th>
+          <th align="">Required</th>
+        
+</tr>
+        
+<tr>
+          
+<td align="">projectfile</td>
+          <td align="">The exe4j config file for the launcher that should be generated.</td>
+          <td align="center">Yes</td>
+        
+</tr>
+        
+<tr>
+          
+<td align="">verbose</td>
+          <td align="">
+            Corresponds to the <tt>--verbose</tt>
+            <a href="../../doc/cli/options.html">command line option</a>.
+            Either <tt>true</tt> or <tt>false</tt>.
+          </td>
+          <td rowspan="2" align="center">
+            No, verbose and quiet cannot <b>both</b> be <tt>true</tt>
+          </td>
+        
+</tr>
+        
+<tr>
+          
+<td align="">quiet</td>
+          <td align="">
+            Corresponds to the <tt>--quiet</tt>
+            <a href="../../doc/cli/options.html">command line option</a>. 
+            Either <tt>true</tt> or <tt>false</tt>.
+          </td>
+        
+</tr>
+        
+<tr>
+          
+<td align="">test</td>
+          <td align="">
+            Corresponds to the <tt>--test</tt>
+            <a href="../../doc/cli/options.html">command line option</a>.
+            Either <tt>true</tt> or <tt>false</tt>.
+          </td>
+          <td align="center">No</td>
+        
+</tr>
+        
+<tr>
+          
+<td align="">release</td>
+          <td align="">
+            Corresponds to the <tt>--release</tt>
+            <a href="../../doc/cli/options.html">command line option</a>.
+            Enter a version number like "<tt>3.1.2</tt>".
+            The version number may only contain numbers and dots.
+          </td>
+          <td align="center">No</td>
+        
+</tr>
+        
+<tr>
+          
+<td align="">requirelicense</td>
+          <td align="">
+            Corresponds to the <tt>--require-license</tt>
+            <a href="../../doc/cli/options.html">command line option</a>.
+          </td>
+          <td align="center">No</td>
+        
+</tr>
+        
+<tr>
+          
+<td align="">destination</td>
+          <td align="">
+            Corresponds to the <tt>--destination</tt>
+            <a href="../../doc/cli/options.html">command line option</a>.
+            Enter a directory where the generated launcher should be placed.
+          </td>
+          <td align="center">No</td>
+        
+</tr>
+      
+</table>
+    
+</td>
+</tr>
+</table>
+    
+<table style="margin-top: 1ex" cellpadding="3" cellspacing="0" border="0">
+<tr>
+<td valign="top"><img style="vertical-align: middle" border="0" src="../../doc/images/help_section_bullet_16.png">&nbsp;</td><td>
+      To customize aspects of the exe4j build that cannot be overridden with
+      he above parameters, you can add appropriate tokens in the config file and use
+      the  <tt>copy</tt> task with a nested  <tt>filterset</tt>
+      element. For example, if the main class in
+      
+      <pre>    &lt;java mainClass="com.mycorp.MyApp" ...</pre>
+      
+      should by dynamically adjusted by ant, just edit the line to 
+      
+      <pre>    &lt;java mainClass="@MAIN_CLASS@" ...</pre>
+      
+      and copy the template config file (here <i><tt>myapp_template.exe4j</tt></i>) 
+      with
+      
+      <pre>
+      &lt;copy tofile="myapp.exe4j" file="myapp_template.exe4j"&gt;
+        &lt;filterset&gt;
+          &lt;filter token="MAIN_CLASS" value="com.mycorp.MyOtherApp" /&gt;
+        &lt;/filterset&gt;
+      &lt;/copy&gt;
+      </pre>
+      
+      before running the exe4j compiler as before.
+    </td>
+</tr>
+</table>
+    
+  
+</div>
+<br>
+<hr>
+<table width="100%" border="0">
+<tr>
+<td></td><td valign="top" align="right"><a href="../../doc/cli/options.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_previous_16.png"></a>&nbsp;
+            <a href="../../doc/cli/$folder$.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_up_16.png"></a>&nbsp;
+            <a href="../../doc/cli/relative.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_next_16.png"></a>&nbsp;
+            </td>
+</tr>
+</table>
+</body>
+</html>

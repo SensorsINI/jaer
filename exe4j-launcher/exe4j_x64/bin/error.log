@@ -1,0 +1,18 @@
+java.lang.NoClassDefFoundError: org/jdom2/Content
+	at com.exe4j.Exe4JApplication.q(ejt:92)
+	at com.exe4j.a.A(ejt:520)
+	at com.exe4j.a.a(ejt:310)
+	at com.exe4j.Exe4JGUI.main(ejt:11)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(Unknown Source)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+	at java.lang.reflect.Method.invoke(Unknown Source)
+	at com.exe4j.runtime.LauncherEngine.launch(Unknown Source)
+	at com.exe4j.runtime.WinLauncher.main(Unknown Source)
+	at com.install4j.runtime.launcher.WinLauncher.main(Unknown Source)
+Caused by: java.lang.ClassNotFoundException: org.jdom2.Content
+	at java.net.URLClassLoader.findClass(Unknown Source)
+	at java.lang.ClassLoader.loadClass(Unknown Source)
+	at sun.misc.Launcher$AppClassLoader.loadClass(Unknown Source)
+	at java.lang.ClassLoader.loadClass(Unknown Source)
+	... 11 more

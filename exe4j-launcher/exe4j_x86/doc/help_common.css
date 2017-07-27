@@ -1,0 +1,16 @@
+li {
+    margin-top: 1ex
+}
+a:link, a:visited {
+    color: #004D91
+}
+
+a:hover {
+    color:#E10915;
+}
+
+span.sectiontitle {
+    color:#004D91;
+    font-weight:bold;
+}
+

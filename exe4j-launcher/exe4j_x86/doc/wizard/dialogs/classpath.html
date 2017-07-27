@@ -1,0 +1,175 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Classpath entry dialog</title>
+<link href="../../../doc/help_common.css" type="text/css" rel="stylesheet">
+<link href="../../../doc/help.css" type="text/css" rel="stylesheet">
+<script type="text/javascript">
+      function detectFrameset() {
+        framesetpage="../../../doc/indexRedirect.html";
+        thispage=window.location.href;
+        if (thispage.indexOf('://')<0) {thispage="://"+thispage;};
+        prefix=thispage.substring(0,thispage.lastIndexOf('://'));
+        suffix=thispage.substring(thispage.lastIndexOf('://')+3,thispage.length);
+        if (parent.location.href==window.location.href) {
+          parent.location.href=framesetpage+"?"+prefix+"&&&"+suffix
+        } else {
+          for(i = 0; i < parent.frames.length; i++) {
+            if(parent.frames[i].name == "code" && parent.frames[i].MTMLoaded) {
+              parent.frames[i].MTMTrack = true;
+              setTimeout("parent.frames[" + i + "].MTMDisplayMenu()", 50);
+              break;
+            }
+          }
+        }
+      }
+    
+    </script>
+</head>
+<body onload="detectFrameset()">
+<table width="100%" border="0">
+<tr>
+<td>
+<h2>Classpath entry dialog</h2>
+</td><td valign="top" align="right"><a href="../../../doc/wizard/dialogs/mainClass.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../../doc/images/help_previous_16.png"></a>&nbsp;
+            <a href="../../../doc/wizard/dialogs/$folder$.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../../doc/images/help_up_16.png"></a>&nbsp;
+            <a href="../../../doc/wizard/dialogs/searchSequence.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../../doc/images/help_next_16.png"></a>&nbsp;
+            </td>
+</tr>
+</table>
+<hr>
+<br>
+<div>
+    
+      The class path entry dialog is shown when clicking on the
+      <img style="vertical-align: middle" align="middle" border="0" src="../../../doc/images/add_16.png">&nbsp;add button in the
+      <a href="../../../doc/wizard/java.html">"configure java invocation" step</a> of the 
+      exe4j wizard. Upon closing this dialog with the <b>[OK]</b> button,
+      a new class path entry will be appended to the bottom of the class path
+      list of that step.
+    <br>
+    
+<p>
+      To define a class path entry, you first select the entry type, then check
+      the <tt>fail if an error occurs with this class path entry</tt> checkbox 
+      in case you want the startup to be terminated if this class path entry is faulty
+      and finally fill out the <tt>Detail</tt> section of the dialog which is
+      dependent on the selected entry type. The following entry types are available:
+    </p>
+    
+<ul>
+<li>
+        
+<img style="vertical-align: middle" align="middle" border="0" src="../../../doc/images/cpe_scan_directory_16.png">&nbsp;<b>Scan directory</b>
+<br>
+        Scan a directory for archives with the extensions <i><tt>*.jar</tt></i> and 
+        <i><tt>*.zip</tt></i> to be added to the class path. In the <tt>Detail</tt> 
+        section of the dialog you must choose a directory either by entering the path
+        in the text field or by clicking <b>[...]</b> and choosing it with a file
+        chooser.
+        <p>
+          Error handling:<br>
+          If <tt>fail if an error occurs with this class path entry</tt> is checked,
+          the application will terminate with an error message if this directory does not exist.
+        </p>
+        
+<p>Note: Not available if the <a href="../../../doc/wizard/projectType.html">project type</a> is
+        "JAR in EXE"</p>
+      
+</li>
+<li>
+        
+<img style="vertical-align: middle" align="middle" border="0" src="../../../doc/images/cpe_directory_16.png">&nbsp;<b>Directory</b>
+<br>
+        Add a directory to the class path. In the <tt>Detail</tt> 
+        section of the dialog you must choose a directory either by entering the path
+        in the text field or by clicking <b>[...]</b> and choosing it with a file
+        chooser.
+        <p>
+          Error handling:<br>
+          If <tt>fail if an error occurs with this class path entry</tt> is checked,
+          the application will terminate with an error message if this directory does not exist.
+        </p>
+        
+<p>Note: Not available if the <a href="../../../doc/wizard/projectType.html">project type</a> is
+        "JAR in EXE"</p>
+      
+</li>
+<li>
+        
+<img style="vertical-align: middle" align="middle" border="0" src="../../../doc/images/cpe_archive_16.png">&nbsp;<b>Archive</b>
+<br>
+        Add an archive with the extension <i><tt>*.jar</tt></i> or <i><tt>*.zip</tt></i>
+        to the class path. In the <tt>Detail</tt> 
+        section of the dialog you must choose an archive either by entering the path
+        in the text field or by clicking <b>[...]</b> and choosing it with a file
+        chooser.
+        <p>
+          The last path component can include a * as a placeholder for a frequently changing version number.
+          This is not a wildcard for processing multiple matching paths, rather it is intended for
+          systems like maven where the version number on dependencies is part of the file name and is frequently
+          changed. An example is <i><tt>bin\commons-io-*.jar</tt></i> which will match a file like
+          <i><tt>bin/commons-io-1.0.jar</tt></i> at compile time. This replacement is performed at compile-time
+          and not a runtime.
+        </p>
+        
+<p>
+          Error handling:<br>
+          If <tt>fail if an error occurs with this class path entry</tt> is checked,
+          the application will terminate with an error message if this archive does not exist.
+        </p>
+      
+</li>
+<li>
+        
+<img style="vertical-align: middle" align="middle" border="0" src="../../../doc/images/cpe_envvar_16.png">&nbsp;<b>Environment variable</b>
+<br>
+        Add the contents of an environment variable to the class path.
+        In the <tt>Detail</tt> section of the dialog you must enter the name
+        of an environment variable.
+        <p>
+          Error handling:<br>
+          If <tt>fail if an error occurs with this class path entry</tt> is checked,
+          the application will terminate with an error message if this environment
+          variable is not defined.
+        </p>
+      
+</li>
+</ul>
+    
+<p>
+      Except for the "Environment variable" classpath type, you can use environment variables
+      in the text field with the following syntax:
+      <tt>${VARIABLE_NAME}</tt> where you replace VARIABLE_NAME with the desired
+      environment variable.
+    </p>
+    
+<p>
+      The directory of the JRE that your application is running with is contained in
+      ${EXE4J_JVM_HOME}. If you've specified
+      in the <a href="../../../doc/wizard/jdk.html">Configure JRE step</a>, that only JDKs and no JREs
+      should be used, you can append <tt>\..</tt> after the variable to change into the
+      JDK home directory. For example, to reference <tt>tools.jar</tt>, you'd have to
+      write <tt>%EXE4J_JVM_HOME%\..\lib\tools.jar</tt>.
+    </p>
+    
+<p>
+      Note that for path selections by means of a file chooser (<b>[...]</b> buttons),
+      exe4j will try to convert the path to be relative to the distribution source directory. 
+    </p>
+  
+</div>
+<br>
+<hr>
+<table width="100%" border="0">
+<tr>
+<td></td><td valign="top" align="right"><a href="../../../doc/wizard/dialogs/mainClass.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../../doc/images/help_previous_16.png"></a>&nbsp;
+            <a href="../../../doc/wizard/dialogs/$folder$.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../../doc/images/help_up_16.png"></a>&nbsp;
+            <a href="../../../doc/wizard/dialogs/searchSequence.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../../doc/images/help_next_16.png"></a>&nbsp;
+            </td>
+</tr>
+</table>
+</body>
+</html>

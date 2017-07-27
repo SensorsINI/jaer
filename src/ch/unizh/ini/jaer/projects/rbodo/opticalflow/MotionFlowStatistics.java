@@ -192,7 +192,7 @@ public class MotionFlowStatistics {
                     getClass().getSimpleName(), getTotalDensity());
         }
     }
-
+ 
     /**
      * Tracks global motion
      *
@@ -211,6 +211,9 @@ public class MotionFlowStatistics {
         private final Measurand globalVx, globalVy, globalRotation, globalExpansion, globalSpeed;
         private int rx, ry;
         private int subSizeX, subSizeY;
+        private final Measurand rollDps;
+        private final Measurand pitchDps;
+        private final Measurand yawDps;
 
         /**
          * New instance
@@ -226,6 +229,9 @@ public class MotionFlowStatistics {
             globalRotation = new Measurand();
             globalExpansion = new Measurand();
             globalSpeed = new Measurand();
+            rollDps=new Measurand();
+            pitchDps=new Measurand();
+            yawDps=new Measurand();
         }
 
         void reset(int sX, int sY) {

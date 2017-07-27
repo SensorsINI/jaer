@@ -1,0 +1,129 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>exe4j Wizard - Step 6: Configure JRE</title>
+<link href="../../doc/help_common.css" type="text/css" rel="stylesheet">
+<link href="../../doc/help.css" type="text/css" rel="stylesheet">
+<script type="text/javascript">
+      function detectFrameset() {
+        framesetpage="../../doc/indexRedirect.html";
+        thispage=window.location.href;
+        if (thispage.indexOf('://')<0) {thispage="://"+thispage;};
+        prefix=thispage.substring(0,thispage.lastIndexOf('://'));
+        suffix=thispage.substring(thispage.lastIndexOf('://')+3,thispage.length);
+        if (parent.location.href==window.location.href) {
+          parent.location.href=framesetpage+"?"+prefix+"&&&"+suffix
+        } else {
+          for(i = 0; i < parent.frames.length; i++) {
+            if(parent.frames[i].name == "code" && parent.frames[i].MTMLoaded) {
+              parent.frames[i].MTMTrack = true;
+              setTimeout("parent.frames[" + i + "].MTMDisplayMenu()", 50);
+              break;
+            }
+          }
+        }
+      }
+    
+    </script>
+</head>
+<body onload="detectFrameset()">
+<table width="100%" border="0">
+<tr>
+<td>
+<h2>exe4j Wizard - Step 6: Configure JRE</h2>
+</td><td valign="top" align="right"><a href="../../doc/wizard/java.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_previous_16.png"></a>&nbsp;
+            <a href="../../doc/wizard/$folder$.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_up_16.png"></a>&nbsp;
+            <a href="../../doc/wizard/splashScreen.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_next_16.png"></a>&nbsp;
+            </td>
+</tr>
+</table>
+<hr>
+<br>
+<div>
+    
+      In this step of the <a href="../../doc/wizard/wizard.html">exe4j wizard</a>, you enter 
+      the version requirements for the JRE or JDK that your application will be
+      started with on the target system.
+    <br>
+    
+<table style="margin-top: 1ex" cellpadding="3" cellspacing="0" border="0">
+<tr>
+<td valign="top"><img style="vertical-align: middle" border="0" src="../../doc/images/help_section_bullet_16.png">&nbsp;</td><td>
+      
+        The <b>minimum Java version</b> must be specified in the 
+        <tt>Java version</tt> section of this step.
+      
+      <p>
+        The <b>maximum Java version</b> can be specified in the
+        <tt>Java version</tt> section of this step. If it is left empty, any 
+        JRE or JDK with a higher version than the minimum version is acceptable.
+      </p>
+    
+</td>
+</tr>
+</table>
+    
+<table style="margin-top: 1ex" cellpadding="3" cellspacing="0" border="0">
+<tr>
+<td valign="top"><img style="vertical-align: middle" border="0" src="../../doc/images/help_section_bullet_16.png">&nbsp;</td><td>
+        The maximum Java version can be entered with less numeric detail than the 
+        minimum Java version to prevent the use of a higher major or minor release.
+        For example, a minimum version of 1.4.1 and a maximum version of 1.4 ensures that
+        the highest available 1.4.x &gt;= 1.4.1 JRE is used, but not a 1.5 JRE.
+        Similarly, a minimum version of 1.4.1_03 and a maximum version of 1.4.1 ensures that
+        the highest available 1.4.1 &gt;= 1.4.1_03 JRE is used, but not a 1.4.2 JRE.
+    </td>
+</tr>
+</table>
+    
+<table style="margin-top: 1ex" cellpadding="3" cellspacing="0" border="0">
+<tr>
+<td valign="top"><img style="vertical-align: middle" border="0" src="../../doc/images/help_section_bullet_16.png">&nbsp;</td><td>
+      In addition to the version requirements, the following constraints are available:
+      <ul>
+<li>
+<span class="sectiontitle">allow JREs with a beta version number</span>
+<br>
+          By default, JREs with a beta version number or JREs from an early access release cycle
+          will not be used by the launcher. If you would like to enable the use of these JREs,
+          please check this option.
+        </li>
+<li>
+<span class="sectiontitle">only allow JDKs and no JREs</span>
+<br>
+          Only JDKs will be used for launching your application, JREs will not be considered in the
+          search sequence.
+        </li>
+</ul>
+    
+</td>
+</tr>
+</table>
+    
+<table style="margin-top: 1ex" cellpadding="3" cellspacing="0" border="0">
+<tr>
+<td valign="top"><img style="vertical-align: middle" border="0" src="../../doc/images/help_section_bullet_16.png">&nbsp;</td><td>
+      For more detailed requirements on which JRE should be used (e.g. for bundling 
+      your own JRE in the distribution), please see the 
+      <a href="../../doc/wizard/searchSequence.html">search sequence advanced options step</a>
+      and the <a href="../../doc/wizard/vmType.html">preferred VM advanced options step</a>.
+    </td>
+</tr>
+</table>
+    
+  
+</div>
+<br>
+<hr>
+<table width="100%" border="0">
+<tr>
+<td></td><td valign="top" align="right"><a href="../../doc/wizard/java.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_previous_16.png"></a>&nbsp;
+            <a href="../../doc/wizard/$folder$.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_up_16.png"></a>&nbsp;
+            <a href="../../doc/wizard/splashScreen.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_next_16.png"></a>&nbsp;
+            </td>
+</tr>
+</table>
+</body>
+</html>

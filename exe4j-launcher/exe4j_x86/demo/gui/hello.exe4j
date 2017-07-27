@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<exe4j version="4.0" transformSequenceNumber="1">
+  <directoryPresets config="" />
+  <application name="Hello World" distributionSourceDir=".">
+    <languages>
+      <principalLanguage id="en" customLocalizationFile="" />
+    </languages>
+  </application>
+  <executable name="hello" type="1" iconSet="true" iconFile="hello.ico" executableDir="." redirectStderr="true" stderrFile="error.log" redirectStdout="false" stdoutFile="output.log" failOnStderrOutput="true" executableMode="1" changeWorkingDirectory="false" workingDirectory="." singleInstance="true" serviceStartType="2" serviceDependencies="" serviceDescription="" jreLocation="" executionLevel="asInvoker" amd64="false">
+    <messageSet />
+    <versionInfo include="true" fileVersion="1.0.0.0" fileDescription="A hello GUI application" legalCopyright="2001-2004, all rights reserved" internalName="hello" companyName="ej-technologies" productVersion="1.0.0.0" />
+  </executable>
+  <splashScreen show="true" autoOff="true" alwaysOnTop="true" width="400" height="230" bitmapFile="hello.bmp">
+    <text>
+      <statusLine x="8" y="205" text="Loading application ..." font="Arial" fontSize="8" fontColor="0,0,0" fontWeight="500" />
+      <versionLine x="270" y="157" text="version 1.0" font="Arial" fontSize="8" fontColor="0,0,0" fontWeight="500" />
+    </text>
+  </splashScreen>
+  <java mainClass="Hello" vmParameters="" arguments="" allowVMPassthroughParameters="true" preferredVM="" minVersion="1.4" maxVersion="" allowBetaVM="false" jdkOnly="false">
+    <searchSequence>
+      <registry />
+      <envVar name="JAVA_HOME" />
+      <envVar name="JDK_HOME" />
+    </searchSequence>
+    <classPath>
+      <directory location="." failOnError="true" />
+    </classPath>
+    <nativeLibraryDirectories />
+  </java>
+  <includedFiles />
+  <unextractableFiles />
+</exe4j>
+

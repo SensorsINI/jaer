@@ -1,0 +1,288 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>JProfiler help</title>
+
+<script type="text/javascript" src="mtmcode.js">
+</script>
+
+<script type="text/javascript">
+// Morten's JavaScript Tree Menu
+// version 2.3.0, dated 2001-04-30
+// http://www.treemenu.com/
+
+// Copyright (c) 2001, Morten Wang & contributors
+// All rights reserved.
+
+// This software is released under the BSD License which should accompany
+// it in the file "COPYING".  If you do not have this file you can access
+// the license through the WWW at http://www.treemenu.com/license.txt
+
+/******************************************************************************
+* User-configurable options.                                                  *
+******************************************************************************/
+
+// Menu table width, either a pixel-value (number) or a percentage value.
+var MTMTableWidth = "100%";
+
+// Name of the frame where the menu is to appear.
+var MTMenuFrame = "menu";
+
+// variable for determining whether a sub-menu always gets a plus-sign
+// regardless of whether it holds another sub-menu or not
+var MTMSubsGetPlus = "Always";
+
+// variable that defines whether the menu emulates the behaviour of
+// Windows Explorer
+var MTMEmulateWE = true;
+
+// Directory of menu images/icons
+var MTMenuImageDirectory = "images/";
+
+// Variables for controlling colors in the menu document.
+// Regular BODY atttributes as in HTML documents.
+var MTMBGColor = "#FFFFFF";
+var MTMBackground = "";
+var MTMTextColor = "black";
+
+// color for all menu items
+var MTMLinkColor = "black";
+
+// Hover color, when the mouse is over a menu link
+var MTMAhoverColor = "blue";
+
+// Foreground color for the tracking & clicked submenu item
+var MTMTrackColor ="red";
+var MTMSubExpandColor = "black";
+var MTMSubClosedColor = "black";
+
+// All options regarding the root text and it's icon
+var MTMRootIcon = "help_help.gif";
+var MTMenuText = "Help contents:";
+var MTMRootColor = "black";
+var MTMRootFont = "";
+var MTMRootCSSize = "84%";
+var MTMRootFontSize = "-1";
+
+// Font for menu items.
+var MTMenuFont = "Arial, Helvetica, sans-serif";
+var MTMenuCSSize = "84%";
+var MTMenuFontSize = "-1";
+
+// Variables for style sheet usage
+// 'true' means use a linked style sheet.
+var MTMLinkedSS = false;
+var MTMSSHREF = "";
+
+// Additional style sheet properties if you're not using a linked style sheet.
+// See the documentation for details on IDs, classes & elements used in the menu.
+// Empty string if not used.
+var MTMExtraCSS = "";
+
+// Header & footer, these are plain HTML.
+// Leave them to be "" if you're not using them
+
+var MTMHeader = "";
+var MTMFooter = "";
+
+// Whether you want an open sub-menu to close automagically
+// when another sub-menu is opened.  'true' means auto-close
+var MTMSubsAutoClose = false;
+
+// This variable controls how long it will take for the menu
+// to appear if the tracking code in the content frame has
+// failed to display the menu. Number if in tenths of a second
+// (1/10) so 10 means "wait 1 second".
+var MTMTimeOut = 15;
+
+// Cookie usage.  First is use cookie (yes/no, true/false).
+// Second is cookie name to use.
+// Third is how many days we want the cookie to be stored.
+
+var MTMUseCookies = false;
+var MTMCookieName = "MTMCookie";
+var MTMCookieDays = 3;
+
+// Tool tips.  A true/false-value defining whether the support
+// for tool tips should exist or not.
+var MTMUseToolTips = true;
+
+/******************************************************************************
+* User-configurable list of icons.                                            *
+******************************************************************************/
+
+var MTMIconList = null;
+MTMIconList = new IconList();
+
+/******************************************************************************
+* User-configurable menu.                                                     *
+******************************************************************************/
+
+// Main menu.
+var menu = null;
+menu = new MTMenu();
+menu.MTMAddItem(new MTMenuItem("Page #1", "documents/page-1.html", "text"));
+menu.MTMAddItem(new MTMenuItem("Page #2.", "documents/page-2.html", "text"));
+
+menu.MTMAddItem(new MTMenuItem("Nested Sub-menu #1"));
+// nested submenu #1, multiple submenu levels example
+var number_1 = null;
+number_1 = new MTMenu();
+number_1.MTMAddItem(new MTMenuItem("Page #1-1", "documents/page-1-1.html","text"));
+number_1.MTMAddItem(new MTMenuItem("Page #1-2", "documents/page-1-2.html","text"));
+number_1.MTMAddItem(new MTMenuItem("Submenu #1-1"));
+// nested submenu #1-1, multiple submenu levels
+var number_1_1 = null;
+number_1_1 = new MTMenu();
+number_1_1.MTMAddItem(new MTMenuItem("Submenu #1-1-1"));
+// nested submenu #1-1-1, 2 items
+var number_1_1_1 = null;
+number_1_1_1 = new MTMenu();
+number_1_1_1.MTMAddItem(new MTMenuItem("Page #1-1-1-1", "documents/page-1-1-1-1.html","text"));
+number_1_1_1.MTMAddItem(new MTMenuItem("Page #1-1-1-2", "documents/page-1-1-1-2.html","text"));
+number_1_1.items[0].MTMakeSubmenu(number_1_1_1);
+
+number_1_1.MTMAddItem(new MTMenuItem("Submenu #1-1-2"));
+// nested submenu #1-1-2, 4 items
+var number_1_1_2 = null;
+number_1_1_2 = new MTMenu();
+number_1_1_2.MTMAddItem(new MTMenuItem("Page #1-1-2-1", "documents/page-1-1-2-1.html","text"));
+number_1_1_2.MTMAddItem(new MTMenuItem("Page #1-1-2-2", "documents/page-1-1-2-2.html","text"));
+number_1_1_2.MTMAddItem(new MTMenuItem("Page #1-1-2-3", "documents/page-1-1-2-3.html","text"));
+number_1_1_2.MTMAddItem(new MTMenuItem("Page #1-1-2-4", "documents/page-1-1-2-4.html","text"));
+number_1_1.items[1].MTMakeSubmenu(number_1_1_2);
+
+number_1_1.MTMAddItem(new MTMenuItem("Submenu #1-1-3"));
+// nested submenu #1-1-3, 4 items
+var number_1_1_3 = null;
+number_1_1_3 = new MTMenu();
+number_1_1_3.MTMAddItem(new MTMenuItem("Page #1-1-3-1", "documents/page-1-1-3-1.html","text"));
+number_1_1_3.MTMAddItem(new MTMenuItem("Page #1-1-3-2", "documents/page-1-1-3-2.html","text"));
+number_1_1_3.MTMAddItem(new MTMenuItem("Page #1-1-3-3", "documents/page-1-1-3-3.html","text"));
+number_1_1_3.MTMAddItem(new MTMenuItem("Page #1-1-3-4", "documents/page-1-1-3-4.html","text"));
+number_1_1.items[2].MTMakeSubmenu(number_1_1_3);
+
+number_1.items[2].MTMakeSubmenu(number_1_1);
+
+number_1.MTMAddItem(new MTMenuItem("Submenu #1-2"));
+// nested submenu #1-2, multiple submenu levels
+var number_1_2 = null;
+number_1_2 = new MTMenu();
+number_1_2.MTMAddItem(new MTMenuItem("Submenu #1-2-1"));
+// nested submenu #1-2-1, 2 items
+var number_1_2_1 = null;
+number_1_2_1 = new MTMenu();
+number_1_2_1.MTMAddItem(new MTMenuItem("Page #1-2-1-1", "documents/page-1-2-1-1.html","text"));
+number_1_2_1.MTMAddItem(new MTMenuItem("Page #1-2-1-2", "documents/page-1-2-1-2.html","text"));
+number_1_2.items[0].MTMakeSubmenu(number_1_2_1);
+
+number_1_2.MTMAddItem(new MTMenuItem("Submenu #1-2-2"));
+// nested submenu #1-2-2, 2 items
+var number_1_2_2 = null;
+number_1_2_2 = new MTMenu();
+number_1_2_2.MTMAddItem(new MTMenuItem("Page #1-2-2-1", "documents/page-1-2-2-1.html","text"));
+number_1_2_2.MTMAddItem(new MTMenuItem("Page #1-2-2-2", "documents/page-1-2-2-2.html","text"));
+number_1_2.items[1].MTMakeSubmenu(number_1_2_2);
+
+number_1_2.MTMAddItem(new MTMenuItem("Submenu #1-2-3"));
+// nested submenu #1-2-3, 2 items
+var number_1_2_3 = null;
+number_1_2_3 = new MTMenu();
+number_1_2_3.MTMAddItem(new MTMenuItem("Page #1-2-3-1", "documents/page-1-2-3-1.html","text"));
+number_1_2_3.MTMAddItem(new MTMenuItem("Page #1-2-3-2", "documents/page-1-2-3-2.html","text"));
+number_1_2_3.MTMAddItem(new MTMenuItem("Page #1-2-3-3", "documents/page-1-2-3-3.html","text"));
+number_1_2_3.MTMAddItem(new MTMenuItem("Page #1-2-3-4", "documents/page-1-2-3-4.html","text"));
+number_1_2.items[2].MTMakeSubmenu(number_1_2_3);
+
+number_1.items[3].MTMakeSubmenu(number_1_2);
+
+menu.items[2].MTMakeSubmenu(number_1);
+
+menu.MTMAddItem(new MTMenuItem("Nested Sub-menu #2"));
+// nested submenu #2, multiple submenu levels example #2, 6 items
+var number_2 = null;
+number_2 = new MTMenu();
+number_2.MTMAddItem(new MTMenuItem("Page #2-1", "documents/page-2-1.html", "text"));
+number_2.MTMAddItem(new MTMenuItem("Page #2-2", "documents/page-2-2.html", "text"));
+number_2.MTMAddItem(new MTMenuItem("Page #2-3", "documents/page-2-3.html", "text"));
+number_2.MTMAddItem(new MTMenuItem("Page #2-4", "documents/page-2-4.html", "text"));
+
+number_2.MTMAddItem(new MTMenuItem("Submenu #2-1"));
+// submmenu #2-1, 2 items
+var number_2_1 = null;
+number_2_1 = new MTMenu();
+number_2_1.MTMAddItem(new MTMenuItem("Page #2-1-1", "documents/page-2-1-1.html","text"));
+number_2_1.MTMAddItem(new MTMenuItem("Page #2-1-2", "documents/page-2-1-2.html","text"));
+number_2.items[4].MTMakeSubmenu(number_2_1);
+
+number_2.MTMAddItem(new MTMenuItem("Submenu #2-2"));
+// submmenu #2-2, 2 items
+var number_2_2 = null;
+number_2_2 = new MTMenu();
+number_2_2.MTMAddItem(new MTMenuItem("Page #2-2-1", "documents/page-2-2-1.html","text"));
+number_2_2.MTMAddItem(new MTMenuItem("Page #2-2-2", "documents/page-2-2-2.html","text"));
+number_2.items[5].MTMakeSubmenu(number_2_2);
+menu.items[3].MTMakeSubmenu(number_2);
+
+menu.MTMAddItem(new MTMenuItem("Page #3", "documents/page-3.html", "text"));
+menu.MTMAddItem(new MTMenuItem("Page #4", "documents/page-4.html", "text"));
+menu.MTMAddItem(new MTMenuItem("Submenu #3"));
+// non-nested submenu, #3
+var number_3 = null;
+number_3 = new MTMenu();
+number_3.MTMAddItem(new MTMenuItem("Page #3-1", "documents/page-3-1.html","text"));
+number_3.MTMAddItem(new MTMenuItem("Page #3-2", "documents/page-3-2.html","text"));
+number_3.MTMAddItem(new MTMenuItem("Page #3-3", "documents/page-3-3.html","text"));
+number_3.MTMAddItem(new MTMenuItem("Page #3-4", "documents/page-3-4.html","text"));
+menu.items[6].MTMakeSubmenu(number_3);
+
+menu.MTMAddItem(new MTMenuItem("Submenu #4"));
+// non-nested submenu, #4
+var number_4 = null;
+number_4 = new MTMenu();
+number_4.MTMAddItem(new MTMenuItem("Page #4-1", "documents/page-4-1.html","text"));
+number_4.MTMAddItem(new MTMenuItem("Page #4-2", "documents/page-4-2.html","text"));
+number_4.MTMAddItem(new MTMenuItem("Page #4-3", "documents/page-4-3.html","text"));
+number_4.MTMAddItem(new MTMenuItem("Page #4-4", "documents/page-4-4.html","text"));
+menu.items[7].MTMakeSubmenu(number_4);
+
+menu.MTMAddItem(new MTMenuItem("Page #5", "documents/page-5.html", "text"));
+menu.MTMAddItem(new MTMenuItem("Install Guide", "install-guide/index.shtml", "text"));
+// submenu, installation guide.  submenu with URL example.
+var installation = null;
+installation = new MTMenu();
+installation.MTMAddItem(new MTMenuItem("The frameset", "install-guide/frameset.shtml", "text"));
+installation.MTMAddItem(new MTMenuItem("Setting options", "install-guide/options.shtml", "text"));
+installation.MTMAddItem(new MTMenuItem("Making the menu", "install-guide/the-menu.shtml", "text"));
+installation.MTMAddItem(new MTMenuItem("The icon menu", "install-guide/icon-menu.shtml", "text"));
+installation.MTMAddItem(new MTMenuItem("Tracking code", "install-guide/tracking-code.shtml", "text"));
+installation.MTMAddItem(new MTMenuItem("CSS Properties", "install-guide/css-properties.shtml", "text"));
+menu.items[9].MTMakeSubmenu(installation);
+
+menu.MTMAddItem(new MTMenuItem("Morten's pages"));
+// submenu, links to Morten's pages
+var mortens = null;
+mortens = new MTMenu();
+mortens.MTMAddItem(new MTMenuItem("Home page", "http://home.sol.no/~warnckew/", "_top"));
+mortens.MTMAddItem(new MTMenuItem("Who Am I?", "http://home.sol.no/~warnckew/me/", "_top"));
+mortens.MTMAddItem(new MTMenuItem("Backgammon", "http://home.sol.no/~warnckew/gammon/", "_top"));
+mortens.MTMAddItem(new MTMenuItem("Humour", "http://home.sol.no/~warnckew/jokes/", "_top"));
+mortens.MTMAddItem(new MTMenuItem("Programming", "http://home.sol.no/~warnckew/programming/", "_top"));
+mortens.MTMAddItem(new MTMenuItem("Guitar", "http://home.sol.no/~warnckew/guitar/", "_top"));
+mortens.MTMAddItem(new MTMenuItem("Other side", "http://www.geocities.com/~nettrom/", "_top"));
+menu.items[10].MTMakeSubmenu(mortens);
+
+menu.MTMAddItem(new MTMenuItem("M. Hall's pages"));
+// submenu, link to brainjar.com
+var mikes = null;
+mikes = new MTMenu();
+mikes.MTMAddItem(new MTMenuItem("Home page", "http://www.brainjar.com/", "_top"));
+menu.items[11].MTMakeSubmenu(mikes);
+
+menu.MTMAddItem(new MTMenuItem("Home", "main.html", "text"));
+</script>
+</head>
+<body onload="MTMStartMenu()" bgcolor="#000033" text="#ffffcc" link="yellow" vlink="lime" alink="red">
+	&nbsp;
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>exe4j Wizard - 32-bit or 64-bit</title>
+<link href="../../doc/help_common.css" type="text/css" rel="stylesheet">
+<link href="../../doc/help.css" type="text/css" rel="stylesheet">
+<script type="text/javascript">
+      function detectFrameset() {
+        framesetpage="../../doc/indexRedirect.html";
+        thispage=window.location.href;
+        if (thispage.indexOf('://')<0) {thispage="://"+thispage;};
+        prefix=thispage.substring(0,thispage.lastIndexOf('://'));
+        suffix=thispage.substring(thispage.lastIndexOf('://')+3,thispage.length);
+        if (parent.location.href==window.location.href) {
+          parent.location.href=framesetpage+"?"+prefix+"&&&"+suffix
+        } else {
+          for(i = 0; i < parent.frames.length; i++) {
+            if(parent.frames[i].name == "code" && parent.frames[i].MTMLoaded) {
+              parent.frames[i].MTMTrack = true;
+              setTimeout("parent.frames[" + i + "].MTMDisplayMenu()", 50);
+              break;
+            }
+          }
+        }
+      }
+    
+    </script>
+</head>
+<body onload="detectFrameset()">
+<table width="100%" border="0">
+<tr>
+<td>
+<h2>exe4j Wizard - 32-bit or 64-bit</h2>
+</td><td valign="top" align="right"><a href="../../doc/wizard/versionInfo.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_previous_16.png"></a>&nbsp;
+            <a href="../../doc/wizard/$advancedFolder$.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_up_16.png"></a>&nbsp;
+            <a href="../../doc/wizard/executionLevel.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_next_16.png"></a>&nbsp;
+            </td>
+</tr>
+</table>
+<hr>
+<br>
+<div>
+    
+      In this step of the <a href="../../doc/wizard/wizard.html">exe4j wizard</a>, you can
+      configure whether your executable should be a 32-bit executable or a 64-bit executable.
+    <br>
+    
+<p>
+      On Windows, a native executable can be either a 32-bit or a 64-bit executable. If you need a 64-bit JRE
+      for your application you can choose to generate a 64-bit executable.
+    </p>
+    
+<p>
+      Note that it is not possible to create launchers that work with both 64-bit and 32-bit JREs. Since the
+      launcher starts the JVM with the JNI interface by loading the JVM DLL, the architecture has to be the same.
+      If you target both 32-bit and 64-bit JREs and operating systems, you have to generate different executables
+      for them.
+    </p>
+    
+<p>
+      On a 64-bit Windows, there are separate system directories for 32-bit and 64-bit applications. If
+      you enable the 64-bit executable mode in this step, those system directories will be appropriate for
+      64-bit applications, e.g. <i><tt>c:\Program Files</tt></i> instead of <i><tt>c:\Program Files (x86)</tt></i>.
+    </p>
+  
+</div>
+<br>
+<hr>
+<table width="100%" border="0">
+<tr>
+<td></td><td valign="top" align="right"><a href="../../doc/wizard/versionInfo.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_previous_16.png"></a>&nbsp;
+            <a href="../../doc/wizard/$advancedFolder$.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_up_16.png"></a>&nbsp;
+            <a href="../../doc/wizard/executionLevel.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_next_16.png"></a>&nbsp;
+            </td>
+</tr>
+</table>
+</body>
+</html>

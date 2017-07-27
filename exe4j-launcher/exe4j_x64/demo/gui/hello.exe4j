@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<exe4j version="5.0" transformSequenceNumber="2">
+  <directoryPresets config="" />
+  <application name="Hello World" distributionSourceDir=".">
+    <languages>
+      <principalLanguage id="en" customLocalizationFile="" />
+    </languages>
+  </application>
+  <executable name="hello" type="1" iconSet="true" iconFile="hello.ico" executableDir="." redirectStderr="true" stderrFile="error.log" stderrMode="overwrite" redirectStdout="false" stdoutFile="output.log" stdoutMode="overwrite" failOnStderrOutput="true" executableMode="1" changeWorkingDirectory="false" workingDirectory="." singleInstance="true" serviceStartType="2" serviceDependencies="" serviceDescription="" jreLocation="" executionLevel="asInvoker" checkConsoleParameter="false" globalSingleInstance="false" singleInstanceActivate="true" dpiAware="false" amd64="false">
+    <messageSet />
+    <versionInfo include="true" fileVersion="1.0.0.0" fileDescription="A hello GUI application" legalCopyright="2001-2004, all rights reserved" internalName="hello" productName="" companyName="ej-technologies" productVersion="1.0.0.0" />
+  </executable>
+  <splashScreen show="true" width="400" height="230" bitmapFile="hello.bmp" windowsNative="true" textOverlay="true">
+    <text>
+      <statusLine x="8" y="205" text="Loading application ..." fontSize="8" fontColor="0,0,0" bold="false" />
+      <versionLine x="270" y="157" text="version 1.0" fontSize="8" fontColor="0,0,0" bold="false" />
+    </text>
+  </splashScreen>
+  <java mainClass="Hello" vmParameters="" arguments="" allowVMPassthroughParameters="true" preferredVM="" bundleRuntime="true" minVersion="1.6" maxVersion="" allowBetaVM="false" jdkOnly="false">
+    <searchSequence>
+      <registry />
+      <envVar name="JAVA_HOME" />
+      <envVar name="JDK_HOME" />
+    </searchSequence>
+    <classPath>
+      <directory location="." failOnError="true" />
+    </classPath>
+    <nativeLibraryDirectories />
+  </java>
+  <includedFiles />
+  <unextractableFiles />
+</exe4j>

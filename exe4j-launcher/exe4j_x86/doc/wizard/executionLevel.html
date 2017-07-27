@@ -1,0 +1,90 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>exe4j Wizard - Execution Level</title>
+<link href="../../doc/help_common.css" type="text/css" rel="stylesheet">
+<link href="../../doc/help.css" type="text/css" rel="stylesheet">
+<script type="text/javascript">
+      function detectFrameset() {
+        framesetpage="../../doc/indexRedirect.html";
+        thispage=window.location.href;
+        if (thispage.indexOf('://')<0) {thispage="://"+thispage;};
+        prefix=thispage.substring(0,thispage.lastIndexOf('://'));
+        suffix=thispage.substring(thispage.lastIndexOf('://')+3,thispage.length);
+        if (parent.location.href==window.location.href) {
+          parent.location.href=framesetpage+"?"+prefix+"&&&"+suffix
+        } else {
+          for(i = 0; i < parent.frames.length; i++) {
+            if(parent.frames[i].name == "code" && parent.frames[i].MTMLoaded) {
+              parent.frames[i].MTMTrack = true;
+              setTimeout("parent.frames[" + i + "].MTMDisplayMenu()", 50);
+              break;
+            }
+          }
+        }
+      }
+    
+    </script>
+</head>
+<body onload="detectFrameset()">
+<table width="100%" border="0">
+<tr>
+<td>
+<h2>exe4j Wizard - Execution Level</h2>
+</td><td valign="top" align="right"><a href="../../doc/wizard/64bit.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_previous_16.png"></a>&nbsp;
+            <a href="../../doc/wizard/$advancedFolder$.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_up_16.png"></a>&nbsp;
+            <a href="../../doc/wizard/native.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_next_16.png"></a>&nbsp;
+            </td>
+</tr>
+</table>
+<hr>
+<br>
+<div>
+    
+      In this step of the <a href="../../doc/wizard/wizard.html">exe4j wizard</a>, you can
+      configure the execution level for your executable on Windows Vista and higher.
+    <br>
+    
+<p>
+      The execution level can be one of
+      <ul>
+<li>
+<span class="sectiontitle">As invoker</span>
+<br>
+          This is the default setting. The executable will be executed with the rights of the current token.
+          If the user is an Administrator, this will be a filtered token so the executable will not have all
+          administration rights.
+        </li>
+<li>
+<span class="sectiontitle">Highest available</span>
+<br>
+          This level will raise the rights of the executable to the maximum extend available for the current user.
+          This applies to Administrators that usually run with a filtered token. Windows Vista and higher will show a question
+          to the user if he wants to elevate the rights of this application. For a standard user this is the same
+          as "As invoker".
+        </li>
+<li>
+<span class="sectiontitle">Require administrator</span>
+<br>
+          This is the same as "Highest available" when the user is an Administrator running with a filtered token.
+          If the user is a standard user, Windows Vista and higher will ask for the credentials of an Administrator account.
+        </li>
+</ul>
+    
+</p>
+  
+</div>
+<br>
+<hr>
+<table width="100%" border="0">
+<tr>
+<td></td><td valign="top" align="right"><a href="../../doc/wizard/64bit.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_previous_16.png"></a>&nbsp;
+            <a href="../../doc/wizard/$advancedFolder$.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_up_16.png"></a>&nbsp;
+            <a href="../../doc/wizard/native.html"><img vspace="0" align="center" border="0" height="16" width="16" src="../../doc/images/help_next_16.png"></a>&nbsp;
+            </td>
+</tr>
+</table>
+</body>
+</html>

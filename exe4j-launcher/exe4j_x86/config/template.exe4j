@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<exe4j>
+  <java>
+    <searchSequence>
+      <registry/>
+      <envVar name="JAVA_HOME" />
+      <envVar name="JDK_HOME" />
+    </searchSequence>
+  </java>
+</exe4j>

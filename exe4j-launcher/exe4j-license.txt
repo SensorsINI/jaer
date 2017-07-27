@@ -1,0 +1,43 @@
+
+Subject:
+Fwd: License keys for order 26870185 exe4j
+From:
+Tobi Delbruck <tobi@ini.phys.ethz.ch>
+Date:
+10/24/2011 1:29 PM
+To:
+Tobi Delbruck <tobi@ini.phys.ethz.ch>
+
+
+
+-------- Original Message --------
+Subject: 	License keys for order 26870185
+Date: 	Mon, 24 Oct 2011 20:31:45 +0200 (CEST)
+From: 	licensing@ej-technologies.com
+To: 	tobi@ini.phys.ethz.ch
+
+
+Thanks a lot for your order. Please find the licensing information below:
+
+* 1 exe4j with 1 yr Support and Upgrades
+----------------------------------------------------------------------
+
+Your license key for exe4j 4.x is:
+
+L-TOBI_DELBRUCK#50022033010001-1evjjgm42c2fj#2311
+
+exe4j can be downloaded at:
+
+http://www.ej-technologies.com/download/exe4j/files.html
+
+Support and major upgrade assurance runs through 2012-10-25.
+
+----------------------------------------------------------------------
+
+If you have any questions, please don't hesitate to contact us.
+
+Kind regards,
+
+The Sales Team
+ej-technologies GmbH
+

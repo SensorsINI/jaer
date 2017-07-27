@@ -1,0 +1,175 @@
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+      <title>exe4j Wizard - Configure Search Sequence</title>
+      <link rel="stylesheet" type="text/css" href="../standalone/help_common.css">
+      <link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
+helpId = 'exe4j.wizard.searchSequence';
+indexUrl= '../index.html';
+</script><script type="text/javascript" src="../standalone/jquery.min.js"></script><script type="text/javascript" src="../standalone/tracking.js"></script></head>
+   <body>
+      <div class="header-container">
+         <div class="header-title">
+            <h2>Exe4j Wizard - Configure Search Sequence</h2>
+         </div>
+         <div class="header-nav">
+            <div class="nav-wrapper"><a class="nav-left" href="../wizard/native.html" title="key: j"></a></div>
+            <div class="nav-wrapper"><a class="nav-up" href="../wizard/$advancedFolder$.html" title="key: u"></a></div>
+            <div class="nav-wrapper"><a class="nav-right" href="../wizard/vmType.html" title="key: k"></a></div>
+         </div>
+      </div>
+      <hr>
+      <div class="spacer"></div>
+      <div>
+         
+         <p>
+            <b>Note:</b> this advanced option screen is reachable by selecting the 
+            <a href="../wizard/jdk.html">"JRE" step</a> and choosing
+            "Search Sequence" from the <b>[Advanced options]</b>
+            popup menu or by clicking directly on the index.
+            
+         </p>
+         
+         <p>
+            In this step of the <a href="../wizard/wizard.html">exe4j wizard</a>, you can configure the
+            way the exe4j executable looks for an appropriate JRE or JDK to start your Java
+            application. The versions requirements for the JRE are specified in a
+            <a href="../wizard/jdk.html">different step</a>.
+            
+         </p>
+         
+         <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex">
+            <tr>
+               <td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;
+               </td>
+               <td>
+                  
+                  The search sequence list shows all search sequence entries that have been 
+                  added so far. For new configurations, a default search sequence is pre-defined.
+                  The following types of
+                  <a href="../wizard/dialogs/searchSequence.html">search sequence entries</a> are 
+                  available:
+                  
+                  
+                  <ul>
+                     <li><img src="../images/sse_registry_16.png" border="0" align="middle" style="vertical-align: middle">&nbsp;Search registry
+                     </li>
+                     <li><img src="../images/sse_directory_16.png" border="0" align="middle" style="vertical-align: middle">&nbsp;Directory
+                     </li>
+                     <li><img src="../images/sse_envvar_16.png" border="0" align="middle" style="vertical-align: middle">&nbsp;Environment variable
+                     </li>
+                  </ul>
+                  
+                  <p>
+                     The control buttons on the right allow you to modify the contents of the 
+                     search sequence list:
+                     
+                  </p>
+                  
+                  <ul>
+                     <li>
+                        <img src="../images/add_16.png" border="0" align="middle" style="vertical-align: middle">&nbsp;Add search sequence entry (key <code>INS</code>)<br>
+                        Invokes the 
+                        <a href="../wizard/dialogs/searchSequence.html">search sequence entry dialog</a>.
+                        Upon closing the search sequence entry dialog with the <b>[OK]</b> button, 
+                        a new search sequence entry will be appended to the bottom of the search sequence
+                        list. 
+                        
+                     </li>
+                     <li>
+                        <img src="../images/remove_16.png" border="0" align="middle" style="vertical-align: middle">&nbsp;Remove search sequence entry (key <code>DEL</code>)<br>
+                        Removes the currently selected search sequence entry without
+                        further confirmation.
+                        
+                     </li>
+                     <li>
+                        <img src="../images/up_16.png" border="0" align="middle" style="vertical-align: middle">&nbsp;Move search sequence entry up (key <code>ALT-UP</code>)<br>
+                        Moves the selected search sequence entry up one position in the class path list.
+                        
+                     </li>
+                     <li>
+                        <img src="../images/down_16.png" border="0" align="middle" style="vertical-align: middle">&nbsp;Move search sequence entry down (key <code>ALT-DOWN</code>)<br>
+                        Moves the selected search sequence entry down one position in the class path list.
+                        
+                     </li>
+                  </ul>
+                  
+                  
+               </td>
+            </tr>
+         </table>
+         
+         
+         <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex">
+            <tr>
+               <td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;
+               </td>
+               <td>
+                  
+                  It is possible to generate a log file that contains information about the JRE search
+                  sequence and any
+                  potential problems.
+                  In order to switch on logging, please define the environment variable
+                  <tt>EXE4J_LOG=yes</tt> and look for the newest text file whose name starts with
+                  <tt>i4j_nlog_</tt> in the Windows temp directory.
+                  This information can be used for debugging purposes. If you have a problem
+                  with JRE detection, please send this log file along with your support request.
+                  
+                  
+                  <p>
+                     An easier way for a user to create a log file is to start the launcher with the
+                     <tt>/create-i4j-log</tt> argument. The launcher will notify the user where the log is created and
+                     will offer to open an explorer window with the log file selected. After the message
+                     box, the launcher will
+                     continue to start up.
+                     
+                  </p>
+                  
+               </td>
+            </tr>
+         </table>
+         
+         
+         <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex">
+            <tr>
+               <td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;
+               </td>
+               <td>
+                  <b>Tip:</b> To distribute your own JRE, simply put the JRE in your distribution and 
+                  define a <img src="../images/sse_directory_16.png" border="0" align="middle" style="vertical-align: middle">&nbsp;directory search
+                  sequence entry with the appropriate relative path (e.g. <tt>jre</tt>) as the first
+                  item.
+                  
+               </td>
+            </tr>
+         </table>
+         
+         
+         <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex">
+            <tr>
+               <td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;
+               </td>
+               <td>
+                  If the entire search sequence fails, exe4j will try the location defined by the
+                  environment variable <tt>EXE4J_JAVA_HOME</tt>. If that fails too, an
+                  error message will be displayed asking the user to define this variable. To 
+                  supply a custom variable, define an appropriate environment variable search sequence
+                  entry 
+                  and customize the corresponding error message in the
+                  <a href="../wizard/messages.html">messages step</a> of the wizard.
+                  
+               </td>
+            </tr>
+         </table>
+         
+         
+      </div><br><hr>
+      <div class="header-container">
+         <div class="header-nav">
+            <div class="nav-wrapper"><a class="nav-left" href="../wizard/native.html" title="key: j"></a></div>
+            <div class="nav-wrapper"><a class="nav-up" href="../wizard/$advancedFolder$.html" title="key: u"></a></div>
+            <div class="nav-wrapper"><a class="nav-right" href="../wizard/vmType.html" title="key: k"></a></div>
+         </div>
+      </div>
+   </body>
+</html>

@@ -1,0 +1,99 @@
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+      <title>Options for the exe4j command line compiler</title>
+      <link rel="stylesheet" type="text/css" href="../standalone/help_common.css">
+      <link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
+helpId = 'exe4j.cli.options';
+indexUrl= '../index.html';
+</script><script type="text/javascript" src="../standalone/jquery.min.js"></script><script type="text/javascript" src="../standalone/tracking.js"></script></head>
+   <body>
+      <div class="header-container">
+         <div class="header-title">
+            <h2>Options For The Exe4j Command Line Compiler</h2>
+         </div>
+         <div class="header-nav">
+            <div class="nav-wrapper"><a class="nav-left" href="../cli/cli.html" title="key: j"></a></div>
+            <div class="nav-wrapper"><a class="nav-up" href="../cli/$folder$.html" title="key: u"></a></div>
+            <div class="nav-wrapper"><a class="nav-right" href="../cli/ant.html" title="key: k"></a></div>
+         </div>
+      </div>
+      <hr>
+      <div class="spacer"></div>
+      <div>
+         The <a href="../cli/cli.html">exe4j command line compiler</a> has the following
+         options:
+         
+         <ul>
+            <li><span class="sectiontitle">-h or --help</span><br>
+               Displays a quick help for all available options.
+               
+            </li>
+            <li><span class="sectiontitle">-V or --version</span><br>
+               Displays the version of exe4j in the following format:
+               <pre>    exe4j version 1.0, built on 2002-10-05</pre>
+               </li>
+            <li><span class="sectiontitle">-v or --verbose</span><br>
+               Enables verbose mode. In verbose mode, exe4j prints out information about 
+               internal processes. If you experience problems with exe4j, please make sure 
+               to include the verbose terminal output with your bug
+               report.
+               
+            </li>
+            <li><span class="sectiontitle">-q or --quiet</span><br>
+               Enables quiet mode. In quiet mode, no terminal output short of a fatal error 
+               will be printed.
+               
+            </li>
+            <li><span class="sectiontitle">-t or --test</span><br>
+               Enables test mode. In test mode, no executable will be generated in the directory
+               for the executable.
+               
+            </li>
+            <li><span class="sectiontitle">-L or --license=KEY</span><br>
+               Update the license key on the command line. This is useful if you have installed
+               exe4j on a headless system and cannot start the GUI.
+               <tt>KEY</tt> must be replaced with your license key.
+               
+            </li>
+            <li><span class="sectiontitle">-x or --require-license</span><br>
+               By default, exe4j will fallback to evaluation mode if the license key is not valid.
+               If you
+               want the compilation to fail instead, you can spcify this option.
+               
+            </li>
+            <li><span class="sectiontitle">-r STRING or --release=STRING</span><br>
+               override the application version defined in the 
+               <a href="../wizard/versionInfo.html">version info step</a>.
+               <tt>STRING</tt> must be replaced with the desired version number. The
+               version number can only contain numbers and dots.
+               
+            </li>
+            <li><span class="sectiontitle">-d STRING or --destination=STRING</span><br>
+               override the destination directory for the executable. <tt>STRING</tt> must 
+               be replaced with the desired directory. If the directory contains spaces, you must
+               
+               enclose STRING in quotation marks.
+               
+               <p>
+                  Note that this option does not 
+                  affect the interpretation of relative paths defined by the distribution source
+                  directory and the output directory as specified in the
+                  <a href="../wizard/application.html">application step</a> of the exe4j wizard.
+                  
+               </p>
+               
+            </li>
+         </ul>
+         
+         
+      </div><br><hr>
+      <div class="header-container">
+         <div class="header-nav">
+            <div class="nav-wrapper"><a class="nav-left" href="../cli/cli.html" title="key: j"></a></div>
+            <div class="nav-wrapper"><a class="nav-up" href="../cli/$folder$.html" title="key: u"></a></div>
+            <div class="nav-wrapper"><a class="nav-right" href="../cli/ant.html" title="key: k"></a></div>
+         </div>
+      </div>
+   </body>
+</html>
