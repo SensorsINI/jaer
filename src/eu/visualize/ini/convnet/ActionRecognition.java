@@ -53,17 +53,22 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
     //LOCAL VARIABLES
     private float decisionLowPassMixingFactor = getFloat("decisionLowPassMixingFactor", .2f);
     private boolean hideOutput = getBoolean("hideOutput", false);
-    private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
+    private boolean showDecisionStatistic = getBoolean("showDecisionStatistic", false);
+    private boolean showThreshold = getBoolean("showThreshold", false);
     Statistics statistics = new Statistics();
     protected DvsSubsamplerToFrameMultiCameraChip dvsSubsamplerMultiCam = null;
     private String performanceString = null; 
     int dvsMinEvents=getDvsMinEvents();
     boolean processDVSTimeSlices=isProcessDVSTimeSlices();
+    float stdDevThreshold=getFloat("stdDevThreshold", 0.1f);
+    float thrActivations=getFloat("thrActivations", 0.5f);
+    float MinThrActivations=getFloat("MinThrActivations", 0f);
+    float MaxThrActivations=getFloat("MaxThrActivations", 1f);
+    boolean displayDecision=false;
     
     /**
      * output units
      */
-//    private static final int DECISION_1 = 1, DECISION_2 = 2, DECISION_3 = 3;
     private static final String[] DECISION_STRINGS = 
         {"Left arm abduction", "Right arm abduction", "Left leg abduction", "Right leg abduction", "Left arm bicepite", "Right arm bicepite", "Left leg knee lift", "Right leg knee lift", // Session1
         "Walking", "Single jump up", "Single jump forward", "Multiple jump up", "Hop right foot", "Hop left foot", // Session2
@@ -74,10 +79,14 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
         
     public ActionRecognition(AEChip chip) {
         super(chip);
-        String roshambo = "0. ActionRecognition4";
-        setPropertyTooltip(roshambo, "showAnalogDecisionOutput", "Shows action recognition as analog activation of movement unit in softmax of network output");
-        setPropertyTooltip(roshambo, "hideOutput", "Hides output action recognition indications");
-        setPropertyTooltip(roshambo, "decisionLowPassMixingFactor", "The softmax outputs of the CNN are low pass filtered using this mixing factor; reduce decisionLowPassMixingFactor to filter more decisions");
+        String actionRecognition = "0. ActionRecognition";
+        setPropertyTooltip(actionRecognition, "showDecisionStatistic", "Show list of movement");
+        setPropertyTooltip(actionRecognition, "hideOutput", "Hides output action recognition indications");
+        setPropertyTooltip(actionRecognition, "decisionLowPassMixingFactor", "The softmax outputs of the CNN are low pass filtered using this mixing factor; reduce decisionLowPassMixingFactor to filter more decisions");
+        setPropertyTooltip(actionRecognition, "stdDevThreshold", "Minimum Standard Deviation of activations to show the output");
+        setPropertyTooltip(actionRecognition, "showThreshold", "Display the threshold value of activations");
+        setPropertyTooltip(actionRecognition, "thrActivations", "threshold value of activations to show the output");
+
 //        setPropertyTooltip(faceDetector,"faceDetectionThreshold", "Threshold activation for showing face detection; increase to decrease false postives. Default 0.5f. You may need to set softmax=true for this to work.");
 //        setPropertyTooltip(roshambo, "playSpikeSounds", "Play a spike sound on change of network output decision");
 //        setPropertyTooltip(roshambo, "playSounds", "Play sound effects (Rock/Scissors/Paper) every time the decision changes and playSoundsMinIntervalMs has intervened");
@@ -87,6 +96,7 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
         setEnclosedFilterChain(chain);
         apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, statistics);
         super.setDvsMinEvents(40000); //eventsPerFrame in the 4 cam, DVSmovies Dataset Sophie
+        MultilineAnnotationTextRenderer.setFontSize(50);
     }
     
     @Override
@@ -175,9 +185,30 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
         GL2 gl = drawable.getGL().getGL2();
         checkBlend(gl);
         if ((apsDvsNet != null) && (apsDvsNet.outputLayer != null) && (apsDvsNet.outputLayer.activations != null)) {
-            drawDecisionOutput(gl, drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
+            float[] activationsVect;
+            activationsVect=apsDvsNet.outputLayer.activations;
+            double stdActivations= StdDev(activationsVect);
+            displayDecision=false;
+            float max=0;
+ 
+            for (int i=0; i<activationsVect.length; i++){
+                if(activationsVect[i]>max){
+                    max=activationsVect[i];
+                    if (max>thrActivations){
+                        displayDecision=true;
+                    }
+                }
+            }
+            
+            if ((stdActivations>=stdDevThreshold)&(displayDecision)){
+                drawDecisionOutput(gl, drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
+            }else{
+                clearDecisionOutput(gl);
+            }
         }
-        statistics.draw(gl);
+        if(showDecisionStatistic){
+            statistics.draw(gl);
+        }
 //        if(playSounds && isShowOutputAsBarChart()){ //NO PLAY SOUND
 //            gl.glColor3f(.5f,0,0);
 //            gl.glBegin(GL.GL_LINES);
@@ -194,18 +225,53 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
             gl.glVertex2f(chip.getSizeX(),h);
             gl.glEnd();
         }
+        
+        if(isShowThreshold() && thrActivations!=0){ 
+            gl.glColor3f(0,.5f,0);
+            gl.glBegin(GL.GL_LINES);
+            final float h=(float)thrActivations*DeepLearnCnnNetwork.HISTOGRAM_HEIGHT_FRACTION*chip.getSizeY();
+            gl.glVertex2f(0,h);
+            gl.glVertex2f(chip.getSizeX(),h);
+            gl.glEnd();
+        }
+    }
+    
+    /** Return the mean of the Array
+     *
+     * @param array
+     * @return
+     */
+    public double Mean(float[] array){ 
+        double sum = 0;
+        int numElem=array.length;
+
+        for(int i=0;i<numElem;i++){
+            sum=sum+array[i];
+        }
+        return (sum/numElem);
+     }
+    
+    /** Return the standard deviation of the Array
+     *
+     * @param array
+     * @return
+     */
+    public double StdDev(float[] array){  
+        double sum = 0;
+        int numElem=array.length;
+        double avg= Mean(array);
+
+        for(int i=0;i<numElem;i++){
+            sum=sum+Math.pow((array[i]-avg), 2);
+        }
+        return Math.sqrt(sum/numElem);
     }
 
     private TextRenderer textRenderer = null;
 
     private void drawDecisionOutput(GL2 gl, int width, int height) {
 
-        float brightness = 0.0f;
-        if (showAnalogDecisionOutput) {
-            brightness = statistics.maxActivation; // brightness scale
-        } else {
-            brightness = 1;
-        }
+        float brightness = 1;
         gl.glColor3f(0.0f, brightness, brightness);
 //        gl.glPushMatrix();
 //        gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
@@ -217,15 +283,13 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
         if ((statistics.maxUnit >= 0) && (statistics.maxUnit < DECISION_STRINGS.length)) {
             Rectangle2D r = textRenderer.getBounds(DECISION_STRINGS[statistics.maxUnit]);
             textRenderer.draw(DECISION_STRINGS[statistics.maxUnit], (width / 2) - ((int) r.getWidth() / 2), height / 2);
-//            if (playSounds && statistics.maxUnit >= 0 && statistics.maxUnit < 3 && statistics.maxActivation > playSoundsThresholdActivation) { //REMOVED SOUND PART
-//                if (soundPlayer == null) {
-//                    soundPlayer = new SoundPlayer();
-//                }
-//                soundPlayer.playSound(statistics.maxUnit);
-//            }
         }
         textRenderer.endRendering();
 //        gl.glPopMatrix();
+    }
+    
+    private void clearDecisionOutput(GL2 gl) {
+        textRenderer=null;
     }
 
     /**
@@ -244,18 +308,33 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
     }
 
     /**
-     * @return the showAnalogDecisionOutput
+     * @return the showDecisionStatistic
      */
-    public boolean isShowAnalogDecisionOutput() {
-        return showAnalogDecisionOutput;
+    public boolean isShowDecisionStatistic() {
+        return showDecisionStatistic;
     }
 
     /**
-     * @param showAnalogDecisionOutput the showAnalogDecisionOutput to set
+     * @param showDecisionStatistic the showDecisionStatistic to set
      */
-    public void setShowAnalogDecisionOutput(boolean showAnalogDecisionOutput) {
-        this.showAnalogDecisionOutput = showAnalogDecisionOutput;
-        putBoolean("showAnalogDecisionOutput", showAnalogDecisionOutput);
+    public void setShowDecisionStatistic(boolean showDecisionStatistic) {
+        this.showDecisionStatistic = showDecisionStatistic;
+        putBoolean("showDecisionStatistic", showDecisionStatistic);
+    }
+    
+    /**
+     * @return the showThreshold
+     */
+    public boolean isShowThreshold() {
+        return showThreshold;
+    }
+
+    /**
+     * @param showThreshold the showThreshold to set
+     */
+    public void setShowThreshold(boolean showThreshold) {
+        this.showThreshold = showThreshold;
+        putBoolean("showThreshold", showThreshold);
     }
 
     /**
@@ -274,6 +353,50 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
         }
         this.decisionLowPassMixingFactor = decisionLowPassMixingFactor;
         putFloat("decisionLowPassMixingFactor", decisionLowPassMixingFactor);
+    }
+    
+    
+    /** getter for thrActivations
+    * @return thrActivations 
+    */
+   public float getThrActivations(){
+        return thrActivations;
+   }
+    /** getter for minimum value of thrActivations
+     * @return thrActivations 
+     */
+    public float getMinThrActivations() {
+     return MinThrActivations;
+    }
+
+    /** getter for maximum value of thrActivations
+     * @return thrActivations 
+     */
+    public float getMaxThrActivations() {
+        return MaxThrActivations;
+    }
+
+    /**
+     * @param thrActivations the thrActivations to set
+     */
+    public void setThrActivations(float thrActivations) {
+        this.thrActivations = thrActivations;
+        putFloat("thrActivations", thrActivations);
+    }
+    
+    /**
+     * @return the stdDevThreshold
+     */
+    public float getStdDevThreshold() {
+        return stdDevThreshold;
+    }
+
+    /**
+     * @param stdDevThreshold the stdDevThreshold to set
+     */
+    public void setStdDevThreshold(float stdDevThreshold) {
+        this.stdDevThreshold = stdDevThreshold;
+        putFloat("stdDevThreshold", stdDevThreshold);
     }
     
     private class Statistics implements PropertyChangeListener {
@@ -320,7 +443,9 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
             StringBuilder sb = new StringBuilder("Decision statistics: ");
             try {
                 for (int i = 0; i < NUM_CLASSES; i++) {
-                    sb.append(String.format("    %s: %d (%.1f%%) \n", DECISION_STRINGS[i], decisionCounts[i], (100 * (float) decisionCounts[i]) / totalCount));
+                    if (decisionCounts[i]>0){
+                        sb.append(String.format("    %s: %d (%.1f%%) \n", DECISION_STRINGS[i], decisionCounts[i], (100 * (float) decisionCounts[i]) / totalCount));
+                    }
                 }
             } catch (ArrayIndexOutOfBoundsException e) {
                 sb.append(" out of bounds exception; did you load valid CNN?");
@@ -362,7 +487,7 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
         }
 
         private void draw(GL2 gl) {
-            MultilineAnnotationTextRenderer.resetToYPositionPixels(.8f * chip.getSizeY());
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(1.5f * chip.getSizeY());
             MultilineAnnotationTextRenderer.renderMultilineString(toString());
         }
 
@@ -386,51 +511,6 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
         System.out.println("File Loaded!");
     }
 
-//    public class DeepLearnCnnNetworkExtended extends DeepLearnCnnNetwork {
-//
-////        private DeepLearnCnnNetwork outer = new DeepLearnCnnNetworkExtended(); 
-//
-//        public class OutputOrInnerProductFullyConnectedLayerExtended extends OutputOrInnerProductFullyConnectedLayer {
-//
-//            public OutputOrInnerProductFullyConnectedLayerExtended(int index) {
-//                super(index);
-//            }
-//            
-//            private void annotateHistogram(GL2 gl, int width, int height) { // width and height are of AEchip annotateHistogram size in pixels of chip (not screen pixels)
-//
-//                if (activations == null) {
-//                    return;
-//                }
-//                float dx = (float) (width) / (activations.length);
-//                float sy = (float) HISTOGRAM_HEIGHT_FRACTION * (height);
-//
-//    //            gl.glBegin(GL.GL_LINES);
-//    //            gl.glVertex2f(1, 1);
-//    //            gl.glVertex2f(width - 1, 1);
-//    //            gl.glEnd();
-//                gl.glBegin(GL.GL_LINE_STRIP);
-//                for (int i = 0; i < activations.length; i++) {
-//                    float y = 1 + (sy * activations[i]);  // TODO debug hack
-//                    float x1 = 1 + (dx * i), x2 = x1 + dx;
-//                    gl.glVertex2f(x1, 1);
-//                    gl.glVertex2f(x1, y);
-//                    gl.glVertex2f(x2, y);
-//                    gl.glVertex2f(x2, 1);
-//                }
-//                gl.glEnd();
-//            }
-//            
-//            @Override
-//            public void annotateHistogram(GL2 gl, int width, int height, float lineWidth, Color color)  {
-//                gl.glPushAttrib(GL2ES3.GL_COLOR | GL.GL_LINE_WIDTH);
-//                gl.glLineWidth(lineWidth);
-//                float[] ca = color.getColorComponents(null);
-//                gl.glColor4fv(ca, 0);
-//                this.annotateHistogram(gl, width, height);
-//                gl.glPopAttrib();
-//            }
-//        }
-//    }
 }
         
 
