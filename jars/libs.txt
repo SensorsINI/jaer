@@ -10,7 +10,7 @@ jblas - 1.2.4 - http://jblas.org/
 JEvtLearn - ??? - ???
 jlfgr (Java Look&Feel Graphics Repository) - 1.0 - http://www.oracle.com/technetwork/java/index-138612.html
 JOGL - 2.3.2 - https://jogamp.org/jogl/
-nrjavaserial - 3.13.0 - https://github.com/NeuronRobotics/nrjavaserial/
+nrjavaserial - 3.12.0 - https://github.com/NeuronRobotics/nrjavaserial/
 phidget21 - 2.1.8.20130618 - http://www.phidgets.com/docs/Language_-_Java
 svgSalamander-tiny - downloaded on 2013-07-13 - https://svgsalamander.java.net/
 swing-layout - 1.0.4 - NetBeans IDE
