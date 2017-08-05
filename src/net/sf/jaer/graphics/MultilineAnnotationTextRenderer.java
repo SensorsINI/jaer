@@ -32,6 +32,7 @@ public class MultilineAnnotationTextRenderer {
 	private static float scale = .15f;
 	private static final Logger log=Logger.getLogger("MultilineAnnotationTextRenderer");
         private static Color color=Color.WHITE;
+        private static int FontSize=24;
 
 	/** Call to reset to origin.
 	 * 
@@ -64,7 +65,7 @@ public class MultilineAnnotationTextRenderer {
 	 */
 	public static void renderMultilineString(String s) {
 		if ( renderer == null ){
-			renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,24),true,true);
+			renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,FontSize),true,true);
 			renderer.setColor(color);
 		}
 		String[] lines = s.split("\n");
@@ -107,6 +108,21 @@ public class MultilineAnnotationTextRenderer {
      */
     public static void setScale(float aScale) {
         scale = aScale;
+    }
+    
+    /**
+     * Returns overall text font size (24 by default)
+     * @return the font size
+     */
+    public static int getFontSize() {
+        return FontSize;
+    }
+
+    /** Sets overall text Font size (24 by default)
+     * @param FontSize the font size to set
+     */
+    public static void setFontSize(int aFontSize) {
+        FontSize = aFontSize;
     }
     
     public static void setDefaultScale(){
