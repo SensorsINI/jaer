@@ -6,6 +6,7 @@
 package net.sf.jaer.eventio;
 
 import ch.systemsx.cisd.hdf5.HDF5DataSetInformation;
+import ch.systemsx.cisd.hdf5.HDF5DataTypeInformation;
 import ch.systemsx.cisd.hdf5.HDF5FactoryProvider;
 import ch.systemsx.cisd.hdf5.IHDF5Reader;
 import java.io.File;
@@ -24,13 +25,16 @@ public class Hdf5AedatFileInputReader  {
     private IHDF5Reader reader=null;
     public Hdf5AedatFileInputReader(File f, AEChip chip) throws IOException  {
         reader = HDF5FactoryProvider.get().openForReading(f);
-        HDF5DataSetInformation info=reader.getDataSetInformation("/dvs/data");
+        HDF5DataSetInformation info = reader.getDataSetInformation("/dvs/data");
+        int[] chunckSize = info.tryGetChunkSizes();
+        Class<? extends HDF5DataTypeInformation> attrInfo = info.getTypeInformation().getClass();
+        byte[] dvs_data = reader.opaque().readArray("/dvs/data");
         reader.close();
     }
     
     public static void main(String[] args){
         try {
-            Hdf5AedatFileInputReader r=new Hdf5AedatFileInputReader(new File("rec1500840420.hdf5"),null);
+            Hdf5AedatFileInputReader r=new Hdf5AedatFileInputReader(new File("rec1500383466.hdf5"),null);
             
         } catch (IOException ex) {
             log.warning("caught "+ex.toString());
