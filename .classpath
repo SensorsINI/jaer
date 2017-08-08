@@ -65,5 +65,6 @@
 	<classpathentry kind="lib" path="jars/gson-2.8.0.jar"/>
 	<classpathentry kind="lib" path="jars/matlabcontrol-4.1.0.jar"/>
 	<classpathentry kind="lib" path="jars/commons-math3-3.6.1.jar"/>
+	<classpathentry kind="lib" path="jars/sis-jhdf5/lib/batteries_included/sis-jhdf5-batteries_included.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
