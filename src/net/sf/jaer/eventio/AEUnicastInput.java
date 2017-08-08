@@ -516,7 +516,12 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                                 }
 
                             }
-                            
+                        
+                        }
+                        else {
+                            // In this case, the buffer is misaligned with the 4-byte packet format; 
+                            // Drop a byte and try again
+                            byte dontCare = buffer.get();
                         }
                     }
                 }
