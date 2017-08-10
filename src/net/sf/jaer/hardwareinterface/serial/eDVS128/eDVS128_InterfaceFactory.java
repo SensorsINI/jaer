@@ -131,22 +131,41 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
 //        
 //
 //        getRootPane().registerKeyboardAction(new ButtonClickAction(preferrerdButton), KeyStroke.getKeyStroke(KeyEvent.VK_ENTER,0), JComponent.WHEN_IN_FOCUSED_WINDOW);
-        refreshSerialPortList();
-        hostTF.setText(prefs.get("eDVS128_InterfaceFactory.HOST", HOST));
-        portTF.setText(prefs.get("eDVS128_InterfaceFactory.TCP_PORT", Integer.toString(TCP_PORT)));
-        Vector<String> brVec = new Vector();
-        for (int i : SERIAL_BAUD_RATES_MBPS) {
-            brVec.add(Integer.toString(i));
-        }
-        baudRateCB.setModel(new DefaultComboBoxModel<String>(brVec));
-        for (int i = 0; i < SERIAL_BAUD_RATES_MBPS.length; i++) {
-            if (SERIAL_BAUD_RATES_MBPS[i] == serialBaudRateMbps) {
-                baudRateCB.setSelectedIndex(i);
-            }
-        }
+
+        Thread T = new InitializePortListThread();
+        T.start();
         focusLast();
 
     }
+
+    private class InitializePortListThread extends Thread {
+
+        public InitializePortListThread() {
+            setName("InitializePortListThread");
+            setPriority(MIN_PRIORITY);
+        }
+
+        @Override
+        public void run() {
+            log.info("starting thread to initialize serial port list");
+            refreshSerialPortList();
+            hostTF.setText(prefs.get("eDVS128_InterfaceFactory.HOST", HOST));
+            portTF.setText(prefs.get("eDVS128_InterfaceFactory.TCP_PORT", Integer.toString(TCP_PORT)));
+            Vector<String> brVec = new Vector();
+            for (int i : SERIAL_BAUD_RATES_MBPS) {
+                brVec.add(Integer.toString(i));
+            }
+            baudRateCB.setModel(new DefaultComboBoxModel<String>(brVec));
+            for (int i = 0; i < SERIAL_BAUD_RATES_MBPS.length; i++) {
+                if (SERIAL_BAUD_RATES_MBPS[i] == serialBaudRateMbps) {
+                    baudRateCB.setSelectedIndex(i);
+                }
+            }
+            focusLast();
+            log.info("serial port initialization thread done");
+        }
+    }
+    
     private HashMap<String, HardwareInterface> closemap = new HashMap();
 
     private void closePrevious(String s) {
@@ -712,7 +731,9 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         portCB.removeAllItems();
         // add available COM ports to menu
         CommPortIdentifier portId;
+        log.info("enumerating serial ports....");
         Enumeration<CommPortIdentifier> portList = CommPortIdentifier.getPortIdentifiers();
+        log.info("done enumerating serial ports");
 
         while (portList.hasMoreElements()) {
             portId = (CommPortIdentifier) portList.nextElement();
