@@ -18,10 +18,16 @@ import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collection;
+import java.util.List;
 import java.util.logging.Logger;
+import ncsa.hdf.hdf5lib.H5;
+import ncsa.hdf.hdf5lib.HDF5Constants;
 import net.sf.jaer.chip.AEChip;
-
+import ncsa.hdf.hdf5lib.HDFArray;
 /**
  * Reads HDF5 AER data files
  * 
@@ -32,26 +38,57 @@ public class Hdf5AedatFileInputReader  {
     
     private IHDF5Reader reader=null;
     public Hdf5AedatFileInputReader(File f, AEChip chip) throws IOException  {
-        reader = HDF5FactoryProvider.get().openForReading(f);
-        HDF5DataSetInformation info = reader.getDataSetInformation("/dvs/data");
-        HDF5DataClass dataClass = info.getTypeInformation().getDataClass();
-        HDF5DataTypeInformation typeInfo = info.getTypeInformation();
-        int[] chunckSize = info.tryGetChunkSizes();
-        byte[] dvs_data = reader.opaque().readArray("/dvs/data");
-        ByteBuffer buffer = ByteBuffer.allocate(dvs_data.length);   
-        buffer.put(dvs_data, 0, dvs_data.length);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        buffer.flip();//need flip 
-        buffer.rewind();
-        LongBuffer lb = ((ByteBuffer) buffer.rewind()).asLongBuffer();
-        long[] dvs = new long[lb.remaining()];
-        lb.get(dvs);
-        reader.close();
+       
+        int file_id = -1;
+        int dataset_id = -1;
+        int space = -1;
+        int ndims = 0;
+        long dims[] = new long[2];
+        long maxDims[] = new long[2];
+        int memtype = -1;
+
+
+        // Open file using the default properties.
+        try {
+            file_id = H5.H5Fopen(f.getName(), HDF5Constants.H5F_ACC_RDWR, HDF5Constants.H5P_DEFAULT);
+            
+            // Open dataset using the default properties.
+            if (file_id >= 0) {
+                dataset_id = H5.H5Dopen(file_id, "data", HDF5Constants.H5P_DEFAULT);                
+            }
+            
+            
+            if (dataset_id >= 0) {            
+                space = H5.H5Dget_space(dataset_id);
+                ndims = H5.H5Sget_simple_extent_dims(space, dims, maxDims);
+            }
+            
+            // Create the memory datatype.
+            memtype = H5.H5Tvlen_create(HDF5Constants.H5T_NATIVE_INT8);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        // Allocate array of pointers to two-dimensional arrays (the
+        // elements of the dataset. String is a variable length array of char.
+        int dataArrayLength = (int) dims[0] * (int) dims[1];
+        final String[] dataRead = new String[dataArrayLength];  
+
+        try {
+            if (space >= 0)
+                H5.H5Tdetect_class(memtype, HDF5Constants.H5T_STRING);
+                H5.H5DreadVL(dataset_id, memtype,
+                        HDF5Constants.H5S_ALL, HDF5Constants.H5S_ALL,
+                        HDF5Constants.H5P_DEFAULT, dataRead);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
     
     public static void main(String[] args){
         try {
-            Hdf5AedatFileInputReader r=new Hdf5AedatFileInputReader(new File("rec1498945830.hdf5"),null);
+            Hdf5AedatFileInputReader r=new Hdf5AedatFileInputReader(new File("rec1498945830_result.hdf5"),null);
             
         } catch (IOException ex) {
             log.warning("caught "+ex.toString());
