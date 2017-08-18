@@ -83,17 +83,17 @@ public class Hdf5AedatFileInputReader  {
         long[] stride = {1, 1};
         long[] block = {1, 1};
         int dataArrayLength = (int) dims[0] * (int) dims[1];
-        final String[] dataRead = new String[dataArrayLength];  
-        int[] dataReadByte = new int[dataArrayLength];
+        final String[] dataRead = new String[(int)(count[0] * count[1])];  
+        int filespace_id = H5.H5Screate_simple(2, count, null);
 
         H5.H5Sselect_hyperslab(space, HDF5Constants.H5S_SELECT_SET, stride, stride, count, block);
  
         try {
             if (space >= 0)
                 H5.H5Tdetect_class(memtype, HDF5Constants.H5T_STRING);
-                H5.H5Dread(dataset_id, HDF5Constants.H5T_NATIVE_INT8,
-                        HDF5Constants.H5S_ALL, HDF5Constants.H5S_ALL,
-                        HDF5Constants.H5P_DEFAULT, dataReadByte);
+                H5.H5DreadVL(dataset_id, memtype,
+                        HDF5Constants.H5S_ALL, filespace_id,
+                        HDF5Constants.H5P_DEFAULT, dataRead);
         } catch (Exception e) {
             e.printStackTrace();
         }
