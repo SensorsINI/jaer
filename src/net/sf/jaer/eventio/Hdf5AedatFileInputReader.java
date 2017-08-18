@@ -46,6 +46,8 @@ public class Hdf5AedatFileInputReader  {
         long dims[] = new long[2];
         long maxDims[] = new long[2];
         int memtype = -1;
+        int dcpl = -1;
+        long chunkDims[] = new long[2];
 
 
         // Open file using the default properties.
@@ -54,13 +56,17 @@ public class Hdf5AedatFileInputReader  {
             
             // Open dataset using the default properties.
             if (file_id >= 0) {
-                dataset_id = H5.H5Dopen(file_id, "data", HDF5Constants.H5P_DEFAULT);                
+                dataset_id = H5.H5Dopen(file_id, "/dvs/data", HDF5Constants.H5P_DEFAULT);  
             }
             
             
             if (dataset_id >= 0) {            
                 space = H5.H5Dget_space(dataset_id);
                 ndims = H5.H5Sget_simple_extent_dims(space, dims, maxDims);
+                dcpl = H5.H5Dget_create_plist(dataset_id);
+                if( HDF5Constants.H5D_CHUNKED == H5.H5Pget_layout(dcpl)) {
+                    H5.H5Pget_chunk(dcpl, ndims, chunkDims);
+                }
             }
             
             // Create the memory datatype.
@@ -72,15 +78,22 @@ public class Hdf5AedatFileInputReader  {
         
         // Allocate array of pointers to two-dimensional arrays (the
         // elements of the dataset. String is a variable length array of char.
+        long[] offset = {0, 0};
+        long[] count = {1, 3};
+        long[] stride = {1, 1};
+        long[] block = {1, 1};
         int dataArrayLength = (int) dims[0] * (int) dims[1];
         final String[] dataRead = new String[dataArrayLength];  
+        int[] dataReadByte = new int[dataArrayLength];
 
+        H5.H5Sselect_hyperslab(space, HDF5Constants.H5S_SELECT_SET, stride, stride, count, block);
+ 
         try {
             if (space >= 0)
                 H5.H5Tdetect_class(memtype, HDF5Constants.H5T_STRING);
-                H5.H5DreadVL(dataset_id, memtype,
+                H5.H5Dread(dataset_id, HDF5Constants.H5T_NATIVE_INT8,
                         HDF5Constants.H5S_ALL, HDF5Constants.H5S_ALL,
-                        HDF5Constants.H5P_DEFAULT, dataRead);
+                        HDF5Constants.H5P_DEFAULT, dataReadByte);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -88,7 +101,7 @@ public class Hdf5AedatFileInputReader  {
     
     public static void main(String[] args){
         try {
-            Hdf5AedatFileInputReader r=new Hdf5AedatFileInputReader(new File("rec1498945830_result.hdf5"),null);
+            Hdf5AedatFileInputReader r=new Hdf5AedatFileInputReader(new File("rec1498945830.hdf5"),null);
             
         } catch (IOException ex) {
             log.warning("caught "+ex.toString());
