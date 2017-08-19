@@ -35,6 +35,19 @@ public class Hdf5AedatFileInputReader  {
         int status = -1;
         long chunkDims[] = new long[2];
 
+        
+        // Create a new event packet data memory space.
+        long[] eventPktDimsM = {1, 3};
+       
+        // Allocate array to stor one event packet.
+        // String is a variable length array of char.
+        final String[] eventPktData = new String[(int)(eventPktDimsM[0] * eventPktDimsM[1])]; 
+        
+        // Select the row data to read.      
+        long[] offset = {0, 0};
+        long[] count = {1, 3};
+        long[] stride = {1, 1};        
+        long[] block = {1, 1};        
 
         // Open file using the default properties.
         try {
@@ -56,39 +69,22 @@ public class Hdf5AedatFileInputReader  {
             }
             
             // Create the memory datatype.
-            memtype = H5.H5Tvlen_create(HDF5Constants.H5T_NATIVE_UCHAR);
+            memtype = H5.H5Tvlen_create(HDF5Constants.H5T_NATIVE_UCHAR);        
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        
-        // Create a new event packet data memory space.
-        long[] eventPktDimsM = {1, 3};
-        eventPktSpace_id = H5.H5Screate_simple(2, eventPktDimsM, null); 
-       
-        // Allocate array to stor one event packet.
-        // String is a variable length array of char.
-        final String[] eventPktData = new String[(int)(eventPktDimsM[0] * eventPktDimsM[1])]; 
-        
-        // Select the row data to read.      
-        long[] offset = {1, 0};
-        long[] count = {1, 3};
-        long[] stride = {1, 1};        
-        long[] block = {1, 1};
-        
-        H5.H5Sselect_hyperslab(wholespace_id, HDF5Constants.H5S_SELECT_SET, offset, stride, count, block);
-        
-        /*
-         * Define and select the second part of the hyperslab selection,
-         * which is subtracted from the first selection by the use of
-         * H5S_SELECT_NOTB
-         */
-         // H5.H5Sselect_hyperslab (wholespace_id, HDF5Constants.H5S_SELECT_NOTB, offset, stride, count,
-         //               block);
+            eventPktSpace_id = H5.H5Screate_simple(2, eventPktDimsM, null); 
          
-        try {
             if (wholespace_id >= 0) {
+        
+                H5.H5Sselect_hyperslab(wholespace_id, HDF5Constants.H5S_SELECT_SET, offset, stride, count, block);
+
+                /*
+                 * Define and select the second part of the hyperslab selection,
+                 * which is subtracted from the first selection by the use of
+                 * H5S_SELECT_NOTB
+                 */
+                 // H5.H5Sselect_hyperslab (wholespace_id, HDF5Constants.H5S_SELECT_NOTB, offset, stride, count,
+                 //               block);    
+                 
                 status = H5.H5DreadVL(dataset_id, memtype,
                     eventPktSpace_id, wholespace_id,
                     HDF5Constants.H5P_DEFAULT, eventPktData);
@@ -99,31 +95,19 @@ public class Hdf5AedatFileInputReader  {
         
         // End access to the dataset and release resources used by it.
         try {
+            // Close the dataset. 
             if (dataset_id >= 0)
                 H5.H5Dclose(dataset_id);
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
         
-        try {
+            // Close the memory data space.
             if (eventPktSpace_id >= 0)
                 H5.H5Sclose(eventPktSpace_id);
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
-        
-        try {
+            
+            // Close the file data space.
             if (wholespace_id >= 0)
                 H5.H5Sclose(wholespace_id);
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        // Close the file.
-        try {
+            
+            // Close the file.
             if (file_id >= 0)
                 H5.H5Fclose(file_id);
         }
