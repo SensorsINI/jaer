@@ -55,7 +55,7 @@ public class Hdf5AedatFileInputReader  {
             }
             
             // Create the memory datatype.
-            memtype = H5.H5Tvlen_create(HDF5Constants.H5T_NATIVE_INT8);
+            memtype = H5.H5Tvlen_create(HDF5Constants.H5T_NATIVE_UCHAR);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -79,7 +79,7 @@ public class Hdf5AedatFileInputReader  {
         
         // Select the row data to read.
         H5.H5Sselect_hyperslab(wholespace_id, HDF5Constants.H5S_SELECT_SET, offset, stride, count, block);
-        
+
         try {
             if (wholespace_id >= 0)
                 H5.H5Tdetect_class(memtype, HDF5Constants.H5T_STRING);
@@ -122,9 +122,9 @@ public class Hdf5AedatFileInputReader  {
         }
         catch (Exception e) {
             e.printStackTrace();
-        }        
+        }
     }
-    
+
     public static void main(String[] args){
         int[] libversion = new int[3];
         H5.H5get_libversion(libversion);
