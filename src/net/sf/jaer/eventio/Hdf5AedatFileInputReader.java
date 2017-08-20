@@ -25,7 +25,7 @@ public class Hdf5AedatFileInputReader  {
        
         int file_id = -1;
         int dataset_id = -1;
-        int eventPktSpace_id = -1;
+        int eventCamPktSpace_id = -1;
         int wholespace_id = -1;
         int ndims = 0;
         long dims[] = new long[2];
@@ -71,7 +71,7 @@ public class Hdf5AedatFileInputReader  {
             // Create the memory datatype.
             memtype = H5.H5Tvlen_create(HDF5Constants.H5T_NATIVE_UCHAR);        
 
-            eventPktSpace_id = H5.H5Screate_simple(2, eventPktDimsM, null); 
+            eventCamPktSpace_id = H5.H5Screate_simple(2, eventPktDimsM, null); 
          
             if (wholespace_id >= 0) {
         
@@ -86,12 +86,15 @@ public class Hdf5AedatFileInputReader  {
                  //               block);    
                  
                 status = H5.H5DreadVL(dataset_id, memtype,
-                    eventPktSpace_id, wholespace_id,
+                    eventCamPktSpace_id, wholespace_id,
                     HDF5Constants.H5P_DEFAULT, eventPktData);
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+        
+        int[] pktHeader = stringToIntArray(eventPktData[1]);
+        int[] dvsPktData = stringToIntArray(eventPktData[2]);
         
         // End access to the dataset and release resources used by it.
         try {
@@ -100,8 +103,8 @@ public class Hdf5AedatFileInputReader  {
                 H5.H5Dclose(dataset_id);
         
             // Close the memory data space.
-            if (eventPktSpace_id >= 0)
-                H5.H5Sclose(eventPktSpace_id);
+            if (eventCamPktSpace_id >= 0)
+                H5.H5Sclose(eventCamPktSpace_id);
             
             // Close the file data space.
             if (wholespace_id >= 0)
@@ -116,6 +119,21 @@ public class Hdf5AedatFileInputReader  {
         }
     }
 
+    public int[] stringToIntArray(String str) {
+        String[] items = str.replaceAll("\\[", "").replaceAll("\\]", "").replaceAll("\\s", "").split(",");
+
+        int[] results = new int[items.length];
+
+        for (int i = 0; i < items.length; i++) {
+            try {
+                results[i] = Integer.parseInt(items[i]);
+            } catch (NumberFormatException nfe) {
+                //NOTE: write something here if you need to recover from formatting errors
+            };
+        }
+        return results;
+    }
+    
     public static void main(String[] args){
         int[] libversion = new int[3];
         H5.H5get_libversion(libversion);
