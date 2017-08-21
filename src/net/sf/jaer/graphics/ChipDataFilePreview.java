@@ -31,6 +31,7 @@ import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.Hdf5AedatFileInputReader;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
@@ -57,6 +58,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     public int packetTimeUs = 40000;
     private File currentFile;
     private boolean newFileSelected = false;
+    private boolean hdf5FileEnabled = false;
 
     /**
      * Creates new form ChipDataFilePreview
@@ -103,6 +105,17 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             return false;
         }
     }
+    
+    boolean isHdf5File (File f) {
+        if (f == null) {
+            return false;
+        }
+        if (f.getName().endsWith(".hdf5") || f.getName().endsWith(".h5")) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     public void propertyChange(PropertyChangeEvent evt) {
         String prop = evt.getPropertyName();
@@ -113,6 +126,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         }
     }
     AEFileInputStream ais;
+    Hdf5AedatFileInputReader hafir;
     volatile boolean deleteIt = false;
 
     public void deleteCurrentFile() {
@@ -144,7 +158,8 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
 //            fis=new FileInputStream(file);
             setCurrentFile(file);
             indexFileEnabled = isIndexFile(file);
-            if (!indexFileEnabled) {
+            hdf5FileEnabled = isHdf5File(file);
+            if (!indexFileEnabled && !hdf5FileEnabled) {
                 if (ais != null) {
 //                    System.out.println("closing "+ais);
                     ais.close();
@@ -161,7 +176,19 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                 }
                 fileSizeString = fmt.format(ais.size()) + " events " + fmt.format(ais.getDurationUs() / 1e6f) + " s";
             } else {
-                indexFileString = getIndexFileCount(file);
+                if(hdf5FileEnabled) {
+                    if (hafir != null) {
+                        hafir.closeResources();
+                        hafir = null;
+                        System.gc(); // try to make memory mapped file GC'ed so that user can delete it
+                        System.runFinalization();
+                    }
+                    hafir = new Hdf5AedatFileInputReader(file, chip);
+                    hafir.openDataset("/dvs/data");
+                    hafir.creatWholeFileSpace();
+                } else {
+                    indexFileString = getIndexFileCount(file);
+                }
             }
 //        infoLabel.setText(fmt.format((int)ais.size()));
             stop = false;
@@ -214,7 +241,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
 
 //        g2.setColor(Color.black);
 //        g2.fillRect(0,0,getWidth(),getHeight()); // rendering method already paints frame black, shouldn't do it here or we get flicker from black to image
-        if (!indexFileEnabled) {
+        if (!indexFileEnabled && !hdf5FileEnabled) {
             if (ais != null) {
                 try {
                     aeRaw = ais.readPacketByTime(packetTimeUs);
@@ -253,8 +280,17 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                 canvas.getDisplayMethod().setAnnotators(annotators);
             }
         } else {
-            fileSizeString = indexFileString;
-            g2.clearRect(0, 0, getWidth(), getHeight());
+            if (hdf5FileEnabled) {
+                String[] pktData = hafir.readRowData(0);
+                ArrayList<FrameAnnotater> annotators = canvas.getDisplayMethod().getAnnotators();
+                canvas.getDisplayMethod().setAnnotators(null);
+                canvas.paintFrame();
+                canvas.getDisplayMethod().setAnnotators(annotators);
+            } else {
+                fileSizeString = indexFileString;
+                g2.clearRect(0, 0, getWidth(), getHeight());                
+            }
+
         }
         g2.setColor(Color.red);
         g2.setFont(g2.getFont().deriveFont(17f));
