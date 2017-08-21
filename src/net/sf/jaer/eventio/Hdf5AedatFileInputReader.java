@@ -213,6 +213,7 @@ public class Hdf5AedatFileInputReader  {
     public static void main(String[] args){
         int[] libversion = new int[3];
         String[] test = new String[3]; 
+        int rowNum = 0;
         H5.H5get_libversion(libversion);
         System.out.println("The hdf5 library version is: " + 
                 String.valueOf(libversion[0]) + "." + String.valueOf(libversion[1]) + "."
@@ -221,7 +222,9 @@ public class Hdf5AedatFileInputReader  {
             Hdf5AedatFileInputReader r = new Hdf5AedatFileInputReader(new File("rec1498945830.hdf5"),null);
             r.openDataset("/dvs/data");
             r.creatWholeFileSpace();
-            test = r.readRowData(1);
+            test = r.readRowData(rowNum);
+            System.out.println("The packet header in row " + rowNum + " is: " + test[1]);
+            System.out.println("The packet data in row " + rowNum + " is: " + test[2]);            
         } catch (IOException ex) {
             log.warning("caught "+ex.toString());
         }        
