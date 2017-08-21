@@ -10,7 +10,19 @@ import java.io.IOException;
 import java.util.logging.Logger;
 import ncsa.hdf.hdf5lib.H5;
 import ncsa.hdf.hdf5lib.HDF5Constants;
+import net.sf.jaer.aemonitor.EventRaw;
+import net.sf.jaer.aemonitor.EventRaw.EventType;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import static net.sf.jaer.eventio.Jaer3BufferParser.JAER3POLMASK;
+import static net.sf.jaer.eventio.Jaer3BufferParser.JAER3POLSHIFT;
+import static net.sf.jaer.eventio.Jaer3BufferParser.JAER3XMASK;
+import static net.sf.jaer.eventio.Jaer3BufferParser.JAER3XSHIFT;
+import static net.sf.jaer.eventio.Jaer3BufferParser.JAER3YMASK;
+import static net.sf.jaer.eventio.Jaer3BufferParser.JAER3YSHIFT;
 /**
  * Reads HDF5 AER3.1 data files
  * 
@@ -34,7 +46,9 @@ public class Hdf5AedatFileInputReader  {
     // Allocate array to stor one event packet.
     // String is a variable length array of char.
     final String[] eventPktData;       
-     
+    AEChip chip;
+    private ApsDvsEventPacket out;
+    
     /**
      * Constructor.
      * @param f: The Hdf5 file to be read.
@@ -43,6 +57,7 @@ public class Hdf5AedatFileInputReader  {
      */
     public Hdf5AedatFileInputReader(File f, AEChip chip) throws IOException  {
         fileName = f.getName();
+        this.chip = chip;
         
         // An event packet is a row in the dataset. A row consists of 3 columns.
         // It's ordered like this: timestamp_system | packet header | dvs data.
@@ -210,6 +225,76 @@ public class Hdf5AedatFileInputReader  {
         return results;
     }
     
+    public int fourIntsToInt(int[] dataArray, int index) {
+        return (dataArray[index + 3] << 24) + (dataArray[index + 2] << 16) + (dataArray[index + 1] << 8) + dataArray[index];
+    }
+    
+    public int getRowPktFirstTs(int rowNum) {
+        int[] pktData = stringToIntArray(readRowData(rowNum)[2]);
+        return  fourIntsToInt(pktData, 4);
+    }
+
+    public int getRowPktLastTs(int rowNum) {
+        int[] pktData = stringToIntArray(readRowData(rowNum)[2]);
+        int length = pktData.length;
+        return  fourIntsToInt(pktData, length - 4);
+    }
+    
+    public EventPacket extractPacket(int rowNum) {
+        int[] pktHeader = stringToIntArray(eventPktData[1]);
+        int[] pktData = stringToIntArray(eventPktData[2]);
+        
+        if (out == null) {
+            out = new ApsDvsEventPacket(ApsDvsEvent.class); // In order to be general, we make the packet's event ApsDvsEvent.
+        } else {
+            out.clear();
+        }
+//        final OutputEventIterator outItr = out.outputIterator();
+//
+//        int eventSize = fourIntsToInt(pktHeader, 4);
+//        int eventTsOffset = fourIntsToInt(pktHeader, 8);
+//        int eventNum = fourIntsToInt(pktHeader, 20);
+//        
+//        EventType etype = EventType.values()[pktHeader[0]];
+//
+//        switch (etype){
+//            case PolarityEvent:                  
+//                for(int i = 0; i < eventNum; i++) {
+//                     readDVS(outItr, fourIntsToInt(pktData, i * eventSize), fourIntsToInt(pktData, i * eventSize + eventTsOffset));                    
+//                }
+//                break;
+//            default:
+//                System.out.println("Not supported yet.");
+//        }
+        return out;
+    }
+    
+    /**
+     * Extractor the DVS events.
+     *
+     * @param outItr the iterator of the output stream
+     * @param data data, for DVS, it's the address
+     * @param timestamp timestamp of the event
+     */
+    protected void readDVS(final OutputEventIterator outItr, final int data, final int timestamp) {
+        final int sx1 = chip.getSizeX() - 1;
+        final ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
+        e.reset();
+
+        e.address = data;
+        e.timestamp = timestamp;
+        e.polarity = ((data & JAER3POLMASK) >> JAER3POLSHIFT) == (JAER3POLMASK >> JAER3POLSHIFT) ? ApsDvsEvent.Polarity.On
+                : ApsDvsEvent.Polarity.Off;
+        e.type = 0;
+        e.x = (short) (sx1 - ((data & JAER3XMASK) >>> JAER3XSHIFT));
+        e.y = (short) ((data & JAER3YMASK) >>> JAER3YSHIFT);
+
+        e.setReadoutType(ApsDvsEvent.ReadoutType.DVS);
+
+        // autoshot triggering
+        // autoshotEventsSinceLastShot++; // number DVS events captured here
+    }
+        
     public static void main(String[] args){
         int[] libversion = new int[3];
         String[] test = new String[3]; 
@@ -223,8 +308,11 @@ public class Hdf5AedatFileInputReader  {
             r.openDataset("/dvs/data");
             r.creatWholeFileSpace();
             test = r.readRowData(rowNum);
+            r.extractPacket(rowNum);
             System.out.println("The packet header in row " + rowNum + " is: " + test[1]);
-            System.out.println("The packet data in row " + rowNum + " is: " + test[2]);            
+            System.out.println("The packet data in row " + rowNum + " is: " + test[2]);    
+            System.out.println("The first timestamp in row" + rowNum + " is: " + r.getRowPktFirstTs(rowNum));
+            System.out.println("The last timestamp in row" + rowNum + " is: " + r.getRowPktLastTs(rowNum));
         } catch (IOException ex) {
             log.warning("caught "+ex.toString());
         }        

@@ -59,6 +59,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     private File currentFile;
     private boolean newFileSelected = false;
     private boolean hdf5FileEnabled = false;
+    private int packetNum = 0;
 
     /**
      * Creates new form ChipDataFilePreview
@@ -281,7 +282,14 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             }
         } else {
             if (hdf5FileEnabled) {
-                String[] pktData = hafir.readRowData(0);
+                int packetTotalNum = (int)hafir.getFileDims()[0];
+                if (packetNum >= 100)  {
+                    packetNum = 0;
+                }
+                hafir.readRowData(packetNum);
+                ae = hafir.extractPacket(packetNum);
+                renderer.render(ae);
+                packetNum ++;
                 ArrayList<FrameAnnotater> annotators = canvas.getDisplayMethod().getAnnotators();
                 canvas.getDisplayMethod().setAnnotators(null);
                 canvas.paintFrame();
