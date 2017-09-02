@@ -133,6 +133,15 @@ import net.sf.jaer.util.EngineeringFormat;
  * </pre> This method will construct a button with label "SendParameters" which,
  * when pressed, will call the method "doSendParameters".
  * <p>
+ * <p>
+ * To add a momentary press/release button control to a panel, implement a pair of methods starting with "doPress" and "doRelease",
+ * e.g.
+ * <pre>
+ *     public void doPressTurnOnLamp();
+ *     public void doReleaseTurnOnLamp();
+ ** </pre> This method will construct a button with label "TurnOnLamp" which,
+ * while pressed can turn on something momentarily; the doPressXXX() is called on press and doReleaseXXX() on release
+ * <p>
  * <strong>
  * Grouping parameters.</strong>
  * <p>
