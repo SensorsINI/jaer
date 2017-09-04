@@ -68,6 +68,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
      */
     private static final int DECISION_PAPER = 0, DECISION_SCISSORS = 1, DECISION_ROCK = 2, DECISION_BACKGROUND = 3;
     private static final String[] DECISION_STRINGS = {"Paper", "Scissors", "Rock", "Background"};
+    private boolean showDecisionStatistics=getBoolean("showDecisionStatistics", true);
 
     public RoShamBoCNN(AEChip chip) {
         super(chip);
@@ -82,6 +83,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         setPropertyTooltip(roshambo, "playSounds", "Play sound effects (Rock/Scissors/Paper) every time the decision changes and playSoundsMinIntervalMs has intervened");
         setPropertyTooltip(roshambo, "playSoundsMinIntervalMs", "Minimum time inteval for playing sound effects in ms");
         setPropertyTooltip(roshambo, "playSoundsThresholdActivation", "Minimum winner activation to play the sound");
+        setPropertyTooltip(roshambo, "showDecisionStatistics", "Displays statistics of decisions");
         FilterChain chain = new FilterChain(chip);
         setEnclosedFilterChain(chain);
         apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, statistics);
@@ -125,7 +127,9 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         if ((apsDvsNet != null) && (apsDvsNet.outputLayer != null) && (apsDvsNet.outputLayer.activations != null)) {
             drawDecisionOutput(gl, drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
         }
-        statistics.draw(gl);
+        if(showDecisionStatistics){
+            statistics.draw(gl);
+        }
         if(playSounds && isShowOutputAsBarChart()){
             gl.glColor3f(.5f,0,0);
             gl.glBegin(GL.GL_LINES);
@@ -557,6 +561,21 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         }
         this.playSoundsThresholdActivation = playSoundsThresholdActivation;
         putFloat("playSoundsThresholdActivation", playSoundsThresholdActivation);
+    }
+
+    /**
+     * @return the showDecisionStatistics
+     */
+    public boolean isShowDecisionStatistics() {
+        return showDecisionStatistics;
+    }
+
+    /**
+     * @param showDecisionStatistics the showDecisionStatistics to set
+     */
+    public void setShowDecisionStatistics(boolean showDecisionStatistics) {
+        this.showDecisionStatistics = showDecisionStatistics;
+        putBoolean("showDecisionStatistics",showDecisionStatistics);
     }
 
 }

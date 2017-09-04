@@ -81,6 +81,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 //        setPropertyTooltip(deb, "setNetworkToUniformValues", "sets previously-loaded net to uniform values for debugging");
         setPropertyTooltip(disp, "showOutputAsBarChart", "displays activity of output units as bar chart, where height indicates activation");
         setPropertyTooltip(disp, "showKernels", "draw all the network kernels (once) in a new JFrame");
+        setPropertyTooltip(disp, "toggleShowActivations", "toggle showing network activations (by default just input and output layers)");
         setPropertyTooltip(disp, "showActivations", "draws the network activations in a separate JFrame");
         setPropertyTooltip(disp, "hideSubsamplingLayers", "hides layers that are subsampling conv layers");
         setPropertyTooltip(disp, "hideConvLayers", "hides conv layers");
@@ -184,6 +185,10 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             };
             SwingUtilities.invokeLater(runnable);
         }
+    }
+
+    public void doToggleShowActivations() {
+        setShowActivations(!isShowActivations());
     }
 
     @Override
