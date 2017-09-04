@@ -16,9 +16,10 @@ import java.util.Observer;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
@@ -73,7 +74,7 @@ public class OnOffProximityLineFilter extends EventFilter2D implements Observer 
      */
     synchronized public EventPacket filterPacket(EventPacket in) {
         if(!filterEnabled) return in;
-        if(in.getEventClass()!=PolarityEvent.class) {
+        if(in.getEventClass()==BasicEvent.class) {
             log.warning("can only process PolarityEvent, disabling filter");
             setFilterEnabled(false);
             return in;
@@ -85,23 +86,25 @@ public class OnOffProximityLineFilter extends EventFilter2D implements Observer 
         int sx=chip.getSizeX()-1;
         int sy=chip.getSizeY()-1;
         for(Object e:in){
-            PolarityEvent i=(PolarityEvent)e;
-            ts=i.timestamp;
-            byte oppType=i.type==0? (byte)1:(byte)0;
-            // subsample space part of address, check if delta t of current event to opposite polarity
-            // is within dt. if so, output event. in either case write event to lastTimestamps map.
-            int x=(i.x>>>subsampleBy), y=(i.y>>>subsampleBy);
-            int lastt=lastTimestamps[x][y][oppType];
-            int deltat=(ts-lastt);
-            // if event has occured within dt of last event of opposite type in subsampled map
-            // then let the event through
-            if(deltat<dt || lastt==DEFAULT_TIMESTAMP){  // all event psss through until times are all initialized.
-                PolarityEvent o=(PolarityEvent)outItr.nextOutput();
-                o.copyFrom(i);
+            ApsDvsEvent i=(ApsDvsEvent)e; 
+            //ApsDvsEvent o=(ApsDvsEvent)outItr.nextOutput();
+            if(i.isDVSEvent()){
+                ts=i.timestamp;
+                byte oppType=i.type==0? (byte)1:(byte)0;
+                // subsample space part of address, check if delta t of current event to opposite polarity
+                // is within dt. if so, output event. in either case write event to lastTimestamps map.
+                int x=(i.x>>>subsampleBy), y=(i.y>>>subsampleBy);
+                int lastt=lastTimestamps[x][y][oppType];
+                int deltat=(ts-lastt);
+                // if event has occured within dt of last event of opposite type in subsampled map
+                // then let the event through
+                if(!(deltat<dt || lastt==DEFAULT_TIMESTAMP)){  // all event psss through until times are all initialized.
+                    i.setFilteredOut(true);//o.copyFrom(i);
+                }
+                lastTimestamps[x][y][i.type]=ts;
             }
-            lastTimestamps[x][y][i.type]=ts;
         }
-        return out;
+        return in;
     }
     
     /**
