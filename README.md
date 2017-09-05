@@ -12,19 +12,23 @@ This project has been moved here from SourceForge. Commits are now disabled ther
 
 You can find the latest releases at <https://github.com/SensorsINI/jaer/releases>.
 
-To build yourself, close the repo and run
+To build yourself, clone the repo and run
 
     ant jar
 
 ## Support
 
-See https://sourceforge.net/p/jaer/wiki/Home/ for user guide (ignoring the sourceforge subversion installation instructions there)
+Please use our GitHub bug tracker to report issues and bugs, or our Google Groups mailing list for discussions and announcements.
 
-The soureforge jaer has a useful past help forum at https://sourceforge.net/p/jaer/discussion/631958/
+BUG TRACKER: https://github.com/SensorsINI/jaer/issues/
 
-There is also a (slightly less useful) sourceforge jaer developer forum at https://sourceforge.net/p/jaer/discussion/631959/
+MAILING LIST: https://groups.google.com/d/forum/jaer-users/
 
-New forum posts should use the github jaer issues page https://github.com/SensorsINI/jaer/issues
+See https://sourceforge.net/p/jaer/wiki/Home/ for user guide (ignoring the SourceForge Subversion installation instructions there)
+
+The SourceForge page has a useful past help forum at https://sourceforge.net/p/jaer/discussion/631958/
+
+There is also a (slightly less useful) developer forum at https://sourceforge.net/p/jaer/discussion/631959/
 
 ![DVS128 cameras](/images/dvs128cameras.jpg)
 
