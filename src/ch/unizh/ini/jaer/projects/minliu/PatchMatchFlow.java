@@ -133,6 +133,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int MIN_SLICE_DURATION_US = 1000;
     private int MAX_SLICE_DURATION_US = 300000;
 
+    private boolean enableImuTimesliceLogging=false;
+    private TobiLogger imuTimesliceLogger=null;
+    
     public enum PatchCompareMethod {
         /*JaccardDistance,*/ /*HammingDistance*/
         SAD/*, EventSqeDistance*/
@@ -228,6 +231,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "rectifyPolarties", "<html> whether to rectify ON and OFF polarities to unsigned counts; true ignores polarity for block matching, false uses polarity with sliceNumBits>1");
         setPropertyTooltip(patchTT, "scalesToCompute", "Scales to compute, e.g. 1,2; blank for all scales. 0 is full resolution, 1 is subsampled 2x2, etc");
         setPropertyTooltip(patchTT, "defaults", "Sets reasonable defaults");
+        setPropertyTooltip(patchTT, "enableImuTimesliceLogging", "Logs IMU and rate gyro");
 
         setPropertyTooltip(dispTT, "showSliceBitMap", "enables displaying the slices' bitmap");
         setPropertyTooltip(dispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
@@ -831,6 +835,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         eventCounter = 0;
         sliceDeltaT = ts - sliceLastTs;
         sliceLastTs = ts;
+        if(imuTimesliceLogger!=null && imuTimesliceLogger.isEnabled()){
+            imuTimesliceLogger.log(String.format("%d %d %.3f",ts,sliceDeltaT,imuFlowEstimator.getPanRateDps()));
+        }
     }
 
     /**
@@ -2413,6 +2420,27 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     public int getSliceDeltaT() {
         return sliceDeltaT;
+    }
+
+    /**
+     * @return the enableImuTimesliceLogging
+     */
+    public boolean isEnableImuTimesliceLogging() {
+        return enableImuTimesliceLogging;
+    }
+
+    /**
+     * @param enableImuTimesliceLogging the enableImuTimesliceLogging to set
+     */
+    public void setEnableImuTimesliceLogging(boolean enableImuTimesliceLogging) {
+        this.enableImuTimesliceLogging = enableImuTimesliceLogging;
+        if(enableImuTimesliceLogging){
+            if(imuTimesliceLogger==null){
+                imuTimesliceLogger=new TobiLogger("imuTimeslice.txt", "IMU rate gyro deg/s and patchmatch timeslice duration in ms");
+                imuTimesliceLogger.setHeaderLine("systemtime(ms) timestamp(us) timeslice(us) rate(deg/s)");
+            }
+        }
+        imuTimesliceLogger.setEnabled(enableImuTimesliceLogging);
     }
     
 }
