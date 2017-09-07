@@ -588,6 +588,28 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             log.info("IMU calibration erased (all offsets set to zero)");
         }
 
+        /**
+         * 
+         * @return the panRateDps in deg/s
+         */
+        public float getPanRateDps() {
+            return panRateDps;
+        }
+
+        /**
+         * @return the tiltRateDps in deg/s
+         */
+        public float getTiltRateDps() {
+            return tiltRateDps;
+        }
+
+        /**
+         * @return the rollRateDps in deg/s
+         */
+        public float getRollRateDps() {
+            return rollRateDps;
+        }
+
     }
     // </editor-fold>
 
