@@ -606,6 +606,72 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     protected String prefsKeyHeader() {
         return getClass().getSimpleName() + ".";
     }
+    
+    /** Puts initial preference value if the value has not 
+     * already been set to a value different that default value.
+     * This method is intended for subclasses to override the default preferred value. 
+     * For instance, a subclass, or a filter that uses another one,
+     * can select the default starting value, for example if using a 
+     * tracker, the tracker could be configured for to track only a single object.
+     * 
+     * 
+     * @param key the preference key, e.g. "dt"
+     * @param value the initial preference value, e.g. 10
+     * @return true if successful, false if there was already a preference value there that is not the default one.
+     */
+    public boolean putInitialPreferenceValue(String key, Object value){
+        if(key==null || value==null){
+            log.warning("null key or value, doing nothing");
+            return false;
+        }
+        if(value instanceof String){
+            if(!getString(key, (String)value).equals((String)value)){
+                putString(key,(String)value);
+                return true;
+            }else{ 
+                return false;
+            }
+        }else if(value instanceof Boolean){
+            if((getBoolean(key, (Boolean)value)!=(Boolean)value)){
+                putBoolean(key,(Boolean)value);
+                return true;
+            }else{ 
+                return false;
+            }
+        }else if(value instanceof Integer){
+            if((getInt(key, (Integer)value)!=(Integer)value)){
+                putInt(key,(Integer)value);
+                return true;
+            }else{ 
+                return false;
+            }
+        }else if(value instanceof Long){
+            if((getLong(key, (Long)value)!=(Long)value)){
+                putLong(key,(Long)value);
+                return true;
+            }else{ 
+                return false;
+            }
+        }else if(value instanceof Float){
+            if((getFloat(key, (Float)value)!=(Float)value)){
+                putFloat(key,(Float)value);
+                return true;
+            }else{ 
+                return false;
+            }
+        }else if(value instanceof Double){
+            if((getDouble(key, (Double)value)!=(Double)value)){
+                putDouble(key,(Double)value);
+                return true;
+            }else{ 
+                return false;
+            }
+        }else{
+            log.warning("cannot handle initial preferred value of type "+value.getClass()+" of value "+value);
+            return false;
+        }
+        
+    }
 
     // <editor-fold defaultstate="collapsed" desc="-- putter Methods for types of preference variables --">
     /**
