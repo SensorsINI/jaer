@@ -7,11 +7,12 @@ package net.sf.jaer.eventio;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 import ncsa.hdf.hdf5lib.H5;
 import ncsa.hdf.hdf5lib.HDF5Constants;
-import net.sf.jaer.aemonitor.EventRaw;
-import net.sf.jaer.aemonitor.EventRaw.EventType;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
@@ -30,7 +31,7 @@ import static net.sf.jaer.eventio.Jaer3BufferParser.JAER3YSHIFT;
  */
 public class Hdf5AedatFileInputReader  {
     protected static Logger log=Logger.getLogger("Hdf5AedatFileInputReader");
-    
+
     private String fileName;
     
     private int file_id = -1;     
@@ -48,6 +49,33 @@ public class Hdf5AedatFileInputReader  {
     final String[] eventPktData;       
     AEChip chip;
     private ApsDvsEventPacket out;
+
+    enum H5O_type {
+        H5O_TYPE_UNKNOWN(-1), // Unknown object type
+        H5O_TYPE_GROUP(0), // Object is a group
+        H5O_TYPE_DATASET(1), // Object is a dataset
+        H5O_TYPE_NAMED_DATATYPE(2), // Object is a named data type
+        H5O_TYPE_NTYPES(3); // Number of different object types
+        private static final Map<Integer, H5O_type> lookup = new HashMap<Integer, H5O_type>();
+
+        static {
+            for (H5O_type s : EnumSet.allOf(H5O_type.class))
+                lookup.put(s.getCode(), s);
+        }
+        private int code;
+
+        H5O_type(int layout_type) {
+            this.code = layout_type;
+        }
+
+        public int getCode() {
+            return this.code;
+        }
+
+        public static H5O_type get(int code) {
+            return lookup.get(code);
+        }
+    }
     
     /**
      * Constructor.
@@ -77,13 +105,36 @@ public class Hdf5AedatFileInputReader  {
      */
     public boolean openDataset(String datasetPath) {
         boolean retVal = false;
-        
+
         // Open file using the default properties.
         try {
             file_id = H5.H5Fopen(fileName, HDF5Constants.H5F_ACC_RDWR, HDF5Constants.H5P_DEFAULT);
             
             // Open dataset using the default properties.
             if (file_id >= 0) {
+                int count = (int) H5.H5Gn_members(file_id, "/dvs");
+                String[] oname = new String[count];
+                int[] otype = new int[count];
+                int[] ltype = new int[count];
+                long[] orefs = new long[count];
+                H5.H5Gget_obj_info_all(file_id, "/dvs", oname, otype, ltype, orefs, HDF5Constants.H5_INDEX_NAME);
+
+                // Get type of the object and display its name and type.
+                for (int indx = 0; indx < otype.length; indx++) {
+                    switch (H5O_type.get(otype[indx])) {
+                    case H5O_TYPE_GROUP:
+                        System.out.println("  Group: " + oname[indx]);
+                        break;
+                    case H5O_TYPE_DATASET:
+                        System.out.println("  Dataset: " + oname[indx]);
+                        break;
+                    case H5O_TYPE_NAMED_DATATYPE:
+                        System.out.println("  Datatype: " + oname[indx]);
+                        break;
+                    default:
+                        System.out.println("  Unknown: " + oname[indx]);
+                    }
+                }
                 dataset_id = H5.H5Dopen(file_id, datasetPath, HDF5Constants.H5P_DEFAULT);  
                 retVal = true;
             }
@@ -92,7 +143,7 @@ public class Hdf5AedatFileInputReader  {
         }
         return retVal;
     }
-
+    
     /**
      * Create the whole file data space.
      */
@@ -305,7 +356,7 @@ public class Hdf5AedatFileInputReader  {
                 + String.valueOf(libversion[2]) + ".");
         try {
             Hdf5AedatFileInputReader r = new Hdf5AedatFileInputReader(new File("rec1498945830.hdf5"),null);
-            r.openDataset("/dvs/data");
+            r.openDataset("/dvs/polarity/data");
             r.creatWholeFileSpace();
             test = r.readRowData(rowNum);
             r.extractPacket(rowNum);
@@ -316,5 +367,5 @@ public class Hdf5AedatFileInputReader  {
         } catch (IOException ex) {
             log.warning("caught "+ex.toString());
         }        
-    }    
+    }
 }
