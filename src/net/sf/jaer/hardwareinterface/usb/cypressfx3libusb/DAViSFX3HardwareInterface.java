@@ -552,6 +552,9 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									yPos = temp;
 								}
 
+								// NOTE 09.2017: logic now uses upper left (CG format) as output.
+								yPos = (apsInvertXY) ? (apsSizeX - 1 - yPos) : (apsSizeY - 1 - yPos);
+
 								apsCountY[apsCurrentReadoutType]++;
 
 								// RGB support: first 320 pixels are even, then odd.
