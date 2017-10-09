@@ -32,8 +32,8 @@ public class Davis208PixelParadeColor extends DavisBaseCamera {
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(davisRenderer);
 
-		setApsFirstPixelReadOut(new Point(getSizeX() - 1, 0));
-		setApsLastPixelReadOut(new Point(0, getSizeY() - 1));
+		setApsFirstPixelReadOut(new Point(0, 0));
+		setApsLastPixelReadOut(new Point(getSizeX() - 1, getSizeY() - 1));
 	}
 
 	public Davis208PixelParadeColor(final HardwareInterface hardwareInterface) {

@@ -27,8 +27,8 @@ public class Davis128 extends DavisBaseCamera {
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(davisRenderer);
 
-		setApsFirstPixelReadOut(new Point(getSizeX() - 1, getSizeY() - 1));
-		setApsLastPixelReadOut(new Point(0, 0));
+		setApsFirstPixelReadOut(new Point(0, 0));
+		setApsLastPixelReadOut(new Point(getSizeX() - 1, getSizeY() - 1));
 	}
 
 	public Davis128(final HardwareInterface hardwareInterface) {

@@ -1015,7 +1015,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         @Override
         public void display(final GLAutoDrawable drawable) {
-            super.display(drawable); 
+            super.display(drawable);
 
             if (exposureRenderer == null) {
                 exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, DavisDisplayMethod.FONTSIZE), true, true);
@@ -1173,7 +1173,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     getFrameRateHz());
             final float scale = TextRendererScale.draw3dScale(exposureRenderer, s, getChipCanvas().getScale(), getSizeX(), 1f);
             // determine width of string in pixels and scale accordingly
-            exposureRenderer.draw3D(s, 0, getSizeY() + (DavisDisplayMethod.FONTSIZE / 2) * scale, 0, scale);
+            exposureRenderer.draw3D(s, 0, getSizeY() + ((DavisDisplayMethod.FONTSIZE / 2) * scale), 0, scale);
             exposureRenderer.end3DRendering();
 
             final int nframes = getFrameCount() % DavisDisplayMethod.FRAME_COUNTER_BAR_LENGTH_FRAMES;
@@ -1219,29 +1219,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             } catch (final HardwareInterfaceException e) {
                 // Ignore.
             }
-        }
-    }
-
-    public void configureROIRegion0(final Point cornerLL, final Point cornerUR) {
-        // First program the new sizes into logic.
-        if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
-            final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
-            final SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
-
-            try {
-                configSequence.addConfig(CypressFX3.FPGA_APS, (short) 9, cornerLL.x);
-                configSequence.addConfig(CypressFX3.FPGA_APS, (short) 10, cornerLL.y);
-                configSequence.addConfig(CypressFX3.FPGA_APS, (short) 11, cornerUR.x);
-                configSequence.addConfig(CypressFX3.FPGA_APS, (short) 12, cornerUR.y);
-
-                configSequence.sendConfigSequence();
-            } catch (final HardwareInterfaceException e) {
-                // Ignore.
-            }
-
-            // Then update first/last pixel coordinates.
-            setApsFirstPixelReadOut(new Point(0, (cornerUR.y - cornerLL.y)));
-            setApsLastPixelReadOut(new Point((cornerUR.x - cornerLL.x), 0));
         }
     }
 
