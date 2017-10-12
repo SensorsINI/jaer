@@ -65,9 +65,14 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Iterator;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -337,19 +342,29 @@ public class OpenCVFlow extends AbstractMotionFlow
                 System.err.println(e);                   
                 return;
             } finally {
-                // showResult(newFrame);
-
-                
-                float[] new_slice_buff = new float[(int) (newFrame.total() * 
-                                                newFrame.channels())];
-                
-                for (int i = 0; i < chip.getSizeY(); i++) {
-                    for (int j = 0; j < chip.getSizeX(); j++) {
-                        new_slice_buff[chip.getSizeX()*i + j] = new1DArray[chip.getSizeX()*i + j]/newGrayScale;         
+                try {
+                    // showResult(newFrame);
+                    
+                    
+                    float[] new_slice_buff = new float[(int) (newFrame.total() *
+                            newFrame.channels())];
+                    
+                    for (int i = 0; i < chip.getSizeY(); i++) {
+                        for (int j = 0; j < chip.getSizeX(); j++) {         
+                            new_slice_buff[chip.getSizeX()*i + j] = new1DArray[chip.getSizeX()*i + j]/newGrayScale;
+                        }
                     }
-                }                  
-                
-                OFResultDisplay.setPixmapFromGrayArray(new_slice_buff);               
+                    
+                    OFResultDisplay.setPixmapFromGrayArray(new_slice_buff);
+                    DateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
+                    File folder = new File("EventSlices/" + chip.getAeInputStream().getFile().getName() + this.patchFlow.getSliceMethod().toString());
+                    folder.mkdir();
+                    File outputfile = new File(folder, String.format("Clear-%s.jpg", df.format(new Date())));
+                    Core.flip(newFrame, newFrame, 0);
+                    ImageIO.write(Mat2BufferedImage(newFrame), "jpg", outputfile);
+                } catch (IOException ex) {
+                    Logger.getLogger(OpenCVFlow.class.getName()).log(Level.SEVERE, null, ex);
+                }
             }            
             
             // draw the tracks
