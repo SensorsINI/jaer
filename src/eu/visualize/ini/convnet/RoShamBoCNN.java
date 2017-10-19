@@ -62,13 +62,14 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     private int playSoundsMinIntervalMs = getInt("playSoundsMinIntervalMs", 1000);
     private float playSoundsThresholdActivation = getFloat("playSoundsThresholdActivation", .7f);
     private SoundPlayer soundPlayer = null;
+    private boolean playToWin = getBoolean("playToWin", false);
 
     /**
      * output units
      */
     private static final int DECISION_PAPER = 0, DECISION_SCISSORS = 1, DECISION_ROCK = 2, DECISION_BACKGROUND = 3;
     private static final String[] DECISION_STRINGS = {"Paper", "Scissors", "Rock", "Background"};
-    private boolean showDecisionStatistics=getBoolean("showDecisionStatistics", true);
+    private boolean showDecisionStatistics = getBoolean("showDecisionStatistics", true);
 
     public RoShamBoCNN(AEChip chip) {
         super(chip);
@@ -84,6 +85,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         setPropertyTooltip(roshambo, "playSoundsMinIntervalMs", "Minimum time inteval for playing sound effects in ms");
         setPropertyTooltip(roshambo, "playSoundsThresholdActivation", "Minimum winner activation to play the sound");
         setPropertyTooltip(roshambo, "showDecisionStatistics", "Displays statistics of decisions");
+        setPropertyTooltip(roshambo, "playToWin", "If selected, symbol sent to hand will  beat human; if unselected, it ties the human");
         FilterChain chain = new FilterChain(chip);
         setEnclosedFilterChain(chain);
         apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, statistics);
@@ -127,15 +129,15 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         if ((apsDvsNet != null) && (apsDvsNet.outputLayer != null) && (apsDvsNet.outputLayer.activations != null)) {
             drawDecisionOutput(gl, drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
         }
-        if(showDecisionStatistics){
+        if (showDecisionStatistics) {
             statistics.draw(gl);
         }
-        if(playSounds && isShowOutputAsBarChart()){
-            gl.glColor3f(.5f,0,0);
+        if (playSounds && isShowOutputAsBarChart()) {
+            gl.glColor3f(.5f, 0, 0);
             gl.glBegin(GL.GL_LINES);
-            final float h=playSoundsThresholdActivation*DeepLearnCnnNetwork.HISTOGRAM_HEIGHT_FRACTION*chip.getSizeY();
-            gl.glVertex2f(0,h);
-            gl.glVertex2f(chip.getSizeX(),h);
+            final float h = playSoundsThresholdActivation * DeepLearnCnnNetwork.HISTOGRAM_HEIGHT_FRACTION * chip.getSizeY();
+            gl.glVertex2f(0, h);
+            gl.glVertex2f(chip.getSizeX(), h);
             gl.glEnd();
         }
     }
@@ -284,7 +286,9 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     }
 
     private void openSerial() throws IOException {
-        if(!isSerialPortCommandsEnabled()) return;
+        if (!isSerialPortCommandsEnabled()) {
+            return;
+        }
         if (serialPort != null) {
             closeSerial();
         }
@@ -445,21 +449,40 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                 }
                 if (isSerialPortCommandsEnabled() && (serialPortOutputStream != null)) {
                     char cmd = 0;
-                    switch (maxUnit) {
-                        case DECISION_ROCK:
-                            cmd = '3';
-                            break;
-                        case DECISION_SCISSORS:
-                            cmd = '2';
-                            break;
-                        case DECISION_PAPER:
-                            cmd = '1';
-                            break;
-                        case DECISION_BACKGROUND:
-                            cmd = '1';
-                            break;
-                        default:
-                            log.warning("maxUnit=" + maxUnit + " is not a valid network output state");
+                    if (!playToWin) {
+                        switch (maxUnit) {
+                            case DECISION_ROCK:
+                                cmd = '3';
+                                break;
+                            case DECISION_SCISSORS:
+                                cmd = '2';
+                                break;
+                            case DECISION_PAPER:
+                                cmd = '1';
+                                break;
+                            case DECISION_BACKGROUND:
+                                cmd = '1';
+                                break;
+                            default:
+                                log.warning("maxUnit=" + maxUnit + " is not a valid network output state");
+                        }
+                    } else { // beat human
+                        switch (maxUnit) {
+                            case DECISION_ROCK:
+                                cmd = '1';
+                                break;
+                            case DECISION_SCISSORS:
+                                cmd = '3';
+                                break;
+                            case DECISION_PAPER:
+                                cmd = '2';
+                                break;
+                            case DECISION_BACKGROUND:
+                                cmd = '1';
+                                break;
+                            default:
+                                log.warning("maxUnit=" + maxUnit + " is not a valid network output state");
+                        }
                     }
                     try {
                         serialPortOutputStream.write((byte) cmd);
@@ -575,7 +598,22 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
      */
     public void setShowDecisionStatistics(boolean showDecisionStatistics) {
         this.showDecisionStatistics = showDecisionStatistics;
-        putBoolean("showDecisionStatistics",showDecisionStatistics);
+        putBoolean("showDecisionStatistics", showDecisionStatistics);
+    }
+
+    /**
+     * @return the playToWin
+     */
+    public boolean isPlayToWin() {
+        return playToWin;
+    }
+
+    /**
+     * @param playToWin the playToWin to set
+     */
+    public void setPlayToWin(boolean playToWin) {
+        this.playToWin = playToWin;
+        putBoolean("playToWin", playToWin);
     }
 
 }
