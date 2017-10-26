@@ -130,7 +130,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //    private float lastErrSign = Math.signum(1);
 //    private final String outputFilename;
     private int sliceDeltaT;    //  The time difference between two slices used for velocity caluction. For constantDuration, this one is equal to the duration. For constantEventNumber, this value will change.
-    private int MIN_SLICE_DURATION_US = 1000;
+    private int MIN_SLICE_DURATION_US = 100;
     private int MAX_SLICE_DURATION_US = 300000;
 
     private boolean enableImuTimesliceLogging=false;
