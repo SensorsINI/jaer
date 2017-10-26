@@ -26,6 +26,8 @@ import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 
 import eu.seebetter.ini.chips.DavisChip;
+import java.nio.file.Paths;
+import javax.swing.JOptionPane;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -279,6 +281,7 @@ public class ApsFrameExtractor extends EventFilter2D
     public void saveImage() {
         final Date d = new Date();
         final String fn = "ApsFrame-" + AEDataFile.DATE_FORMAT.format(d) + ".png";
+        final String userDir=Paths.get(".").toAbsolutePath().normalize().toString();
         final BufferedImage theImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_INT_RGB);
         for (int y = 0; y < chip.getSizeY(); y++) {
             for (int x = 0; x < chip.getSizeX(); x++) {
@@ -291,6 +294,7 @@ public class ApsFrameExtractor extends EventFilter2D
         final File outputfile = new File(fn);
         try {
             ImageIO.write(theImage, "png", outputfile);
+            JOptionPane.showMessageDialog(chip.getFilterFrame(), "Wrote "+userDir+File.separator+fn, "Saved PNG image", JOptionPane.INFORMATION_MESSAGE);
         } catch (final IOException ex) {
             Logger.getLogger(ApsFrameExtractor.class.getName()).log(Level.SEVERE, null, ex);
         }
