@@ -293,30 +293,48 @@ public class ApsFrameExtractor extends EventFilter2D
         }
         final Date d = new Date();
         final String PNG = "png";
-        final String fn = "ApsFrame-" + AEDataFile.DATE_FORMAT.format(d) + "."+PNG;
+        final String fn = "ApsFrame-" + AEDataFile.DATE_FORMAT.format(d) + "." + PNG;
         // if user is playing a file, use folder that file lives in
         String userDir = Paths.get(".").toAbsolutePath().normalize().toString();
         if (chip.getAeViewer() != null && chip.getAeViewer().getAePlayer() != null && chip.getAeViewer().getPlayMode() == PlayMode.PLAYBACK && chip.getAeViewer().getCurrentFile() != null) {
             userDir = chip.getAeViewer().getCurrentFile().getAbsolutePath();
         }
         File outputfile = new File(userDir + File.separator + fn);
-        JFileChooser fd = new JFileChooser(outputfile);
-        fd.setSelectedFile(outputfile);
-        fd.setVisible(true);
-        final int ret = fd.showOpenDialog(null);
-        if (ret != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-        outputfile = fd.getSelectedFile();
-        if (!FilenameUtils.isExtension(outputfile.getAbsolutePath(), PNG)) {
-            String ext = FilenameUtils.getExtension(outputfile.toString());
-            String newfile = outputfile.getAbsolutePath();
-            if (ext != null && !ext.isEmpty() && !ext.equals(PNG)) {
-                newfile = outputfile.getAbsolutePath().replace(ext, PNG);
-            } else {
-                newfile = newfile + "."+PNG;
+        boolean done = false;
+        while (!done) {
+            JFileChooser fd = new JFileChooser(outputfile);
+            fd.setApproveButtonText("Save as");
+            fd.setSelectedFile(outputfile);
+            fd.setVisible(true);
+            final int ret = fd.showOpenDialog(null);
+            if (ret != JFileChooser.APPROVE_OPTION) {
+                return;
             }
-            outputfile = new File(newfile);
+            outputfile = fd.getSelectedFile();
+            if (!FilenameUtils.isExtension(outputfile.getAbsolutePath(), PNG)) {
+                String ext = FilenameUtils.getExtension(outputfile.toString());
+                String newfile = outputfile.getAbsolutePath();
+                if (ext != null && !ext.isEmpty() && !ext.equals(PNG)) {
+                    newfile = outputfile.getAbsolutePath().replace(ext, PNG);
+                } else {
+                    newfile = newfile + "." + PNG;
+                }
+                outputfile = new File(newfile);
+            }
+            if (outputfile.exists()) {
+                int overwrite = JOptionPane.showConfirmDialog(fd, outputfile.toString() + " exists, overwrite?");
+                switch (overwrite) {
+                    case JOptionPane.OK_OPTION:
+                        done = true;
+                        break;
+                    case JOptionPane.CANCEL_OPTION:
+                        return;
+                    case JOptionPane.NO_OPTION:
+                        break;
+                }
+            }else{
+                done=true;
+            }
         }
         try {
             ImageIO.write(theImage, "png", outputfile);
