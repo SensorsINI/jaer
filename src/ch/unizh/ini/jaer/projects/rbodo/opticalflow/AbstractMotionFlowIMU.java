@@ -148,7 +148,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     public boolean measureAccuracy = getBoolean("measureAccuracy", false);
     boolean measureProcessingTime = getBoolean("measureProcessingTime", false);
     public int countIn, countOut;
-    protected MotionFlowStatistics motionFlowStatistics;
+    public MotionFlowStatistics motionFlowStatistics;
 
     double[][] vxGTframe, vyGTframe, tsGTframe;
     public float vxGT, vyGT, vGT;

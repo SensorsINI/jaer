@@ -80,6 +80,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import javax.swing.JFileChooser;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -96,6 +97,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
+import net.sf.jaer.util.TobiLogger;
 import org.apache.commons.lang3.ArrayUtils;
 
 
@@ -127,6 +129,7 @@ public class OpenCVFlow extends AbstractMotionFlow
     private int[][] color = new int[100][3];
     private float[] oldBuffer = null, newBuffer = null;
     private PatchMatchFlow patchFlow;
+    private TobiLogger globalMotionVectorLogger;
     
     
     public OpenCVFlow(AEChip chip) {
@@ -473,6 +476,24 @@ public class OpenCVFlow extends AbstractMotionFlow
                     index++;
                 }
             }
+            
+            //if (st.length > 0) {
+                if (globalMotionVectorLogger != null && globalMotionVectorLogger.isEnabled()) {
+                    String s = String.format("%d %s %.3g %.3g %.3g %d", patchFlow.getSliceDeltaT(), "OpenLK", motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean(), 
+                                                                              motionFlowStatistics.getGlobalMotion().getGlobalVy().getMean(), 
+                                                                              motionFlowStatistics.getGlobalMotion().getGlobalRotation().getMean(),
+                                                                              motionFlowStatistics.getGlobalMotion().getGlobalVx().getN());
+                    globalMotionVectorLogger.log(s);
+                    
+                    s = String.format("%d %s %.3g %.3g %.3g %d", patchFlow.getSliceDeltaT(), "ABMOF", patchFlow.motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean(), 
+                                                        patchFlow.motionFlowStatistics.getGlobalMotion().getGlobalVy().getMean(), 
+                                                        patchFlow.motionFlowStatistics.getGlobalMotion().getGlobalRotation().getMean(), 
+                                                        patchFlow.motionFlowStatistics.getGlobalMotion().getGlobalRotation().getN());
+                    globalMotionVectorLogger.log(s);
+
+                }                
+            //}
+
             System.out.println("The number of valid output in OpenCV Flow is : " + countOut);    
             motionFlowStatistics.updatePacket(countIn, countOut);
             countOut = 0;
@@ -583,6 +604,40 @@ public class OpenCVFlow extends AbstractMotionFlow
         }
         getSupport().firePropertyChange("showAPSFrameDisplay", null, showAPSFrameDisplay);
     }    
+    
+    
+    synchronized public void doStartLoggingGlobalMotion() {
+        if (globalMotionVectorLogger != null && globalMotionVectorLogger.isEnabled()) {
+            log.info("logging already started");
+            return;
+        }
+        String filename = null, filepath = null;
+        final JFileChooser fc = new JFileChooser();
+        fc.setCurrentDirectory(new File(getString("lastFile", System.getProperty("user.dir"))));  // defaults to startup runtime folder
+        fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        fc.setSelectedFile(new File(getString("lastFile", System.getProperty("user.dir"))));
+        fc.setDialogTitle("Select folder and base file name for the logged motion vector event data");
+        int ret = fc.showOpenDialog(chip.getAeViewer() != null && chip.getAeViewer().getFilterFrame() != null ? chip.getAeViewer().getFilterFrame() : null);
+        if (ret == JFileChooser.APPROVE_OPTION) {
+            File file = fc.getSelectedFile();
+            putString("lastFile", file.toString());
+            globalMotionVectorLogger = new TobiLogger(file.getPath(), "Global Motion vector for every generated slice");
+            globalMotionVectorLogger.setNanotimeEnabled(false);
+            globalMotionVectorLogger.setHeaderLine("system_time(ms) sliceDeltaT(us) method globalVx(pps) globalVy(pps) globalRotation(degree/s) samples");
+            globalMotionVectorLogger.setEnabled(true);
+        } else {
+            log.info("Cancelled logging motion vectors");
+        }    
+    }
+    
+    synchronized public void doStopLoggingGlobalMotion() {
+        if (globalMotionVectorLogger == null) {
+            return;
+        }
+        globalMotionVectorLogger.setEnabled(false);
+        globalMotionVectorLogger = null;
+    }
+
 }
 
 
