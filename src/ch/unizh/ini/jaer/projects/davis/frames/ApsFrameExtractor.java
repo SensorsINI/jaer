@@ -26,6 +26,9 @@ import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 
 import eu.seebetter.ini.chips.DavisChip;
+import java.nio.file.Paths;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -37,8 +40,10 @@ import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.ImageDisplay.Legend;
+import org.apache.commons.io.FilenameUtils;
 
 /**
  * Extracts CIS APS frames from SBRet10/20 DAVIS sensors. Use
@@ -277,8 +282,6 @@ public class ApsFrameExtractor extends EventFilter2D
     }
 
     public void saveImage() {
-        final Date d = new Date();
-        final String fn = "ApsFrame-" + AEDataFile.DATE_FORMAT.format(d) + ".png";
         final BufferedImage theImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_INT_RGB);
         for (int y = 0; y < chip.getSizeY(); y++) {
             for (int x = 0; x < chip.getSizeX(); x++) {
@@ -288,9 +291,55 @@ public class ApsFrameExtractor extends EventFilter2D
                 theImage.setRGB(x, y, value);
             }
         }
-        final File outputfile = new File(fn);
+        final Date d = new Date();
+        final String PNG = "png";
+        final String fn = "ApsFrame-" + AEDataFile.DATE_FORMAT.format(d) + "." + PNG;
+        // if user is playing a file, use folder that file lives in
+        String userDir = Paths.get(".").toAbsolutePath().normalize().toString();
+        if (chip.getAeViewer() != null && chip.getAeViewer().getAePlayer() != null && chip.getAeViewer().getPlayMode() == PlayMode.PLAYBACK && chip.getAeViewer().getCurrentFile() != null) {
+            userDir = chip.getAeViewer().getCurrentFile().getAbsolutePath();
+        }
+        File outputfile = new File(userDir + File.separator + fn);
+        boolean done = false;
+        while (!done) {
+            JFileChooser fd = new JFileChooser(outputfile);
+            fd.setApproveButtonText("Save as");
+            fd.setSelectedFile(outputfile);
+            fd.setVisible(true);
+            final int ret = fd.showOpenDialog(null);
+            if (ret != JFileChooser.APPROVE_OPTION) {
+                return;
+            }
+            outputfile = fd.getSelectedFile();
+            if (!FilenameUtils.isExtension(outputfile.getAbsolutePath(), PNG)) {
+                String ext = FilenameUtils.getExtension(outputfile.toString());
+                String newfile = outputfile.getAbsolutePath();
+                if (ext != null && !ext.isEmpty() && !ext.equals(PNG)) {
+                    newfile = outputfile.getAbsolutePath().replace(ext, PNG);
+                } else {
+                    newfile = newfile + "." + PNG;
+                }
+                outputfile = new File(newfile);
+            }
+            if (outputfile.exists()) {
+                int overwrite = JOptionPane.showConfirmDialog(fd, outputfile.toString() + " exists, overwrite?");
+                switch (overwrite) {
+                    case JOptionPane.OK_OPTION:
+                        done = true;
+                        break;
+                    case JOptionPane.CANCEL_OPTION:
+                        return;
+                    case JOptionPane.NO_OPTION:
+                        break;
+                }
+            }else{
+                done=true;
+            }
+        }
         try {
             ImageIO.write(theImage, "png", outputfile);
+            log.info("wrote PNG " + outputfile);
+//            JOptionPane.showMessageDialog(chip.getFilterFrame(), "Wrote "+userDir+File.separator+fn, "Saved PNG image", JOptionPane.INFORMATION_MESSAGE);
         } catch (final IOException ex) {
             Logger.getLogger(ApsFrameExtractor.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -363,8 +412,8 @@ public class ApsFrameExtractor extends EventFilter2D
     /**
      * Returns a float[] buffer of latest displayed frame with adjustments like
      * brightness, contrast, log intensity conversion, etc. The array is indexed
-     * by y * width + x. To access a particular pixel, use getIndex().
-     * newFrame is set to false by this call.
+     * by y * width + x. To access a particular pixel, use getIndex(). newFrame
+     * is set to false by this call.
      *
      * @return the double[] frame
      * @see #getDisplayBuffer()
@@ -378,8 +427,8 @@ public class ApsFrameExtractor extends EventFilter2D
      * Returns a clone of the latest float displayBuffer. This buffer contains
      * raw pixel values from sensor, before conversion, brightness, etc. The
      * array is indexed by <code>y * width + x</code>. To access a particular
-     * pixel, use getIndex() for convenience.
-     * newFrame is set to false by this call.
+     * pixel, use getIndex() for convenience. newFrame is set to false by this
+     * call.
      *
      * @return the float[] of pixel values
      * @see #getIndex(int, int)
@@ -414,11 +463,13 @@ public class ApsFrameExtractor extends EventFilter2D
         return maxBufferValue;
     }
 
-    /** Sets whether external source sets the displayed data.
-     * 
-     * @param yes true to not fill image values, false to set image values from ApsFrameExtractor
-     * @see #setDisplayFrameRGB(float[]) 
-     * @see #setDisplayGrayFrame(double[]) 
+    /**
+     * Sets whether external source sets the displayed data.
+     *
+     * @param yes true to not fill image values, false to set image values from
+     * ApsFrameExtractor
+     * @see #setDisplayFrameRGB(float[])
+     * @see #setDisplayGrayFrame(double[])
      */
     public void setExtRender(final boolean yes) {
         useExtRender = yes;

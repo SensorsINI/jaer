@@ -1407,7 +1407,8 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater/
 
     private class SoundPlayer {
 
-        private String[] soundFiles = {"ow.wav", "oof.wav", "hah.wav", "oof.wav"};
+        // sound effects are located at root of jaer/sounds folder for goalie, currently. the root of jaer is the standard startup folder
+        private String[] soundFiles = {"sounds/ow.wav", "sounds/oof.wav", "sounds/hah.wav", "sounds/oof.wav"};
         PlayWavFile player;
         Random r = new Random();
         PlayWavFile T;
