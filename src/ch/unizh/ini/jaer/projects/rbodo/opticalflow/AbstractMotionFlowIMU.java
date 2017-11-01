@@ -129,7 +129,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     /**
      * Use IMU gyro values to estimate motion flow.
      */
-    protected ImuFlowEstimator imuFlowEstimator;
+    public ImuFlowEstimator imuFlowEstimator;
 
     // Focal length of camera lens in mm needed to convert rad/s to pixel/s.
     // Conversion factor is atan(pixelWidth/focalLength).
@@ -144,7 +144,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // Performing statistics and logging results. lastLoggingFolder starts off 
     // at user.dir which is startup folder "host/java" where .exe launcher lives
-    private String loggingFolder = getPrefs().get("DataLogger.loggingFolder", System.getProperty("user.dir"));
+    private String loggingFolder = "./PAMI_log_data";
     public boolean measureAccuracy = getBoolean("measureAccuracy", false);
     boolean measureProcessingTime = getBoolean("measureProcessingTime", false);
     public int countIn, countOut;
@@ -379,6 +379,37 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             }
         }
     }
+    
+    ArrayList list = new ArrayList();
+    int sliceNum = 0;
+    public void exportFlowToMatlab(Boolean enableFlg) {
+            if (vxOut == null) {
+                vxOut = new double[sizey][sizex];
+                vyOut = new double[sizey][sizex];
+            } else {
+                if (eout != null) {
+                    vxOut[eout.y][eout.x] = eout.velocity.x;
+                    vyOut[eout.y][eout.x] = eout.velocity.y;                        
+                }            
+            }            
+            list.add(new MLDouble("vx", vxOut));
+            list.add(new MLDouble("vy", vyOut));
+            
+            if (enableFlg) {
+                sliceNum ++;
+                try {
+                    MatFileWriter matFileWriter = new MatFileWriter(loggingFolder + "/" + this.getClass().getSimpleName() + sliceNum + "_" + "flowExport.mat", list);
+                } catch (IOException ex) {
+                    log.log(Level.SEVERE, null, ex);
+                }      
+                log.log(Level.INFO, "Exported motion flow to {0}/flowExport.mat", loggingFolder);
+                exportedFlowToMatlab = true;
+                vxOut = null;
+                vyOut = null;       
+                list.clear();
+            }
+
+    } 
 
     void resetGroundTruth() {
         importedGTfromMatlab = false;
@@ -921,8 +952,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         inItr = in.iterator();
         outItr = dirPacket.outputIterator();
         subsampledPixelIsSet = new boolean[subSizeX][subSizeY];
-        countIn = 0;
-        countOut = 0;
+        // countIn = 0;
+        // countOut = 0;
         if (measureProcessingTime) {
             motionFlowStatistics.processingTime.startTime = System.nanoTime();
         }
@@ -1228,7 +1259,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         motionFlowStatistics.setMeasureAccuracy(measureAccuracy);
         if (measureAccuracy) {
             //setMeasureProcessingTime(false);
-            resetFilter();
+            // resetFilter();
         }
     }
     // </editor-fold>

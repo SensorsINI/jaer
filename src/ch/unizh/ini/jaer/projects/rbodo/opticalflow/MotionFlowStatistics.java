@@ -37,7 +37,7 @@ public class MotionFlowStatistics {
 
     private GlobalMotion globalMotion;
     AngularError angularError;
-    EndpointErrorAbs endpointErrorAbs;
+    public EndpointErrorAbs endpointErrorAbs;
     EndpointErrorRel endpointErrorRel;
     ProcessingTime processingTime;
     EventDensity eventDensity;

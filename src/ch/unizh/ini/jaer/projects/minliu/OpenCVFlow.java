@@ -144,14 +144,16 @@ public class OpenCVFlow extends AbstractMotionFlow
         FilterChain chain = new FilterChain(chip);        
         try {
             patchFlow = new PatchMatchFlow(chip);
+            patchFlow.imuFlowEstimator = this.imuFlowEstimator;
             patchFlow.setFilterEnabled(true);
             chain.add(patchFlow);
         } catch (Exception e) {
             log.warning("could not setup PatchMatchFlow fiter.");
         }        
         setEnclosedFilterChain(chain);
+
         
-        // apsFrameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);   
+        //apsFrameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);   
         patchFlow.getSupport().addPropertyChangeListener(PatchMatchFlow.EVENT_NEW_SLICES,this);
         chip.addObserver(this); // to allocate memory once chip size is known
     }
@@ -166,7 +168,36 @@ public class OpenCVFlow extends AbstractMotionFlow
         if (showAPSFrameDisplay && !OFResultFrame.isVisible()) {
             OFResultFrame.setVisible(true);
         }
-        
+        Iterator i = null;
+        if (in instanceof ApsDvsEventPacket) {
+            i = ((ApsDvsEventPacket) in).fullIterator();
+        } else {
+            i = ((EventPacket) in).inputIterator();
+        }
+
+        while (i.hasNext()) {
+            Object o = i.next();
+            if (o == null) {
+                log.warning("null event passed in, returning input packet");
+                return in;
+            }
+            if ((o instanceof ApsDvsEvent) && ((ApsDvsEvent) o).isApsData()) {
+                continue;
+            }
+            PolarityEvent ein = (PolarityEvent) o;
+            if (!extractEventInfo(o)) {
+                continue;
+            }
+            if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
+                if (imuFlowEstimator.calculateImuFlow(o)) {
+                    continue;
+                }
+            }
+            if (xyFilter()) {
+                continue;
+            }
+            countIn++;
+        }
 
         OFResultDisplay.checkPixmapAllocation();       
         
@@ -188,7 +219,8 @@ public class OpenCVFlow extends AbstractMotionFlow
         if(isShowAPSFrameDisplay()) {
             OFResultDisplay.repaint();            
         }
-        return in;     
+        // motionFlowStatistics.updatePacket(countIn, countOut);
+        return isDisplayRawInput() ? in : dirPacket;
     }
 
     @Override
@@ -199,7 +231,9 @@ public class OpenCVFlow extends AbstractMotionFlow
             patchFlow.resetFilter();            
         }
         
-        OFResultDisplay.setImageSize(chip.getSizeX(), chip.getSizeY());
+        if (OFResultDisplay != null) {
+            OFResultDisplay.setImageSize(chip.getSizeX(), chip.getSizeY());            
+        }
     }
 
     @Override
@@ -228,6 +262,7 @@ public class OpenCVFlow extends AbstractMotionFlow
     
     @Override
     public synchronized void propertyChange(PropertyChangeEvent evt) {
+        super.propertyChange(evt); // resets filter on rewind, etc
         if (evt.getPropertyName().equals(ApsFrameExtractor.EVENT_NEW_FRAME)) {
             if(newBuffer == null) {
                 newBuffer = (float[]) evt.getNewValue();                
@@ -287,11 +322,36 @@ public class OpenCVFlow extends AbstractMotionFlow
         }
         
         if (evt.getPropertyName().equals(PatchMatchFlow.EVENT_NEW_SLICES)) {
+            this.countIn = patchFlow.countIn;
+            System.out.println("The number of valid output in patchFlow is : " + patchFlow.countOut); 
+     
+            MyThread OpenCVCalThread = new MyThread("OpenCV_Calculation");
+            OpenCVCalThread.setName("OpenCV_Calculation");
+            OpenCVCalThread.setEvt(evt);
+            OpenCVCalThread.run();           
+        }
+        
+    }
+
+    public class MyThread extends Thread
+    {
+        private String name;
+        PropertyChangeEvent evt;
+        
+        public MyThread(String name)
+        {
+            this.name = name;
+        }
+        public void setEvt(PropertyChangeEvent evt) {
+            this.evt = evt;
+        }
+
+        public void run() {
             byte[][][] tMinus2dSlice = (byte[][][]) evt.getOldValue();
-            byte[][][] tMinusdSlice = (byte[][][]) evt.getNewValue();
+            byte[][][] tMinusdSlice = (byte[][][]) evt.getNewValue();  
             Mat newFrame = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_8U);
             Mat oldFrame = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_8U);
-            
+
 //            /* An example to flatten the nested array to 1D array */
 //            double[][][] vals = {{{1.1, 2.1}, {3.2, 4.1}}, {{5.2, 6.1}, {7.1, 8.3}}};
 //
@@ -301,7 +361,7 @@ public class OpenCVFlow extends AbstractMotionFlow
 //                    .toArray();
 //
 //            System.out.println(Arrays.toString(test));
-     
+
 
             // Flatten the two arrays to 1D array
             byte[] old1DArray = new byte[chip.getSizeY() * chip.getSizeX()], 
@@ -317,13 +377,13 @@ public class OpenCVFlow extends AbstractMotionFlow
             float oldGrayScale = Collections.max((List<Byte>) oldList);     // Set the maximum of tha array as the scale value.
             List newList = Arrays.asList(ArrayUtils.toObject(new1DArray));
             float newGrayScale = Collections.max((List<Byte>) newList);     // Set the maximum of tha array as the scale value.        
-           
+
             newFrame.put(0, 0, new1DArray);
             oldFrame.put(0, 0, old1DArray);
-            
+
             // params for ShiTomasi corner detection            
             FeatureParams feature_params  = new FeatureParams(100, 0.3, 7, 7);
-            
+
             // Feature extraction
             MatOfPoint p0 = new MatOfPoint();
             Imgproc.goodFeaturesToTrack(oldFrame, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance);       
@@ -342,31 +402,26 @@ public class OpenCVFlow extends AbstractMotionFlow
                 System.err.println(e);                   
                 return;
             } finally {
-                try {
-                    // showResult(newFrame);
-                    
-                    
-                    float[] new_slice_buff = new float[(int) (newFrame.total() *
-                            newFrame.channels())];
-                    
-                    for (int i = 0; i < chip.getSizeY(); i++) {
-                        for (int j = 0; j < chip.getSizeX(); j++) {         
-                            new_slice_buff[chip.getSizeX()*i + j] = new1DArray[chip.getSizeX()*i + j]/newGrayScale;
-                        }
+                float[] new_slice_buff = new float[(int) (newFrame.total() *
+                        newFrame.channels())];
+                for (int i = 0; i < chip.getSizeY(); i++) {
+                    for (int j = 0; j < chip.getSizeX(); j++) {
+                        new_slice_buff[chip.getSizeX()*i + j] = new1DArray[chip.getSizeX()*i + j]/newGrayScale;
                     }
-                    
-                    OFResultDisplay.setPixmapFromGrayArray(new_slice_buff);
-                    DateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
-                    File folder = new File("EventSlices/" + chip.getAeInputStream().getFile().getName() + this.patchFlow.getSliceMethod().toString());
-                    folder.mkdir();
-                    File outputfile = new File(folder, String.format("Clear-%s.jpg", df.format(new Date())));
-                    Core.flip(newFrame, newFrame, 0);
-                    ImageIO.write(Mat2BufferedImage(newFrame), "jpg", outputfile);
-                } catch (IOException ex) {
-                    Logger.getLogger(OpenCVFlow.class.getName()).log(Level.SEVERE, null, ex);
                 }
+                OFResultDisplay.setPixmapFromGrayArray(new_slice_buff);
+//                DateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
+//                File folder = new File("EventSlice/" + chip.getAeInputStream().getFile().getName() + patchFlow.getSliceMethod().toString());
+//                folder.mkdir();
+//                File outputfile = new File(folder, String.format("Clear-pid%d.jpg", this.getId()));
+//                Core.flip(newFrame, newFrame, 0);
+//                try {
+//                    ImageIO.write(Mat2BufferedImage(newFrame), "jpg", outputfile);
+//                } catch (IOException ex) {
+//                    Logger.getLogger(OpenCVFlow.class.getName()).log(Level.SEVERE, null, ex);
+//                }
             }            
-            
+
             // draw the tracks
             Point[] prevPoints = prevPts.toArray();
             Point[] nextPoints = nextPts.toArray();
@@ -382,24 +437,27 @@ public class OpenCVFlow extends AbstractMotionFlow
                     y = (short)prevPoints[index].y;
                     e.x = (short)x;
                     e.y = (short)y;    // e, x and y all of them are used in processGoodEvent();
+//                    e.timestamp = ts;
                     vx = (float)(nextPoints[index].x - prevPoints[index].x) * 1000000 / -patchFlow.getSliceDeltaT();
                     vy = (float)(nextPoints[index].y - prevPoints[index].y) * 1000000 / -patchFlow.getSliceDeltaT();
                     v = (float) Math.sqrt(vx * vx + vy * vy);
                     processGoodEvent();
+                    // exportFlowToMatlab(false);
                     index++;
                 }
             }
-           
+            System.out.println("The number of valid output in OpenCV Flow is : " + countOut);    
+            motionFlowStatistics.updatePacket(countIn, countOut);
+            countOut = 0;
+
             Mat mask = new Mat(newFrame.rows(), newFrame.cols(), CvType.CV_32F);
             for (int i = 0; i < prevPoints.length; i++) {
                 // Imgproc.line(displayFrame, prevPoints[i], nextPoints[i], new Scalar(color[i][0],color[i][1],color[i][2]), 2);  
                 // Imgproc.circle(newFrame,prevPoints[i], 5, new Scalar(255,255,255),-1);
             }  
-           
         }
-        
     }
-
+    
     public class FeatureParams {
         
         int maxCorners;
@@ -479,7 +537,7 @@ public class OpenCVFlow extends AbstractMotionFlow
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
     }    
-    
+     
     /**
      * @return the showAPSFrameDisplay
      */

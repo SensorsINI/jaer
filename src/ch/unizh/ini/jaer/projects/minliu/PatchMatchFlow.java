@@ -29,6 +29,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import com.jogamp.opengl.GLException;
+import com.jogamp.opengl.util.gl2.GLUT;
 import java.util.Iterator;
 import java.util.StringTokenizer;
 import java.util.Timer;
@@ -276,7 +277,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         } else {
             i = ((EventPacket) in).inputIterator();
         }
-
         while (i.hasNext()) {
             Object o = i.next();
             if (o == null) {
@@ -310,6 +310,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 case SAD:
                     boolean rotated = maybeRotateSlices();
                     if (rotated) {
+                        // exportFlowToMatlab(true);
                         adaptSliceDuration();
                     }
 //                    if (ein.x >= subSizeX || ein.y > subSizeY) {
@@ -386,6 +387,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                }
 //            }
             processGoodEvent();
+            // exportFlowToMatlab(false);
             lastGoodSadResult.set(result);
 
         }
@@ -395,7 +397,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             sliceLastTs = Integer.MAX_VALUE;
 
         }
-        motionFlowStatistics.updatePacket(countIn, countOut);
         adaptEventSkipping();
 
         return isDisplayRawInput() ? in : dirPacket;
@@ -515,7 +516,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 switch (sliceMethod) {
                     case ConstantDuration:
                         int durChange = (int) (errSign * adapativeSliceDurationProportionalErrorGain * sliceDurationUs);
-                        setSliceDurationUs(sliceDurationUs + durChange);
+                        setSliceDurationUs(sliceDurationUs);
                         break;
                     case ConstantEventNumber:
                     case AreaEventNumber:
@@ -705,6 +706,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             gl.glVertex2f(xx - sd, yy + sd);
             gl.glEnd();
         }
+        
+            if (measureAccuracy) {
+            gl.glPushMatrix();
+            final int offset = -10;
+            gl.glRasterPos2i(chip.getSizeX() / 2, 0);
+            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
+                    motionFlowStatistics.endpointErrorAbs.graphicsString("AEE(abs):", "pps"));
+            gl.glPopMatrix();
+            gl.glPushMatrix();
+            gl.glRasterPos2i(chip.getSizeX() / 2, offset);
+            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, "");
+            gl.glPopMatrix();
+        }
     }
 
     @Override
@@ -807,6 +821,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         
         /* Slices have been rotated */
         getSupport().firePropertyChange(PatchMatchFlow.EVENT_NEW_SLICES, slices[sliceIndex(1)], slices[sliceIndex(2)]);
+        motionFlowStatistics.updatePacket(countIn, countOut);
+        countIn = 0;
+        countOut = 0;
         return true;
 
     }
@@ -919,7 +936,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             }
         }
         if (timeLimiter.isTimedOut()) {
-            return false;
+            // return false;
         }
         if (skipProcessingEventsCount == 0) {
             return true;
