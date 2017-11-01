@@ -59,6 +59,11 @@ import static ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU
 import static ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU.vx;
 import static ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU.vy;
 import com.jogamp.common.util.Bitstream.ByteStream;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLException;
+import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
@@ -227,9 +232,9 @@ public class OpenCVFlow extends AbstractMotionFlow
     public synchronized void resetFilter() {
         super.resetFilter();
 
-        if(patchFlow != null) {
-            patchFlow.resetFilter();            
-        }
+//        if(patchFlow != null) {
+//            patchFlow.resetFilter();            
+//        }
         
         if (OFResultDisplay != null) {
             OFResultDisplay.setImageSize(chip.getSizeX(), chip.getSizeY());            
@@ -248,6 +253,28 @@ public class OpenCVFlow extends AbstractMotionFlow
                 initFilter();
             }
         }    
+    }
+    
+    @Override
+    synchronized public void annotate(GLAutoDrawable drawable) {
+        super.annotate(drawable);
+        GL2 gl = drawable.getGL().getGL2();
+        try {
+            gl.glEnable(GL.GL_BLEND);
+            gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+            gl.glBlendEquation(GL.GL_FUNC_ADD);
+        } catch (GLException e) {
+            e.printStackTrace();
+        }   
+        
+        if (measureAccuracy) {
+            gl.glPushMatrix();
+            final int offset = -10;
+            gl.glRasterPos2i(chip.getSizeX() / 2, -5);
+            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
+                    motionFlowStatistics.endpointErrorAbs.graphicsString("OpenLK_AEE(abs):", "pps"));
+            gl.glPopMatrix();
+        }
     }
     
     @Override
@@ -411,7 +438,7 @@ public class OpenCVFlow extends AbstractMotionFlow
                 }
                 OFResultDisplay.setPixmapFromGrayArray(new_slice_buff);
 //                DateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
-//                File folder = new File("EventSlice/" + chip.getAeInputStream().getFile().getName() + patchFlow.getSliceMethod().toString());
+//                File folder = new File("EventSlices/" + chip.getAeInputStream().getFile().getName() + patchFlow.getSliceMethod().toString());
 //                folder.mkdir();
 //                File outputfile = new File(folder, String.format("Clear-pid%d.jpg", this.getId()));
 //                Core.flip(newFrame, newFrame, 0);

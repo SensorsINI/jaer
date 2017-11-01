@@ -710,13 +710,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             if (measureAccuracy) {
             gl.glPushMatrix();
             final int offset = -10;
-            gl.glRasterPos2i(chip.getSizeX() / 2, 0);
+            gl.glRasterPos2i(chip.getSizeX() / 2, -10);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    motionFlowStatistics.endpointErrorAbs.graphicsString("AEE(abs):", "pps"));
-            gl.glPopMatrix();
-            gl.glPushMatrix();
-            gl.glRasterPos2i(chip.getSizeX() / 2, offset);
-            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, "");
+                    motionFlowStatistics.endpointErrorAbs.graphicsString("PatchMatch_AEE(abs):", "pps"));
             gl.glPopMatrix();
         }
     }

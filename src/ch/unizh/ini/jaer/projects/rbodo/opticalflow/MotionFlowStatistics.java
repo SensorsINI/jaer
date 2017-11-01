@@ -73,7 +73,7 @@ public class MotionFlowStatistics {
         endpointErrorRel = new EndpointErrorRel();
         processingTime = new ProcessingTime();
         eventDensity = new EventDensity();
-        warmupCounter = 5;
+        warmupCounter = 8;
     }
 
     protected final void setMeasureAccuracy(boolean measureAccuracy) {

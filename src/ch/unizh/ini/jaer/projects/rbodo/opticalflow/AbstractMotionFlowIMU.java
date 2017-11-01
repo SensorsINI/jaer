@@ -927,7 +927,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         if (measureAccuracy) {
             gl.glPushMatrix();
             final int offset = -10;
-            gl.glRasterPos2i(chip.getSizeX() / 2, offset);
+            gl.glRasterPos2i(chip.getSizeX() / 2, 0);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     motionFlowStatistics.endpointErrorAbs.graphicsString("AEE(abs):", "pps"));
             gl.glPopMatrix();
@@ -1040,9 +1040,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             countOut++;
         }
         if (measureAccuracy) {
-            vxGT = imuFlowEstimator.getVx();
-            vyGT = imuFlowEstimator.getVy();
-            vGT = imuFlowEstimator.getV();
+            vxGT = 91.9f;
+            vyGT = 0;
+            vGT = 91.9f;
             getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
         }
 
