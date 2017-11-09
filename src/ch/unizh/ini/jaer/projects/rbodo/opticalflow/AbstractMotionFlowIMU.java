@@ -67,7 +67,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      * Basic event information. Type is event polarity value, 0=OFF and 1=ON,
      * typically but not always
      */
-    protected int x, y, ts, type, lastTs;
+    public int x, y, ts, type, lastTs;
 
     /**
      * (Subsampled) chip sizes.
@@ -1040,9 +1040,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             countOut++;
         }
         if (measureAccuracy) {
-            vxGT = 91.9f;
-            vyGT = 0;
-            vGT = 91.9f;
+            vxGT = imuFlowEstimator.getVx();
+            vyGT = imuFlowEstimator.getVy();
+            vGT = imuFlowEstimator.getV();
             getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
         }
 

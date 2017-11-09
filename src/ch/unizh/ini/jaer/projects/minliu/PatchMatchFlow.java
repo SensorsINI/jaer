@@ -251,7 +251,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (cameraCalibration != null && cameraCalibration.isFilterEnabled()) {
             in = cameraCalibration.filterPacket(in);
         }
-        setupFilter(in);
+        setupFilter(in);        
         checkArrays();
         if (processingTimeLimitMs > 0) {
             timeLimiter.setTimeLimitMs(processingTimeLimitMs);

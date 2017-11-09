@@ -479,13 +479,13 @@ public class OpenCVFlow extends AbstractMotionFlow
             
             //if (st.length > 0) {
                 if (globalMotionVectorLogger != null && globalMotionVectorLogger.isEnabled()) {
-                    String s = String.format("%d %s %.3g %.3g %.3g %d", patchFlow.getSliceDeltaT(), "OpenLK", motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean(), 
+                    String s = String.format("%d %d %s %.3g %.3g %.3g %d", patchFlow.ts - patchFlow.getChip().getAeInputStream().getFirstTimestamp(), patchFlow.getSliceDeltaT(), "OpenLK", motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean(), 
                                                                               motionFlowStatistics.getGlobalMotion().getGlobalVy().getMean(), 
                                                                               motionFlowStatistics.getGlobalMotion().getGlobalRotation().getMean(),
                                                                               motionFlowStatistics.getGlobalMotion().getGlobalVx().getN());
                     globalMotionVectorLogger.log(s);
                     
-                    s = String.format("%d %s %.3g %.3g %.3g %d", patchFlow.getSliceDeltaT(), "ABMOF", patchFlow.motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean(), 
+                    s = String.format("%d %d %s %.3g %.3g %.3g %d", patchFlow.ts - patchFlow.getChip().getAeInputStream().getFirstTimestamp(), patchFlow.getSliceDeltaT(), "ABMOF", patchFlow.motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean(), 
                                                         patchFlow.motionFlowStatistics.getGlobalMotion().getGlobalVy().getMean(), 
                                                         patchFlow.motionFlowStatistics.getGlobalMotion().getGlobalRotation().getMean(), 
                                                         patchFlow.motionFlowStatistics.getGlobalMotion().getGlobalRotation().getN());
@@ -623,7 +623,7 @@ public class OpenCVFlow extends AbstractMotionFlow
             putString("lastFile", file.toString());
             globalMotionVectorLogger = new TobiLogger(file.getPath(), "Global Motion vector for every generated slice");
             globalMotionVectorLogger.setNanotimeEnabled(false);
-            globalMotionVectorLogger.setHeaderLine("system_time(ms) sliceDeltaT(us) method globalVx(pps) globalVy(pps) globalRotation(degree/s) samples");
+            globalMotionVectorLogger.setHeaderLine("system_time(ms) relative_timestamp(us) sliceDeltaT(us) method globalVx(pps) globalVy(pps) globalRotation(degree/s) samples");
             globalMotionVectorLogger.setEnabled(true);
         } else {
             log.info("Cancelled logging motion vectors");
