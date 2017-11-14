@@ -51,6 +51,7 @@ import org.opencv.videoio.VideoCapture;
 import org.bytedeco.javacpp.opencv_videoio.VideoWriter;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.calib3d.Calib3d;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
@@ -353,12 +354,12 @@ public class OpenCVFlow extends AbstractMotionFlow
         
         if (evt.getPropertyName().equals(PatchMatchFlow.EVENT_NEW_SLICES)) {
             this.countIn = patchFlow.countIn;
-            System.out.println("The number of valid output in patchFlow is : " + patchFlow.countOut); 
+            // System.out.println("The number of valid output in patchFlow is : " + patchFlow.countOut); 
      
             MyThread OpenCVCalThread = new MyThread("OpenCV_Calculation");
             OpenCVCalThread.setName("OpenCV_Calculation");
             OpenCVCalThread.setEvt(evt);
-            OpenCVCalThread.run();           
+            OpenCVCalThread.run();
         }
         
     }
@@ -424,7 +425,7 @@ public class OpenCVFlow extends AbstractMotionFlow
             MatOfFloat err = new MatOfFloat();
 
             int featureNum = prevPts.checkVector(2, CvType.CV_32F, true);
-            System.out.println("The number of feature detected is : " + featureNum);     
+            // System.out.println("The number of feature detected is : " + featureNum);     
 
             try {
                 Video.calcOpticalFlowPyrLK(oldFrame, newFrame, prevPts, nextPts, status, err);            
@@ -457,24 +458,50 @@ public class OpenCVFlow extends AbstractMotionFlow
             Point[] nextPoints = nextPts.toArray();
             byte[] st = status.toArray();
             float[] er = err.toArray();
+            
+            double data[] = {  335.419462958,        0,         129.924663379, 
+                0,        335.352935612,    99.1864303447, 
+                0,               0,                1 };
 
-            // Select good points  and copy them for output
+            Mat cameraMatrix = new Mat( 3, 3, CvType.CV_64F );
+            cameraMatrix.put(0, 0, data);
+            Mat outPutMask = new Mat();
+            Mat E = Calib3d.findEssentialMat(prevPts, nextPts, cameraMatrix, Calib3d.RANSAC,  0.999, 1, outPutMask);
+            Mat R = new Mat (3, 3, CvType.CV_32F);
+            Mat t = new Mat (3, 1, CvType.CV_32F);
+
+            if (E.empty()) {
+                System.out.println("The essential matrix is emapty!");
+            } else {            
+                Calib3d.recoverPose(E, prevPts, nextPts, R, t);
+                System.out.println("Printing the Mask Matrix and the Mask Matrix size is: " + outPutMask.size().height * outPutMask.size().width);
+                System.out.println(outPutMask.dump());
+                System.out.println("Printing the Rotation Matrix");
+                System.out.println(R.dump());
+                System.out.println("Printing the Translation Matrix");
+                System.out.println(t.dump());   
+            }
+
+            byte outlierFlg[] = new byte[(int) (outPutMask.size().height * outPutMask.size().width)];
+            outPutMask.get(0, 0, outlierFlg);
+                    
+            // Select good points and copy them for output
             int index = 0;
             for(byte stTmp: st) {
-                if(stTmp == 1) {
-                    e = new PolarityEvent();
-                    x = (short)(prevPoints[index].x);
-                    y = (short)prevPoints[index].y;
-                    e.x = (short)x;
-                    e.y = (short)y;    // e, x and y all of them are used in processGoodEvent();
-//                    e.timestamp = ts;
-                    vx = (float)(nextPoints[index].x - prevPoints[index].x) * 1000000 / -patchFlow.getSliceDeltaT();
-                    vy = (float)(nextPoints[index].y - prevPoints[index].y) * 1000000 / -patchFlow.getSliceDeltaT();
-                    v = (float) Math.sqrt(vx * vx + vy * vy);
-                    processGoodEvent();
+                if(stTmp == 1 && outlierFlg[index] == 1) {
+                        e = new PolarityEvent();
+                        x = (short)(prevPoints[index].x);
+                        y = (short)prevPoints[index].y;
+                        e.x = (short)x;
+                        e.y = (short)y;    // e, x and y all of them are used in processGoodEvent();
+    //                    e.timestamp = ts;
+                        vx = (float)(nextPoints[index].x - prevPoints[index].x) * 1000000 / -patchFlow.getSliceDeltaT();
+                        vy = (float)(nextPoints[index].y - prevPoints[index].y) * 1000000 / -patchFlow.getSliceDeltaT();
+                        v = (float) Math.sqrt(vx * vx + vy * vy);
+                        processGoodEvent();                      
                     // exportFlowToMatlab(false);
-                    index++;
                 }
+                index++;                
             }
             
             //if (st.length > 0) {
@@ -494,6 +521,15 @@ public class OpenCVFlow extends AbstractMotionFlow
                 }                
             //}
 
+            if (st.length > 0) {
+
+            }
+            if (motionFlowStatistics.getGlobalMotion().getGlobalVy().getMean() >= 100) {
+                System.out.println("Timestamp is:" + patchFlow.ts);
+                System.out.println ("OpenCV flow global motion on y is: " + motionFlowStatistics.getGlobalMotion().getGlobalVy().getMean());
+                System.out.println ("Patch flow global motion on y is: " + patchFlow.motionFlowStatistics.getGlobalMotion().getGlobalVy().getMean());
+            }
+            
             System.out.println("The number of valid output in OpenCV Flow is : " + countOut);    
             motionFlowStatistics.updatePacket(countIn, countOut);
             countOut = 0;
