@@ -442,7 +442,7 @@ public class OpenCVFlow extends AbstractMotionFlow
                         new_slice_buff[chip.getSizeX()*i + j] = new1DArray[chip.getSizeX()*i + j]/newGrayScale;
                     }
                 }
-//                OFResultDisplay.setPixmapFromGrayArray(new_slice_buff);
+                OFResultDisplay.setPixmapFromGrayArray(new_slice_buff);
 //                DateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
 //                File folder = new File("EventSlices/" + chip.getAeInputStream().getFile().getName() + patchFlow.getSliceMethod().toString());
 //                folder.mkdir();
