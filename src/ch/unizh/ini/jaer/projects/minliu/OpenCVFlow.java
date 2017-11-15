@@ -131,7 +131,7 @@ public class OpenCVFlow extends AbstractMotionFlow
     private float[] oldBuffer = null, newBuffer = null;
     private PatchMatchFlow patchFlow;
     private TobiLogger globalMotionVectorLogger;
-    
+    Mat RPos, tPos;
     
     public OpenCVFlow(AEChip chip) {
         super(chip);
@@ -161,7 +161,8 @@ public class OpenCVFlow extends AbstractMotionFlow
         }        
         setEnclosedFilterChain(chain);
 
-        
+        tPos = Mat.zeros(3, 1, CvType.CV_32F);
+        RPos = Mat.eye(3, 3, CvType.CV_32F);
         //apsFrameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);   
         patchFlow.getSupport().addPropertyChangeListener(PatchMatchFlow.EVENT_NEW_SLICES,this);
         chip.addObserver(this); // to allocate memory once chip size is known
@@ -239,7 +240,8 @@ public class OpenCVFlow extends AbstractMotionFlow
 //        if(patchFlow != null) {
 //            patchFlow.resetFilter();            
 //        }
-        
+        tPos = Mat.zeros(3, 1, CvType.CV_32F);
+        RPos = Mat.eye(3, 3, CvType.CV_32F);
         if (OFResultDisplay != null) {
             OFResultDisplay.setImageSize(chip.getSizeX(), chip.getSizeY());            
         }
@@ -467,19 +469,28 @@ public class OpenCVFlow extends AbstractMotionFlow
             cameraMatrix.put(0, 0, data);
             Mat outPutMask = new Mat();
             Mat E = Calib3d.findEssentialMat(prevPts, nextPts, cameraMatrix, Calib3d.RANSAC,  0.999, 1, outPutMask);
-            Mat R = new Mat (3, 3, CvType.CV_32F);
-            Mat t = new Mat (3, 1, CvType.CV_32F);
+            Mat R = new Mat ();
+            Mat t = new Mat ();
 
+            
             if (E.empty()) {
-                System.out.println("The essential matrix is emapty!");
+                System.out.println("The essential matrix is empty!");
             } else {            
-                Calib3d.recoverPose(E, prevPts, nextPts, R, t);
-                System.out.println("Printing the Mask Matrix and the Mask Matrix size is: " + outPutMask.size().height * outPutMask.size().width);
-                System.out.println(outPutMask.dump());
+                if (E.size().height != 3 || E.size().width != 3) {
+                    int tmp = 1;
+                }
+                Calib3d.recoverPose(E, prevPts, nextPts, R, t);        
+                R.convertTo(R, CvType.CV_32F);
+                t.convertTo(t, CvType.CV_32F);
                 System.out.println("Printing the Rotation Matrix");
-                System.out.println(R.dump());
+                System.out.println(RPos.dump());
+                Core.gemm(RPos, R, 1, new Mat(), 0, RPos);
+                Core.gemm(RPos, t, 1, new Mat(), 0, t);
+                Core.add(tPos, t, tPos);
+                System.out.println("Printing the Mask Matrix and the Mask Matrix size is: " + outPutMask.size().height * outPutMask.size().width);
+//                System.out.println(outPutMask.dump());
                 System.out.println("Printing the Translation Matrix");
-                System.out.println(t.dump());   
+                System.out.println(tPos.dump());   
             }
 
             byte outlierFlg[] = new byte[(int) (outPutMask.size().height * outPutMask.size().width)];
@@ -488,18 +499,21 @@ public class OpenCVFlow extends AbstractMotionFlow
             // Select good points and copy them for output
             int index = 0;
             for(byte stTmp: st) {
-                if(stTmp == 1 && outlierFlg[index] == 1) {
-                        e = new PolarityEvent();
-                        x = (short)(prevPoints[index].x);
-                        y = (short)prevPoints[index].y;
-                        e.x = (short)x;
-                        e.y = (short)y;    // e, x and y all of them are used in processGoodEvent();
-    //                    e.timestamp = ts;
-                        vx = (float)(nextPoints[index].x - prevPoints[index].x) * 1000000 / -patchFlow.getSliceDeltaT();
-                        vy = (float)(nextPoints[index].y - prevPoints[index].y) * 1000000 / -patchFlow.getSliceDeltaT();
-                        v = (float) Math.sqrt(vx * vx + vy * vy);
-                        processGoodEvent();                      
-                    // exportFlowToMatlab(false);
+                if(stTmp == 1) {
+                        if (outlierFlg[index] == 1) {
+                            e = new PolarityEvent();
+                            x = (short)(prevPoints[index].x);
+                            y = (short)prevPoints[index].y;
+                            e.x = (short)x;
+                            e.y = (short)y;    // e, x and y all of them are used in processGoodEvent();
+        //                    e.timestamp = ts;
+                            vx = (float)(nextPoints[index].x - prevPoints[index].x) * 1000000 / -patchFlow.getSliceDeltaT();
+                            vy = (float)(nextPoints[index].y - prevPoints[index].y) * 1000000 / -patchFlow.getSliceDeltaT();
+                            v = (float) Math.sqrt(vx * vx + vy * vy);
+                            processGoodEvent();                      
+                        // exportFlowToMatlab(false);                            
+                        }
+
                 }
                 index++;                
             }
