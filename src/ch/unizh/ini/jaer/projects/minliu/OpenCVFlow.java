@@ -361,7 +361,7 @@ public class OpenCVFlow extends AbstractMotionFlow
             MyThread OpenCVCalThread = new MyThread("OpenCV_Calculation");
             OpenCVCalThread.setName("OpenCV_Calculation");
             OpenCVCalThread.setEvt(evt);
-            OpenCVCalThread.run();
+            OpenCVCalThread.start();
         }
         
     }
@@ -442,7 +442,7 @@ public class OpenCVFlow extends AbstractMotionFlow
                         new_slice_buff[chip.getSizeX()*i + j] = new1DArray[chip.getSizeX()*i + j]/newGrayScale;
                     }
                 }
-                OFResultDisplay.setPixmapFromGrayArray(new_slice_buff);
+//                OFResultDisplay.setPixmapFromGrayArray(new_slice_buff);
 //                DateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
 //                File folder = new File("EventSlices/" + chip.getAeInputStream().getFile().getName() + patchFlow.getSliceMethod().toString());
 //                folder.mkdir();
@@ -477,20 +477,22 @@ public class OpenCVFlow extends AbstractMotionFlow
                 System.out.println("The essential matrix is empty!");
             } else {            
                 if (E.size().height != 3 || E.size().width != 3) {
-                    int tmp = 1;
+                    System.out.println("The essential matrix shape is: " + E.size().height + " x " + E.size().width);
+                } else {
+
+                    Calib3d.recoverPose(E, prevPts, nextPts, R, t);        
+                    R.convertTo(R, CvType.CV_32F);
+                    t.convertTo(t, CvType.CV_32F);
+                    System.out.println("Printing the Rotation Matrix");
+                    System.out.println(RPos.dump());
+                    Core.gemm(RPos, R, 1, new Mat(), 0, RPos);
+                    Core.gemm(RPos, t, 1, new Mat(), 0, t);
+                    Core.add(tPos, t, tPos);
+                    System.out.println("Printing the Mask Matrix and the Mask Matrix size is: " + outPutMask.size().height * outPutMask.size().width);
+    //                System.out.println(outPutMask.dump());
+                    System.out.println("Printing the Translation Matrix");
+                    System.out.println(tPos.dump());   
                 }
-                Calib3d.recoverPose(E, prevPts, nextPts, R, t);        
-                R.convertTo(R, CvType.CV_32F);
-                t.convertTo(t, CvType.CV_32F);
-                System.out.println("Printing the Rotation Matrix");
-                System.out.println(RPos.dump());
-                Core.gemm(RPos, R, 1, new Mat(), 0, RPos);
-                Core.gemm(RPos, t, 1, new Mat(), 0, t);
-                Core.add(tPos, t, tPos);
-                System.out.println("Printing the Mask Matrix and the Mask Matrix size is: " + outPutMask.size().height * outPutMask.size().width);
-//                System.out.println(outPutMask.dump());
-                System.out.println("Printing the Translation Matrix");
-                System.out.println(tPos.dump());   
             }
 
             byte outlierFlg[] = new byte[(int) (outPutMask.size().height * outPutMask.size().width)];
@@ -500,7 +502,8 @@ public class OpenCVFlow extends AbstractMotionFlow
             int index = 0;
             for(byte stTmp: st) {
                 if(stTmp == 1) {
-                        if (outlierFlg[index] == 1) {
+                    // if (outlierFlg.length >0 ) {
+                        // if (outlierFlg[index] == 1) {
                             e = new PolarityEvent();
                             x = (short)(prevPoints[index].x);
                             y = (short)prevPoints[index].y;
@@ -512,7 +515,8 @@ public class OpenCVFlow extends AbstractMotionFlow
                             v = (float) Math.sqrt(vx * vx + vy * vy);
                             processGoodEvent();                      
                         // exportFlowToMatlab(false);                            
-                        }
+                        // }
+                    // }
 
                 }
                 index++;                
