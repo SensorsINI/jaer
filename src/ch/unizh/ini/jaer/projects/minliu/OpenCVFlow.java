@@ -208,7 +208,22 @@ public class OpenCVFlow extends AbstractMotionFlow
             }
             countIn++;
         }
+        
+        /* This part is to start log global motion vector according to user's configurations automatically. */
+        int timeMarker = patchFlow.ts - patchFlow.getChip().getAeInputStream().getFirstTimestamp();
+        int startTime = 500000, endTime = 6000000;
+        if ( timeMarker >= startTime && timeMarker <= endTime && globalMotionVectorLogger == null) {                
+            globalMotionVectorLogger = new TobiLogger(patchFlow.getChip().getAeInputStream().getFile().getName() + patchFlow.getSliceMethod() + patchFlow.getSliceDurationUs() , 
+                                                        "Global Motion vector for every generated slice");
+            globalMotionVectorLogger.setNanotimeEnabled(false);
+            globalMotionVectorLogger.setHeaderLine("system_time(ms) relative_timestamp(us) sliceDeltaT(us) method globalVx(pps) globalVy(pps) globalRotation(degree/s) samples");
+            globalMotionVectorLogger.setEnabled(true);
+        } 
 
+        if ( timeMarker >= endTime && globalMotionVectorLogger != null) {
+            doStopLoggingGlobalMotion();
+        } 
+        
         OFResultDisplay.checkPixmapAllocation();       
         
 //        final ApsDvsEventPacket packet = (ApsDvsEventPacket) in;
