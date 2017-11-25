@@ -41,6 +41,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
+import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.filter.LowpassFilter3D;
@@ -108,6 +109,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // Global translation, rotation and expansion.
     private boolean displayGlobalMotion = getBoolean("displayGlobalMotion", true);
+    
+    protected EngineeringFormat engFmt=new EngineeringFormat();
 
     /**
      * The output events, also used for rendering output events.
@@ -792,8 +795,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     motionFlowStatistics.getGlobalMotion().meanGlobalVy,
                     4, ppsScale * GLOBAL_MOTION_DRAWING_SCALE);
             gl.glRasterPos2i(2, 10);
+            String flowMagPps=engFmt.format(motionFlowStatistics.getGlobalMotion().meanGlobalTrans);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("glob. trans.=%.2f pps (local: %s)", motionFlowStatistics.getGlobalMotion().meanGlobalTrans, ppsScaleDisplayRelativeOFLength ? "rel." : "abs."));
+                    String.format("glob. trans.=%s pps (local: %s)", flowMagPps, ppsScaleDisplayRelativeOFLength ? "rel." : "abs."));
             gl.glPopMatrix();
 //            System.out.println(String.format("%5.3f\t%5.2f",ts*1e-6f, motionFlowStatistics.getGlobalMotion().meanGlobalTrans));  // debug
 
