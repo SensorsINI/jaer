@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.Set;
+
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -29,6 +30,8 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.tracking.MedianTracker;
+import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.SoundWavFilePlayer;
@@ -46,8 +49,6 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
 
     private boolean hideOutput = getBoolean("hideOutput", false);
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
-    private boolean playSpikeSounds = getBoolean("playSpikeSounds", false);
-//    private TargetLabeler targetLabeler = null;
     Statistics statistics = new Statistics();
     private float decisionLowPassMixingFactor = getFloat("decisionLowPassMixingFactor", .2f);
     private SpikeSound spikeSound = null;
@@ -65,6 +66,30 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     private boolean playToWin = getBoolean("playToWin", false);
 
     /**
+     * for game state machine
+     */
+    private RectangularClusterTracker tracker = null;
+    private float trackerUpperEdgeThreshold = getFloat("trackerUpperEdgeThreshold", .7f);
+    private float trackerLowerEdgeThreshold = getFloat("trackerLowerEdgeThreshold", .3f);
+    private int tracker2EdgeCrossingTimeoutMs = getInt("tracker2EdgeCrossingTimeoutMs", 500);
+    private int throwIntervalTimeoutMs = getInt("throwIntervalTimeoutMs", 1000);
+    private int winningSymbolShowTimeMs = getInt("winningSymbolShowTimeMs", 3000);
+
+    public enum GameState {
+        Sleeping, Idle, Throw1, Throw2, ThrowShow
+    };
+    private GameState gameState = GameState.Idle;
+    private long gameStateUpdateTimeMs;
+
+    public enum HandTrackerState {
+        Idle, CrossedUpper, CrossedLower
+    };
+    private HandTrackerState handTrackerState = HandTrackerState.Idle;
+    private long handTrackerStateUpdateTimeMs;
+
+    private boolean useGameStatesToPlay = getBoolean("useGameStatesToPlay", false);
+
+    /**
      * output units
      */
     private static final int DECISION_PAPER = 0, DECISION_SCISSORS = 1, DECISION_ROCK = 2, DECISION_BACKGROUND = 3;
@@ -73,7 +98,19 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
 
     public RoShamBoCNN(AEChip chip) {
         super(chip);
-        String roshambo = "0. RoShamBo";
+        FilterChain filterChain = new FilterChain(chip);
+        tracker = new RectangularClusterTracker(chip);
+        tracker.setMaxNumClusters(1);
+        filterChain.add(tracker);
+        setEnclosedFilterChain(filterChain);
+        String roshamboGame = "0a. RoShamBo Game";
+        setPropertyTooltip(roshamboGame, "trackerUpperEdgeThreshold", "Upper (higher) edge of scene as fraction of image which the tracker must pass to start detecting a throw");
+        setPropertyTooltip(roshamboGame, "trackerLowerEdgeThreshold", "Lower edge of scene as fraction of image which the tracker must pass to finish detecting a throw");
+        setPropertyTooltip(roshamboGame, "tracker2EdgeCrossingTimeoutMs", "The tracker must cross the two edges within this time to be classified as a throw");
+        setPropertyTooltip(roshamboGame, "throwIntervalTimeoutMs", "Throws must follow each other within this time or the game will go back to idle state");
+        setPropertyTooltip(roshamboGame, "winningSymbolShowTimeMs", "How long the winning symbol is shown by the hand");
+        setPropertyTooltip(roshamboGame, "useGameStatesToPlay", "Select to use the Roshambo state machine; if unselected, then instantaneous (filtered by mixing factor) CNN output is used");
+        String roshambo = "0b. RoShamBo Engine";
         setPropertyTooltip(roshambo, "showAnalogDecisionOutput", "Shows face detection as analog activation of face unit in softmax of network output");
         setPropertyTooltip(roshambo, "hideOutput", "Hides output face detection indications");
         setPropertyTooltip(roshambo, "decisionLowPassMixingFactor", "The softmax outputs of the CNN are low pass filtered using this mixing factor; reduce decisionLowPassMixingFactor to filter more decisions");
@@ -86,21 +123,143 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         setPropertyTooltip(roshambo, "playSoundsThresholdActivation", "Minimum winner activation to play the sound");
         setPropertyTooltip(roshambo, "showDecisionStatistics", "Displays statistics of decisions");
         setPropertyTooltip(roshambo, "playToWin", "If selected, symbol sent to hand will  beat human; if unselected, it ties the human");
-        FilterChain chain = new FilterChain(chip);
-        setEnclosedFilterChain(chain);
-        apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, statistics);
+
+        apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, statistics); // statistics is informed by propertychange when CNN has new output
     }
 
     @Override
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
         EventPacket out = super.filterPacket(in);
+        if (useGameStatesToPlay) {
+            out = getEnclosedFilterChain().filterPacket(out);
+            if (tracker.getVisibleClusters().size() > 0) {
+                RectangularClusterTracker.Cluster handCluster = tracker.getVisibleClusters().getFirst();
+                boolean crossedUpper = false, crossedLower = false;
+                int handlasty = (int) Math.round(handCluster.getLastPacketLocation().getY());
+                int handy = (int) Math.round(handCluster.getLocation().getY());
+                int upperthreshold = (int) (trackerUpperEdgeThreshold * chip.getSizeY());
+                int lowerthreshold = (int) (trackerLowerEdgeThreshold * chip.getSizeY());
+                if (handlasty > upperthreshold && handy < upperthreshold) {
+                    crossedUpper = true;
+                }
+                if (handlasty > lowerthreshold && handy < lowerthreshold) {
+                    crossedLower = true;
+                }
+                if (System.currentTimeMillis() - handTrackerStateUpdateTimeMs > throwIntervalTimeoutMs) {
+                    handTrackerState = handTrackerState.Idle;
+                }
+                switch (handTrackerState) {
+                    case Idle:
+                        if (crossedUpper) {
+                            handTrackerState = HandTrackerState.CrossedUpper;
+                            handTrackerStateUpdateTimeMs = System.currentTimeMillis();
+                        }
+                        break;
+                    case CrossedUpper:
+                        if (crossedLower) {
+                            handTrackerState = HandTrackerState.CrossedLower;
+                            handTrackerStateUpdateTimeMs = System.currentTimeMillis();
+                        }
+                        break;
+                    case CrossedLower:
+                        handTrackerState = HandTrackerState.Idle;
+                        handTrackerStateUpdateTimeMs = System.currentTimeMillis();
+                }
+            }
+            switch (gameState) {
+                case Idle:
+                case Sleeping:
+                    if (handTrackerState == HandTrackerState.CrossedLower) {
+                        gameState = GameState.Throw1;
+                        gameStateUpdateTimeMs = System.currentTimeMillis();
+                    }
+                    break;
+                case Throw1:
+                    if (handTrackerState == HandTrackerState.CrossedLower) {
+                        gameState = GameState.Throw2;
+                        gameStateUpdateTimeMs = System.currentTimeMillis();
+                    }
+                    break;
+                case Throw2:
+                    if (handTrackerState == HandTrackerState.CrossedUpper) { // only cross upper to show
+                        gameState = GameState.ThrowShow;
+                        gameStateUpdateTimeMs = System.currentTimeMillis();
+                    }
+                    break;
+                case ThrowShow:
+                    if (System.currentTimeMillis() - gameStateUpdateTimeMs > winningSymbolShowTimeMs) {
+                        gameState = GameState.Idle;
+                    }
+            }
+        }
+        if (!useGameStatesToPlay) {
+            sendDecisionToHand();
+        } else {
+            if (statistics.outputChanged) {
+
+                switch (gameState) {
+                    case ThrowShow:
+                        sendDecisionToHand();
+                        break;
+                    default:
+                }
+            }
+        }
         return out;
+    }
+
+    private void sendDecisionToHand() {
+        if (isSerialPortCommandsEnabled() && (serialPortOutputStream != null)) {
+            char cmd = 0;
+            if (!playToWin) {
+                switch (statistics.descision) {
+                    case DECISION_ROCK:
+                        cmd = '3';
+                        break;
+                    case DECISION_SCISSORS:
+                        cmd = '2';
+                        break;
+                    case DECISION_PAPER:
+                        cmd = '1';
+                        break;
+                    case DECISION_BACKGROUND:
+                        cmd = '1';
+                        break;
+                    default:
+                        log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
+                }
+            } else { // beat human
+                switch (statistics.descision) {
+                    case DECISION_ROCK:
+                        cmd = '1';
+                        break;
+                    case DECISION_SCISSORS:
+                        cmd = '3';
+                        break;
+                    case DECISION_PAPER:
+                        cmd = '2';
+                        break;
+                    case DECISION_BACKGROUND:
+                        cmd = '1';
+                        break;
+                    default:
+                        log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
+                }
+            }
+            try {
+                serialPortOutputStream.write((byte) cmd);
+            } catch (IOException ex) {
+                log.warning(ex.toString());
+            }
+        }
     }
 
     @Override
     public void resetFilter() {
         super.resetFilter();
         statistics.reset();
+        gameState = GameState.Idle;
+        handTrackerState = HandTrackerState.Idle;
     }
 
     @Override
@@ -125,12 +284,35 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
             return;
         }
         GL2 gl = drawable.getGL().getGL2();
+        if (textRenderer == null) {
+            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 72), true, false);
+        }
         checkBlend(gl);
         if ((apsDvsNet != null) && (apsDvsNet.outputLayer != null) && (apsDvsNet.outputLayer.activations != null)) {
             drawDecisionOutput(gl, drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
         }
         if (showDecisionStatistics) {
             statistics.draw(gl);
+        }
+        if (useGameStatesToPlay) {
+            int upperthreshold = (int) (trackerUpperEdgeThreshold * chip.getSizeY());
+            int lowerthreshold = (int) (trackerLowerEdgeThreshold * chip.getSizeY());
+            gl.glPushMatrix();
+            gl.glColor3f(.25f, .25f, .25f);
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex2f(0, upperthreshold);
+            gl.glVertex2f(chip.getSizeX(), upperthreshold);
+            gl.glVertex2f(0, lowerthreshold);
+            gl.glVertex2f(chip.getSizeX(), lowerthreshold);
+            gl.glEnd();
+           
+            String s = gameState.toString() + " " + handTrackerState.toString();
+            textRenderer.setColor(1, 1, 1, 1);
+            textRenderer.beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
+            Rectangle2D r = textRenderer.getBounds(s);
+            textRenderer.draw(s, (drawable.getSurfaceWidth() / 2) - ((int) r.getWidth() / 2), (int) (0.75f * drawable.getSurfaceHeight()));
+            textRenderer.endRendering();
+            gl.glPopMatrix();
         }
         if (playSounds && isShowOutputAsBarChart()) {
             gl.glColor3f(.5f, 0, 0);
@@ -155,19 +337,16 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         gl.glColor3f(0.0f, brightness, brightness);
 //        gl.glPushMatrix();
 //        gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
-        if (textRenderer == null) {
-            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 72), true, false);
-        }
         textRenderer.setColor(brightness, brightness, brightness, 1);
         textRenderer.beginRendering(width, height);
-        if ((statistics.maxUnit >= 0) && (statistics.maxUnit < DECISION_STRINGS.length)) {
-            Rectangle2D r = textRenderer.getBounds(DECISION_STRINGS[statistics.maxUnit]);
-            textRenderer.draw(DECISION_STRINGS[statistics.maxUnit], (width / 2) - ((int) r.getWidth() / 2), height / 2);
-            if (playSounds && statistics.maxUnit >= 0 && statistics.maxUnit < 3 && statistics.maxActivation > playSoundsThresholdActivation) {
+        if ((statistics.descision >= 0) && (statistics.descision < DECISION_STRINGS.length)) {
+            Rectangle2D r = textRenderer.getBounds(DECISION_STRINGS[statistics.descision]);
+            textRenderer.draw(DECISION_STRINGS[statistics.descision], (width / 2) - ((int) r.getWidth() / 2), height / 2);
+            if (playSounds && statistics.descision >= 0 && statistics.descision < 3 && statistics.maxActivation > playSoundsThresholdActivation) {
                 if (soundPlayer == null) {
                     soundPlayer = new SoundPlayer();
                 }
-                soundPlayer.playSound(statistics.maxUnit);
+                soundPlayer.playSound(statistics.descision);
             }
         }
         textRenderer.endRendering();
@@ -220,21 +399,6 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         }
         this.decisionLowPassMixingFactor = decisionLowPassMixingFactor;
         putFloat("decisionLowPassMixingFactor", decisionLowPassMixingFactor);
-    }
-
-    /**
-     * @return the playSpikeSounds
-     */
-    public boolean isPlaySpikeSounds() {
-        return playSpikeSounds;
-    }
-
-    /**
-     * @param playSpikeSounds the playSpikeSounds to set
-     */
-    public void setPlaySpikeSounds(boolean playSpikeSounds) {
-        this.playSpikeSounds = playSpikeSounds;
-        putBoolean("playSpikeSounds", playSpikeSounds);
     }
 
     /**
@@ -379,7 +543,8 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         final int HISTORY_LENGTH = 10;
         int[] decisionHistory = new int[HISTORY_LENGTH];
         float maxActivation = Float.NEGATIVE_INFINITY;
-        int maxUnit = -1;
+        int descision = -1;
+        boolean outputChanged = false;
 
         public Statistics() {
             reset();
@@ -422,74 +587,32 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         @Override
         public synchronized void propertyChange(PropertyChangeEvent evt) {
             if (evt.getPropertyName() == DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
-                int lastOutput = maxUnit;
+                int lastOutput = descision;
                 DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
                 maxActivation = Float.NEGATIVE_INFINITY;
-                maxUnit = -1;
+                descision = -1;
                 try {
                     for (int i = 0; i < NUM_CLASSES; i++) {
                         float output = net.outputLayer.activations[i];
                         lowpassFilteredOutputUnits[i] = ((1 - decisionLowPassMixingFactor) * lowpassFilteredOutputUnits[i]) + (output * decisionLowPassMixingFactor);
                         if (lowpassFilteredOutputUnits[i] > maxActivation) {
                             maxActivation = lowpassFilteredOutputUnits[i];
-                            maxUnit = i;
+                            descision = i;
                         }
                     }
                 } catch (ArrayIndexOutOfBoundsException e) {
                     log.warning("Array index out of bounds in rendering output. Did you load a valid CNN with 3 (or more) output units?");
 
                 }
-                decisionCounts[maxUnit]++;
+                decisionCounts[descision]++;
                 totalCount++;
-                if (playSpikeSounds && (maxUnit != lastOutput)) {
-                    if (spikeSound == null) {
-                        spikeSound = new SpikeSound();
-                    }
-                    spikeSound.play();
+                if ((descision != lastOutput)) {
+                    // CNN output changed, respond here
+                    outputChanged = true;
+                } else {
+                    outputChanged = false;
                 }
-                if (isSerialPortCommandsEnabled() && (serialPortOutputStream != null)) {
-                    char cmd = 0;
-                    if (!playToWin) {
-                        switch (maxUnit) {
-                            case DECISION_ROCK:
-                                cmd = '3';
-                                break;
-                            case DECISION_SCISSORS:
-                                cmd = '2';
-                                break;
-                            case DECISION_PAPER:
-                                cmd = '1';
-                                break;
-                            case DECISION_BACKGROUND:
-                                cmd = '1';
-                                break;
-                            default:
-                                log.warning("maxUnit=" + maxUnit + " is not a valid network output state");
-                        }
-                    } else { // beat human
-                        switch (maxUnit) {
-                            case DECISION_ROCK:
-                                cmd = '1';
-                                break;
-                            case DECISION_SCISSORS:
-                                cmd = '3';
-                                break;
-                            case DECISION_PAPER:
-                                cmd = '2';
-                                break;
-                            case DECISION_BACKGROUND:
-                                cmd = '1';
-                                break;
-                            default:
-                                log.warning("maxUnit=" + maxUnit + " is not a valid network output state");
-                        }
-                    }
-                    try {
-                        serialPortOutputStream.write((byte) cmd);
-                    } catch (IOException ex) {
-                        log.warning(ex.toString());
-                    }
-                }
+
             } else if (evt.getPropertyName() == AEViewer.EVENT_FILEOPEN) {
                 reset();
             }
@@ -614,6 +737,97 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     public void setPlayToWin(boolean playToWin) {
         this.playToWin = playToWin;
         putBoolean("playToWin", playToWin);
+    }
+
+    /**
+     * @return the trackerUpperEdgeThreshold
+     */
+    public float getTrackerUpperEdgeThreshold() {
+        return trackerUpperEdgeThreshold;
+    }
+
+    /**
+     * @param trackerUpperEdgeThreshold the trackerUpperEdgeThreshold to set
+     */
+    public void setTrackerUpperEdgeThreshold(float trackerUpperEdgeThreshold) {
+        this.trackerUpperEdgeThreshold = trackerUpperEdgeThreshold;
+        putFloat("trackerUpperEdgeThreshold", trackerUpperEdgeThreshold);
+    }
+
+    /**
+     * @return the trackerLowerEdgeThreshold
+     */
+    public float getTrackerLowerEdgeThreshold() {
+        return trackerLowerEdgeThreshold;
+    }
+
+    /**
+     * @param trackerLowerEdgeThreshold the trackerLowerEdgeThreshold to set
+     */
+    public void setTrackerLowerEdgeThreshold(float trackerLowerEdgeThreshold) {
+        this.trackerLowerEdgeThreshold = trackerLowerEdgeThreshold;
+        putFloat("trackerLowerEdgeThreshold", trackerLowerEdgeThreshold);
+    }
+
+    /**
+     * @return the tracker2EdgeCrossingTimeoutMs
+     */
+    public int getTracker2EdgeCrossingTimeoutMs() {
+        return tracker2EdgeCrossingTimeoutMs;
+    }
+
+    /**
+     * @param tracker2EdgeCrossingTimeoutMs the tracker2EdgeCrossingTimeoutMs to
+     * set
+     */
+    public void setTracker2EdgeCrossingTimeoutMs(int tracker2EdgeCrossingTimeoutMs) {
+        this.tracker2EdgeCrossingTimeoutMs = tracker2EdgeCrossingTimeoutMs;
+        putInt("tracker2EdgeCrossingTimeoutMs", tracker2EdgeCrossingTimeoutMs);
+    }
+
+    /**
+     * @return the throwIntervalTimeoutMs
+     */
+    public int getThrowIntervalTimeoutMs() {
+        return throwIntervalTimeoutMs;
+    }
+
+    /**
+     * @param throwIntervalTimeoutMs the throwIntervalTimeoutMs to set
+     */
+    public void setThrowIntervalTimeoutMs(int throwIntervalTimeoutMs) {
+        this.throwIntervalTimeoutMs = throwIntervalTimeoutMs;
+        putInt("tracker2EdgeCrossingTimeoutMs", tracker2EdgeCrossingTimeoutMs);
+    }
+
+    /**
+     * @return the winningSymbolShowTimeMs
+     */
+    public int getWinningSymbolShowTimeMs() {
+        return winningSymbolShowTimeMs;
+    }
+
+    /**
+     * @param winningSymbolShowTimeMs the winningSymbolShowTimeMs to set
+     */
+    public void setWinningSymbolShowTimeMs(int winningSymbolShowTimeMs) {
+        this.winningSymbolShowTimeMs = winningSymbolShowTimeMs;
+        putInt("winningSymbolShowTimeMs", winningSymbolShowTimeMs);
+    }
+
+    /**
+     * @return the useGameStatesToPlay
+     */
+    public boolean isUseGameStatesToPlay() {
+        return useGameStatesToPlay;
+    }
+
+    /**
+     * @param useGameStatesToPlay the useGameStatesToPlay to set
+     */
+    public void setUseGameStatesToPlay(boolean useGameStatesToPlay) {
+        this.useGameStatesToPlay = useGameStatesToPlay;
+        putBoolean("useGameStatesToPlay", useGameStatesToPlay);
     }
 
 }
