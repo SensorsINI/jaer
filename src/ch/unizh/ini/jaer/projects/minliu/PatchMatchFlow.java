@@ -78,7 +78,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * The computed average possible match distance from 0 motion
      */
     protected float avgPossibleMatchDistance;
-    private static final int MIN_SLICE_EVENT_COUNT_FULL_FRAME = 100;
+    private static final int MIN_SLICE_EVENT_COUNT_FULL_FRAME = 10;
     private static final int MAX_SLICE_EVENT_COUNT_FULL_FRAME = 100000;
 
 //    private int sx, sy;
@@ -133,9 +133,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int MIN_SLICE_DURATION_US = 100;
     private int MAX_SLICE_DURATION_US = 300000;
 
-    private boolean enableImuTimesliceLogging=false;
-    private TobiLogger imuTimesliceLogger=null;
-    
+    private boolean enableImuTimesliceLogging = false;
+    private TobiLogger imuTimesliceLogger = null;
+
     public enum PatchCompareMethod {
         /*JaccardDistance,*/ /*HammingDistance*/
         SAD/*, EventSqeDistance*/
@@ -157,9 +157,23 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         ConstantDuration, ConstantEventNumber, AreaEventNumber, ConstantIntegratedFlow
     };
     private SliceMethod sliceMethod = SliceMethod.valueOf(getString("sliceMethod", SliceMethod.AreaEventNumber.toString()));
+    // counting events into subsampled areas, when count exceeds the threshold in any area, the slices are rotated
     private int areaEventNumberSubsampling = getInt("areaEventNumberSubsampling", 5);
     private int[][] areaCounts = null;
     private boolean areaCountExceeded = false;
+
+    // nongreedy flow evaluation
+    // the entire scene is subdivided into regions, and a bitmap of these regions distributed flow computation more fairly
+    // by only servicing a region when sufficient fraction of other regions have been serviced first
+    private boolean nonGreedyFlowComputingEnabled = getBoolean("nonGreedyFlowComputingEnabled", true);
+    private boolean[][] nonGreedyRegions = null;
+    private int nonGreedyRegionsNumberOfRegions, nonGreedyRegionsCount;
+    /**
+     * This fraction of the regions must be serviced for computing flow before
+     * we reset the nonGreedyRegions map
+     */
+    private float nonGreedyFractionToBeServiced = getFloat("nonGreedyFractionToBeServiced",.5f);
+
     // timers and flags for showing filter properties temporarily
     private final int SHOW_STUFF_DURATION_MS = 4000;
     private volatile TimerTask stopShowingStuffTask = null;
@@ -220,6 +234,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
         setPropertyTooltip(patchTT, "adaptiveEventSkipping", "enables adaptive event skipping depending on free time left in AEViewer animation loop");
         setPropertyTooltip(patchTT, "adaptiveSliceDuration", "<html>Enables adaptive slice duration using feedback control, <br> based on average match search distance compared with total search distance. <p>If the match distance is too small, increaes duration or event count, and if too far, decreases duration or event count.<p>If using event count rotation method, don't increase count if actual duration is already longer than <i>sliceDurationUs</i>");
+        setPropertyTooltip(patchTT, "nonGreedyFlowComputingEnabled", "<html>Enables fairer distribution of computing flow by areas; an area is only serviced after " + nonGreedyFractionToBeServiced + " fraction of areas have been serviced. <p> Areas are defined by the the area subsubsampling bit shift.<p>Enabling this option ignores event skipping, so use the timeLimiter to ensure minimum frame rate");
+        setPropertyTooltip(patchTT, "nonGreedyFractionToBeServiced", "An area is only serviced after " + nonGreedyFractionToBeServiced + " fraction of areas have been serviced. <p> Areas are defined by the the area subsubsampling bit shift.<p>Enabling this option ignores event skipping, so use the timeLimiter to ensure minimum frame rate");
         setPropertyTooltip(patchTT, "useSubsampling", "<html>Enables using both full and subsampled block matching; <p>when using adaptiveSliceDuration, enables adaptive slice duration using feedback controlusing difference between full and subsampled resolution slice matching");
         setPropertyTooltip(patchTT, "adaptiveSliceDurationMinVectorsToControl", "<html>Min flow vectors computed in packet to control slice duration, increase to reject control during idle periods");
         setPropertyTooltip(patchTT, "processingTimeLimitMs", "<html>time limit for processing packet in ms to process OF events (events still accumulate). <br> Set to 0 to disable. <p>Alternative to the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events");
@@ -731,6 +747,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             adaptiveEventSkippingUpdateCounterLPFilter.reset();
         }
         clearAreaCounts();
+        clearNonGreedyRegions();
     }
 
     @Override
@@ -804,7 +821,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         rotateSlices();
 
-        
         /* Slices have been rotated */
         getSupport().firePropertyChange(PatchMatchFlow.EVENT_NEW_SLICES, slices[sliceIndex(1)], slices[sliceIndex(2)]);
         return true;
@@ -835,8 +851,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         eventCounter = 0;
         sliceDeltaT = ts - sliceLastTs;
         sliceLastTs = ts;
-        if(imuTimesliceLogger!=null && imuTimesliceLogger.isEnabled()){
-            imuTimesliceLogger.log(String.format("%d %d %.3f",ts,sliceDeltaT,imuFlowEstimator.getPanRateDps()));
+        if (imuTimesliceLogger != null && imuTimesliceLogger.isEnabled()) {
+            imuTimesliceLogger.log(String.format("%d %d %.3f", ts, sliceDeltaT, imuFlowEstimator.getPanRateDps()));
         }
     }
 
@@ -920,6 +936,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         if (timeLimiter.isTimedOut()) {
             return false;
+        }
+        if (nonGreedyFlowComputingEnabled) {
+            // only process the event for flow if most of the other regions have already been processed
+            int xx = e.x >> areaEventNumberSubsampling, yy = e.y >> areaEventNumberSubsampling;
+            boolean didArea = nonGreedyRegions[xx][yy];
+            if (!didArea) {
+                nonGreedyRegions[xx][yy] = true;
+                nonGreedyRegionsCount++;
+                if (nonGreedyRegionsCount >= (int) (nonGreedyFractionToBeServiced * nonGreedyRegionsNumberOfRegions)) {
+                    clearNonGreedyRegions();
+                }
+                return true; // skip counter is ignored
+            } else {
+                return false;
+            }
         }
         if (skipProcessingEventsCount == 0) {
             return true;
@@ -1634,7 +1665,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     /**
      * @param blockDimension the blockDimension to set
      */
-    public void setBlockDimension(int blockDimension) {
+    synchronized public void setBlockDimension(int blockDimension) {
         int old = this.blockDimension;
         // enforce odd value
         if ((blockDimension & 1) == 0) { // even
@@ -1683,7 +1714,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         return patchCompareMethod;
     }
 
-    public void setPatchCompareMethod(PatchCompareMethod patchCompareMethod) {
+    synchronized public void setPatchCompareMethod(PatchCompareMethod patchCompareMethod) {
         this.patchCompareMethod = patchCompareMethod;
         putString("patchCompareMethod", patchCompareMethod.toString());
     }
@@ -1700,7 +1731,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      *
      * @param searchMethod the method to be used for searching
      */
-    public void setSearchMethod(SearchMethod searchMethod) {
+    synchronized public void setSearchMethod(SearchMethod searchMethod) {
         SearchMethod old = this.searchMethod;
         this.searchMethod = searchMethod;
         putString("searchMethod", searchMethod.toString());
@@ -1727,7 +1758,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     @Override
-    public synchronized void setSearchDistance(int searchDistance) {
+    synchronized public void setSearchDistance(int searchDistance) {
         int old = this.searchDistance;
 
         if (searchDistance > 12) {
@@ -1753,7 +1784,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     /**
      * @param sliceDurationUs the sliceDurationUs to set
      */
-    public void setSliceDurationUs(int sliceDurationUs) {
+    synchronized public void setSliceDurationUs(int sliceDurationUs) {
         int old = this.sliceDurationUs;
         if (sliceDurationUs < MIN_SLICE_DURATION_US) {
             sliceDurationUs = MIN_SLICE_DURATION_US;
@@ -1779,7 +1810,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     /**
      * @param sliceEventCount the sliceEventCount to set
      */
-    public void setSliceEventCount(int sliceEventCount) {
+    synchronized public void setSliceEventCount(int sliceEventCount) {
         int old = this.sliceEventCount;
         if (sliceEventCount < MIN_SLICE_EVENT_COUNT_FULL_FRAME) {
             sliceEventCount = MIN_SLICE_EVENT_COUNT_FULL_FRAME;
@@ -1889,6 +1920,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             resultHistogram = new int[rhDim][rhDim];
             resultHistogramCount = 0;
         }
+        checkNonGreedyRegionsAllocated();
     }
 
     /**
@@ -2418,6 +2450,25 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         areaCountExceeded = false;
     }
 
+    private void clearNonGreedyRegions() {
+        if (!nonGreedyFlowComputingEnabled) {
+            return;
+        }
+        checkNonGreedyRegionsAllocated();
+        nonGreedyRegionsCount = 0;
+        for (boolean[] i : nonGreedyRegions) {
+            Arrays.fill(i, false);
+        }
+    }
+
+    private void checkNonGreedyRegionsAllocated() {
+        if (nonGreedyRegions == null || nonGreedyRegions.length != 1 + (subSizeX >> areaEventNumberSubsampling)) {
+            nonGreedyRegionsNumberOfRegions = (1 + (subSizeX >> areaEventNumberSubsampling)) * (1 + (subSizeY >> areaEventNumberSubsampling));
+            nonGreedyRegions = new boolean[1 + (subSizeX >> areaEventNumberSubsampling)][1 + (subSizeY >> areaEventNumberSubsampling)];
+            nonGreedyRegionsNumberOfRegions = (1 + (subSizeX >> areaEventNumberSubsampling)) * (1 + (subSizeY >> areaEventNumberSubsampling));
+        }
+    }
+
     public int getSliceDeltaT() {
         return sliceDeltaT;
     }
@@ -2434,13 +2485,49 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
     public void setEnableImuTimesliceLogging(boolean enableImuTimesliceLogging) {
         this.enableImuTimesliceLogging = enableImuTimesliceLogging;
-        if(enableImuTimesliceLogging){
-            if(imuTimesliceLogger==null){
-                imuTimesliceLogger=new TobiLogger("imuTimeslice.txt", "IMU rate gyro deg/s and patchmatch timeslice duration in ms");
+        if (enableImuTimesliceLogging) {
+            if (imuTimesliceLogger == null) {
+                imuTimesliceLogger = new TobiLogger("imuTimeslice.txt", "IMU rate gyro deg/s and patchmatch timeslice duration in ms");
                 imuTimesliceLogger.setHeaderLine("systemtime(ms) timestamp(us) timeslice(us) rate(deg/s)");
             }
         }
         imuTimesliceLogger.setEnabled(enableImuTimesliceLogging);
     }
-    
+
+    /**
+     * @return the nonGreedyFlowComputingEnabled
+     */
+    public boolean isNonGreedyFlowComputingEnabled() {
+        return nonGreedyFlowComputingEnabled;
+    }
+
+    /**
+     * @param nonGreedyFlowComputingEnabled the nonGreedyFlowComputingEnabled to
+     * set
+     */
+    synchronized public void setNonGreedyFlowComputingEnabled(boolean nonGreedyFlowComputingEnabled) {
+        boolean old = this.nonGreedyFlowComputingEnabled;
+        this.nonGreedyFlowComputingEnabled = nonGreedyFlowComputingEnabled;
+        putBoolean("nonGreedyFlowComputingEnabled", nonGreedyFlowComputingEnabled);
+        if (nonGreedyFlowComputingEnabled) {
+            clearNonGreedyRegions();
+        }
+        getSupport().firePropertyChange("nonGreedyFlowComputingEnabled", old, nonGreedyFlowComputingEnabled);
+    }
+
+    /**
+     * @return the nonGreedyFractionToBeServiced
+     */
+    public float getNonGreedyFractionToBeServiced() {
+        return nonGreedyFractionToBeServiced;
+    }
+
+    /**
+     * @param nonGreedyFractionToBeServiced the nonGreedyFractionToBeServiced to set
+     */
+    public void setNonGreedyFractionToBeServiced(float nonGreedyFractionToBeServiced) {
+        this.nonGreedyFractionToBeServiced = nonGreedyFractionToBeServiced;
+        putFloat("nonGreedyFractionToBeServiced",nonGreedyFractionToBeServiced);
+    }
+
 }
