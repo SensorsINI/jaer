@@ -78,7 +78,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * The computed average possible match distance from 0 motion
      */
     protected float avgPossibleMatchDistance;
-    private static final int MIN_SLICE_EVENT_COUNT_FULL_FRAME = 10;
+    private static final int MIN_SLICE_EVENT_COUNT_FULL_FRAME = 50;
     private static final int MAX_SLICE_EVENT_COUNT_FULL_FRAME = 100000;
 
 //    private int sx, sy;
@@ -172,7 +172,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * This fraction of the regions must be serviced for computing flow before
      * we reset the nonGreedyRegions map
      */
-    private float nonGreedyFractionToBeServiced = getFloat("nonGreedyFractionToBeServiced",.5f);
+    private float nonGreedyFractionToBeServiced = getFloat("nonGreedyFractionToBeServiced", .5f);
 
     // timers and flags for showing filter properties temporarily
     private final int SHOW_STUFF_DURATION_MS = 4000;
@@ -292,6 +292,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         } else {
             i = ((EventPacket) in).inputIterator();
         }
+
+        nSkipped = 0;
+        nProcessed = 0;
 
         while (i.hasNext()) {
             Object o = i.next();
@@ -660,6 +663,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 textRenderer.draw3D(sb.toString(), 0, (float) (3 * rt.getHeight()) * sc, 0, sc);
                 textRenderer.end3DRendering();
                 gl.glPopMatrix(); // back to original chip coordinates
+                log.info(String.format("processed %.1f%% (%d/%d)", 100 * (float) nProcessed / (nSkipped + nProcessed), nProcessed, (nProcessed + nSkipped)));
 
 //                // draw histogram of angles around center of image
 //                if (resultAngleHistogramCount > 0) {
@@ -884,6 +888,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         return sliceStartTimeUs[sliceIndex(1)] - sliceStartTimeUs[sliceIndex(pointer)];
     }
 
+    private int nSkipped = 0, nProcessed = 0;
+
     /**
      * Accumulates the current event to the current slice
      *
@@ -935,6 +941,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             }
         }
         if (timeLimiter.isTimedOut()) {
+            nSkipped++;
             return false;
         }
         if (nonGreedyFlowComputingEnabled) {
@@ -947,17 +954,22 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 if (nonGreedyRegionsCount >= (int) (nonGreedyFractionToBeServiced * nonGreedyRegionsNumberOfRegions)) {
                     clearNonGreedyRegions();
                 }
+                nProcessed++;
                 return true; // skip counter is ignored
             } else {
+                nSkipped++;
                 return false;
             }
         }
         if (skipProcessingEventsCount == 0) {
+            nProcessed++;
             return true;
         }
         if (skipCounter++ < skipProcessingEventsCount) {
+            nSkipped++;
             return false;
         }
+        nProcessed++;
         skipCounter = 0;
         return true;
     }
@@ -1784,7 +1796,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     /**
      * @param sliceDurationUs the sliceDurationUs to set
      */
-    synchronized public void setSliceDurationUs(int sliceDurationUs) {
+    public void setSliceDurationUs(int sliceDurationUs) {
         int old = this.sliceDurationUs;
         if (sliceDurationUs < MIN_SLICE_DURATION_US) {
             sliceDurationUs = MIN_SLICE_DURATION_US;
@@ -1810,7 +1822,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     /**
      * @param sliceEventCount the sliceEventCount to set
      */
-    synchronized public void setSliceEventCount(int sliceEventCount) {
+    public void setSliceEventCount(int sliceEventCount) {
         int old = this.sliceEventCount;
         if (sliceEventCount < MIN_SLICE_EVENT_COUNT_FULL_FRAME) {
             sliceEventCount = MIN_SLICE_EVENT_COUNT_FULL_FRAME;
@@ -2523,11 +2535,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     /**
-     * @param nonGreedyFractionToBeServiced the nonGreedyFractionToBeServiced to set
+     * @param nonGreedyFractionToBeServiced the nonGreedyFractionToBeServiced to
+     * set
      */
     public void setNonGreedyFractionToBeServiced(float nonGreedyFractionToBeServiced) {
         this.nonGreedyFractionToBeServiced = nonGreedyFractionToBeServiced;
-        putFloat("nonGreedyFractionToBeServiced",nonGreedyFractionToBeServiced);
+        putFloat("nonGreedyFractionToBeServiced", nonGreedyFractionToBeServiced);
     }
 
 }
