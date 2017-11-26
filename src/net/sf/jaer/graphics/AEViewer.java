@@ -2203,6 +2203,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          * @return true if packet is null, otherwise false.
          */
         boolean filterPacket() {
+            
+            if(playerControls.isSliderBeingAdjusted()) return false; // don't run filters if user is manipulating position
 
             // filter events, do processing on them in rendering loop here
             if ((filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING) || (playMode != PlayMode.LIVE)) {
