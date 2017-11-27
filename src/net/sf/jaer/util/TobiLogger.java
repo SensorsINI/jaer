@@ -23,7 +23,8 @@ import net.sf.jaer.eventio.AEDataFile;
  To use it, construct a new instance, then enable it to open the file and enable the subsequent logging calls to write.
  Enabling logging automatically opens the file.
  The logging files are created in the startup directory, e.g. in jAER, in the folder host/java.
- * Each log call prepends the system time automatically as the first field.
+ * Each log call prepends the system time automatically as the first field, followed by a separator character, by default a comma to allow
+ * easier parsing as CSV file. Comment lines have the comment character # prepended to them.
  * @author tobi
  */
 public class TobiLogger {
@@ -38,6 +39,7 @@ public class TobiLogger {
     private String headerLine;
     private String fileNameBase;
     private String fileNameActual=null;
+    private String separator=",";
     
     /**
      * Creates a new instance of TobiLogger.
@@ -71,12 +73,13 @@ public class TobiLogger {
     synchronized public void log(String s) {
         if(!logDataEnabled) return;
         if(logStream!=null) {
-            if(absoluteTimeEnabled){
-                logStream.print((nanotimeEnabled?System.nanoTime():System.currentTimeMillis())+"\t");
-            }else{
-                logStream.print(((nanotimeEnabled?System.nanoTime():System.currentTimeMillis())-startingTime)+"\t");
+            long time;
+                time=nanotimeEnabled?System.nanoTime():System.currentTimeMillis();
+            if(!absoluteTimeEnabled){
+                time-=startingTime;
             }
-            logStream.println(s);
+            String ss=String.format("%d%s%s",time,separator,s);
+            logStream.println(ss);
             if(logStream.checkError()) log.warning("error logging data");
         }
     }
@@ -186,6 +189,22 @@ public class TobiLogger {
     @Override
     public String toString() {
         return "TobiLogger{" + "absoluteTimeEnabled=" + absoluteTimeEnabled + ", nanotimeEnabled=" + nanotimeEnabled + ", startingTime=" + startingTime + ", headerLine=" + headerLine + ", fileNameActual=" + fileNameActual + '}';
+    }
+
+    /**
+     * Returns String that separates logging time from rest of line. Default is comma ",".
+     * @return the separator
+     */
+    public String getSeparator() {
+        return separator;
+    }
+
+    /**
+     * Sets character that separates logging time from rest of line
+     * @param separator the separator to set
+     */
+    public void setSeparator(String separator) {
+        this.separator = separator;
     }
 
     
