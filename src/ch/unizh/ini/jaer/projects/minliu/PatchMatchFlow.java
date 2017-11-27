@@ -193,6 +193,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
     public static final String EVENT_NEW_SLICES = "eventNewSlices";
 
+    TobiLogger sadValueLogger = new TobiLogger("sadvalues", "sadvalue,scale"); // TODO debug
+
     public PatchMatchFlow(AEChip chip) {
         super(chip);
 
@@ -205,7 +207,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        Date date = new Date();
         // Log file for the OF distribution's statistics
 //        outputFilename = "PMF_HistStdDev" + formatter.format(date) + ".txt";
-        String patchTT = "Block matching";
+        String patchTT = "0a: Block matching";
 //        String eventSqeMatching = "Event squence matching";
 //        String preProcess = "Denoise";
         String metricConfid = "Confidence of current metric";
@@ -246,19 +248,31 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "sliceMaxValue", "<html> the maximum value used to represent each pixel in the time slice:<br>1 for binary or signed binary slice, (in conjunction with rectifyEventPolarities==true), etc, <br>up to 127 by these byte values");
         setPropertyTooltip(patchTT, "rectifyPolarties", "<html> whether to rectify ON and OFF polarities to unsigned counts; true ignores polarity for block matching, false uses polarity with sliceNumBits>1");
         setPropertyTooltip(patchTT, "scalesToCompute", "Scales to compute, e.g. 1,2; blank for all scales. 0 is full resolution, 1 is subsampled 2x2, etc");
+        setPropertyTooltip(patchTT, "showSlice", "Scales to compute, e.g. 1,2; blank for all scales. 0 is full resolution, 1 is subsampled 2x2, etc");
         setPropertyTooltip(patchTT, "defaults", "Sets reasonable defaults");
         setPropertyTooltip(patchTT, "enableImuTimesliceLogging", "Logs IMU and rate gyro");
 
-        setPropertyTooltip(dispTT, "showSliceBitMap", "enables displaying the slices' bitmap");
-        setPropertyTooltip(dispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
-        setPropertyTooltip(dispTT, "displayOutputVectors", "display the output motion vectors or not");
-        setPropertyTooltip(dispTT, "displayResultHistogram", "display the output motion vectors histogram to show disribution of results for each packet. Only implemented for HammingDistance");
+        String patchDispTT = "0b: Block matching display";
+        setPropertyTooltip(patchDispTT, "showSliceBitMap", "enables displaying the slices' bitmap");
+        setPropertyTooltip(patchDispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
+        setPropertyTooltip(patchDispTT, "displayOutputVectors", "display the output motion vectors or not");
+        setPropertyTooltip(patchDispTT, "displayResultHistogram", "display the output motion vectors histogram to show disribution of results for each packet. Only implemented for HammingDistance");
 
         getSupport().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
         getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWIND, this);
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP, this);
         computeAveragePossibleMatchDistance();
+    }
+
+    // TODO debug
+    public void doStartLogSadValues() {
+        sadValueLogger.setEnabled(true);
+    }
+    // TODO debug
+
+    public void doStopLogSadValues() {
+        sadValueLogger.setEnabled(false);
     }
 
     @Override
@@ -325,6 +339,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             // compute flow
             SADResult result = null;
 
+            float[] sadVals = new float[numScales]; // TODO debug
             switch (patchCompareMethod) {
                 case SAD:
                     boolean rotated = maybeRotateSlices();
@@ -353,6 +368,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                             result = sliceResult; // result holds the overall min sad result
                             minDistScale = scale;
                         }
+                        sadVals[scale] = sliceResult.sadValue; // TODO debug
 
                     }
                     scaleResultCounts[minDistScale]++;
@@ -374,7 +390,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    result.dy = result.dy / dtj;
 //                    break;
             }
-            if (result == null || result.sadValue == Float.MAX_VALUE) {
+            if (result == null /*|| result.sadValue == Float.MAX_VALUE*/) {
                 continue; // maybe some property change caused this
             }
             // reject values that are unreasonable
@@ -384,9 +400,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             vx = result.vx;
             vy = result.vy;
             v = (float) Math.sqrt((vx * vx) + (vy * vy));
+            // TODO debug
+            StringBuilder sadValsString = new StringBuilder();
+            for (int k=0;k<sadVals.length-1;k++) {
+                sadValsString.append(String.format("%f,", sadVals[k]));
+            }
+            sadValsString.append(String.format("%f", sadVals[sadVals.length-1])); // very awkward to prevent trailing ,
+            if (sadValueLogger.isEnabled()) { // TODO debug
+                sadValueLogger.log(sadValsString.toString());
+            }
+
             if (showSliceBitMap) {
                 // TODO danger, drawing outside AWT thread
-                drawMatching(ein.x >> result.scale, ein.y >> result.scale, (int) result.dx >> result.scale, (int) result.dy >> result.scale, slices[sliceIndex(1)][result.scale], slices[sliceIndex(2)][result.scale], result.scale);
+                drawMatching(result, ein, slices); // ein.x >> result.scale, ein.y >> result.scale, (int) result.dx >> result.scale, (int) result.dy >> result.scale, slices[sliceIndex(1)][result.scale], slices[sliceIndex(2)][result.scale], result.scale);
             }
 
 //            if (filterOutInconsistentEvent(result)) {
@@ -982,13 +1008,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private float sumArray[][] = null;
 
     /**
-     * Computes hamming eight around point x,y using blockDimension and
-     * searchDistance
+     * Computes block matching image difference best match around point x,y
+     * using blockDimension and searchDistance and scale
      *
      * @param x coordinate in subsampled space
      * @param y
      * @param prevSlice the slice over which we search for best match
      * @param curSlice the slice from which we get the reference block
+     * @param subSampleBy the scale to compute this SAD on, 0 for full
+     * resolution, 1 for 2x2 subsampled block bitmap, etc
      * @return SADResult that provides the shift and SAD value
      */
 //    private SADResult minHammingDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
@@ -1236,7 +1264,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         // Also we don't want to match ref block only on inner sides or there will be a bias towards motion towards middle
         if (x - r - adx < 0 || x + r + adx >= w
                 || y - r - ady < 0 || y + r + ady >= h) {
-            return Float.MAX_VALUE; // return very large distance for this match so it is not selected
+            return 1; // tobi changed to 1 again // Float.MAX_VALUE; // return very large distance for this match so it is not selected
         }
 
         int validPixNumCurSlice = 0, validPixNumPrevSlice = 0; // The valid pixel number in the current block
@@ -1301,7 +1329,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if ( //                (validPixNumCurSlice < minValidPixNum) || (validPixNumPrevSlice < minValidPixNum) ||
                 nonZeroMatchCount < minValidPixNum //                || (saturatedPixNumCurSlice >= maxSaturatedPixNum) || (saturatedPixNumPrevSlice >= maxSaturatedPixNum)
                 ) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
-            return Float.MAX_VALUE;
+            return 1; // tobi changed to 1 to represent max distance // Float.MAX_VALUE;
         } else {
             /*
             retVal consists of the distance and the dispersion. dispersion is used to describe the spatial relationship within one block.
@@ -1360,7 +1388,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         // Make sure 0<=xx+dx<subSizeX, 0<=xx<subSizeX and 0<=yy+dy<subSizeY, 0<=yy<subSizeY,  or there'll be arrayIndexOutOfBoundary exception.
         if ((x < (blockRadius + dx)) || (x >= ((subSizeX - blockRadius) + dx)) || (x < blockRadius) || (x >= (subSizeX - blockRadius))
                 || (y < (blockRadius + dy)) || (y >= ((subSizeY - blockRadius) + dy)) || (y < blockRadius) || (y >= (subSizeY - blockRadius))) {
-            return Float.MAX_VALUE;
+            return 1; // changed back to 1 // Float.MAX_VALUE;
         }
 
         for (int xx = x - blockRadius; xx <= (x + blockRadius); xx++) {
@@ -1579,7 +1607,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         int dx, dy; // best match offset in pixels to reference block from past slice block, i.e. motion vector points in this direction
         float vx, vy; // optical flow in pixels/second corresponding to this match
-        float sadValue; // sum of absolute difference for this best match
+        float sadValue; // sum of absolute differences for this best match normalized by number of pixels in reference area
         int xidx, yidx; // x and y indices into 2d matrix of result. 0,0 corresponds to motion SW. dx, dy may be negative, like (-1, -1) represents SW.
         // However, for histgram index, it's not possible to use negative number. That's the reason for intrducing xidx and yidx.
 //        boolean minSearchedFlg = false;  // The flag indicates that this minimum have been already searched before.
@@ -2135,7 +2163,25 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     protected static final String G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH = "G: search area\nR: ref block area\nB: best match";
 
-    synchronized private void drawMatching(int x, int y, int dx, int dy, byte[][] refBlock, byte[][] searchBlock, int subSampleBy) {
+    /**
+     * Draws the block matching bitmap
+     *
+     * @param x
+     * @param y
+     * @param dx
+     * @param dy
+     * @param refBlock
+     * @param searchBlock
+     * @param subSampleBy
+     */
+    synchronized private void drawMatching(SADResult result, PolarityEvent ein, byte[][][][] slices) {
+//    synchronized private void drawMatching(int x, int y, int dx, int dy, byte[][] refBlock, byte[][] searchBlock, int subSampleBy) {
+        int x = ein.x >> result.scale, y = ein.y >> result.scale;
+        int dx = (int) result.dx >> result.scale, dy = (int) result.dy >> result.scale;
+        byte[][] refBlock = slices[sliceIndex(1)][result.scale], searchBlock = slices[sliceIndex(2)][result.scale];
+        int subSampleBy = result.scale;
+        Legend sadLegend = null;
+
         int dimNew = blockDimension + (2 * (searchDistance));
         if (sliceBitMapFrame == null) {
             String windowName = "Slice bitmaps";
@@ -2209,7 +2255,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     }
                 }
                 if (sliceBitmapLegend != null) {
-                    sliceBitmapLegend.s = G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH + "\nScale: " + subSampleBy;
+                    sliceBitmapLegend.s
+                            = G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH
+                            + "\nScale: "
+                            + subSampleBy
+                            + "\nSAD: "
+                            + engFmt.format(result.sadValue);
                 }
             }
         } catch (ArrayIndexOutOfBoundsException e) {
