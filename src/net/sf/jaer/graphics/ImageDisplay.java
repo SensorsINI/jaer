@@ -299,7 +299,9 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         gl.glRasterPos3f(0, 0, 0);
         gl.glColor3f(1, 1, 1);
 
-        if(textRenderer==null) textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getFontSize()), true, true);
+        if (textRenderer == null) {
+            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getFontSize()), true, true);
+        }
 
         checkGLError(gl, "ImageDisplay, after init");
     }
@@ -753,16 +755,18 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     }
 
     /**
-     * @see #setBorderSpacePixels(int) 
+     * @see #setBorderSpacePixels(int)
      * @return image being displayed pixels border
      */
     public float getBorderSpacePixels() {
         return borderPixels;
     }
 
-    /** Sets the border outside the image frame in pixels (this space is in screen pixels)
-     * 
-     * @param border 
+    /**
+     * Sets the border outside the image frame in pixels (this space is in
+     * screen pixels)
+     *
+     * @param border
      */
     public void setBorderSpacePixels(int border) {
         borderPixels = border;
@@ -1159,6 +1163,19 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     }
 
     /**
+     * Removes Legend from the internal list
+     *
+     * @param legend the Legend to remove. If it is null or not in the list
+     * nothing happens
+     */
+    synchronized void removeLegend(Legend legend) {
+        if (legend == null) {
+            return;
+        }
+        legends.remove(legend);
+    }
+
+    /**
      * Clears all the legend strings.
      *
      */
@@ -1247,23 +1264,22 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
             public void run() {
                 JFrame frame = new JFrame("ImageFrame " + windowCount);  // make a JFrame to hold it
                 frame.setPreferredSize(new Dimension(400, 400));  // set the window size
-                frame.getContentPane().setLayout(new BoxLayout(frame.getContentPane(),BoxLayout.Y_AXIS));
+                frame.getContentPane().setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.Y_AXIS));
 
                 final ImageDisplay disp = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
                 final ImageDisplay disp2 = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
-                int s=0;
+                int s = 0;
                 disp.setPreferredSize(new Dimension(s, s));
                 disp2.setPreferredSize(new Dimension(s, s));
 //                JPanel p1=new JPanel(), p2=new JPanel();
 //                p1.add(disp); p2.add(disp2);
 //                Dimension d=new Dimension(s,s);
 //                p1.setPreferredSize(d);p2.setPreferredSize(d);
-                
 
                 frame.getContentPane().add(disp); // add the GLCanvas to the center of the window
                 frame.getContentPane().add(disp2); // add the GLCanvas to the center of the window
                 frame.pack(); // otherwise it wont fill up the display
-                
+
                 final Point2D.Float mousePoint = new Point2D.Float();
 
                 frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // closing the frame exits
@@ -1302,7 +1318,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
                     f = disp.getPixmapArray(); // get reference to pixmap array so we can set pixel values
                     sx = disp.getSizeX();
                     sy = disp.getSizeY();
-			// randomly update all pixels
+                    // randomly update all pixels
                     //                for (int x = 0; x < sx; x++) {
                     //                    for (int y = 0; y < sy; y++) {
                     //                        int ind = imageDisplay.getPixMapIndex(x, y);
@@ -1402,7 +1418,9 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         return grayValue;
     }
 
-    /** Sets the value that image is cleared to as a gray value
+    /**
+     * Sets the value that image is cleared to as a gray value
+     *
      * @param grayValue the grayValue to set
      */
     public void setGrayValue(float grayValue) {
