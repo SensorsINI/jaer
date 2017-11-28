@@ -333,6 +333,8 @@
                 <entry key="CellStatsProber.showIndividualISIHistograms" value="false"/>
                 <entry key="CellStatsProber.showLatencyHistogramToExternalInputEvents" value="false"/>
                 <entry key="CellStatsProber.spikeSoundEnabled" value="false"/>
+                <entry key="ChipCanvas.anglex" value="-6.4693446"/>
+                <entry key="ChipCanvas.angley" value="67.033745"/>
                 <entry key="ChipCanvas.origin3dx" value="0"/>
                 <entry key="ChipCanvas.origin3dy" value="0"/>
                 <entry key="CircularConvolutionFilter.filterEnabled" value="false"/>
@@ -348,6 +350,7 @@
                 <entry key="ClusterBasedOpticalFlow.vanishingPoint.x" value="NaN"/>
                 <entry key="ClusterBasedOpticalFlow.vanishingPoint.y" value="NaN"/>
                 <entry key="ClusterBasedOpticalFlow.vectorScalingPixelsPerPPS" value="0.061391346"/>
+                <entry key="ColonelKernel.filterEnabled" value="false"/>
                 <entry key="CrosscorrelogramBetweenTwoPixels.filterEnabled" value="false"/>
                 <entry key="CrosscorrelogramBetweenTwoPixels.x2" value="63"/>
                 <entry key="CrosscorrelogramBetweenTwoPixels.y1" value="64"/>
@@ -3620,7 +3623,7 @@
                 <entry key="Davis640.useAout" value="false"/>
                 <entry key="Davis640Color.APS.ADCTestMode" value="false"/>
                 <entry key="Davis640Color.APS.ColumnSettle" value="30"/>
-                <entry key="Davis640Color.APS.Exposure" value="20000"/>
+                <entry key="Davis640Color.APS.Exposure" value="7726"/>
                 <entry key="Davis640Color.APS.FrameDelay" value="60000"/>
                 <entry key="Davis640Color.APS.GlobalShutter" value="true"/>
                 <entry key="Davis640Color.APS.NullSettle" value="3"/>
@@ -3634,7 +3637,7 @@
                 <entry key="Davis640Color.APS.SampleSettle" value="30"/>
                 <entry key="Davis640Color.APS.UseInternalADC" value="true"/>
                 <entry key="Davis640Color.APS.WaitOnTransferStall" value="true"/>
-                <entry key="Davis640Color.AddressedIPotCF.ADCcompBp.BitValueCoarse" value="2"/>
+                <entry key="Davis640Color.AddressedIPotCF.ADCcompBp.BitValueCoarse" value="0"/>
                 <entry key="Davis640Color.AddressedIPotCF.ADCcompBp.BitValueFine" value="20"/>
                 <entry key="Davis640Color.AddressedIPotCF.ADCcompBp.Enabled" value="true"/>
                 <entry key="Davis640Color.AddressedIPotCF.ADCcompBp.LowCurrent" value="false"/>
@@ -3646,7 +3649,7 @@
                 <entry key="Davis640Color.AddressedIPotCF.AEPdBn.LowCurrent" value="false"/>
                 <entry key="Davis640Color.AddressedIPotCF.AEPdBn.Sex" value="N"/>
                 <entry key="Davis640Color.AddressedIPotCF.AEPdBn.Type" value="NORMAL"/>
-                <entry key="Davis640Color.AddressedIPotCF.AEPuXBp.BitValueCoarse" value="3"/>
+                <entry key="Davis640Color.AddressedIPotCF.AEPuXBp.BitValueCoarse" value="0"/>
                 <entry key="Davis640Color.AddressedIPotCF.AEPuXBp.BitValueFine" value="80"/>
                 <entry key="Davis640Color.AddressedIPotCF.AEPuXBp.Enabled" value="true"/>
                 <entry key="Davis640Color.AddressedIPotCF.AEPuXBp.LowCurrent" value="false"/>
@@ -3664,7 +3667,7 @@
                 <entry key="Davis640Color.AddressedIPotCF.ApsROSFBn.LowCurrent" value="false"/>
                 <entry key="Davis640Color.AddressedIPotCF.ApsROSFBn.Sex" value="N"/>
                 <entry key="Davis640Color.AddressedIPotCF.ApsROSFBn.Type" value="NORMAL"/>
-                <entry key="Davis640Color.AddressedIPotCF.ColSelLowBn.BitValueCoarse" value="7"/>
+                <entry key="Davis640Color.AddressedIPotCF.ColSelLowBn.BitValueCoarse" value="6"/>
                 <entry key="Davis640Color.AddressedIPotCF.ColSelLowBn.BitValueFine" value="1"/>
                 <entry key="Davis640Color.AddressedIPotCF.ColSelLowBn.Enabled" value="true"/>
                 <entry key="Davis640Color.AddressedIPotCF.ColSelLowBn.LowCurrent" value="false"/>
@@ -3805,10 +3808,10 @@
                 <entry key="Davis640Color.IMU.GyroScale" value="GyroFullScaleDegPerSec1000"/>
                 <entry key="Davis640Color.IMU.LPCycle" value="false"/>
                 <entry key="Davis640Color.IMU.LPWakeup" value="1"/>
-                <entry key="Davis640Color.IMU.Run" value="true"/>
+                <entry key="Davis640Color.IMU.Run" value="false"/>
                 <entry key="Davis640Color.IMU.SampleRateDivider" value="0"/>
                 <entry key="Davis640Color.IMU.TempStandby" value="false"/>
-                <entry key="Davis640Color.IMU.displayEnabled" value="true"/>
+                <entry key="Davis640Color.IMU.displayEnabled" value="false"/>
                 <entry key="Davis640Color.Masterbias.internalResistorUsed" value="false"/>
                 <entry key="Davis640Color.Masterbias.rint" value="46000.0"/>
                 <entry key="Davis640Color.Masterbias.rx" value="8200.0"/>
@@ -3829,11 +3832,11 @@
                 <entry key="Davis640Color.VDACBias.ADC_RefHigh.BufBitValue" value="7"/>
                 <entry key="Davis640Color.VDACBias.ADC_RefHigh.VdacBitValue" value="30"/>
                 <entry key="Davis640Color.VDACBias.ADC_RefLow.BufBitValue" value="7"/>
-                <entry key="Davis640Color.VDACBias.ADC_RefLow.VdacBitValue" value="1"/>
+                <entry key="Davis640Color.VDACBias.ADC_RefLow.VdacBitValue" value="12"/>
                 <entry key="Davis640Color.VDACBias.AdcTestVoltage.BufBitValue" value="7"/>
                 <entry key="Davis640Color.VDACBias.AdcTestVoltage.VdacBitValue" value="21"/>
                 <entry key="Davis640Color.VDACBias.ApsCas.BufBitValue" value="6"/>
-                <entry key="Davis640Color.VDACBias.ApsCas.VdacBitValue" value="21"/>
+                <entry key="Davis640Color.VDACBias.ApsCas.VdacBitValue" value="38"/>
                 <entry key="Davis640Color.VDACBias.apsOverflowLevel.BufBitValue" value="6"/>
                 <entry key="Davis640Color.VDACBias.apsOverflowLevel.VdacBitValue" value="27"/>
                 <entry key="Davis640Color.VideoControl.autoWhiteBalance" value="false"/>
@@ -3849,7 +3852,7 @@
                 <entry key="DavisAutoShooter.useEventRateThreshold" value="true"/>
                 <entry key="DavisAutoShooter.useTracker" value="false"/>
                 <entry key="DavisBaseCamera.autoshotThresholdEvents" value="0"/>
-                <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="1"/>
+                <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="0"/>
                 <entry key="DavisBaseCamera.showImageHistogram" value="true"/>
                 <entry key="DavisDeepLearnCnnProcessor.dvsMinEvents" value="2000"/>
                 <entry key="DavisDeepLearnCnnProcessor.filterEnabled" value="true"/>
@@ -4811,6 +4814,7 @@
                 <entry key="RoShamBoCNN.serialPortCommandsEnabled" value="true"/>
                 <entry key="RoShamBoCNN.serialPortName" value="COM4"/>
                 <entry key="RoShamBoCNN.showAnalogDecisionOutput" value="true"/>
+                <entry key="RoShamBoCNN.showDecisionStatistics" value="false"/>
                 <entry key="RoShamBoCNN.showOutputAsBarChart" value="true"/>
                 <entry key="RoShamBoCNN.softMaxOutput" value="true"/>
                 <entry key="RoShamBoCNN.zeroPadding" value="false"/>
@@ -5061,7 +5065,7 @@
                 <entry key="apsGuaranteedImageTransfer" value="true"/>
                 <entry key="apsIntensityGain" value="1"/>
                 <entry key="apsIntensityOffset" value="0"/>
-                <entry key="autoExposureEnabled" value="false"/>
+                <entry key="autoExposureEnabled" value="true"/>
                 <entry key="autoResetEnabled" value="false"/>
                 <entry key="borderSpacePixels" value="70"/>
                 <entry key="class eu.seebetter.ini.chips.DAViS.DAVIS240A.preferredDisplayMethod" value="eu.seebetter.ini.chips.DAViS.DAVIS240A$DAViS240DisplayMethod"/>
