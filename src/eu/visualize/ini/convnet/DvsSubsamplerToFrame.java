@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.logging.Logger;
 
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
@@ -112,9 +113,10 @@ public class DvsSubsamplerToFrame {
     private int warningsBadEvent = 0;
 
     /**
-     * Adds event from a source event location to the map
+     * Adds event from a source event location to the map by integer division to
+     * the correct location in the subsampled DVS frame.
      *
-     * @param e
+     * @param e the event to add
      * @param srcWidth width of originating source sensor, e.g. 240 for DAVIS240
      * @param srcHeight height of source address space
      */
@@ -131,10 +133,22 @@ public class DvsSubsamplerToFrame {
         if (srcHeight != height) {
             y = (int) Math.floor(((float) e.y / srcHeight) * height);
         }
+        addEvent(x, y, e.polarity);
+    }
+
+    /**
+     * Adds event of polarity <code>p</code> to location <code>x,y</code> in the
+     * DVS frame.
+     *
+     * @param x x location in frame
+     * @param y y location in frame
+     * @param p polarity (On/Off) of event.
+     */
+    public void addEvent(int x, int y, Polarity p) {
         int k = getIndex(x, y);
         if (((k < 0) || (k >= eventSum.length))) {
             if (warningsBadEvent < 2) {
-                log.warning("ignoring event with index out of bounds for event " + e.toString() + " with srcWidth=" + srcWidth + " srcHeight=" + srcHeight);
+                log.warning("ignoring event with index out of bounds for event x=" + x + "y="+y);
             }
             if (warningsBadEvent == 2) {
                 log.warning("supressing further warnings");
@@ -143,7 +157,7 @@ public class DvsSubsamplerToFrame {
             return;
         }
         int sum = eventSum[k];
-        sum += rectifyPolarties ? 1 : (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
+        sum += rectifyPolarties ? 1 : (p == PolarityEvent.Polarity.On ? 1 : -1);
         // clip count at full scale
         if (sum > colorScale) {
             sum = colorScale;
@@ -174,7 +188,6 @@ public class DvsSubsamplerToFrame {
         // the pixmap value set here is the one that is returned (and typically used for rendering image) 
         pixmap[k] = pmv;
         accumulatedEventCount++;
-
     }
 
     /**
@@ -203,30 +216,32 @@ public class DvsSubsamplerToFrame {
     public float getValueAtPixel(int x, int y) {
         return pixmap[getIndex(x, y)];
     }
-    
 
     /**
-     * Returns the integer event sum of the histogram clipped to +/- colorScale range. 
-     * If rectifyPolarties==true, then the events are rectified to +1, otherwise the events are accumulated with +/-1 polarity value.
+     * Returns the integer event sum of the histogram clipped to +/- colorScale
+     * range. If rectifyPolarties==true, then the events are rectified to +1,
+     * otherwise the events are accumulated with +/-1 polarity value.
      *
      * @param x
      * @param y
      * @return the value of the subsampled map
-     * @see #getValueAtPixel(int, int) 
+     * @see #getValueAtPixel(int, int)
      */
     public int getEventSumAtPixel(int x, int y) {
         return eventSum[getIndex(x, y)];
     }
-    
-    /** Sets the value of eventSum array. Utility method used for debugging normalization.
-     * 
+
+    /**
+     * Sets the value of eventSum array. Utility method used for debugging
+     * normalization.
+     *
      * @param x
-     * @param y 
+     * @param y
      */
-    public void setEventSumAtPixel(int value, int x, int y){
-        eventSum[getIndex(x, y)]=value;
+    public void setEventSumAtPixel(int value, int x, int y) {
+        eventSum[getIndex(x, y)] = value;
     }
-    
+
     /**
      * Gets the index into the maps
      *
