@@ -71,12 +71,11 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     private RectangularClusterTracker tracker = null;
     private float trackerUpperEdgeThreshold = getFloat("trackerUpperEdgeThreshold", .7f);
     private float trackerLowerEdgeThreshold = getFloat("trackerLowerEdgeThreshold", .3f);
-    private int tracker2EdgeCrossingTimeoutMs = getInt("tracker2EdgeCrossingTimeoutMs", 500);
-    private int throwIntervalTimeoutMs = getInt("throwIntervalTimeoutMs", 1000);
-    private int winningSymbolShowTimeMs = getInt("winningSymbolShowTimeMs", 3000);
+    private int throwIntervalTimeoutMs = getInt("throwIntervalTimeoutMs", 2000);
+    private int winningSymbolShowTimeMs = getInt("winningSymbolShowTimeMs", 4000);
 
     public enum GameState {
-        Sleeping, Idle, Throw1, Throw2, ThrowShow
+        Idle, Throw1, Throw2, ThrowShow
     };
     private GameState gameState = GameState.Idle;
     private long gameStateUpdateTimeMs;
@@ -168,21 +167,31 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
             }
             switch (gameState) {
                 case Idle:
-                case Sleeping:
                     if (handTrackerState == HandTrackerState.CrossedLower) {
                         gameState = GameState.Throw1;
+                        twitch();
                         gameStateUpdateTimeMs = System.currentTimeMillis();
                     }
                     break;
                 case Throw1:
+                    if(System.currentTimeMillis()-gameStateUpdateTimeMs>throwIntervalTimeoutMs){
+                        gameState=GameState.Idle;
+                        break;
+                    }
                     if (handTrackerState == HandTrackerState.CrossedLower) {
                         gameState = GameState.Throw2;
+                        twitch();
                         gameStateUpdateTimeMs = System.currentTimeMillis();
                     }
                     break;
                 case Throw2:
-                    if (handTrackerState == HandTrackerState.CrossedUpper) { // only cross upper to show
+                   if(System.currentTimeMillis()-gameStateUpdateTimeMs>throwIntervalTimeoutMs){
+                        gameState=GameState.Idle;
+                        break;
+                    }
+                    if (handTrackerState == HandTrackerState.CrossedLower) { // only cross upper to show
                         gameState = GameState.ThrowShow;
+                        sendDecisionToHand();
                         gameStateUpdateTimeMs = System.currentTimeMillis();
                     }
                     break;
@@ -191,67 +200,65 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                         gameState = GameState.Idle;
                     }
             }
-        }
-        if (!useGameStatesToPlay) {
-            sendDecisionToHand();
         } else {
-            if (statistics.outputChanged) {
-
-                switch (gameState) {
-                    case ThrowShow:
-                        sendDecisionToHand();
-                        break;
-                    default:
-                }
-            }
+            sendDecisionToHand();
         }
         return out;
     }
 
-    private void sendDecisionToHand() {
+    private void twitch() {
+        sendCommandToHand('6');
+    }
+
+    private void sendCommandToHand(char cmd) {
         if (isSerialPortCommandsEnabled() && (serialPortOutputStream != null)) {
-            char cmd = 0;
-            if (!playToWin) {
-                switch (statistics.descision) {
-                    case DECISION_ROCK:
-                        cmd = '3';
-                        break;
-                    case DECISION_SCISSORS:
-                        cmd = '2';
-                        break;
-                    case DECISION_PAPER:
-                        cmd = '1';
-                        break;
-                    case DECISION_BACKGROUND:
-                        cmd = '1';
-                        break;
-                    default:
-                        log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
-                }
-            } else { // beat human
-                switch (statistics.descision) {
-                    case DECISION_ROCK:
-                        cmd = '1';
-                        break;
-                    case DECISION_SCISSORS:
-                        cmd = '3';
-                        break;
-                    case DECISION_PAPER:
-                        cmd = '2';
-                        break;
-                    case DECISION_BACKGROUND:
-                        cmd = '1';
-                        break;
-                    default:
-                        log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
-                }
-            }
             try {
                 serialPortOutputStream.write((byte) cmd);
             } catch (IOException ex) {
                 log.warning(ex.toString());
             }
         }
+
+    }
+
+    private void sendDecisionToHand() {
+        char cmd = 0;
+        if (!playToWin) {
+            switch (statistics.descision) {
+                case DECISION_ROCK:
+                    cmd = '3';
+                    break;
+                case DECISION_SCISSORS:
+                    cmd = '2';
+                    break;
+                case DECISION_PAPER:
+                    cmd = '1';
+                    break;
+                case DECISION_BACKGROUND:
+                    cmd = '1';
+                    break;
+                default:
+                    log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
+            }
+        } else { // beat human
+            switch (statistics.descision) {
+                case DECISION_ROCK:
+                    cmd = '1';
+                    break;
+                case DECISION_SCISSORS:
+                    cmd = '3';
+                    break;
+                case DECISION_PAPER:
+                    cmd = '2';
+                    break;
+                case DECISION_BACKGROUND:
+                    cmd = '1';
+                    break;
+                default:
+                    log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
+            }
+        }
+        sendCommandToHand(cmd);
     }
 
     @Override
@@ -305,7 +312,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
             gl.glVertex2f(0, lowerthreshold);
             gl.glVertex2f(chip.getSizeX(), lowerthreshold);
             gl.glEnd();
-           
+
             String s = gameState.toString() + " " + handTrackerState.toString();
             textRenderer.setColor(1, 1, 1, 1);
             textRenderer.beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
@@ -769,21 +776,6 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         putFloat("trackerLowerEdgeThreshold", trackerLowerEdgeThreshold);
     }
 
-    /**
-     * @return the tracker2EdgeCrossingTimeoutMs
-     */
-    public int getTracker2EdgeCrossingTimeoutMs() {
-        return tracker2EdgeCrossingTimeoutMs;
-    }
-
-    /**
-     * @param tracker2EdgeCrossingTimeoutMs the tracker2EdgeCrossingTimeoutMs to
-     * set
-     */
-    public void setTracker2EdgeCrossingTimeoutMs(int tracker2EdgeCrossingTimeoutMs) {
-        this.tracker2EdgeCrossingTimeoutMs = tracker2EdgeCrossingTimeoutMs;
-        putInt("tracker2EdgeCrossingTimeoutMs", tracker2EdgeCrossingTimeoutMs);
-    }
 
     /**
      * @return the throwIntervalTimeoutMs
@@ -797,7 +789,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
      */
     public void setThrowIntervalTimeoutMs(int throwIntervalTimeoutMs) {
         this.throwIntervalTimeoutMs = throwIntervalTimeoutMs;
-        putInt("tracker2EdgeCrossingTimeoutMs", tracker2EdgeCrossingTimeoutMs);
+        putInt("throwIntervalTimeoutMs", throwIntervalTimeoutMs);
     }
 
     /**
