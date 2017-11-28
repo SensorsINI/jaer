@@ -100,15 +100,16 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(startPoint.x, startPoint.y);
             gl.glVertex2f(endPoint.x, endPoint.y);
+            gl.glEnd();
 
             if (textRenderer == null) {
                 textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, false);
             }
             textRenderer.setColor(1, 1, 0, 1);
-            String s = String.format("%s pps (%.0fpix/%ss)", engFmt.format(speed), distance, engFmt.format(1e-6f * deltaTimestamp));
+            String s = String.format("%s pps (%.0fpix /%ss)", engFmt.format(speed), distance, engFmt.format(1e-6f * deltaTimestamp));
             textRenderer.beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
-            Rectangle2D r = textRenderer.getBounds(s);
-            textRenderer.draw(s, (drawable.getSurfaceWidth() / 2) - ((int) r.getWidth() / 2), (int) (0.75f * drawable.getSurfaceHeight()));
+//            Rectangle2D r = textRenderer.getBounds(s);
+            textRenderer.draw(s, (startPoint.x+endPoint.x)/2,(startPoint.y+endPoint.y)/2 );
             textRenderer.endRendering();
         }
     }
