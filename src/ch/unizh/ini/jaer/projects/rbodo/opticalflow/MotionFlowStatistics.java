@@ -302,6 +302,7 @@ public class MotionFlowStatistics {
 
         }
 
+        /** computes statistics and clear buffers of accumulated values */
         void bufferMean() {
             meanGlobalVx = (float)globalVx.getMean();
             sdGlobalVx = (float)globalVx.getStandardDeviation();
