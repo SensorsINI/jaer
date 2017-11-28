@@ -1312,7 +1312,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     validPixNumPrevSlice++;
                 }
                 if (currSliceVal != 0 && prevSliceVal != 0) {
-                    nonZeroMatchCount++; // pixels that are not saturated
+                    nonZeroMatchCount++; // pixels that both have events in them
                 }
             }
         }
