@@ -800,8 +800,18 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     String.format("glob. trans.=%s pps (local: %s)", flowMagPps, ppsScaleDisplayRelativeOFLength ? "rel." : "abs."));
             gl.glPopMatrix();
 //            System.out.println(String.format("%5.3f\t%5.2f",ts*1e-6f, motionFlowStatistics.getGlobalMotion().meanGlobalTrans));  // debug
-
-            // Draw global rotation vector as line left/right
+            
+            // draw quartiles statistics ellipse
+            gl.glPushMatrix();
+            gl.glTranslatef( sizex / 2+motionFlowStatistics.getGlobalMotion().meanGlobalVx*ppsScale, 
+                    sizey / 2+motionFlowStatistics.getGlobalMotion().meanGlobalVy*ppsScale, 
+                    0);
+            DrawGL.drawEllipse(gl, 0, 0, (float)motionFlowStatistics.getGlobalMotion().sdGlobalVx*ppsScale, 
+                    (float)motionFlowStatistics.getGlobalMotion().sdGlobalVy*ppsScale, 
+                    0, 16);
+            gl.glPopMatrix();
+            
+// Draw global rotation vector as line left/right
             gl.glPushMatrix();
             DrawGL.drawLine(gl,
                     sizex / 2,
