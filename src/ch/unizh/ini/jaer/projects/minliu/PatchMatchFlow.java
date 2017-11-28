@@ -91,6 +91,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private float[] sliceSummedSADValues = null; // tracks the total summed SAD differences between reference and past slices, to adjust the slice duration
     private int[] sliceSummedSADCounts = null; // tracks the total summed SAD differences between reference and past slices, to adjust the slice duration
     private int[] sliceStartTimeUs; // holds the time interval between reference slice and this slice
+    private int[] sliceEndTimeUs; // holds the time interval between reference slice and this slice
     private byte[][][] currentSlice;
     private SADResult lastGoodSadResult = new SADResult(0, 0, 0, 0); // used for consistency check
     private int blockDimension = getInt("blockDimension", 23);
@@ -864,6 +865,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      *
      */
     private void rotateSlices() {
+        if(e!=null) sliceEndTimeUs[currentSliceIdx]=e.timestamp;
         /*Thus if 0 is current index for current filling slice, then sliceIndex returns 1,2 for pointer =1,2.
         * Then if NUM_SLICES=3, after rotateSlices(),
         currentSliceIdx=NUM_SLICES-1=2, and sliceIndex(0)=2, sliceIndex(1)=0, sliceIndex(2)=1.
@@ -905,13 +907,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      *
      * @param pointer how many slices in the past to index for. I.e.. 0 for
      * current slice (one being currently filled), 1 for next oldest, 2 for
-     * oldest (when using NUM_SLICES=3). Only meaningful for pointer>=2 &&
-     * pointer
+     * oldest (when using NUM_SLICES=3). Only meaningful for pointer>=2, currently exactly only pointer==2 since
+     * we are using only 3 slices.
+     * 
+     * Modified to compute the delta time using the average of start and end timestamps of each slices, i.e. the slice 
+     * time "midpoint" where midpoint is defined by average of first and last timestamp. 
      *
      */
     private int sliceDeltaTimeUs(int pointer) {
 //        System.out.println("dt(" + pointer + ")=" + (sliceStartTimeUs[sliceIndex(1)] - sliceStartTimeUs[sliceIndex(pointer)]));
-        return sliceStartTimeUs[sliceIndex(1)] - sliceStartTimeUs[sliceIndex(pointer)];
+        int idxOlder=sliceIndex(pointer), idxYounger=sliceIndex(1);
+        int tOlder=(sliceStartTimeUs[idxOlder]+sliceEndTimeUs[idxOlder])/2;
+        int tYounger=(sliceStartTimeUs[idxYounger]+sliceEndTimeUs[idxYounger])/2;
+        int dt=tYounger-tOlder;
+        return dt;
     }
 
     private int nSkipped = 0, nProcessed = 0;
@@ -1323,7 +1332,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         // TODD: NEXT WORK IS TO DO THE RESEARCH ON WEIGHTED HAMMING DISTANCE
         // Calculate the metric confidence value
         final int minValidPixNum = (int) (this.validPixOccupancy * blockArea);
-        final int maxSaturatedPixNum = (int) ((1 - this.validPixOccupancy) * blockArea);
+//        final int maxSaturatedPixNum = (int) ((1 - this.validPixOccupancy) * blockArea);
         final float sadNormalizer = 1f / (blockArea * (rectifyPolarties ? 2 : 1) * sliceMaxValue);
         // if current or previous block has insufficient pixels with values or if all the pixels are filled up, then reject match
         if ( //                (validPixNumCurSlice < minValidPixNum) || (validPixNumPrevSlice < minValidPixNum) ||
@@ -1947,6 +1956,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                 sliceLastTs = Integer.MAX_VALUE;
                 sliceStartTimeUs = new int[numSlices];
+                sliceEndTimeUs = new int[numSlices];
                 sliceSummedSADValues = new float[numSlices];
                 sliceSummedSADCounts = new int[numSlices];
             }
