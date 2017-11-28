@@ -1325,7 +1325,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         // normalize by dimesion of subsampling, with idea that subsampling increases SAD 
         //by sqrt(area) because of Gaussian distribution of SAD values 
-        sumDist = sumDist >> (subsampleBy << 0);
+        sumDist = sumDist >> (subsampleBy << 1);
         final int blockDim = (2 * r) + 1;
 
         final int blockArea = (blockDim) * (blockDim); // TODO check math here for fraction correct with subsampling
@@ -1335,8 +1335,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        final int maxSaturatedPixNum = (int) ((1 - this.validPixOccupancy) * blockArea);
         final float sadNormalizer = 1f / (blockArea * (rectifyPolarties ? 2 : 1) * sliceMaxValue);
         // if current or previous block has insufficient pixels with values or if all the pixels are filled up, then reject match
-        if ( //                (validPixNumCurSlice < minValidPixNum) || (validPixNumPrevSlice < minValidPixNum) ||
-                nonZeroMatchCount < minValidPixNum //                || (saturatedPixNumCurSlice >= maxSaturatedPixNum) || (saturatedPixNumPrevSlice >= maxSaturatedPixNum)
+        if (    (validPixNumCurSlice < minValidPixNum) 
+                || (validPixNumPrevSlice < minValidPixNum) 
+                ||  (nonZeroMatchCount < minValidPixNum) //                || (saturatedPixNumCurSlice >= maxSaturatedPixNum) || (saturatedPixNumPrevSlice >= maxSaturatedPixNum)
                 ) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
             return 1; // tobi changed to 1 to represent max distance // Float.MAX_VALUE;
         } else {
