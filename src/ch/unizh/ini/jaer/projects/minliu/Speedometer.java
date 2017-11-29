@@ -14,6 +14,7 @@ import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
@@ -26,6 +27,7 @@ import net.sf.jaer.util.EngineeringFormat;
  * @author Tobi Delbruck
  */
 @Description("A simple utility to do hand measurements of velocity using mouse")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnotater {
 
     private int currentTimestamp = 0;
