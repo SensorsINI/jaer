@@ -8,9 +8,11 @@ package eu.visualize.ini.convnet;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLException;
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
 import javax.swing.BoxLayout;
@@ -35,7 +37,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
     /**
      * The ROIs. Indices are [scale][xidx][yidx]
      */
-    protected ROI[][][] rois = null;
+    protected ArrayList<ROI[][]> rois = null;
     private int numScales = getInt("numScales", 3);
     private int dimension = getInt("dimension", 64);
     private int stride = getInt("stride", dimension / 2);
@@ -85,32 +87,50 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
     /**
      * Use this method to add events in an iterator. Fires the
      * PropertyChangeEvent EVENT_NEW_ROI_AVAILABLE with the ROI as the new
-     * property value for each scale that fills up.
+     * property value for each scale that fills up. Fills event into all
+     * overlapping ROIs at all scales.
      *
      * @param e the event to add
      */
     public void addEvent(PolarityEvent e) {
         for (int s = 0; s < numScales; s++) {
-            // For this scale, find the corresonding ROI and put the event to it
-            // The ROIs overlap by the stride, scaled by the scale, so at one scale, // TODO stride not implemented yet
+            // For this scale, find the overlapping ROIs and put the event to them.
+
+            // The ROIs overlap by the stride, scaled by the scale, so at one scale, 
             // an event can belong
-            // to 2 or even 4 ROIs depending on where it is.
-            int subx = e.x >> s, suby = e.y >> s; // TODO scale not implemented and adding to multiple overlapping not done yet
-            int rx = subx / dimension;
-            int ry = suby / dimension;
-            if (rx >= nx >> s || ry >= ny >> s) {
-                continue;
-            }
-            final int locx = subx - rx * dimension;
-            final int locy = suby - ry * dimension;
-            ROI roi = rois[s][rx][ry];
-            roi.addEvent(locx, locy, e.polarity);
-            if (roi.getAccumulatedEventCount() > dvsEventCount) {
-                getSupport().firePropertyChange(EVENT_NEW_ROI_AVAILABLE, null, roi);
-                if (showDvsFrames) {
-                    drawDvsFrame(roi);
-                    roi.clear();  // TODO showing the ROIs will also clear them after they are shown
+            // to many ROIs depending on where it is and what is the stride.
+            // we compute the containing ROIs by finding the x and y limits such that
+            // the x,y of the event is >= ROI lower left and <= ROI upper right
+            int subx = e.x >> s, suby = e.y >> s;
+            ROI[][] roiArray = rois.get(s);
+            int nx = roiArray.length, ny = roiArray[0].length;
+            // brute force, search until we find right side>= subx, then accumulate the roi x's until the left side is > than the subx
+            for (int iy = 0; iy < ny; iy++) {
+                for (int ix = 0; ix < nx; ix++) {
+                    ROI roi = roiArray[ix][iy];
+                    if (roi.xRight < subx) {
+                        continue;
+                    }
+                    if (roi.xLeft >= subx) {
+                        break;
+                    }
+                    if (roi.yTop < suby) {
+                        continue;
+                    }
+                    if (roi.yBot >= suby) {
+                        break;
+                    }
+                    int locx = subx - roi.xLeft, locy = suby - roi.yBot;
+                    roi.addEvent(locx, locy, e.polarity);
+                    if (roi.getAccumulatedEventCount() > dvsEventCount) {
+                        getSupport().firePropertyChange(EVENT_NEW_ROI_AVAILABLE, null, roi);
+                        if (showDvsFrames) {
+                            drawDvsFrame(roi);
+                            roi.clear();  // TODO showing the ROIs will also clear them after they are shown
+                        }
+                    }
                 }
+
             }
         }
     }
@@ -160,6 +180,13 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
                 gl.glVertex2f(chip.getSizeX(), y);
             }
             gl.glEnd();
+        }
+        for (ROI[][] r : rois) {
+            for (ROI[] rr : r) {
+                for (ROI rrr : rr) {
+                    rrr.draw(gl);
+                }
+            }
         }
     }
 
@@ -232,17 +259,34 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
     }
 
     synchronized private void checkRois() {
-        sx = chip.getSizeX();
-        sy = chip.getSizeY();
-        nx = sx / dimension;
-        ny = sy / dimension;
-        rois = new ROI[numScales][nx][ny];
+
+        rois = new ArrayList<ROI[][]>(); // 2d array for each scale
         for (int s = 0; s < numScales; s++) {
-            for (int x = 0; x < nx >> s; x++) {
-                for (int y = 0; y < ny >> s; y++) {
-                    int xll = (x * dimension) << s, yll = (y * dimension) << s;
-                    rois[s][x][y] = new ROI(xll, yll, s, dimension, dimension, grayScale);
+            // the "size" at this scale is the sensor array size scaled by scale. events are subsampled to the ROIs based on the scale,
+            // e.g. for scale=1, 2x2 pixels are collected to 1x1 ROI pixel
+            sx = chip.getSizeX() >> s;
+            sy = chip.getSizeY() >> s;
+            // for this scale, determine how many x and y overlapping ROIs there will be
+            // divide the number of pixels by the stride, and then check if there is a remainder, if so add 1 for partial ROI
+            nx = sx / stride;
+            if (nx % stride > 0) {
+                nx++;
+            }
+            ny = sy / stride;
+            if (ny % stride > 0) {
+                ny++;
+            }
+            ROI[][] roiArray = new ROI[nx][ny];
+            rois.add(roiArray);
+
+            int yll = 0;
+            for (int y = 0; y < ny; y++) {
+                int xll = 0;
+                for (int x = 0; x < nx; x++) {
+                    roiArray[x][y] = new ROI(xll, yll, s, dimension, dimension, grayScale);
+                    xll += stride << s;
                 }
+                yll += stride << s;
             }
         }
     }
@@ -362,6 +406,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
      */
     public int getNy() {
         return ny;
+
     }
 
     /**
@@ -369,18 +414,50 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
      */
     public class ROI extends DvsSubsamplerToFrame {
 
-        /**
-         * @return the xLowerLeft
-         */
-        public int getxLowerLeft() {
-            return xLowerLeft;
+        private int xLeft, xRight;
+        private int yBot, yTop;
+        private int scale;
+        private int xidx;
+        private int yidx;
+        // CNN output layer activations asssociated with the ROI and the RGB alpha color values to draw for it
+        private float activations[], rgba[];
+
+        public ROI(int xLowerLeft, int yLowerLeft, int scale, int dimX, int dimY, int colorScale) {
+            super(dimX, dimY, colorScale);
+            this.xLeft = xLowerLeft;
+            this.yBot = yLowerLeft;
+            this.xRight = xLeft + (dimX << scale) - 1;
+            this.yTop = yBot + (dimY << scale) - 1;
+            this.scale = scale;
+        }
+
+        public void draw(GL2 gl) {
+            if(rgba==null) return;
+            try {
+                gl.glEnable(GL.GL_BLEND);
+                gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+                gl.glBlendEquation(GL.GL_FUNC_ADD);
+            } catch (final GLException e) {
+                e.printStackTrace();
+            }
+            rgba[3]=0.05f;
+            gl.glColor4fv(rgba, 0);
+//            gl.glColor4fv(new float[]{0,1,0,.05f}, 0);
+            gl.glRectf(xLeft, xRight, yBot, yTop);
         }
 
         /**
-         * @return the yLowerLeft
+         * @return the xLeft
          */
-        public int getyLowerLeft() {
-            return yLowerLeft;
+        public int getxLeft() {
+            return xLeft;
+        }
+
+        /**
+         * @return the yBot
+         */
+        public int getyBot() {
+            return yBot;
         }
 
         /**
@@ -403,17 +480,33 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
         public int getYidx() {
             return yidx;
         }
-        private int xLowerLeft;
-        private int yLowerLeft;
-        private int scale;
-        private int xidx;
-        private int yidx;
 
-        public ROI(int xLowerLeft, int yLowerLeft, int scale, int dimX, int dimY, int colorScale) {
-            super(dimX, dimY, colorScale);
-            this.xLowerLeft = xLowerLeft;
-            this.yLowerLeft = yLowerLeft;
-            this.scale = scale;
+        /**
+         * @return the activations
+         */
+        public float[] getActivations() {
+            return activations;
+        }
+
+        /**
+         * @param activations the activations to set
+         */
+        public void setActivations(float[] activations) {
+            this.activations = activations;
+        }
+
+        /**
+         * @return the rgba
+         */
+        public float[] getRgba() {
+            return rgba;
+        }
+
+        /**
+         * @param rgba the rgba to set
+         */
+        public void setRgba(float[] rgba) {
+            this.rgba = rgba;
         }
 
     }
