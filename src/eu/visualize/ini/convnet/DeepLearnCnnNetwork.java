@@ -101,7 +101,7 @@ public class DeepLearnCnnNetwork {
     private long startProcessingTimeNs = 0;
     private long processingTimeNs;
     private boolean softMaxOutput = false;
-    private boolean zeroPadding = true;
+    private boolean zeroPadding = false; // tobi changed to make default so that roshambo just runs out of box
     private boolean normalizeDVSForZsNullhop = false; // uses DvsSubsamplerToFrame normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1
     private EngineeringFormat engFmt = new EngineeringFormat();
     /** Height of final output layer histogram as fraction of AEChip display height */
@@ -1374,7 +1374,15 @@ public class DeepLearnCnnNetwork {
         public String toString() {
             return String.format("OutputOrInnerProductFullyConnectedLayer: bias=float[%d] outputWeights=float[%d]", biases.length, weights.length);
         }
-
+        
+        /** Returns number of units, if they network has already run, otherwise zero
+         * 
+         * @return number of units 
+         */
+        public int getNumUnits(){
+            if(biases==null) return 0; // not initialized or run yet
+            else return biases.length;
+        }
         /**
          * Computes following perceptron output:
          * <pre>
