@@ -69,9 +69,9 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private boolean normalizeDVSForZsNullhop = getBoolean("normalizeDVSForZsNullhop", false); // uses DvsSubsamplerToFrame normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1
 
     protected int lastProcessedEventTimestamp = 0;
-    private String performanceString = null; // holds string representation of processing time
-    private TimeLimiter timeLimiter = new TimeLimiter(); // private instance used to accumulate events to slices even if packet has timed out
-    private int processingTimeLimitMs = getInt("processingTimeLimitMs", 100); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
+    protected String performanceString = null; // holds string representation of processing time
+    protected TimeLimiter timeLimiter = new TimeLimiter(); // private instance used to accumulate events to slices even if packet has timed out
+    protected int processingTimeLimitMs = getInt("processingTimeLimitMs", 100); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
 
     public DavisDeepLearnCnnProcessor(AEChip chip) {
         super(chip);
@@ -203,12 +203,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             throw new RuntimeException("Null dvsSubsampler; this should not occur");
         }
 
-        if (processingTimeLimitMs > 0) {
-            timeLimiter.setTimeLimitMs(processingTimeLimitMs);
-            timeLimiter.restart();
-        } else {
-            timeLimiter.setEnabled(false);
-        }
+        resetTimeLimiter();
         if ((apsDvsNet != null)) {
             final int sizeX = chip.getSizeX();
             final int sizeY = chip.getSizeY();
@@ -246,6 +241,15 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
         }
         return in;
+    }
+
+    protected void resetTimeLimiter() {
+        if (processingTimeLimitMs > 0) {
+            timeLimiter.setTimeLimitMs(processingTimeLimitMs);
+            timeLimiter.restart();
+        } else {
+            timeLimiter.setEnabled(false);
+        }
     }
 
     @Override
