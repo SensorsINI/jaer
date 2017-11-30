@@ -45,7 +45,7 @@ public class WhatWhereCNN extends DavisDeepLearnCnnProcessor {
     private TargetLabeler targetLabeler = null;
     private int totalDecisions = 0, correct = 0, incorrect = 0;
     private float alpha = 0.5f;
-    private float[][][][] heatMap;
+//    private float[][][][] heatMap;
 
     private int filterx = 0, filtery = 0;  // Output location
     private DvsDataDrivenROIGenerator roiGenerator = null;
@@ -62,7 +62,7 @@ public class WhatWhereCNN extends DavisDeepLearnCnnProcessor {
         chain.add(roiGenerator); // only for control, we iterate with it here using the events we recieve
         setEnclosedFilterChain(chain);
 
-        heatMap = null; // filled after net runs
+//        heatMap = null; // filled after net runs
         apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
     }
 
@@ -121,55 +121,36 @@ public class WhatWhereCNN extends DavisDeepLearnCnnProcessor {
         super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
         checkBlend(gl);
-        drawHeatMap(gl);
+        roiGenerator.annotate(drawable);
     }
 
-    private void drawHeatMap(GL2 gl) {
+//    private void checkHeatmap() {
+//        if (heatMap != null) {
+//            return;
+//        }
+//        if (apsDvsNet == null) {
+//            return;
+//        }
+//        int nOut = apsDvsNet.outputLayer.getNumUnits();
+//        if (nOut == 0) {
+//            return;
+//        }
+//        heatMap = new float[roiGenerator.getNumScales()][roiGenerator.getNx()][roiGenerator.getNy()][nOut];
+//    }
 
-        int sizeX = chip.getSizeX();
-        int sizeY = chip.getSizeY();
-        try {
-            gl.glEnable(GL.GL_BLEND);
-            gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
-            gl.glBlendEquation(GL.GL_FUNC_ADD);
-        } catch (final GLException e) {
-            e.printStackTrace();
-        }
-        for(int s=0;s<roiGenerator.getNumScales();s++){
-            int nx=roiGenerator.getNx(), ny=roiGenerator.getNy();
-        }
-        gl.glColor4f(1f, .1f, .1f, .25f);
-        gl.glLineWidth(1f);
-//        gl.glRectf((int) outputX - 10, (int) outputY - 10, (int) outputX + 12, (int) outputY + 12);
-    }
+//    private void clearHeatMap() {
+//        for (float[][][] f0 : heatMap) {
+//            for (float[][] f1 : f0) {
+//                for (float[] f2 : f1) {
+//                    Arrays.fill(f2, 0);
+//                }
+//            }
+//        }
+//    }
 
-    private void checkHeatmap() {
-        if (heatMap != null) {
-            return;
-        }
-        if (apsDvsNet == null) {
-            return;
-        }
-        int nOut = apsDvsNet.outputLayer.getNumUnits();
-        if (nOut == 0) {
-            return;
-        }
-        heatMap = new float[roiGenerator.getNumScales()][roiGenerator.getNx()][roiGenerator.getNy()][nOut];
-    }
-
-    private void clearHeatMap() {
-        for (float[][][] f0 : heatMap) {
-            for (float[][] f1 : f0) {
-                for (float[] f2 : f1) {
-                    Arrays.fill(f2, 0);
-                }
-            }
-        }
-    }
-
-    public float[][][][] getHeatMap() {
-        return heatMap;
-    }
+//    public float[][][][] getHeatMap() {
+//        return heatMap;
+//    }
 
     @Override
     public synchronized void propertyChange(PropertyChangeEvent evt) {
@@ -183,12 +164,11 @@ public class WhatWhereCNN extends DavisDeepLearnCnnProcessor {
                 }
                 DvsDataDrivenROIGenerator.ROI roi = (DvsDataDrivenROIGenerator.ROI) evt.getNewValue();
                 apsDvsNet.processDvsTimeslice(roi); // generates PropertyChange EVENT_MADE_DECISION
-                checkHeatmap();
-                System.arraycopy(apsDvsNet.outputLayer.activations,
-                        0,
-                        heatMap[roi.getScale()][roi.getXidx()][roi.getYidx()],
-                        0,
-                        apsDvsNet.outputLayer.activations.length);
+//                checkHeatmap();
+                float[] activations=Arrays.copyOf(apsDvsNet.outputLayer.activations, apsDvsNet.outputLayer.getNumUnits());
+                roi.setActivations(activations);
+                roi.setRgba(activations); // for now just render 4-tuple as RGBA
+                
                 if (measurePerformance) {
                     long dt = System.nanoTime() - startTime;
                     float ms = 1e-6f * dt;
