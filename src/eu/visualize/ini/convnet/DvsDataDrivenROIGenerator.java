@@ -48,6 +48,8 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
     private int stride = getInt("stride", dimension / 2);
     private int grayScale = getInt("grayScale", 100);
     private int dvsEventCount = getInt("dvsEventCount", 1000);
+    private int decisionLifetime = getInt("decisionLifetime", 2000);
+
     private int sx, sy, nx, ny;
     private boolean showDvsFrames = false;
     private ImageDisplay dvsFrameImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
@@ -62,6 +64,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
     private final int SHOW_STUFF_DURATION_MS = 4000;
     private volatile TimerTask stopShowingStuffTask = null;
     private volatile boolean showROIsTemporarilyFlag = false;
+    private int lastTimestampUs = 0;
 
     public DvsDataDrivenROIGenerator(AEChip chip) {
         super(chip);
@@ -71,6 +74,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
         setPropertyTooltip("dvsEventCount", "num DVS events accumulated to subsampled ROI to fill the frame");
         setPropertyTooltip("showDvsFrames", "shows the fully exposed (accumulated with events) frames in a separate window");
         setPropertyTooltip("grayScale", "sets the full scale value for the DVS frame rendering");
+        setPropertyTooltip("decisionLifetime", "how long to render an ROI after its activations have been set");
     }
 
     /**
@@ -98,6 +102,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
      * @param e the event to add
      */
     public void addEvent(PolarityEvent e) {
+
         for (int s = 0; s < numScales; s++) {
             // For this scale, find the overlapping ROIs and put the event to them.
 
@@ -133,7 +138,8 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
 
                     int locx = subx - roi.xLeft, locy = suby - roi.yBot;
                     roi.addEvent(locx, locy, e.polarity);
-                    if (roi.getAccumulatedEventCount() > dvsEventCount*(1<<(2*roi.scale))) {
+                    lastTimestampUs = e.timestamp;
+                    if (roi.getAccumulatedEventCount() > dvsEventCount * (1 << (2 * roi.scale))) {
                         getSupport().firePropertyChange(EVENT_NEW_ROI_AVAILABLE, null, roi);
                         if (showDvsFrames) {
                             drawDvsFrame(roi);
@@ -430,6 +436,21 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
     }
 
     /**
+     * @return the decisionLifetime
+     */
+    public int getDecisionLifetime() {
+        return decisionLifetime;
+    }
+
+    /**
+     * @param decisionLifetime the decisionLifetime to set
+     */
+    public void setDecisionLifetime(int decisionLifetime) {
+        this.decisionLifetime = decisionLifetime;
+        putInt("decisionLifetime",decisionLifetime);
+    }
+
+    /**
      * One region of interest (ROI)
      */
     public class ROI extends DvsSubsamplerToFrame {
@@ -442,6 +463,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
         private int yidx;
         // CNN output layer activations asssociated with the ROI and the RGB alpha color values to draw for it
         private float activations[], rgba[];
+        private int lastDecisionTimestampUs = 0;
 
         public ROI(int xLowerLeft, int yLowerLeft, int scale, int dimX, int dimY, int colorScale) {
             super(dimX, dimY, colorScale);
@@ -473,6 +495,9 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
             if (rgba == null) {
                 return;
             }
+            if (lastTimestampUs - lastDecisionTimestampUs > getDecisionLifetime()) {
+                return;
+            }
             try {
                 gl.glEnable(GL2.GL_BLEND);
                 gl.glBlendFunc(GL2.GL_SRC_ALPHA, GL2.GL_CONSTANT_ALPHA);
@@ -490,7 +515,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
                 // mark it
                 gl.glColor3f(0, 1, 0);
                 gl.glPushMatrix();
-                DrawGL.drawBox(gl, xCenter, yCenter, width<<scale, height<<scale, 0);
+                DrawGL.drawBox(gl, xCenter, yCenter, width << scale, height << scale, 0);
                 gl.glPopMatrix();
             }
         }
@@ -548,6 +573,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
         public void setActivations(float[] activations) {
             this.activations = activations;
             roiLastUpdated = this;
+            setLastDecisionTimestampUs(lastTimestampUs);
         }
 
         /**
@@ -563,6 +589,20 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
         public void setRgba(float[] rgba) {
             this.rgba = rgba;
             roiLastUpdated = this;
+        }
+
+        /**
+         * @return the lastDecisionTimestampUs
+         */
+        public int getLastDecisionTimestampUs() {
+            return lastDecisionTimestampUs;
+        }
+
+        /**
+         * @param lastDecisionTimestampUs the lastDecisionTimestampUs to set
+         */
+        public void setLastDecisionTimestampUs(int lastDecisionTimestampUs) {
+            this.lastDecisionTimestampUs = lastDecisionTimestampUs;
         }
 
     }
