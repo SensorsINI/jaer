@@ -9,10 +9,13 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLException;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 import javax.swing.BoxLayout;
@@ -25,6 +28,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
+import net.sf.jaer.util.DrawGL;
 
 /**
  * Generates data driven regions of interest DVS frames from DVS activity. These
@@ -38,6 +42,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
      * The ROIs. Indices are [scale][xidx][yidx]
      */
     protected ArrayList<ROI[][]> rois = null;
+    protected ROI roiLastUpdated = null;
     private int numScales = getInt("numScales", 3);
     private int dimension = getInt("dimension", 64);
     private int stride = getInt("stride", dimension / 2);
@@ -104,33 +109,38 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
             int subx = e.x >> s, suby = e.y >> s;
             ROI[][] roiArray = rois.get(s);
             int nx = roiArray.length, ny = roiArray[0].length;
-            // brute force, search until we find right side>= subx, then accumulate the roi x's until the left side is > than the subx
+            // TODO brute force, search until we find right side>= subx, then accumulate the roi x's until the left side is > than the subx
+//            subx=0; suby=0; // debug
+            yloop:
             for (int iy = 0; iy < ny; iy++) {
+                xloop:
                 for (int ix = 0; ix < nx; ix++) {
                     ROI roi = roiArray[ix][iy];
-                    if (roi.xRight < subx) {
+                    if (roi.xRight < subx || roi.yTop < suby) {
+                        // continue while ROI UR corner has not reached event
                         continue;
                     }
-                    if (roi.xLeft >= subx) {
-                        break;
+                    if (roi.xLeft > subx) {
+                        // break out of x loop when LL corner passes event x
+                        // indices are zero based so use >
+                        break xloop;
                     }
-                    if (roi.yTop < suby) {
-                        continue;
+                    if (roi.yBot > suby) {
+                        // break out of both loops when LL corner passes event
+                        // indices are zero based so use >
+                        break yloop;
                     }
-                    if (roi.yBot >= suby) {
-                        break;
-                    }
+
                     int locx = subx - roi.xLeft, locy = suby - roi.yBot;
                     roi.addEvent(locx, locy, e.polarity);
-                    if (roi.getAccumulatedEventCount() > dvsEventCount) {
+                    if (roi.getAccumulatedEventCount() > dvsEventCount*(1<<(2*roi.scale))) {
                         getSupport().firePropertyChange(EVENT_NEW_ROI_AVAILABLE, null, roi);
                         if (showDvsFrames) {
                             drawDvsFrame(roi);
-                            roi.clear();  // TODO showing the ROIs will also clear them after they are shown
                         }
+                        roi.clearAccumulatedEvents();
                     }
                 }
-
             }
         }
     }
@@ -167,19 +177,27 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
     public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
         if (showROIsTemporarilyFlag) {
-            int d = dimension;
-            gl.glLineWidth(2f);
-            gl.glColor3f(1, 1, 1);
-            gl.glBegin(GL.GL_LINES);
-            for (int x = 0; x <= chip.getSizeX(); x += d) {
-                gl.glVertex2f(x, 0);
-                gl.glVertex2f(x, chip.getSizeY());
+            Random random = new Random();
+            float hue = 0;
+            for (ROI[][] r : rois) {
+                for (ROI[] rr : r) {
+                    for (ROI rrr : rr) {
+                        gl.glPushMatrix();
+                        int rgb = Color.HSBtoRGB(hue += 0.1f, 1, 1);
+                        if (hue > 1) {
+                            hue -= 1;
+                        }
+                        Color c = new Color(rgb);
+                        gl.glColor3fv(c.getColorComponents(null), 0);
+                        DrawGL.drawBox(gl,
+                                (rrr.xCenter) + 3 * (random.nextFloat() - 0.5f),
+                                (rrr.yCenter) + 3 * (random.nextFloat() - 0.5f),
+                                rrr.getWidth(), rrr.getHeight(), 0);
+                        gl.glPopMatrix();
+                    }
+                }
             }
-            for (int y = 0; y <= chip.getSizeY(); y += d) {
-                gl.glVertex2f(0, y);
-                gl.glVertex2f(chip.getSizeX(), y);
-            }
-            gl.glEnd();
+
         }
         for (ROI[][] r : rois) {
             for (ROI[] rr : r) {
@@ -370,8 +388,10 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
      * @param dvsEventCount the dvsEventCount to set
      */
     public void setDvsEventCount(int dvsEventCount) {
+        int old = this.dvsEventCount;
         this.dvsEventCount = dvsEventCount;
         putInt("dvsEventCount", dvsEventCount);
+        getSupport().firePropertyChange("dvsEventCount", old, this.dvsEventCount); // for when enclosed sets it
     }
 
     /**
@@ -416,6 +436,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
 
         private int xLeft, xRight;
         private int yBot, yTop;
+        private float xCenter, yCenter;
         private int scale;
         private int xidx;
         private int yidx;
@@ -428,11 +449,30 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
             this.yBot = yLowerLeft;
             this.xRight = xLeft + (dimX << scale) - 1;
             this.yTop = yBot + (dimY << scale) - 1;
+            xCenter = (xLeft + xRight) / 2;
+            yCenter = (yBot + yTop) / 2;
             this.scale = scale;
         }
 
+        @Override
+        public void clear() {
+            super.clear();
+            if (activations != null) {
+                Arrays.fill(activations, 0);
+            }
+            if (rgba != null) {
+                Arrays.fill(rgba, 0);
+            }
+        }
+
+        private void clearAccumulatedEvents() {
+            super.clear();
+        }
+
         public void draw(GL2 gl) {
-            if(rgba==null) return;
+            if (rgba == null) {
+                return;
+            }
             try {
                 gl.glEnable(GL.GL_BLEND);
                 gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
@@ -440,10 +480,23 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
             } catch (final GLException e) {
                 e.printStackTrace();
             }
-            rgba[3]=0.05f;
+            rgba[3] = 0.05f;
             gl.glColor4fv(rgba, 0);
 //            gl.glColor4fv(new float[]{0,1,0,.05f}, 0);
-            gl.glRectf(xLeft, xRight, yBot, yTop);
+
+            gl.glRectf(xLeft, yBot, xRight, yTop);
+            if (roiLastUpdated == this) {
+                // mark it
+                gl.glColor3f(0, 1, 0);
+                gl.glPushMatrix();
+                DrawGL.drawBox(gl, xCenter, yCenter, width<<scale, height<<scale, 0);
+                gl.glPopMatrix();
+            }
+        }
+
+        @Override
+        public String toString() {
+            return "ROI{" + "xLeft=" + xLeft + ", xRight=" + xRight + ", yBot=" + yBot + ", yTop=" + yTop + ", scale=" + scale + ", xidx=" + xidx + ", yidx=" + yidx + ", activations=" + activations + ", rgba=" + rgba + '}';
         }
 
         /**
@@ -493,6 +546,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
          */
         public void setActivations(float[] activations) {
             this.activations = activations;
+            roiLastUpdated = this;
         }
 
         /**
@@ -507,6 +561,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
          */
         public void setRgba(float[] rgba) {
             this.rgba = rgba;
+            roiLastUpdated = this;
         }
 
     }

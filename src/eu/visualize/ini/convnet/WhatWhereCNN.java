@@ -96,6 +96,7 @@ public class WhatWhereCNN extends DavisDeepLearnCnnProcessor {
     @Override
     public void resetFilter() {
         super.resetFilter();
+        roiGenerator.resetFilter();
         totalDecisions = 0;
         correct = 0;
         incorrect = 0;
@@ -182,4 +183,14 @@ public class WhatWhereCNN extends DavisDeepLearnCnnProcessor {
         }
 
     }
+
+    @Override
+    public void setDvsMinEvents(int dvsMinEvents) {
+        super.setDvsMinEvents(dvsMinEvents);
+        roiGenerator.setDvsEventCount(dvsMinEvents);
+    }
+    
+    
+    
+    
 }

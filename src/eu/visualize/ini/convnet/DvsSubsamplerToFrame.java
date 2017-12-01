@@ -25,8 +25,8 @@ public class DvsSubsamplerToFrame {
 
     private static Logger log = Logger.getLogger("DvsSubsamplerToFrame");
 
-    private final int width; // width of output
-    private final int height; // height of output
+    protected final int width; // width of output
+    protected final int height; // height of output
     private final int nPixels;
     private final int[] eventSum; // eventSum contains raw integer signed event count
     private final float[] pixmap; // pixmap contains the scaled event count centered on 0.5 and clipped to 0-1 range
