@@ -238,7 +238,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                     cmd = '1';
                     break;
                 default:
-                    log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
+//                    log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
             }
         } else { // beat human
             switch (statistics.descision) {
@@ -255,7 +255,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
                     cmd = '1';
                     break;
                 default:
-                    log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
+//                    log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
             }
         }
         sendCommandToHand(cmd);
