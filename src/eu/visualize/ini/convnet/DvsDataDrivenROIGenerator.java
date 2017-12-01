@@ -163,7 +163,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
         if (yes) {
-            checkRois();
+            reallocateRois();
         } else {
             rois = null;
         }
@@ -236,7 +236,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
     synchronized public void setNumScales(int numScales) {
         this.numScales = numScales;
         putInt("numScales", numScales);
-        checkRois();
+        reallocateRois();
         showRoisTemporarily();
     }
 
@@ -272,11 +272,11 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
         this.stride = stride;
         putInt("stride", stride);
         getSupport().firePropertyChange("stride", old, stride); // update GUI
-        checkRois();
+        reallocateRois();
         showRoisTemporarily();
     }
 
-    synchronized private void checkRois() {
+    synchronized private void reallocateRois() {
 
         rois = new ArrayList<ROI[][]>(); // 2d array for each scale
         for (int s = 0; s < numScales; s++) {
@@ -474,13 +474,14 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
                 return;
             }
             try {
-                gl.glEnable(GL.GL_BLEND);
-                gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
-                gl.glBlendEquation(GL.GL_FUNC_ADD);
+                gl.glEnable(GL2.GL_BLEND);
+                gl.glBlendFunc(GL2.GL_SRC_ALPHA, GL2.GL_CONSTANT_ALPHA);
+                gl.glBlendEquation(GL2.GL_FUNC_ADD); // use additive color here to just brighten the pixels already there
+                gl.glBlendColor(1, 1, 1, 1);
             } catch (final GLException e) {
                 e.printStackTrace();
             }
-            rgba[3] = 0.05f;
+//            rgba[3] = 0.05f;
             gl.glColor4fv(rgba, 0);
 //            gl.glColor4fv(new float[]{0,1,0,.05f}, 0);
 

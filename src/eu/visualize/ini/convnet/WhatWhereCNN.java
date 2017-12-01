@@ -168,6 +168,14 @@ public class WhatWhereCNN extends DavisDeepLearnCnnProcessor {
 //                checkHeatmap();
                 float[] activations=Arrays.copyOf(apsDvsNet.outputLayer.activations, apsDvsNet.outputLayer.getNumUnits());
                 roi.setActivations(activations);
+                float[] rgba=Arrays.copyOf(activations, 4);
+                // alpha starts at 0, so fully transparent
+                if(apsDvsNet.outputLayer.maxActivatedUnit!=3){ // background
+                    rgba[3]=0.05f; // set very tranparent and show decision as rgb
+                }else{ 
+                    Arrays.fill(rgba,0); // don't show background at all
+                }
+                
                 roi.setRgba(activations); // for now just render 4-tuple as RGBA
                 
                 if (measurePerformance) {
