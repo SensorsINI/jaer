@@ -42,10 +42,7 @@ public class WhatWhereCNN extends DavisDeepLearnCnnProcessor {
 
     public static final String OUTPUT_AVAILBLE = "outputUpdated";
 
-    private TargetLabeler targetLabeler = null;
-    private int totalDecisions = 0, correct = 0, incorrect = 0;
-    private float alpha = 0.5f;
-//    private float[][][][] heatMap;
+    private float alpha = getFloat("alpha",0.5f);
 
     private int filterx = 0, filtery = 0;  // Output location
     private DvsDataDrivenROIGenerator roiGenerator = null;
@@ -53,16 +50,12 @@ public class WhatWhereCNN extends DavisDeepLearnCnnProcessor {
     public WhatWhereCNN(AEChip chip) {
         super(chip);
 
-        setPropertyTooltip("showAnalogDecisionOutput", "shows output units as analog shading");
-        setPropertyTooltip("hideOutput", "All the output units are hided");
-        setPropertyTooltip("processROI", "Regions of Interest will be processed");
-
         roiGenerator = new DvsDataDrivenROIGenerator(chip);
         FilterChain chain = new FilterChain(chip);
         chain.add(roiGenerator); // only for control, we iterate with it here using the events we recieve
         setEnclosedFilterChain(chain);
+        setPropertyTooltip("alpha", "how opaque the overlay of results is drawn");
 
-//        heatMap = null; // filled after net runs
         apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
     }
 
@@ -97,24 +90,11 @@ public class WhatWhereCNN extends DavisDeepLearnCnnProcessor {
     public void resetFilter() {
         super.resetFilter();
         roiGenerator.resetFilter();
-        totalDecisions = 0;
-        correct = 0;
-        incorrect = 0;
     }
 
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
-//        if (yes && !targetLabeler.hasLocations()) {
-//            Runnable r = new Runnable() {
-//
-//                @Override
-//                public void run() {
-//                    targetLabeler.loadLastLocations();
-//                }
-//            };
-//            SwingUtilities.invokeLater(r);
-//        }
     }
 
     @Override
@@ -124,34 +104,6 @@ public class WhatWhereCNN extends DavisDeepLearnCnnProcessor {
         checkBlend(gl);
         roiGenerator.annotate(drawable);
     }
-
-//    private void checkHeatmap() {
-//        if (heatMap != null) {
-//            return;
-//        }
-//        if (apsDvsNet == null) {
-//            return;
-//        }
-//        int nOut = apsDvsNet.outputLayer.getNumUnits();
-//        if (nOut == 0) {
-//            return;
-//        }
-//        heatMap = new float[roiGenerator.getNumScales()][roiGenerator.getNx()][roiGenerator.getNy()][nOut];
-//    }
-
-//    private void clearHeatMap() {
-//        for (float[][][] f0 : heatMap) {
-//            for (float[][] f1 : f0) {
-//                for (float[] f2 : f1) {
-//                    Arrays.fill(f2, 0);
-//                }
-//            }
-//        }
-//    }
-
-//    public float[][][][] getHeatMap() {
-//        return heatMap;
-//    }
 
     @Override
     public synchronized void propertyChange(PropertyChangeEvent evt) {
@@ -165,19 +117,18 @@ public class WhatWhereCNN extends DavisDeepLearnCnnProcessor {
                 }
                 DvsDataDrivenROIGenerator.ROI roi = (DvsDataDrivenROIGenerator.ROI) evt.getNewValue();
                 apsDvsNet.processDvsTimeslice(roi); // generates PropertyChange EVENT_MADE_DECISION
-//                checkHeatmap();
-                float[] activations=Arrays.copyOf(apsDvsNet.outputLayer.activations, apsDvsNet.outputLayer.getNumUnits());
+                float[] activations = Arrays.copyOf(apsDvsNet.outputLayer.activations, apsDvsNet.outputLayer.getNumUnits());
                 roi.setActivations(activations);
-                float[] rgba=Arrays.copyOf(activations, 4);
+                float[] rgba = Arrays.copyOf(activations, 4);
                 // alpha starts at 0, so fully transparent
-                if(apsDvsNet.outputLayer.maxActivatedUnit!=3){ // background
-                    rgba[3]=0.05f; // set very tranparent and show decision as rgb
-                }else{ 
-                    Arrays.fill(rgba,0); // don't show background at all
+                if (apsDvsNet.outputLayer.maxActivatedUnit != 3) { // background
+                    rgba[3] = alpha; // set very tranparent and show decision as rgb
+                } else {
+                    Arrays.fill(rgba, 0); // don't show background at all
                 }
-                
-                roi.setRgba(activations); // for now just render 4-tuple as RGBA
-                
+
+                roi.setRgba(rgba); // for now just render 4-tuple as RGBA
+
                 if (measurePerformance) {
                     long dt = System.nanoTime() - startTime;
                     float ms = 1e-6f * dt;
@@ -197,8 +148,21 @@ public class WhatWhereCNN extends DavisDeepLearnCnnProcessor {
         super.setDvsMinEvents(dvsMinEvents);
         roiGenerator.setDvsEventCount(dvsMinEvents);
     }
-    
-    
-    
-    
+
+    /**
+     * @return the alpha
+     */
+    public float getAlpha() {
+        return alpha;
+    }
+
+    /**
+     * @param alpha the alpha to set
+     */
+    public void setAlpha(float alpha) {
+        if(alpha<0)alpha=0; else if(alpha>1)alpha=1;
+        this.alpha = alpha;
+        putFloat("alpha",alpha);
+    }
+
 }
