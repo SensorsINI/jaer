@@ -79,18 +79,20 @@ public class PlayWavFile extends Thread {
     /**
      * This method plays the file. Start the thread to play.
      */
-    public void run() {
+    @Override
+	public void run() {
 
         BufferedInputStream is = null;
-        File soundFile = new File(filename);
         try {
-            is = new BufferedInputStream(new FileInputStream(soundFile));
+            is = new BufferedInputStream(new FileInputStream(new File(filename)));
         } catch (FileNotFoundException e) {
-            is = new BufferedInputStream(getClass().getResourceAsStream(filename));
-            if (is == null) {
+            final InputStream s = getClass().getResourceAsStream(filename);
+            if (s == null) {
                 log.warning("Wave file not found on filesystem or classpath: " + filename);
                 return;
             }
+
+            is = new BufferedInputStream(s);
         }
 
         AudioInputStream audioInputStream = null;
