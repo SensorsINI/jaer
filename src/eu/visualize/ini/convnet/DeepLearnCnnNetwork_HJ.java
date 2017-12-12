@@ -119,7 +119,7 @@ public class DeepLearnCnnNetwork_HJ {
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
 
-    public float[] processDvsTimeslice(DvsSubsamplerToFrame subsampler) {
+    public float[] processDvsTimeslice(DvsFramerSingleFrame subsampler) {
         inputLayer.processDvsTimeslice(subsampler);
         setLastInputTypeProcessedWasApsFrame(false);
         return processLayers();
@@ -545,7 +545,7 @@ public class DeepLearnCnnNetwork_HJ {
          * @param subsampler the DVS subsampled input
          * @return the vector of network output values
          */
-        public float[] processDvsTimeslice(DvsSubsamplerToFrame subsampler) {
+        public float[] processDvsTimeslice(DvsFramerSingleFrame subsampler) {
 //            if (frame == null || frameWidth == 0 || (frame.length / type.samplesPerPixel()) % frameWidth != 0) {
 //                throw new IllegalArgumentException("input frame is null or frame array length is not a multiple of width=" + frameWidth);
 //            }

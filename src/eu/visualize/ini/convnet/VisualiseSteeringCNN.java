@@ -42,14 +42,14 @@ import java.io.PrintStream;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
- * Extends DavisDeepLearnCnnProcessor to add annotation graphics to show
- * steering decision.
+ * Extends DavisClassifierCNN to add annotation graphics to show
+ steering decision.
  *
  * @author Tobi
  */
 @Description("Displays Visualise steering ConvNet results; subclass of DavisDeepLearnCnnProcessor")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor implements PropertyChangeListener {
+public class VisualiseSteeringCNN extends DavisClassifierCNN implements PropertyChangeListener {
 
     private static final int LEFT = 0, CENTER = 1, RIGHT = 2, INVISIBLE = 3; // define output cell types
     private static final int LEFTS = 0, LEFTM = 1, LEFTXL = 2, CENTERS = 3, CENTERM = 4, CENTERXL = 5, RIGHTS = 6, RIGHTM = 7, RIGHTXL = 8, INVISIBLESIZE = 9; // define output cell types
@@ -111,7 +111,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     GLU glu = null;
     GLUquadric quad = null;
 
-    public VisualiseSteeringConvNet(AEChip chip) {
+    public VisualiseSteeringCNN(AEChip chip) {
         super(chip);
         String deb = "3. Debug", disp = "1. Display", anal = "2. Analysis";
         String udp = "UDP messages";
@@ -145,7 +145,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
         chain.add(targetLabeler);
         setEnclosedFilterChain(chain);
-        apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
+        apsDvsNet.getSupport().addPropertyChangeListener(DavisCNN.EVENT_MADE_DECISION, this);
         descisionLogger.setAbsoluteTimeEnabled(true);
         descisionLogger.setNanotimeEnabled(false);
         behaviorLogger.setAbsoluteTimeEnabled(true);
@@ -155,7 +155,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         this.lastSize = new float[getRememberLast()];
         this.lastTipX = new float[getRememberLast()];
         this.lastTipY = new float[getRememberLast()];
-//        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
+//        dvsNet.getSupport().addPropertyChangeListener(DavisCNN.EVENT_MADE_DECISION, this);
     }
 
     @Override
@@ -173,7 +173,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         error.setPixelErrorAllowedForSteering(pixelErrorAllowedForSteering);
     }
 
-//    private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DeepLearnCnnNetwork net) {
+//    private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DavisCNN net) {
 //        if (targetLabeler.getTargetLocation() == null) {
 //            return null; // no location labeled for this time
 //        }
@@ -253,7 +253,11 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             }
             MultilineAnnotationTextRenderer.setScale(.3f);
             if (dvsSubsampler != null) {
-                MultilineAnnotationTextRenderer.renderMultilineString(String.format("DVS subsampler, %d events, inst/avg interval %6.1f/%6.1f ms", getDvsMinEvents(), dvsSubsampler.getLastSubsamplerFrameIntervalUs() * 1e-3f, dvsSubsampler.getFilteredSubsamplerIntervalUs() * 1e-3f));
+                MultilineAnnotationTextRenderer.renderMultilineString(
+                        String.format("DVS subsampler, %d events, inst/avg interval %6.1f/%6.1f ms", 
+                                dvsSubsampler.getDvsEventsPerFrame(), 
+                                dvsSubsampler.getLastSubsamplerFrameIntervalUs() * 1e-3f, 
+                                dvsSubsampler.getFilteredSubsamplerIntervalUs() * 1e-3f));
             }
             if (error.totalCount > 0) {
                 MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
@@ -289,7 +293,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 //        }
     }
 
-    private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
+    private void drawDecisionOutput(int third, GL2 gl, int sy, DavisCNN net, Color color) {
         // 0=left, 1=center, 2=right, 3=no target
         int decision = net.outputLayer.maxActivatedUnit;
 
@@ -501,7 +505,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     }
 
     // returns either network or lowpass filtered output
-    private float chooseOutputToShow(DeepLearnCnnNetwork net, int i) {
+    private float chooseOutputToShow(DavisCNN net, int i) {
         if (LCRNstep < 1) {
             return LCRNstate[i];
         } else {
@@ -509,7 +513,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         }
     }
 
-    public void applyConstraints(DeepLearnCnnNetwork net) {
+    public void applyConstraints(DavisCNN net) {
         int currentDecision = net.outputLayer.maxActivatedUnit;
         float maxLCRN = 0;
         float maxSMXL = 0;
@@ -879,11 +883,11 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 
     @Override
     synchronized public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName() != DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
+        if (evt.getPropertyName() != DavisCNN.EVENT_MADE_DECISION) {
             super.propertyChange(evt);
 
         } else {
-            DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
+            DavisCNN net = (DavisCNN) evt.getNewValue();
             if (targetLabeler.isLocationsLoadedFromFile()) {
                 error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit, net.isLastInputTypeProcessedWasApsFrame());
             }
@@ -1176,7 +1180,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 channel.close();
 
             } catch (IOException ex) {
-                Logger.getLogger(VisualiseSteeringConvNet.class
+                Logger.getLogger(VisualiseSteeringCNN.class
                         .getName()).log(Level.SEVERE, null, ex);
             }
             channel = null;
@@ -1482,7 +1486,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                     channel.close();
                     channel = null;
                 } catch (IOException ex) {
-                    Logger.getLogger(VisualiseSteeringConvNet.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(VisualiseSteeringCNN.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
 

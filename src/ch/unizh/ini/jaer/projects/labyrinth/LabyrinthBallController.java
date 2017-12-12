@@ -423,6 +423,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        super.propertyChange(evt);
         if (evt.getSource() instanceof LabyrinthHardware) {
             if (evt.getPropertyName() == LabyrinthHardware.PANTILT_CHANGE) {
                 tiltsRad.setLocation((Point2D.Float) evt.getNewValue());

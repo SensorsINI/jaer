@@ -23,6 +23,7 @@ import javax.swing.JPanel;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GL2ES3;
+import eu.visualize.ini.convnet.DvsFramer.DvsFrame;
 
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -78,7 +79,7 @@ import net.sf.jaer.util.EngineeringFormat;
  *
  * @author tobi
  */
-public class DeepLearnCnnNetwork {
+public class DavisCNN {
 
     int nLayers;
     String netname;
@@ -102,9 +103,11 @@ public class DeepLearnCnnNetwork {
     private long processingTimeNs;
     private boolean softMaxOutput = false;
     private boolean zeroPadding = false; // tobi changed to make default so that roshambo just runs out of box
-    private boolean normalizeDVSForZsNullhop = false; // uses DvsSubsamplerToFrame normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1
     private EngineeringFormat engFmt = new EngineeringFormat();
-    /** Height of final output layer histogram as fraction of AEChip display height */
+    /**
+     * Height of final output layer histogram as fraction of AEChip display
+     * height
+     */
     public static final float HISTOGRAM_HEIGHT_FRACTION = 0.9f;
 
     /**
@@ -121,7 +124,7 @@ public class DeepLearnCnnNetwork {
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
 
-    public float[] processDvsTimeslice(DvsSubsamplerToFrame subsampler) {
+    public float[] processDvsTimeslice(DvsFrame subsampler) {
         inputLayer.processDvsTimeslice(subsampler);
         setLastInputTypeProcessedWasApsFrame(false);
         return processLayers();
@@ -556,7 +559,7 @@ public class DeepLearnCnnNetwork {
          * @param subsampler the DVS subsampled input
          * @return the vector of network output values
          */
-        public float[] processDvsTimeslice(DvsSubsamplerToFrame subsampler) {
+        public float[] processDvsTimeslice(DvsFrame subsampler) {
 //            if (frame == null || frameWidth == 0 || (frame.length / type.samplesPerPixel()) % frameWidth != 0) {
 //                throw new IllegalArgumentException("input frame is null or frame array length is not a multiple of width=" + frameWidth);
 //            }
@@ -568,38 +571,13 @@ public class DeepLearnCnnNetwork {
                 return activations;
             }
 
-            if (normalizeDVSForZsNullhop) {
-                subsampler.normalizeFrame(); // this option uses the same normalization to 0-1 range as in DvsSliceAVIWriter
-                // note that if rectifyPolarties is true, then subsampler will create 0-1 pixmap with zero-event pixels having value 0
-                final float zeroValue = subsampler.getZeroCountPixelValue(), fullscale = 1 - zeroValue;
-                for (int y = 0; y < dimy; y++) {
-                    for (int x = 0; x < dimy; x++) {
-                        // rectifyPolarties=false: range is 0-1 in subsampler after normalization; move it to range -1 to 1. Zero count pixels have value 127/255.
-                        // rectifyPolarties=true: range is 0-1 in subsampler, zero-count pixels have value 0.
-                        float v = (subsampler.getValueAtPixel(x, y) - zeroValue) / fullscale;
-                        v = debugNet(v, x, y);
-                        activations[o(x, dimy - y - 1)] = v;
-                    }
+            for (int y = 0; y < dimy; y++) {
+                for (int x = 0; x < dimy; x++) {
+                    // range is 0-1 in subsampler after normalization; just leave it there. Zero count pixels have value 127/255 in case subsampler does not rectify, and zero if it does.
+                    float v = (subsampler.getValueAtPixel(x, y)); // already normalized before PropertyChangeEvent EVENT_NEW_FRAME_AVAILBLE
+                    v = debugNet(v, x, y);
+                    activations[o(x, dimy - y - 1)] = v;
                 }
-            } else {
-                subsampler.normalizeFrame(); // this option uses the same normalization to 0-1 range as in DvsSliceAVIWriter
-                for (int y = 0; y < dimy; y++) {
-                    for (int x = 0; x < dimy; x++) {
-                        // range is 0-1 in subsampler after normalization; just leave it there. Zero count pixels have value 127/255 in case subsampler does not rectify, and zero if it does.
-                        float v = (subsampler.getValueAtPixel(x, y));
-                        v = debugNet(v, x, y);
-                        activations[o(x, dimy - y - 1)] = v;
-                    }
-                }
-                // normalization normalizeFrame below is simply incorrect. It does not leave 0.5 at 0.5 and it also moves the gray level depending on ON and OFF activity balance.
-//               for (int y = 0; y < dimy; y++) {
-//                    for (int x = 0; x < dimy; x++) {
-//                        float v = subsampler.getValueAtPixel(x, y);
-//                        v = debugNet(v, x, y);
-//                        activations[o(x, dimy - y - 1)] = v;
-//                    }
-//                }
-//                normalizeInputFrame(activations, false); // this option uses the original (slightly incorrect) DVS normalization
             }
             return activations;
         }
@@ -743,7 +721,7 @@ public class DeepLearnCnnNetwork {
                     activations[i] = (((activations[i])) - min) * rangenew / range;
                     operationCounter += 4;
                 }
-            } else {// note that DVS histograme frame normalization may be done by DvsSubsamplerToFrame if normalizeDVSForZsNullhop is set
+            } else {// note that DVS histograme frame normalization may be done by DvsFramer if normalizeDVSForZsNullhop is set
                 float mean_png_gray = 127.0f / 255.0f;
                 for (int i = 0; i < n; i++) {
                     vari = (float) Math.pow((activations[i] - mean), 2);
@@ -1374,15 +1352,21 @@ public class DeepLearnCnnNetwork {
         public String toString() {
             return String.format("OutputOrInnerProductFullyConnectedLayer: bias=float[%d] outputWeights=float[%d]", biases.length, weights.length);
         }
-        
-        /** Returns number of units, if they network has already run, otherwise zero
-         * 
-         * @return number of units 
+
+        /**
+         * Returns number of units, if they network has already run, otherwise
+         * zero
+         *
+         * @return number of units
          */
-        public int getNumUnits(){
-            if(biases==null) return 0; // not initialized or run yet
-            else return biases.length;
+        public int getNumUnits() {
+            if (biases == null) {
+                return 0; // not initialized or run yet
+            } else {
+                return biases.length;
+            }
         }
+
         /**
          * Computes following perceptron output:
          * <pre>
@@ -2095,20 +2079,6 @@ public class DeepLearnCnnNetwork {
      */
     public void setZeroPadding(boolean zeroPadding) {
         this.zeroPadding = zeroPadding;
-    }
-
-    /**
-     * @return the normalizeDVSForZsNullhop
-     */
-    public boolean isNormalizeDVSForZsNullhop() {
-        return normalizeDVSForZsNullhop;
-    }
-
-    /**
-     * @param normalizeDVSForZsNullhop the normalizeDVSForZsNullhop to set
-     */
-    public void setNormalizeDVSForZsNullhop(boolean normalizeDVSForZsNullhop) {
-        this.normalizeDVSForZsNullhop = normalizeDVSForZsNullhop;
     }
 
 }

@@ -28,14 +28,14 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.SpikeSound;
 
 /**
- * Extends DavisDeepLearnCnnProcessor to add annotation graphics to show
- * steering decision.
+ * Extends DavisClassifierCNN to add annotation graphics to show
+ steering decision.
  *
  * @author Tobi
  */
 @Description("Displays face detector ConvNet results; subclass of DavisDeepLearnCnnProcessor")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements PropertyChangeListener {
+public class FaceDetectorCNN extends DavisClassifierCNN implements PropertyChangeListener {
 
     private boolean hideOutput = getBoolean("hideOutput", false);
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
@@ -46,7 +46,7 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
     private float decisionLowPassMixingFactor = getFloat("decisionLowPassMixingFactor", .2f);
     private SpikeSound spikeSound=null;
 
-    public FaceDetectorConvNet(AEChip chip) {
+    public FaceDetectorCNN(AEChip chip) {
         super(chip);
         String faceDetector="Face detector";
         setPropertyTooltip(faceDetector,"showAnalogDecisionOutput", "Shows face detection as analog activation of face unit in softmax of network output");
@@ -55,10 +55,8 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
         setPropertyTooltip(faceDetector,"decisionLowPassMixingFactor", "The softmax outputs of the CNN are low pass filtered using this mixing factor; reduce decisionLowPassMixingFactor to filter more decisions");
         setPropertyTooltip(faceDetector,"playSpikeSounds", "Play a spike sound on detecting face");
         FilterChain chain = new FilterChain(chip);
-//        targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
-//        chain.add(targetLabeler);
         setEnclosedFilterChain(chain);
-        apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, error);
+        apsDvsNet.getSupport().addPropertyChangeListener(DavisCNN.EVENT_MADE_DECISION, error);
     }
 
     @Override
@@ -68,7 +66,7 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
         return out;
     }
 
-    private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DeepLearnCnnNetwork net) {
+    private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DavisCNN net) {
         if (targetLabeler.getTargetLocation() == null) {
             return null; // no face labeled for this sample
         }
@@ -288,8 +286,8 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
 
         @Override
         public synchronized void propertyChange(PropertyChangeEvent evt) {
-            if (evt.getPropertyName() == DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
-                DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
+          if (evt.getPropertyName() == DavisCNN.EVENT_MADE_DECISION) {
+                DavisCNN net = (DavisCNN) evt.getNewValue();
                 maxActivation = Float.NEGATIVE_INFINITY;
                 maxUnit = -1;
                 for (int i = 0; i < NUM_CLASSES; i++) {

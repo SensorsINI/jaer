@@ -38,14 +38,14 @@ import net.sf.jaer.util.SoundWavFilePlayer;
 import net.sf.jaer.util.SpikeSound;
 
 /**
- * Extends DavisDeepLearnCnnProcessor to add annotation graphics to show
- * RoShamBo demo output for development of rock-scissors-paper robot
+ * Extends DavisClassifierCNN to add annotation graphics to show
+ RoShamBo demo output for development of rock-scissors-paper robot
  *
  * @author Tobi
  */
 @Description("Displays RoShamBo (rock-scissors-paper) CNN results; subclass of DavisDeepLearnCnnProcessor")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyChangeListener {
+public class RoShamBoCNN extends DavisClassifierCNN {
 
     private boolean hideOutput = getBoolean("hideOutput", false);
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
@@ -63,11 +63,12 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     private int playSoundsMinIntervalMs = getInt("playSoundsMinIntervalMs", 1000);
     private float playSoundsThresholdActivation = getFloat("playSoundsThresholdActivation", .7f);
     private SoundPlayer soundPlayer = null;
-    private boolean playToWin = getBoolean("playToWin", false);
+    private boolean playToWin = getBoolean("playToWin", true);
 
     /**
      * for game state machine
      */
+    private volatile boolean useGameStatesToPlay = getBoolean("useGameStatesToPlay", false);
     private RectangularClusterTracker tracker = null;
     private float trackerUpperEdgeThreshold = getFloat("trackerUpperEdgeThreshold", .7f);
     private float trackerLowerEdgeThreshold = getFloat("trackerLowerEdgeThreshold", .3f);
@@ -86,7 +87,6 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     private HandTrackerState handTrackerState = HandTrackerState.Idle;
     private long handTrackerStateUpdateTimeMs;
 
-    private boolean useGameStatesToPlay = getBoolean("useGameStatesToPlay", false);
 
     /**
      * output units
@@ -97,11 +97,10 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
 
     public RoShamBoCNN(AEChip chip) {
         super(chip);
-        FilterChain filterChain = new FilterChain(chip);
         tracker = new RectangularClusterTracker(chip);
         tracker.setMaxNumClusters(1);
-        filterChain.add(tracker);
-        setEnclosedFilterChain(filterChain);
+        getEnclosedFilterChain().add(tracker); // super chain alredy has DvsFramer
+        setEnclosedFilterChain(getEnclosedFilterChain()); // to correctly set enclosed status of filters
         String roshamboGame = "0a. RoShamBo Game";
         setPropertyTooltip(roshamboGame, "trackerUpperEdgeThreshold", "Upper (higher) edge of scene as fraction of image which the tracker must pass to start detecting a throw");
         setPropertyTooltip(roshamboGame, "trackerLowerEdgeThreshold", "Lower edge of scene as fraction of image which the tracker must pass to finish detecting a throw");
@@ -122,8 +121,13 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         setPropertyTooltip(roshambo, "playSoundsThresholdActivation", "Minimum winner activation to play the sound");
         setPropertyTooltip(roshambo, "showDecisionStatistics", "Displays statistics of decisions");
         setPropertyTooltip(roshambo, "playToWin", "If selected, symbol sent to hand will  beat human; if unselected, it ties the human");
+        
+        dvsSubsampler.setRectifyPolarities(true);
+        dvsSubsampler.setNormalizeDVSForZsNullhop(true); // to make it work out of the box
 
-        apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, statistics); // statistics is informed by propertychange when CNN has new output
+        if(apsDvsNet!=null){
+            apsDvsNet.getSupport().addPropertyChangeListener(DavisCNN.EVENT_MADE_DECISION, statistics);
+        } 
     }
 
     @Override
@@ -324,7 +328,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
         if (playSounds && isShowOutputAsBarChart()) {
             gl.glColor3f(.5f, 0, 0);
             gl.glBegin(GL.GL_LINES);
-            final float h = playSoundsThresholdActivation * DeepLearnCnnNetwork.HISTOGRAM_HEIGHT_FRACTION * chip.getSizeY();
+            final float h = playSoundsThresholdActivation * DavisCNN.HISTOGRAM_HEIGHT_FRACTION * chip.getSizeY();
             gl.glVertex2f(0, h);
             gl.glVertex2f(chip.getSizeX(), h);
             gl.glEnd();
@@ -593,9 +597,9 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
 
         @Override
         public synchronized void propertyChange(PropertyChangeEvent evt) {
-            if (evt.getPropertyName() == DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
+             if (evt.getPropertyName() == DavisCNN.EVENT_MADE_DECISION) {
                 int lastOutput = descision;
-                DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
+                DavisCNN net = (DavisCNN) evt.getNewValue();
                 maxActivation = Float.NEGATIVE_INFINITY;
                 descision = -1;
                 try {
@@ -820,6 +824,7 @@ public class RoShamBoCNN extends DavisDeepLearnCnnProcessor implements PropertyC
     public void setUseGameStatesToPlay(boolean useGameStatesToPlay) {
         this.useGameStatesToPlay = useGameStatesToPlay;
         putBoolean("useGameStatesToPlay", useGameStatesToPlay);
+        tracker.setFilterEnabled(useGameStatesToPlay);
     }
 
 }

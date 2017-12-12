@@ -36,7 +36,7 @@ import net.sf.jaer.util.DrawGL;
  *
  * @author Tobi Delbruck
  */
-public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnnotater {
+public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
 
     /**
      * The ROIs. Indices are [scale][xidx][yidx]
@@ -47,19 +47,16 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
     private int startingScale = getInt("startingScale", 1);
     private int dimension = getInt("dimension", 64);
     private int stride = getInt("stride", dimension / 2);
-    private int grayScale = getInt("grayScale", 100);
-    private int dvsEventCount = getInt("dvsEventCount", 1000);
     private int decisionLifetimeUs = getInt("decisionLifetimeUs", 2000);
 
     private int sx, sy, nx, ny;
     private boolean showDvsFrames = false;
     private ImageDisplay dvsFrameImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
     private JFrame dvsFrame = null;
-//    private ImageDisplay.Legend sliceBitmapLegend;
-    /**
-     * PropertyChangeEvent that is fired when a new ROI is available
-     */
-    public static final String EVENT_NEW_ROI_AVAILABLE = "NEW_ROI_AVAILABLE";
+//    /**
+//     * PropertyChangeEvent that is fired when a new ROI is available
+//     */
+//    public static final String EVENT_NEW_ROI_AVAILABLE = "NEW_ROI_AVAILABLE";
 
     // timers and flags for showing filter properties temporarily
     private final int SHOW_STUFF_DURATION_MS = 4000;
@@ -67,34 +64,34 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
     private volatile boolean showROIsTemporarilyFlag = false;
     private int lastTimestampUs = 0;
 
-    public DvsDataDrivenROIGenerator(AEChip chip) {
+    public DvsFramerROIGenerator(AEChip chip) {
         super(chip);
         setPropertyTooltip("numScales", "number of scales of ROIs; 1 means only basic ROIs without subsampling");
         setPropertyTooltip("startingScale", "starting scale; 0 means each ROI pixel is one sensor pixel");
         setPropertyTooltip("dimension", "width and height of each ROI in pixels. Corresponds to input pixels at scale 0, the finest scale");
         setPropertyTooltip("stride", "stride of adjacent ROIs in pixels; automatically set to half of dimension each time that is set unless overridden");
-        setPropertyTooltip("dvsEventCount", "num DVS events accumulated to subsampled ROI to fill the frame");
         setPropertyTooltip("showDvsFrames", "shows the fully exposed (accumulated with events) frames in a separate window");
-        setPropertyTooltip("grayScale", "sets the full scale value for the DVS frame rendering");
         setPropertyTooltip("decisionLifetimeUs", "how long in us to render an ROI after its activations have been set");
     }
 
-    /**
-     * Note: Not meant to be used by subclasses unless time limit is not
-     * important
-     *
-     * @param in the input packet
-     * @return input packet
-     */
-    @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
-        for (BasicEvent be : in) {
-            PolarityEvent e = (PolarityEvent) be;
-            addEvent(e);
-        }
-        return in;
-    }
-
+//    /**
+//     * Note: Not meant to be used by subclasses unless time limit is not
+//     * important
+//     *
+//     * @param in the input packet
+//     * @return input packet
+//     */
+//    @Override
+//    public EventPacket<?> filterPacket(EventPacket<?> in) {
+//        if (!allocateMemory()) {
+//            return in;
+//        }
+//        for (BasicEvent be : in) {
+//            PolarityEvent e = (PolarityEvent) be;
+//            addEvent(e);
+//        }
+//        return in;
+//    }
     /**
      * Use this method to add events in an iterator. Fires the
      * PropertyChangeEvent EVENT_NEW_ROI_AVAILABLE with the ROI as the new
@@ -103,6 +100,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
      *
      * @param e the event to add
      */
+    @Override
     public void addEvent(PolarityEvent e) {
 
         for (int s = startingScale; s < numScales; s++) {
@@ -146,12 +144,11 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
                     int locx = (e.x - roi.xLeft) >> s, locy = (e.y - roi.yBot) >> s;
                     roi.addEvent(locx, locy, e.polarity);
                     lastTimestampUs = e.timestamp;
-                    if (roi.getAccumulatedEventCount() > dvsEventCount / (1 << (2 * roi.scale))) {
-                        getSupport().firePropertyChange(EVENT_NEW_ROI_AVAILABLE, null, roi);
+                    if (roi.getAccumulatedEventCount() > dvsEventsPerFrame * (1 << (2 * roi.scale))) {
+                        getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILABLE, null, roi);
                         if (showDvsFrames) {
                             drawDvsFrame(roi);
                         }
-                        roi.clearAccumulatedEvents();
                     }
                 }
             }
@@ -167,8 +164,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
                         if (c == null) {
                             continue;
                         }
-                        c.clear();
-                        c.setColorScale(grayScale);
+                        c.reset();
                     }
                 }
             }
@@ -187,6 +183,8 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
 
     @Override
     public void initFilter() {
+        super.initFilter();
+        allocateMemory();
     }
 
     @Override
@@ -255,6 +253,11 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
      * @param numScales the numScales to set
      */
     synchronized public void setNumScales(int numScales) {
+        if (numScales < 1) {
+            numScales = 1;
+        } else if (numScales > 7) {
+            numScales = 7;
+        }
         this.numScales = numScales;
         putInt("numScales", numScales);
         allocateRois();
@@ -289,8 +292,13 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
      * @param dimension the dimension to set
      */
     synchronized public void setDimension(int dimension) {
+        int old = this.dimension;
+        if (dimension < 1) {
+            dimension = 1;
+        }
         this.dimension = dimension;
         putInt("dimension", dimension);
+        getSupport().firePropertyChange("dimension", old, dimension);
         setStride(dimension / 2);
         showRoisTemporarily();
     }
@@ -314,7 +322,12 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
         showRoisTemporarily();
     }
 
-    synchronized private void allocateRois() {
+    /**
+     * Allocates ROI memory
+     *
+     * @return true if successful, false otherwise
+     */
+    synchronized private boolean allocateRois() {
 
         rois = new ArrayList<ROI[][]>(); // 2d array for each scale
         for (int s = 0; s < numScales; s++) {
@@ -322,6 +335,9 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
             // e.g. for scale=1, 2x2 pixels are collected to 1x1 ROI pixel
             sx = chip.getSizeX() >> s;
             sy = chip.getSizeY() >> s;
+            if (sx == 0 || sy == 0) {
+                return false;
+            }
             // for this scale, determine how many x and y overlapping ROIs there will be
             // divide the number of pixels by the stride, and then check if there is a remainder, if so add 1 for partial ROI
             nx = sx / stride;
@@ -341,15 +357,17 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
             for (int y = 0; y < ny; y++) {
                 int xll = 0;
                 for (int x = 0; x < nx; x++) {
-                    roiArray[x][y] = new ROI(xll, yll, s, dimension, dimension, grayScale);
+                    roiArray[x][y] = new ROI(xll, yll, s, dimension, dimension);
+                    roiArray[x][y].allocateMemory();
                     xll += stride << s;
                 }
                 yll += stride << s;
             }
         }
+        return true;
     }
 
-    synchronized private void drawDvsFrame(DvsSubsamplerToFrame roi) {
+    synchronized private void drawDvsFrame(DvsFrame roi) {
         if (dvsFrame == null) {
             String windowName = "DVS frame";
             dvsFrame = new JFrame(windowName);
@@ -377,7 +395,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
         if (!dvsFrame.isVisible()) {
             dvsFrame.setVisible(true);
         }
-        float scale = 1f / roi.getColorScale();
+        float scale = 1f / getDvsGrayScale();
         if (dimension != dvsFrameImageDisplay.getSizeX()) {
             dvsFrameImageDisplay.setImageSize(dimension, dimension);
             dvsFrameImageDisplay.clearLegends();
@@ -418,36 +436,20 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
     }
 
     /**
-     * @return the dvsEventCount
+     * @return the dvsEventsPerFrame
      */
-    public int getDvsEventCount() {
-        return dvsEventCount;
+    public int getDvsEventsPerFrame() {
+        return dvsEventsPerFrame;
     }
 
     /**
-     * @param dvsEventCount the dvsEventCount to set
+     * @param dvsEventsPerFrame the dvsEventsPerFrame to set
      */
-    public void setDvsEventCount(int dvsEventCount) {
-        int old = this.dvsEventCount;
-        this.dvsEventCount = dvsEventCount;
-        putInt("dvsEventCount", dvsEventCount);
-        getSupport().firePropertyChange("dvsEventCount", old, this.dvsEventCount); // for when enclosed sets it
-    }
-
-    /**
-     * @return the grayScale
-     */
-    public int getGrayScale() {
-        return grayScale;
-    }
-
-    /**
-     * @param grayScale the grayScale to set
-     */
-    public void setGrayScale(int grayScale) {
-        this.grayScale = grayScale;
-        putInt("grayScale", grayScale);
-        resetFilter();
+    public void setDvsEventsPerFrame(int dvsEventsPerFrame) {
+        int old = this.dvsEventsPerFrame;
+        this.dvsEventsPerFrame = dvsEventsPerFrame;
+        putInt("dvsEventsPerFrame", dvsEventsPerFrame);
+        getSupport().firePropertyChange("dvsEventsPerFrame", old, this.dvsEventsPerFrame); // for when enclosed sets it
     }
 
     /**
@@ -485,9 +487,55 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
     }
 
     /**
+     * Allocates ROI memory
+     *
+     * @return true if successful, false if memory could not be allocated, e.g.
+     * because chip size is not set yet
+     */
+    @Override
+    public boolean allocateMemory() {
+        return allocateRois();
+    }
+
+    @Override
+    public void setFromNetwork(DavisCNN apsDvsNet) {
+        if (apsDvsNet != null && apsDvsNet.inputLayer != null) {
+            setDimension(apsDvsNet.inputLayer.dimx);
+        } else {
+            log.warning("null network, cannot set dvsFrame size");
+        }
+    }
+
+    @Override
+    public void setFromNetwork(DeepLearnCnnNetwork_HJ apsDvsNet) {
+        throw new UnsupportedOperationException("Not supported for heat map CNNs");
+    }
+
+    /**
+     * If ROIs exist, they are cleared
+     *
+     */
+    @Override
+    public void clear() {
+        if (rois != null) {
+            for (ROI[][] a : rois) {
+                for (ROI[] b : a) {
+                    for (ROI c : b) {
+                        if (c == null) {
+                            continue;
+                        }
+                        c.clear();
+                        c.setLastDecisionTimestampUs(Integer.MIN_VALUE);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * One region of interest (ROI)
      */
-    public class ROI extends DvsSubsamplerToFrame {
+    public class ROI extends DvsFrame {
 
         private int xLeft, xRight;
         private int yBot, yTop;
@@ -497,21 +545,27 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
         private int yidx;
         // CNN output layer activations asssociated with the ROI and the RGB alpha color values to draw for it
         private float activations[], rgba[];
-        private int lastDecisionTimestampUs = 0;
+        private int lastDecisionTimestampUs = Integer.MIN_VALUE;
 
-        public ROI(int xLowerLeft, int yLowerLeft, int scale, int dimX, int dimY, int colorScale) {
-            super(dimX, dimY, colorScale);
+        public ROI(int xLowerLeft, int yLowerLeft, int scale, int width, int height) {
+            this.width = width;
+            this.height = height;
+            this.nPixels = width * height;
             this.xLeft = xLowerLeft;
             this.yBot = yLowerLeft;
-            this.xRight = xLeft + (dimX << scale) - 1;
-            this.yTop = yBot + (dimY << scale) - 1;
+            this.xRight = xLeft + (width << scale) - 1;
+            this.yTop = yBot + (height << scale) - 1;
             xCenter = (xLeft + xRight) / 2;
             yCenter = (yBot + yTop) / 2;
             this.scale = scale;
         }
 
-        @Override
-        public void clear() {
+        /**
+         * Resets the ROI to an initial state; clear frame, activations and
+         * output RGB, along with lastDecisionTimestampUs
+         *
+         */
+        public void reset() {
             super.clear();
             if (activations != null) {
                 Arrays.fill(activations, 0);
@@ -519,10 +573,7 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
             if (rgba != null) {
                 Arrays.fill(rgba, 0);
             }
-        }
-
-        private void clearAccumulatedEvents() {
-            super.clear();
+            setLastDecisionTimestampUs(Integer.MIN_VALUE);
         }
 
         public void draw(GL2 gl) {
@@ -542,12 +593,13 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
             }
             gl.glColor4fv(rgba, 0);
 
-            gl.glRectf(xLeft, yBot, xRight, yTop);
+            
+            gl.glRectf(xLeft, yBot, xRight<chip.getSizeX()?xRight:chip.getSizeX(), yTop<chip.getSizeY()?yTop:chip.getSizeY());
             if (roiLastUpdated == this) {
                 // mark it
                 gl.glColor4f(1, 1, 1, 0.25f);
                 gl.glPushMatrix();
-                DrawGL.drawBox(gl, xCenter, yCenter, width << scale, height << scale, 0);
+                DrawGL.drawBox(gl, xCenter, yCenter, getWidth() << scale, getHeight() << scale, 0);
                 gl.glPopMatrix();
             }
         }
@@ -600,6 +652,8 @@ public class DvsDataDrivenROIGenerator extends EventFilter2D implements FrameAnn
         }
 
         /**
+         * Sets the activations and lastDecisionTimestampUs
+         *
          * @param activations the activations to set
          */
         public void setActivations(float[] activations) {

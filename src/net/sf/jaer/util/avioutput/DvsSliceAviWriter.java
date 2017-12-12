@@ -1,6 +1,6 @@
 package net.sf.jaer.util.avioutput;
 
-import eu.visualize.ini.convnet.DvsSubsamplerToFrame;
+import eu.visualize.ini.convnet.DvsFramer;
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -9,6 +9,7 @@ import java.awt.image.DataBufferInt;
 import java.io.IOException;
 import com.jogamp.opengl.GLAutoDrawable;
 import eu.seebetter.ini.chips.davis.DAVIS240C;
+import eu.visualize.ini.convnet.DvsFramerSingleFrame;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.EOFException;
@@ -53,7 +54,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotater {
 
-    private DvsSubsamplerToFrame dvsSubsampler = null;
+    private DvsFramerSingleFrame dvsSubsampler = null;
     private int dimx, dimy, grayScale;
     private int dvsMinEvents = getInt("dvsMinEvents", 10000);
     private float frameRateEstimatorTimeConstantMs = getFloat("frameRateEstimatorTimeConstantMs", 10f);
@@ -108,7 +109,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             }
             PolarityEvent p = (PolarityEvent) e;
             lastTimestamp = e.timestamp;
-            dvsSubsampler.addEvent(p, sizeX, sizeY);
+            dvsSubsampler.addEvent(p);
             if ((writeDvsSliceImageOnApsFrame && newFrameAvailable && e.timestamp >= endOfFrameTimestamp)
                     || (!writeDvsSliceImageOnApsFrame && dvsSubsampler.getAccumulatedEventCount() > dvsMinEvents)
                     && (chip.getAeViewer() == null || !chip.getAeViewer().isPaused())) { // added check for nonnull aeviewer in case filter is called from separate program
@@ -175,12 +176,12 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 log.info("closing existing output file because output resolution has changed");
                 doCloseFile();
             }
-            dvsSubsampler = new DvsSubsamplerToFrame(dimx, dimy, grayScale);
-            dvsSubsampler.setRectifyPolarties(fullRectifyOutput);
+            dvsSubsampler = new DvsFramerSingleFrame(chip);
+            dvsSubsampler.setRectifyPolarities(fullRectifyOutput);
         }
     }
 
-    private BufferedImage toImage(DvsSubsamplerToFrame subSampler) {
+    private BufferedImage toImage(DvsFramerSingleFrame subSampler) {
         BufferedImage bi = new BufferedImage(dimx, dimy, BufferedImage.TYPE_INT_BGR);
         int[] bd = ((DataBufferInt) bi.getRaster().getDataBuffer()).getData();
 
@@ -201,7 +202,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
 
     }
 
-    synchronized public void maybeShowOutput(DvsSubsamplerToFrame subSampler) {
+    synchronized public void maybeShowOutput(DvsFramerSingleFrame subSampler) {
         if (!showOutput) {
             return;
         }
@@ -319,7 +320,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         this.grayScale = grayScale;
         putInt("grayScale", grayScale);
         if (dvsSubsampler != null) {
-            dvsSubsampler.setColorScale(grayScale);
+            dvsSubsampler.setDvsGrayScale(grayScale);
         }
     }
 
@@ -396,7 +397,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     public void setFullRectifyOutput(boolean fullRectifyOutput) {
         this.fullRectifyOutput = fullRectifyOutput;
         if (dvsSubsampler != null) {
-            dvsSubsampler.setRectifyPolarties(fullRectifyOutput);
+            dvsSubsampler.setRectifyPolarities(fullRectifyOutput);
         }
         putBoolean("fullRectifyOutput", fullRectifyOutput);
     }

@@ -35,7 +35,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  */
 @Description("Computes heat map by running CNN using ROI over the frame")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
-public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
+public class HeatMapCNN extends DavisClassifierCNN{
     public static final String OUTPUT_AVAILBLE = "outputUpdated";
 
     private boolean hideOutput = getBoolean("hideOutput", false);
@@ -76,8 +76,8 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         int sy = chip.getSizeY()/strideY;
         heatMap = new float[15*11];
         Arrays.fill(heatMap, 0.0f);
-        apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
-//        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
+        apsDvsNet.getSupport().addPropertyChangeListener(DavisCNN.EVENT_MADE_DECISION, this);
+//        dvsNet.getSupport().addPropertyChangeListener(DavisCNN.EVENT_MADE_DECISION, this);
 //        renderer = (AEFrameChipRenderer) chip.getRenderer();
     }
 // initialization
@@ -89,7 +89,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         return out;
     }
 
-    private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DeepLearnCnnNetwork net) {
+    private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DavisCNN net) {
         if (targetLabeler.getTargetLocation() == null) {
             return null; // no location labeled for this time
         }
@@ -162,7 +162,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
 
     }
 
-    private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
+    private void drawDecisionOutput(int third, GL2 gl, int sy, DavisCNN net, Color color) {
 
         int sizeX = chip.getSizeX()/strideX;
         int sizeY = chip.getSizeY()/strideY;
@@ -289,7 +289,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
                     }
                 }
             } else {
-                DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
+                DavisCNN net = (DavisCNN) evt.getNewValue();
                 Boolean correctDecision = correctDescisionFromTargetLabeler(targetLabeler, net);
                 if (correctDecision != null) {
                     totalDecisions++;

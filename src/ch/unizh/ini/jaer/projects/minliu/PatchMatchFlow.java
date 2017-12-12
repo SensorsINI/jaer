@@ -2152,11 +2152,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         putInt("processingTimeLimitMs", processingTimeLimitMs);
     }
 
-    @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        super.propertyChange(evt); // resets filter on rewind, etc
-    }
-
     /**
      * clears all scales for a particular time slice
      *
