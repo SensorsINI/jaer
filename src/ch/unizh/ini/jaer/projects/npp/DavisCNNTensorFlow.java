@@ -77,6 +77,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
      * 
     //https://github.com/tensorflow/tensorflow/blob/master/tensorflow/java/src/main/java/org/tensorflow/op/Operands.java
     // https://github.com/tensorflow/tensorflow/issues/7149
+    * https://stackoverflow.com/questions/44774234/why-tensorflow-uses-channel-last-ordering-instead-of-row-major
      * @param pixbuf the pixel buffer holding the frame, as collected from DVSFramer in DVSFrame.
      * 
      * @param width width of image
