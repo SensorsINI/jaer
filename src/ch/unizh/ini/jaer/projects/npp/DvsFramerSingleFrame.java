@@ -151,7 +151,7 @@ public class DvsFramerSingleFrame extends DvsFramer {
     }
 
     public int getnPixels() {
-        return dvsFrame.getnPixels();
+        return dvsFrame.getNumPixels();
     }
 
     public int getAccumulatedEventCount() {

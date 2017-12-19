@@ -88,7 +88,7 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
     private boolean showFrames = false;
     private JFrame activationsFrame = null;
     private ImageDisplay imageDisplay;
-    protected DvsFrame lastDvsFrame=null;
+    protected DvsFrame lastDvsFrame = null;
 
     /**
      * Makes a new DvsSubsamplingTimesliceConvNetInput
@@ -293,7 +293,7 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
     @Override
     public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
-        if(showFrames && lastDvsFrame!=null){
+        if (showFrames && lastDvsFrame != null) {
             lastDvsFrame.draw();
         }
 
@@ -393,7 +393,7 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
             if (getAccumulatedEventCount() >= dvsEventsPerFrame) {
                 filled = true;
                 normalizeFrame();
-                lastDvsFrame=this;
+                lastDvsFrame = this;
                 getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILABLE, null, this); // TODO check if duplicated event fired
             }
         }
@@ -466,13 +466,18 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
         /**
          * @return the nPixels
          */
-        public int getnPixels() {
+        public int getNumPixels() {
             return nPixels;
         }
 
         /**
          * Returns the float[] 0-1 clipped image. Pixels are ordered as y +
-         * (height * x), i.e. by columns
+         * (height * x), i.e. by columns. The image pixmap contains the scaled
+         * event count clipped to 0-1 range and either starting at zero or
+         * centered on 0.5, depending on rectifyPolarties This pixmap value is
+         * OVERWRITEN later if the frame is normalized, but otherwise if
+         * normalizeFrame is not called, then the pixmap value set here is the
+         * one that is returned (and typically used) for rendering image)
          *
          * @return the pixmap
          */
@@ -609,9 +614,9 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
             if (nPixels <= 0) {
                 return false;
             }
-            if (pixmap == null || pixmap.length != getnPixels()) {
-                pixmap = new float[getnPixels()];
-                eventSum = new int[getnPixels()];
+            if (pixmap == null || pixmap.length != getNumPixels()) {
+                pixmap = new float[getNumPixels()];
+                eventSum = new int[getNumPixels()];
                 clear();
             }
             return true;
@@ -676,7 +681,7 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
      * @param showFrames the showFrames to set
      */
     public void setShowFrames(boolean showFrames) {
-        if(activationsFrame!=null){
+        if (activationsFrame != null) {
             activationsFrame.setVisible(showFrames);
         }
         this.showFrames = showFrames;

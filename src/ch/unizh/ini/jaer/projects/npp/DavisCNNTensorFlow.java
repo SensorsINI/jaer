@@ -72,8 +72,17 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
         return results;
     }
 
+    /**
+     * Executes the stored Graph of the CNN.
+     * 
     //https://github.com/tensorflow/tensorflow/blob/master/tensorflow/java/src/main/java/org/tensorflow/op/Operands.java
     // https://github.com/tensorflow/tensorflow/issues/7149
+     * @param pixbuf the pixel buffer holding the frame, as collected from DVSFramer in DVSFrame.
+     * 
+     * @param width width of image
+     * @param height height of image
+     * @return activations of output
+     */
     private float[] executeGraph(FloatBuffer pixbuf, int width, int height) {
         int numChannels = makeRGBFrames ? 3 : 1;
         inputLayer = new InputLayer(width, height, numChannels); // TODO hack since we don't know the input size yet until network runs
