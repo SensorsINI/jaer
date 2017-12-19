@@ -150,7 +150,7 @@ public class DvsFramerSingleFrame extends DvsFramer {
         return dvsFrame.getEventSumAtPixel(x, y);
     }
 
-    public int getnPixels() {
+    public int getNumPixels() {
         return dvsFrame.getNumPixels();
     }
 
@@ -177,5 +177,12 @@ public class DvsFramerSingleFrame extends DvsFramer {
     public int getIndex(int x, int y) {
         return dvsFrame.getIndex(x, y);
     }
+
+    @Override
+    public String toString() {
+        return "DvsFramerSingleFrame{" + "dvsFrame=" + dvsFrame + '}';
+    }
+    
+    
 
 }

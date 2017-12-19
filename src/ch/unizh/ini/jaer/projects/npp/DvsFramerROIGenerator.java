@@ -410,7 +410,7 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
             dvsFrame.setVisible(true);
         }
         float scale = 1f / getDvsGrayScale();
-        if (dimension != dvsFrameImageDisplay.getSizeX()) {
+        if (dimension != dvsFrameImageDisplay.getWidth()) {
             dvsFrameImageDisplay.setImageSize(dimension, dimension);
             dvsFrameImageDisplay.clearLegends();
 //                    sliceBitmapLegend = dvsFrameImageDisplay.addLegend(G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);

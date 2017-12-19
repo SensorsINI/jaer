@@ -54,35 +54,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  */
 public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
 
-    /**
-     * @return the inputLayerName
-     */
-    public String getInputLayerName() {
-        return inputLayerName;
-    }
 
-    /**
-     * @param inputLayerName the inputLayerName to set
-     */
-    public void setInputLayerName(String inputLayerName) {
-        this.inputLayerName = inputLayerName;
-        putString("inputLayerName", inputLayerName);
-    }
-
-    /**
-     * @return the outputLayerName
-     */
-    public String getOutputLayerName() {
-        return outputLayerName;
-    }
-
-    /**
-     * @param outputLayerName the outputLayerName to set
-     */
-    public void setOutputLayerName(String outputLayerName) {
-        this.outputLayerName = outputLayerName;
-        putString("outputLayerName", outputLayerName);
-    }
 
     protected AbstractDavisCNN apsDvsNet = null; // new DavisCNNPureJava(); //, dvsNet = new DavisCNNPureJava();
     protected DvsFramer dvsSubsampler = null;
@@ -110,7 +82,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     protected TimeLimiter timeLimiter = new TimeLimiter(); // private instance used to accumulate events to slices even if packet has timed out
     protected int processingTimeLimitMs = getInt("processingTimeLimitMs", 100); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
     protected String lastPerformanceString = null;
-    protected boolean makeRGBFrames = getBoolean("makeRGBFrames", true);
+    protected boolean makeRGBFrames = getBoolean("makeRGBFrames", false);
     protected String inputLayerName = getString("inputLayerName", "input");
     protected String outputLayerName = getString("outputLayerName", "output");
 
@@ -693,6 +665,36 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
             return;
         }
         apsDvsNet.setMakeRGBFrames(makeRGBFrames);
+    }
+    
+        /**
+     * @return the inputLayerName
+     */
+    public String getInputLayerName() {
+        return inputLayerName;
+    }
+
+    /**
+     * @param inputLayerName the inputLayerName to set
+     */
+    public void setInputLayerName(String inputLayerName) {
+        this.inputLayerName = inputLayerName;
+        putString("inputLayerName", inputLayerName);
+    }
+
+    /**
+     * @return the outputLayerName
+     */
+    public String getOutputLayerName() {
+        return outputLayerName;
+    }
+
+    /**
+     * @param outputLayerName the outputLayerName to set
+     */
+    public void setOutputLayerName(String outputLayerName) {
+        this.outputLayerName = outputLayerName;
+        putString("outputLayerName", outputLayerName);
     }
 
 }

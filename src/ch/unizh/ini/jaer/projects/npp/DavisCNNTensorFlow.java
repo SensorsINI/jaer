@@ -18,6 +18,7 @@
  */
 package ch.unizh.ini.jaer.projects.npp;
 
+import ch.unizh.ini.jaer.projects.npp.TensorFlow.GraphBuilder;
 import com.jogamp.opengl.GL2;
 import java.awt.Color;
 import java.io.File;
@@ -45,14 +46,13 @@ import org.tensorflow.Tensor;
  */
 public class DavisCNNTensorFlow extends AbstractDavisCNN {
 
-
     protected OutputLayer outputLayer = null;
     protected InputLayer inputLayer = null;
 
     private byte[] graphDef = null;
     private Graph executionGraph = null;
     private Graph inputProcessingGraph = null;
-    private ArrayList<String> ioLayers=new ArrayList();
+    private ArrayList<String> ioLayers = new ArrayList();
 
     public DavisCNNTensorFlow(AbstractDavisCNNProcessor processor) {
         super(processor);
@@ -61,25 +61,27 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
     @Override
     public float[] processDvsTimeslice(DvsFramer.DvsFrame frame) {
         FloatBuffer b = FloatBuffer.wrap(frame.getImage());
-        float [] results=executeGraph(b, frame.getWidth(), frame.getHeight());
+        float[] results = executeGraph(b, frame.getWidth(), frame.getHeight());
         return results;
     }
 
     @Override
     public float[] processDownsampledFrame(AEFrameChipRenderer frame) {
         FloatBuffer b = frame.getPixmap();
-        float [] results=executeGraph(b, frame.getWidth(), frame.getHeight());
+        float[] results = executeGraph(b, frame.getWidth(), frame.getHeight());
         return results;
     }
 
     /**
      * Executes the stored Graph of the CNN.
-     * 
-    //https://github.com/tensorflow/tensorflow/blob/master/tensorflow/java/src/main/java/org/tensorflow/op/Operands.java
-    // https://github.com/tensorflow/tensorflow/issues/7149
-    * https://stackoverflow.com/questions/44774234/why-tensorflow-uses-channel-last-ordering-instead-of-row-major
-     * @param pixbuf the pixel buffer holding the frame, as collected from DVSFramer in DVSFrame.
-     * 
+     *
+     * //https://github.com/tensorflow/tensorflow/blob/master/tensorflow/java/src/main/java/org/tensorflow/op/Operands.java
+     * // https://github.com/tensorflow/tensorflow/issues/7149
+     * https://stackoverflow.com/questions/44774234/why-tensorflow-uses-channel-last-ordering-instead-of-row-major
+     *
+     * @param pixbuf the pixel buffer holding the frame, as collected from
+     * DVSFramer in DVSFrame.
+     *
      * @param width width of image
      * @param height height of image
      * @return activations of output
@@ -87,6 +89,18 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
     private float[] executeGraph(FloatBuffer pixbuf, int width, int height) {
         int numChannels = makeRGBFrames ? 3 : 1;
         inputLayer = new InputLayer(width, height, numChannels); // TODO hack since we don't know the input size yet until network runs
+        
+        // TODO super hack to flip image vertically because tobi cannot see how to flip an image in TensorFlow
+        FloatBuffer flipped=FloatBuffer.allocate(pixbuf.limit()); 
+        float[] flippedarray=flipped.array();
+        float[] origarray=pixbuf.array();
+        for(int x=0;x<width;x++)for(int y=0;y<height;y++){
+            int origIdx=x+width*y;
+            int newIdx=x+width*(height-y-1);
+            flippedarray[newIdx]=origarray[origIdx];
+        }
+        pixbuf=flipped;
+        
         if (makeRGBFrames) {
             FloatBuffer rgbbuf = FloatBuffer.allocate(pixbuf.limit() * numChannels);
             rgbbuf.put(pixbuf);
@@ -97,21 +111,22 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
             rgbbuf.rewind();
             pixbuf = rgbbuf; // copy the 3 frames sequentially, really dumb
         }
-        try (Tensor<Float> imageTensor = Tensor.create(new long[]{1, height, width, numChannels}, pixbuf)) {
+        
+        try (Tensor<Float> imageTensor = Tensor.create(new long[]{1, height, width, numChannels}, pixbuf);) {
             float[] output = TensorFlow.executeGraph(executionGraph, imageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
             outputLayer = new OutputLayer(output);
-            getSupport().firePropertyChange(EVENT_MADE_DECISION,null,this);
+            getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
             return output;
-        }catch(IllegalArgumentException ex){
-            StringBuilder msg=new StringBuilder("<html>Caught exception <br>"+ex.toString()+"<p>Did you set inputLayerName and outputLayerName?</p>");
+        } catch (IllegalArgumentException ex) {
+            StringBuilder msg = new StringBuilder("<html>Caught exception <p>" + ex.toString() + "<p>Did you set inputLayerName and outputLayerName in the property group <i>2. Analysis</i>?</p>");
             msg.append("<p>The IO layer names could be as follows (the string inside the single quotes):</p> <ul> ");
-            for(String s:ioLayers){
-                msg.append("<li>"+(s.replaceAll("<", "").replaceAll(">",""))+"</li>");
+            for (String s : ioLayers) {
+                msg.append("<li>" + (s.replaceAll("<", "").replaceAll(">", "")) + "</li>");
             }
             msg.append("</ul>");
             JOptionPane.showMessageDialog(processor.getChip().getAeViewer(), msg.toString(),
-                      "Error computing network", JOptionPane.WARNING_MESSAGE);
-           throw new IllegalArgumentException(ex.getCause());
+                    "Error computing network", JOptionPane.WARNING_MESSAGE);
+            throw new IllegalArgumentException(ex.getCause());
         }
     }
 
@@ -151,7 +166,9 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
 
     @Override
     public void loadNetwork(File f) throws IOException {
-        if(f==null) throw new IOException("null file");
+        if (f == null) {
+            throw new IOException("null file");
+        }
         try {
             setFilename(f.toString());
             setNettype("TensorFlow");

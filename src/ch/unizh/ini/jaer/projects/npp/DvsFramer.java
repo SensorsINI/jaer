@@ -284,10 +284,10 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
         if (activationsFrame != null) {
             return;
         }
-        String windowName = "DvsFramer";
+        String windowName = "DvsFramer - last DVS frame";
         activationsFrame = new JFrame(windowName);
         activationsFrame.setLayout(new BoxLayout(activationsFrame.getContentPane(), BoxLayout.Y_AXIS));
-        activationsFrame.setPreferredSize(new Dimension(600, 600));
+        activationsFrame.setPreferredSize(new Dimension(400, 400));
     }
 
     @Override
@@ -299,6 +299,10 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
 
     }
 
+    /** The frame of accumulated DVS events. 
+     * The origin of the frame is the same as of the sensor, i.e. for jAER, 0,0 is the LL corner
+     * 
+     */
     public class DvsFrame {
 
         protected int width = 0; // width of output
@@ -311,6 +315,12 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
         private float sparsity = 1;  // computed when frame is normalized
         private boolean filled = false; // set true by accumulating dvsEventsPerFrame, cleared by clear()
 
+        @Override
+        public String toString() {
+            return "DvsFrame{" + "width=" + width + ", height=" + height + ", accumulatedEventCount=" + accumulatedEventCount + ", mostOffCount=" + mostOffCount + ", mostOnCount=" + mostOnCount + ", sparsity=" + sparsity + ", filled=" + filled + '}';
+        }
+
+        
         public void clear() {
             if (eventSum == null) {
                 log.warning("null eventSum array, memory not yet allocated");
@@ -318,7 +328,6 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
             }
             Arrays.fill(eventSum, 0);
             Arrays.fill(pixmap, rectifyPolarities ? 0 : GRAY_LEVEL);
-            accumulatedEventCount = 0;
             mostOffCount = Integer.MAX_VALUE;
             mostOnCount = Integer.MIN_VALUE;
             lastIntervalUs = 0;
@@ -406,6 +415,8 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
          * Returns the scaled event count clipped to 0-1 range and either
          * starting at zero or centered on 0.5, depending on rectifyPolarties
          * first.
+         * 
+         * The origin of the frame is the same as of the sensor, i.e. for jAER, 0,0 is the LL corner.
          *
          * @param x
          * @param y
@@ -453,14 +464,16 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
         }
 
         /**
-         * Gets the index into the pixmap
+         * Gets the index into the pixmap.
+         * The origin of the frame is the same as of the sensor, i.e. for jAER, 0,0 is the LL corner.
+         * The pixels are ordered in the pixmap row wise, i.e. the pixmap index is x + (width * y).
          *
          * @param x
          * @param y
          * @return the index into the 1d arrays
          */
         public int getIndex(int x, int y) {
-            return y + (height * x);
+            return x + (width * y);
         }
 
         /**
@@ -471,8 +484,8 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
         }
 
         /**
-         * Returns the float[] 0-1 clipped image. Pixels are ordered as y +
-         * (height * x), i.e. by columns. The image pixmap contains the scaled
+         * Returns the float[] 0-1 clipped image. Pixels are ordered as x +
+         * (width * y), i.e. by columns. The image pixmap contains the scaled
          * event count clipped to 0-1 range and either starting at zero or
          * centered on 0.5, depending on rectifyPolarties This pixmap value is
          * OVERWRITEN later if the frame is normalized, but otherwise if
@@ -580,8 +593,7 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
                 JPanel panel = new JPanel();
                 panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
                 imageDisplay = ImageDisplay.createOpenGLCanvas();
-                imageDisplay.setBorderSpacePixels(0);
-                imageDisplay.setImageSize(width, height);
+                imageDisplay.setBorderSpacePixels(10);
                 imageDisplay.setSize(200, 200);
                 panel.add(imageDisplay);
 
@@ -590,8 +602,12 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
                 activationsFrame.setVisible(true);
             }
             imageDisplay.setImageSize(width, height);
+//            for(int x=0;x<width;x++){
+//                for(int y=0;y<height;y++){
+//                    imageDisplay.setPixmapGray(x, y, lastDvsFrame.getValueAtPixel(x, y));
+//                }
+//            }
             imageDisplay.setPixmapFromGrayArray(pixmap);
-//            imageDisplay.setPixmapArray(pixmap);
             imageDisplay.display();
         }
 
@@ -666,6 +682,21 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
         public void setHeight(int height) {
             this.height = height;
             nPixels = width * height;
+        }
+
+        /**
+         * Returns true if the accumulated event count is >=dvsEventsPerFrame
+         * @return the filled
+         */
+        public boolean isFilled() {
+            return filled;
+        }
+
+        /**
+         * @param filled the filled to set
+         */
+        public void setFilled(boolean filled) {
+            this.filled = filled;
         }
 
     }
