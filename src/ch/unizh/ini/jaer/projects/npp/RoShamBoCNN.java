@@ -521,7 +521,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
             serialPort.disconnect();
             serialPort = null;
         }
-        log.info("closed serial port");
+//        log.info("closed serial port");
     }
 
     /**
@@ -618,12 +618,12 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         public synchronized void propertyChange(PropertyChangeEvent evt) {
              if (evt.getPropertyName() == AbstractDavisCNN.EVENT_MADE_DECISION) {
                 int lastOutput = descision;
-                DavisCNNPureJava net = (DavisCNNPureJava) evt.getNewValue();
+                AbstractDavisCNN net = (AbstractDavisCNN) evt.getNewValue();
                 maxActivation = Float.NEGATIVE_INFINITY;
                 descision = -1;
                 try {
                     for (int i = 0; i < NUM_CLASSES; i++) {
-                        float output = net.outputLayer.activations[i];
+                        float output = net.getOutputLayer().getActivations()[i];
                         lowpassFilteredOutputUnits[i] = ((1 - decisionLowPassMixingFactor) * lowpassFilteredOutputUnits[i]) + (output * decisionLowPassMixingFactor);
                         if (lowpassFilteredOutputUnits[i] > maxActivation) {
                             maxActivation = lowpassFilteredOutputUnits[i];
