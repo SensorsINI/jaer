@@ -61,13 +61,15 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
     @Override
     public float[] processDvsTimeslice(DvsFramer.DvsFrame frame) {
         FloatBuffer b = FloatBuffer.wrap(frame.getImage());
-        return executeGraph(b, frame.getWidth(), frame.getHeight());
+        float [] results=executeGraph(b, frame.getWidth(), frame.getHeight());
+        return results;
     }
 
     @Override
     public float[] processDownsampledFrame(AEFrameChipRenderer frame) {
         FloatBuffer b = frame.getPixmap();
-        return executeGraph(b, frame.getWidth(), frame.getHeight());
+        float [] results=executeGraph(b, frame.getWidth(), frame.getHeight());
+        return results;
     }
 
     //https://github.com/tensorflow/tensorflow/blob/master/tensorflow/java/src/main/java/org/tensorflow/op/Operands.java
@@ -88,12 +90,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
         try (Tensor<Float> imageTensor = Tensor.create(new long[]{1, height, width, numChannels}, pixbuf);) {
             float[] output = TensorFlow.executeGraph(executionGraph, imageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
             outputLayer = new OutputLayer(output);
-//            if(labels!=null){
-//                log.info(
-//                        String.format("BEST MATCH: %s (%.2f%% likely)",
-//                                labels.get(outputLayer.maxActivatedUnit),
-//                                outputLayer.labelProbabilities[outputLayer.maxActivatedUnit] * 100f));
-//            }
+            getSupport().firePropertyChange(EVENT_MADE_DECISION,null,this);
             return output;
         }
     }
