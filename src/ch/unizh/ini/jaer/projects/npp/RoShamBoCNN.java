@@ -75,7 +75,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     private Enumeration portList = null;
     private boolean playSounds = getBoolean("playSounds", false);
     private int playSoundsMinIntervalMs = getInt("playSoundsMinIntervalMs", 1000);
-    private float playSoundsThresholdActivation = getFloat("playSoundsThresholdActivation", .7f);
+    private float descisionThresholdActivation = getFloat("descisionThresholdActivation", .7f);
     private SoundPlayer soundPlayer = null;
     private boolean playToWin = getBoolean("playToWin", true);
     private boolean addedStatisticsListener=false;
@@ -133,7 +133,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         setPropertyTooltip(roshambo, "serialBaudRate", "Baud rate (default 115200), upper limit 12000000");
         setPropertyTooltip(roshambo, "playSounds", "Play sound effects (Rock/Scissors/Paper) every time the decision changes and playSoundsMinIntervalMs has intervened");
         setPropertyTooltip(roshambo, "playSoundsMinIntervalMs", "Minimum time inteval for playing sound effects in ms");
-        setPropertyTooltip(roshambo, "playSoundsThresholdActivation", "Minimum winner activation to play the sound");
+        setPropertyTooltip(roshambo, "descisionThresholdActivation", "Minimum winner activation to activate hand or play a sound");
         setPropertyTooltip(roshambo, "showDecisionStatistics", "Displays statistics of decisions");
         setPropertyTooltip(roshambo, "playToWin", "If selected, symbol sent to hand will  beat human; if unselected, it ties the human");
         
@@ -245,6 +245,9 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     }
 
     private void sendDecisionToHand() {
+        if(statistics.maxActivation<descisionThresholdActivation){
+            return;
+        }
         char cmd = 0;
         if (!playToWin) {
             switch (statistics.descision) {
@@ -347,7 +350,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         if (playSounds && isShowOutputAsBarChart()) {
             gl.glColor3f(.5f, 0, 0);
             gl.glBegin(GL.GL_LINES);
-            final float h = playSoundsThresholdActivation * DavisCNNPureJava.HISTOGRAM_HEIGHT_FRACTION * chip.getSizeY();
+            final float h = descisionThresholdActivation * DavisCNNPureJava.HISTOGRAM_HEIGHT_FRACTION * chip.getSizeY();
             gl.glVertex2f(0, h);
             gl.glVertex2f(chip.getSizeX(), h);
             gl.glEnd();
@@ -376,7 +379,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
                 decisionString=apsDvsNet.getLabels().get(statistics.descision);
             }
             textRenderer.draw(decisionString, (width / 2) - ((int) r.getWidth() / 2), height / 2);
-            if (playSounds && statistics.descision >= 0 && statistics.descision < 3 && statistics.maxActivation > playSoundsThresholdActivation) {
+            if (playSounds && statistics.descision >= 0 && statistics.descision < 3 && statistics.maxActivation > descisionThresholdActivation) {
                 if (soundPlayer == null) {
                     soundPlayer = new SoundPlayer();
                 }
@@ -723,24 +726,24 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     }
 
     /**
-     * @return the playSoundsThresholdActivation
+     * @return the descisionThresholdActivation
      */
-    public float getPlaySoundsThresholdActivation() {
-        return playSoundsThresholdActivation;
+    public float getDescisionThresholdActivation() {
+        return descisionThresholdActivation;
     }
 
     /**
-     * @param playSoundsThresholdActivation the playSoundsThresholdActivation to
-     * set
+     * @param descisionThresholdActivation the descisionThresholdActivation to
+ set
      */
-    public void setPlaySoundsThresholdActivation(float playSoundsThresholdActivation) {
-        if (playSoundsThresholdActivation > 1) {
-            playSoundsThresholdActivation = 1;
-        } else if (playSoundsThresholdActivation < 0) {
-            playSoundsThresholdActivation = 0;
+    public void setDescisionThresholdActivation(float descisionThresholdActivation) {
+        if (descisionThresholdActivation > 1) {
+            descisionThresholdActivation = 1;
+        } else if (descisionThresholdActivation < 0) {
+            descisionThresholdActivation = 0;
         }
-        this.playSoundsThresholdActivation = playSoundsThresholdActivation;
-        putFloat("playSoundsThresholdActivation", playSoundsThresholdActivation);
+        this.descisionThresholdActivation = descisionThresholdActivation;
+        putFloat("descisionThresholdActivation", descisionThresholdActivation);
     }
 
     /**
