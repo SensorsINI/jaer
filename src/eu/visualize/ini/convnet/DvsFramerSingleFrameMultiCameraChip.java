@@ -5,6 +5,7 @@
  */
 package eu.visualize.ini.convnet;
 
+import ch.unizh.ini.jaer.projects.npp.DvsFramerSingleFrame;
 import java.util.logging.Logger;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.MultiCameraApsDvsEvent;

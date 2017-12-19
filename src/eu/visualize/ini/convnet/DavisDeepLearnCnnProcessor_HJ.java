@@ -5,6 +5,7 @@
  */
 package eu.visualize.ini.convnet;
 
+import ch.unizh.ini.jaer.projects.npp.DvsFramerSingleFrame;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.beans.PropertyChangeEvent;

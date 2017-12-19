@@ -5,6 +5,9 @@
  */
 package eu.visualize.ini.convnet;
 
+import ch.unizh.ini.jaer.projects.npp.TargetLabeler;
+import ch.unizh.ini.jaer.projects.npp.DavisCNNPureJava;
+import ch.unizh.ini.jaer.projects.npp.DavisClassifierCNNProcessor;
 import java.awt.Color;
 import java.awt.Point;
 import java.beans.PropertyChangeEvent;
@@ -28,14 +31,14 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.SpikeSound;
 
 /**
- * Extends DavisClassifierCNN to add annotation graphics to show
+ * Extends DavisClassifierCNNProcessor to add annotation graphics to show
  steering decision.
  *
  * @author Tobi
  */
 @Description("Displays face detector ConvNet results; subclass of DavisDeepLearnCnnProcessor")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class FaceDetectorCNN extends DavisClassifierCNN implements PropertyChangeListener {
+public class FaceDetectorCNN extends DavisClassifierCNNProcessor implements PropertyChangeListener {
 
     private boolean hideOutput = getBoolean("hideOutput", false);
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
@@ -56,7 +59,7 @@ public class FaceDetectorCNN extends DavisClassifierCNN implements PropertyChang
         setPropertyTooltip(faceDetector,"playSpikeSounds", "Play a spike sound on detecting face");
         FilterChain chain = new FilterChain(chip);
         setEnclosedFilterChain(chain);
-        apsDvsNet.getSupport().addPropertyChangeListener(DavisCNN.EVENT_MADE_DECISION, error);
+        apsDvsNet.getSupport().addPropertyChangeListener(DavisCNNPureJava.EVENT_MADE_DECISION, error);
     }
 
     @Override
@@ -66,18 +69,18 @@ public class FaceDetectorCNN extends DavisClassifierCNN implements PropertyChang
         return out;
     }
 
-    private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DavisCNN net) {
+    private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DavisCNNPureJava net) {
         if (targetLabeler.getTargetLocation() == null) {
             return null; // no face labeled for this sample
         }
         Point p = targetLabeler.getTargetLocation().location;
         if (p == null) { // no face labeled
-            if (net.outputLayer.maxActivatedUnit == 1) {
+            if (net.outputLayer.getMaxActivatedUnit() == 1) {
                 return true; // no face detected
             }
         } else // face labeled
         {
-            if (0 == net.outputLayer.maxActivatedUnit) {
+            if (0 == net.outputLayer.getMaxActivatedUnit()) {
                 return true;  // face detected
             }
         }
@@ -117,7 +120,7 @@ public class FaceDetectorCNN extends DavisClassifierCNN implements PropertyChang
         GL2 gl = drawable.getGL().getGL2();
         checkBlend(gl);
         int sy = chip.getSizeY();
-        if ((apsDvsNet != null) && (apsDvsNet.outputLayer != null) && (apsDvsNet.outputLayer.activations != null)) {
+        if ((apsDvsNet != null) && (apsDvsNet.getOutputLayer() != null) && (apsDvsNet.getOutputLayer().getActivations()!= null)) {
             drawDecisionOutput(gl, sy, Color.GREEN);
         }
 
@@ -286,8 +289,8 @@ public class FaceDetectorCNN extends DavisClassifierCNN implements PropertyChang
 
         @Override
         public synchronized void propertyChange(PropertyChangeEvent evt) {
-          if (evt.getPropertyName() == DavisCNN.EVENT_MADE_DECISION) {
-                DavisCNN net = (DavisCNN) evt.getNewValue();
+          if (evt.getPropertyName() == DavisCNNPureJava.EVENT_MADE_DECISION) {
+                DavisCNNPureJava net = (DavisCNNPureJava) evt.getNewValue();
                 maxActivation = Float.NEGATIVE_INFINITY;
                 maxUnit = -1;
                 for (int i = 0; i < NUM_CLASSES; i++) {

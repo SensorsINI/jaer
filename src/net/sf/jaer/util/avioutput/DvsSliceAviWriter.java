@@ -1,6 +1,6 @@
 package net.sf.jaer.util.avioutput;
 
-import eu.visualize.ini.convnet.DvsFramer;
+import ch.unizh.ini.jaer.projects.npp.DvsFramer;
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -9,7 +9,7 @@ import java.awt.image.DataBufferInt;
 import java.io.IOException;
 import com.jogamp.opengl.GLAutoDrawable;
 import eu.seebetter.ini.chips.davis.DAVIS240C;
-import eu.visualize.ini.convnet.DvsFramerSingleFrame;
+import ch.unizh.ini.jaer.projects.npp.DvsFramerSingleFrame;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.EOFException;

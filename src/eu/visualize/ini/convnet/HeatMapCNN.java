@@ -6,6 +6,10 @@
 
 package eu.visualize.ini.convnet;
 
+import ch.unizh.ini.jaer.projects.npp.AbstractDavisCNN;
+import ch.unizh.ini.jaer.projects.npp.TargetLabeler;
+import ch.unizh.ini.jaer.projects.npp.DavisCNNPureJava;
+import ch.unizh.ini.jaer.projects.npp.DavisClassifierCNNProcessor;
 import java.awt.Color;
 import java.awt.Point;
 import java.beans.PropertyChangeEvent;
@@ -35,7 +39,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  */
 @Description("Computes heat map by running CNN using ROI over the frame")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
-public class HeatMapCNN extends DavisClassifierCNN{
+public class HeatMapCNN extends DavisClassifierCNNProcessor{
     public static final String OUTPUT_AVAILBLE = "outputUpdated";
 
     private boolean hideOutput = getBoolean("hideOutput", false);
@@ -76,8 +80,8 @@ public class HeatMapCNN extends DavisClassifierCNN{
         int sy = chip.getSizeY()/strideY;
         heatMap = new float[15*11];
         Arrays.fill(heatMap, 0.0f);
-        apsDvsNet.getSupport().addPropertyChangeListener(DavisCNN.EVENT_MADE_DECISION, this);
-//        dvsNet.getSupport().addPropertyChangeListener(DavisCNN.EVENT_MADE_DECISION, this);
+        apsDvsNet.getSupport().addPropertyChangeListener(DavisCNNPureJava.EVENT_MADE_DECISION, this);
+//        dvsNet.getSupport().addPropertyChangeListener(DavisCNNPureJava.EVENT_MADE_DECISION, this);
 //        renderer = (AEFrameChipRenderer) chip.getRenderer();
     }
 // initialization
@@ -89,19 +93,19 @@ public class HeatMapCNN extends DavisClassifierCNN{
         return out;
     }
 
-    private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DavisCNN net) {
+    private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DavisCNNPureJava net) {
         if (targetLabeler.getTargetLocation() == null) {
             return null; // no location labeled for this time
         }
         Point p = targetLabeler.getTargetLocation().location;
         if (p == null) {
-            if (net.outputLayer.maxActivatedUnit == 3) {
+            if (net.outputLayer.getMaxActivatedUnit() == 3) {
                 return true; // no target seen
             }
         } else {
             int x = p.x;
             int third = (x * 3) / chip.getSizeX();
-            if (third == net.outputLayer.maxActivatedUnit) {
+            if (third == net.outputLayer.getMaxActivatedUnit()) {
                 return true;
             }
         }
@@ -162,13 +166,7 @@ public class HeatMapCNN extends DavisClassifierCNN{
 
     }
 
-    private void drawDecisionOutput(int third, GL2 gl, int sy, DavisCNN net, Color color) {
-
-        int sizeX = chip.getSizeX()/strideX;
-        int sizeY = chip.getSizeY()/strideY;
-        float max = heatMap[0];
-        int max_x_index = 0, max_y_index =0;
-     
+    private void drawDecisionOutput(int third, GL2 gl, int sy, AbstractDavisCNN net, Color color) {
 
         System.out.printf("max heat value is: %f\n", outputProbVal);
         try {
@@ -243,8 +241,8 @@ public class HeatMapCNN extends DavisClassifierCNN{
                 if (measurePerformance) {
                     startTime = System.nanoTime();
                 }
-                int dimx2 = apsDvsNet.inputLayer.dimx/2;
-                int dimy2 = apsDvsNet.inputLayer.dimy/2;
+                int dimx2 = apsDvsNet.getInputLayer().getWidth()/2;
+                int dimy2 = apsDvsNet.getInputLayer().getHeight()/2;
                 int idx = 0;
 
                 tracker = this.getTracker(); // Get the current particle filter                
@@ -289,7 +287,7 @@ public class HeatMapCNN extends DavisClassifierCNN{
                     }
                 }
             } else {
-                DavisCNN net = (DavisCNN) evt.getNewValue();
+                DavisCNNPureJava net = (DavisCNNPureJava) evt.getNewValue();
                 Boolean correctDecision = correctDescisionFromTargetLabeler(targetLabeler, net);
                 if (correctDecision != null) {
                     totalDecisions++;

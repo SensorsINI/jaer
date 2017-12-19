@@ -5,6 +5,10 @@
  */
 package eu.visualize.ini.convnet;
 
+import ch.unizh.ini.jaer.projects.npp.AbstractDavisCNN;
+import ch.unizh.ini.jaer.projects.npp.TargetLabeler;
+import ch.unizh.ini.jaer.projects.npp.DavisCNNPureJava;
+import ch.unizh.ini.jaer.projects.npp.DavisClassifierCNNProcessor;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.TobiLogger;
 import java.awt.Color;
@@ -42,14 +46,14 @@ import java.io.PrintStream;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
- * Extends DavisClassifierCNN to add annotation graphics to show
+ * Extends DavisClassifierCNNProcessor to add annotation graphics to show
  steering decision.
  *
  * @author Tobi
  */
 @Description("Displays Visualise steering ConvNet results; subclass of DavisDeepLearnCnnProcessor")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class VisualiseSteeringCNN extends DavisClassifierCNN implements PropertyChangeListener {
+public class VisualiseSteeringCNN extends DavisClassifierCNNProcessor implements PropertyChangeListener {
 
     private static final int LEFT = 0, CENTER = 1, RIGHT = 2, INVISIBLE = 3; // define output cell types
     private static final int LEFTS = 0, LEFTM = 1, LEFTXL = 2, CENTERS = 3, CENTERM = 4, CENTERXL = 5, RIGHTS = 6, RIGHTM = 7, RIGHTXL = 8, INVISIBLESIZE = 9; // define output cell types
@@ -145,7 +149,7 @@ public class VisualiseSteeringCNN extends DavisClassifierCNN implements Property
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
         chain.add(targetLabeler);
         setEnclosedFilterChain(chain);
-        apsDvsNet.getSupport().addPropertyChangeListener(DavisCNN.EVENT_MADE_DECISION, this);
+        apsDvsNet.getSupport().addPropertyChangeListener(DavisCNNPureJava.EVENT_MADE_DECISION, this);
         descisionLogger.setAbsoluteTimeEnabled(true);
         descisionLogger.setNanotimeEnabled(false);
         behaviorLogger.setAbsoluteTimeEnabled(true);
@@ -155,7 +159,7 @@ public class VisualiseSteeringCNN extends DavisClassifierCNN implements Property
         this.lastSize = new float[getRememberLast()];
         this.lastTipX = new float[getRememberLast()];
         this.lastTipY = new float[getRememberLast()];
-//        dvsNet.getSupport().addPropertyChangeListener(DavisCNN.EVENT_MADE_DECISION, this);
+//        dvsNet.getSupport().addPropertyChangeListener(DavisCNNPureJava.EVENT_MADE_DECISION, this);
     }
 
     @Override
@@ -173,19 +177,19 @@ public class VisualiseSteeringCNN extends DavisClassifierCNN implements Property
         error.setPixelErrorAllowedForSteering(pixelErrorAllowedForSteering);
     }
 
-//    private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DavisCNN net) {
+//    private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DavisCNNPureJava net) {
 //        if (targetLabeler.getTargetLocation() == null) {
 //            return null; // no location labeled for this time
 //        }
 //        Point p = targetLabeler.getTargetLocation().location;
 //        if (p == null) {
-//            if (net.outputLayer.maxActivatedUnit == 3) {
+//            if (net.getOutputLayer().getMaxActivatedUnit() == 3) {
 //                return true; // no target seen
 //            }
 //        } else {
 //            int x = p.x;
 //            int third = (x * 3) / chip.getSizeX();
-//            if (third == net.outputLayer.maxActivatedUnit) {
+//            if (third == net.getOutputLayer().getMaxActivatedUnit()) {
 //                return true;
 //            }
 //        }
@@ -238,10 +242,10 @@ public class VisualiseSteeringCNN extends DavisClassifierCNN implements Property
         checkBlend(gl);
         int third = chip.getSizeX() / 3;
         int sy = chip.getSizeY();
-        if (apsDvsNet != null && apsDvsNet.outputLayer != null && apsDvsNet.outputLayer.activations != null) {
+        if (apsDvsNet != null && apsDvsNet.getOutputLayer() != null && apsDvsNet.getOutputLayer().getActivations() != null) {
             drawDecisionOutput(third, gl, sy, apsDvsNet, Color.RED);
         }
-//        if (dvsNet != null && dvsNet.outputLayer != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
+//        if (dvsNet != null && dvsNet.outputLayer != null && dvsNet.getOutputLayer().getActivations() != null && isProcessDVSTimeSlices()) {
 //            drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
 //        }
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .5f);
@@ -293,9 +297,9 @@ public class VisualiseSteeringCNN extends DavisClassifierCNN implements Property
 //        }
     }
 
-    private void drawDecisionOutput(int third, GL2 gl, int sy, DavisCNN net, Color color) {
+    private void drawDecisionOutput(int third, GL2 gl, int sy, AbstractDavisCNN net, Color color) {
         // 0=left, 1=center, 2=right, 3=no target
-        int decision = net.outputLayer.maxActivatedUnit;
+        int decision = net.getOutputLayer().getMaxActivatedUnit();
 
         if (networkWithDistance) {
             // 10 output units are ordered like this
@@ -306,13 +310,13 @@ public class VisualiseSteeringCNN extends DavisClassifierCNN implements Property
                 gl.glPushMatrix();
                 gl.glColor4f(1, 1, 0, 1f);
                 gl.glLineWidth(10);
-                //float projectionX = Lowpass.filter((net.outputLayer.activations[6] + net.outputLayer.activations[7] + net.outputLayer.activations[8]) / 3,lastProcessedEventTimestamp) - Lowpass.filter((net.outputLayer.activations[0] + net.outputLayer.activations[1] + net.outputLayer.activations[2]) / 3,lastProcessedEventTimestamp);
-                //float projectionY = Lowpass.filter((net.outputLayer.activations[3] + net.outputLayer.activations[4] + net.outputLayer.activations[5]) / 3,lastProcessedEventTimestamp) - Lowpass.filter(net.outputLayer.activations[9],lastProcessedEventTimestamp);
-                float projectionX = (net.outputLayer.activations[6] + net.outputLayer.activations[7] + net.outputLayer.activations[8]) / 3 - (net.outputLayer.activations[0] + net.outputLayer.activations[1] + net.outputLayer.activations[2]) / 3;
-                float projectionY = (net.outputLayer.activations[3] + net.outputLayer.activations[4] + net.outputLayer.activations[5]) / 3 - (net.outputLayer.activations[9] / 5);
-                float sizeS = (net.outputLayer.activations[0] + net.outputLayer.activations[3] + net.outputLayer.activations[6]) / 3;
-                float sizeM = (net.outputLayer.activations[1] + net.outputLayer.activations[4] + net.outputLayer.activations[7]) / 3;
-                float sizeXL = (net.outputLayer.activations[2] + net.outputLayer.activations[5] + net.outputLayer.activations[8]) / 3;
+                //float projectionX = Lowpass.filter((net.getOutputLayer().getActivations()[6] + net.getOutputLayer().getActivations()[7] + net.getOutputLayer().getActivations()[8]) / 3,lastProcessedEventTimestamp) - Lowpass.filter((net.getOutputLayer().getActivations()[0] + net.getOutputLayer().getActivations()[1] + net.getOutputLayer().getActivations()[2]) / 3,lastProcessedEventTimestamp);
+                //float projectionY = Lowpass.filter((net.getOutputLayer().getActivations()[3] + net.getOutputLayer().getActivations()[4] + net.getOutputLayer().getActivations()[5]) / 3,lastProcessedEventTimestamp) - Lowpass.filter(net.getOutputLayer().getActivations()[9],lastProcessedEventTimestamp);
+                float projectionX = (net.getOutputLayer().getActivations()[6] + net.getOutputLayer().getActivations()[7] + net.getOutputLayer().getActivations()[8]) / 3 - (net.getOutputLayer().getActivations()[0] + net.getOutputLayer().getActivations()[1] + net.getOutputLayer().getActivations()[2]) / 3;
+                float projectionY = (net.getOutputLayer().getActivations()[3] + net.getOutputLayer().getActivations()[4] + net.getOutputLayer().getActivations()[5]) / 3 - (net.getOutputLayer().getActivations()[9] / 5);
+                float sizeS = (net.getOutputLayer().getActivations()[0] + net.getOutputLayer().getActivations()[3] + net.getOutputLayer().getActivations()[6]) / 3;
+                float sizeM = (net.getOutputLayer().getActivations()[1] + net.getOutputLayer().getActivations()[4] + net.getOutputLayer().getActivations()[7]) / 3;
+                float sizeXL = (net.getOutputLayer().getActivations()[2] + net.getOutputLayer().getActivations()[5] + net.getOutputLayer().getActivations()[8]) / 3;
                 float overallDistance = Lowpass.filter(sizeS * (chip.getSizeX()) + sizeM * (chip.getSizeX() / 2) + sizeXL * (chip.getSizeX() / 3), lastProcessedEventTimestamp);
                 float overallSize = Lowpass.filter(sizeS * (chip.getSizeX() / 3) + sizeM * (chip.getSizeX() / 2) + sizeXL * (chip.getSizeX()), lastProcessedEventTimestamp);
                 if (counter < (getRememberLast() - 1)) {
@@ -505,16 +509,16 @@ public class VisualiseSteeringCNN extends DavisClassifierCNN implements Property
     }
 
     // returns either network or lowpass filtered output
-    private float chooseOutputToShow(DavisCNN net, int i) {
+    private float chooseOutputToShow(AbstractDavisCNN net, int i) {
         if (LCRNstep < 1) {
             return LCRNstate[i];
         } else {
-            return net.outputLayer.activations[i];
+            return net.getOutputLayer().getActivations()[i];
         }
     }
 
-    public void applyConstraints(DavisCNN net) {
-        int currentDecision = net.outputLayer.maxActivatedUnit;
+    public void applyConstraints(AbstractDavisCNN net) {
+        int currentDecision = net.getOutputLayer().getMaxActivatedUnit();
         float maxLCRN = 0;
         float maxSMXL = 0;
         int maxLCRNindex = -1;
@@ -542,7 +546,7 @@ public class VisualiseSteeringCNN extends DavisClassifierCNN implements Property
                     }
                 }
             }
-            net.outputLayer.maxActivatedUnit = maxLCRNindex;
+            net.getOutputLayer().setMaxActivatedUnit( maxLCRNindex);
         } else {
             //LCRN
 
@@ -710,21 +714,21 @@ public class VisualiseSteeringCNN extends DavisClassifierCNN implements Property
             } else if (maxLCRNindex == 3) {
                 decisionOverwrite = 9;
             }
-            net.outputLayer.maxActivatedUnit = decisionOverwrite;
+            net.getOutputLayer().setMaxActivatedUnit( decisionOverwrite);
         }
 
         if (apply_CN_NC_constraint) {// Cannot switch from C to N and viceversa
             if (!networkWithDistance) {
                 if (currentDecision == 1 && decisionArray[1] == 3) {
-                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                    keepOldDescision(net);// keep it, don't change
                 } else if (currentDecision == 3 && decisionArray[1] == 1) {
-                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                    keepOldDescision(net);// keep it, don't change
                 }
             } else {
                 if ((currentDecision == 3 || currentDecision == 4 || currentDecision == 5) && (decisionArray[1] == 9)) {
-                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                    keepOldDescision(net);// keep it, don't change
                 } else if ((currentDecision == 9) && (decisionArray[1] == 3 || decisionArray[1] == 4 || decisionArray[1] == 5)) {
-                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                    keepOldDescision(net);// keep it, don't change
                 }
             }
         }
@@ -740,13 +744,13 @@ public class VisualiseSteeringCNN extends DavisClassifierCNN implements Property
                 if (savedDecision >= 0) {//Real value saved
                     if (currentDecision == 0 && decisionArray[1] == 3) {
                         if (currentDecision != savedDecision) {
-                            net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                            keepOldDescision(net);// keep it, don't change
                         } else {
                             savedDecision = -1;
                         }
                     } else if (currentDecision == 2 && decisionArray[1] == 3) {
                         if (currentDecision != savedDecision) {
-                            net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                            keepOldDescision(net);// keep it, don't change
                         } else {
                             savedDecision = -1;
                         }
@@ -763,13 +767,13 @@ public class VisualiseSteeringCNN extends DavisClassifierCNN implements Property
                 if (savedDecision >= 0) {//Real value saved
                     if ((currentDecision == 0 || currentDecision == 1 || currentDecision == 2) && decisionArray[1] == 9) {
                         if (currentDecision != savedDecision) {
-                            net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                            keepOldDescision(net);// keep it, don't change
                         } else {
                             savedDecision = -1;
                         }
                     } else if ((currentDecision == 6 || currentDecision == 7 || currentDecision == 8) && decisionArray[1] == 9) {
                         if (currentDecision != savedDecision) {
-                            net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                            keepOldDescision(net);// keep it, don't change
                         } else {
                             savedDecision = -1;
                         }
@@ -780,30 +784,34 @@ public class VisualiseSteeringCNN extends DavisClassifierCNN implements Property
         if (apply_LR_RL_constraint) {// Cannot switch from R to L and viceversa
             if (!networkWithDistance) {
                 if (currentDecision == 0 && decisionArray[1] == 2) {
-                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                    keepOldDescision(net);// keep it, don't change
                 } else if (currentDecision == 2 && decisionArray[1] == 0) {
-                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                    keepOldDescision(net);// keep it, don't change
                 }
             } else {
                 if ((currentDecision == 0 || currentDecision == 1 || currentDecision == 2) && (decisionArray[1] == 6 || decisionArray[1] == 7 || decisionArray[1] == 8)) {
-                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                    keepOldDescision(net);// keep it, don't change
                 } else if ((currentDecision == 6 || currentDecision == 7 || currentDecision == 8) && (decisionArray[1] == 0 || decisionArray[1] == 1 || decisionArray[1] == 2)) {
-                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                    keepOldDescision(net);// keep it, don't change
                 }
             }
         }
         if (!networkWithDistance) {
             if (apply_SXL_XLS_constraint) {// Cannot switch from S to XL and viceversa
                 if ((currentDecision == 0 || currentDecision == 3 || currentDecision == 6) && (decisionArray[1] == 2 || decisionArray[1] == 5 || decisionArray[1] == 8)) {
-                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                    keepOldDescision(net);// keep it, don't change
                 } else if ((currentDecision == 2 || currentDecision == 5 || currentDecision == 8) && (decisionArray[1] == 0 || decisionArray[1] == 3 || decisionArray[1] == 6)) {
-                    net.outputLayer.maxActivatedUnit = decisionArray[1];// keep it, don't change
+                    keepOldDescision(net);
                 }
             }
         }
         //Update decision
         decisionArray[0] = decisionArray[1];
-        decisionArray[1] = net.outputLayer.maxActivatedUnit;
+        decisionArray[1] = net.getOutputLayer().getMaxActivatedUnit();
+    }
+
+    private void keepOldDescision(AbstractDavisCNN net) {
+        net.getOutputLayer().setMaxActivatedUnit(decisionArray[1]);// keep it, don't change
     }
 
     /**
@@ -883,13 +891,13 @@ public class VisualiseSteeringCNN extends DavisClassifierCNN implements Property
 
     @Override
     synchronized public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName() != DavisCNN.EVENT_MADE_DECISION) {
+        if (evt.getPropertyName() != DavisCNNPureJava.EVENT_MADE_DECISION) {
             super.propertyChange(evt);
 
         } else {
-            DavisCNN net = (DavisCNN) evt.getNewValue();
+            DavisCNNPureJava net = (DavisCNNPureJava) evt.getNewValue();
             if (targetLabeler.isLocationsLoadedFromFile()) {
-                error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit, net.isLastInputTypeProcessedWasApsFrame());
+                error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.getMaxActivatedUnit(), net.isLastInputTypeProcessedWasApsFrame());
             }
             //if (!networkWithDistance) {
             applyConstraints(net);
@@ -897,7 +905,7 @@ public class VisualiseSteeringCNN extends DavisClassifierCNN implements Property
 
             if (sendUDPSteeringMessages) {
                 if (checkClient()) { // if client not there, just continue - maybe it comes back
-                    byte msg = (byte) (forceNetworkOutpout ? forcedNetworkOutputValue : net.outputLayer.maxActivatedUnit);
+                    byte msg = (byte) (forceNetworkOutpout ? forcedNetworkOutputValue : net.outputLayer.getMaxActivatedUnit());
                     if (!sendOnlyNovelSteeringMessages || msg != lastUDPmessage) {
                         lastUDPmessage = msg;
                         udpBuf.clear();
@@ -907,7 +915,7 @@ public class VisualiseSteeringCNN extends DavisClassifierCNN implements Property
                             seqNum = 0;
                         }
                         udpBuf.put(msg);
-                        String s = String.format("%d\t%d", lastProcessedEventTimestamp, net.outputLayer.maxActivatedUnit);
+                        String s = String.format("%d\t%d", lastProcessedEventTimestamp, net.outputLayer.getMaxActivatedUnit());
                         descisionLogger.log(s);
                         try {
 //                        log.info("sending buf="+buf+" to client="+client);
@@ -1333,15 +1341,15 @@ public class VisualiseSteeringCNN extends DavisClassifierCNN implements Property
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "UDP output is not enabled yet; logging will only occur if sendUDPSteeringMessages is selected");
         }
         if (apsDvsNet != null) {
-            if (!apsDvsNet.networkRanOnce) {
-                JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Network must run at least once to correctly plot kernels (internal variables for indexing are computed at runtime)");
-                return;
-            }
+//            if (!apsDvsNet.networkRanOnce) {
+//                JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Network must run at least once to correctly plot kernels (internal variables for indexing are computed at runtime)");
+//                return;
+//            }
             descisionLogger.setEnabled(true);
-            descisionLogger.addComment("network is " + apsDvsNet.getXmlFilename());
+            descisionLogger.addComment("network is " + apsDvsNet.getFilename());
             descisionLogger.addComment("system.currentTimeMillis lastTimestampUs decisionLCRN");
             behaviorLogger.setEnabled(true);
-            behaviorLogger.addComment("network is " + apsDvsNet.getXmlFilename());
+            behaviorLogger.addComment("network is " + apsDvsNet.getFilename());
             behaviorLogger.addComment("system.currentTimeMillis string_message_from_ROS");
             if (behaviorLoggingThread != null) {
                 behaviorLoggingThread.closeChannel();

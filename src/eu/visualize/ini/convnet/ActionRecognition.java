@@ -5,6 +5,9 @@
  */
 package eu.visualize.ini.convnet;
 
+import ch.unizh.ini.jaer.projects.npp.AbstractDavisCNN;
+import ch.unizh.ini.jaer.projects.npp.DavisCNNPureJava;
+import ch.unizh.ini.jaer.projects.npp.DavisClassifierCNNProcessor;
 import com.jogamp.opengl.GL;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
@@ -29,14 +32,14 @@ import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
- * Extends DavisClassifierCNN to add annotation graphics to show
+ * Extends DavisClassifierCNNProcessor to add annotation graphics to show
  ActionRecognition output
  *
  * @author Gemma
  */
 @Description("Displays ActionRecognition CNN results; subclass of DavisDeepLearnCnnProcessor")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class ActionRecognition extends DavisClassifierCNN implements PropertyChangeListener {
+public class ActionRecognition extends DavisClassifierCNNProcessor implements PropertyChangeListener {
 
     //LOCAL VARIABLES
     private float decisionLowPassMixingFactor = getFloat("decisionLowPassMixingFactor", .2f);
@@ -79,7 +82,7 @@ public class ActionRecognition extends DavisClassifierCNN implements PropertyCha
         FilterChain chain = new FilterChain(chip);
         setEnclosedFilterChain(chain);
         chain.add(dvsSubsampler);
-        apsDvsNet.getSupport().addPropertyChangeListener(DavisCNN.EVENT_MADE_DECISION, statistics);
+        apsDvsNet.getSupport().addPropertyChangeListener(DavisCNNPureJava.EVENT_MADE_DECISION, statistics);
 //        super.setDvsEventsPerFrame(40000); //eventsPerFrame in the 4 cam, DVSmovies Dataset Sophie
         MultilineAnnotationTextRenderer.setFontSize(50);
     }
@@ -148,9 +151,9 @@ public class ActionRecognition extends DavisClassifierCNN implements PropertyCha
         }
         GL2 gl = drawable.getGL().getGL2();
         checkBlend(gl);
-        if ((apsDvsNet != null) && (apsDvsNet.outputLayer != null) && (apsDvsNet.outputLayer.activations != null)) {
+        if ((apsDvsNet != null) && (apsDvsNet.getOutputLayer() != null) && (apsDvsNet.getOutputLayer().getActivations() != null)) {
             float[] activationsVect;
-            activationsVect = apsDvsNet.outputLayer.activations;
+            activationsVect = apsDvsNet.getOutputLayer().getActivations();
             double stdActivations = StdDev(activationsVect);
             displayDecision = false;
             float max = 0;
@@ -176,7 +179,7 @@ public class ActionRecognition extends DavisClassifierCNN implements PropertyCha
 //        if(playSounds && isShowOutputAsBarChart()){ //NO PLAY SOUND
 //            gl.glColor3f(.5f,0,0);
 //            gl.glBegin(GL.GL_LINES);
-//            final float h=playSoundsThresholdActivation*DavisCNN.HISTOGRAM_HEIGHT_FRACTION*chip.getSizeY();
+//            final float h=playSoundsThresholdActivation*DavisCNNPureJava.HISTOGRAM_HEIGHT_FRACTION*chip.getSizeY();
 //            gl.glVertex2f(0,h);
 //            gl.glVertex2f(chip.getSizeX(),h);
 //            gl.glEnd();
@@ -184,7 +187,7 @@ public class ActionRecognition extends DavisClassifierCNN implements PropertyCha
         if (isShowOutputAsBarChart()) {
             gl.glColor3f(.5f, 0, 0);
             gl.glBegin(GL.GL_LINES);
-            final float h = DavisCNN.HISTOGRAM_HEIGHT_FRACTION * chip.getSizeY();
+            final float h = AbstractDavisCNN.HISTOGRAM_HEIGHT_FRACTION * chip.getSizeY();
             gl.glVertex2f(0, h);
             gl.glVertex2f(chip.getSizeX(), h);
             gl.glEnd();
@@ -193,7 +196,7 @@ public class ActionRecognition extends DavisClassifierCNN implements PropertyCha
         if (isShowThreshold() && thrActivations != 0) {
             gl.glColor3f(0, .5f, 0);
             gl.glBegin(GL.GL_LINES);
-            final float h = (float) thrActivations * DavisCNN.HISTOGRAM_HEIGHT_FRACTION * chip.getSizeY();
+            final float h = (float) thrActivations * AbstractDavisCNN.HISTOGRAM_HEIGHT_FRACTION * chip.getSizeY();
             gl.glVertex2f(0, h);
             gl.glVertex2f(chip.getSizeX(), h);
             gl.glEnd();
@@ -427,9 +430,9 @@ public class ActionRecognition extends DavisClassifierCNN implements PropertyCha
 
         @Override
         public synchronized void propertyChange(PropertyChangeEvent evt) {
-            if (evt.getPropertyName() == DavisCNN.EVENT_MADE_DECISION) {
+            if (evt.getPropertyName() == DavisCNNPureJava.EVENT_MADE_DECISION) {
                 int lastOutput = maxUnit;
-                DavisCNN net = (DavisCNN) evt.getNewValue();
+                DavisCNNPureJava net = (DavisCNNPureJava) evt.getNewValue();
                 maxActivation = Float.NEGATIVE_INFINITY;
                 maxUnit = -1;
                 try {

@@ -13,7 +13,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.awt.TextRenderer;
-import eu.visualize.ini.convnet.DavisClassifierCNN;
+import ch.unizh.ini.jaer.projects.npp.DavisClassifierCNNProcessor;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
@@ -286,7 +286,7 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
             fordViStates = readFordViJsonStream(fordViInputStream);
 
         } catch (Exception ex) {
-            Logger.getLogger(DavisClassifierCNN.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(DavisClassifierCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load from this file, caught exception " + ex + ". See console for logging.", "Bad data file", JOptionPane.WARNING_MESSAGE);
         }
 

@@ -5,6 +5,7 @@
  */
 package eu.visualize.ini.convnet;
 
+import ch.unizh.ini.jaer.projects.npp.DvsFramerSingleFrame;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 
 import java.awt.Color;
@@ -89,8 +90,8 @@ public class DeepLearnCnnNetwork_HJ {
     String dob;
     String nettype;
     Layer[] layers; // all the layers in the middle
-    InputLayer inputLayer; // part of layers
-    OutputOrInnerProductFullyConnectedLayer outputLayer; // the final layer, not part of layers
+    public InputLayer inputLayer; // part of layers
+    public OutputOrInnerProductFullyConnectedLayer outputLayer; // the final layer, not part of layers
     JFrame activationsFrame = null, kernelsFrame = null;
     private boolean hideSubsamplingLayers = true;
     private boolean normalizeKernelDisplayWeightsGlobally = true;
@@ -450,8 +451,8 @@ public class DeepLearnCnnNetwork_HJ {
 
         private boolean inputClampedTo1 = false; // for debug
         private boolean inputClampedToIncreasingIntegers = false; // debug
-        int dimx;
-        int dimy;
+        public int dimx;
+        public int dimy;
         int nUnits;
         private ImageDisplay imageDisplay = null;
 
