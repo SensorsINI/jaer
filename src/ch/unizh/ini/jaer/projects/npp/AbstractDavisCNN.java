@@ -271,8 +271,8 @@ public abstract class AbstractDavisCNN {
      * @see #labels
      */
     public void loadLabels(File f) throws IOException {
-        labels = Files.readAllLines(Paths.get(f.getAbsolutePath()));
-        log.info("loaded " + labels.size() + " labels");
+        setLabels(Files.readAllLines(Paths.get(f.getAbsolutePath())));
+        log.info("loaded " + getLabels().size() + " labels");
     }
 
     public abstract void printActivations();
@@ -463,6 +463,20 @@ public abstract class AbstractDavisCNN {
      */
     public void setNettype(String nettype) {
         this.nettype = nettype;
+    }
+
+    /**
+     * @return the labels
+     */
+    public List<String> getLabels() {
+        return labels;
+    }
+
+    /**
+     * @param labels the labels to set
+     */
+    public void setLabels(List<String> labels) {
+        this.labels = labels;
     }
 
 }

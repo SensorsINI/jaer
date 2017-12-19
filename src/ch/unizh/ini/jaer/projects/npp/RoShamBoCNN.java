@@ -371,7 +371,11 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         textRenderer.beginRendering(width, height);
         if ((statistics.descision >= 0) && (statistics.descision < DECISION_STRINGS.length)) {
             Rectangle2D r = textRenderer.getBounds(DECISION_STRINGS[statistics.descision]);
-            textRenderer.draw(DECISION_STRINGS[statistics.descision], (width / 2) - ((int) r.getWidth() / 2), height / 2);
+            String decisionString=DECISION_STRINGS[statistics.descision];
+            if(apsDvsNet.getLabels()!=null && apsDvsNet.getLabels().size()>0){
+                decisionString=apsDvsNet.getLabels().get(statistics.descision);
+            }
+            textRenderer.draw(decisionString, (width / 2) - ((int) r.getWidth() / 2), height / 2);
             if (playSounds && statistics.descision >= 0 && statistics.descision < 3 && statistics.maxActivation > playSoundsThresholdActivation) {
                 if (soundPlayer == null) {
                     soundPlayer = new SoundPlayer();

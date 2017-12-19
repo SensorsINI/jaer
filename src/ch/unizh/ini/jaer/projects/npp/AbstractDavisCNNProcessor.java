@@ -163,7 +163,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         }
         lastNetworkFilename = c.getSelectedFile().toString();
         putString("lastNetworkFilename", lastNetworkFilename);
-        putString("lastNetworkPathname", f.getParent());
+        putString("lastNetworkPathname", f.getPath());
         try {
             loadNetwork(c.getSelectedFile());
         } catch (Exception ex) {
@@ -186,7 +186,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         }
         lastNetworkFilename = c.getSelectedFile().toString();
         putString("lastLabelsFilename", lastNetworkFilename);
-        putString("lastNetworkPathname", f.getParent());
+        putString("lastNetworkPathname", f.getPath());
         try {
             loadLabels(c.getSelectedFile());
         } catch (Exception ex) {
