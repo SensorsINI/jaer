@@ -25,14 +25,13 @@ import java.io.IOException;
 import java.nio.FloatBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import org.tensorflow.Graph;
 import org.tensorflow.Operation;
-import org.tensorflow.Output;
-import org.tensorflow.Shape;
 import org.tensorflow.Tensor;
 
 /**
@@ -53,6 +52,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
     private byte[] graphDef = null;
     private Graph executionGraph = null;
     private Graph inputProcessingGraph = null;
+    private ArrayList<String> ioLayers=new ArrayList();
 
     public DavisCNNTensorFlow(AbstractDavisCNNProcessor processor) {
         super(processor);
@@ -97,11 +97,21 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
             rgbbuf.rewind();
             pixbuf = rgbbuf; // copy the 3 frames sequentially, really dumb
         }
-        try (Tensor<Float> imageTensor = Tensor.create(new long[]{1, height, width, numChannels}, pixbuf);) {
+        try (Tensor<Float> imageTensor = Tensor.create(new long[]{1, height, width, numChannels}, pixbuf)) {
             float[] output = TensorFlow.executeGraph(executionGraph, imageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
             outputLayer = new OutputLayer(output);
             getSupport().firePropertyChange(EVENT_MADE_DECISION,null,this);
             return output;
+        }catch(IllegalArgumentException ex){
+            StringBuilder msg=new StringBuilder("<html>Caught exception <br>"+ex.toString()+"<p>Did you set inputLayerName and outputLayerName?</p>");
+            msg.append("<p>The IO layer names could be as follows (the string inside the single quotes):</p> <ul> ");
+            for(String s:ioLayers){
+                msg.append("<li>"+(s.replaceAll("<", "").replaceAll(">",""))+"</li>");
+            }
+            msg.append("</ul>");
+            JOptionPane.showMessageDialog(processor.getChip().getAeViewer(), msg.toString(),
+                      "Error computing network", JOptionPane.WARNING_MESSAGE);
+           throw new IllegalArgumentException(ex.getCause());
         }
     }
 
@@ -152,13 +162,15 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
             Iterator<Operation> itr = executionGraph.operations();
             StringBuilder b = new StringBuilder("TensorFlow Graph: \n");
             int opnum = 0;
+            ioLayers.clear();
             while (itr.hasNext()) {
                 Operation o = itr.next();
                 final String s = o.toString().toLowerCase();
 //                if(s.contains("input") || s.contains("output") || s.contains("placeholder")){
                 if (s.contains("input") || s.contains("placeholder") || s.contains("output")) {  // find input placeholder & output
-                    int numOutputs = o.numOutputs();
+//                    int numOutputs = o.numOutputs();
                     b.append("********** ");
+                    ioLayers.add(s);
 //                    for (int onum = 0; onum < numOutputs; onum++) {
 //                        Output output = o.output(onum);
 //                        Shape shape = output.shape();
