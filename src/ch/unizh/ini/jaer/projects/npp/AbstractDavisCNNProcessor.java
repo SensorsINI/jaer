@@ -95,7 +95,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     protected boolean showOutputAsBarChart = getBoolean("showOutputAsBarChart", true);
     protected float uniformWeight = getFloat("uniformWeight", 0);
     protected float uniformBias = getFloat("uniformBias", 0);
-    protected boolean measurePerformance = getBoolean("measurePerformance", false);
+    protected boolean measurePerformance = getBoolean("measurePerformance", true);
     protected boolean processAPSFrames = getBoolean("processAPSFrames", true);
     //    protected boolean processAPSDVSTogetherInAPSNet = true; // getBoolean("processAPSDVSTogetherInAPSNet", true);
     protected boolean processDVSTimeSlices = getBoolean("processDVSTimeSlices", true);
@@ -582,72 +582,6 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         getSupport().firePropertyChange("processAPSFrames", old, processAPSFrames);
     }
 
-    //    /**
-    //     * @return the dvsGrayScale
-    //     */
-    //    public int getDvsColorScale() {
-    //        return dvsGrayScale;
-    //    }
-    //
-    //    /**
-    //     * @param dvsGrayScale the dvsGrayScale to set
-    //     */
-    //    synchronized public void setDvsColorScale(int dvsGrayScale) {
-    //        if (dvsGrayScale < 1) {
-    //            dvsGrayScale = 1;
-    //        }
-    //        this.dvsGrayScale = dvsGrayScale;
-    //        putInt("dvsGrayScale", dvsGrayScale);
-    //        if (dvsSubsampler != null) {
-    //            dvsSubsampler.setColorScale(dvsGrayScale);
-    //        }
-    //    }
-    //    /**
-    //     * @return the dvsEventsPerFrame
-    //     */
-    //    public int getDvsEventsPerFrame() {
-    //        return dvsEventsPerFrame;
-    //    }
-    //
-    //    /**
-    //     * @param dvsEventsPerFrame the dvsEventsPerFrame to set
-    //     */
-    //    public void setDvsEventsPerFrame(int dvsEventsPerFrame) {
-    //        this.dvsEventsPerFrame = dvsEventsPerFrame;
-    //        putInt("dvsEventsPerFrame", dvsEventsPerFrame);
-    //    }
-//    public boolean isNormalizeKernelDisplayWeightsGlobally() {
-//        if (apsDvsNet == null) {
-//            return false;
-//        } else {
-//            return apsDvsNet.isNormalizeKernelDisplayWeightsGlobally();
-//        }
-//    }
-//
-//    public void setNormalizeKernelDisplayWeightsGlobally(boolean normalizeKernelDisplayWeightsGlobally) {
-//        if (apsDvsNet != null) {
-//            apsDvsNet.setNormalizeKernelDisplayWeightsGlobally(normalizeKernelDisplayWeightsGlobally);
-//        }
-//        //        if (dvsNet != null) {
-//        //            dvsNet.setNormalizeKernelDisplayWeightsGlobally(normalizeKernelDisplayWeightsGlobally);
-//        //        }
-//    }
-//
-//    public boolean isNormalizeActivationDisplayGlobally() {
-//        if (apsDvsNet == null) {
-//            return false;
-//        }
-//        return apsDvsNet.isNormalizeActivationDisplayGlobally();
-//    }
-//
-//    public void setNormalizeActivationDisplayGlobally(boolean normalizeActivationDisplayGlobally) {
-//        if (apsDvsNet != null) {
-//            apsDvsNet.setNormalizeActivationDisplayGlobally(normalizeActivationDisplayGlobally);
-//        }
-//        //        if (dvsNet != null) {
-//        //            dvsNet.setNormalizeActivationDisplayGlobally(normalizeActivationDisplayGlobally);
-//        //        }
-//    }
     public boolean isPrintActivations() {
         if (apsDvsNet == null) {
             return false;
@@ -676,25 +610,6 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         apsDvsNet.setPrintWeights(printWeights);
     }
 
-    //    /**
-    //     * @return the processAPSDVSTogetherInAPSNet
-    //     */
-    //    public boolean isProcessAPSDVSTogetherInAPSNet() {
-    //        return processAPSDVSTogetherInAPSNet;
-    //    }
-    //
-    //    /**
-    //     * @param processAPSDVSTogetherInAPSNet the processAPSDVSTogetherInAPSNet to
-    //     * set
-    //     */
-    //    public void setProcessAPSDVSTogetherInAPSNet(boolean processAPSDVSTogetherInAPSNet) {
-    //        this.processAPSDVSTogetherInAPSNet = processAPSDVSTogetherInAPSNet;
-    //        putBoolean("processAPSDVSTogetherInAPSNet", processAPSDVSTogetherInAPSNet);
-    //        if (processAPSDVSTogetherInAPSNet) {
-    //            setProcessAPSFrames(false);
-    //            setProcessDVSTimeSlices(false);
-    //        }
-    //    }
     public boolean isSoftMaxOutput() {
         if (apsDvsNet == null) {
             return softMaxOutput;
