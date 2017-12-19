@@ -1342,7 +1342,11 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
                     // randomly set a pixel to some RGB value
                     xx = r.nextInt(disp.getSizeX());
                     yy = r.nextInt(disp.getSizeY());
-                    disp.setPixmapRGB(xx, yy, r.nextFloat(), r.nextFloat(), r.nextFloat());
+                    float red=r.nextFloat(), green=r.nextFloat(), blue=r.nextFloat();
+                    if(xx==0 && yy==0){
+                        red=1; green=1; blue=1;
+                    }
+                    disp.setPixmapRGB(xx, yy, red, green, blue);
                     disp2.setPixmapRGB(xx, yy, r.nextFloat(), r.nextFloat(), r.nextFloat());
 
                     // move the legend around sinusoidally
