@@ -90,7 +90,7 @@ import net.sf.jaer.util.TextRendererScale;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class StereoCalibrationDualViewFilter extends MultiSourceProcessor implements FrameAnnotater, Observer /* observes this to get informed about our size */ {
 
-	private int sx; // set to chip.getSizeX()
+	private int sx; // set to chip.getWidth()
 	private int sy; // chip.getSizeY()
 	private int lastTimestamp = 0;
 

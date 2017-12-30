@@ -76,7 +76,7 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
     private final int SHOW_STUFF_DURATION_MS = 4000;
     private volatile TimerTask stopShowingStuffTask = null;
     private volatile boolean showROIsTemporarilyFlag = false;
-    private int lastTimestampUs = 0;
+    private int lastTimestampUs = 0; // last timestamp recieved by addEvent 
 
     public DvsFramerROIGenerator(AEChip chip) {
         super(chip);
@@ -115,8 +115,9 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
      * @param e the event to add
      */
     @Override
-    public void addEvent(PolarityEvent e) {
+    synchronized public void addEvent(PolarityEvent e) {
 
+                    lastTimestampUs = e.timestamp;
         for (int s = startingScale; s < numScales; s++) {
             // For this scale, find the overlapping ROIs and put the event to them.
 
@@ -157,7 +158,6 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
 
                     int locx = (e.x - roi.xLeft) >> s, locy = (e.y - roi.yBot) >> s;
                     roi.addEvent(locx, locy, e.polarity);
-                    lastTimestampUs = e.timestamp;
                     if (roi.getAccumulatedEventCount() > dvsEventsPerFrame * (1 << (2 * roi.scale))) {
                         getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILABLE, null, roi);
                         if (showDvsFrames) {
@@ -203,6 +203,7 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
+        super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
         if (showROIsTemporarilyFlag) {
             Random random = new Random();
@@ -313,7 +314,7 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
         this.dimension = dimension;
         putInt("dimension", dimension);
         getSupport().firePropertyChange("dimension", old, dimension);
-        setStride(dimension / 2);
+//        setStride(dimension / 2);
         showRoisTemporarily();
     }
 
@@ -594,7 +595,8 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
             if (rgba == null) {
                 return;
             }
-            if ((lastTimestampUs - lastDecisionTimestampUs)>>>10 > getDecisionLifetimeMs()) {
+            final int dt = lastTimestampUs - lastDecisionTimestampUs;
+            if (dt<0  || (dt)>>>10 >= getDecisionLifetimeMs()) {
                 return;
             }
             try {
@@ -619,7 +621,7 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
 
         @Override
         public String toString() {
-            return "ROI{" + "xLeft=" + xLeft + ", xRight=" + xRight + ", yBot=" + yBot + ", yTop=" + yTop + ", scale=" + scale + ", xidx=" + xidx + ", yidx=" + yidx + ", activations=" + activations + ", rgba=" + rgba + '}';
+            return "ROI{" +super.toString() + "xLeft=" + xLeft + ", xRight=" + xRight + ", yBot=" + yBot + ", yTop=" + yTop + ", scale=" + scale + ", xidx=" + xidx + ", yidx=" + yidx  + '}';
         }
 
         /**

@@ -82,7 +82,6 @@ public abstract class AbstractDavisCNN {
     protected boolean printActivations = false;
     protected boolean printWeights = false;
     protected long processingTimeNs;
-    protected boolean makeRGBFrames = false;
 
     public AbstractDavisCNN(AbstractDavisCNNProcessor processor) {
         this.processor=processor;
@@ -94,7 +93,7 @@ public abstract class AbstractDavisCNN {
      * @param subsampler
      * @return the output activations vector
      */
-    abstract public float[] processDvsTimeslice(DvsFramer.DvsFrame subsampler);
+    abstract public float[] processDvsFrame(DvsFramer.DvsFrame subsampler);
 
     /**
      * Computes the output of the network from an input activationsFrame
@@ -103,7 +102,7 @@ public abstract class AbstractDavisCNN {
      * @return the vector of output values
      * @see #getActivations
      */
-    abstract public float[] processDownsampledFrame(AEFrameChipRenderer frame);
+    abstract public float[] processAPSFrame(AEFrameChipRenderer frame);
 
     /**
      * Computes the output of the network from an input activationsFrame
@@ -312,17 +311,6 @@ public abstract class AbstractDavisCNN {
         this.printWeights = printWeights;
     }
 
-    public void setMakeRGBFrames(boolean makeRGBFrames) {
-        this.makeRGBFrames = makeRGBFrames;
-    }
-
-    /**
-     * @return the makeRGBFrames
-     */
-    public boolean isMakeRGBFrames() {
-        return makeRGBFrames;
-    }
-
     abstract public class Layer {
 
         /**
@@ -337,7 +325,7 @@ public abstract class AbstractDavisCNN {
         }
 
         public void initializeConstants() {
-            // override to processDownsampledFrame constants for layer
+            // override to processAPSFrame constants for layer
         }
 
         public void drawActivations() {

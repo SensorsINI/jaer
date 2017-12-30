@@ -669,7 +669,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 gl.glPushMatrix();
                 textRenderer.begin3DRendering();
                 String s = String.format("d=%.1f ms", 1e-3f * sliceDeltaT);
-//            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getSizeX(), .1f);
+//            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getWidth(), .1f);
                 // determine width of string in pixels and scale accordingly
                 FontRenderContext frc = textRenderer.getFontRenderContext();
                 Rectangle2D r = textRenderer.getBounds(s); // bounds in java2d coordinates, downwards more positive
@@ -2223,7 +2223,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             if ((x >= radius) && ((x + radius) < subSizeX)
                     && (y >= radius) && ((y + radius) < subSizeY)) {
 
-                if (dimNew != sliceBitmapImageDisplay.getSizeX()) {
+                if (dimNew != sliceBitmapImageDisplay.getWidth()) {
                     dim = dimNew;
                     sliceBitmapImageDisplay.setImageSize(dimNew, dimNew);
                     sliceBitmapImageDisplay.clearLegends();

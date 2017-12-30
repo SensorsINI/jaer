@@ -109,7 +109,7 @@ public class DavisCNNPureJava extends AbstractDavisCNN {
      * @param subsampler
      * @return the output activations vector
      */
-    public float[] processDvsTimeslice(DvsFrame subsampler) {
+    public float[] processDvsFrame(DvsFrame subsampler) {
         inputLayer.processDvsTimeslice(subsampler);
         setLastInputTypeProcessedWasApsFrame(false);
         return processLayers();
@@ -122,7 +122,7 @@ public class DavisCNNPureJava extends AbstractDavisCNN {
      * @return the vector of output values
      * @see #getActivations
      */
-    public float[] processDownsampledFrame(AEFrameChipRenderer frame) {
+    public float[] processAPSFrame(AEFrameChipRenderer frame) {
         if (inputLayer == null) {
             return null;
         }
@@ -310,7 +310,7 @@ public class DavisCNNPureJava extends AbstractDavisCNN {
         /**
          * Computes activations from input layer
          *
-         * @param input the input layer to processDownsampledFrame from
+         * @param input the input layer to processAPSFrame from
          */
         abstract public void compute(Layer input);
     }
@@ -427,9 +427,9 @@ public class DavisCNNPureJava extends AbstractDavisCNN {
 
         /**
          * Computes the output from input frame. The frame can be either a
-         * gray-scale frame[] with a single entry per pixel, or it can be an RGB
-         * frame[] with 3 sample (RGB) per pixel. The appropriate extraction is
-         * done in processDownsampledFrame by the FrameType parameter.
+ gray-scale frame[] with a single entry per pixel, or it can be an RGB
+ frame[] with 3 sample (RGB) per pixel. The appropriate extraction is
+ done in processAPSFrame by the FrameType parameter.
          *
          * @param subsampler the DVS subsampled input
          * @return the vector of network output values
@@ -714,8 +714,8 @@ public class DavisCNNPureJava extends AbstractDavisCNN {
         private float[] kernels;
         private int inputMapLength; // length of single input map out of input.activations
         private int inputMapDim; // size of single input map, sqrt of inputMapLength for square input (TODO assumes square input)
-        private int outputMapLength; // length of single output map vector; biases.length/nOutputMaps, calculated during processDownsampledFrame()
-        private int outputMapDim;  // dimension of single output map, calculated during processDownsampledFrame()
+        private int outputMapLength; // length of single output map vector; biases.length/nOutputMaps, calculated during processAPSFrame()
+        private int outputMapDim;  // dimension of single output map, calculated during processAPSFrame()
         private int activationsLength;
         private ImageDisplay[] activationDisplays = null;
         private ImageDisplay[][] kernelDisplays = null;
@@ -1133,7 +1133,7 @@ public class DavisCNNPureJava extends AbstractDavisCNN {
                             for (int yi = starty; yi < endy; yi++) {
                                 switch (poolingType) {
                                     case Average:
-                                        sumOrMax += convLayer.a(map, xi, yi); // add to sum to processDownsampledFrame average
+                                        sumOrMax += convLayer.a(map, xi, yi); // add to sum to processAPSFrame average
                                         break;
                                     case Max:
                                         float f = convLayer.a(map, xi, yi);

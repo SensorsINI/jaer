@@ -115,7 +115,7 @@ public class DavisWhatWhereCNNProcessor extends AbstractDavisCNNProcessor {
                     startTime = System.nanoTime();
                 }
                 DvsFramerROIGenerator.ROI roi = (DvsFramerROIGenerator.ROI) evt.getNewValue();
-                apsDvsNet.processDvsTimeslice(roi); // generates PropertyChange EVENT_MADE_DECISION
+                apsDvsNet.processDvsFrame(roi); // generates PropertyChange EVENT_MADE_DECISION
                 float[] activations = Arrays.copyOf(apsDvsNet.getOutputLayer().getActivations(), apsDvsNet.getOutputLayer().getNumUnits());
                 roi.setActivations(activations);
                 float[] rgba = Arrays.copyOf(activations, 4);

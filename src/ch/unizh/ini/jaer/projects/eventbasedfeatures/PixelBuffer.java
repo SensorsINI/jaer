@@ -469,7 +469,7 @@ public class PixelBuffer extends EventFilter2D {
 //        setPropertyTooltip(sz, "RingBufferSize", "sets size of ring buffer");
 //        setPropertyTooltip(tim, "dt", "Events with less than this delta time in us to neighbors pass through");
 //        
-//        sizex = chip.getSizeX();
+//        sizexgetWidthgetSizeX();
 //        sizey = chip.getSizeY();
 //
 //        disp = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
@@ -502,7 +502,7 @@ public class PixelBuffer extends EventFilter2D {
 //    }
 //    
 //    synchronized public void checkMaps (){
-//        if ( rbarr == null || rbarr.length != chip.getSizeX() || rbarr[0].length != chip.getSizeY() )
+//        if ( rbarr == null || rbarr.length getWidthgetSizeX() || rbarr[0].length != chip.getSizeY() )
 //            resetRingBuffers();        
 //    }
 //    
@@ -611,7 +611,7 @@ public class PixelBuffer extends EventFilter2D {
 //    @Override
 //    public EventPacket<?> filterPacket(EventPacket<?> in) {
 //        
-//        sizex = chip.getSizeX();
+//        sizexgetWidthgetSizeX();
 //        sizey = chip.getSizeY();
 //        
 //        if ( in == null ){

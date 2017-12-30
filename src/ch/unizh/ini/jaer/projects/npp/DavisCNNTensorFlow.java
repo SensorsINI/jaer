@@ -31,8 +31,11 @@ import java.util.Iterator;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
+import org.tensorflow.DataType;
 import org.tensorflow.Graph;
 import org.tensorflow.Operation;
+import org.tensorflow.Output;
+import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 
 /**
@@ -51,7 +54,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
 
     private byte[] graphDef = null;
     private Graph executionGraph = null;
-    private Graph inputProcessingGraph = null;
+    private Graph inputNormalizationGraph = null;
     private ArrayList<String> ioLayers = new ArrayList();
 
     public DavisCNNTensorFlow(AbstractDavisCNNProcessor processor) {
@@ -59,16 +62,74 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
     }
 
     @Override
-    public float[] processDvsTimeslice(DvsFramer.DvsFrame frame) {
+    public float[] processDvsFrame(DvsFramer.DvsFrame frame) {
         FloatBuffer b = FloatBuffer.wrap(frame.getImage());
-        float[] results = executeGraph(b, frame.getWidth(), frame.getHeight());
+        float[] results = executeDvsFrameGraph(b, frame.getWidth(), frame.getHeight());
         return results;
     }
 
+    private Output<Float> normalizedImageOutput = null; // used to reference the graph
+
     @Override
-    public float[] processDownsampledFrame(AEFrameChipRenderer frame) {
-        FloatBuffer b = frame.getPixmap();
-        float[] results = executeGraph(b, frame.getWidth(), frame.getHeight());
+    public float[] processAPSFrame(AEFrameChipRenderer frame) {
+        final int numChannels = processor.isMakeRGBFrames() ? 3 : 1;
+        float mean = processor.getImageMean(), scale = processor.getImageScale();
+        int width = processor.getImageWidth(), height = processor.getImageHeight();
+        if (inputNormalizationGraph == null) {
+            Graph g = new Graph();
+            GraphBuilder b = new GraphBuilder(g);
+            // see https://github.com/tensorflow/tensorflow/issues/6781
+            final Output<Float> imagePH = g.opBuilder("Placeholder", "input").setAttr("dtype", DataType.FLOAT).build().output(0);
+            final Output<Float> meanPH = g.opBuilder("Placeholder", "mean").setAttr("dtype", DataType.FLOAT).build().output(0);
+            final Output<Float> scalePH = g.opBuilder("Placeholder", "scale").setAttr("dtype", DataType.FLOAT).build().output(0);
+//            final Output<Integer> widthPH = g.opBuilder("Placeholder", "width").setAttr("dtype", DataType.INT32).build().output(0);
+//            final Output<Integer> heightPH = g.opBuilder("Placeholder", "height").setAttr("dtype", DataType.INT32).build().output(0);
+            final Output<Integer> sizePH = g.opBuilder("Placeholder", "size").setAttr("dtype", DataType.INT32).build().output(0);
+            normalizedImageOutput
+                    = b.div(
+                            b.sub(
+                                    b.resizeBilinear(
+                                            imagePH,
+                                            sizePH),
+                                    meanPH),
+                            scalePH);
+            inputNormalizationGraph = g;
+        }
+        final int sx = frame.getWidthInPixels(), sy = frame.getHeightInPixels();
+        FloatBuffer fb = FloatBuffer.allocate(sx * sy * numChannels);
+        float[] rgb = null;
+        if (processor.isMakeRGBFrames()) {
+            rgb = new float[]{1, 1, 1};
+        } else {
+            rgb = new float[]{1};
+        }
+
+        for (int y = 0; y < sy; y++) {
+            for (int x = 0; x < sx; x++) {
+                for (int c = 0; c < numChannels; c++) {
+                    final int newIdx = c + numChannels * (x + (sx * (sy - y - 1)));
+                    fb.put(newIdx, rgb[c] * frame.getApsGrayValueAtPixel(x, y));
+                }
+            }
+        }
+        fb.rewind();
+        Tensor<Float> inputImageTensor = Tensor.create(new long[]{1, sy, sx, numChannels}, fb);
+        Tensor meanT = Tensor.create(mean);
+        Tensor scaleT = Tensor.create(scale);
+        Tensor sizeT = Tensor.create(new int[]{height, width});
+        Tensor<Float> normalizedImage = new Session(inputNormalizationGraph)
+                .runner()
+                .feed("input", inputImageTensor)
+                .feed("mean", meanT)
+                .feed("scale", scaleT)
+                .feed("size", sizeT)
+                .fetch(normalizedImageOutput.op().name())
+                .run()
+                .get(0).expect(Float.class);
+
+        float[] results = TensorFlow.executeGraph(executionGraph, normalizedImage, processor.getInputLayerName(), processor.getOutputLayerName());
+        outputLayer = new OutputLayer(results);
+        getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
         return results;
     }
 
@@ -86,33 +147,37 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
      * @param height height of image
      * @return activations of output
      */
-    private float[] executeGraph(FloatBuffer pixbuf, int width, int height) {
-        int numChannels = makeRGBFrames ? 3 : 1;
+    private float[] executeDvsFrameGraph(FloatBuffer pixbuf, int width, int height) {
+        final float mean = processor.getImageMean(), scale = processor.getImageScale();
+        final int numChannels = processor.isMakeRGBFrames() ? 3 : 1;
         inputLayer = new InputLayer(width, height, numChannels); // TODO hack since we don't know the input size yet until network runs
-        
-        // TODO super hack to flip image vertically because tobi cannot see how to flip an image in TensorFlow
-        FloatBuffer flipped=FloatBuffer.allocate(pixbuf.limit()); 
-        float[] flippedarray=flipped.array();
-        float[] origarray=pixbuf.array();
-        for(int x=0;x<width;x++)for(int y=0;y<height;y++){
-            int origIdx=x+width*y;
-            int newIdx=x+width*(height-y-1);
-            flippedarray[newIdx]=origarray[origIdx];
+
+        // TODO super hack brute force to flip image vertically because tobi cannot see how to flip an image in TensorFlow.
+        // Also, make RGB frame from gray dvs image by cloning the gray value to each channel in WHC order
+        final float[] origarray = pixbuf.array();
+        FloatBuffer flipped = FloatBuffer.allocate(pixbuf.limit() * numChannels);
+        final float[] flippedarray = flipped.array();
+        // prepare rgb scaling factors to make RGB channels from grayscale. each channel has different weighting
+        float[] rgb = null;
+        if (processor.isMakeRGBFrames()) {
+            rgb = new float[]{1, 1, 1};
+        } else {
+            rgb = new float[]{1};
         }
-        pixbuf=flipped;
-        
-        if (makeRGBFrames) {
-            FloatBuffer rgbbuf = FloatBuffer.allocate(pixbuf.limit() * numChannels);
-            rgbbuf.put(pixbuf);
-            pixbuf.rewind();
-            rgbbuf.put(pixbuf);
-            pixbuf.rewind();
-            rgbbuf.put(pixbuf);
-            rgbbuf.rewind();
-            pixbuf = rgbbuf; // copy the 3 frames sequentially, really dumb
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                final int origIdx = x + width * y;
+                for (int c = 0; c < numChannels; c++) {
+                    final int newIdx = c + numChannels * (x + (width * (height - y - 1)));
+                    flippedarray[newIdx] = ((origarray[origIdx] * rgb[c])-mean)/scale;
+                }
+            }
         }
-        
-        try (Tensor<Float> imageTensor = Tensor.create(new long[]{1, height, width, numChannels}, pixbuf);) {
+        flipped = FloatBuffer.wrap(flippedarray);
+
+        try (Tensor<Float> imageTensor = Tensor.create(new long[]{1, height, width, numChannels}, flipped);) { // use NHWC order according to last post above
+//            int numElements = imageTensor.numElements();
+//            long[] shape = imageTensor.shape();
             float[] output = TensorFlow.executeGraph(executionGraph, imageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
             outputLayer = new OutputLayer(output);
             getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
@@ -154,8 +219,8 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
         if (executionGraph != null) {
             executionGraph.close();
         }
-        if (inputProcessingGraph != null) {
-            inputProcessingGraph.close();
+        if (inputNormalizationGraph != null) {
+            inputNormalizationGraph.close();
         }
     }
 

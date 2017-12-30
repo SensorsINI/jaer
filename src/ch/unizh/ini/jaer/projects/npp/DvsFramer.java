@@ -293,7 +293,7 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
     @Override
     public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
-        if (showFrames && lastDvsFrame != null) {
+        if (showFrames && lastDvsFrame != null && lastDvsFrame.isFilled()) {
             lastDvsFrame.draw();
         }
 

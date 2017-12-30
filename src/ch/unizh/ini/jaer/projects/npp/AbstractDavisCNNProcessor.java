@@ -18,11 +18,15 @@
  */
 package ch.unizh.ini.jaer.projects.npp;
 
+import ch.unizh.ini.jaer.projects.npp.AbstractDavisCNN.OutputLayer;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import ch.unizh.ini.jaer.projects.npp.DvsFramer.DvsFrame;
+import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Color;
 import java.awt.Cursor;
+import java.awt.Font;
+import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -54,7 +58,35 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  */
 public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
 
+    /**
+     * @return the showTop1Label
+     */
+    public boolean isShowTop1Label() {
+        return showTop1Label;
+    }
 
+    /**
+     * @param showTop1Label the showTop1Label to set
+     */
+    public void setShowTop1Label(boolean showTop1Label) {
+        this.showTop1Label = showTop1Label;
+        putBoolean("showTop1Label", showTop1Label);
+    }
+
+    /**
+     * @return the showTop5Labels
+     */
+    public boolean isShowTop5Labels() {
+        return showTop5Labels;
+    }
+
+    /**
+     * @param showTop5Labels the showTop5Labels to set
+     */
+    public void setShowTop5Labels(boolean showTop5Labels) {
+        this.showTop5Labels = showTop5Labels;
+        putBoolean("showTop5Labels", showTop5Labels);
+    }
 
     protected AbstractDavisCNN apsDvsNet = null; // new DavisCNNPureJava(); //, dvsNet = new DavisCNNPureJava();
     protected DvsFramer dvsSubsampler = null;
@@ -65,6 +97,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     //    private ApsFrameExtractor frameExtractor = new ApsFrameExtractor(chip);
     protected boolean showActivations = getBoolean("showActivations", false);
     protected boolean showOutputAsBarChart = getBoolean("showOutputAsBarChart", true);
+    private boolean showTop1Label = getBoolean("showTop1Label", true);
+    private boolean showTop5Labels = getBoolean("showTop5Labels", true);
     protected float uniformWeight = getFloat("uniformWeight", 0);
     protected float uniformBias = getFloat("uniformBias", 0);
     protected boolean measurePerformance = getBoolean("measurePerformance", true);
@@ -85,15 +119,21 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     protected boolean makeRGBFrames = getBoolean("makeRGBFrames", false);
     protected String inputLayerName = getString("inputLayerName", "input");
     protected String outputLayerName = getString("outputLayerName", "output");
+    private int imageWidth=getInt("imageWidth",64);
+    private int imageHeight=getInt("imageHeight",64);
+    private float imageMean=getFloat("imageMean",127);
+    private float imageScale=getFloat("imageMean",255);
 
     public AbstractDavisCNNProcessor(AEChip chip) {
         super(chip);
-        String deb = "3. Debug", disp = "1. Display", anal = "2. Analysis";
+        String deb = "4. Debug", disp = "1. Display", anal = "2. Analysis", tf="3. Tensorflow";
         setPropertyTooltip("loadNetwork", "Load an XML or PB file containing a CNN");
         setPropertyTooltip("loadLabels", "Load labels for output units");
         setPropertyTooltip(disp, "showOutputAsBarChart", "displays activity of output units as bar chart, where height indicates activation");
         setPropertyTooltip(disp, "showKernels", "draw all the network kernels (once) in a new JFrame");
         setPropertyTooltip(disp, "toggleShowActivations", "toggle showing network activations (by default just input and output layers)");
+        setPropertyTooltip(disp, "showTop5Labels", "(requires labels to be loaded) Show the top 5 classification results");
+        setPropertyTooltip(disp, "showTop1Label", "(requires labels to be loaded) Show the top 1 classification result");
         setPropertyTooltip(disp, "showActivations", "draws the network activations in a separate JFrame");
         setPropertyTooltip(disp, "hideSubsamplingLayers", "hides layers that are subsampling conv layers");
         setPropertyTooltip(disp, "hideConvLayers", "hides conv layers");
@@ -110,9 +150,35 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         setPropertyTooltip(anal, "processAPSDVSTogetherInAPSNet", "sends APS frames and DVS time slices to single convnet");
         setPropertyTooltip(anal, "zeroPadding", "CNN uses zero padding; must be set properly according to CNN to run CNN");
         setPropertyTooltip(anal, "processingTimeLimitMs", "<html>time limit for processing packet in ms to process OF events (events still accumulate). <br> Set to 0 to disable. <p>Alternative to the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events");
-        setPropertyTooltip(anal, "makeRGBFrames", "Tells the CNN to make RGB input from grayscale DVS/APS frames; use it with a network configured for RGB input");
-        setPropertyTooltip(anal, "inputLayerName", "(TensorFlow only) Input layer; parse it from loading the network and examining console output for layers for lines starting with ****");
-        setPropertyTooltip(anal, "outputLayerName", "(TensorFlow only) Output layer; parse it from loading the network and examining console output for layers for lines starting with ****");
+        setPropertyTooltip(tf, "makeRGBFrames", "(TensorFlow only) Tells the CNN to make RGB input from grayscale DVS/APS frames; use it with a network configured for RGB input");
+        setPropertyTooltip(tf, "inputLayerName", "(TensorFlow only) Input layer; parse it from loading the network and examining console output for layers for lines starting with ****");
+        setPropertyTooltip(tf, "outputLayerName", "(TensorFlow only) Output layer; parse it from loading the network and examining console output for layers for lines starting with ****");
+        setPropertyTooltip(tf, "imageWidth", "(TensorFlow only) Input image width; the APS frames are scaled to this width in pixels");
+        setPropertyTooltip(tf, "imageHeight", "(TensorFlow only) Input image height; the APS frames are scaled to this height in pixels");
+        setPropertyTooltip(tf, "imageScale", "(TensorFlow only) Input image pixel value scaling; the APS frames are scaled by this value, e.g. 255 for imagenet images. The jaer units are typically 0-1 range.");
+        setPropertyTooltip(tf, "imageMean", "(TensorFlow only) Input image pixel value mean; the APS frames have this mean value, typically on scale 0-255. The jaer frames typically have mean value in range 0-1.");
+    }
+
+    private File openFileDialogAndGetFile(String tip, String key, String type, String... ext) {
+        File file = null;
+        JFileChooser c = new JFileChooser(lastNetworkFilename);
+        File f = new File(lastNetworkFilename);
+        c.setCurrentDirectory(new File(getString("lastNetworkPathname", "")));
+        c.setToolTipText(tip);
+        FileFilter filt = new FileNameExtensionFilter(type, ext);
+        c.addChoosableFileFilter(filt);
+        c.setFileFilter(filt);
+        c.setSelectedFile(new File(lastNetworkFilename));
+        int ret = c.showOpenDialog(chip.getAeViewer());
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            return null;
+        }
+        lastNetworkFilename = c.getSelectedFile().toString();
+        putString(key, lastNetworkFilename);
+        lastNetworkPathname = f.getPath();
+        putString("lastNetworkPathname", lastNetworkPathname);
+        file = c.getSelectedFile();
+        return file;
     }
 
     /**
@@ -122,22 +188,13 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
      *
      */
     public synchronized void doLoadNetwork() {
-        JFileChooser c = new JFileChooser(lastNetworkFilename);
-        File f = new File(lastNetworkFilename);
-        c.setCurrentDirectory(new File(getString("lastNetworkPathname", "")));
-        FileFilter filt = new FileNameExtensionFilter("CNN file", "xml", "pb");
-        c.addChoosableFileFilter(filt);
-        c.setFileFilter(filt);
-        c.setSelectedFile(new File(lastNetworkFilename));
-        int ret = c.showOpenDialog(chip.getAeViewer());
-        if (ret != JFileChooser.APPROVE_OPTION) {
+        File file = null;
+        file = openFileDialogAndGetFile("Choose a CNN network, either protobuf binary (pb) or jaer xml", "lastNetworkFilename", "CNN file", "xml", "pb");
+        if (file == null) {
             return;
         }
-        lastNetworkFilename = c.getSelectedFile().toString();
-        putString("lastNetworkFilename", lastNetworkFilename);
-        putString("lastNetworkPathname", f.getPath());
         try {
-            loadNetwork(c.getSelectedFile());
+            loadNetwork(file);
         } catch (Exception ex) {
             Logger.getLogger(DavisClassifierCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file, caught exception " + ex + ". See console for logging.", "Bad network file", JOptionPane.WARNING_MESSAGE);
@@ -145,22 +202,13 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     }
 
     public synchronized void doLoadLabels() {
-        JFileChooser c = new JFileChooser(lastLabelsFilename);
-        File f = new File(lastLabelsFilename);
-        c.setCurrentDirectory(new File(getString("lastNetworkPathname", "")));
-        FileFilter filt = new FileNameExtensionFilter("labels file", "txt");
-        c.addChoosableFileFilter(filt);
-        c.setFileFilter(filt);
-        c.setSelectedFile(new File(lastLabelsFilename));
-        int ret = c.showOpenDialog(chip.getAeViewer());
-        if (ret != JFileChooser.APPROVE_OPTION) {
+        File file = null;
+        file = openFileDialogAndGetFile("Choose a labels file, one label per line", "lastLabelsFilename", "labels file", "txt");
+        if (file == null) {
             return;
         }
-        lastNetworkFilename = c.getSelectedFile().toString();
-        putString("lastLabelsFilename", lastNetworkFilename);
-        putString("lastNetworkPathname", f.getPath());
         try {
-            loadLabels(c.getSelectedFile());
+            loadLabels(file);
         } catch (Exception ex) {
             Logger.getLogger(DavisClassifierCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file, caught exception " + ex + ". See console for logging.", "Bad network file", JOptionPane.WARNING_MESSAGE);
@@ -312,7 +360,6 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                 }
                 apsDvsNet.setSoftMaxOutput(softMaxOutput); // must set manually since net doesn't know option kept here.
                 apsDvsNet.setZeroPadding(zeroPadding); // must set manually since net doesn't know option kept here.
-                apsDvsNet.setMakeRGBFrames(makeRGBFrames); // must set manually since net doesn't know option kept here.
                 dvsSubsampler.setFromNetwork(apsDvsNet);
             }
         } catch (IOException ex) {
@@ -345,7 +392,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                     if (measurePerformance) {
                         startTime = System.nanoTime();
                     }
-                    float[] outputs = apsDvsNet.processDownsampledFrame((AEFrameChipRenderer) (chip.getRenderer()));
+                    float[] outputs = apsDvsNet.processAPSFrame((AEFrameChipRenderer) (chip.getRenderer()));
                     if (measurePerformance) {
                         long dt = System.nanoTime() - startTime;
                         float ms = 1e-6f * dt;
@@ -360,7 +407,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                     startTime = System.nanoTime();
                 }
                 if (processDVSTimeSlices) {
-                    apsDvsNet.processDvsTimeslice((DvsFrame) evt.getNewValue()); // generates PropertyChange EVENT_MADE_DECISION
+                    apsDvsNet.processDvsFrame((DvsFrame) evt.getNewValue()); // generates PropertyChange EVENT_MADE_DECISION
                     if (measurePerformance) {
                         long dt = System.nanoTime() - startTime;
                         float ms = 1e-6f * dt;
@@ -394,6 +441,38 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                 apsDvsNet.getOutputLayer().drawHistogram(gl, chip.getSizeX(), chip.getSizeY(), lineWidth, Color.RED);
             }
         }
+
+        if ((showTop1Label || showTop5Labels) && apsDvsNet.getLabels() != null
+                && apsDvsNet.getLabels().size() > 0) {
+            if (showTop1Label) {
+                drawDecisionOutput(drawable, apsDvsNet);
+            }
+        }
+    }
+
+    private TextRenderer textRenderer = null;
+
+    private void drawDecisionOutput(GLAutoDrawable drawable, AbstractDavisCNN network) {
+        if(network==null || network.getOutputLayer()==null) return;
+        GL2 gl = drawable.getGL().getGL2();
+        int width = drawable.getSurfaceWidth();
+        int height = drawable.getSurfaceHeight();
+        int top1 = network.getOutputLayer().getMaxActivatedUnit();
+        if (top1 < 0 || top1 >= apsDvsNet.getLabels().size()) {
+            return;
+        }
+        if (textRenderer == null) {
+            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36), true, false);
+        }
+        float top1probability = 1f;
+        top1probability = network.getOutputLayer().getMaxActivation(); // brightness scale
+        textRenderer.setColor(1, 1, 1, 1);
+        textRenderer.beginRendering(width, height);
+        String label = apsDvsNet.getLabels().get(top1);
+        String s=String.format("%s (%%%.1f)",label,top1probability*100);
+        Rectangle2D r = textRenderer.getBounds(s);
+        textRenderer.draw(s, (width / 2) - ((int) r.getWidth() / 2), height / 2);
+        textRenderer.endRendering();
     }
 
     /**
@@ -661,13 +740,9 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     public void setMakeRGBFrames(boolean makeRGBFrames) {
         this.makeRGBFrames = makeRGBFrames;
         putBoolean("makeRGBFrames", makeRGBFrames);
-        if (apsDvsNet == null) {
-            return;
-        }
-        apsDvsNet.setMakeRGBFrames(makeRGBFrames);
     }
-    
-        /**
+
+    /**
      * @return the inputLayerName
      */
     public String getInputLayerName() {
@@ -695,6 +770,66 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     public void setOutputLayerName(String outputLayerName) {
         this.outputLayerName = outputLayerName;
         putString("outputLayerName", outputLayerName);
+    }
+
+    /**
+     * @return the imageWidth
+     */
+    public int getImageWidth() {
+        return imageWidth;
+    }
+
+    /**
+     * @param imageWidth the imageWidth to set
+     */
+    public void setImageWidth(int imageWidth) {
+        this.imageWidth = imageWidth;
+        putInt("imageWidth",imageWidth);
+    }
+
+    /**
+     * @return the imageHeight
+     */
+    public int getImageHeight() {
+        return imageHeight;
+    }
+
+    /**
+     * @param imageHeight the imageHeight to set
+     */
+    public void setImageHeight(int imageHeight) {
+        this.imageHeight = imageHeight;
+        putInt("imageHeight",imageHeight);
+    }
+
+    /**
+     * @return the imageMean
+     */
+    public float getImageMean() {
+        return imageMean;
+    }
+
+    /**
+     * @param imageMean the imageMean to set
+     */
+    public void setImageMean(float imageMean) {
+        this.imageMean = imageMean;
+        putFloat("imageMean",imageMean);
+    }
+
+    /**
+     * @return the imageScale
+     */
+    public float getImageScale() {
+        return imageScale;
+    }
+
+    /**
+     * @param imageScale the imageScale to set
+     */
+    public void setImageScale(float imageScale) {
+        this.imageScale = imageScale;
+        putFloat("imageScale", imageScale);
     }
 
 }

@@ -23,6 +23,7 @@ import org.tensorflow.DataType;
 import org.tensorflow.Graph;
 import org.tensorflow.Output;
 import org.tensorflow.Session;
+import org.tensorflow.Shape;
 import org.tensorflow.Tensor;
 import org.tensorflow.types.UInt8;
 
@@ -76,11 +77,12 @@ public class TensorFlow {
             }
         }
     }
-
+    
     public static float[] executeGraph(Graph graph, Tensor<Float> image, String inputLayerName, String outputLayerName) {
 //        try (Graph g=graph) {
             try (Session s = new Session(graph);
-                    Tensor<Float> result = s.runner().feed(inputLayerName, image).fetch(outputLayerName).run().get(0).expect(Float.class)) { 
+                    Tensor<Float> result = s.runner().feed(inputLayerName, image).fetch(outputLayerName).run().get(0).expect(Float.class)
+                    ) { 
                 final long[] rshape = result.shape();
                 if (result.numDimensions() != 2 || rshape[0] != 1) {
                     throw new RuntimeException(
