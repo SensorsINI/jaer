@@ -113,31 +113,31 @@ public class Chip2DRenderer implements Observer {
     public float[] getPixmapArray() {
         return pixmap.array();
     }
-    
+
     /**
      * sets a specific value of the pixmap
      *
      * @param index index into pixmap. Add offset for G (1) B(2)
      * @param value float value, 0-1 range
-     * @see #getPixMapIndex(int, int) 
+     * @see #getPixMapIndex(int, int)
      */
     public void setAnnotateValue(int index, float value) {
         pixmap.put(index, value);
     }
-    
+
     /**
      * sets a specific color (rgb float 0-1) of the pixmap
      *
      * @param index
      * @param value float[3] vector containing RGB values
-     * @see #getPixMapIndex(int, int) 
+     * @see #getPixMapIndex(int, int)
      */
     public void setAnnotateColorRGB(int index, float[] value) {
         pixmap.put(index, value[0]);
-        pixmap.put(index+1, value[1]);
-        pixmap.put(index+2, value[2]);
+        pixmap.put(index + 1, value[1]);
+        pixmap.put(index + 2, value[2]);
     }
-    
+
     /**
      * sets a specific color (rgb float 0-1) of the pixmap
      *
@@ -146,10 +146,10 @@ public class Chip2DRenderer implements Observer {
      * @param value
      */
     public void setAnnotateColorRGB(int x, int y, float[] value) {
-        int index = getPixMapIndex(x,y);
+        int index = getPixMapIndex(x, y);
         pixmap.put(index, value[0]);
-        pixmap.put(index+1, value[1]);
-        pixmap.put(index+2, value[2]);
+        pixmap.put(index + 1, value[1]);
+        pixmap.put(index + 2, value[2]);
     }
 
 //    public void setPixmapPosition(int x, int y) {
@@ -335,7 +335,7 @@ public class Chip2DRenderer implements Observer {
         resetPixmapGrayLevel(value);
         grayValue = value;
     }
-    
+
     /**
      * Resets the pixmap frame buffer to a given gray level.
      *
@@ -377,10 +377,20 @@ public class Chip2DRenderer implements Observer {
         prefs.putInt("Chip2DRenderer.colorScale", colorScale);
     }
 
+    /**
+     * Gets width in chip pixels (not screen pixels).
+     *
+     * @return width of renderer in chip pixels
+     */
     public int getWidth() {
         return sizeX;
     }
 
+    /**
+     * Gets height in chip pixels (not screen pixels).
+     *
+     * @return height of renderer in chip pixels
+     */
     public int getHeight() {
         return sizeY;
     }
