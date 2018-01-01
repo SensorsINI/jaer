@@ -122,7 +122,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     private int imageWidth=getInt("imageWidth",64);
     private int imageHeight=getInt("imageHeight",64);
     private float imageMean=getFloat("imageMean",127);
-    private float imageScale=getFloat("imageMean",255);
+    private float imageScale=getFloat("imageScale",1);
 
     public AbstractDavisCNNProcessor(AEChip chip) {
         super(chip);

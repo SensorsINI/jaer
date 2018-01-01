@@ -35,17 +35,19 @@ import java.util.logging.Logger;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
+import com.jogamp.opengl.util.texture.Texture;
+import com.jogamp.opengl.util.texture.TextureIO;
 
 import gnu.io.NRSerialPort;
+import java.awt.image.BufferedImage;
+import java.io.InputStream;
+import javax.imageio.ImageIO;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
-import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.eventprocessing.tracking.MedianTracker;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.SoundWavFilePlayer;
@@ -53,7 +55,7 @@ import net.sf.jaer.util.SpikeSound;
 
 /**
  * Extends DavisClassifierCNNProcessor to add annotation graphics to show
- RoShamBo demo output for development of rock-scissors-paper robot
+ * RoShamBo demo output for development of rock-scissors-paper robot
  *
  * @author Tobi
  */
@@ -61,8 +63,8 @@ import net.sf.jaer.util.SpikeSound;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class RoShamBoCNN extends DavisClassifierCNNProcessor {
 
-    private boolean hideOutput = getBoolean("hideOutput", false);
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
+    private boolean showSymbol = getBoolean("showSymbol", true);
     Statistics statistics = new Statistics();
     private float decisionLowPassMixingFactor = getFloat("decisionLowPassMixingFactor", .2f);
     private SpikeSound spikeSound = null;
@@ -78,7 +80,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     private float descisionThresholdActivation = getFloat("descisionThresholdActivation", .7f);
     private SoundPlayer soundPlayer = null;
     private boolean playToWin = getBoolean("playToWin", true);
-    private boolean addedStatisticsListener=false;
+    private boolean addedStatisticsListener = false;
 
     /**
      * for game state machine
@@ -102,13 +104,17 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     private HandTrackerState handTrackerState = HandTrackerState.Idle;
     private long handTrackerStateUpdateTimeMs;
 
-
     /**
      * output units
      */
     private static final int DECISION_PAPER = 0, DECISION_SCISSORS = 1, DECISION_ROCK = 2, DECISION_BACKGROUND = 3;
     private static final String[] DECISION_STRINGS = {"Paper", "Scissors", "Rock", "Background"};
     private boolean showDecisionStatistics = getBoolean("showDecisionStatistics", true);
+
+    /**
+     * Symbols
+     */
+    private Texture[] symbolTextures = null;
 
     public RoShamBoCNN(AEChip chip) {
         super(chip);
@@ -125,7 +131,6 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         setPropertyTooltip(roshamboGame, "useGameStatesToPlay", "Select to use the Roshambo state machine; if unselected, then instantaneous (filtered by mixing factor) CNN output is used");
         String roshambo = "0b. RoShamBo Engine";
         setPropertyTooltip(roshambo, "showAnalogDecisionOutput", "Shows face detection as analog activation of face unit in softmax of network output");
-        setPropertyTooltip(roshambo, "hideOutput", "Hides output face detection indications");
         setPropertyTooltip(roshambo, "decisionLowPassMixingFactor", "The softmax outputs of the CNN are low pass filtered using this mixing factor; reduce decisionLowPassMixingFactor to filter more decisions");
         setPropertyTooltip(roshambo, "playSpikeSounds", "Play a spike sound on change of network output decision");
         setPropertyTooltip(roshambo, "serialPortName", "Name of serial port to send robot commands to");
@@ -135,14 +140,15 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         setPropertyTooltip(roshambo, "playSoundsMinIntervalMs", "Minimum time inteval for playing sound effects in ms");
         setPropertyTooltip(roshambo, "descisionThresholdActivation", "Minimum winner activation to activate hand or play a sound");
         setPropertyTooltip(roshambo, "showDecisionStatistics", "Displays statistics of decisions");
-        setPropertyTooltip(roshambo, "playToWin", "If selected, symbol sent to hand will  beat human; if unselected, it ties the human");
-        
+        setPropertyTooltip(roshambo, "playToWin", "If selected, symbol showsn and sent to hand will  beat human; if unselected, it ties the human");
+        setPropertyTooltip(roshambo, "showSymbol", "If selected, symbol is displayed as overlay, either the one recognized or the winner, depending on playToWin");
+
         dvsSubsampler.setRectifyPolarities(true);
         dvsSubsampler.setNormalizeDVSForZsNullhop(true); // to make it work out of the box
 
-        if(apsDvsNet!=null){
+        if (apsDvsNet != null) {
             apsDvsNet.getSupport().addPropertyChangeListener(AbstractDavisCNN.EVENT_MADE_DECISION, statistics);
-        } 
+        }
     }
 
     @Override
@@ -152,7 +158,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
             apsDvsNet.getSupport().addPropertyChangeListener(AbstractDavisCNN.EVENT_MADE_DECISION, statistics);
             addedStatisticsListener = true;
         }
-         if (useGameStatesToPlay) {
+        if (useGameStatesToPlay) {
             out = getEnclosedFilterChain().filterPacket(out);
             if (tracker.getVisibleClusters().size() > 0) {
                 RectangularClusterTracker.Cluster handCluster = tracker.getVisibleClusters().getFirst();
@@ -197,8 +203,8 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
                     }
                     break;
                 case Throw1:
-                    if(System.currentTimeMillis()-gameStateUpdateTimeMs>throwIntervalTimeoutMs){
-                        gameState=GameState.Idle;
+                    if (System.currentTimeMillis() - gameStateUpdateTimeMs > throwIntervalTimeoutMs) {
+                        gameState = GameState.Idle;
                         break;
                     }
                     if (handTrackerState == HandTrackerState.CrossedLower) {
@@ -208,8 +214,8 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
                     }
                     break;
                 case Throw2:
-                   if(System.currentTimeMillis()-gameStateUpdateTimeMs>throwIntervalTimeoutMs){
-                        gameState=GameState.Idle;
+                    if (System.currentTimeMillis() - gameStateUpdateTimeMs > throwIntervalTimeoutMs) {
+                        gameState = GameState.Idle;
                         break;
                     }
                     if (handTrackerState == HandTrackerState.CrossedLower) { // only cross upper to show
@@ -245,45 +251,26 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     }
 
     private void sendDecisionToHand() {
-        if(statistics.maxActivation<descisionThresholdActivation){
+        if (statistics.maxActivation < descisionThresholdActivation) {
             return;
         }
         char cmd = 0;
-        if (!playToWin) {
-            switch (statistics.descision) {
-                case DECISION_ROCK:
-                    cmd = '3';
-                    break;
-                case DECISION_SCISSORS:
-                    cmd = '2';
-                    break;
-                case DECISION_PAPER:
-                    cmd = '1';
-                    break;
-                case DECISION_BACKGROUND:
-                    cmd = '1';
-                    break;
-                default:
+        switch (statistics.symbolOutput) {
+            case DECISION_ROCK:
+                cmd = '3';
+                break;
+            case DECISION_SCISSORS:
+                cmd = '2';
+                break;
+            case DECISION_PAPER:
+                cmd = '1';
+                break;
+            case DECISION_BACKGROUND:
+                cmd = '1';
+                break;
+            default:
 //                    log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
             }
-        } else { // beat human
-            switch (statistics.descision) {
-                case DECISION_ROCK:
-                    cmd = '1';
-                    break;
-                case DECISION_SCISSORS:
-                    cmd = '3';
-                    break;
-                case DECISION_PAPER:
-                    cmd = '2';
-                    break;
-                case DECISION_BACKGROUND:
-                    cmd = '1';
-                    break;
-                default:
-//                    log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
-            }
-        }
         sendCommandToHand(cmd);
     }
 
@@ -293,6 +280,61 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         statistics.reset();
         gameState = GameState.Idle;
         handTrackerState = HandTrackerState.Idle;
+    }
+
+    private void loadAndBindSymbolTextures(GL2 gl) {
+        try {
+            Texture[] textures = new Texture[3];
+            InputStream is;
+            is = RoShamBoCNN.class.getResourceAsStream("rock.png");
+            textures[DECISION_ROCK] = TextureIO.newTexture(is, false, "png");
+            is = RoShamBoCNN.class.getResourceAsStream("scissors.png");
+            textures[DECISION_SCISSORS] = TextureIO.newTexture(is, false, "png");
+            is = RoShamBoCNN.class.getResourceAsStream("paper.png");
+            textures[DECISION_PAPER] = TextureIO.newTexture(is, false, "png");
+            symbolTextures = textures;
+//            for (Texture texture : textures) {
+//
+//                texture.enable(gl);
+//            }
+        } catch (Exception e) {
+            log.warning("couldn't load symbol textures: " + e.toString());
+        }
+    }
+
+    private void drawSymbolOverlay(GL2 gl, int i) {
+        if (symbolTextures == null || i < 0 || i >= symbolTextures.length || symbolTextures[i] == null) {
+            return;
+        }
+        symbolTextures[i].bind(gl);
+        symbolTextures[i].enable(gl);
+        gl.glDisable(GL.GL_DEPTH_TEST);
+        gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+        gl.glEnable(GL.GL_BLEND);
+        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
+        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
+        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST);
+        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST);
+        gl.glPushMatrix();
+        drawPolygon(gl, chip.getSizeX() / 2, chip.getSizeY() / 2);
+        gl.glPopMatrix();
+    }
+
+    private void drawPolygon(final GL2 gl, final int width, final int height) {
+        final double xRatio = (double) chip.getSizeX() / (double) width;
+        final double yRatio = (double) chip.getSizeY() / (double) height;
+        gl.glBegin(GL2.GL_POLYGON);
+
+        gl.glTexCoord2d(0, 0);
+        gl.glVertex2d(0, 0);
+        gl.glTexCoord2d(xRatio, 0);
+        gl.glVertex2d(xRatio * width, 0);
+        gl.glTexCoord2d(xRatio, yRatio);
+        gl.glVertex2d(xRatio * width, yRatio * height);
+        gl.glTexCoord2d(0, yRatio);
+        gl.glVertex2d(0, yRatio * height);
+
+        gl.glEnd();
     }
 
     @Override
@@ -313,16 +355,13 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
-        if (hideOutput) {
-            return;
-        }
         GL2 gl = drawable.getGL().getGL2();
         if (textRenderer == null) {
             textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 72), true, false);
         }
         checkBlend(gl);
         if ((apsDvsNet != null) && (apsDvsNet.getOutputLayer() != null) && (apsDvsNet.getOutputLayer().getActivations() != null)) {
-            drawDecisionOutput(gl, drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
+            showRoshamboDescision(gl, drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
         }
         if (showDecisionStatistics) {
             statistics.draw(gl);
@@ -355,54 +394,50 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
             gl.glVertex2f(chip.getSizeX(), h);
             gl.glEnd();
         }
+
     }
 
     private TextRenderer textRenderer = null;
 
-    private void drawDecisionOutput(GL2 gl, int width, int height) {
-
-        float brightness = 0.0f;
-        if (showAnalogDecisionOutput) {
-            brightness = statistics.maxActivation; // brightness scale
-        } else {
-            brightness = 1;
+    private void showRoshamboDescision(GL2 gl, int width, int height) {
+        if (playSounds && statistics.symbolDetected >= 0 && statistics.symbolDetected < 3 && statistics.maxActivation > descisionThresholdActivation) {
+            if (soundPlayer == null) {
+                soundPlayer = new SoundPlayer();
+            }
+            soundPlayer.playSound(statistics.symbolOutput);
         }
-        gl.glColor3f(0.0f, brightness, brightness);
+        if (!showSymbol) {
+            return;
+        }
+        if (statistics.maxActivation > descisionThresholdActivation) {
+            if (symbolTextures == null) {
+                loadAndBindSymbolTextures(gl);
+            }
+            drawSymbolOverlay(gl, statistics.symbolOutput);
+        }
+
+//        float brightness = 0.0f;
+//        if (showAnalogDecisionOutput) {
+//            brightness = statistics.maxActivation; // brightness scale
+//        } else {
+//            brightness = 1;
+//        }
+//        gl.glColor3f(0.0f, brightness, brightness);
 //        gl.glPushMatrix();
 //        gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
-        textRenderer.setColor(brightness, brightness, brightness, 1);
-        textRenderer.beginRendering(width, height);
-        if ((statistics.descision >= 0) && (statistics.descision < DECISION_STRINGS.length)) {
-            Rectangle2D r = textRenderer.getBounds(DECISION_STRINGS[statistics.descision]);
-            String decisionString=DECISION_STRINGS[statistics.descision];
-            if(apsDvsNet.getLabels()!=null && apsDvsNet.getLabels().size()>0){
-                decisionString=apsDvsNet.getLabels().get(statistics.descision);
-            }
-            textRenderer.draw(decisionString, (width / 2) - ((int) r.getWidth() / 2), height / 2);
-            if (playSounds && statistics.descision >= 0 && statistics.descision < 3 && statistics.maxActivation > descisionThresholdActivation) {
-                if (soundPlayer == null) {
-                    soundPlayer = new SoundPlayer();
-                }
-                soundPlayer.playSound(statistics.descision);
-            }
-        }
-        textRenderer.endRendering();
+//        textRenderer.setColor(brightness, brightness, brightness, 1);
+//        textRenderer.beginRendering(width, height);
+//        if ((statistics.symbolDetected >= 0) && (statistics.symbolDetected < DECISION_STRINGS.length)) {
+//            Rectangle2D r = textRenderer.getBounds(DECISION_STRINGS[statistics.symbolDetected]);
+//            String decisionString = DECISION_STRINGS[statistics.symbolDetected];
+//            if (apsDvsNet.getLabels() != null && apsDvsNet.getLabels().size() > 0) {
+//                decisionString = apsDvsNet.getLabels().get(statistics.symbolDetected);
+//            }
+//            textRenderer.draw(decisionString, (width / 2) - ((int) r.getWidth() / 2), height / 2);
+//
+//        }
+//        textRenderer.endRendering();
 //        gl.glPopMatrix();
-    }
-
-    /**
-     * @return the hideOutput
-     */
-    public boolean isHideOutput() {
-        return hideOutput;
-    }
-
-    /**
-     * @param hideOutput the hideOutput to set
-     */
-    public void setHideOutput(boolean hideOutput) {
-        this.hideOutput = hideOutput;
-        putBoolean("hideOutput", hideOutput);
     }
 
     /**
@@ -580,7 +615,8 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         final int HISTORY_LENGTH = 10;
         int[] decisionHistory = new int[HISTORY_LENGTH];
         float maxActivation = Float.NEGATIVE_INFINITY;
-        int descision = -1;
+        private int symbolDetected = -1;
+        private int symbolOutput = -1;
         boolean outputChanged = false;
 
         public Statistics() {
@@ -621,35 +657,61 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
             return sb.toString();
         }
 
+        private void computeOutputSymbol() {
+            if (!playToWin) {
+                symbolOutput = symbolDetected;
+            } else { // beat human
+                switch (statistics.symbolDetected) {
+                    case DECISION_ROCK:
+                        symbolOutput = DECISION_PAPER;
+                        break;
+                    case DECISION_SCISSORS:
+                        symbolOutput = DECISION_ROCK;
+                        break;
+                    case DECISION_PAPER:
+                        symbolOutput = DECISION_SCISSORS;
+                        break;
+                    case DECISION_BACKGROUND:
+                    default:
+                        symbolOutput = DECISION_BACKGROUND;
+                        break;
+                }
+            }
+        }
+
         @Override
         public synchronized void propertyChange(PropertyChangeEvent evt) {
-             if (evt.getPropertyName() == AbstractDavisCNN.EVENT_MADE_DECISION) {
-                int lastOutput = descision;
+            if (evt.getPropertyName() == AbstractDavisCNN.EVENT_MADE_DECISION) {
+                int lastOutput = symbolDetected;
                 AbstractDavisCNN net = (AbstractDavisCNN) evt.getNewValue();
                 maxActivation = Float.NEGATIVE_INFINITY;
-                descision = -1;
+                symbolDetected = -1;
                 try {
                     for (int i = 0; i < NUM_CLASSES; i++) {
                         float output = net.getOutputLayer().getActivations()[i];
                         lowpassFilteredOutputUnits[i] = ((1 - decisionLowPassMixingFactor) * lowpassFilteredOutputUnits[i]) + (output * decisionLowPassMixingFactor);
                         if (lowpassFilteredOutputUnits[i] > maxActivation) {
                             maxActivation = lowpassFilteredOutputUnits[i];
-                            descision = i;
+                            symbolDetected = i;
                         }
                     }
                 } catch (ArrayIndexOutOfBoundsException e) {
                     log.warning("Array index out of bounds in rendering output. Did you load a valid CNN with 3 (or more) output units?");
-
+                    return;
                 }
-                decisionCounts[descision]++;
+                if (symbolDetected < 0) {
+                    log.warning("negative descision, network must not have run correctly");
+                    return;
+                }
+                decisionCounts[symbolDetected]++;
                 totalCount++;
-                if ((descision != lastOutput)) {
+                if ((symbolDetected != lastOutput)) {
                     // CNN output changed, respond here
                     outputChanged = true;
                 } else {
                     outputChanged = false;
                 }
-
+                computeOutputSymbol();
             } else if (evt.getPropertyName() == AEViewer.EVENT_FILEOPEN) {
                 reset();
             }
@@ -734,7 +796,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
 
     /**
      * @param descisionThresholdActivation the descisionThresholdActivation to
- set
+     * set
      */
     public void setDescisionThresholdActivation(float descisionThresholdActivation) {
         if (descisionThresholdActivation > 1) {
@@ -806,7 +868,6 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         putFloat("trackerLowerEdgeThreshold", trackerLowerEdgeThreshold);
     }
 
-
     /**
      * @return the throwIntervalTimeoutMs
      */
@@ -851,6 +912,21 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         this.useGameStatesToPlay = useGameStatesToPlay;
         putBoolean("useGameStatesToPlay", useGameStatesToPlay);
         tracker.setFilterEnabled(useGameStatesToPlay);
+    }
+
+    /**
+     * @return the showSymbol
+     */
+    public boolean isShowSymbol() {
+        return showSymbol;
+    }
+
+    /**
+     * @param showSymbol the showSymbol to set
+     */
+    public void setShowSymbol(boolean showSymbol) {
+        this.showSymbol = showSymbol;
+        putBoolean("showSymbol", showSymbol);
     }
 
 }
