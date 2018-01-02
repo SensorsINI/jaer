@@ -119,14 +119,14 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     protected boolean makeRGBFrames = getBoolean("makeRGBFrames", false);
     protected String inputLayerName = getString("inputLayerName", "input");
     protected String outputLayerName = getString("outputLayerName", "output");
-    private int imageWidth=getInt("imageWidth",64);
-    private int imageHeight=getInt("imageHeight",64);
-    private float imageMean=getFloat("imageMean",127);
-    private float imageScale=getFloat("imageScale",1);
+    private int imageWidth = getInt("imageWidth", 64);
+    private int imageHeight = getInt("imageHeight", 64);
+    private float imageMean = getFloat("imageMean", 127);
+    private float imageScale = getFloat("imageScale", 1);
 
     public AbstractDavisCNNProcessor(AEChip chip) {
         super(chip);
-        String deb = "4. Debug", disp = "1. Display", anal = "2. Analysis", tf="3. Tensorflow";
+        String deb = "4. Debug", disp = "1. Display", anal = "2. Analysis", tf = "3. Tensorflow";
         setPropertyTooltip("loadNetwork", "Load an XML or PB file containing a CNN");
         setPropertyTooltip("loadLabels", "Load labels for output units");
         setPropertyTooltip(disp, "showOutputAsBarChart", "displays activity of output units as bar chart, where height indicates activation");
@@ -387,6 +387,10 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         // new activationsFrame is available, process it
         switch (evt.getPropertyName()) {
             case AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE:
+                if (timeLimiter.isTimedOut()) {
+                    log.warning("skipped this frame because "+timeLimiter.toString());
+                    return; // don't process this frame
+                }
                 if (isFilterEnabled() && (apsDvsNet != null) && (processAPSFrames)) {
                     long startTime = 0;
                     if (measurePerformance) {
@@ -453,7 +457,9 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     private TextRenderer textRenderer = null;
 
     private void drawDecisionOutput(GLAutoDrawable drawable, AbstractDavisCNN network) {
-        if(network==null || network.getOutputLayer()==null) return;
+        if (network == null || network.getOutputLayer() == null) {
+            return;
+        }
         GL2 gl = drawable.getGL().getGL2();
         int width = drawable.getSurfaceWidth();
         int height = drawable.getSurfaceHeight();
@@ -469,7 +475,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         textRenderer.setColor(1, 1, 1, 1);
         textRenderer.beginRendering(width, height);
         String label = apsDvsNet.getLabels().get(top1);
-        String s=String.format("%s (%%%.1f)",label,top1probability*100);
+        String s = String.format("%s (%%%.1f)", label, top1probability * 100);
         Rectangle2D r = textRenderer.getBounds(s);
         textRenderer.draw(s, (width / 2) - ((int) r.getWidth() / 2), height / 2);
         textRenderer.endRendering();
@@ -784,7 +790,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
      */
     public void setImageWidth(int imageWidth) {
         this.imageWidth = imageWidth;
-        putInt("imageWidth",imageWidth);
+        putInt("imageWidth", imageWidth);
     }
 
     /**
@@ -799,7 +805,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
      */
     public void setImageHeight(int imageHeight) {
         this.imageHeight = imageHeight;
-        putInt("imageHeight",imageHeight);
+        putInt("imageHeight", imageHeight);
     }
 
     /**
@@ -814,7 +820,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
      */
     public void setImageMean(float imageMean) {
         this.imageMean = imageMean;
-        putFloat("imageMean",imageMean);
+        putFloat("imageMean", imageMean);
     }
 
     /**
