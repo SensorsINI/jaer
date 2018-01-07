@@ -121,7 +121,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     protected String outputLayerName = getString("outputLayerName", "output");
     private int imageWidth = getInt("imageWidth", 64);
     private int imageHeight = getInt("imageHeight", 64);
-    private float imageMean = getFloat("imageMean", 127);
+    private float imageMean = getFloat("imageMean", 0);
     private float imageScale = getFloat("imageScale", 1);
 
     public AbstractDavisCNNProcessor(AEChip chip) {
@@ -153,10 +153,10 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         setPropertyTooltip(tf, "makeRGBFrames", "(TensorFlow only) Tells the CNN to make RGB input from grayscale DVS/APS frames; use it with a network configured for RGB input");
         setPropertyTooltip(tf, "inputLayerName", "(TensorFlow only) Input layer; parse it from loading the network and examining console output for layers for lines starting with ****");
         setPropertyTooltip(tf, "outputLayerName", "(TensorFlow only) Output layer; parse it from loading the network and examining console output for layers for lines starting with ****");
-        setPropertyTooltip(tf, "imageWidth", "(TensorFlow only) Input image width; the APS frames are scaled to this width in pixels");
-        setPropertyTooltip(tf, "imageHeight", "(TensorFlow only) Input image height; the APS frames are scaled to this height in pixels");
-        setPropertyTooltip(tf, "imageScale", "(TensorFlow only) Input image pixel value scaling; the APS frames are scaled by this value, e.g. 255 for imagenet images. The jaer units are typically 0-1 range.");
-        setPropertyTooltip(tf, "imageMean", "(TensorFlow only) Input image pixel value mean; the APS frames have this mean value, typically on scale 0-255. The jaer frames typically have mean value in range 0-1.");
+        setPropertyTooltip(tf, "imageWidth", "(TensorFlow only, only for APS frames) Input image width; the APS frames are scaled to this width in pixels");
+        setPropertyTooltip(tf, "imageHeight", "(TensorFlow only, only for APS frames) Input image height; the APS frames are scaled to this height in pixels");
+        setPropertyTooltip(tf, "imageScale", "(TensorFlow only, only for APS frames) Input image pixel value scaling; the APS frames are scaled by this value, e.g. 255 for imagenet images. The jaer units are typically 0-1 range.");
+        setPropertyTooltip(tf, "imageMean", "(TensorFlow only, only for APS frames) Input image pixel value mean; the APS frames have this mean value, typically on scale 0-255. The jaer frames typically have mean value in range 0-1.");
     }
 
     private File openFileDialogAndGetFile(String tip, String key, String type, String... ext) {
