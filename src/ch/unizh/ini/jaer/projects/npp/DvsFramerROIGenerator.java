@@ -203,7 +203,6 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
-        super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
         if (showROIsTemporarilyFlag) {
             Random random = new Random();
