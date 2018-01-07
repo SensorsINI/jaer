@@ -148,7 +148,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
      * @return activations of output
      */
     private float[] executeDvsFrameGraph(FloatBuffer pixbuf, int width, int height) {
-        final float mean = processor.getImageMean(), scale = processor.getImageScale();
+//        final float mean = processor.getImageMean(), scale = processor.getImageScale();
         final int numChannels = processor.isMakeRGBFrames() ? 3 : 1;
         inputLayer = new InputLayer(width, height, numChannels); // TODO hack since we don't know the input size yet until network runs
 
@@ -169,7 +169,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
                 final int origIdx = x + width * y;
                 for (int c = 0; c < numChannels; c++) {
                     final int newIdx = c + numChannels * (x + (width * (height - y - 1)));
-                    flippedarray[newIdx] = ((origarray[origIdx] * rgb[c])-mean)/scale;
+                    flippedarray[newIdx] = ((origarray[origIdx] * rgb[c]));
                 }
             }
         }
