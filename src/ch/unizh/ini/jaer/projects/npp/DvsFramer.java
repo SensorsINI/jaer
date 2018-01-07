@@ -27,6 +27,7 @@ import java.util.logging.Logger;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -60,7 +61,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * @see #EVENT_NEW_FRAME_AVAILABLE
  *
  */
-abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater {
+abstract public class DvsFramer extends EventFilter2D  {
 
     protected static Logger log = Logger.getLogger("DvsFramer");
     /**
@@ -290,18 +291,19 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
         activationsFrame.setPreferredSize(new Dimension(400, 400));
     }
 
-    @Override
-    public void annotate(GLAutoDrawable drawable) {
-        GL2 gl = drawable.getGL().getGL2();
-        if (showFrames && lastDvsFrame != null && lastDvsFrame.isFilled()) {
-            lastDvsFrame.draw();
-        }
+//    @Override
+//    public void annotate(GLAutoDrawable drawable) {
+//        GL2 gl = drawable.getGL().getGL2();
+////        if (showFrames && lastDvsFrame != null /*&& lastDvsFrame.isFilled()*/) {
+////            lastDvsFrame.draw();
+////        }
+//
+//    }
 
-    }
-
-    /** The frame of accumulated DVS events. 
-     * The origin of the frame is the same as of the sensor, i.e. for jAER, 0,0 is the LL corner
-     * 
+    /**
+     * The frame of accumulated DVS events. The origin of the frame is the same
+     * as of the sensor, i.e. for jAER, 0,0 is the LL corner
+     *
      */
     public class DvsFrame {
 
@@ -320,7 +322,6 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
             return "DvsFrame{" + "width=" + width + ", height=" + height + ", accumulatedEventCount=" + accumulatedEventCount + ", mostOffCount=" + mostOffCount + ", mostOnCount=" + mostOnCount + ", sparsity=" + sparsity + ", filled=" + filled + '}';
         }
 
-        
         public void clear() {
             if (eventSum == null) {
                 log.warning("null eventSum array, memory not yet allocated");
@@ -403,6 +404,17 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
                 filled = true;
                 normalizeFrame();
                 lastDvsFrame = this;
+                if (showFrames) { // 
+                    final DvsFramer.DvsFrame toRender = this;
+                    Runnable doShowImage = new Runnable() {
+                        public void run() {
+                            if (showFrames && lastDvsFrame != null /*&& lastDvsFrame.isFilled()*/) {
+                                lastDvsFrame.draw();
+                            }
+                        }
+                    };
+                    SwingUtilities.invokeLater(doShowImage);
+                }
                 getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILABLE, null, this); // TODO check if duplicated event fired
             }
         }
@@ -415,8 +427,9 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
          * Returns the scaled event count clipped to 0-1 range and either
          * starting at zero or centered on 0.5, depending on rectifyPolarties
          * first.
-         * 
-         * The origin of the frame is the same as of the sensor, i.e. for jAER, 0,0 is the LL corner.
+         *
+         * The origin of the frame is the same as of the sensor, i.e. for jAER,
+         * 0,0 is the LL corner.
          *
          * @param x
          * @param y
@@ -464,9 +477,10 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
         }
 
         /**
-         * Gets the index into the pixmap.
-         * The origin of the frame is the same as of the sensor, i.e. for jAER, 0,0 is the LL corner.
-         * The pixels are ordered in the pixmap row wise, i.e. the pixmap index is x + (width * y).
+         * Gets the index into the pixmap. The origin of the frame is the same
+         * as of the sensor, i.e. for jAER, 0,0 is the LL corner. The pixels are
+         * ordered in the pixmap row wise, i.e. the pixmap index is x + (width *
+         * y).
          *
          * @param x
          * @param y
@@ -686,6 +700,7 @@ abstract public class DvsFramer extends EventFilter2D implements FrameAnnotater 
 
         /**
          * Returns true if the accumulated event count is >=dvsEventsPerFrame
+         *
          * @return the filled
          */
         public boolean isFilled() {
