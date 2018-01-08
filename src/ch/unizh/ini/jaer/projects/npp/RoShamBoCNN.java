@@ -302,41 +302,6 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         }
     }
 
-    private void drawSymbolOverlay(GL2 gl, int i) {
-        if (symbolTextures == null || i < 0 || i >= symbolTextures.length || symbolTextures[i] == null) {
-            return;
-        }
-        symbolTextures[i].bind(gl);
-        symbolTextures[i].enable(gl);
-        gl.glDisable(GL.GL_DEPTH_TEST);
-        gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
-        gl.glEnable(GL.GL_BLEND);
-        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
-        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
-        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST);
-        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST);
-        gl.glPushMatrix();
-        drawPolygon(gl, chip.getSizeX() / 2, chip.getSizeY() / 2);
-        gl.glPopMatrix();
-    }
-
-    private void drawPolygon(final GL2 gl, final int width, final int height) {
-        final double xRatio = (double) chip.getSizeX() / (double) width;
-        final double yRatio = (double) chip.getSizeY() / (double) height;
-        gl.glBegin(GL2.GL_POLYGON);
-
-        gl.glTexCoord2d(0, 0);
-        gl.glVertex2d(0, 0);
-        gl.glTexCoord2d(xRatio, 0);
-        gl.glVertex2d(xRatio * width, 0);
-        gl.glTexCoord2d(xRatio, yRatio);
-        gl.glVertex2d(xRatio * width, yRatio * height);
-        gl.glTexCoord2d(0, yRatio);
-        gl.glVertex2d(0, yRatio * height);
-
-        gl.glEnd();
-    }
-
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, statistics);
@@ -361,7 +326,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         }
         checkBlend(gl);
         if ((apsDvsNet != null) && (apsDvsNet.getOutputLayer() != null) && (apsDvsNet.getOutputLayer().getActivations() != null)) {
-            showRoshamboDescision(gl, drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
+            showRoshamboDescision(drawable);
         }
         if (showDecisionStatistics) {
             statistics.draw(gl);
@@ -399,7 +364,8 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
 
     private TextRenderer textRenderer = null;
 
-    private void showRoshamboDescision(GL2 gl, int width, int height) {
+    private void showRoshamboDescision(GLAutoDrawable drawable) {
+        GL2 gl = drawable.getGL().getGL2();
         if (playSounds && statistics.symbolDetected >= 0 && statistics.symbolDetected < 3 && statistics.maxActivation > descisionThresholdActivation) {
             if (soundPlayer == null) {
                 soundPlayer = new SoundPlayer();
@@ -413,7 +379,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
             if (symbolTextures == null) {
                 loadAndBindSymbolTextures(gl);
             }
-            drawSymbolOverlay(gl, statistics.symbolOutput);
+            drawSymbolOverlay(drawable, statistics.symbolOutput);
         }
 
 //        float brightness = 0.0f;
@@ -438,6 +404,49 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
 //        }
 //        textRenderer.endRendering();
 //        gl.glPopMatrix();
+    }
+
+    private void drawSymbolOverlay(GLAutoDrawable drawable, int symbolID) {
+        GL2 gl = drawable.getGL().getGL2();
+        if (symbolTextures == null || symbolID < 0 || symbolID >= symbolTextures.length || symbolTextures[symbolID] == null) {
+            return;
+        }
+        symbolTextures[symbolID].bind(gl);
+        symbolTextures[symbolID].enable(gl);
+        gl.glDisable(GL.GL_DEPTH_TEST);
+        gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+        gl.glEnable(GL.GL_BLEND);
+        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
+        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
+        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST);
+        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST);
+        gl.glPushMatrix();
+        final int left=10, bot=10, w=chip.getSizeX()/2, h=chip.getSizeY()/2, sw=drawable.getSurfaceWidth(), sh=drawable.getSurfaceHeight();
+        drawPolygon(gl, left, bot, w, h);
+        gl.glPopMatrix();
+        String s = playToWin ? "Playing to win" : "Playing to tie";
+        textRenderer.setColor(.75f,0.75f, 0.75f, 1);
+        textRenderer.begin3DRendering();
+        Rectangle2D r = textRenderer.getBounds(s);
+        textRenderer.draw3D(s, left, bot, 0, (float)w/sw);
+        textRenderer.end3DRendering();
+    }
+
+    private void drawPolygon(final GL2 gl, final int xLowerLeft, final int yLowerLeft, final int width, final int height) {
+        final double xRatio = (double) chip.getSizeX() / (double) width;
+        final double yRatio = (double) chip.getSizeY() / (double) height;
+        gl.glBegin(GL2.GL_POLYGON);
+
+        gl.glTexCoord2d(0, 0);
+        gl.glVertex2d(xLowerLeft, yLowerLeft);
+        gl.glTexCoord2d(xRatio, 0);
+        gl.glVertex2d(xRatio * width + xLowerLeft, yLowerLeft);
+        gl.glTexCoord2d(xRatio, yRatio);
+        gl.glVertex2d(xRatio * width + xLowerLeft, yRatio * height + yLowerLeft);
+        gl.glTexCoord2d(0, yRatio);
+        gl.glVertex2d(+xLowerLeft, yRatio * height + yLowerLeft);
+
+        gl.glEnd();
     }
 
     /**
