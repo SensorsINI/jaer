@@ -64,7 +64,6 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
     private int decisionLifetimeMs = getInt("decisionLifetimeMs", 2000);
 
     private int sx, sy, nx, ny;
-    private boolean showDvsFrames = false;
     private ImageDisplay dvsFrameImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
     private JFrame dvsFrame = null;
 //    /**
@@ -158,12 +157,9 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
 
                     int locx = (e.x - roi.xLeft) >> s, locy = (e.y - roi.yBot) >> s;
                     roi.addEvent(locx, locy, e.polarity);
-                    if (roi.getAccumulatedEventCount() > dvsEventsPerFrame * (1 << (2 * roi.scale))) {
-                        getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILABLE, null, roi);
-                        if (showDvsFrames) {
-                            drawDvsFrame(roi);
-                        }
-                    }
+//                    if (roi.getAccumulatedEventCount() > dvsEventsPerFrame * (1 << (2 * roi.scale))) {
+//                        getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILABLE, null, roi);
+//                    }
                 }
             }
         }
@@ -381,73 +377,59 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
         return true;
     }
 
-    synchronized private void drawDvsFrame(DvsFrame roi) {
-        if (dvsFrame == null) {
-            String windowName = "DVS frame";
-            dvsFrame = new JFrame(windowName);
-            dvsFrame.setLayout(new BoxLayout(dvsFrame.getContentPane(), BoxLayout.Y_AXIS));
-            dvsFrame.setPreferredSize(new Dimension(600, 600));
-            JPanel panel = new JPanel();
-            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
-            dvsFrameImageDisplay = ImageDisplay.createOpenGLCanvas();
-            dvsFrameImageDisplay.setBorderSpacePixels(10);
-            dvsFrameImageDisplay.setImageSize(dimension, dimension);
-            dvsFrameImageDisplay.setSize(200, 200);
-            dvsFrameImageDisplay.setGrayValue(0);
-//            sliceBitmapLegend = sliceBitmapImageDisplay.addLegend(G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
-            panel.add(dvsFrameImageDisplay);
-
-            dvsFrame.getContentPane().add(panel);
-            dvsFrame.pack();
-            dvsFrame.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosing(WindowEvent e) {
-                    setShowDvsFrames(false);
-                }
-            });
-        }
-        if (!dvsFrame.isVisible()) {
-            dvsFrame.setVisible(true);
-        }
-        float scale = 1f / getDvsGrayScale();
-        if (dimension != dvsFrameImageDisplay.getWidth()) {
-            dvsFrameImageDisplay.setImageSize(dimension, dimension);
-            dvsFrameImageDisplay.clearLegends();
-//                    sliceBitmapLegend = dvsFrameImageDisplay.addLegend(G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
-        }
-
-//        TextRenderer textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 12));
-
-        /* Reset the image first */
-        dvsFrameImageDisplay.clearImage();
-        /* Rendering the reference patch in t-imuWarningDialog slice, it's on the center with color red */
-        for (int x = 0; x < dimension; x++) {
-            for (int y = 0; y < dimension; y++) {
-                float f = roi.getValueAtPixel(x, y);
-                float[] rgb = {f, f, f};
-                dvsFrameImageDisplay.setPixmapRGB(x, y, rgb);
-            }
-        }
-
-//        if (sliceBitmapLegend != null) {
-//            sliceBitmapLegend.s = G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH + "\nScale: " + subSampleBy;
+//    synchronized private void drawDvsFrame(DvsFrame roi) {
+//        if (dvsFrame == null) {
+//            String windowName = "DVS frame";
+//            dvsFrame = new JFrame(windowName);
+//            dvsFrame.setLayout(new BoxLayout(dvsFrame.getContentPane(), BoxLayout.Y_AXIS));
+//            dvsFrame.setPreferredSize(new Dimension(600, 600));
+//            JPanel panel = new JPanel();
+//            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+//            dvsFrameImageDisplay = ImageDisplay.createOpenGLCanvas();
+//            dvsFrameImageDisplay.setBorderSpacePixels(10);
+//            dvsFrameImageDisplay.setImageSize(dimension, dimension);
+//            dvsFrameImageDisplay.setSize(200, 200);
+//            dvsFrameImageDisplay.setGrayValue(0);
+////            sliceBitmapLegend = sliceBitmapImageDisplay.addLegend(G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
+//            panel.add(dvsFrameImageDisplay);
+//
+//            dvsFrame.getContentPane().add(panel);
+//            dvsFrame.pack();
+//            dvsFrame.addWindowListener(new WindowAdapter() {
+//                @Override
+//                public void windowClosing(WindowEvent e) {
+//                    setShowFrames(false);
+//                }
+//            });
 //        }
-        dvsFrameImageDisplay.repaint();
-    }
-
-    /**
-     * @return the showDvsFrames
-     */
-    public boolean isShowDvsFrames() {
-        return showDvsFrames;
-    }
-
-    /**
-     * @param showDvsFrames the showDvsFrames to set
-     */
-    public void setShowDvsFrames(boolean showDvsFrames) {
-        this.showDvsFrames = showDvsFrames;
-    }
+//        if (!dvsFrame.isVisible()) {
+//            dvsFrame.setVisible(true);
+//        }
+//        float scale = 1f / getDvsGrayScale();
+//        if (dimension != dvsFrameImageDisplay.getWidth()) {
+//            dvsFrameImageDisplay.setImageSize(dimension, dimension);
+//            dvsFrameImageDisplay.clearLegends();
+////                    sliceBitmapLegend = dvsFrameImageDisplay.addLegend(G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
+//        }
+//
+////        TextRenderer textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 12));
+//
+//        /* Reset the image first */
+//        dvsFrameImageDisplay.clearImage();
+//        /* Rendering the reference patch in t-imuWarningDialog slice, it's on the center with color red */
+//        for (int x = 0; x < dimension; x++) {
+//            for (int y = 0; y < dimension; y++) {
+//                float f = roi.getValueAtPixel(x, y);
+//                float[] rgb = {f, f, f};
+//                dvsFrameImageDisplay.setPixmapRGB(x, y, rgb);
+//            }
+//        }
+//
+////        if (sliceBitmapLegend != null) {
+////            sliceBitmapLegend.s = G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH + "\nScale: " + subSampleBy;
+////        }
+//        dvsFrameImageDisplay.repaint();
+//    }
 
     /**
      * @return the dvsEventsPerFrame
