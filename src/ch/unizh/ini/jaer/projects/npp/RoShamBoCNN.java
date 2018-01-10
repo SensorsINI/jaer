@@ -39,15 +39,14 @@ import com.jogamp.opengl.util.texture.Texture;
 import com.jogamp.opengl.util.texture.TextureIO;
 
 import gnu.io.NRSerialPort;
-import java.awt.image.BufferedImage;
 import java.io.InputStream;
-import javax.imageio.ImageIO;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
+import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.SoundWavFilePlayer;
@@ -120,6 +119,8 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         super(chip);
         tracker = new RectangularClusterTracker(chip);
         tracker.setMaxNumClusters(1);
+        tracker.setClusterMassDecayTauUs(100000);
+        tracker.setEnableClusterExitPurging(false);
         getEnclosedFilterChain().add(tracker); // super chain alredy has DvsFramer
         setEnclosedFilterChain(getEnclosedFilterChain()); // to correctly set enclosed status of filters
         String roshamboGame = "0a. RoShamBo Game";
@@ -158,8 +159,8 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
             apsDvsNet.getSupport().addPropertyChangeListener(AbstractDavisCNN.EVENT_MADE_DECISION, statistics);
             addedStatisticsListener = true;
         }
+        out = getEnclosedFilterChain().filterPacket(out); // compute tracker always, since we use it to move the texture around a bit
         if (useGameStatesToPlay) {
-            out = getEnclosedFilterChain().filterPacket(out);
             if (tracker.getVisibleClusters().size() > 0) {
                 RectangularClusterTracker.Cluster handCluster = tracker.getVisibleClusters().getFirst();
                 boolean crossedUpper = false, crossedLower = false;
@@ -319,6 +320,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
+        tracker.setAnnotationEnabled(false);
         super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
         if (textRenderer == null) {
@@ -411,8 +413,27 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         if (symbolTextures == null || symbolID < 0 || symbolID >= symbolTextures.length || symbolTextures[symbolID] == null) {
             return;
         }
+
+        int left = 10, bot = 10, offset = 0;
+        final int w = chip.getSizeX() / 2, h = chip.getSizeY() / 2, sw = drawable.getSurfaceWidth(), sh = drawable.getSurfaceHeight();
+        if (tracker.getNumVisibleClusters() > 0) {
+            Cluster hand = tracker.getVisibleClusters().getFirst();
+            offset = (int) ((float) hand.getLocation().y / 5);
+        }
         symbolTextures[symbolID].bind(gl);
         symbolTextures[symbolID].enable(gl);
+        drawPolygon(gl, left, bot + offset, w, h);
+        symbolTextures[symbolID].disable(gl);
+        String s = playToWin ? "Playing to win" : "Playing to tie";
+        textRenderer.setColor(.75f, 0.75f, 0.75f, 1);
+        textRenderer.begin3DRendering();
+        Rectangle2D r = textRenderer.getBounds(s);
+        textRenderer.draw3D(s, left, bot, 0, (float) w / sw);
+        textRenderer.end3DRendering();
+    }
+
+    private void drawPolygon(final GL2 gl, final int xLowerLeft, final int yLowerLeft, final int width, final int height) {
+        gl.glPushMatrix();
         gl.glDisable(GL.GL_DEPTH_TEST);
         gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
         gl.glEnable(GL.GL_BLEND);
@@ -420,19 +441,6 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
         gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST);
         gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST);
-        gl.glPushMatrix();
-        final int left=10, bot=10, w=chip.getSizeX()/2, h=chip.getSizeY()/2, sw=drawable.getSurfaceWidth(), sh=drawable.getSurfaceHeight();
-        drawPolygon(gl, left, bot, w, h);
-        gl.glPopMatrix();
-        String s = playToWin ? "Playing to win" : "Playing to tie";
-        textRenderer.setColor(.75f,0.75f, 0.75f, 1);
-        textRenderer.begin3DRendering();
-        Rectangle2D r = textRenderer.getBounds(s);
-        textRenderer.draw3D(s, left, bot, 0, (float)w/sw);
-        textRenderer.end3DRendering();
-    }
-
-    private void drawPolygon(final GL2 gl, final int xLowerLeft, final int yLowerLeft, final int width, final int height) {
         final double xRatio = (double) chip.getSizeX() / (double) width;
         final double yRatio = (double) chip.getSizeY() / (double) height;
         gl.glBegin(GL2.GL_POLYGON);
@@ -447,6 +455,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         gl.glVertex2d(+xLowerLeft, yRatio * height + yLowerLeft);
 
         gl.glEnd();
+        gl.glPopMatrix();
     }
 
     /**
@@ -920,7 +929,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     public void setUseGameStatesToPlay(boolean useGameStatesToPlay) {
         this.useGameStatesToPlay = useGameStatesToPlay;
         putBoolean("useGameStatesToPlay", useGameStatesToPlay);
-        tracker.setFilterEnabled(useGameStatesToPlay);
+//        tracker.setFilterEnabled(useGameStatesToPlay);
     }
 
     /**
