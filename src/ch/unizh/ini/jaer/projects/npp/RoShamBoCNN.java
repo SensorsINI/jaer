@@ -240,8 +240,65 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         sendCommandToHand('6');
     }
 
-    private void sendCommandToHand(char cmd) {
-        if (isSerialPortCommandsEnabled() && (serialPortOutputStream != null)) {
+ 
+
+    /**
+     * commands to physical hand and light box as defined in arduino code
+     */
+    private final int HAND_CMD_PAPER = 1, HAND_CMD_SCISSORS = 2, HAND_CMD_ROCK = 3, HAND_CMD_SLOWLY_WIGGLE = 4, HAND_CMD_TURN_OFF = 5, HAND_CMD_TWITCH = 6;
+    /**
+     * Hand firmware has option WIN that programs it to show the symbol that
+     * beats the symbol sent to it, e.g. if HAND_CMD_ROCK is sent, hand will
+     * show PAPER.
+     */
+    private final boolean HAND_PROGRAMED_TO_WIN = true;
+
+    private void sendDecisionToHand() {
+        
+        if (!serialPortCommandsEnabled || statistics.maxActivation < descisionThresholdActivation) {
+            return;
+        }
+        char cmd = 0;
+        if (!HAND_PROGRAMED_TO_WIN) {
+            switch (statistics.symbolOutput) {
+                case DECISION_ROCK:
+                    cmd = '0' + HAND_CMD_ROCK;
+                    break;
+                case DECISION_SCISSORS:
+                    cmd = '0' + HAND_CMD_SCISSORS;
+                    break;
+                case DECISION_PAPER:
+                    cmd = '0' + HAND_CMD_PAPER;
+                    break;
+                case DECISION_BACKGROUND:
+                    cmd = '0' + HAND_CMD_SLOWLY_WIGGLE;
+                    break;
+                default:
+//                    log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
+            }
+        } else {
+            switch (statistics.symbolOutput) {
+                case DECISION_ROCK:
+                    cmd = '0' + HAND_CMD_PAPER;
+                    break;
+                case DECISION_SCISSORS:
+                    cmd = '0' + HAND_CMD_ROCK;
+                    break;
+                case DECISION_PAPER:
+                    cmd = '0' + HAND_CMD_SCISSORS;
+                    break;
+                case DECISION_BACKGROUND:
+                    cmd = '0' + HAND_CMD_SLOWLY_WIGGLE;
+                    break;
+                default:
+//                    log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
+            }
+        }
+        sendCommandToHand(cmd);
+    }
+    
+       private void sendCommandToHand(char cmd) {
+        if (serialPortCommandsEnabled && (serialPortOutputStream != null)) {
             try {
                 serialPortOutputStream.write((byte) cmd);
             } catch (IOException ex) {
@@ -249,30 +306,6 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
             }
         }
 
-    }
-
-    private void sendDecisionToHand() {
-        if (statistics.maxActivation < descisionThresholdActivation) {
-            return;
-        }
-        char cmd = 0;
-        switch (statistics.symbolOutput) {
-            case DECISION_ROCK:
-                cmd = '3';
-                break;
-            case DECISION_SCISSORS:
-                cmd = '2';
-                break;
-            case DECISION_PAPER:
-                cmd = '1';
-                break;
-            case DECISION_BACKGROUND:
-                cmd = '1';
-                break;
-            default:
-//                    log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
-            }
-        sendCommandToHand(cmd);
     }
 
     @Override
