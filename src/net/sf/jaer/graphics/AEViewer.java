@@ -826,6 +826,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewRenderBlankFramesCheckBoxMenuItem.setSelected(isRenderBlankFramesEnabled());
         logFilteredEventsCheckBoxMenuItem.setSelected(logFilteredEventsEnabled);
         enableFiltersOnStartupCheckBoxMenuItem.setSelected(enableFiltersOnStartup);
+        setFwdRewindNCount.setText("Set forward/rewind N... (currently "+getAePlayer().getFastFowardRewindPacketCount()+")");
 
 //        fixSkipPacketsRenderingMenuItems();
 //        if (!showedSkippedPacketsRenderingWarning && skipPacketsRenderingNumberMax > 1) {
@@ -2985,9 +2986,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         forwardNMI = new javax.swing.JMenuItem();
         rewindNMI = new javax.swing.JMenuItem();
         setFwdRewindNCount = new javax.swing.JMenuItem();
-        clearMarksMI = new javax.swing.JMenuItem();
         setMarkInMI = new javax.swing.JMenuItem();
         setMarkOutMI = new javax.swing.JMenuItem();
+        clearMarksMI = new javax.swing.JMenuItem();
         jSeparator10 = new javax.swing.JSeparator();
         zoomInMenuItem = new javax.swing.JMenuItem();
         zoomOutMenuItem = new javax.swing.JMenuItem();
@@ -3668,16 +3669,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         viewMenu.add(setFwdRewindNCount);
 
-        clearMarksMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, 0));
-        clearMarksMI.setText("Clear IN and OUT markers");
-        clearMarksMI.setToolTipText("Clears the IN and OUT markers for playing back a section of a recording");
-        clearMarksMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                clearMarksMIActionPerformed(evt);
-            }
-        });
-        viewMenu.add(clearMarksMI);
-
         setMarkInMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_OPEN_BRACKET, 0));
         setMarkInMI.setText("Set IN marker");
         setMarkInMI.setToolTipText("If playing back file, it rewinds to this position");
@@ -3697,6 +3688,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         viewMenu.add(setMarkOutMI);
+
+        clearMarksMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, 0));
+        clearMarksMI.setText("Clear IN and OUT markers");
+        clearMarksMI.setToolTipText("Clears the IN and OUT markers for playing back a section of a recording");
+        clearMarksMI.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                clearMarksMIActionPerformed(evt);
+            }
+        });
+        viewMenu.add(clearMarksMI);
         viewMenu.add(jSeparator10);
 
         zoomInMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PAGE_UP, 0));
@@ -5645,10 +5646,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_skipPacketsRenderingCheckBoxMenuItemStateChanged
 
     private void rewindNMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rewindNMIActionPerformed
-         if (getAePlayer() != null) {
+         if (getPlayMode()==PlayMode.PLAYBACK && getAePlayer() != null) {
             getAePlayer().rewindNPackets();
         }
-        
     }//GEN-LAST:event_rewindNMIActionPerformed
 
     private void setFwdRewindNCountActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setFwdRewindNCountActionPerformed
@@ -5659,13 +5659,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             int n = Integer.parseInt(s);
             getAePlayer().setFastFowardRewindPacketCount(n);
+            setFwdRewindNCount.setText("Set forward/rewind N... (currently "+getAePlayer().getFastFowardRewindPacketCount()+")");
         } catch (NumberFormatException e) {
             return;
         }
     }//GEN-LAST:event_setFwdRewindNCountActionPerformed
 
     private void forwardNMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_forwardNMIActionPerformed
-        if (getAePlayer() != null) {
+        if (getPlayMode()==PlayMode.PLAYBACK &&  getAePlayer() != null) {
             getAePlayer().fastFowardNPackets();
         }
     }//GEN-LAST:event_forwardNMIActionPerformed
