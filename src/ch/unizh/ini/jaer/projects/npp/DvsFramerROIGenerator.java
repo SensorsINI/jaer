@@ -62,10 +62,9 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
     private int dimension = getInt("dimension", 64);
     private int stride = getInt("stride", dimension / 2);
     private int decisionLifetimeMs = getInt("decisionLifetimeMs", 2000);
+    protected float decisionThreshold = getFloat("decisionThreshold", .8f);
 
     private int sx, sy, nx, ny;
-    private ImageDisplay dvsFrameImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
-    private JFrame dvsFrame = null;
 //    /**
 //     * PropertyChangeEvent that is fired when a new ROI is available
 //     */
@@ -85,6 +84,7 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
         setPropertyTooltip("stride", "stride of adjacent ROIs in pixels; automatically set to half of dimension each time that is set unless overridden");
         setPropertyTooltip("showDvsFrames", "shows the fully exposed (accumulated with events) frames in a separate window");
         setPropertyTooltip("decisionLifetimeMs", "how long in ms to render an ROI after its activations have been set");
+        setPropertyTooltip("decisionThreshold", "don't paint ROI unless max activation exceeds this value");
     }
 
 //    /**
@@ -116,7 +116,7 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
     @Override
     synchronized public void addEvent(PolarityEvent e) {
 
-                    lastTimestampUs = e.timestamp;
+        lastTimestampUs = e.timestamp;
         for (int s = startingScale; s < numScales; s++) {
             // For this scale, find the overlapping ROIs and put the event to them.
 
@@ -430,7 +430,6 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
 ////        }
 //        dvsFrameImageDisplay.repaint();
 //    }
-
     /**
      * @return the dvsEventsPerFrame
      */
@@ -529,6 +528,22 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
     }
 
     /**
+     * @return the decisionThreshold
+     */
+    public float getDecisionThreshold() {
+        return decisionThreshold;
+    }
+
+    /**
+     * @param decisionThreshold the decisionThreshold to set
+     */
+    public void setDecisionThreshold(float decisionThreshold) {
+        if(decisionThreshold>1)decisionThreshold=1;
+        this.decisionThreshold = decisionThreshold;
+        putFloat("decisionThreshold",decisionThreshold);
+    }
+
+    /**
      * One region of interest (ROI)
      */
     public class ROI extends DvsFrame {
@@ -576,8 +591,19 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
             if (rgba == null) {
                 return;
             }
+            float maxActivation = 0;
+            int maxActivatedUnit = -1;
+            for (int i = 0; i < rgba.length; i++) {
+                if (rgba[i] > maxActivation) {
+                    maxActivation = rgba[i];
+                    maxActivatedUnit = i;
+                }
+            }
+            if (maxActivation < decisionThreshold) {
+                return;
+            }
             final int dt = lastTimestampUs - lastDecisionTimestampUs;
-            if (dt<0  || (dt)>>>10 >= getDecisionLifetimeMs()) {
+            if (dt < 0 || (dt) >>> 10 >= getDecisionLifetimeMs()) {
                 return;
             }
             try {
@@ -602,7 +628,7 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
 
         @Override
         public String toString() {
-            return "ROI{" +super.toString() + "xLeft=" + xLeft + ", xRight=" + xRight + ", yBot=" + yBot + ", yTop=" + yTop + ", scale=" + scale + ", xidx=" + xidx + ", yidx=" + yidx  + '}';
+            return "ROI{" + super.toString() + "xLeft=" + xLeft + ", xRight=" + xRight + ", yBot=" + yBot + ", yTop=" + yTop + ", scale=" + scale + ", xidx=" + xidx + ", yidx=" + yidx + '}';
         }
 
         /**
