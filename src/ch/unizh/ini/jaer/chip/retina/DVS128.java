@@ -294,6 +294,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 
             if (ledMenu == null) {
                 ledMenu = new JMenu("LED control");
+                ledMenu.getPopupMenu().setLightWeightPopupEnabled(false);
                 ledMenu.setToolTipText("LED control");
                 final HasLEDControl h = (HasLEDControl) getHardwareInterface();
                 ledOnBut = new JRadioButtonMenuItem("Turn LED on");
