@@ -186,6 +186,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         davisMenu.add(new JMenuItem(new DecreaseFrameRateAction()));
         davisMenu.add(new JSeparator());
         davisMenu.add(new JMenuItem(new ToggleIMU()));
+        davisMenu.getPopupMenu().setLightWeightPopupEnabled(false);
         getAeViewer().addMenu(davisMenu);
     }
 
