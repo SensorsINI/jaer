@@ -301,7 +301,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         scrollPane.setViewportView(filtersPanel);
 
         searchTF.setText("search...");
-        searchTF.setToolTipText("search for  filter in the list of loaded filters");
+        searchTF.setToolTipText("highlight filters/parameters");
         searchTF.addFocusListener(new java.awt.event.FocusAdapter() {
             public void focusGained(java.awt.event.FocusEvent evt) {
                 searchTFFocusGained(evt);
@@ -757,8 +757,18 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     }//GEN-LAST:event_resetPerformanceMeasurementMIActionPerformed
 
     private void searchTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchTFActionPerformed
-        // search for and highlight filter starting with string
-
+        String s = searchTF.getText();
+        if (s == null || s.isEmpty()) {
+            if (s == null) {
+                s = "";
+            }
+            FilterPanel p = getSelectedFilterPanel();
+            if (p == null) {
+                highlightFilters(s);
+            } else {
+                p.highlightProperties(s);
+            }
+        }
     }//GEN-LAST:event_searchTFActionPerformed
 
     private void searchTFKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_searchTFKeyTyped
@@ -767,8 +777,22 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         if (s == null || s.isEmpty()) {
             return;
         }
-        selectFilter(s);
+        FilterPanel p = getSelectedFilterPanel();
+        if (p == null) {
+            highlightFilters(s);
+        } else {
+            p.highlightProperties(s);
+        }
     }//GEN-LAST:event_searchTFKeyTyped
+
+    private FilterPanel getSelectedFilterPanel() {
+        for (FilterPanel p : filterPanels) {
+            if (p.isControlsVisible()) {
+                return p;
+            }
+        }
+        return null;
+    }
 
     private void searchTFFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_searchTFFocusGained
         searchTF.setText(null);
@@ -855,20 +879,25 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         }
     }
 
-    private EventFilter highlightedFilter = null;
+    private ArrayList<EventFilter> highlightedFilters = new ArrayList();
 
-    private void selectFilter(String s) {
+    private void highlightFilters(String s) {
+
+        for (EventFilter f : highlightedFilters) {
+            final FilterPanel filterPanelForFilter = getFilterPanelForFilter(f);
+            TitledBorder b = (TitledBorder) filterPanelForFilter.getBorder();
+            b.setTitleColor(Color.black);
+            filterPanelForFilter.repaint();
+        }
+        highlightedFilters.clear();
+        if (s.isEmpty()) {
+            return;
+        }
         for (EventFilter f : filterChain) {
-            if (f.getClass().getSimpleName().toLowerCase().startsWith(s.toLowerCase())) {
-                if (highlightedFilter != null) {
-                    final FilterPanel filterPanelForFilter = getFilterPanelForFilter(highlightedFilter);
-                    TitledBorder b = (TitledBorder) filterPanelForFilter.getBorder();
-                    b.setTitleColor(Color.black);
-                    filterPanelForFilter.repaint();
-                }
+            if (f.getClass().getSimpleName().toLowerCase().contains(s.toLowerCase())) {
                 TitledBorder b = (TitledBorder) getFilterPanelForFilter(f).getBorder();
                 b.setTitleColor(Color.red);
-                highlightedFilter = f;
+                highlightedFilters.add(f);
                 getFilterPanelForFilter(f).repaint();
 
             }
