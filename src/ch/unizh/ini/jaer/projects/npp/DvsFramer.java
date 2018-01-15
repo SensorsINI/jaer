@@ -28,6 +28,8 @@ import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -61,6 +63,8 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * @see #EVENT_NEW_FRAME_AVAILABLE
  *
  */
+@Description("Abstract super class for making DVS frames from DVS events")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 abstract public class DvsFramer extends EventFilter2D  {
 
     protected static Logger log = Logger.getLogger("DvsFramer");

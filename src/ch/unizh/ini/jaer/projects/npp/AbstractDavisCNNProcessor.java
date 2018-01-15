@@ -39,6 +39,8 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -56,6 +58,8 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  *
  * @author Tobi
  */
+@Description("Abstract super class for running CNNs from DAVIS cameras")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
 
     /**

@@ -37,7 +37,7 @@ import net.sf.jaer.graphics.AEFrameChipRenderer;
  *
  */
 @Description("using data-driven ROIs from DVS events to update heat map by running CNN on each filled ROI")
-@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DavisWhatWhereCNNProcessor extends AbstractDavisCNNProcessor {
 
     public static final String OUTPUT_AVAILBLE = "outputUpdated";

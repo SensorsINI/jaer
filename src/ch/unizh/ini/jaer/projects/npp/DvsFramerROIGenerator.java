@@ -18,30 +18,21 @@
  */
 package ch.unizh.ini.jaer.projects.npp;
 
-import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLException;
 import eu.visualize.ini.convnet.DeepLearnCnnNetwork_HJ;
 import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
-import javax.swing.BoxLayout;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.util.DrawGL;
 
 /**
@@ -50,6 +41,8 @@ import net.sf.jaer.util.DrawGL;
  *
  * @author Tobi Delbruck
  */
+@Description("Makes data-driven regions of interest DVS frames from DVS events")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
 
     /**

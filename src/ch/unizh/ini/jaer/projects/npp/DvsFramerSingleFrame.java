@@ -19,6 +19,8 @@
 package ch.unizh.ini.jaer.projects.npp;
 
 import eu.visualize.ini.convnet.DeepLearnCnnNetwork_HJ;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -37,6 +39,8 @@ import net.sf.jaer.event.PolarityEvent;
  *
  * @author Tobi
  */
+@Description("Makes single DVS frames from DVS events")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DvsFramerSingleFrame extends DvsFramer {
 
     protected DvsFrame dvsFrame = null;
