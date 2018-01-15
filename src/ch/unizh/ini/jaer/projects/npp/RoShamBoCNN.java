@@ -260,7 +260,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         }
         char cmd = 0;
         if (!HAND_PROGRAMED_TO_WIN) {
-            switch (statistics.symbolOutput) {
+            switch (statistics.symbolOutput) { // this is symbol shown on screen
                 case DECISION_ROCK:
                     cmd = '0' + HAND_CMD_ROCK;
                     break;
@@ -279,13 +279,13 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         } else {
             switch (statistics.symbolOutput) {
                 case DECISION_ROCK:
-                    cmd = '0' + HAND_CMD_PAPER;
+                    cmd = '0' + HAND_CMD_SCISSORS;
                     break;
                 case DECISION_SCISSORS:
-                    cmd = '0' + HAND_CMD_ROCK;
+                    cmd = '0' + HAND_CMD_PAPER;
                     break;
                 case DECISION_PAPER:
-                    cmd = '0' + HAND_CMD_SCISSORS;
+                    cmd = '0' + HAND_CMD_ROCK;
                     break;
                 case DECISION_BACKGROUND:
                     cmd = '0' + HAND_CMD_SLOWLY_WIGGLE;
