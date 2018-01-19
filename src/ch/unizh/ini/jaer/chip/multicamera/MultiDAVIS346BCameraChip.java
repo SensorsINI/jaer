@@ -17,7 +17,7 @@ import net.sf.jaer.graphics.MultiViewerFromMultiCamera;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 /**
- *
+ * A multi Davis346 retina each on it's own USB interface with merged and presumably aligned fields of view
  * @author Gemma
  */
 
