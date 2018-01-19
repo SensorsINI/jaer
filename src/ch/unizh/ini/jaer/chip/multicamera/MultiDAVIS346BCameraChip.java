@@ -22,7 +22,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
  */
 
 @Description("A multi Davis346 retina each on it's own USB interface with merged and presumably aligned fields of view")
-@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 
 public class MultiDAVIS346BCameraChip extends MultiDavisCameraChip{
     
