@@ -5,6 +5,7 @@
  */
 package eu.visualize.ini.convnet;
 
+import ch.unizh.ini.jaer.projects.npp.DvsFramerSingleFrame;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.beans.PropertyChangeEvent;
@@ -60,7 +61,7 @@ public class DavisDeepLearnCnnProcessor_HJ extends EventFilter2D implements Prop
     private JFrame imageDisplayFrame = null;
     public ImageDisplay inputImageDisplay;
 
-    protected DvsSubsamplerToFrame dvsSubsampler = null;
+    protected DvsFramerSingleFrame dvsSubsampler = null;
     private int dvsColorScale = getInt("dvsColorScale", 200); // 1/dvsColorScale is amount each event color the timeslice in subsampled timeslice input
     private boolean softMaxOutput = getBoolean("softMaxOutput", false);
 
@@ -113,7 +114,8 @@ public class DavisDeepLearnCnnProcessor_HJ extends EventFilter2D implements Prop
         putString("lastAPSNetXMLFilename", lastApsDvsNetXMLFilename);
         try {
             apsDvsNet.loadFromXMLFile(c.getSelectedFile());
-            dvsSubsampler = new DvsSubsamplerToFrame(apsDvsNet.inputLayer.dimx, apsDvsNet.inputLayer.dimy, getDvsColorScale());
+            dvsSubsampler = new DvsFramerSingleFrame(chip);
+            dvsSubsampler.setFromNetwork(apsDvsNet);
         } catch (Exception ex) {
             Logger.getLogger(DavisDeepLearnCnnProcessor_HJ.class.getName()).log(Level.SEVERE, null, ex);
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file, caught exception " + ex + ". See console for logging.", "Bad network file", JOptionPane.WARNING_MESSAGE);
@@ -139,7 +141,7 @@ public class DavisDeepLearnCnnProcessor_HJ extends EventFilter2D implements Prop
 //        lastDVSNetXMLFilename = c.getSelectedFile().toString();
 //        putString("lastDVSNetXMLFilename", lastDVSNetXMLFilename);
 //        dvsNet.loadFromXMLFile(c.getSelectedFile());
-//        dvsSubsampler = new DvsSubsamplerToFrame(dvsNet.inputLayer.dimx, dvsNet.inputLayer.dimy, getDvsColorScale());
+//        dvsSubsampler = new DvsFramer(dvsNet.inputLayer.dimx, dvsNet.inputLayer.dimy, getDvsColorScale());
 //    }
 // debug only
 //    public void doSetNetworkToUniformValues() {
@@ -187,7 +189,7 @@ public class DavisDeepLearnCnnProcessor_HJ extends EventFilter2D implements Prop
                 lastProcessedEventTimestamp = e.getTimestamp();
                 PolarityEvent p = (PolarityEvent) e;
                 if (dvsSubsampler != null) {
-                    dvsSubsampler.addEvent(p, sizeX, sizeY);
+                    dvsSubsampler.addEvent(p);
                 }
                 if (dvsSubsampler != null && dvsSubsampler.getAccumulatedEventCount() > dvsMinEvents) {
                     long startTime = 0;
@@ -196,9 +198,6 @@ public class DavisDeepLearnCnnProcessor_HJ extends EventFilter2D implements Prop
                     }
                     if (processDVSTimeSlices) {
                         apsDvsNet.processDvsTimeslice(dvsSubsampler); // generates PropertyChange EVENT_MADE_DECISION
-                        if (dvsSubsampler != null) {
-                            dvsSubsampler.clear();
-                        }
                         if (measurePerformance) {
                             long dt = System.nanoTime() - startTime;
                             float ms = 1e-6f * dt;
@@ -229,7 +228,8 @@ public class DavisDeepLearnCnnProcessor_HJ extends EventFilter2D implements Prop
                 try {
                     apsDvsNet.loadFromXMLFile(f);
                     apsDvsNet.setSoftMaxOutput(softMaxOutput); // must set manually since net doesn't know option kept here.
-                    dvsSubsampler = new DvsSubsamplerToFrame(apsDvsNet.inputLayer.dimx, apsDvsNet.inputLayer.dimy, getDvsColorScale());
+                    dvsSubsampler = new DvsFramerSingleFrame(chip);
+                    dvsSubsampler.setFromNetwork(apsDvsNet);
                 } catch (IOException ex) {
                     Logger.getLogger(DavisDeepLearnCnnProcessor_HJ.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -239,7 +239,7 @@ public class DavisDeepLearnCnnProcessor_HJ extends EventFilter2D implements Prop
 //            File f = new File(lastDVSNetXMLFilename);
 //            if (f.exists() && f.isFile()) {
 //                dvsNet.loadFromXMLFile(f);
-//                dvsSubsampler = new DvsSubsamplerToFrame(dvsNet.inputLayer.dimx, dvsNet.inputLayer.dimy, getDvsColorScale());
+//                dvsSubsampler = new DvsFramer(dvsNet.inputLayer.dimx, dvsNet.inputLayer.dimy, getDvsColorScale());
 //            }
 //        }
 
@@ -464,7 +464,7 @@ public class DavisDeepLearnCnnProcessor_HJ extends EventFilter2D implements Prop
         this.dvsColorScale = dvsColorScale;
         putInt("dvsColorScale", dvsColorScale);
         if (dvsSubsampler != null) {
-            dvsSubsampler.setColorScale(dvsColorScale);
+            dvsSubsampler.setDvsGrayScale(dvsColorScale);
         }
     }
 

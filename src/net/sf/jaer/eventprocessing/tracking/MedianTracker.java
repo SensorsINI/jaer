@@ -148,17 +148,17 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
             xsum += xs[i];
             ysum += ys[i];
         }
-        xmean = xMeanFilter.filter(xsum / index, lastts);
-        ymean = yMeanFilter.filter(ysum / index, lastts);
+        float instantXmean = xsum / index;
+        float instantYmean = ysum / index;
 
         float xvar = 0, yvar = 0;
         float tmp;
-        for (int i = 0; i < n; i++) {
-            tmp = xs[i] - xmean;
+        for (int i = 0; i < index; i++) {
+            tmp = xs[i] - instantXmean;
             tmp *= tmp;
             xvar += tmp;
 
-            tmp = ys[i] - ymean;
+            tmp = ys[i] - instantYmean;
             tmp *= tmp;
             yvar += tmp;
         }
@@ -168,9 +168,12 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
         xstd = xStdFilter.filter((float) Math.sqrt(xvar), lastts);
         ystd = yStdFilter.filter((float) Math.sqrt(yvar), lastts);
 
+        xmean = xMeanFilter.filter(instantXmean, lastts);
+        ymean = yMeanFilter.filter(instantYmean, lastts);
+
 
         medianPoint.setLocation(xmedian, ymedian);
-        meanPoint.setLocation(xmean, ymean);
+        meanPoint.setLocation(instantXmean, instantYmean);
         stdPoint.setLocation(xstd*numStdDevsForBoundingBox, ystd*numStdDevsForBoundingBox);
 
         return in; // xs and ys will now be sorted, output will be bs because time will not be sorted like addresses
@@ -196,6 +199,13 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
         gl.glVertex2d(p.getX() + s.getX(), p.getY() - s.getY());
         gl.glVertex2d(p.getX() + s.getX(), p.getY() + s.getY());
         gl.glVertex2d(p.getX() - s.getX(), p.getY() + s.getY());
+        gl.glEnd();
+        gl.glBegin(GL2.GL_LINES);
+        gl.glVertex2d(p.getX() - 10, p.getY());
+        gl.glVertex2d(p.getX() + 10, p.getY());
+        gl.glVertex2d(p.getX(), p.getY() - 10);
+        gl.glVertex2d(p.getX(), p.getY() + 10);
+       
         gl.glEnd();
         gl.glPopMatrix();
     }

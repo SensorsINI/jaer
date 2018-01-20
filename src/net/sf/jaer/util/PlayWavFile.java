@@ -79,18 +79,20 @@ public class PlayWavFile extends Thread {
     /**
      * This method plays the file. Start the thread to play.
      */
-    public void run() {
+    @Override
+	public void run() {
 
-        InputStream is = null;
-        File soundFile = new File(filename);
+        BufferedInputStream is = null;
         try {
-            is = new FileInputStream(soundFile);
+            is = new BufferedInputStream(new FileInputStream(new File(filename)));
         } catch (FileNotFoundException e) {
-            is = getClass().getResourceAsStream(filename);
-            if (is == null) {
+            final InputStream s = getClass().getResourceAsStream(filename);
+            if (s == null) {
                 log.warning("Wave file not found on filesystem or classpath: " + filename);
                 return;
             }
+
+            is = new BufferedInputStream(s);
         }
 
         AudioInputStream audioInputStream = null;
@@ -154,6 +156,6 @@ public class PlayWavFile extends Thread {
      * Tests the player with "sample.wav" in the startup folder.
      */
     public static void main(String[] args) {
-        new PlayWavFile("sample.wav").start();
+        new PlayWavFile("sounds/oof.wav").start();
     }
 }

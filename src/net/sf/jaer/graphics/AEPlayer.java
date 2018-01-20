@@ -298,7 +298,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         if ((viewer.aemon != null) && viewer.aemon.isOpen()) {
             try {
                 viewer.getPlayMode();
-				if (viewer.getPlayMode().equals(PlayMode.SEQUENCING)) {
+                if (viewer.getPlayMode().equals(PlayMode.SEQUENCING)) {
                     viewer.stopSequencing();
                 } else {
                     viewer.aemon.setEventAcquisitionEnabled(false);
@@ -325,19 +325,19 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
         if (viewer.aemon != null) {
             try {
-            	if (!viewer.aemon.isOpen()) {
-            		viewer.aemon.open();
-            	}
+                if (!viewer.aemon.isOpen()) {
+                    viewer.aemon.open();
+                }
 
                 viewer.aemon.setEventAcquisitionEnabled(true);
                 viewer.aemon.getChip().getBiasgen().sendConfiguration(viewer.aemon.getChip().getBiasgen());
             } catch (HardwareInterfaceException e) {
                 viewer.setPlayMode(AEViewer.PlayMode.WAITING);
                 e.printStackTrace();
-            } catch(IllegalStateException ise){
+            } catch (IllegalStateException ise) {
                 log.warning(ise.toString());
             }
-            
+
             viewer.setPlayMode(AEViewer.PlayMode.LIVE);
         } else {
             viewer.setPlayMode(AEViewer.PlayMode.WAITING);
@@ -409,12 +409,27 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             throw new UnsupportedOperationException("tried to get data from some other player");
         }
         AEPacketRaw aeRaw = null;
+
         try {
-            if (!viewer.aePlayer.isFlexTimeEnabled()) {
-                aeRaw = aeFileInputStream.readPacketByTime(viewer.getAePlayer().getTimesliceUs());
-            } else {
-                aeRaw = aeFileInputStream.readPacketByNumber(viewer.getAePlayer().getPacketSizeEvents());
+            if (rewindNPacketsOccuring) {
+                toggleDirection();
             }
+            int nPackets = 1;
+            if (fastForwardNPacketsOccuring || rewindNPacketsOccuring) {
+                nPackets = fastFowardRewindPacketCount;
+            }
+            for (int i = 0; i < nPackets; i++) {
+                if (!viewer.aePlayer.isFlexTimeEnabled()) {
+                    aeRaw = aeFileInputStream.readPacketByTime(viewer.getAePlayer().getTimesliceUs());
+                } else {
+                    aeRaw = aeFileInputStream.readPacketByNumber(viewer.getAePlayer().getPacketSizeEvents());
+                }
+            }
+            if (rewindNPacketsOccuring) {
+                toggleDirection();
+            }
+            fastForwardNPacketsOccuring=false;
+            rewindNPacketsOccuring=false;
 //                if(aeRaw!=null) time=aeRaw.getLastTimestamp();
             return aeRaw;
         } catch (EOFException e) {
@@ -532,25 +547,25 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public long setMarkIn() {
-        if(aeFileInputStream==null) {
-			return -1;
-		}
+        if (aeFileInputStream == null) {
+            return -1;
+        }
         return aeFileInputStream.setMarkIn();
     }
 
     @Override
     public long setMarkOut() {
-         if(aeFileInputStream==null) {
-			return -1;
-		}
-       return aeFileInputStream.setMarkOut();
+        if (aeFileInputStream == null) {
+            return -1;
+        }
+        return aeFileInputStream.setMarkOut();
     }
 
     @Override
     public void setFractionalPosition(float frac) {
-        if(aeFileInputStream==null) {
-			return;
-		}
+        if (aeFileInputStream == null) {
+            return;
+        }
         aeFileInputStream.setFractionalPosition(frac);
     }
 

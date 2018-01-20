@@ -5,6 +5,7 @@
  */
 package eu.visualize.ini.convnet;
 
+import ch.unizh.ini.jaer.projects.npp.DvsFramerSingleFrame;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 
 import java.awt.Color;
@@ -89,8 +90,8 @@ public class DeepLearnCnnNetwork_HJ {
     String dob;
     String nettype;
     Layer[] layers; // all the layers in the middle
-    InputLayer inputLayer; // part of layers
-    OutputOrInnerProductFullyConnectedLayer outputLayer; // the final layer, not part of layers
+    public InputLayer inputLayer; // part of layers
+    public OutputOrInnerProductFullyConnectedLayer outputLayer; // the final layer, not part of layers
     JFrame activationsFrame = null, kernelsFrame = null;
     private boolean hideSubsamplingLayers = true;
     private boolean normalizeKernelDisplayWeightsGlobally = true;
@@ -119,7 +120,7 @@ public class DeepLearnCnnNetwork_HJ {
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
 
-    public float[] processDvsTimeslice(DvsSubsamplerToFrame subsampler) {
+    public float[] processDvsTimeslice(DvsFramerSingleFrame subsampler) {
         inputLayer.processDvsTimeslice(subsampler);
         setLastInputTypeProcessedWasApsFrame(false);
         return processLayers();
@@ -450,8 +451,8 @@ public class DeepLearnCnnNetwork_HJ {
 
         private boolean inputClampedTo1 = false; // for debug
         private boolean inputClampedToIncreasingIntegers = false; // debug
-        int dimx;
-        int dimy;
+        public int dimx;
+        public int dimy;
         int nUnits;
         private ImageDisplay imageDisplay = null;
 
@@ -545,7 +546,7 @@ public class DeepLearnCnnNetwork_HJ {
          * @param subsampler the DVS subsampled input
          * @return the vector of network output values
          */
-        public float[] processDvsTimeslice(DvsSubsamplerToFrame subsampler) {
+        public float[] processDvsTimeslice(DvsFramerSingleFrame subsampler) {
 //            if (frame == null || frameWidth == 0 || (frame.length / type.samplesPerPixel()) % frameWidth != 0) {
 //                throw new IllegalArgumentException("input frame is null or frame array length is not a multiple of width=" + frameWidth);
 //            }

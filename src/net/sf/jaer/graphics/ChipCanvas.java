@@ -1460,6 +1460,12 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
 
         if (chip instanceof AEChip) {
+            if (((AEChip) chip).getAeViewer() != null) {
+                aeViewer = ((AEChip) chip).getAeViewer();
+            }
+            if (aeViewer != null && aeViewer.getPlayerControls() != null && aeViewer.getPlayerControls().isSliderBeingAdjusted()) {
+                return;
+            }
             final FilterChain chain = ((AEChip) chip).getFilterChain();
             if (chain != null) {
                 for (final EventFilter f : chain) {

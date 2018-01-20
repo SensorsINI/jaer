@@ -41,6 +41,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
+import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.filter.LowpassFilter3D;
@@ -108,6 +109,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // Global translation, rotation and expansion.
     private boolean displayGlobalMotion = getBoolean("displayGlobalMotion", true);
+
+    protected EngineeringFormat engFmt = new EngineeringFormat();
 
     /**
      * The output events, also used for rendering output events.
@@ -543,12 +546,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 final float radfac = (float) (Math.PI / 180);
                 final float pixfac = radfac / radPerPixel;
                 final float pixdim = chip.getPixelWidthUm() * 1e-3f;
-                final float thetax = (float)Math.atan2(nx * pixdim, lensFocalLengthMm);
-                final float secx=(float)(1f/Math.cos(thetax));
-                final float xprojfac = (float)(secx*secx);
-                final float thetay = (float)Math.atan2(ny * pixdim, lensFocalLengthMm);
-                final float secy=(float)(1f/Math.cos(thetay));
-                final float yprojfac = (float)(secy*secy);
+                final float thetax = (float) Math.atan2(nx * pixdim, lensFocalLengthMm);
+                final float secx = (float) (1f / Math.cos(thetax));
+                final float xprojfac = (float) (secx * secx);
+                final float thetay = (float) Math.atan2(ny * pixdim, lensFocalLengthMm);
+                final float secy = (float) (1f / Math.cos(thetay));
+                final float yprojfac = (float) (secy * secy);
 
                 vx = -(float) (-ny * rrrad + panRateDps * pixfac) * xprojfac;
                 vy = -(float) (nx * rrrad - tiltRateDps * pixfac) * yprojfac;
@@ -586,6 +589,28 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             putFloat("rollOffset", rollOffset);
 
             log.info("IMU calibration erased (all offsets set to zero)");
+        }
+
+        /**
+         *
+         * @return the panRateDps in deg/s
+         */
+        public float getPanRateDps() {
+            return panRateDps;
+        }
+
+        /**
+         * @return the tiltRateDps in deg/s
+         */
+        public float getTiltRateDps() {
+            return tiltRateDps;
+        }
+
+        /**
+         * @return the rollRateDps in deg/s
+         */
+        public float getRollRateDps() {
+            return rollRateDps;
         }
 
     }
@@ -650,6 +675,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        super.propertyChange(evt);
         if (this.filterEnabled) {
             switch (evt.getPropertyName()) {
                 case AEViewer.EVENT_TIMESTAMPS_RESET:
@@ -770,12 +796,23 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     motionFlowStatistics.getGlobalMotion().meanGlobalVy,
                     4, ppsScale * GLOBAL_MOTION_DRAWING_SCALE);
             gl.glRasterPos2i(2, 10);
+            String flowMagPps = engFmt.format(motionFlowStatistics.getGlobalMotion().meanGlobalTrans);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("glob. trans.=%.2f pps (local: %s)", motionFlowStatistics.getGlobalMotion().meanGlobalTrans, ppsScaleDisplayRelativeOFLength ? "rel." : "abs."));
+                    String.format("glob. trans.=%s pps (local: %s)", flowMagPps, ppsScaleDisplayRelativeOFLength ? "rel." : "abs."));
             gl.glPopMatrix();
 //            System.out.println(String.format("%5.3f\t%5.2f",ts*1e-6f, motionFlowStatistics.getGlobalMotion().meanGlobalTrans));  // debug
 
-            // Draw global rotation vector as line left/right
+            // draw quartiles statistics ellipse
+            gl.glPushMatrix();
+            gl.glTranslatef(sizex / 2 + motionFlowStatistics.getGlobalMotion().meanGlobalVx * ppsScale,
+                    sizey / 2 + motionFlowStatistics.getGlobalMotion().meanGlobalVy * ppsScale,
+                    0);
+            DrawGL.drawEllipse(gl, 0, 0, (float) motionFlowStatistics.getGlobalMotion().sdGlobalVx * ppsScale,
+                    (float) motionFlowStatistics.getGlobalMotion().sdGlobalVy * ppsScale,
+                    0, 16);
+            gl.glPopMatrix();
+
+// Draw global rotation vector as line left/right
             gl.glPushMatrix();
             DrawGL.drawLine(gl,
                     sizex / 2,

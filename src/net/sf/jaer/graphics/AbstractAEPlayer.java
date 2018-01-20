@@ -178,6 +178,9 @@ public abstract class AbstractAEPlayer {
     protected PlaybackDirection playbackDirection = PlaybackDirection.Forward;
     protected int timesliceUs = 20000;
     protected int packetSizeEvents = 256;
+    protected int fastFowardRewindPacketCount=30;
+    protected boolean fastForwardNPacketsOccuring=false;
+    protected boolean rewindNPacketsOccuring=false;
 
     abstract public void openAEInputFileDialog();
 
@@ -221,7 +224,17 @@ public abstract class AbstractAEPlayer {
             setTimesliceUs((int) Math.signum(getTimesliceUs()));
         }
     }
+    
+    public void fastFowardNPackets(){
+        fastForwardNPacketsOccuring=true;
+        rewindNPacketsOccuring=false;
+    }
 
+    public void rewindNPackets(){
+        rewindNPacketsOccuring=true;
+        fastForwardNPacketsOccuring=false;
+    }
+    
     /**
      * Should adjust the playback timeslice interval to approach real time
      * playback.
@@ -648,5 +661,19 @@ public abstract class AbstractAEPlayer {
     public String toString() {
         return String.format("AEPlayer paused=%s repeat=%s playBackDirection=%s playBackMode=%s timesliceUs=%d packetSizeEvents=%d ",
                 paused,repeat,playbackDirection, playbackMode,timesliceUs,packetSizeEvents);
+    }
+
+    /**
+     * @return the fastFowardRewindPacketCount
+     */
+    public int getFastFowardRewindPacketCount() {
+        return fastFowardRewindPacketCount;
+    }
+
+    /**
+     * @param fastFowardRewindPacketCount the fastFowardRewindPacketCount to set
+     */
+    public void setFastFowardRewindPacketCount(int fastFowardRewindPacketCount) {
+        this.fastFowardRewindPacketCount = fastFowardRewindPacketCount;
     }
 }

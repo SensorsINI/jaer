@@ -291,7 +291,19 @@ public class RectangularClusterTracker extends EventFilter2D
 		setPropertyTooltip(global, "filterEventsEnabled",
 			"<html>If disabled, input packet is unaltered. <p>If enabled, output packet contains RectangularClusterTrackerEvent, <br>events refer to containing cluster, and non-owned events are discarded.");
 		setPropertyTooltip(global, "maxNumClusters", "Sets the maximum potential number of clusters");
-		setPropertyTooltip(pi, "smoothMove", "Use the PI controller");
+		setPropertyTooltip(pi, "smoothMove", "<html>Use the PI controller to update particle position and velocity"
+                        + "<br>float errX = (event.x - location.x);\n" +
+"				<br>float errY = (event.y - location.y);\n" +
+"<br>" +
+"				// float changerate=1/smoothWeight;\n" +
+"				<br>m = m / smoothWeight;\n" +
+"				<br>m1 = 1 - m;\n" +
+"<br>" +
+"				<br>velocity.x = (m1 * velocity.x) + (m * (errX));\n" +
+"				<br>velocity.y = (m1 * velocity.y) + (m * (errY));\n" +
+"<br>" +
+"				<br>location.x = location.x + (velocity.x * smoothIntegral) + (errX * smoothPosition);\n" +
+"				<br>location.y = location.y + (velocity.y * smoothIntegral) + (errX * smoothPosition);");
 		setPropertyTooltip(pi, "smoothWeight", "If smoothmove is checked, the 'weight' of a cluster");
 		setPropertyTooltip(pi, "smoothPosition", "Position Coefficient");
 		setPropertyTooltip(pi, "smoothIntegral", "Integral Coefficient");
@@ -1810,7 +1822,7 @@ public class RectangularClusterTracker extends EventFilter2D
 
 			updateMass(event.timestamp);
 
-			float m = mixingFactor;
+			final float m = mixingFactor;
 			updatePosition(event, m);
 			updateEventRate(event, m);
 			updateAverageEventDistance(m);
@@ -1820,7 +1832,7 @@ public class RectangularClusterTracker extends EventFilter2D
 			lastUpdateTime = event.timestamp;
 		}
 
-		protected void updatePosition(BasicEvent event, float m) {
+		protected void updatePosition(final BasicEvent event, final float m) {
 			float m1 = 1 - m;
 			// float dt = event.timestamp - lastUpdateTime; // this timestamp may be bogus if it goes backwards in time,
 			// we need to check it later
@@ -1869,11 +1881,11 @@ public class RectangularClusterTracker extends EventFilter2D
 				float errY = (event.y - location.y);
 
 				// float changerate=1/smoothWeight;
-				m = m / smoothWeight;
-				m1 = 1 - m;
+				final float m2 = m / smoothWeight;
+				m1 = 1 - m2;
 
-				velocity.x = (m1 * velocity.x) + (m * (errX));
-				velocity.y = (m1 * velocity.y) + (m * (errY));
+				velocity.x = (m1 * velocity.x) + (m2 * (errX));
+				velocity.y = (m1 * velocity.y) + (m2 * (errY));
 
 				location.x = location.x + (velocity.x * smoothIntegral) + (errX * smoothPosition);
 				location.y = location.y + (velocity.y * smoothIntegral) + (errX * smoothPosition);

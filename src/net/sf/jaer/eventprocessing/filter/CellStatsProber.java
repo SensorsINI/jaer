@@ -820,7 +820,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 
         @Override
         public String toString() {
-            return String.format("Selected region %6d pixels, total %10d events, %15s eps total, %15s eps/pixel", nPixels, count, engFmt.format(filteredRatePerPixel*nPixels), engFmt.format(filteredRatePerPixel));
+            return String.format("ROI %6d pix, tot. %10d ev, %15s eps tot, %15s eps/pix", nPixels, count, engFmt.format(filteredRatePerPixel*nPixels), engFmt.format(filteredRatePerPixel));
         }
 
         /**
@@ -855,15 +855,15 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             renderer.begin3DRendering();
             // renderer.beginRendering(drawable.getWidth(), drawable.getHeight());
             // optionally set the color
-            renderer.setColor(1, 1, 1, 0.8f);
+            renderer.setColor(.2f, .2f, 1, 1f);
             float scale = .3f;
             if (rateEnabled) {
-                scale = TextRendererScale.draw3dScale(renderer, toString(), getChip().getCanvas().getScale(), chip.getSizeX(), .75f);
-                int ypos = chip.getSizeY() - 4;
+                scale = TextRendererScale.draw3dScale(renderer, toString(), getChip().getCanvas().getScale(), chip.getSizeX(), .9f);
+                int ypos = chip.getSizeY() - 16;
                 if (ypos < (chip.getSizeY() / 2)) {
                     ypos = chip.getSizeY() / 2;
                 }
-                renderer.draw3D(toString(), 1, chip.getSizeY() - 4, 0, scale); // TODO fix string n lines
+                renderer.draw3D(toString(), 1,ypos, 0, scale); // TODO fix string n lines
             }
             if (countDVSEventsBetweenExternalPinEvents) {
                 MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);

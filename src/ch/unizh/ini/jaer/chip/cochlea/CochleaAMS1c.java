@@ -286,12 +286,12 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
 
                     @Override
                     public void actionPerformed(ActionEvent evt) {
-                        HardwareInterface hw = getHardwareInterface();
                         log.info("setting sync enabled");
                         setSyncEventEnabled(((AbstractButton) evt.getSource()).isSelected());
                     }
                 });
                 thisChipMenu.add(syncEnabledMenuItem);
+                syncEnabledMenuItem.setEnabled(isSyncEventEnabled());
             }
 
             if (getAeViewer() != null) {

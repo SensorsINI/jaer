@@ -60,7 +60,9 @@ import net.sf.jaer.util.avioutput.JaerAviWriter;
 @Description("Address-Event Chip")
 public class AEChip extends Chip2D {
 
-    /** The current event extractor. */
+    /**
+     * The current event extractor.
+     */
     protected EventExtractor2D eventExtractor = null;
     protected AEChipRenderer renderer = null;
     protected AEFileInputStream aeInputStream = null;
@@ -106,6 +108,7 @@ public class AEChip extends Chip2D {
 
     /**
      * Adds a filter that is available by default
+     *
      * @param f the event filter to add
      */
     public void addDefaultEventFilter(Class<? extends EventFilter> f) {
@@ -115,18 +118,20 @@ public class AEChip extends Chip2D {
         }
         defaultEventFilters.add(f);
     }
-    
+
     /**
-     * Removes a filter that is available by default, for example to reorder list to put a desired filter at the end of the default filter chain
+     * Removes a filter that is available by default, for example to reorder
+     * list to put a desired filter at the end of the default filter chain
+     *
      * @param f the EventFilter to remove
      */
-    public void removeDefaultEventFilter(Class<? extends EventFilter> f){
-        if(defaultEventFilters==null){
+    public void removeDefaultEventFilter(Class<? extends EventFilter> f) {
+        if (defaultEventFilters == null) {
             log.warning("null defaultEventFilters, doing nothing");
             return;
         }
-        if(defaultEventFilters.remove(f)){
-            log.info("removed "+f+" from defaultEventFilters");
+        if (defaultEventFilters.remove(f)) {
+            log.info("removed " + f + " from defaultEventFilters");
         }
     }
 
@@ -188,8 +193,9 @@ public class AEChip extends Chip2D {
 
     /**
      * Sets the EventExtractor2D and notifies Observers with the new extractor.
-     * The previousEventExtractor is set to the prior value unless the prior value is null; then it is set to the supplied eventExtractor.
-     * This way, the previousEventExtractor is never set to a null.
+     * The previousEventExtractor is set to the prior value unless the prior
+     * value is null; then it is set to the supplied eventExtractor. This way,
+     * the previousEventExtractor is never set to a null.
      *
      * @param eventExtractor the extractor; notifies Observers.
      * @see #previousEventExtractor
@@ -212,9 +218,14 @@ public class AEChip extends Chip2D {
      * retina with on/off types
      */
     public void setNumCellTypes(int numCellTypes) {
+        int oldsize = this.sizeX * this.sizeY * this.numCellTypes;
         this.numCellTypes = numCellTypes;
         setChanged();
         notifyObservers(EVENT_NUM_CELL_TYPES);
+        int newsize = sizeX * sizeY * numCellTypes;
+        if (newsize > 0) {
+            getSupport().firePropertyChange(EVENT_SIZE_SET, oldsize, newsize);
+        }
     }
 
     @Override
@@ -469,7 +480,7 @@ public class AEChip extends Chip2D {
         os.write(bos2.toByteArray()); // write out entire reformatted prefs header
         os.writeHeaderLine("End of Preferences for this AEChip"); // write end of prefs header
         os.flush();
-        log.info("done writing preferences to " + os +" at System.currentTimeMillis() "+System.currentTimeMillis());
+        log.info("done writing preferences to " + os + " at System.currentTimeMillis() " + System.currentTimeMillis());
 
     }
 

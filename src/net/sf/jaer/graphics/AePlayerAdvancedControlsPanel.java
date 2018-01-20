@@ -64,6 +64,14 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 //        playerSlider.setExtent(100);
         repeatPlaybackButton.setSelected(aePlayer.isRepeat());
     }
+    
+    /** Utility method to find out if the slider is being manipulated, so that event filters and other processing can be 
+     * turned off for better responsiveness.
+     * @return true if the slider is currently being manipulated.
+     */
+    public boolean isSliderBeingAdjusted(){
+        return playerSlider.getValueIsAdjusting();
+    }
 
     /**
      * Use this method to add this to the AEFileInputStream listener list for

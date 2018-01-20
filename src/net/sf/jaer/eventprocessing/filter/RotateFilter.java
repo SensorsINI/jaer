@@ -1,4 +1,4 @@
- /*
+/*
  * RotateFilter.java
  *
  * Created on July 7, 2006, 6:59 AM
@@ -105,9 +105,9 @@ public class RotateFilter extends EventFilter2D {
                 int y3 = (int) Math.round(+sinAng * (x2) + cosAng * (y2));
                 e.x = (short) (x3 + sx2);
                 e.y = (short) (y3 + sy2);
-                if (e.x < 0 || e.x >= sx || e.y < 0 || e.y >= sy) {
-                    e.setFilteredOut(true);
-                }
+            }
+            if (e.x < 0 || e.x >= sx || e.y < 0 || e.y >= sy) {
+                e.setFilteredOut(true);
             }
         }
         return in;
@@ -180,7 +180,7 @@ public class RotateFilter extends EventFilter2D {
     }
 
     private void checkDavisApsHack() {
-        if (!davisCamera  || !isFilterEnabled()) { // try to prevent swapping corners when this filter is not actually filtering! (tobi)
+        if (!davisCamera || !isFilterEnabled()) { // try to prevent swapping corners when this filter is not actually filtering! (tobi)
             return;
         }
         DavisBaseCamera d = (DavisBaseCamera) chip;

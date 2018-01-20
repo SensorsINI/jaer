@@ -70,7 +70,7 @@ public abstract class FremeExtractor extends EventFilter2D{
         if(rgbValues == null || rgbValues.length != 3*size){
             rgbValues = new float[3*size];
         }
-        if(frame == null || display == null || display.getSizeX() != sizeX || display.getSizeY() != sizeY){
+        if(frame == null || display == null || display.getWidth() != sizeX || display.getHeight() != sizeY){
             display = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
             display.setImageSize(sizeX, sizeY); // set dimensions of image      
             

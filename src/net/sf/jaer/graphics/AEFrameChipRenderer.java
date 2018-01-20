@@ -177,7 +177,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                         grayBuffer.put(1.0f);
                         grayBuffer.put(1.0f);
                         grayBuffer.put(1.0f);
-                    }else if (colorMode == ColorMode.HotCode) {
+                    } else if (colorMode == ColorMode.HotCode) {
                         grayBuffer.put(0);
                         grayBuffer.put(0);
                         grayBuffer.put(.5f);
@@ -276,7 +276,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 offColor[2] = 0.0f;
                 offColor[3] = 0.0f;
                 break;
-           case RedGreen:
+            case RedGreen:
             default:
                 onColor[0] = 0.0f;
                 onColor[1] = 1.0f;
@@ -1097,8 +1097,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     @Override
     public void propertyChange(final PropertyChangeEvent pce) {
         super.propertyChange(pce); // To change body of generated methods, choose Tools | Templates.
-
-        chip.getBiasgen().getSupport().firePropertyChange(pce); // pass on events to chip configuration
+        if (chip != null && chip.getBiasgen() != null) {
+            chip.getBiasgen().getSupport().firePropertyChange(pce); // pass on events to chip configuration
+        }
     }
 
     /**

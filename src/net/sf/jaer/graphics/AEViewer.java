@@ -817,8 +817,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // init menu items that are checkboxes to correct initial state
         viewActiveRenderingEnabledMenuItem.setSelected(isActiveRenderingEnabled());
         loggingPlaybackImmediatelyCheckBoxMenuItem.setSelected(isLoggingPlaybackImmediatelyEnabled());
-        if(getRenderer()==null){
-            throw new NullPointerException("getRenderer() returns null for this AEChip "+chip);
+        if (getRenderer() == null) {
+            throw new NullPointerException("getRenderer() returns null for this AEChip " + chip);
         }
         acccumulateImageEnabledCheckBoxMenuItem.setSelected(getRenderer().isAccumulateEnabled());
         autoscaleContrastEnabledCheckBoxMenuItem.setSelected(getRenderer().isAutoscaleEnabled());
@@ -826,6 +826,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewRenderBlankFramesCheckBoxMenuItem.setSelected(isRenderBlankFramesEnabled());
         logFilteredEventsCheckBoxMenuItem.setSelected(logFilteredEventsEnabled);
         enableFiltersOnStartupCheckBoxMenuItem.setSelected(enableFiltersOnStartup);
+        setFwdRewindNCount.setText("Set forward/rewind N... (currently "+getAePlayer().getFastFowardRewindPacketCount()+")");
 
 //        fixSkipPacketsRenderingMenuItems();
 //        if (!showedSkippedPacketsRenderingWarning && skipPacketsRenderingNumberMax > 1) {
@@ -1654,7 +1655,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 nullifyHardware();
 
             } catch (Exception e) {
-                log.warning(e.getMessage());
+                log.warning(e.getMessage() + " (Could some other process have the device open, e.g. flashy or caer?)");
                 e.printStackTrace();
                 if (aemon != null) {
                     log.info("closing Monitor" + aemon);
@@ -1894,7 +1895,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                     numFilteredEvents = packet.getSizeNotFilteredOut();
                     makeStatisticsLabel(packet);
-                    skipPacketsRenderingCount = skipPacketsRenderingCheckBoxMenuItem.isSelected()? skipPacketsRenderingNumberCurrent:0;
+                    skipPacketsRenderingCount = skipPacketsRenderingCheckBoxMenuItem.isSelected() ? skipPacketsRenderingNumberCurrent : 0;
                 }
                 getFrameRater().takeAfter();
                 renderCount++;
@@ -1960,7 +1961,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         private void adaptRenderSkipping() {
             if (!skipPacketsRenderingCheckBoxMenuItem.isSelected()) {
-                skipPacketsRenderingNumberCurrent=0;
+                skipPacketsRenderingNumberCurrent = 0;
                 return;
             }
             if (renderer instanceof AEFrameChipRenderer && ((AEFrameChipRenderer) renderer).isDisplayFrames()) {
@@ -2204,6 +2205,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          */
         boolean filterPacket() {
 
+            if (playerControls.isSliderBeingAdjusted()) {
+                return false; // don't run filters if user is manipulating position
+            }
             // filter events, do processing on them in rendering loop here
             if ((filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING) || (playMode != PlayMode.LIVE)) {
                 try {
@@ -2979,9 +2983,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         rewindPlaybackMenuItem = new javax.swing.JMenuItem();
         flextimePlaybackEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         togglePlaybackDirectionMenuItem = new javax.swing.JMenuItem();
-        clearMarksMI = new javax.swing.JMenuItem();
+        forwardNMI = new javax.swing.JMenuItem();
+        rewindNMI = new javax.swing.JMenuItem();
+        setFwdRewindNCount = new javax.swing.JMenuItem();
         setMarkInMI = new javax.swing.JMenuItem();
         setMarkOutMI = new javax.swing.JMenuItem();
+        clearMarksMI = new javax.swing.JMenuItem();
         jSeparator10 = new javax.swing.JSeparator();
         zoomInMenuItem = new javax.swing.JMenuItem();
         zoomOutMenuItem = new javax.swing.JMenuItem();
@@ -3636,15 +3643,31 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         viewMenu.add(togglePlaybackDirectionMenuItem);
 
-        clearMarksMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, 0));
-        clearMarksMI.setText("Clear IN and OUT markers");
-        clearMarksMI.setToolTipText("Clears the IN and OUT markers for playing back a section of a recording");
-        clearMarksMI.addActionListener(new java.awt.event.ActionListener() {
+        forwardNMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_RIGHT, java.awt.event.InputEvent.SHIFT_MASK | java.awt.event.InputEvent.CTRL_MASK));
+        forwardNMI.setText("Forward N packets");
+        forwardNMI.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                clearMarksMIActionPerformed(evt);
+                forwardNMIActionPerformed(evt);
             }
         });
-        viewMenu.add(clearMarksMI);
+        viewMenu.add(forwardNMI);
+
+        rewindNMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_LEFT, java.awt.event.InputEvent.SHIFT_MASK | java.awt.event.InputEvent.CTRL_MASK));
+        rewindNMI.setText("Rewind N packets");
+        rewindNMI.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                rewindNMIActionPerformed(evt);
+            }
+        });
+        viewMenu.add(rewindNMI);
+
+        setFwdRewindNCount.setText("Set forward/rewind N...");
+        setFwdRewindNCount.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setFwdRewindNCountActionPerformed(evt);
+            }
+        });
+        viewMenu.add(setFwdRewindNCount);
 
         setMarkInMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_OPEN_BRACKET, 0));
         setMarkInMI.setText("Set IN marker");
@@ -3665,6 +3688,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         viewMenu.add(setMarkOutMI);
+
+        clearMarksMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, 0));
+        clearMarksMI.setText("Clear IN and OUT markers");
+        clearMarksMI.setToolTipText("Clears the IN and OUT markers for playing back a section of a recording");
+        clearMarksMI.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                clearMarksMIActionPerformed(evt);
+            }
+        });
+        viewMenu.add(clearMarksMI);
         viewMenu.add(jSeparator10);
 
         zoomInMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PAGE_UP, 0));
@@ -5580,7 +5613,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void skipPacketsRenderingCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_skipPacketsRenderingCheckBoxMenuItemActionPerformed
         // come here when user wants to skip rendering except every n packets
         if (!skipPacketsRenderingCheckBoxMenuItem.isSelected()) {
-            skipPacketsRenderingNumberCurrent=0;
+            skipPacketsRenderingNumberCurrent = 0;
             return;
         }
         String s = "Maximum number of packets to skip over between rendering (currently " + skipPacketsRenderingNumberMax + ")";
@@ -5611,6 +5644,32 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void skipPacketsRenderingCheckBoxMenuItemStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_skipPacketsRenderingCheckBoxMenuItemStateChanged
         fixSkipPacketsRenderingMenuItems();        // TODO add your handling code here:
     }//GEN-LAST:event_skipPacketsRenderingCheckBoxMenuItemStateChanged
+
+    private void rewindNMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rewindNMIActionPerformed
+         if (getPlayMode()==PlayMode.PLAYBACK && getAePlayer() != null) {
+            getAePlayer().rewindNPackets();
+        }
+    }//GEN-LAST:event_rewindNMIActionPerformed
+
+    private void setFwdRewindNCountActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setFwdRewindNCountActionPerformed
+        String s = JOptionPane.showInputDialog("Number of packets to fast forward or rewind?", getAePlayer().getFastFowardRewindPacketCount());
+        if (s == null || s.isEmpty()) {
+            return;
+        }
+        try {
+            int n = Integer.parseInt(s);
+            getAePlayer().setFastFowardRewindPacketCount(n);
+            setFwdRewindNCount.setText("Set forward/rewind N... (currently "+getAePlayer().getFastFowardRewindPacketCount()+")");
+        } catch (NumberFormatException e) {
+            return;
+        }
+    }//GEN-LAST:event_setFwdRewindNCountActionPerformed
+
+    private void forwardNMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_forwardNMIActionPerformed
+        if (getPlayMode()==PlayMode.PLAYBACK &&  getAePlayer() != null) {
+            getAePlayer().fastFowardNPackets();
+        }
+    }//GEN-LAST:event_forwardNMIActionPerformed
 
     /**
      * Returns desired frame rate of FrameRater
@@ -6187,6 +6246,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JToggleButton filtersToggleButton;
     private javax.swing.JMenuItem flashyMenuItem;
     private javax.swing.JCheckBoxMenuItem flextimePlaybackEnabledCheckBoxMenuItem;
+    private javax.swing.JMenuItem forwardNMI;
     private javax.swing.JMenu graphicsSubMenu;
     private javax.swing.JMenu helpMenu;
     private javax.swing.JPanel imagePanel;
@@ -6246,12 +6306,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem reopenSocketInputStreamMenuItem;
     private javax.swing.JLabel resizeLabel;
     private javax.swing.JPanel resizePanel;
+    private javax.swing.JMenuItem rewindNMI;
     private javax.swing.JMenuItem rewindPlaybackMenuItem;
     private javax.swing.JMenuItem sequenceMenuItem;
     private javax.swing.JMenuItem serverSocketOptionsMenuItem;
     private javax.swing.JMenuItem setBorderSpaceMenuItem;
     private javax.swing.JMenuItem setDefaultFirmwareMenuItem;
     private javax.swing.JMenuItem setFrameRateMenuItem;
+    private javax.swing.JMenuItem setFwdRewindNCount;
     private javax.swing.JMenuItem setMarkInMI;
     private javax.swing.JMenuItem setMarkOutMI;
     private javax.swing.JButton showConsoleOutputButton;

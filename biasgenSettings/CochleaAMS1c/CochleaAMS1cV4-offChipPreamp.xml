@@ -15,15 +15,42 @@
               <map/>
               <node name="cochlea">
                 <map>
+                  <entry key="ChipCanvas.origin3dx" value="0"/>
+                  <entry key="ChipCanvas.origin3dy" value="0"/>
                   <entry key="FilterChain.timeLimitEnabled" value="false"/>
                   <entry key="FilterChain.timeLimitMs" value="0"/>
+                  <entry key="Info.useLocalTimeZone" value="true"/>
+                  <entry key="ScannerHardwareInterface.scanX" value="0"/>
+                  <entry key="ScannerHardwareInterface.scanContinuouslyEnabled" value="false"/>
+                  <entry key="borderSpacePixels" value="40"/>
+                  <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.gain0" value="4"/>
+                  <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.gain1" value="4"/>
+                  <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.gain2" value="3"/>
+                  <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.gain3" value="3"/>
+                  <entry key="XYTypeFilter.filterEnabled" value="false"/>
+                  <entry key="RotateFilter.filterEnabled" value="false"/>
+                  <entry key="BackgroundActivityFilter.filterEnabled" value="false"/>
+                  <entry key="RefractoryFilter.filterEnabled" value="false"/>
+                  <entry key="HotPixelFilter.filterEnabled" value="false"/>
+                  <entry key="Info.filterEnabled" value="false"/>
+                  <entry key="JaerAviWriter.filterEnabled" value="false"/>
+                  <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAHdwQAAAAHdAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5YWVR5cGVGaWx0ZXJ0ADtuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkJhY2tncm91bmRBY3Rpdml0eUZpbHRlcnQAM25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuUmVmcmFjdG9yeUZpbHRlcnQAK2V1LnNlZWJldHRlci5pbmkuY2hpcHMuZGF2aXMuSG90UGl4ZWxGaWx0ZXJ0ADFjaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy5jb2Noc291bmRsb2MuSVRERmlsdGVydAAnbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5JbmZvdAAobmV0LnNmLmphZXIudXRpbC5hdmlvdXRwdXQuSmFlckF2aVdyaXRlcng="/>
+                  <entry key="RNNfilter.processingEnabled" value="false"/>
+                  <entry key="FilterFrame.lastFilterSelected" value="class ch.unizh.ini.jaer.projects.cochsoundloc.ITDFilter"/>
+                  <entry key="RNNfilter.filterEnabled" value="false"/>
+                  <entry key="RNNfilter.lastRNNXMLFile" value="C:\Users\shih\Documents\1jaer\jAER\trunk\filterSettings\xiaoya_rnn_v1_jAER.xml"/>
+                  <entry key="RNNfilter.displayFeature" value="false"/>
+                  <entry key="RNNfilter.displayActivations" value="true"/>
+                  <entry key="RNNfilter.clickToProcess" value="false"/>
+                  <entry key="RNNfilter.useAllNeurons" value="false"/>
+                  <entry key="RNNfilter.useBothEars" value="false"/>
+                  <entry key="RNNfilter.useBothFilterTypes" value="false"/>
+                  <entry key="chooseFilterType" value="1"/>
+                  <entry key="CochleaAMS1c.Biasgen.DAC.powered" value="true"/>
                   <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="C:\Users\shih\Documents\jaer\deviceFirmwarePCBLayout\CypressFX2\firmware_FX2LP_Cochleaams1c\firmwareFX2_Cochleaams1c.bix"/>
                   <entry key="CochleaAMS1b.Biasgen.DAC.powered" value="true"/>
                   <entry key="class ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.preferredDisplayMethod" value="ch.unizh.ini.jaer.chip.cochlea.CochleaGramDisplayMethod"/>
                   <entry key="CochleaAMS1bControlPanel.selectedPaneIndex" value="1"/>
-                  <entry key="XYTypeFilter.filterEnabled" value="false"/>
-                  <entry key="RotateFilter.filterEnabled" value="false"/>
-                  <entry key="BackgroundActivityFilter.filterEnabled" value="false"/>
                   <entry key="CochleaAMS1b.Biasgen.Scanner.currentStage" value="50"/>
                   <entry key="CochleaAMS1b.Biasgen.BufferIPot.value" value="50"/>
                   <entry key="CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel.0.qsos" value="0"/>
@@ -318,7 +345,6 @@
                   <entry key="Masterbias.internalResistorUsed" value="false"/>
                   <entry key="CochleaAMSWithBiasgen.IPot.pdbia  sTX" value="9000691"/>
                   <entry key="CochleaAMSWithBiasgen.IPot.Viopffbpf" value="0"/>
-                  <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAADdwQAAAADdAA7bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5CYWNrZ3JvdW5kQWN0aXZpdHlGaWx0ZXJ0ADRuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJlcGV0aXRpb3VzRmlsdGVydAAxY2gudW5pemguaW5pLmphZXIucHJvamVjdHMuY29jaHNvdW5kbG9jLklUREZpbHRlcng="/>
                   <entry key="SubSampler.bits" value="1"/>
                   <entry key="SubSampler.filterEnabled" value="false"/>
                   <entry key="BufferIPot.value" value="50"/>
@@ -728,14 +754,6 @@
                   <entry key="ITDFilter.computeMeanInLoop" value="true"/>
                   <entry key="MultichipAMS1bEventProducer.filterEnabled" value="true"/>
                   <entry key="ITDFilter.sendITD_UDP_port" value="localhost:9999"/>
-                  <entry key="FilterFrame.lastFilterSelected" value="class ch.unizh.ini.jaer.projects.cochsoundloc.ITDFilter"/>
-                  <entry key="ScannerHardwareInterface.scanX" value="0"/>
-                  <entry key="ScannerHardwareInterface.scanContinuouslyEnabled" value="false"/>
-                  <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.gain0" value="4"/>
-                  <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.gain1" value="4"/>
-                  <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.gain2" value="3"/>
-                  <entry key="CochleaAMS1cRollingCochleagramADCDisplayMethod.gain3" value="3"/>
-                  <entry key="CochleaAMS1c.Biasgen.DAC.powered" value="true"/>
                   <entry key="CochleaAMS1cControlPanel.selectedPaneIndex" value="5"/>
                   <entry key="ITDFilter.writeBin2File" value="false"/>
                   <entry key="CochleaAMS1c.Biasgen.Scanner.currentStage" value="50"/>
@@ -1480,8 +1498,6 @@
                   <entry key="FiringRateFilter.tauDecayMs" value="14.0"/>
                   <entry key="ISIFilter.useLeftEar" value="true"/>
                   <entry key="CochleaEventRate.filterEnabled" value="false"/>
-                  <entry key="Info.useLocalTimeZone" value="true"/>
-                  <entry key="Info.filterEnabled" value="false"/>
                   <entry key="Info.analogClock" value="false"/>
                   <entry key="Info.absoluteTime" value="false"/>
                   <entry key="Info.date" value="false"/>
@@ -2388,9 +2404,6 @@
                   <entry key="CochleaLP.ADCEnable" value="true"/>
                   <entry key="CochleaLP.ADCChannelsEnable" value="3"/>
                   <entry key="CochleaLP.ADCFrequency" value="false"/>
-                  <entry key="RefractoryFilter.filterEnabled" value="false"/>
-                  <entry key="HotPixelFilter.filterEnabled" value="false"/>
-                  <entry key="JaerAviWriter.filterEnabled" value="false"/>
                   <entry key="SpectrogramFilter.filterEnabled" value="false"/>
                   <entry key="AudioVisualNet.filterEnabled" value="false"/>
                   <entry key="CochleaAMS1b.selectedBiasgenControlTab" value="1"/>
@@ -3194,9 +3207,6 @@
                   <entry key="CochleaTow4Ear.KillChannel" value="5"/>
                   <entry key="CochleaTow4Ear.KillNeurons02" value="false"/>
                   <entry key="CochleaTow4Ear.KillNeurons13" value="false"/>
-                  <entry key="RNNfilter.processingEnabled" value="false"/>
-                  <entry key="RNNfilter.filterEnabled" value="false"/>
-                  <entry key="RNNfilter.lastRNNXMLFile" value="C:\Users\shih\Documents\1jaer\jAER\trunk\filterSettings\xiaoya_rnn_v1_jAER.xml"/>
                   <entry key="ISIFilter.neighborhoodRangeLower" value="7.0"/>
                   <entry key="ITDFilter.beamFormingRangeUs" value="115.0"/>
                   <entry key="Info.eventRateScaleMax" value="25509.395"/>

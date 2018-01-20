@@ -54,9 +54,11 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.ToolTipManager;
 import javax.swing.border.Border;
+import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.plaf.basic.BasicBorders;
 
 import net.sf.jaer.graphics.GlobalViewer;
 import net.sf.jaer.util.EngineeringFormat;
@@ -133,6 +135,16 @@ import net.sf.jaer.util.EngineeringFormat;
  * </pre> This method will construct a button with label "SendParameters" which,
  * when pressed, will call the method "doSendParameters".
  * <p>
+ * <p>
+ * To add a momentary press/release button control to a panel, implement a pair
+ * of methods starting with "doPress" and "doRelease", e.g.
+ * <pre>
+ *     public void doPressTurnOnLamp();
+ *     public void doReleaseTurnOnLamp();
+ ** </pre> This method will construct a button with label "TurnOnLamp" which,
+ * while pressed can turn on something momentarily; the doPressXXX() is called
+ * on press and doReleaseXXX() on release
+ * <p>
  * <strong>
  * Grouping parameters.</strong>
  * <p>
@@ -193,6 +205,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private HashMap<String, HasSetter> setterMap = new HashMap<String, HasSetter>(); // map from filter to property, to apply property change events to control
     protected java.util.ArrayList<JComponent> controls = new ArrayList<JComponent>();
     private HashMap<String, Container> groupContainerMap = new HashMap();
+    private HashMap<String, MyControl> propertyControlMap = new HashMap();
     private JComponent ungroupedControls = null;
     private JPanel inheritedPanel = null;
     private float DEFAULT_REAL_VALUE = 0.01f; // value jumped to from zero on key or wheel up
@@ -208,8 +221,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //        log.info("building FilterPanel for "+f);
         this.setFilter(f);
         initComponents();
-        Dimension d=enableResetControlsHelpPanel.getPreferredSize();
-        enableResetControlsHelpPanel.setMaximumSize(new Dimension(1000,d.height)); // keep from stretching
+        Dimension d = enableResetControlsHelpPanel.getPreferredSize();
+        enableResetControlsHelpPanel.setMaximumSize(new Dimension(1000, d.height)); // keep from stretching
         String cn = getFilter().getClass().getName();
         int lastdot = cn.lastIndexOf('.');
         String name = cn.substring(lastdot + 1);
@@ -246,10 +259,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
 
     // checks for group container and adds to that if needed.
-    private void myadd(JComponent comp, String propertyName, boolean inherited) {
+    private void myadd(MyControl comp, String propertyName, boolean inherited) {
         if (!getFilter().hasPropertyGroups()) {
             ungroupedControls.add(comp);
             controls.add(comp);
+            propertyControlMap.put(propertyName, comp);
             return;
         }
         String groupName = getFilter().getPropertyGroup(propertyName);
@@ -268,6 +282,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             ungroupedControls.add(comp);
         }
         controls.add(comp);
+        propertyControlMap.put(propertyName, comp);
     }
 
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
@@ -279,7 +294,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         ungroupedControls.setBorder(new TitledBorder(u));
         ungroupedControls.setLayout(new GridLayout(0, 1));
         controls.add(ungroupedControls);
-        JPanel control = null;
+        MyControl control = null;
         EventFilter filter = getFilter();
         try {
             info = Introspector.getBeanInfo(filter.getClass());
@@ -617,12 +632,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         label.setForeground(Color.BLUE);
 
     }
-    
-    class MyControl extends JPanel{
-        public Dimension getMaximumSize(){
-           Dimension d= getPreferredSize();
-           d.setSize(1000, d.getHeight());
-           return d;
+
+    class MyControl extends JPanel {
+
+        public Dimension getMaximumSize() {
+            Dimension d = getPreferredSize();
+            d.setSize(1000, d.getHeight());
+            return d;
         }
     }
 
@@ -746,7 +762,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
     final float factor = 1.51f, wheelFactor = 1.05f; // factors to change by with arrow and mouse wheel
 
-    class BooleanControl extends JPanel implements HasSetter {
+    class BooleanControl extends MyControl implements HasSetter {
 
         Method write, read;
         EventFilter filter;
@@ -1937,6 +1953,37 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
 //        customControls.clear();
 
+    }
+
+    private ArrayList<MyControl> highlightedControls = new ArrayList();
+
+    /**
+     * Highlights properties that match the string s
+     *
+     * @param s
+     */
+    public void highlightProperties(String s) {
+        s = s.toLowerCase();
+        System.out.println("\n************** \n searching for "+s+"\n");
+        for (MyControl c : highlightedControls) {
+            c.setBorder(null);
+            c.repaint(300);
+//            System.out.println("cleared "+c);
+        }
+//        System.out.println("");
+        highlightedControls.clear();
+        if(s.isEmpty()) return;
+        for (String propName : propertyControlMap.keySet()) {
+            if (propName.toLowerCase().contains(s)) {
+                MyControl c = propertyControlMap.get(propName);
+                    System.out.println("highlighted "+propName);
+                if (c != null) {
+                    c.setBorder(new LineBorder(Color.red));
+                    c.repaint(300);
+                    highlightedControls.add(c);
+                }
+            }
+        }
     }
 
 //    public class ShowControlsAction extends AbstractAction{

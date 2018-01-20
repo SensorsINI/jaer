@@ -18,7 +18,7 @@ public class Measurand extends DescriptiveStatistics {
 
     @Override
     public String toString() {
-        return String.format("Mean %8.2f -%-6.2f +%-6.2f (SD) of %4d samples ", getMean(), getPercentile(.25), getPercentile(.75), getN());
+        return String.format("Mean %8.2f [%.2f,%.2f] (25%%-75%%) of %4d samples ", getMean(), getPercentile(25), getPercentile(75), getN());
     }
 
     /**
@@ -33,7 +33,7 @@ public class Measurand extends DescriptiveStatistics {
 
     public String graphicsString(String header, String units) {
         Point2D.Float q = getQuartileErrors();
-        return String.format("%s %4.2f -%5.2f +%5.2f %s", header, getMean(), q.x, q.y, units);
+        return String.format("%s %4.2f [%.2f,%.2f] %s", header, getMean(), q.x, q.y, units);
     }
 
     public static void main(String[] args) {

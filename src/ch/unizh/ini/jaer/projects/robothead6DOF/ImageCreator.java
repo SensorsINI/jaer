@@ -188,7 +188,7 @@ public class ImageCreator extends FremeExtractor implements Observer {
         if (rgbValues == null || rgbValues.length != 3 * getSize()) {
             rgbValues = new float[3 * getSize()];
         }
-        if (frame == null || display == null || display.getSizeX() != getSizeX() || display.getSizeY() != getSizeY()) {
+        if (frame == null || display == null || display.getWidth() != getSizeX() || display.getHeight() != getSizeY()) {
             display = ImageDisplay.createOpenGLCanvas(); // make a new ImageDisplay GLCanvas with default OpenGL capabilities
             display.setImageSize(getSizeX(), getSizeY()); // set dimensions of image      
 
@@ -834,9 +834,9 @@ public class ImageCreator extends FremeExtractor implements Observer {
 
         @Override
         public void run() {
-            BufferedImage img = new BufferedImage(display.getSizeX(), display.getSizeY(), BufferedImage.TYPE_INT_RGB);
-            for (int y = 0; y < display.getSizeY(); y++) {
-                for (int x = 0; x < display.getSizeX(); x++) {
+            BufferedImage img = new BufferedImage(display.getWidth(), display.getHeight(), BufferedImage.TYPE_INT_RGB);
+            for (int y = 0; y < display.getHeight(); y++) {
+                for (int x = 0; x < display.getWidth(); x++) {
                     int idx = getIndex(x, y);
                     int nIdx = 3 * idx;
                     int r = ((int) (rgbValues[nIdx++] * 255)); // red component 0...255

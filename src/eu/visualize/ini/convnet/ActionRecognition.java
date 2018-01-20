@@ -5,6 +5,9 @@
  */
 package eu.visualize.ini.convnet;
 
+import ch.unizh.ini.jaer.projects.npp.AbstractDavisCNN;
+import ch.unizh.ini.jaer.projects.npp.DavisCNNPureJava;
+import ch.unizh.ini.jaer.projects.npp.DavisClassifierCNNProcessor;
 import com.jogamp.opengl.GL;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
@@ -13,20 +16,8 @@ import java.beans.PropertyChangeListener;
 import java.util.Arrays;
 
 import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GL2ES3;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
-import eu.visualize.ini.convnet.DeepLearnCnnNetwork.OutputOrInnerProductFullyConnectedLayer;
-import java.awt.Color;
-import java.io.File;
-import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.swing.JFileChooser;
-import javax.swing.JOptionPane;
-import javax.swing.filechooser.FileFilter;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import static jdk.nashorn.internal.objects.NativeJava.extend;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -41,44 +32,45 @@ import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
- * Extends DavisDeepLearnCnnProcessor to add annotation graphics to show
- * ActionRecognition output 
- * 
+ * Extends DavisClassifierCNNProcessor to add annotation graphics to show
+ ActionRecognition output
+ *
  * @author Gemma
  */
 @Description("Displays ActionRecognition CNN results; subclass of DavisDeepLearnCnnProcessor")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class ActionRecognition extends DavisDeepLearnCnnProcessor implements PropertyChangeListener{
-    
+public class ActionRecognition extends DavisClassifierCNNProcessor implements PropertyChangeListener {
+
     //LOCAL VARIABLES
     private float decisionLowPassMixingFactor = getFloat("decisionLowPassMixingFactor", .2f);
     private boolean hideOutput = getBoolean("hideOutput", false);
     private boolean showDecisionStatistic = getBoolean("showDecisionStatistic", false);
     private boolean showThreshold = getBoolean("showThreshold", false);
     Statistics statistics = new Statistics();
-    protected DvsSubsamplerToFrameMultiCameraChip dvsSubsamplerMultiCam = null;
-    private String performanceString = null; 
-    int dvsMinEvents=getDvsMinEvents();
-    boolean processDVSTimeSlices=isProcessDVSTimeSlices();
-    float stdDevThreshold=getFloat("stdDevThreshold", 0.1f);
-    float thrActivations=getFloat("thrActivations", 0.5f);
-    float MinThrActivations=getFloat("MinThrActivations", 0f);
-    float MaxThrActivations=getFloat("MaxThrActivations", 1f);
-    boolean displayDecision=false;
-    
+//    protected DvsFramerSingleFrameMultiCameraChip dvsSubsamplerMultiCam = null;
+    private String performanceString = null;
+    boolean processDVSTimeSlices = isProcessDVSTimeSlices();
+    float stdDevThreshold = getFloat("stdDevThreshold", 0.1f);
+    float thrActivations = getFloat("thrActivations", 0.5f);
+    float MinThrActivations = getFloat("MinThrActivations", 0f);
+    float MaxThrActivations = getFloat("MaxThrActivations", 1f);
+    boolean displayDecision = false;
+
     /**
      * output units
      */
-    private static final String[] DECISION_STRINGS = 
-        {"Left arm abduction", "Right arm abduction", "Left leg abduction", "Right leg abduction", "Left arm bicepite", "Right arm bicepite", "Left leg knee lift", "Right leg knee lift", // Session1
-        "Walking", "Single jump up", "Single jump forward", "Multiple jump up", "Hop right foot", "Hop left foot", // Session2
-        "Punch forward left", "Punch forward right", "Punch up left", "Punch up right", "Punch down left", "Punch down right", // Session3
-        "Running", "Star jump", "Kick forward left", "Kick forward right", "Kick side left", "Kick side right", // Session4
-        "Hello left", "Hello right", "Circle left", "Circl right", "8 left", "8 right", "Clap"// Session5
+    private static final String[] DECISION_STRINGS
+            = {"Left arm abduction", "Right arm abduction", "Left leg abduction", "Right leg abduction", "Left arm bicepite", "Right arm bicepite", "Left leg knee lift", "Right leg knee lift", // Session1
+                "Walking", "Single jump up", "Single jump forward", "Multiple jump up", "Hop right foot", "Hop left foot", // Session2
+                "Punch forward left", "Punch forward right", "Punch up left", "Punch up right", "Punch down left", "Punch down right", // Session3
+                "Running", "Star jump", "Kick forward left", "Kick forward right", "Kick side left", "Kick side right", // Session4
+                "Hello left", "Hello right", "Circle left", "Circl right", "8 left", "8 right", "Clap"// Session5
         };
-        
+
     public ActionRecognition(AEChip chip) {
         super(chip);
+        dvsSubsampler = new DvsFramerSingleFrameMultiCameraChip(chip);
+
         String actionRecognition = "0. ActionRecognition";
         setPropertyTooltip(actionRecognition, "showDecisionStatistic", "Show list of movement");
         setPropertyTooltip(actionRecognition, "hideOutput", "Hides output action recognition indications");
@@ -87,28 +79,24 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
         setPropertyTooltip(actionRecognition, "showThreshold", "Display the threshold value of activations");
         setPropertyTooltip(actionRecognition, "thrActivations", "threshold value of activations to show the output");
 
-//        setPropertyTooltip(faceDetector,"faceDetectionThreshold", "Threshold activation for showing face detection; increase to decrease false postives. Default 0.5f. You may need to set softmax=true for this to work.");
-//        setPropertyTooltip(roshambo, "playSpikeSounds", "Play a spike sound on change of network output decision");
-//        setPropertyTooltip(roshambo, "playSounds", "Play sound effects (Rock/Scissors/Paper) every time the decision changes and playSoundsMinIntervalMs has intervened");
-//        setPropertyTooltip(roshambo, "playSoundsMinIntervalMs", "Minimum time inteval for playing sound effects in ms");
-//        setPropertyTooltip(roshambo, "playSoundsThresholdActivation", "Minimum winner activation to play the sound");
         FilterChain chain = new FilterChain(chip);
         setEnclosedFilterChain(chain);
-        apsDvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, statistics);
-        super.setDvsMinEvents(40000); //eventsPerFrame in the 4 cam, DVSmovies Dataset Sophie
+        chain.add(dvsSubsampler);
+        apsDvsNet.getSupport().addPropertyChangeListener(DavisCNNPureJava.EVENT_MADE_DECISION, statistics);
+//        super.setDvsEventsPerFrame(40000); //eventsPerFrame in the 4 cam, DVSmovies Dataset Sophie
         MultilineAnnotationTextRenderer.setFontSize(50);
     }
-    
+
     @Override
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
-        
+
         if (!addedPropertyChangeListener) {
             ((AEFrameChipRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
             addedPropertyChangeListener = true;
         }
 //        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsDvsNet on each frame in PropertyChangeListener
         // send DVS timeslice to convnet
-        if (dvsSubsamplerMultiCam == null) {
+        if (dvsSubsampler == null) {
             throw new RuntimeException("Null dvsSubsamplerMultiCam; this should not occur");
         }
 
@@ -119,27 +107,8 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
                 lastProcessedEventTimestamp = e.getTimestamp();
                 MultiCameraApsDvsEvent p = (MultiCameraApsDvsEvent) e; //TODO add change in case of MultiCameraApsDvsEvent
 
-                if (dvsSubsamplerMultiCam != null) {
-                    dvsSubsamplerMultiCam.addEvent(p, sizeX, sizeY);
-                }
-                if (dvsSubsamplerMultiCam!= null && dvsSubsamplerMultiCam.getAccumulatedEventCount() > dvsMinEvents) {
-                    long startTime = 0;
-                    if (measurePerformance) {
-                        startTime = System.nanoTime();
-                    }
-                    if (processDVSTimeSlices) {
-                        apsDvsNet.processDvsTimeslice((DvsSubsamplerToFrame)dvsSubsamplerMultiCam); // generates PropertyChange EVENT_MADE_DECISION
-                        if (dvsSubsamplerMultiCam != null) {
-                            dvsSubsamplerMultiCam.clear();
-                        }
-                        if (measurePerformance) {
-                            long dt = System.nanoTime() - startTime;
-                            float ms = 1e-6f * dt;
-                            float fps = 1e3f / ms;
-                            performanceString = String.format("Frame processing time: %.1fms (%.1f FPS); %s", ms, fps, apsDvsNet.getPerformanceString());
-                        }
-                    }
-
+                if (dvsSubsampler != null) {
+                    dvsSubsampler.addEvent(p); // generates PropertyChangeEvent EVENT_NEW_FRAME_AVAILBLE when frame fills up, which processes CNN on it
                 }
             }
 
@@ -150,20 +119,18 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
     @Override
     public void resetFilter() {
         super.resetFilter();
-        if (dvsSubsamplerMultiCam != null) {
-            dvsSubsamplerMultiCam.clear();
+        if (dvsSubsampler != null) {
+            dvsSubsampler.clear();
         }
         statistics.reset();
     }
-    
+
     @Override
     public void initFilter() {
         super.initFilter();
-        boolean rectifyPolarities=super.isRectifyPolarities();
         if (apsDvsNet != null) {
             try {
-                dvsSubsamplerMultiCam= new DvsSubsamplerToFrameMultiCameraChip(apsDvsNet.inputLayer.dimx, apsDvsNet.inputLayer.dimy, getDvsColorScale());
-                dvsSubsamplerMultiCam.setRectifyPolarties(rectifyPolarities);
+                dvsSubsampler = new DvsFramerSingleFrameMultiCameraChip(chip);
             } catch (Exception ex) {
                 log.warning("Problem with the class SubsamplerToFromMultiCameraChip, caught exception " + ex);
             }
@@ -175,7 +142,7 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
         chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, statistics);
         super.setFilterEnabled(yes);
     }
-    
+
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
@@ -184,87 +151,89 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
         }
         GL2 gl = drawable.getGL().getGL2();
         checkBlend(gl);
-        if ((apsDvsNet != null) && (apsDvsNet.outputLayer != null) && (apsDvsNet.outputLayer.activations != null)) {
+        if ((apsDvsNet != null) && (apsDvsNet.getOutputLayer() != null) && (apsDvsNet.getOutputLayer().getActivations() != null)) {
             float[] activationsVect;
-            activationsVect=apsDvsNet.outputLayer.activations;
-            double stdActivations= StdDev(activationsVect);
-            displayDecision=false;
-            float max=0;
- 
-            for (int i=0; i<activationsVect.length; i++){
-                if(activationsVect[i]>max){
-                    max=activationsVect[i];
-                    if (max>thrActivations){
-                        displayDecision=true;
+            activationsVect = apsDvsNet.getOutputLayer().getActivations();
+            double stdActivations = StdDev(activationsVect);
+            displayDecision = false;
+            float max = 0;
+
+            for (int i = 0; i < activationsVect.length; i++) {
+                if (activationsVect[i] > max) {
+                    max = activationsVect[i];
+                    if (max > thrActivations) {
+                        displayDecision = true;
                     }
                 }
             }
-            
-            if ((stdActivations>=stdDevThreshold)&(displayDecision)){
+
+            if ((stdActivations >= stdDevThreshold) & (displayDecision)) {
                 drawDecisionOutput(gl, drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
-            }else{
+            } else {
                 clearDecisionOutput(gl);
             }
         }
-        if(showDecisionStatistic){
+        if (showDecisionStatistic) {
             statistics.draw(gl);
         }
 //        if(playSounds && isShowOutputAsBarChart()){ //NO PLAY SOUND
 //            gl.glColor3f(.5f,0,0);
 //            gl.glBegin(GL.GL_LINES);
-//            final float h=playSoundsThresholdActivation*DeepLearnCnnNetwork.HISTOGRAM_HEIGHT_FRACTION*chip.getSizeY();
+//            final float h=playSoundsThresholdActivation*DavisCNNPureJava.HISTOGRAM_HEIGHT_FRACTION*chip.getSizeY();
 //            gl.glVertex2f(0,h);
 //            gl.glVertex2f(chip.getSizeX(),h);
 //            gl.glEnd();
 //        }
-        if(isShowOutputAsBarChart()){ 
-            gl.glColor3f(.5f,0,0);
+        if (isShowOutputAsBarChart()) {
+            gl.glColor3f(.5f, 0, 0);
             gl.glBegin(GL.GL_LINES);
-            final float h=DeepLearnCnnNetwork.HISTOGRAM_HEIGHT_FRACTION*chip.getSizeY();
-            gl.glVertex2f(0,h);
-            gl.glVertex2f(chip.getSizeX(),h);
+            final float h = AbstractDavisCNN.HISTOGRAM_HEIGHT_FRACTION * chip.getSizeY();
+            gl.glVertex2f(0, h);
+            gl.glVertex2f(chip.getSizeX(), h);
             gl.glEnd();
         }
-        
-        if(isShowThreshold() && thrActivations!=0){ 
-            gl.glColor3f(0,.5f,0);
+
+        if (isShowThreshold() && thrActivations != 0) {
+            gl.glColor3f(0, .5f, 0);
             gl.glBegin(GL.GL_LINES);
-            final float h=(float)thrActivations*DeepLearnCnnNetwork.HISTOGRAM_HEIGHT_FRACTION*chip.getSizeY();
-            gl.glVertex2f(0,h);
-            gl.glVertex2f(chip.getSizeX(),h);
+            final float h = (float) thrActivations * AbstractDavisCNN.HISTOGRAM_HEIGHT_FRACTION * chip.getSizeY();
+            gl.glVertex2f(0, h);
+            gl.glVertex2f(chip.getSizeX(), h);
             gl.glEnd();
         }
     }
-    
-    /** Return the mean of the Array
+
+    /**
+     * Return the mean of the Array
      *
      * @param array
      * @return
      */
-    public double Mean(float[] array){ 
+    public double Mean(float[] array) {
         double sum = 0;
-        int numElem=array.length;
+        int numElem = array.length;
 
-        for(int i=0;i<numElem;i++){
-            sum=sum+array[i];
+        for (int i = 0; i < numElem; i++) {
+            sum = sum + array[i];
         }
-        return (sum/numElem);
-     }
-    
-    /** Return the standard deviation of the Array
+        return (sum / numElem);
+    }
+
+    /**
+     * Return the standard deviation of the Array
      *
      * @param array
      * @return
      */
-    public double StdDev(float[] array){  
+    public double StdDev(float[] array) {
         double sum = 0;
-        int numElem=array.length;
-        double avg= Mean(array);
+        int numElem = array.length;
+        double avg = Mean(array);
 
-        for(int i=0;i<numElem;i++){
-            sum=sum+Math.pow((array[i]-avg), 2);
+        for (int i = 0; i < numElem; i++) {
+            sum = sum + Math.pow((array[i] - avg), 2);
         }
-        return Math.sqrt(sum/numElem);
+        return Math.sqrt(sum / numElem);
     }
 
     private TextRenderer textRenderer = null;
@@ -287,9 +256,9 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
         textRenderer.endRendering();
 //        gl.glPopMatrix();
     }
-    
+
     private void clearDecisionOutput(GL2 gl) {
-        textRenderer=null;
+        textRenderer = null;
     }
 
     /**
@@ -321,7 +290,7 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
         this.showDecisionStatistic = showDecisionStatistic;
         putBoolean("showDecisionStatistic", showDecisionStatistic);
     }
-    
+
     /**
      * @return the showThreshold
      */
@@ -354,23 +323,29 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
         this.decisionLowPassMixingFactor = decisionLowPassMixingFactor;
         putFloat("decisionLowPassMixingFactor", decisionLowPassMixingFactor);
     }
-    
-    
-    /** getter for thrActivations
-    * @return thrActivations 
-    */
-   public float getThrActivations(){
-        return thrActivations;
-   }
-    /** getter for minimum value of thrActivations
-     * @return thrActivations 
+
+    /**
+     * getter for thrActivations
+     *
+     * @return thrActivations
      */
-    public float getMinThrActivations() {
-     return MinThrActivations;
+    public float getThrActivations() {
+        return thrActivations;
     }
 
-    /** getter for maximum value of thrActivations
-     * @return thrActivations 
+    /**
+     * getter for minimum value of thrActivations
+     *
+     * @return thrActivations
+     */
+    public float getMinThrActivations() {
+        return MinThrActivations;
+    }
+
+    /**
+     * getter for maximum value of thrActivations
+     *
+     * @return thrActivations
      */
     public float getMaxThrActivations() {
         return MaxThrActivations;
@@ -383,7 +358,7 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
         this.thrActivations = thrActivations;
         putFloat("thrActivations", thrActivations);
     }
-    
+
     /**
      * @return the stdDevThreshold
      */
@@ -398,10 +373,10 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
         this.stdDevThreshold = stdDevThreshold;
         putFloat("stdDevThreshold", stdDevThreshold);
     }
-    
+
     private class Statistics implements PropertyChangeListener {
 
-        final int NUM_CLASSES = 33; 
+        final int NUM_CLASSES = 33;
         int totalCount, totalCorrect, totalIncorrect;
         int[] correct = new int[NUM_CLASSES], incorrect = new int[NUM_CLASSES], count = new int[NUM_CLASSES];
         int dvsTotalCount, dvsCorrect, dvsIncorrect;
@@ -443,7 +418,7 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
             StringBuilder sb = new StringBuilder("Decision statistics: ");
             try {
                 for (int i = 0; i < NUM_CLASSES; i++) {
-                    if (decisionCounts[i]>0){
+                    if (decisionCounts[i] > 0) {
                         sb.append(String.format("    %s: %d (%.1f%%) \n", DECISION_STRINGS[i], decisionCounts[i], (100 * (float) decisionCounts[i]) / totalCount));
                     }
                 }
@@ -455,9 +430,9 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
 
         @Override
         public synchronized void propertyChange(PropertyChangeEvent evt) {
-            if (evt.getPropertyName() == DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
+            if (evt.getPropertyName() == DavisCNNPureJava.EVENT_MADE_DECISION) {
                 int lastOutput = maxUnit;
-                DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
+                DavisCNNPureJava net = (DavisCNNPureJava) evt.getNewValue();
                 maxActivation = Float.NEGATIVE_INFINITY;
                 maxUnit = -1;
                 try {
@@ -492,25 +467,5 @@ public class ActionRecognition extends DavisDeepLearnCnnProcessor implements Pro
         }
 
     }
-    
-    /**
-     * Loads a convolutional neural network (CNN) trained using DeapLearnToolbox
-     * for Matlab (https://github.com/rasmusbergpalm/DeepLearnToolbox) that was
-     * exported using Danny Neil's XML Matlab script cnntoxml.m.
-     *
-     */
-    synchronized public void doLoadApsDvsNetworkFromXML() {
-        super.doLoadApsDvsNetworkFromXML();
-        boolean rectifyPolarities=super.isRectifyPolarities();
-        try {
-            dvsSubsamplerMultiCam = new DvsSubsamplerToFrameMultiCameraChip(apsDvsNet.inputLayer.dimx, apsDvsNet.inputLayer.dimy, getDvsColorScale());
-            dvsSubsamplerMultiCam.setRectifyPolarties(rectifyPolarities);
-        } catch (Exception ex) {
-            log.warning("Problem with the class vsSubsamplerToFromMultiCameraChip, caught exception " + ex);
-        }
-        System.out.println("File Loaded!");
-    }
 
 }
-        
-
