@@ -41,6 +41,14 @@ public class MultilineAnnotationTextRenderer {
 	public static void resetToYPositionPixels(float yOrigin){
 		yshift=yOrigin;
 	}
+        
+        /** Call to set x position (1 by default)
+	 * 
+	 * @param xPosition in pixels from bottom of GLCanvas.
+	 */
+	public static void setXPosition(float xPosition){
+		xposition=xPosition;
+	}
 
 	/** Renders the string starting at last position.
 	 * Embedded newlines start a new line of text which is intended slightly.
