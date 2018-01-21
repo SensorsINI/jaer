@@ -13,7 +13,7 @@ package ch.unizh.ini.jaer.chip.multicamera;
  *
  */
 
-import ch.unizh.ini.jaer.projects.multitracking.Triangulation3DViewer;
+import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.Davis240Config;
 import java.util.ArrayList;
 import java.util.TreeMap;
@@ -41,6 +41,7 @@ import net.sf.jaer.event.ApsDvsEvent;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.DavisConfig;
 import eu.seebetter.ini.chips.davis.DavisTowerBaseConfig;
+import eu.seebetter.ini.chips.davis.imu.IMUSample;
 
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.graphics.AEViewer;
@@ -61,12 +62,10 @@ import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.TwoCamera3DDisplayMethod;
 
 import java.util.Iterator;
-import net.sf.jaer.graphics.AEChipRenderer;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.chip.Chip;
+import net.sf.jaer.event.ApsDvsEvent.ReadoutType;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.graphics.DisplayMethod3DSpace;
-import net.sf.jaer.graphics.MultiCameraDifferentColorDisplayRenderer;
-import net.sf.jaer.graphics.MultiViewerFromMultiCamera;
 //import net.sf.jaer.graphics.MultiViewerFromMultiCamera;
 
 
@@ -309,9 +308,10 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
      * a right event (as opposed to a left event)
      */
     public class Extractor extends DavisBaseCamera.DavisEventExtractor {
-
+       
+        
         public Extractor(MultiDavisCameraChip chip) {
-            super(new DavisBaseCamera() {}); // they are the same type
+            super(chip); // they are the same type
         }
 
         /** extracts the meaning of the raw events and returns EventPacket containing BinocularEvent.
@@ -320,6 +320,10 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
          */
         @Override
         synchronized public ApsDvsEventPacket extractPacket(AEPacketRaw in) {
+            if (!(getChip() instanceof MultiDavisCameraChip)) {
+                return null;
+            }
+            
             final int sx = getChipType().getSizeX()-1;
             final int sy = getChipType().getSizeY()-1;
             
@@ -328,15 +332,15 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
             }else {
                 out.clear();
             }
+            out.setRawPacket(in);
             if (in == null) {
                 return (ApsDvsEventPacket) out;
             }
 
             OutputEventIterator outItr = out.outputIterator();
-            DavisEventExtractor davisExtractor = new DavisEventExtractor((DavisBaseCamera) chip);
-            EventPacket davisExtractedPacket = davisExtractor.extractPacket(in);
+            EventPacket davisExtractedPacket = new DavisEventExtractor((DavisBaseCamera) chip).extractPacket(in);
             
-            int n =davisExtractedPacket.getSize();
+            int n =in.getNumEvents();//davisExtractedPacket.getSize();
             
             int[] a = in.getAddresses();
 
@@ -346,13 +350,18 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
                 MultiCameraApsDvsEvent e= (MultiCameraApsDvsEvent) outItr.nextOutput();
                 e.copyFrom(davisExtractedEvent);
                 int address=e.address;
+                
+                if (NUM_CAMERAS==0){
+                    findMaxNumCameras(e);
+                }
+                e.NUM_CAMERAS=NUM_CAMERAS;
                 //if DVS
                 if (e.isDVSEvent() ){
                     e.camera = MultiCameraApsDvsEvent.getCameraFromRawAddressDVS(address);
 
-                }else if (e.isApsData()){
-                    e.camera = MultiCameraApsDvsEvent.getCameraFromRawAddressAPS(address);
-//                    System.out.println("DVS? "+ e.isDVSEvent()+" camera: " +e.camera+" x: "+ e.x+" y: "+e.y);
+                }else if (e.isApsData()& !e.isImuSample()){
+                    e.camera = MultiCameraApsDvsEvent.getCameraFromRawAddressAPS(address, NUM_CAMERAS);
+//                    System.out.println(" camera: " +e.camera+" x: "+ e.x+" y: "+e.y);
                 }
                 
                 if (NUM_CAMERAS==0){
@@ -366,56 +375,11 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
                         e.setFilteredOut(true);
                     }
                 }  		
-                
-                if (e.isApsData() & displayAPSEnable){
-                    putAPSEventInBuffer(e);
-                }
 
             }
             return (ApsDvsEventPacket) out;
 
-        }
-        
-        public void putAPSEventInBuffer(MultiCameraApsDvsEvent e) {
-                int c=e.camera;
-                final ApsDvsEvent.ReadoutType type = e.getReadoutType();
-                final float val = e.getAdcSample();
-                final int idx = (e.y * sx) + e.x;
-                if (idx >= sx*sy) {
-                    return;
-                }
-                
-                switch (type) {
-                case SignalRead:
-                    signalBuffer[idx][c] = val;
-                    break;
-                case ResetRead:
-                default:
-                    resetBuffer[idx][c] = val;
-                    break;
-                }
-                
-                displayBuffer[idx][c] = resetBuffer[idx][c] - signalBuffer[idx][c];
-                float grayValue = scaleGrayValue(displayBuffer[idx][c]);
-                displayFrame[idx][c] = grayValue;
-                
-                apsDisplay[c].setPixmapGray(e.x, e.y, grayValue);
-                apsDisplay[c].repaint();               
-        }
-        
-        private float scaleGrayValue(final float value) {
-            float v;
-            int displayContrast=1;
-            int displayBrightness=0;
-            v = ((displayContrast * value) + displayBrightness) / ADCMax;
-            if (v < 0) {
-                v = 0;
-            } else if (v > 1) {
-                v = 1;
-            }
-            return v;
-            }
-        
+        }             
 
         /** Reconstructs the raw packet after event filtering to include the binocular information
         @param packet the filtered packet
