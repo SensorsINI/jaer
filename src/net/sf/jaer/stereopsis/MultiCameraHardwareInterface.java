@@ -552,12 +552,12 @@ public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderB
         }else if (chip instanceof MultiDavisCameraChip) {
             MultiCameraApsDvsEvent mce= new MultiCameraApsDvsEvent();                           
             for (int i = 0; i < n; i++) {
-                if (mce.isDVSfromRawAddress(adr[i])){
+                if (mce.isDVSEvent()){
 //                    System.out.println("camera: "+camera+" old address: "+Integer.toBinaryString(adr[i]));
                     adr[i]=mce.setCameraNumberToRawAddressDVS(camera, adr[i]);
 //                    System.out.println("new address: "+Integer.toBinaryString(adr[i]));
                 }
-                if (!mce.isDVSfromRawAddress(adr[i])){
+                if (!mce.isApsData()){
 //                    System.out.println("camera: "+camera+" old address: "+Integer.toBinaryString(adr[i]));
                     adr[i]=mce.setCameraNumberToRawAddressAPS(camera, adr[i]);
 //                    System.out.println("new address: "+Integer.toBinaryString(adr[i]));
