@@ -50,24 +50,35 @@ public class MultiCameraApsDvsEvent extends ApsDvsEvent {
     
     /** Static method to extract the camera number from the 32 bit raw address 
      * for a APS event.
-     * It is stored as lowest bits of the ADC bits of the raw address. 
+     * It is stored as lowest 2 bits of the ADC bits of the raw address. 
      */
     
-    public static byte getCameraFromRawAddressAPS(int address) {
+    public static byte getCameraFromRawAddressAPS(int address, int numCam) {
+        if (numCam>2){
             int camera= address & 0x3;
-            return (byte) camera;   
+            return (byte) camera;
+        }else{
+            int camera= address & 0x1;
+            return (byte) camera;
+        }
     }
 
-    /** For a APS event, sets the camera number in the raw address, 
-     * as...... 
+    /** For a APS event, sets the camera number in the raw address, the lowest 2 bits of the 32 bits 
+     * and returns the new address with camera number.
      * This method adds the information of the camera to the raw address. The camera ID is store
      * in the lowest bits of the ADC bits of the raw address. 
      */
 
     public static int setCameraNumberToRawAddressAPS(int camera, int oldaddress){
-        oldaddress = oldaddress & 0xfffffffc;
-        int newaddress=0xffffffff&(oldaddress | (0xffffffff&(camera)));
-        return newaddress;            
+        if (camera>1){
+            oldaddress = oldaddress & 0xfffffff0;
+            int newaddress=0xffffffff&(oldaddress | (0xffffffff&(camera)));
+            return newaddress;
+        }else{
+            oldaddress = oldaddress & 0xfffffff0;
+            int newaddress=0xffffffff&(oldaddress | (0xffffffff&(camera)));
+            return newaddress;
+        }            
     }
     
     /** The index of the camera, 0 based. */
@@ -131,13 +142,6 @@ public class MultiCameraApsDvsEvent extends ApsDvsEvent {
         if(e instanceof MultiCameraApsDvsEvent){
             this.camera=((MultiCameraApsDvsEvent)e).camera;
         }
-    }
-    
-       /** check the address and return true if it correspond to a DVS event
-     @param address address of the event
-     */
-    public boolean isDVSfromRawAddress(int address){
-        return ((address & DavisChip.ADDRESS_TYPE_MASK ) ==0);
     }
 
 
