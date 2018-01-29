@@ -458,16 +458,16 @@ public class OpenCVFlow extends AbstractMotionFlow
                     }
                 }
                 OFResultDisplay.setPixmapFromGrayArray(new_slice_buff);
-//                DateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
-//                File folder = new File("EventSlices/" + chip.getAeInputStream().getFile().getName() + patchFlow.getSliceMethod().toString());
-//                folder.mkdir();
-//                File outputfile = new File(folder, String.format("Clear-pid%d.jpg", this.getId()));
-//                Core.flip(newFrame, newFrame, 0);
-//                try {
-//                    ImageIO.write(Mat2BufferedImage(newFrame), "jpg", outputfile);
-//                } catch (IOException ex) {
-//                    Logger.getLogger(OpenCVFlow.class.getName()).log(Level.SEVERE, null, ex);
-//                }
+                DateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
+                File folder = new File("EventSlices/" + chip.getAeInputStream().getFile().getName() + patchFlow.getSliceMethod().toString() + "_" + df);
+                folder.mkdir();
+                File outputfile = new File(folder, String.format("packet_pid%d_%fms.jpg", this.getId(), patchFlow.sliceDeltaTimeUs(2)/1000.0));
+                Core.flip(newFrame, newFrame, 0);
+                try {
+                    ImageIO.write(Mat2BufferedImage(newFrame), "jpg", outputfile);
+                } catch (IOException ex) {
+                    Logger.getLogger(OpenCVFlow.class.getName()).log(Level.SEVERE, null, ex);
+                }
             }            
 
             // draw the tracks
@@ -634,6 +634,9 @@ public class OpenCVFlow extends AbstractMotionFlow
         int bufferSize = m.channels()*m.cols()*m.rows();
         byte [] b = new byte[bufferSize];
         m.get(0,0,b); // get all the pixels
+        for (int i=0; i < b.length; i++) {
+            b[i] = (byte)(100 + b[i]);
+        }
         BufferedImage image = new BufferedImage(m.cols(),m.rows(), type);
         final byte[] targetPixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
         System.arraycopy(b, 0, targetPixels, 0, b.length);  

@@ -876,7 +876,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * pointer
      *
      */
-    private int sliceDeltaTimeUs(int pointer) {
+    protected int sliceDeltaTimeUs(int pointer) {
 //        System.out.println("dt(" + pointer + ")=" + (sliceStartTimeUs[sliceIndex(1)] - sliceStartTimeUs[sliceIndex(pointer)]));
         return sliceStartTimeUs[sliceIndex(1)] - sliceStartTimeUs[sliceIndex(pointer)];
     }
