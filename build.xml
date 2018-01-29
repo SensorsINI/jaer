@@ -2,7 +2,7 @@
 <!-- You may freely edit this file. See commented blocks below for -->
 <!-- some examples of how to customize the build. -->
 <!-- (If you delete it and reopen the project it will be recreated.) -->
-<project name="jAER" default="default" basedir=".">
+<project name="jAER" default="default" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
     <description>Builds, tests, and runs the project jAER</description>
     <import file="nbproject/build-impl.xml"/>
      <!--
@@ -71,7 +71,56 @@
         <delete dir="${build.dir}"/>
     </target>
 
-   <target name="-pre-init">
+
+
+    <!--    <target name="-pre-compile" depends="retrieve-dependencies">
+         Empty placeholder for easier customization. 
+         You can override this target in the ../build.xml file. 
+    </target>-->
+
+
+    <!--    https://blog.alejandrocelaya.com/2014/02/22/dependency-management-in-java-projects-with-ant-and-ivy/ 
+    https://ant.apache.org/ivy/ 
+    http://wiki.netbeans.org/FaqIvy 
+    see ivy.xml 
+    <target name="retrieve-dependencies"
+            description="Retrieve dependencies with Apache IVY">
+        <ivy:retrieve type="jar" />
+    </target>-->
+    
+    <path id="ivy.lib.path">
+        <fileset dir="jars" includes="ivy-2.4.0.jar"/>
+    </path>
+    <taskdef resource="org/apache/ivy/ant/antlib.xml"
+             uri="antlib:org.apache.ivy.ant" classpathref="ivy.lib.path"/>
+    
+    <target name="-ivy-cleancache">
+        <ivy:cleancache />
+    </target>
+    
+    <target name="-ivy-retrieve">
+        <ivy:retrieve/> <!-- Load dependencies to the project -->
+        <pathconvert property="ivy.classpath.computed" dirsep="/" pathsep=":">
+            <path>
+                <fileset dir="lib" includes="*.jar"/>
+            </path>
+            <map from="${basedir}${file.separator}" to=""/>
+        </pathconvert>
+        <propertyfile file="nbproject/project.properties">
+            <entry operation="=" key="ivy.classpath" value="${ivy.classpath.computed}"/>
+        </propertyfile>
+    </target>
+    
+    
+    <target name="-pre-compile" depends="-ivy-retrieve"/>
+    <target name="-pre-compile-single" depends="-ivy-retrieve"/>
+    
+    
+    <target name="-post-clean">
+        <delete dir="lib"/>
+    </target>
+
+    <target name="-pre-init">
         <!-- Empty placeholder for easier customization. -->
         <!-- You can override this target in the ../build.xml file. -->
         <tstamp/>
@@ -81,8 +130,7 @@
     <target name="-pre-jar" depends="jaer-setBuildVersion,jaer-copySplashImage" >
         <echo message="build.xml project opened"/>
         <echo> Having trouble building or running?
-            See the Help Forum for jAER at https://sourceforge.net/p/jaer/discussion/631958/
-            or the jAER wiki at https://sourceforge.net/p/jaer/
+            See the jAER user forum at https://groups.google.com/forum/#!forum/jaer-users
         </echo>
     </target>
 
@@ -106,7 +154,7 @@
         <subant failonerror="false" target="jaer-exe4jx86">
             <fileset dir="." includes="build.xml"/>
         </subant>
-       <subant failonerror="false" target="jaer-exe4jx64">
+        <subant failonerror="false" target="jaer-exe4jx64">
             <fileset dir="." includes="build.xml"/>
         </subant>
     </target>
@@ -133,13 +181,13 @@
     <!-- builds the windows executable .exe launcher files -->
     <target name="-post-jar" depends="jaer-exe4j">
         
-     </target>
+    </target>
 
     <!-- builds a zip of all the javadoc -->
     <target name="jaer-archive-javadoc" depends="javadoc">
         <tstamp/>
         <delete file="../../jaer-javadoc-*.zip" />
-      <property name="javadocZipFileName" value="../../jaer-javadoc-${DSTAMP}.zip" />
+        <property name="javadocZipFileName" value="../../jaer-javadoc-${DSTAMP}.zip" />
         <zip destfile="${javadocZipFileName}" comment="jAER javadoc ${DSTAMP} - see https://sourceforge.net/p/jaer/wiki/">
             <zipfileset prefix="jAER-javadoc" dir="${dist.javadoc.dir}" />
         </zip>
@@ -148,10 +196,10 @@
     <!-- builds a runtime archive for end users who don't want to develop -->
     <target name="jaer-runtime-archive" depends="jar">
         <tstamp/>
-       <delete file="../../jaer-runtime-*.zip" />
+        <delete file="../../jaer-runtime-*.zip" />
         <property name="runtimeZipFileName" value="../../jaer-runtime-${DSTAMP}.zip"/>
         <zip destfile="${runtimeZipFileName}" level="9"
-            comment="jAER runtime release ${DSTAMP}- see hhttps://sourceforge.net/p/jaer/wiki/">
+             comment="jAER runtime release ${DSTAMP}- see hhttps://sourceforge.net/p/jaer/wiki/">
             <zipfileset prefix="jAER-runtime"
                         dir="../../"
                         excludes="blender/**,
@@ -166,7 +214,7 @@
     <!--depends="jaer-runtime-archive"-->
     <target name="jaer-runtime-release-upload"   >
         <tstamp/>
-            <ftp
+        <ftp
             server="upload.sourceforge.net"
             userid="anonymous"
             password="project-jaer"
@@ -209,6 +257,7 @@
     </target>
 
     <!-- builds a file with the output of svnversion that is used for the About dialogs -->
+    <!--TODO fix to get rev info from git-->
     <target name="jaer-setBuildVersion" depends="init">
         <tstamp/>
         <echo message="Making build version file ${buildversion.outputfile} - you can ignore any error ${line.separator}generated here since it will only affect the Help/About... dialog. ${line.separator}To remove this error, you need to install a command line svn client ${line.separator}and make svnversion available on the PATH." />
@@ -217,12 +266,12 @@
         <exec executable="svnversion" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" searchpath="true">
             <arg line="."/>
         </exec>
-         <!-- make it a property line -->
+        <!-- make it a property line -->
         <replaceregexp file="${buildversion.outputfile}"
                        match="(.*)"
                        replace="subversion.revisionNumber=\1"
                        byline="false"/>
-      <!-- run subwcrev (must have tortoisesvn installed and on PATH) to get svn revision numnber -->
+        <!-- run subwcrev (must have tortoisesvn installed and on PATH) to get svn revision numnber -->
         <exec executable="subWCrev" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" append="true">
             <arg line="."/>
         </exec>
@@ -234,8 +283,8 @@
     </target>
 
 
-   <target name="jaer-sign-jar" depends="jar">
-       <echo message="Self-signing jar"/>
-       <signjar jar="${dist.jar}" alias="jaer" keystore="keystore" storepass="jaerjaer"/>
-   </target>
+    <target name="jaer-sign-jar" depends="jar">
+        <echo message="Self-signing jar"/>
+        <signjar jar="${dist.jar}" alias="jaer" keystore="keystore" storepass="jaerjaer"/>
+    </target>
 </project>
