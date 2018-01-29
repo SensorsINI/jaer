@@ -21,16 +21,22 @@ package net.sf.jaer.eventio.ros;
 import com.github.swrirobotics.bags.reader.BagFile;
 import com.github.swrirobotics.bags.reader.BagReader;
 import com.github.swrirobotics.bags.reader.exceptions.BagReaderException;
+import com.github.swrirobotics.bags.reader.messages.serialization.MsgIterator;
+import com.github.swrirobotics.bags.reader.records.ChunkInfo;
+import com.github.swrirobotics.bags.reader.records.Connection;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.logging.Logger;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
-import org.apache.log4j.Logger;
 
 /**
  * Reads ROS bag files holding data from https://github.com/uzh-rpg/rpg_dvs_ros
@@ -40,7 +46,7 @@ import org.apache.log4j.Logger;
  */
 public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
-    private static Logger log = Logger.getLogger(RosbagFileInputStream.class);
+    private static Logger log = Logger.getLogger("RosbagFileInputStream");
 
     /**
      * File name extension for ROS bag files, excluding ".", i.e. "bag". Note
@@ -64,14 +70,37 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
     private int currentMessageNumber = 0;
     private final EventPacket<PolarityEvent> eventPacket = new EventPacket(PolarityEvent.class);
     private final AEPacketRaw rawPacket = new AEPacketRaw();
-    private PropertyChangeSupport support=new PropertyChangeSupport(this);
+    private PropertyChangeSupport support = new PropertyChangeSupport(this);
+    private FileChannel channel = null;
+    private static String[] TOPICS = {"/dvs/events", "/sensor_msgs/Image", "/sensor_msgs/Imu"};
+    private MsgIterator msgIterator = null;
+    private List<Connection> conns = null;
+    private List<ChunkInfo> chunkInfos = null;
 
     public RosbagFileInputStream(File f, AEChip chip) throws BagReaderException {
         setFile(f);
         this.chip = chip;
         log.info("opening rosbag file " + f + " for chip " + chip);
         bagFile = BagReader.readFile(file);
-//        bagFile.printInfo();
+//        bagFile.printInfo(); // debug
+        conns = bagFile.getConnections();
+        ArrayList<Connection> myConnections=new ArrayList();
+        for(Connection conn:conns){
+            String topic=conn.getTopic();
+            for(String t:TOPICS){
+                if(t.equals(topic)){
+                    myConnections.add(conn);
+                }
+            }
+            
+        }
+        chunkInfos = bagFile.getChunkInfos();
+        try (FileChannel channel = bagFile.getChannel()) {
+            msgIterator = new MsgIterator(chunkInfos, myConnections, channel);
+
+        } catch (IOException e) {
+            throw new BagReaderException(e);
+        }
     }
 
     @Override
@@ -86,7 +115,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public boolean isNonMonotonicTimeExceptionsChecked() {
-return false;    }
+        return false;
+    }
 
     @Override
     public void setNonMonotonicTimeExceptionsChecked(boolean yes) {
@@ -214,7 +244,6 @@ return false;    }
 
     @Override
     public void setTimestampResetBitmask(int timestampResetBitmask) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
