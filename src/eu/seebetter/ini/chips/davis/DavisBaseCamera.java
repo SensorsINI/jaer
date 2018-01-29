@@ -660,6 +660,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             }
 
             address = (address & ~DavisChip.YMASK) | (e.y << DavisChip.YSHIFT);
+            address = (address & ~DavisChip.POLMASK) | (e.type << DavisChip.POLSHIFT);
 
             return address;
         }
