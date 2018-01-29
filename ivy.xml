@@ -28,6 +28,7 @@ MA 02110-1301  USA
 
     <dependencies>
         <!--see https://jogamp.org/wiki/index.php/Maven-->
+        <!--see http://search.maven.org to find libraries -->
         <!--following does not work, since the latest jogl doesn't have com.jogamp.opengl--> 
                 
         <!--<dependency org="org.jogamp.jogl" name="jogl-all" rev="2.3.2" />--> 
@@ -50,7 +51,6 @@ MA 02110-1301  USA
         <dependency org="org.jdesktop" name="beansbinding" rev="1.2.1" />
         <dependency org="com.github.swri-robotics" name="bag-reader-java" rev="1.9.0" />
         <dependency org="org.apache.commons" name="commons-lang3" rev="3.7" />
-        <dependency org="commons-io" name="commons-io" rev="1.2" />
         <dependency org="org.apache.commons" name="commons-math3" rev="3.6.1" />
         <dependency org="org.webjars.npm" name="semver" rev="5.4.1" />
         <dependency org="commons-net" name="commons-net" rev="3.6" />
