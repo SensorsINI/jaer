@@ -69,6 +69,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.AEViewer;
@@ -425,7 +426,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             }
         }
         // handle time after last label
-        AEFileInputStream fileInputStream = chip.getAeViewer().getAePlayer().getAEInputStream();
+        AEFileInputStreamInterface fileInputStream = chip.getAeViewer().getAePlayer().getAEInputStream();
         int tFirstLabel = prevTargets != null ? prevTargets.getKey() : fileInputStream.getFirstTimestamp();
         int tLastLabel = fileInputStream.getLastTimestamp(); // TODO handle wrapped timestamp during recording
         int frameNumber = prevTargets != null ? prevTargets.getValue().get(0).frameNumber : -1;

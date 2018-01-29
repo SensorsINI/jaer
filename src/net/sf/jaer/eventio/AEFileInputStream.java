@@ -1050,7 +1050,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * @return the duration of the file in us.
      * <p>
      * Assumes data file is timestamped in us. This method fails to provide a
-     * sensible value if the timestamp wwaps.
+     * sensible value if the timestamp wraps.
      */
     public int getDurationUs() {
         return lastTimestamp - firstTimestamp;

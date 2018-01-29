@@ -21,6 +21,7 @@ import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPopupMenu;
 import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.graphics.AbstractAEPlayer.PlaybackMode;
 
@@ -79,7 +80,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
      *
      * @param is the input stream.
      */
-    public void addMeToPropertyChangeListeners(AEFileInputStream is) {
+    public void addMeToPropertyChangeListeners(AEFileInputStreamInterface is) {
 //        is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_MARK_IN_SET, this);
 //        is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_MARK_OUT_SET, this);
 //        is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_MARKS_CLEARED, this);
@@ -659,7 +660,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                     if (time < oldtime) {
                         // we need to set position in all viewers so that we catch up to present desired time
                         AbstractAEPlayer p;
-                        AEFileInputStream is;
+                        AEFileInputStreamInterface is;
 
                         try {
                             for (AEViewer v : aeViewer.getJaerViewer().getViewers()) {

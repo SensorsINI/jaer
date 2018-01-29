@@ -31,6 +31,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -46,8 +47,8 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  *
  * @author tobi delbruck, yuhaung hu, hongie liu
  */
-@Description("Displays tracking dataset bounding boxes as described in the Frontiers paper \"DVS Benchmark Datasets for\n" +
-" * Object Tracking, Action Recognition, and Object Recognition\"")
+@Description("Displays tracking dataset bounding boxes as described in the Frontiers paper \"DVS Benchmark Datasets for\n"
+        + " * Object Tracking, Action Recognition, and Object Recognition\"")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class YuhuangBoundingboxDisplay extends EventFilter2D implements FrameAnnotater, Observer, PropertyChangeListener {
 
@@ -147,8 +148,10 @@ public class YuhuangBoundingboxDisplay extends EventFilter2D implements FrameAnn
         }
 
     }
-    
-    /** makes a new treemap of undistorted boxes */
+
+    /**
+     * makes a new treemap of undistorted boxes
+     */
     private void computeCalibratedBoundingBoxes() {
         // undistorted each vertex
         ArrayList<Point2D.Float> points = new ArrayList(boundingBoxes.size() * 4);
@@ -242,7 +245,7 @@ public class YuhuangBoundingboxDisplay extends EventFilter2D implements FrameAnn
                     break;
                 case AEViewer.EVENT_FILEOPEN:
                     AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
-                    AEFileInputStream in = (player.getAEInputStream());
+                    AEFileInputStreamInterface in = (player.getAEInputStream());
                     in.getSupport().addPropertyChangeListener(this);
                     // Treat FileOpen same as a rewind
                     resetFilter();

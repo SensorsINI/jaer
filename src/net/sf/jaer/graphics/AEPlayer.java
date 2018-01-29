@@ -76,17 +76,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     @Override
     public void openAEInputFileDialog() {
 //        try{Thread.currentThread().sleep(200);}catch(InterruptedException e){}
-        float oldScale = viewer.chipCanvas.getScale();
         fileChooser = new JFileChooser();
-//            new TypeAheadSelector(fileChooser);
-        //com.sun.java.plaf.windows.WindowsFileChooserUI;
-//            fileChooser.addKeyListener(new KeyAdapter() {
-//                public void keyTyped(KeyEvent e){
-//                    System.out.println("keycode="+e.getKeyCode());
-//                }
-//            });
-//            System.out.println("fileChooser.getUIClassID()="+fileChooser.getUIClassID());
-//            KeyListener[] keyListeners=fileChooser.getKeyListeners();
         ChipDataFilePreview preview = new ChipDataFilePreview(fileChooser, viewer.getChip());
         // from book swing hacks
         new FileDeleter(fileChooser, preview);
@@ -144,6 +134,66 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     public void doSingleStep() {
 //        log.info("doSingleStep");
         viewer.setDoSingleStepEnabled(true);
+    }
+
+    @Override
+    public long getAbsoluteStartingTimeMs() {
+        return aeFileInputStream.getAbsoluteStartingTimeMs();
+    }
+
+    @Override
+    public int getDurationUs() {
+        return aeFileInputStream.getDurationUs();
+    }
+
+    @Override
+    public int getFirstTimestamp() {
+        return aeFileInputStream.getFirstTimestamp();
+    }
+
+    @Override
+    public File getFile() {
+       return aeFileInputStream.getFile();
+    }
+
+    @Override
+    public int getLastTimestamp() {
+        return aeFileInputStream.getLastTimestamp();
+    }
+
+    @Override
+    public int getMostRecentTimestamp() {
+        return aeFileInputStream.getMostRecentTimestamp();
+    }
+
+    @Override
+    public void setFile(File file) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public int getTimestampResetBitmask() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void setTimestampResetBitmask(int timestampResetBitmask) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void close() throws IOException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public int getCurrentStartTimestamp() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void setCurrentStartTimestamp(int currentStartTimestamp) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     public class FileDeleter extends KeyAdapter implements PropertyChangeListener {
@@ -589,7 +639,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     }
 
     @Override
-    public AEFileInputStream getAEInputStream() {
+    public AEFileInputStreamInterface getAEInputStream() {
         return aeFileInputStream;
     }
 

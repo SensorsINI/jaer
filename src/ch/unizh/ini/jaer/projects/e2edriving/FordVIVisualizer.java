@@ -41,7 +41,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -248,7 +248,7 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
         }
     }
 
-    private long parseDataStartTimeFromAeDatFile(AEFileInputStream aeis) throws FileNotFoundException, IOException {
+    private long parseDataStartTimeFromAeDatFile(AEFileInputStreamInterface aeis) throws FileNotFoundException, IOException {
         // # DataStartTime: System.currentTimeMillis() 1481800498468
         File f = aeis.getFile();
         LineNumberReader is = new LineNumberReader(new InputStreamReader(new FileInputStream(f)));

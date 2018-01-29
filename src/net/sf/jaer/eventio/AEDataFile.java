@@ -15,7 +15,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
 /**
- * Defines file extensions for data and index files.
+ * Defines file extensions for AERDAT data and index files.
  * @author tobi
  */
 public interface AEDataFile {

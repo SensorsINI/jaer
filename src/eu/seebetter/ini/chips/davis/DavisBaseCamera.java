@@ -46,7 +46,7 @@ import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DisplayMethod;
@@ -357,7 +357,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     }
 
     @Override
-    public AEFileInputStream constuctFileInputStream(final File file) throws IOException {
+    public AEFileInputStreamInterface constuctFileInputStream(final File file) throws IOException {
         frameCount = 0;
 
         return (super.constuctFileInputStream(file));

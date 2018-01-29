@@ -11,7 +11,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -230,7 +230,7 @@ public class RefractoryFilter extends EventFilter2D implements Observer, Propert
                 case AEViewer.EVENT_FILEOPEN:
                     log.info("File Open");
                     AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
-                    AEFileInputStream in = (player.getAEInputStream());
+                    AEFileInputStreamInterface in = (player.getAEInputStream());
                     in.getSupport().addPropertyChangeListener(this);
                     // Treat FileOpen same as a rewind
                     resetFilter();

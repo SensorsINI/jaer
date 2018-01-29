@@ -15,8 +15,7 @@ import javax.swing.Action;
 import javax.swing.KeyStroke;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEFileInputStream;
-import static net.sf.jaer.eventio.AEInputStream.EVENT_REPEAT_OFF;
-import static net.sf.jaer.eventio.AEInputStream.EVENT_REPEAT_ON;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
 
 /**
  * Base class for AEPlayers for playing back AER data files that implements some
@@ -36,7 +35,7 @@ public abstract class AbstractAEPlayer {
     /**
      * The AE file input stream.
      */
-    protected AEFileInputStream aeFileInputStream = null;
+    protected AEFileInputStreamInterface aeFileInputStream = null;
     /**
      * The input file.
      */
@@ -260,7 +259,7 @@ public abstract class AbstractAEPlayer {
         support.firePropertyChange(EVENT_PLAYBACKMODE, old, playbackMode);
     }
 
-    public AEFileInputStream getAEInputStream() {
+    public AEFileInputStreamInterface getAEInputStream() {
         return aeFileInputStream;
     }
 

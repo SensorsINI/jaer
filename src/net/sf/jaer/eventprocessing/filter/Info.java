@@ -45,6 +45,7 @@ import java.util.Iterator;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.PolarityEvent.Polarity;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
@@ -418,7 +419,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private void getAbsoluteStartingTimeMsFromFile() {
         AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
         if (player != null) {
-            AEFileInputStream in = (player.getAEInputStream());
+            AEFileInputStreamInterface in = (player.getAEInputStream());
             if (in != null) {
                 in.getSupport().addPropertyChangeListener(this);
                 dataFileTimestampStartTimeUs = in.getFirstTimestamp();

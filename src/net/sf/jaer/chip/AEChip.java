@@ -9,6 +9,7 @@
  */
 package net.sf.jaer.chip;
 
+import com.github.swrirobotics.bags.reader.exceptions.BagReaderException;
 import eu.seebetter.ini.chips.davis.HotPixelFilter;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -18,15 +19,16 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEFileOutputStream;
+import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.FilterFrame;
@@ -43,6 +45,7 @@ import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.graphics.SpaceTimeEventDisplayMethod;
 import net.sf.jaer.graphics.SpaceTimeRollingEventDisplayMethod;
 import net.sf.jaer.util.avioutput.JaerAviWriter;
+import org.apache.commons.io.FilenameUtils;
 
 /**
  * Describes a generic address-event chip, and includes fields for associated
@@ -65,7 +68,7 @@ public class AEChip extends Chip2D {
      */
     protected EventExtractor2D eventExtractor = null;
     protected AEChipRenderer renderer = null;
-    protected AEFileInputStream aeInputStream = null;
+    protected AEFileInputStreamInterface aeInputStream = null;
     protected AEFileOutputStream aeOutputStream = null;
     protected FilterChain filterChain = null;
     protected AEViewer aeViewer = null;
@@ -267,7 +270,7 @@ public class AEChip extends Chip2D {
      *
      * @return the stream
      */
-    public AEFileInputStream getAeInputStream() {
+    public AEFileInputStreamInterface getAeInputStream() {
         return aeInputStream;
     }
 
@@ -441,10 +444,18 @@ public class AEChip extends Chip2D {
      * @return the stream
      * @throws IOException on any IO exception
      */
-    public AEFileInputStream constuctFileInputStream(File file) throws IOException {
-        AEFileInputStream stream = new AEFileInputStream(file, this);
-        aeInputStream = stream;
-        return stream;
+    public AEFileInputStreamInterface constuctFileInputStream(File file) throws IOException {
+        if (FilenameUtils.isExtension(file.getName(), RosbagFileInputStream.DATA_FILE_EXTENSION)) {
+            try {
+                aeInputStream = new RosbagFileInputStream(file, this);
+            } catch (BagReaderException ex) {
+                log.warning(ex.toString());
+                throw new IOException("Could not open "+file+": got "+ex.toString(), ex);
+            }
+        } else if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION.substring(1))) {
+            aeInputStream = new AEFileInputStream(file, this);
+        }
+        return aeInputStream;
     }
 
     /**

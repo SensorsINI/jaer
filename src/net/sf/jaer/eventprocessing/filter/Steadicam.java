@@ -50,6 +50,7 @@ import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
@@ -1005,7 +1006,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         } else if (evt.getPropertyName().equals(AEViewer.EVENT_FILEOPEN)) {
             log.info("File Open");
             AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
-            AEFileInputStream in = (player.getAEInputStream());
+            AEFileInputStreamInterface in = (player.getAEInputStream());
             in.getSupport().addPropertyChangeListener(this);
             // Treat FileOpen same as a rewind
             resetFilter();

@@ -35,11 +35,11 @@ import net.sf.jaer.util.SpikeSound;
 import net.sf.jaer.util.TextRendererScale;
 import net.sf.jaer.util.filter.LowpassFilter;
 
+import com.jogamp.opengl.awt.GLCanvas;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GL2ES3;
 import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.awt.GLCanvas;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
