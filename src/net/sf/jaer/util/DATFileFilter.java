@@ -9,6 +9,7 @@ package net.sf.jaer.util;
 import java.io.File;
 
 import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 
 /**
  * filter for AE event data files.
@@ -30,7 +31,7 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
         
         String extension = getExtension(f);
         if (extension != null) {
-            if (extension.equals(EXTENSION)  || extension.equals(OLDEXTENSION)){
+            if (extension.equals(EXTENSION)  || extension.equals(OLDEXTENSION) || extension.endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)){
                 return true;
             } else {
                 return false;
@@ -51,7 +52,7 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
     }
 
     public String getDescription() {
-        return "AER raw binary data file";
+        return "AER raw binary data file or ROS bag file";
     }
     
     /** The extension, including the dot, ".aedat"
