@@ -81,19 +81,20 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
     private int currentStartTimestamp;
     private long absoluteStartingTimeMs = 0; // in system time since 1970 in ms
     private int currentMessageNumber = 0;
-    private final ApsDvsEventPacket<ApsDvsEvent> eventPacket = new ApsDvsEventPacket<ApsDvsEvent>(ApsDvsEvent.class);
+    private final ApsDvsEventPacket<ApsDvsEvent> eventPacket;
     private AEPacketRaw aePacketRaw = null;
-    private PropertyChangeSupport support = new PropertyChangeSupport(this);
+    private final PropertyChangeSupport support = new PropertyChangeSupport(this);
     private FileChannel channel = null;
 //    private static String[] TOPICS = {"/dvs/events", "/dvs/image_raw", "/dvs/imu"};
-    private static String[] TOPICS = {"/dvs/events"};
+    private static final String[] TOPICS = {"/dvs/events"};
     private MsgIterator msgIterator = null;
-    private List<MessageData> messages = null;
+//    private List<MessageData> messages = null;
     private List<Connection> conns = null;
     private List<ChunkInfo> chunkInfos = null;
     private int msgPosition=0, numMessages=0;
 
     public RosbagFileInputStream(File f, AEChip chip) throws BagReaderException {
+        this.eventPacket = new ApsDvsEventPacket<>(ApsDvsEvent.class);
         setFile(f);
         this.chip = chip;
         log.info("opening rosbag file " + f + " for chip " + chip);
@@ -111,7 +112,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 //            log.info("connection "+conn+" has topic "+topic);
             for (String t : TOPICS) {
                 if (t.equals(topic)) {
-                    log.info("topic matches " + t + "; adding this connection to myConnections. This message has definition " + conn.getMessageDefinition());
+//                    log.info("topic matches " + t + "; adding this connection to myConnections. This message has definition " + conn.getMessageDefinition());
+                    log.info("topic matches " + t + "; adding this connection to myConnections");
                     myConnections.add(conn);
                 }
             }
@@ -143,7 +145,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
     private AEPacketRaw getNextRawPacket() {
         try {
             MessageType message = getNextMsg();
-            Field f = message.getField("events");
+//            Field f = message.getField("events");
             ArrayType data = message.<ArrayType>getField("events");
             List<Field> eventFields = data.getFields();
 //            int nEvents = eventFields.size();
