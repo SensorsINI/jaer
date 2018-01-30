@@ -21,20 +21,30 @@ package net.sf.jaer.eventio.ros;
 import com.github.swrirobotics.bags.reader.BagFile;
 import com.github.swrirobotics.bags.reader.BagReader;
 import com.github.swrirobotics.bags.reader.exceptions.BagReaderException;
+import com.github.swrirobotics.bags.reader.exceptions.UninitializedFieldException;
+import com.github.swrirobotics.bags.reader.messages.serialization.ArrayType;
+import com.github.swrirobotics.bags.reader.messages.serialization.BoolType;
+import com.github.swrirobotics.bags.reader.messages.serialization.Field;
+import com.github.swrirobotics.bags.reader.messages.serialization.MessageType;
 import com.github.swrirobotics.bags.reader.messages.serialization.MsgIterator;
+import com.github.swrirobotics.bags.reader.messages.serialization.TimeType;
+import com.github.swrirobotics.bags.reader.messages.serialization.UInt16Type;
 import com.github.swrirobotics.bags.reader.records.ChunkInfo;
 import com.github.swrirobotics.bags.reader.records.Connection;
+import com.github.swrirobotics.bags.reader.records.MessageData;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 
@@ -61,21 +71,27 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
      */
     private AEChip chip = null;
     private File file = null;
-    BagReader bagReader = null;
     BagFile bagFile = null;
-    private int mostRecentTimestamp, firstTimestamp, lastTimestamp;
+    // the most recently read event timestamp, the first one in file, and the last one in file
+    private long mostRecentTimestamp, firstTimestamp, lastTimestamp;
+    private long firstTimestampUsAbsolute; // the absolute (ROS) first timestamp in us
+    private boolean firstTimestampWasRead=false;
+    
     // marks the present read time for packets
     private int currentStartTimestamp;
-    private long absoluteStartingTimeMs = 0;
+    private long absoluteStartingTimeMs = 0; // in system time since 1970 in ms
     private int currentMessageNumber = 0;
-    private final EventPacket<PolarityEvent> eventPacket = new EventPacket(PolarityEvent.class);
-    private final AEPacketRaw rawPacket = new AEPacketRaw();
+    private final ApsDvsEventPacket<ApsDvsEvent> eventPacket = new ApsDvsEventPacket<ApsDvsEvent>(ApsDvsEvent.class);
+    private AEPacketRaw aePacketRaw = null;
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     private FileChannel channel = null;
-    private static String[] TOPICS = {"/dvs/events", "/sensor_msgs/Image", "/sensor_msgs/Imu"};
+//    private static String[] TOPICS = {"/dvs/events", "/dvs/image_raw", "/dvs/imu"};
+    private static String[] TOPICS = {"/dvs/events"};
     private MsgIterator msgIterator = null;
+    private List<MessageData> messages = null;
     private List<Connection> conns = null;
     private List<ChunkInfo> chunkInfos = null;
+    private int msgPosition=0, numMessages=0;
 
     public RosbagFileInputStream(File f, AEChip chip) throws BagReaderException {
         setFile(f);
@@ -83,34 +99,97 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
         log.info("opening rosbag file " + f + " for chip " + chip);
         bagFile = BagReader.readFile(file);
 //        bagFile.printInfo(); // debug
+    }
+
+    private MsgIterator getMsgIterator() throws BagReaderException {
+//        messages=bagFile.getMessages();
         conns = bagFile.getConnections();
-        ArrayList<Connection> myConnections=new ArrayList();
-        for(Connection conn:conns){
-            String topic=conn.getTopic();
-            for(String t:TOPICS){
-                if(t.equals(topic)){
+        ArrayList<Connection> myConnections = new ArrayList();
+        for (Connection conn : conns) {
+
+            String topic = conn.getTopic();
+//            log.info("connection "+conn+" has topic "+topic);
+            for (String t : TOPICS) {
+                if (t.equals(topic)) {
+                    log.info("topic matches " + t + "; adding this connection to myConnections. This message has definition " + conn.getMessageDefinition());
                     myConnections.add(conn);
                 }
             }
-            
+
         }
         chunkInfos = bagFile.getChunkInfos();
-        try (FileChannel channel = bagFile.getChannel()) {
-            msgIterator = new MsgIterator(chunkInfos, myConnections, channel);
+        try {
+            channel = bagFile.getChannel();
+        } catch (IOException ex) {
+            Logger.getLogger(RosbagFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
+            throw new BagReaderException(ex.toString());
+        }
+        MsgIterator itr = new MsgIterator(chunkInfos, myConnections, channel);
+        return itr;
+    }
 
-        } catch (IOException e) {
-            throw new BagReaderException(e);
+    synchronized private MessageType getNextMsg() throws BagReaderException {
+        if (msgIterator == null) {
+            msgIterator = getMsgIterator();
+        }
+        if (msgIterator.hasNext()) {
+            msgPosition++;
+            return msgIterator.next();
+        } else {
+            throw new BagReaderException("EOF");
         }
     }
 
-    @Override
-    public AEPacketRaw readPacketByNumber(int n) throws IOException {
-        return rawPacket;
+    private AEPacketRaw getNextRawPacket() {
+        try {
+            MessageType message = getNextMsg();
+            Field f = message.getField("events");
+            ArrayType data = message.<ArrayType>getField("events");
+            List<Field> eventFields = data.getFields();
+//            int nEvents = eventFields.size();
+            OutputEventIterator<ApsDvsEvent> outItr = eventPacket.outputIterator();
+            int sizeY = chip.getSizeY();
+            for (Field eventField : eventFields) {
+                MessageType eventMsg = (MessageType) eventField;
+                // https://github.com/uzh-rpg/rpg_dvs_ros/tree/master/dvs_msgs/msg]
+                PolarityEvent e = outItr.nextOutput();
+                int x = eventMsg.<UInt16Type>getField("x").getValue();
+                int y = eventMsg.<UInt16Type>getField("y").getValue();
+                boolean pol = eventMsg.<BoolType>getField("polarity").getValue();
+                long tsMs =  eventMsg.<TimeType>getField("ts").getValue().getTime();
+                long tsNs =  eventMsg.<TimeType>getField("ts").getValue().getNanos();
+                e.x = (short) x;
+                e.y = (short) (sizeY - y - 1);
+                e.polarity = pol ? PolarityEvent.Polarity.On : PolarityEvent.Polarity.Off;
+                e.type = (byte) (pol ? 1 : 0);
+                long timestampUsAbsolute = tsMs * 1000 + tsNs / 1000;
+                if(!firstTimestampWasRead){
+                    firstTimestampUsAbsolute=timestampUsAbsolute;
+                    firstTimestampWasRead=true;
+                }
+                e.timestamp = (int)(timestampUsAbsolute-firstTimestampUsAbsolute);
+                mostRecentTimestamp=e.timestamp;
+            }
+            aePacketRaw = chip.getEventExtractor().reconstructRawPacket(eventPacket);
+//            System.out.println(eventPacket.toString());
+        } catch (UninitializedFieldException ex) {
+            Logger.getLogger(ExampleRosBagReader.class.getName()).log(Level.SEVERE, null, ex);
+            return null;
+        } catch (BagReaderException bre) {
+            log.info(bre.toString());
+            return null;
+        }
+        return aePacketRaw;
     }
 
     @Override
-    public AEPacketRaw readPacketByTime(int dt) throws IOException {
-        return rawPacket;
+    synchronized public AEPacketRaw readPacketByNumber(int n) throws IOException {
+        return getNextRawPacket();
+    }
+
+    @Override
+    synchronized public AEPacketRaw readPacketByTime(int dt) throws IOException {
+        return getNextRawPacket();
     }
 
     @Override
@@ -134,7 +213,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public int getFirstTimestamp() {
-        return 0; // TODO from first DVS packet
+        return (int)firstTimestamp;
     }
 
     @Override
@@ -144,7 +223,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public float getFractionalPosition() {
-        return 0;
+        return (float)mostRecentTimestamp/getDurationUs();
     }
 
     @Override
@@ -154,14 +233,17 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public void position(long n) {
+        // TODO, will be hard
     }
 
     @Override
-    public void rewind() throws IOException {
+    synchronized public void rewind() throws IOException {
+        msgIterator=null;
     }
 
     @Override
-    public void setFractionalPosition(float frac) {
+    synchronized public void setFractionalPosition(float frac) {
+        // TODO
     }
 
     @Override
@@ -229,25 +311,39 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public int getLastTimestamp() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return (int)lastTimestamp; // TODO, from last DVS event timestamp
     }
 
     @Override
     public int getMostRecentTimestamp() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return (int)mostRecentTimestamp;
     }
 
     @Override
     public int getTimestampResetBitmask() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return 0; // TODO
     }
 
     @Override
     public void setTimestampResetBitmask(int timestampResetBitmask) {
+        // TODO
     }
 
     @Override
-    public void close() throws IOException {
+    synchronized public void close() throws IOException {
+        if (channel != null && channel.isOpen()) {
+            try {
+                channel.close();
+            } catch (IOException e) {
+                // ignore this error
+            }
+        }
+        bagFile = null;
+        msgIterator = null;
+        conns = null;
+        chunkInfos = null;
+        file=null;
+        System.gc();
     }
 
     @Override
@@ -258,6 +354,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
     @Override
     public void setCurrentStartTimestamp(int currentStartTimestamp) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        super.finalize();
+        close();
     }
 
 }
