@@ -31,7 +31,6 @@ import com.github.swrirobotics.bags.reader.messages.serialization.TimeType;
 import com.github.swrirobotics.bags.reader.messages.serialization.UInt16Type;
 import com.github.swrirobotics.bags.reader.records.ChunkInfo;
 import com.github.swrirobotics.bags.reader.records.Connection;
-import com.github.swrirobotics.bags.reader.records.MessageData;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
@@ -40,6 +39,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JDialog;
+import javax.swing.JOptionPane;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -75,8 +76,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
     // the most recently read event timestamp, the first one in file, and the last one in file
     private long mostRecentTimestamp, firstTimestamp, lastTimestamp;
     private long firstTimestampUsAbsolute; // the absolute (ROS) first timestamp in us
-    private boolean firstTimestampWasRead=false;
-    
+    private boolean firstTimestampWasRead = false;
+
     // marks the present read time for packets
     private int currentStartTimestamp;
     private long absoluteStartingTimeMs = 0; // in system time since 1970 in ms
@@ -91,17 +92,20 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 //    private List<MessageData> messages = null;
     private List<Connection> conns = null;
     private List<ChunkInfo> chunkInfos = null;
-    private int msgPosition=0, numMessages=0;
+    private int msgPosition = 0, numMessages = 0;
+    private boolean wasIndexed = false;
 
     public RosbagFileInputStream(File f, AEChip chip) throws BagReaderException {
         this.eventPacket = new ApsDvsEventPacket<>(ApsDvsEvent.class);
         setFile(f);
         this.chip = chip;
-        log.info("opening rosbag file " + f + " for chip " + chip);
+        log.info("reading rosbag file " + f + " for chip " + chip);
         bagFile = BagReader.readFile(file);
+//        log.info("bagfile.isIndexed="+bagFile.isIndexed());
 //        bagFile.printInfo(); // debug
     }
 
+    // causes huge memory usage by building hashmaps internally, using index instead by prescanning file
     private MsgIterator getMsgIterator() throws BagReaderException {
 //        messages=bagFile.getMessages();
         conns = bagFile.getConnections();
@@ -131,15 +135,37 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
     }
 
     synchronized private MessageType getNextMsg() throws BagReaderException {
-        if (msgIterator == null) {
-            msgIterator = getMsgIterator();
+        MessageType msg = null;
+        if (!wasIndexed) {
+            log.warning("generating indexes for ros file, please wait...");
         }
-        if (msgIterator.hasNext()) {
-            msgPosition++;
-            return msgIterator.next();
-        } else {
-            throw new BagReaderException("EOF");
+        try {
+            msg = bagFile.getMessageOnTopicAtIndex(TOPICS[0], msgPosition);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            if (isRepeat()) {
+                try {
+                    rewind();
+                    return getNextMsg();
+                } catch (IOException ex) {
+
+                }
+            }
         }
+        if (!wasIndexed) {
+            log.warning("done indexing");
+        }
+        wasIndexed = true;
+        msgPosition++;
+        return msg;
+//        if (msgIterator == null) {
+//            msgIterator = getMsgIterator();
+//        }
+//        if (msgIterator.hasNext()) {
+//            msgPosition++;
+//            return msgIterator.next();
+//        } else {
+//            throw new BagReaderException("EOF");
+//        }
     }
 
     private AEPacketRaw getNextRawPacket() {
@@ -158,19 +184,19 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                 int x = eventMsg.<UInt16Type>getField("x").getValue();
                 int y = eventMsg.<UInt16Type>getField("y").getValue();
                 boolean pol = eventMsg.<BoolType>getField("polarity").getValue();
-                long tsMs =  eventMsg.<TimeType>getField("ts").getValue().getTime();
-                long tsNs =  eventMsg.<TimeType>getField("ts").getValue().getNanos();
+                long tsMs = eventMsg.<TimeType>getField("ts").getValue().getTime();
+                long tsNs = eventMsg.<TimeType>getField("ts").getValue().getNanos();
                 e.x = (short) x;
                 e.y = (short) (sizeY - y - 1);
                 e.polarity = pol ? PolarityEvent.Polarity.On : PolarityEvent.Polarity.Off;
                 e.type = (byte) (pol ? 1 : 0);
                 long timestampUsAbsolute = tsMs * 1000 + tsNs / 1000;
-                if(!firstTimestampWasRead){
-                    firstTimestampUsAbsolute=timestampUsAbsolute;
-                    firstTimestampWasRead=true;
+                if (!firstTimestampWasRead) {
+                    firstTimestampUsAbsolute = timestampUsAbsolute;
+                    firstTimestampWasRead = true;
                 }
-                e.timestamp = (int)(timestampUsAbsolute-firstTimestampUsAbsolute);
-                mostRecentTimestamp=e.timestamp;
+                e.timestamp = (int) (timestampUsAbsolute - firstTimestampUsAbsolute);
+                mostRecentTimestamp = e.timestamp;
             }
             aePacketRaw = chip.getEventExtractor().reconstructRawPacket(eventPacket);
 //            System.out.println(eventPacket.toString());
@@ -215,7 +241,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public int getFirstTimestamp() {
-        return (int)firstTimestamp;
+        return (int) firstTimestamp;
     }
 
     @Override
@@ -225,7 +251,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public float getFractionalPosition() {
-        return (float)mostRecentTimestamp/getDurationUs();
+        return (float) mostRecentTimestamp / getDurationUs();
     }
 
     @Override
@@ -240,7 +266,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     @Override
     synchronized public void rewind() throws IOException {
-        msgIterator=null;
+        msgPosition = 0;
     }
 
     @Override
@@ -313,12 +339,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public int getLastTimestamp() {
-        return (int)lastTimestamp; // TODO, from last DVS event timestamp
+        return (int) lastTimestamp; // TODO, from last DVS event timestamp
     }
 
     @Override
     public int getMostRecentTimestamp() {
-        return (int)mostRecentTimestamp;
+        return (int) mostRecentTimestamp;
     }
 
     @Override
@@ -344,7 +370,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
         msgIterator = null;
         conns = null;
         chunkInfos = null;
-        file=null;
+        file = null;
         System.gc();
     }
 
