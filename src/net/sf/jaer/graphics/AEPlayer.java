@@ -323,7 +323,6 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         aeFileInputStream.setNonMonotonicTimeExceptionsChecked(viewer.getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem().isSelected());
         aeFileInputStream.setTimestampResetBitmask(viewer.getAeFileInputStreamTimestampResetBitmask());
         aeFileInputStream.setFile(file);
-        aeFileInputStream.setRepeat(isRepeat());
         aeFileInputStream.getSupport().addPropertyChangeListener(viewer);
         // so that users of the stream can get the file information
         if ((viewer.getJaerViewer() != null) && (viewer.getJaerViewer().getViewers().size() == 1)) {
