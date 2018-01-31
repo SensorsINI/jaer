@@ -74,7 +74,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
     private File file = null;
     BagFile bagFile = null;
     // the most recently read event timestamp, the first one in file, and the last one in file
-    private long mostRecentTimestamp, firstTimestamp, lastTimestamp;
+    private int mostRecentTimestamp;
+    private long firstTimestamp, lastTimestamp;
     private long firstTimestampUsAbsolute; // the absolute (ROS) first timestamp in us
     private boolean firstTimestampWasRead = false;
 
@@ -94,6 +95,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
     private List<ChunkInfo> chunkInfos = null;
     private int msgPosition = 0, numMessages = 0;
     private boolean wasIndexed = false;
+    private boolean nonMonotonicTimestampExceptionsChecked = true;
 
     public RosbagFileInputStream(File f, AEChip chip) throws BagReaderException {
         this.eventPacket = new ApsDvsEventPacket<>(ApsDvsEvent.class);
@@ -177,26 +179,36 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 //            int nEvents = eventFields.size();
             OutputEventIterator<ApsDvsEvent> outItr = eventPacket.outputIterator();
             int sizeY = chip.getSizeY();
+            int eventIdxThisPacket = 0;
             for (Field eventField : eventFields) {
                 MessageType eventMsg = (MessageType) eventField;
                 // https://github.com/uzh-rpg/rpg_dvs_ros/tree/master/dvs_msgs/msg]
-                PolarityEvent e = outItr.nextOutput();
                 int x = eventMsg.<UInt16Type>getField("x").getValue();
                 int y = eventMsg.<UInt16Type>getField("y").getValue();
                 boolean pol = eventMsg.<BoolType>getField("polarity").getValue();
                 long tsMs = eventMsg.<TimeType>getField("ts").getValue().getTime();
                 long tsNs = eventMsg.<TimeType>getField("ts").getValue().getNanos();
-                e.x = (short) x;
-                e.y = (short) (sizeY - y - 1);
-                e.polarity = pol ? PolarityEvent.Polarity.On : PolarityEvent.Polarity.Off;
-                e.type = (byte) (pol ? 1 : 0);
                 long timestampUsAbsolute = tsMs * 1000 + tsNs / 1000;
                 if (!firstTimestampWasRead) {
                     firstTimestampUsAbsolute = timestampUsAbsolute;
                     firstTimestampWasRead = true;
                 }
-                e.timestamp = (int) (timestampUsAbsolute - firstTimestampUsAbsolute);
-                mostRecentTimestamp = e.timestamp;
+                int timestamp = (int) (timestampUsAbsolute - firstTimestampUsAbsolute);
+                final int dt = timestamp - mostRecentTimestamp;
+                if (dt<0 && nonMonotonicTimestampExceptionsChecked) {
+                    log.warning("Discarding event with nonmonotonic timestamp detected for event " + eventIdxThisPacket + " in this message; delta time=" + dt);
+                    eventIdxThisPacket++;
+                    mostRecentTimestamp = timestamp;
+                    continue;
+                }
+                mostRecentTimestamp = timestamp;
+                PolarityEvent e = outItr.nextOutput();
+                e.timestamp = timestamp;
+                e.x = (short) x;
+                e.y = (short) (sizeY - y - 1);
+                e.polarity = pol ? PolarityEvent.Polarity.On : PolarityEvent.Polarity.Off;
+                e.type = (byte) (pol ? 1 : 0);
+                eventIdxThisPacket++;
             }
             aePacketRaw = chip.getEventExtractor().reconstructRawPacket(eventPacket);
 //            System.out.println(eventPacket.toString());
@@ -222,11 +234,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public boolean isNonMonotonicTimeExceptionsChecked() {
-        return false;
+        return nonMonotonicTimestampExceptionsChecked;
     }
 
     @Override
     public void setNonMonotonicTimeExceptionsChecked(boolean yes) {
+        nonMonotonicTimestampExceptionsChecked = yes;
     }
 
     @Override
