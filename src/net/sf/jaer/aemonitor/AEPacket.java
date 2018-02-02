@@ -151,6 +151,14 @@ public abstract class AEPacket {
         return this.capacity;
     }
 
+    /** Returns true if packet is empty
+     * 
+     * @return true if empty, false otherwise 
+     */
+    public boolean isEmpty(){
+        return getNumEvents()==0;
+    }
+    
     /** Ensure the capacity given.
      * If present capacity is less than capacity,
      * then arrays are newly allocated and old contents are copied to the new arrays.
