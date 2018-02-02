@@ -31,6 +31,7 @@ import com.github.swrirobotics.bags.reader.messages.serialization.TimeType;
 import com.github.swrirobotics.bags.reader.messages.serialization.UInt16Type;
 import com.github.swrirobotics.bags.reader.records.ChunkInfo;
 import com.github.swrirobotics.bags.reader.records.Connection;
+import java.awt.Cursor;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
@@ -39,8 +40,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.JDialog;
-import javax.swing.JOptionPane;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -140,6 +139,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
         MessageType msg = null;
         if (!wasIndexed) {
             log.warning("generating indexes for ros file, please wait...");
+            if(chip.getAeViewer()!=null){
+                chip.getAeViewer().setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            }
         }
         try {
             msg = bagFile.getMessageOnTopicAtIndex(TOPICS[0], msgPosition);
@@ -155,6 +157,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
         }
         if (!wasIndexed) {
             log.warning("done indexing");
+            chip.getAeViewer().setCursor(Cursor.getDefaultCursor());
         }
         wasIndexed = true;
         msgPosition++;
