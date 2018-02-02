@@ -13,44 +13,63 @@ import java.util.Collection;
 import net.sf.jaer.aemonitor.EventRaw.EventType;
 
 /**
- * A structure containing a packer of AEs: addresses, timestamps.
- * The AE packet efficiently packages a set of events: rather than
- * using an object per event, it packs a lot of events into an object that references
- * arrays of primitives. These arrays can be newly allocated or statically
- * allocated to the capacity of the maximum buffer that is transferred from a device.
- * Callers must use {@link #getNumEvents} to find out the capacity of the packet in the case
- * that the arrays contain less events than their capacity, which is usually the case when the packet is reused
-in a device acquisition.
-<p>
-These AEPacketRaw are used only for device events (raw events). For processed events, see the net.sf.jaer.event package.
+ * A structure containing a packer of AEs: addresses, timestamps. The AE packet
+ * efficiently packages a set of events: rather than using an object per event,
+ * it packs a lot of events into an object that references arrays of primitives.
+ * These arrays can be newly allocated or statically allocated to the capacity
+ * of the maximum buffer that is transferred from a device. Callers must use
+ * {@link #getNumEvents} to find out the capacity of the packet in the case that
+ * the arrays contain less events than their capacity, which is usually the case
+ * when the packet is reused in a device acquisition.
+ * <p>
+ * These AEPacketRaw are used only for device events (raw events). For processed
+ * events, see the net.sf.jaer.event package.
  *
  * @author tobi
  */
 public class AEPacketRaw extends AEPacket {
 
-    /** The index of the start of the last packet captured from a device, used for processing data on acquisition.
-     * The hardware interface class is responsible for setting this value.  After a capture of data, lastCaptureLength points to the start
-    of this capture. A real time processor need not process the entire buffer but only starting from this lastCaptureIndex.
+    /**
+     * The index of the start of the last packet captured from a device, used
+     * for processing data on acquisition. The hardware interface class is
+     * responsible for setting this value. After a capture of data,
+     * lastCaptureLength points to the start of this capture. A real time
+     * processor need not process the entire buffer but only starting from this
+     * lastCaptureIndex.
      */
     public int lastCaptureIndex = 0;
-    /** The number of events last captured.
-     * The hardware interface class is responsible for
-    setting this value.
+    /**
+     * The number of events last captured. The hardware interface class is
+     * responsible for setting this value.
      */
     public int lastCaptureLength = 0;
-    /** The raw AER addresses */
+    /**
+     * The raw AER addresses
+     */
     public int[] addresses;
-    /** Signals that an overrun occurred on this packet */
+    /**
+     * Signals that an overrun occurred on this packet
+     */
     public boolean overrunOccuredFlag = false;
-    /** An event, for internal use. */
+    /**
+     * An event, for internal use.
+     */
     private EventRaw event = new EventRaw();
-    /** The last modification time from System.nanoTime(). Not all hardware interfaces set this value. */
+    /**
+     * The last modification time from System.nanoTime(). Not all hardware
+     * interfaces set this value.
+     */
     public long systemModificationTimeNs;
 
-    /** Creates a new instance of AEPacketRaw with 0 capacity. */
+    /**
+     * Creates a new instance of AEPacketRaw with 0 capacity.
+     */
     public AEPacketRaw() {
     }
-    /** Creates a new instance of AEPacketRaw from addresses and timestamps
+
+    /**
+     * Creates a new instance of AEPacketRaw from addresses and timestamps
+     *
      * @param addresses
      * @param timestamps
      */
@@ -66,8 +85,11 @@ public class AEPacketRaw extends AEPacket {
         capacity = addresses.length;
         numEvents = addresses.length;
     }
-    
-    /** Creates a new instance of AEPacketRaw from addresses and timestamps and EventTypes
+
+    /**
+     * Creates a new instance of AEPacketRaw from addresses and timestamps and
+     * EventTypes
+     *
      * @param addresses
      * @param timestamps
      * @param etypes
@@ -86,8 +108,11 @@ public class AEPacketRaw extends AEPacket {
         numEvents = addresses.length;
     }
 
-    /** Creates a new instance of AEPacketRaw with an initial capacity and empty event arrays.
-     *@param size capacity in events
+    /**
+     * Creates a new instance of AEPacketRaw with an initial capacity and empty
+     * event arrays.
+     *
+     * @param size capacity in events
      */
     public AEPacketRaw(int size) {
         if (size > MAX_PACKET_SIZE_EVENTS) {
@@ -98,11 +123,14 @@ public class AEPacketRaw extends AEPacket {
         allocateArrays(size);
     }
 
-    /** Constructs a new AEPacketRaw by concatenating two packets.
-     * The contents of the source packets are copied to this packet's memory arrays.
+    /**
+     * Constructs a new AEPacketRaw by concatenating two packets. The contents
+     * of the source packets are copied to this packet's memory arrays.
      *
-     * The timestamps will be probably not be ordered monotonically after this concatenation!
-     * And unless the sources are identified by unique addresses, the sources of the events will be lost.
+     * The timestamps will be probably not be ordered monotonically after this
+     * concatenation! And unless the sources are identified by unique addresses,
+     * the sources of the events will be lost.
+     *
      * @param one
      * @param two
      */
@@ -116,12 +144,14 @@ public class AEPacketRaw extends AEPacket {
         capacity = numEvents;
     }
 
-    /** Constructs a new AEPacketRaw by concatenating a list of event packets.
-     * The contents of the source packets are copied to this packet's memory arrays
-     * according to the iterator of the Collection.
+    /**
+     * Constructs a new AEPacketRaw by concatenating a list of event packets.
+     * The contents of the source packets are copied to this packet's memory
+     * arrays according to the iterator of the Collection.
      *
-     * The timestamps will be probably not be ordered monotonically after this concatenation!
-     * And unless the sources are identified by unique addresses, the sources of the events will be lost.
+     * The timestamps will be probably not be ordered monotonically after this
+     * concatenation! And unless the sources are identified by unique addresses,
+     * the sources of the events will be lost.
      *
      * @param collection to copy from.
      */
@@ -169,7 +199,10 @@ public class AEPacketRaw extends AEPacket {
         }
     }
 
-    /** Uses local EventRaw to return packaged event. (Does not create a new object instance.) */
+    /**
+     * Uses local EventRaw to return packaged event. (Does not create a new
+     * object instance.)
+     */
     final public EventRaw getEvent(int k) {
         event.timestamp = timestamps[k];
         event.address = addresses[k];
@@ -178,11 +211,13 @@ public class AEPacketRaw extends AEPacket {
         return event;
     }
 
-    /** Ensure the capacity given.
-     * Overrides AEPacket's ensureCapacity to increase the size of the addresses array.
-     * If present capacity is less than capacity, then arrays are newly allocated
-     * and old contents are copied.
-     *@param c the desired capacity
+    /**
+     * Ensure the capacity given. Overrides AEPacket's ensureCapacity to
+     * increase the size of the addresses array. If present capacity is less
+     * than capacity, then arrays are newly allocated and old contents are
+     * copied.
+     *
+     * @param c the desired capacity
      */
     @Override
     final public void ensureCapacity(final int c) {
@@ -199,12 +234,14 @@ public class AEPacketRaw extends AEPacket {
         }
     }
 
-    /**Appends event, enlarging packet if necessary. Not thread safe.
+    /**
+     * Appends event, enlarging packet if necessary. Not thread safe.
      *
-     * @param e an Event to add to the ones already present. Capacity is enlarged if necessary.
+     * @param e an Event to add to the ones already present. Capacity is
+     * enlarged if necessary.
      */
     @Override
-	final public void addEvent(EventRaw e) {
+    final public void addEvent(EventRaw e) {
         if (e == null) {
             log.warning("tried to add null event, not adding it");
         }
@@ -216,10 +253,13 @@ public class AEPacketRaw extends AEPacket {
     }
 
     /**
-    Allocates a new AEPacketRaw and copies the events from this packet into the new one, returning it.
-    The size of the new packet that is returned is exactly the number of events stored in the this packet.
-    This method can be used to more efficiently use matlab memory, which handles java garbage collection poorly.
-    @return a new packet sized to the src packet number of events
+     * Allocates a new AEPacketRaw and copies the events from this packet into
+     * the new one, returning it. The size of the new packet that is returned is
+     * exactly the number of events stored in the this packet. This method can
+     * be used to more efficiently use matlab memory, which handles java garbage
+     * collection poorly.
+     *
+     * @return a new packet sized to the src packet number of events
      */
     public AEPacketRaw getPrunedCopy() {
         int n = getNumEvents();
@@ -235,11 +275,28 @@ public class AEPacketRaw extends AEPacket {
     }
 
     @Override
-	public String toString() {
+    public String toString() {
         if (getNumEvents() == 0) {
             return super.toString();
         } else {
-            return super.toString() + (numEvents>0?String.format(" tstart=%d tend=%d", timestamps[0], timestamps[numEvents - 1]):" empty");
+            return super.toString() + (numEvents > 0 ? String.format(" tstart=%d tend=%d", timestamps[0], timestamps[numEvents - 1]) : " empty");
         }
+    }
+
+    /**
+     * Appends another AEPacketRaw to this one
+     *
+     * @param source
+     * @return the appended packet
+     */
+    public AEPacketRaw append(AEPacketRaw source) {
+        if (source == null || source.getNumEvents() == 0) {
+            return this;
+        }
+        ensureCapacity(capacity+source.getNumEvents());
+        System.arraycopy(source.getAddresses(),  numEvents, addresses, 0, source.getNumEvents());
+        System.arraycopy(source.getTimestamps(),  numEvents, timestamps, 0, source.getNumEvents());
+        setNumEvents(capacity+source.getNumEvents());
+        return this;
     }
 }
