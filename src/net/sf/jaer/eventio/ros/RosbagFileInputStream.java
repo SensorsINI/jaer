@@ -70,6 +70,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
      * this lack of . is different than for AEDataFile.DATA_FILE_EXTENSION.
      */
     public static final String DATA_FILE_EXTENSION = "bag";
+    // for converting ROS units to jAER units
+    private static final float DEG_PER_RAD=180f/(float)Math.PI, G_PER_MPS2=1/9.8f;
 
     /**
      * The AEChip object associated with this stream. This field was added for
@@ -203,8 +205,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
     private boolean nonMonotonicTimestampDetected = false; // flag set by nonmonotonic timestamp if detection enabled
 
     private int getTimestamp(Timestamp timestamp) {
-        long tsNs = timestamp.getNanos(); // gets the fractional seconds
-        long tsMs = timestamp.getTime() - (tsNs / 1000000); // this Timestamp ms includes the nanos already!, So cast it to Date to get only the ms part from Date
+        long tsNs = timestamp.getNanos(); // gets the fractional seconds in ns
+        long tsMs = timestamp.getTime() - (tsNs / 1000000); // this Timestamp ms includes the nanos already!, so subtract off the ns part
         long timestampUsAbsolute = tsMs * 1000+ tsNs / 1000; // ms*1000 =us and ns/1000=us, not sure about overflow however TODO check
         if (!firstTimestampWasRead) {
             firstTimestampUsAbsolute = timestampUsAbsolute;
@@ -213,7 +215,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
         int ts = (int) (timestampUsAbsolute - firstTimestampUsAbsolute);
         final int dt = ts - mostRecentTimestamp;
         if (dt < 0 && nonMonotonicTimestampExceptionsChecked) {
-            log.warning("Discarding event with nonmonotonic timestamp detected; delta time=" + dt);
+            log.warning("Discarding event with nonmonotonic timestamp "+timestamp+" detected; delta time=" + dt);
             mostRecentTimestamp = ts;
             nonMonotonicTimestampDetected = true;
         } else {
@@ -327,6 +329,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 //                                for(String s:angvelfields){
 //                                    System.out.println("angular_velocity field: "+s);
 //                                }
+                                // units rad/s http://docs.ros.org/api/sensor_msgs/html/msg/Imu.html
                                 float xrot = (float) (angular_velocity.<Float64Type>getField("x").getValue().doubleValue());
                                 float yrot = (float) (angular_velocity.<Float64Type>getField("y").getValue().doubleValue());
                                 float zrot = (float) (angular_velocity.<Float64Type>getField("z").getValue().doubleValue());
@@ -335,16 +338,19 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 //                                for(String s:linaccfields){
 //                                    System.out.println("linaccfields field: "+s);
 //                                }
+                                // units m/s^2 http://docs.ros.org/api/sensor_msgs/html/msg/Imu.html
                                 float xacc = (float) (angular_velocity.<Float64Type>getField("x").getValue().doubleValue());
                                 float yacc = (float) (angular_velocity.<Float64Type>getField("y").getValue().doubleValue());
                                 float zacc = (float) (angular_velocity.<Float64Type>getField("z").getValue().doubleValue());
                                 short[] buf = new short[7];
-                                buf[IMUSampleType.ax.code] = (short) (xacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb()); // TODO set these scales from caer parameter messages in stream
-                                buf[IMUSampleType.ay.code] = (short) (yacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb());
-                                buf[IMUSampleType.az.code] = (short) (zacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb());
-                                buf[IMUSampleType.gx.code] = (short) (xrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
-                                buf[IMUSampleType.gy.code] = (short) (yrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
-                                buf[IMUSampleType.gz.code] = (short) (zrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
+                                
+                                buf[IMUSampleType.ax.code] = (short) (G_PER_MPS2*xacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb()); // TODO set these scales from caer parameter messages in stream
+                                buf[IMUSampleType.ay.code] = (short) (G_PER_MPS2*yacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb());
+                                buf[IMUSampleType.az.code] = (short) (G_PER_MPS2*zacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb());
+                                
+                                buf[IMUSampleType.gx.code] = (short) (DEG_PER_RAD* xrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
+                                buf[IMUSampleType.gy.code] = (short) (DEG_PER_RAD*yrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
+                                buf[IMUSampleType.gz.code] = (short) (DEG_PER_RAD*zrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
                                 ApsDvsEvent e = null;
                                 e = outItr.nextOutput();
                                 IMUSample imuSample = new IMUSample(ts, buf);
