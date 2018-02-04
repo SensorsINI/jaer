@@ -210,10 +210,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     public void setAutoshotThresholdEvents(int thresholdEvents) {
         if (thresholdEvents < 0) {
             thresholdEvents = 0;
-        } else if ((thresholdEvents>>10) >= 1000) {
+        } else if ((thresholdEvents >> 10) >= 1000) {
             WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null, false, "Long autoshot threshold",
-                    "<html>You have selected <i>Auto-Shot kevents/frame</i> mode, so that an APS frame is triggered every "+(thresholdEvents>>10)+" <b>thousand<b> events. <p>Selecting a large"
-                            + " number here will make it appear that frame capture is not working");
+                    "<html>You have selected <i>Auto-Shot kevents/frame</i> mode, so that an APS frame is triggered every " + (thresholdEvents >> 10) + " <b>thousand<b> events. <p>Selecting a large"
+                    + " number here will make it appear that frame capture is not working");
             d.setVisible(true);
         }
 
@@ -428,6 +428,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             // The datas array holds the data, which consists of a mixture of AEs and ADC values.
             // Here we extract the datas and leave the timestamps alone.
             // TODO entire rendering / processing approach is not very efficient now
+            final int resetReadCode = ApsDvsEvent.ReadoutType.ResetRead.code, signalReadCode = ApsDvsEvent.ReadoutType.SignalRead.code;
+
             for (int i = 0; i < n; i++) { // TODO implement skipBy/subsampling, but without missing the frame start/end
                 // events and still delivering frames
                 final int data = datas[i];
@@ -505,11 +507,11 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     ApsDvsEvent.ReadoutType readoutType = ApsDvsEvent.ReadoutType.Null;
 
                     switch ((data & DavisChip.ADC_READCYCLE_MASK) >> DavisChip.ADC_NUMBER_OF_TRAILING_ZEROS) {
-                        case 0:
+                        case 0: // ApsDvsEvent.ReadOutType.ResetRead.code
                             readoutType = ApsDvsEvent.ReadoutType.ResetRead;
                             break;
 
-                        case 1:
+                        case 1: // ApsDvsEvent.ReadOutType.SignalRead.code
                             readoutType = ApsDvsEvent.ReadoutType.SignalRead;
                             break;
 
@@ -648,19 +650,46 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
          * @return the raw address
          */
         @Override
-        public int reconstructRawAddressFromEvent(final TypedEvent e) {
-            int address = e.address;
+        public int reconstructRawAddressFromEvent(final TypedEvent te) {
+            if (!(te instanceof ApsDvsEvent)) {
+                throw new RuntimeException("event is not an ApsDvsEvent, cannot reconstruct from it");
+            }
+            ApsDvsEvent e = (ApsDvsEvent) te;
+            int address = te.address;
 
-            if (((ApsDvsEvent) e).isDVSEvent()) {
+            if (e.isDVSEvent()) {
                 // Do inversion for DVS events.
                 final int sx1 = getChip().getSizeX() - 1;
                 address = (address & ~DavisChip.XMASK) | ((sx1 - e.x) << DavisChip.XSHIFT);
+                address = (address & ~DavisChip.YMASK) | (e.y << DavisChip.YSHIFT);
+                address = (address & ~DavisChip.POLMASK) | (e.type << DavisChip.POLSHIFT);
+            } else if (e.isApsData()) {
+                /* switch ((data & DavisChip.ADC_READCYCLE_MASK) >> DavisChip.ADC_NUMBER_OF_TRAILING_ZEROS) {
+                        case 0:
+                            readoutType = ApsDvsEvent.ReadoutType.ResetRead;
+                            break;
+
+                        case 1:
+                            readoutType = ApsDvsEvent.ReadoutType.SignalRead;
+                            break;
+                 */
+                address = (address & ~DavisChip.XMASK) | (e.x << DavisChip.XSHIFT);
+                address = (address & ~DavisChip.YMASK) | (e.y << DavisChip.YSHIFT);
+                address = (address & ~DavisChip.ADC_DATA_MASK) | (e.getAdcSample() & DavisChip.ADC_DATA_MASK);
+                address = (address & ~DavisChip.ADDRESS_TYPE_MASK) | DavisChip.ADDRESS_TYPE_APS;
+                switch (e.getReadoutType()) {
+                    case ResetRead:
+                        address = (address & ~DavisChip.ADC_READCYCLE_MASK) | (ApsDvsEvent.ReadoutType.ResetRead.code << DavisChip.ADC_READCYCLE_SHIFT);
+                        break;
+                    case SignalRead:
+                        address = (address & ~DavisChip.ADC_READCYCLE_MASK) | (ApsDvsEvent.ReadoutType.SignalRead.code << DavisChip.ADC_READCYCLE_SHIFT);
+                        break;
+                    default:
+                        address = (address & ~DavisChip.ADC_READCYCLE_MASK) | (ApsDvsEvent.ReadoutType.Null.code << DavisChip.ADC_READCYCLE_SHIFT);
+                }
             } else {
                 address = (address & ~DavisChip.XMASK) | (e.x << DavisChip.XSHIFT);
             }
-
-            address = (address & ~DavisChip.YMASK) | (e.y << DavisChip.YSHIFT);
-            address = (address & ~DavisChip.POLMASK) | (e.type << DavisChip.POLSHIFT);
 
             return address;
         }
@@ -1012,7 +1041,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         public DavisDisplayMethod(final DavisBaseCamera chip) {
             super(chip.getCanvas());
-            getCanvas().setBorderSpacePixels(getPrefs().getInt("borderSpacePixels",70));
+            getCanvas().setBorderSpacePixels(getPrefs().getInt("borderSpacePixels", 70));
         }
 
         @Override
