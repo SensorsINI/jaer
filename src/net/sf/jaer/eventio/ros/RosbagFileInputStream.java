@@ -199,33 +199,28 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 //            throw new BagReaderException("EOF");
 //        }
     }
-    /** Typical file info about contents of a bag file recorded on Traxxas slash platform
-            INFO: Bagfile information:
-            /davis_ros_driver/parameter_descriptions 		1 msgs 	: dynamic_reconfigure/ConfigDescription 	
-            /davis_ros_driver/parameter_updates 		1 msgs 	: dynamic_reconfigure/Config 	
-            /dvs/events 		8991 msgs 	: dvs_msgs/EventArray 	
-            /dvs/exposure 		4751 msgs 	: std_msgs/Int32 	
-            /dvs/image_raw 		4758 msgs 	: sensor_msgs/Image 	
-            /dvs/imu 		298706 msgs 	: sensor_msgs/Imu 	
-            /dvs_accumulated_events 		124 msgs 	: sensor_msgs/Image 	
-            /dvs_accumulated_events_edges 		124 msgs 	: sensor_msgs/Image 	
-            /dvs_rendering 		4034 msgs 	: sensor_msgs/Image 	
-            /events_off_mean_1 		186 msgs 	: std_msgs/Float32 	
-            /events_off_mean_5 		56 msgs 	: std_msgs/Float32 	
-            /events_on_mean_1 		186 msgs 	: std_msgs/Float32 	
-            /events_on_mean_5 		56 msgs 	: std_msgs/Float32 	
-            /raw_pwm 		2996 msgs 	: rally_msgs/Pwm 	
-            /rosout 		12 msgs 	: rosgraph_msgs/Log 	(4 connections)
-            /rosout_agg 		12 msgs 	: rosgraph_msgs/Log 	
-            duration: 299.578s
-            Chunks: 0
-            Num messages: 324994
-*/
-     
-    
 
-    /** Gets the next raw packet 
-     * 
+    /**
+     * Typical file info about contents of a bag file recorded on Traxxas slash
+     * platform INFO: Bagfile information:
+     * /davis_ros_driver/parameter_descriptions 1 msgs :
+     * dynamic_reconfigure/ConfigDescription /davis_ros_driver/parameter_updates
+     * 1 msgs : dynamic_reconfigure/Config /dvs/events 8991 msgs :
+     * dvs_msgs/EventArray /dvs/exposure 4751 msgs : std_msgs/Int32
+     * /dvs/image_raw 4758 msgs : sensor_msgs/Image /dvs/imu 298706 msgs :
+     * sensor_msgs/Imu /dvs_accumulated_events 124 msgs : sensor_msgs/Image
+     * /dvs_accumulated_events_edges 124 msgs : sensor_msgs/Image /dvs_rendering
+     * 4034 msgs : sensor_msgs/Image /events_off_mean_1 186 msgs :
+     * std_msgs/Float32 /events_off_mean_5 56 msgs : std_msgs/Float32
+     * /events_on_mean_1 186 msgs : std_msgs/Float32 /events_on_mean_5 56 msgs :
+     * std_msgs/Float32 /raw_pwm 2996 msgs : rally_msgs/Pwm /rosout 12 msgs :
+     * rosgraph_msgs/Log (4 connections) /rosout_agg 12 msgs : rosgraph_msgs/Log
+     * duration: 299.578s Chunks: 0 Num messages: 324994
+     */
+
+    /**
+     * Gets the next raw packet
+     *
      * @return the packet
      */
     private AEPacketRaw getNextRawPacket() {
@@ -315,33 +310,33 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                                     firstTimestampWasRead = true;
                                 }
                                 int timestamp = (int) (timestampUsAbsolute - firstTimestampUsAbsolute);
-                                List<Field> fields=null;
+                                List<Field> fields = null;
                                 MessageType angular_velocity = messageType.getField("angular_velocity");
 //                                List<String> angvelfields=angular_velocity.getFieldNames();
 //                                for(String s:angvelfields){
 //                                    System.out.println("angular_velocity field: "+s);
 //                                }
-                                float xrot=(float)(angular_velocity.<Float64Type>getField("x").getValue().doubleValue());
-                                float yrot=(float)(angular_velocity.<Float64Type>getField("y").getValue().doubleValue());
-                                float zrot=(float)(angular_velocity.<Float64Type>getField("z").getValue().doubleValue());
+                                float xrot = (float) (angular_velocity.<Float64Type>getField("x").getValue().doubleValue());
+                                float yrot = (float) (angular_velocity.<Float64Type>getField("y").getValue().doubleValue());
+                                float zrot = (float) (angular_velocity.<Float64Type>getField("z").getValue().doubleValue());
                                 MessageType linear_acceleration = messageType.getField("linear_acceleration");
 //                                List<String> linaccfields=linear_acceleration.getFieldNames();
 //                                for(String s:linaccfields){
 //                                    System.out.println("linaccfields field: "+s);
 //                                }
-                                float xacc=(float)(angular_velocity.<Float64Type>getField("x").getValue().doubleValue());
-                                float yacc=(float)(angular_velocity.<Float64Type>getField("y").getValue().doubleValue());
-                                float zacc=(float)(angular_velocity.<Float64Type>getField("z").getValue().doubleValue());
-                                short[] buf=new short[7];
-                                buf[IMUSampleType.ax.code]=(short)(xacc/IMUSample.getAccelSensitivityScaleFactorGPerLsb()); // TODO set these scales from caer parameter messages in stream
-                                buf[IMUSampleType.ay.code]=(short)(yacc/IMUSample.getAccelSensitivityScaleFactorGPerLsb());
-                                buf[IMUSampleType.az.code]=(short)(zacc/IMUSample.getAccelSensitivityScaleFactorGPerLsb());
-                                buf[IMUSampleType.gx.code]=(short)(xrot/IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
-                                buf[IMUSampleType.gy.code]=(short)(yrot/IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
-                                buf[IMUSampleType.gz.code]=(short)(zrot/IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
+                                float xacc = (float) (angular_velocity.<Float64Type>getField("x").getValue().doubleValue());
+                                float yacc = (float) (angular_velocity.<Float64Type>getField("y").getValue().doubleValue());
+                                float zacc = (float) (angular_velocity.<Float64Type>getField("z").getValue().doubleValue());
+                                short[] buf = new short[7];
+                                buf[IMUSampleType.ax.code] = (short) (xacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb()); // TODO set these scales from caer parameter messages in stream
+                                buf[IMUSampleType.ay.code] = (short) (yacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb());
+                                buf[IMUSampleType.az.code] = (short) (zacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb());
+                                buf[IMUSampleType.gx.code] = (short) (xrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
+                                buf[IMUSampleType.gy.code] = (short) (yrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
+                                buf[IMUSampleType.gz.code] = (short) (zrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
                                 ApsDvsEvent e = null;
                                 e = outItr.nextOutput();
-                                IMUSample imuSample=new IMUSample(timestamp, buf);
+                                IMUSample imuSample = new IMUSample(timestamp, buf);
                                 e.setImuSample(imuSample);
                             }
                             break;
