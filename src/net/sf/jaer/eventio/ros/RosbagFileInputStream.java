@@ -41,6 +41,7 @@ import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -199,6 +200,27 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 //            throw new BagReaderException("EOF");
 //        }
     }
+    private boolean nonMonotonicTimestampDetected = false; // flag set by nonmonotonic timestamp if detection enabled
+
+    private int getTimestamp(Timestamp timestamp) {
+        long tsNs = timestamp.getNanos(); // gets the fractional seconds
+        long tsMs = timestamp.getTime() - (tsNs / 1000000); // this Timestamp ms includes the nanos already!, So cast it to Date to get only the ms part from Date
+        long timestampUsAbsolute = tsMs * 1000+ tsNs / 1000; // ms*1000 =us and ns/1000=us, not sure about overflow however TODO check
+        if (!firstTimestampWasRead) {
+            firstTimestampUsAbsolute = timestampUsAbsolute;
+            firstTimestampWasRead = true;
+        }
+        int ts = (int) (timestampUsAbsolute - firstTimestampUsAbsolute);
+        final int dt = ts - mostRecentTimestamp;
+        if (dt < 0 && nonMonotonicTimestampExceptionsChecked) {
+            log.warning("Discarding event with nonmonotonic timestamp detected; delta time=" + dt);
+            mostRecentTimestamp = ts;
+            nonMonotonicTimestampDetected = true;
+        } else {
+            nonMonotonicTimestampDetected = false;
+        }
+        return ts;
+    }
 
     /**
      * Typical file info about contents of a bag file recorded on Traxxas slash
@@ -217,7 +239,6 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
      * rosgraph_msgs/Log (4 connections) /rosout_agg 12 msgs : rosgraph_msgs/Log
      * duration: 299.578s Chunks: 0 Num messages: 324994
      */
-
     /**
      * Gets the next raw packet
      *
@@ -241,16 +262,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                                 ArrayType data = messageType.<ArrayType>getField("data");
                                 int width = (int) (messageType.<UInt32Type>getField("width").getValue()).intValue();
                                 int height = (int) (messageType.<UInt32Type>getField("height").getValue()).intValue();
-                                long tsMs = header.<TimeType>getField("stamp").getValue().getTime(); // it's called "stamp" for some reason, not "time" when in header
-                                long tsNs = header.<TimeType>getField("stamp").getValue().getNanos();
-                                long timestampUsAbsolute = tsMs * 1000 + tsNs / 1000;
-                                if (!firstTimestampWasRead) {
-                                    firstTimestampUsAbsolute = timestampUsAbsolute;
-                                    firstTimestampWasRead = true;
-                                }
-                                int timestamp = (int) (timestampUsAbsolute - firstTimestampUsAbsolute);
-                                if (data == null) {
-                                    log.warning("got null data for field events in message " + message);
+                                Timestamp timestamp = header.<TimeType>getField("stamp").getValue();
+                                int ts = getTimestamp(timestamp);
+                                if (nonMonotonicTimestampDetected) {
                                     continue;
                                 }
                                 gotEventsOrFrame = true;
@@ -263,12 +277,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.SOF);
                                 e.x = (short) 0;
                                 e.y = (short) 0;
-                                e.setTimestamp(timestamp);
+                                e.setTimestamp(ts);
                                 e = outItr.nextOutput();
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.SOE);
                                 e.x = (short) 0;
                                 e.y = (short) 0;
-                                e.setTimestamp(timestamp);
+                                e.setTimestamp(ts);
                                 for (int f = 0; f < 2; f++) { // reset/signal pixels samples
                                     for (int y = 0; y < height; y++) {
                                         for (int x = 0; x < width; x++) {
@@ -277,7 +291,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                                             e.x = (short) x;
                                             e.y = (short) (sizeY - y - 1);
                                             e.setAdcSample(f == 0 ? 255 : (255 - (0xff & bytes[idx++])));
-                                            e.setTimestamp(timestamp);
+                                            e.setTimestamp(ts);
                                         }
                                     }
                                 }
@@ -285,12 +299,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.EOE);
                                 e.x = (short) 0;
                                 e.y = (short) 0;
-                                e.setTimestamp(timestamp); // TODO should really be end of exposure timestamp, have to get that from last exposure message
+                                e.setTimestamp(ts); // TODO should really be end of exposure timestamp, have to get that from last exposure message
                                 e = outItr.nextOutput();
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.EOF);
                                 e.x = (short) 0;
                                 e.y = (short) 0;
-                                e.setTimestamp(timestamp);
+                                e.setTimestamp(ts);
 
                             }
                             break;
@@ -302,14 +316,11 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 //                                }
 //                                List<String> fieldNames = messageType.getFieldNames();
                                 MessageType header = messageType.getField("header"); // http://docs.ros.org/api/std_msgs/html/msg/Header.html
-                                long tsMs = header.<TimeType>getField("stamp").getValue().getTime(); // it's called "stamp" for some reason, not "time" when in header
-                                long tsNs = header.<TimeType>getField("stamp").getValue().getNanos();
-                                long timestampUsAbsolute = tsMs * 1000 + tsNs / 1000;
-                                if (!firstTimestampWasRead) {
-                                    firstTimestampUsAbsolute = timestampUsAbsolute;
-                                    firstTimestampWasRead = true;
+                                Timestamp timestamp = header.<TimeType>getField("stamp").getValue();
+                                int ts = getTimestamp(timestamp);
+                                if (nonMonotonicTimestampDetected) {
+                                    continue;
                                 }
-                                int timestamp = (int) (timestampUsAbsolute - firstTimestampUsAbsolute);
                                 List<Field> fields = null;
                                 MessageType angular_velocity = messageType.getField("angular_velocity");
 //                                List<String> angvelfields=angular_velocity.getFieldNames();
@@ -336,7 +347,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                                 buf[IMUSampleType.gz.code] = (short) (zrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
                                 ApsDvsEvent e = null;
                                 e = outItr.nextOutput();
-                                IMUSample imuSample = new IMUSample(timestamp, buf);
+                                IMUSample imuSample = new IMUSample(ts, buf);
                                 e.setImuSample(imuSample);
                             }
                             break;
@@ -363,25 +374,15 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                                     int x = eventMsg.<UInt16Type>getField("x").getValue();
                                     int y = eventMsg.<UInt16Type>getField("y").getValue();
                                     boolean pol = eventMsg.<BoolType>getField("polarity").getValue();
-                                    long tsMs = ((Date) eventMsg.<TimeType>getField("ts").getValue()).getTime(); // this Timestamp ms includes the nanos already!, So cast it to Date to get only the ms part from Date
-                                    long tsNs = eventMsg.<TimeType>getField("ts").getValue().getNanos(); // gets the fractional seconds
-                                    long timestampUsAbsolute = tsMs * 1000 + tsNs / 1000; // ms*1000 =us and ns/1000=us, not sure about overflow however TODO check
-                                    if (!firstTimestampWasRead) {
-                                        firstTimestampUsAbsolute = timestampUsAbsolute;
-                                        firstTimestampWasRead = true;
-                                    }
-                                    int timestamp = (int) (timestampUsAbsolute - firstTimestampUsAbsolute);
-                                    final int dt = timestamp - mostRecentTimestamp;
-                                    if (dt < 0 && nonMonotonicTimestampExceptionsChecked) {
-                                        log.warning("Discarding event with nonmonotonic timestamp detected for event " + eventIdxThisPacket + " in this message; delta time=" + dt);
-                                        eventIdxThisPacket++;
-                                        mostRecentTimestamp = timestamp;
+                                    Timestamp timestamp = (Timestamp) eventMsg.<TimeType>getField("ts").getValue();
+                                    int ts = getTimestamp(timestamp);
+                                    if (nonMonotonicTimestampDetected) {
                                         continue;
                                     }
-                                    mostRecentTimestamp = timestamp;
+                                    mostRecentTimestamp = ts;
                                     ApsDvsEvent e = outItr.nextOutput();
                                     e.setReadoutType(ApsDvsEvent.ReadoutType.DVS);
-                                    e.timestamp = timestamp;
+                                    e.timestamp = ts;
                                     e.x = (short) x;
                                     e.y = (short) (sizeY - y - 1);
                                     e.polarity = pol ? PolarityEvent.Polarity.On : PolarityEvent.Polarity.Off;
