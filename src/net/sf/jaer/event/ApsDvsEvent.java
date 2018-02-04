@@ -11,24 +11,37 @@ import eu.seebetter.ini.chips.davis.imu.IMUSample;
  * methods to extract IMU data.
  */
 public class ApsDvsEvent extends PolarityEvent {
-	/**
-	 * The readout type of the multiple readouts: ResetRead is the readout of
-	 * reset level, SignalRead is the readout of first sample, C, is the readout
-	 * of 2nd sample, etc. Normally only ResetRead and SignalRead are used and
-	 * the CDS is done in digital domain by subtracting ResetRead-SignalRead
-	 * readings.
-	 */
-	public enum ReadoutType {
-		Null,
-		DVS,
-		ResetRead,
-		SignalRead,
-		SOF,
-		EOF,
-		SOE,
-		EOE,
-		IMU
-	}
+	   /**
+     * The readout type of the multiple readouts: ResetRead is the readout of
+     * reset level, SignalRead is the readout of first sample, C, is the readout
+     * of 2nd sample, etc. Normally only ResetRead and SignalRead are used and
+     * the CDS is done in digital domain by subtracting ResetRead-SignalRead
+     * readings.
+     */
+    public enum ReadoutType {
+
+        Null(3),
+        DVS(3),
+        ResetRead(0),
+        SignalRead(1),
+        SOF(3),
+        EOF(3),
+        SOE(3),
+        EOE(3),
+        IMU(3); // only 0, 1 are used in raw event stream from Davis cameras
+
+        /**
+         * code for this sample type used in raw address encoding in AEPacketRaw
+         * events and index into data array containing raw samples
+         */
+        public final int code;
+
+        private ReadoutType(int code) {
+            this.code = code;
+        }
+        
+
+    }
 
 	/**
 	 * This bit determines whether it is the first read (ResetRead) or the
