@@ -617,7 +617,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             final Iterator evItr = apsDVSpacket.fullIterator();
             int k = 0;
             final EventRaw tmpRawEvent = new EventRaw();
-
+//            boolean detectedZeroTimestamp=false;
             while (evItr.hasNext()) {
                 final ApsDvsEvent e = (ApsDvsEvent) evItr.next();
                 // not writing out these EOF events (which were synthesized on extraction) results in reconstructed
@@ -631,6 +631,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     k += imuSample.writeToPacket(raw, k);
                 } else {
                     tmpRawEvent.timestamp = e.timestamp;
+//                    if(e.timestamp==0 && !detectedZeroTimestamp){
+//                        log.warning("zero timestamp detected for event "+e);
+//                        detectedZeroTimestamp=true;
+//                    }
                     tmpRawEvent.address = reconstructRawAddressFromEvent(e);
                     raw.addEvent(tmpRawEvent);
                     k++;
