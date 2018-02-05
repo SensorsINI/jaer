@@ -26,7 +26,9 @@ import com.github.swrirobotics.bags.reader.exceptions.UninitializedFieldExceptio
 import com.github.swrirobotics.bags.reader.messages.serialization.ArrayType;
 import com.github.swrirobotics.bags.reader.messages.serialization.BoolType;
 import com.github.swrirobotics.bags.reader.messages.serialization.Field;
+import com.github.swrirobotics.bags.reader.messages.serialization.Float32Type;
 import com.github.swrirobotics.bags.reader.messages.serialization.Float64Type;
+import com.github.swrirobotics.bags.reader.messages.serialization.Int32Type;
 import com.github.swrirobotics.bags.reader.messages.serialization.MessageType;
 import com.github.swrirobotics.bags.reader.messages.serialization.MsgIterator;
 import com.github.swrirobotics.bags.reader.messages.serialization.TimeType;
@@ -34,6 +36,7 @@ import com.github.swrirobotics.bags.reader.messages.serialization.UInt16Type;
 import com.github.swrirobotics.bags.reader.messages.serialization.UInt32Type;
 import com.github.swrirobotics.bags.reader.records.ChunkInfo;
 import com.github.swrirobotics.bags.reader.records.Connection;
+import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import eu.seebetter.ini.chips.davis.imu.IMUSampleType;
 import java.awt.Cursor;
@@ -43,7 +46,6 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -71,7 +73,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
      */
     public static final String DATA_FILE_EXTENSION = "bag";
     // for converting ROS units to jAER units
-    private static final float DEG_PER_RAD=180f/(float)Math.PI, G_PER_MPS2=1/9.8f;
+    private static final float DEG_PER_RAD = 180f / (float) Math.PI, G_PER_MPS2 = 1 / 9.8f;
 
     /**
      * The AEChip object associated with this stream. This field was added for
@@ -96,18 +98,19 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
     private FileChannel channel = null;
 //    private static final String[] TOPICS = {"/dvs/events"};\
-    private static final String TOPIC_HEADER = "/dvs/", TOPIC_EVENTS = "events", TOPIC_IMAGE = "image_raw", TOPIC_IMU = "imu";
-    private static String[] TOPICS = {TOPIC_HEADER + TOPIC_EVENTS, TOPIC_HEADER + TOPIC_IMAGE, TOPIC_HEADER + TOPIC_IMU};
+    private static final String TOPIC_HEADER = "/dvs/", TOPIC_EVENTS = "events", TOPIC_IMAGE = "image_raw", TOPIC_IMU = "imu", TOPIC_EXPOSURE = "exposure";
+    private static String[] TOPICS = {TOPIC_HEADER + TOPIC_EVENTS, TOPIC_HEADER + TOPIC_IMAGE, TOPIC_HEADER + TOPIC_IMU, TOPIC_HEADER + TOPIC_EXPOSURE};
     private ArrayList<String> topicList = new ArrayList();
     private ArrayList<String> topicFieldNames = new ArrayList();
     private MsgIterator msgIterator = null;
 //    private List<MessageData> messages = null;
     private List<Connection> conns = null;
     private List<ChunkInfo> chunkInfos = null;
-    private int msgPosition = 0, numMessages = 0;
+    private int lastMsgPosition = 0, numMessages = 0;
     private boolean wasIndexed = false;
     private boolean nonMonotonicTimestampExceptionsChecked = true;
     List<BagFile.MessageIndex> msgIndexes = new ArrayList();
+    private int lastExposureValue; // holds last exposure value (in us?) to use for creating SOE and EOE events for frames
 
     public RosbagFileInputStream(File f, AEChip chip) throws BagReaderException {
         this.eventPacket = new ApsDvsEventPacket<>(ApsDvsEvent.class);
@@ -177,7 +180,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
         MessageType msg = null;
         maybeGenerateMessageIndexes();
         try {
-            msg = bagFile.getMessageFromIndex(msgIndexes, msgPosition);
+            msg = bagFile.getMessageFromIndex(msgIndexes, lastMsgPosition);
         } catch (ArrayIndexOutOfBoundsException e) {
             if (isRepeat()) {
                 try {
@@ -189,33 +192,28 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
             }
         }
 
-        MessageWithIndex rtn = new MessageWithIndex(msg, msgIndexes.get(msgPosition));
-        msgPosition++;
+        MessageWithIndex rtn = new MessageWithIndex(msg, msgIndexes.get(lastMsgPosition));
+        lastMsgPosition++;
         return rtn;
-//        if (msgIterator == null) {
-//            msgIterator = getMsgIterator();
-//        }
-//        if (msgIterator.hasNext()) {
-//            msgPosition++;
-//            return msgIterator.next();
-//        } else {
-//            throw new BagReaderException("EOF");
-//        }
     }
+
     private boolean nonMonotonicTimestampDetected = false; // flag set by nonmonotonic timestamp if detection enabled
 
     private int getTimestamp(Timestamp timestamp) {
         long tsNs = timestamp.getNanos(); // gets the fractional seconds in ns
         long tsMs = timestamp.getTime() - (tsNs / 1000000); // this Timestamp ms includes the nanos already!, so subtract off the ns part
-        long timestampUsAbsolute = tsMs * 1000+ tsNs / 1000; // ms*1000 =us and ns/1000=us, not sure about overflow however TODO check
+        long timestampUsAbsolute = tsMs * 1000 + tsNs / 1000; // ms*1000 =us and ns/1000=us, not sure about overflow however TODO check
         if (!firstTimestampWasRead) {
             firstTimestampUsAbsolute = timestampUsAbsolute;
             firstTimestampWasRead = true;
         }
         int ts = (int) (timestampUsAbsolute - firstTimestampUsAbsolute);
+//        if (ts == 0) {
+//            log.warning("zero timestamp detected for Image ");
+//        }
         final int dt = ts - mostRecentTimestamp;
         if (dt < 0 && nonMonotonicTimestampExceptionsChecked) {
-            log.warning("Discarding event with nonmonotonic timestamp "+timestamp+" detected; delta time=" + dt);
+            log.warning("Discarding event with nonmonotonic timestamp " + timestamp + " detected; delta time=" + dt);
             mostRecentTimestamp = ts;
             nonMonotonicTimestampDetected = true;
         } else {
@@ -247,6 +245,10 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
      * @return the packet
      */
     private AEPacketRaw getNextRawPacket() {
+        DavisBaseCamera davisCamera = null;
+        if (chip instanceof DavisBaseCamera) {
+            davisCamera = (DavisBaseCamera) chip;
+        }
         OutputEventIterator<ApsDvsEvent> outItr = eventPacket.outputIterator();
         try {
             boolean gotEventsOrFrame = false;
@@ -255,6 +257,19 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                 String pkg = message.messageType.getPackage();
                 String type = message.messageType.getType();
                 switch (pkg) {
+                    case "std_msgs": { // exposure
+                        MessageType messageType = message.messageType;
+//                         List<String> fieldNames = messageType.getFieldNames();
+                        try {
+                            int exposureUs = messageType.<Int32Type>getField("data").getValue(); // message seems to be exposure in ms as float although https://github.com/uzh-rpg/rpg_dvs_ros/blob/master/davis_ros_driver/src/driver.cpp publishes as Int32, very confusing
+                            lastExposureValue = (int) (exposureUs);
+                        } catch (Exception e) {
+                            float exposureUs = messageType.<Float32Type>getField("data").getValue(); // message seems to be exposure in ms as float although https://github.com/uzh-rpg/rpg_dvs_ros/blob/master/davis_ros_driver/src/driver.cpp publishes as Int32, very confusing
+                            lastExposureValue = (int) (exposureUs); // hack to deal with recordings made with pre-Int32 version of rpg-ros-dvs
+                        }
+
+                    }
+                    break;
                     case "sensor_msgs":
                         switch (type) {
                             case "Image": { // http://docs.ros.org/api/sensor_msgs/html/index-msg.html
@@ -266,6 +281,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                                 int height = (int) (messageType.<UInt32Type>getField("height").getValue()).intValue();
                                 Timestamp timestamp = header.<TimeType>getField("stamp").getValue();
                                 int ts = getTimestamp(timestamp);
+//                                if (ts == 0) {
+//                                    log.warning("zero timestamp detected for Image ");
+//                                }
                                 if (nonMonotonicTimestampDetected) {
                                     continue;
                                 }
@@ -275,11 +293,13 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                                 int sizeY = chip.getSizeY();
                                 ApsDvsEvent e = null;
                                 // construct frames as events, so that reconstuction as raw packet results in frame again. what a hack...
+                                // start of frame
                                 e = outItr.nextOutput();
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.SOF);
                                 e.x = (short) 0;
                                 e.y = (short) 0;
                                 e.setTimestamp(ts);
+                                // start of exposure
                                 e = outItr.nextOutput();
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.SOE);
                                 e.x = (short) 0;
@@ -293,20 +313,31 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                                             e.x = (short) x;
                                             e.y = (short) (sizeY - y - 1);
                                             e.setAdcSample(f == 0 ? 255 : (255 - (0xff & bytes[idx++])));
-                                            e.setTimestamp(ts);
+                                            if (davisCamera == null) {
+                                                e.setTimestamp(ts);
+                                            } else {
+                                                if (davisCamera.lastFrameAddress((short) x, (short) y)) {
+                                                    e.setTimestamp(ts + lastExposureValue); // set timestamp of last event written out to the frame end timestamp, TODO complete hack to have 1 pixel with larger timestamp
+                                                }else{
+                                                    e.setTimestamp(ts);
+                                                }
+                                            }
                                         }
                                     }
                                 }
+
+                                // end of exposure event
                                 e = outItr.nextOutput();
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.EOE);
                                 e.x = (short) 0;
                                 e.y = (short) 0;
-                                e.setTimestamp(ts); // TODO should really be end of exposure timestamp, have to get that from last exposure message
+                                e.setTimestamp(ts + lastExposureValue); // TODO should really be end of exposure timestamp, have to get that from last exposure message
+                                // end of frame event
                                 e = outItr.nextOutput();
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.EOF);
                                 e.x = (short) 0;
                                 e.y = (short) 0;
-                                e.setTimestamp(ts);
+                                e.setTimestamp(ts + lastExposureValue);
 
                             }
                             break;
@@ -320,6 +351,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                                 MessageType header = messageType.getField("header"); // http://docs.ros.org/api/std_msgs/html/msg/Header.html
                                 Timestamp timestamp = header.<TimeType>getField("stamp").getValue();
                                 int ts = getTimestamp(timestamp);
+//                                if (ts == 0) {
+//                                    log.warning("zero timestamp detected for Imu sample ");
+//                                }
                                 if (nonMonotonicTimestampDetected) {
                                     continue;
                                 }
@@ -343,18 +377,19 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                                 float yacc = (float) (angular_velocity.<Float64Type>getField("y").getValue().doubleValue());
                                 float zacc = (float) (angular_velocity.<Float64Type>getField("z").getValue().doubleValue());
                                 short[] buf = new short[7];
-                                
-                                buf[IMUSampleType.ax.code] = (short) (G_PER_MPS2*xacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb()); // TODO set these scales from caer parameter messages in stream
-                                buf[IMUSampleType.ay.code] = (short) (G_PER_MPS2*yacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb());
-                                buf[IMUSampleType.az.code] = (short) (G_PER_MPS2*zacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb());
-                                
-                                buf[IMUSampleType.gx.code] = (short) (DEG_PER_RAD* xrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
-                                buf[IMUSampleType.gy.code] = (short) (DEG_PER_RAD*yrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
-                                buf[IMUSampleType.gz.code] = (short) (DEG_PER_RAD*zrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
+
+                                buf[IMUSampleType.ax.code] = (short) (G_PER_MPS2 * xacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb()); // TODO set these scales from caer parameter messages in stream
+                                buf[IMUSampleType.ay.code] = (short) (G_PER_MPS2 * yacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb());
+                                buf[IMUSampleType.az.code] = (short) (G_PER_MPS2 * zacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb());
+
+                                buf[IMUSampleType.gx.code] = (short) (DEG_PER_RAD * xrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
+                                buf[IMUSampleType.gy.code] = (short) (DEG_PER_RAD * yrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
+                                buf[IMUSampleType.gz.code] = (short) (DEG_PER_RAD * zrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
                                 ApsDvsEvent e = null;
                                 e = outItr.nextOutput();
                                 IMUSample imuSample = new IMUSample(ts, buf);
                                 e.setImuSample(imuSample);
+                                e.setTimestamp(ts);
                             }
                             break;
                         }
@@ -382,6 +417,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                                     boolean pol = eventMsg.<BoolType>getField("polarity").getValue();
                                     Timestamp timestamp = (Timestamp) eventMsg.<TimeType>getField("ts").getValue();
                                     int ts = getTimestamp(timestamp);
+//                                    if (ts == 0) {
+//                                        log.warning("zero timestamp detected for DVS event ");
+//                                    }
                                     if (nonMonotonicTimestampDetected) {
                                         continue;
                                     }
@@ -468,7 +506,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     @Override
     synchronized public void rewind() throws IOException {
-        msgPosition = 0;
+        lastMsgPosition = 0;
     }
 
     @Override
