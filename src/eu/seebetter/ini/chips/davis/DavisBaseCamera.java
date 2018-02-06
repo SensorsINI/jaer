@@ -1041,7 +1041,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         private static final int FONTSIZE = 24;
         private static final int FRAME_COUNTER_BAR_LENGTH_FRAMES = 10;
 
-        private TextRenderer exposureRenderer = null;
+//        private TextRenderer exposureRenderer = null; // memory hog
 
         public DavisDisplayMethod(final DavisBaseCamera chip) {
             super(chip.getCanvas());
@@ -1052,24 +1052,24 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         public void display(final GLAutoDrawable drawable) {
             super.display(drawable);
 
-            if (exposureRenderer == null) {
-                exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, DavisDisplayMethod.FONTSIZE), true, true);
-            }
+//            if (exposureRenderer == null) { // recreate every frame, memory hog otherwise
+                final TextRenderer exposureTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, DavisDisplayMethod.FONTSIZE), true, true);
+//            }
 
             if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
                 final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
 
                 if (fx3HwIntf.isTimestampMaster() == false) {
-                    exposureRenderer.setColor(Color.WHITE);
-                    exposureRenderer.begin3DRendering();
-                    exposureRenderer.draw3D("Slave camera", 0, -(DavisDisplayMethod.FONTSIZE / 2), 0, 0.4f);
-                    exposureRenderer.end3DRendering();
+                    exposureTextRenderer.setColor(Color.WHITE);
+                    exposureTextRenderer.begin3DRendering();
+                    exposureTextRenderer.draw3D("Slave camera", 0, -(DavisDisplayMethod.FONTSIZE / 2), 0, 0.4f);
+                    exposureTextRenderer.end3DRendering();
                 }
             }
 
             if ((getDavisConfig().getVideoControl() != null) && getDavisConfig().getVideoControl().isDisplayFrames()) {
                 final GL2 gl = drawable.getGL().getGL2();
-                exposureRender(gl);
+                exposureRender(gl, exposureTextRenderer);
             }
 
             // draw sample histogram
@@ -1081,7 +1081,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 gl.glPushAttrib(GL.GL_COLOR_BUFFER_BIT);
                 gl.glColor3f(0, 0, 1);
                 gl.glLineWidth(1f);
-                hist.draw(drawable, exposureRenderer, (sizeX / 2) - (size / 2), (sizeY / 2) + (size / 2), size, size);
+                hist.draw(drawable, exposureTextRenderer, (sizeX / 2) - (size / 2), (sizeY / 2) + (size / 2), size, size);
                 gl.glPopAttrib();
             }
 
@@ -1096,12 +1096,13 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             displayStatusChangeText(drawable);
         }
 
-        TextRenderer imuTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
+        
         GLUquadric accelCircle = null;
 
         private void imuRender(final GLAutoDrawable drawable, final IMUSample imuSampleRender) {
             // System.out.println("on rendering: "+imuSample.toString());
             final GL2 gl = drawable.getGL().getGL2();
+            final TextRenderer imuTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36)); // recreate, memory hog if instance variable
             gl.glPushMatrix();
 
             gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
@@ -1195,21 +1196,21 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             gl.glPopMatrix();
         }
 
-        private void exposureRender(final GL2 gl) {
+        private void exposureRender(final GL2 gl, final TextRenderer textRenderer) {
             gl.glPushMatrix();
 
-            exposureRenderer.setColor(Color.WHITE);
-            exposureRenderer.begin3DRendering();
+            textRenderer.setColor(Color.WHITE);
+            textRenderer.begin3DRendering();
             if (frameIntervalUs > 0) {
                 setFrameRateHz((float) 1000000 / frameIntervalUs);
             }
             setMeasuredExposureMs((float) exposureDurationUs / 1000);
             final String s = String.format("Frame: %d; Exposure %.2f ms; Frame rate: %.2f Hz", getFrameCount(), getMeasuredExposureMs(),
                     getFrameRateHz());
-            final float scale = TextRendererScale.draw3dScale(exposureRenderer, s, getChipCanvas().getScale(), getSizeX(), 1f);
+            final float scale = TextRendererScale.draw3dScale(textRenderer, s, getChipCanvas().getScale(), getSizeX(), 1f);
             // determine width of string in pixels and scale accordingly
-            exposureRenderer.draw3D(s, 0, getSizeY() + ((DavisDisplayMethod.FONTSIZE / 2) * scale), 0, scale);
-            exposureRenderer.end3DRendering();
+            textRenderer.draw3D(s, 0, getSizeY() + ((DavisDisplayMethod.FONTSIZE / 2) * scale), 0, scale);
+            textRenderer.end3DRendering();
 
             final int nframes = getFrameCount() % DavisDisplayMethod.FRAME_COUNTER_BAR_LENGTH_FRAMES;
             final int rectw = getSizeX() / DavisDisplayMethod.FRAME_COUNTER_BAR_LENGTH_FRAMES;
