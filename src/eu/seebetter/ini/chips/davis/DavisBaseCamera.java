@@ -34,6 +34,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import javax.swing.ProgressMonitor;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
@@ -356,11 +357,19 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         }
     }
 
+    /**
+     * Constructs the input stream and returns it
+     * @param file the file to open
+     * @param progressMonitor to monitor progress and allow canceling operation
+     * @return the input stream
+     * @throws IOException if there is an error
+     * @throws InterruptedException if the operation is canceled.
+     */
     @Override
-    public AEFileInputStreamInterface constuctFileInputStream(final File file) throws IOException {
+    public AEFileInputStreamInterface constuctFileInputStream(final File file, ProgressMonitor progressMonitor) throws IOException, InterruptedException {
         frameCount = 0;
 
-        return (super.constuctFileInputStream(file));
+        return (super.constuctFileInputStream(file,progressMonitor));
     }
 
     /**

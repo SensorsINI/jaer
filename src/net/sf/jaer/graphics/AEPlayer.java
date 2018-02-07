@@ -15,12 +15,18 @@ import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 
 import com.jogamp.opengl.GLException;
+import java.awt.Cursor;
+import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.ProgressMonitor;
+import javax.swing.SwingWorker;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEDataFile;
-import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
+import static net.sf.jaer.graphics.AbstractAEPlayer.log;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.IndexFileFilter;
@@ -103,26 +109,29 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             int retValue = fileChooser.showOpenDialog(viewer);
             if (retValue == JFileChooser.APPROVE_OPTION) {
                 lastFilter = fileChooser.getFileFilter();
-                try {
-                    viewer.lastFile = fileChooser.getSelectedFile();
-                    if (viewer.lastFile != null) {
-                        viewer.recentFiles.addFile(viewer.lastFile);
-                    }
-                    startPlayback(viewer.lastFile);
-                } catch (IOException fnf) {
-                    log.warning(fnf.toString());
+                viewer.lastFile = fileChooser.getSelectedFile();
+                if (viewer.lastFile != null) {
+                    viewer.recentFiles.addFile(viewer.lastFile);
                 }
+                final File file = viewer.lastFile;
+                startPlayback(file);
+
             } else {
                 preview.showFile(null);
             }
         } catch (GLException e) {
             log.warning(e.toString());
             preview.showFile(null);
-        }
-        fileChooser = null;
+        } catch (IOException e) {
+            log.warning(e.toString());
+        } catch (InterruptedException e) {
+            log.warning(e.toString());
+        } finally {
+            fileChooser = null;
 //        viewer.chipCanvas.setScale(oldScale);
-        // restore persistent scale so that we don't get tiny size on next startup
-        setPaused(false);
+            // restore persistent scale so that we don't get tiny size on next startup
+            setPaused(false);
+        }
     }
 
     @Override
@@ -153,7 +162,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public File getFile() {
-       return aeFileInputStream.getFile();
+        return aeFileInputStream.getFile();
     }
 
     @Override
@@ -286,9 +295,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
      * @param file the File to play.
      */
     @Override
-    public synchronized void startPlayback(File file) throws IOException {
+    public synchronized void startPlayback(File file) throws IOException, InterruptedException {
         log.info("starting playback with file=" + file);
-        super.startPlayback(file);
+        inputFile = file;
         if ((file == null) || !file.isFile()) {
             throw new FileNotFoundException("file not found: " + file);
         }
@@ -318,46 +327,77 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         if (viewer.getChip() == null) {
             throw new IOException("chip is not set in AEViewer so we cannot contruct the file input stream for it");
         }
-        aeFileInputStream = viewer.getChip().constuctFileInputStream(file); // new AEFileInputStream(file);
-        aeFileInputStream.setRepeat(isRepeat());
-        aeFileInputStream.setNonMonotonicTimeExceptionsChecked(viewer.getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem().isSelected());
-        aeFileInputStream.setTimestampResetBitmask(viewer.getAeFileInputStreamTimestampResetBitmask());
-        aeFileInputStream.setFile(file);
-        aeFileInputStream.getSupport().addPropertyChangeListener(viewer);
-        // so that users of the stream can get the file information
-        if ((viewer.getJaerViewer() != null) && (viewer.getJaerViewer().getViewers().size() == 1)) {
-            // if there is only one viewer, start it there
-            try {
-                aeFileInputStream.rewind();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        // don't waste cycles grabbing events while playing back
-        viewer.setPlayMode(AEViewer.PlayMode.PLAYBACK);
-        // TODO ugly remove/add of new control panel to associate it with correct player
-//            playerControlPanel.remove(getPlayerControls());
-//            setPlayerControls(new AePlayerAdvancedControlsPanel(AEViewer.this));
-//            playerControlPanel.add(getPlayerControls());
-        viewer.getPlayerControls().addMeToPropertyChangeListeners(aeFileInputStream);
-        // so that slider is updated when position changes
-        viewer.setPlaybackControlsEnabledState(true);
-        viewer.fixLoggingControls();
-        // TODO we grab the monitor for the viewLoop here, any other thread which may change playmode should also grab it
-        if ((viewer.aemon != null) && viewer.aemon.isOpen()) {
-            try {
-                viewer.getPlayMode();
-                if (viewer.getPlayMode().equals(PlayMode.SEQUENCING)) {
-                    viewer.stopSequencing();
-                } else {
-                    viewer.aemon.setEventAcquisitionEnabled(false);
+        final ProgressMonitor progressMonitor = new ProgressMonitor(viewer, "Opening " + viewer.lastFile, "", 0, 100);
+        SwingWorker<Void, Void> worker = new SwingWorker() {
+            @Override
+            protected Object doInBackground() throws Exception {
+                try {
+                    if (viewer != null) {
+                        viewer.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+                    }
+                    aeFileInputStream = viewer.getChip().constuctFileInputStream(file, progressMonitor); // new AEFileInputStream(file);
+                    aeFileInputStream.setRepeat(isRepeat());
+                    aeFileInputStream.setNonMonotonicTimeExceptionsChecked(viewer.getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem().isSelected());
+                    aeFileInputStream.setTimestampResetBitmask(viewer.getAeFileInputStreamTimestampResetBitmask());
+                    aeFileInputStream.setFile(file);
+                    aeFileInputStream.getSupport().addPropertyChangeListener(viewer);
+                    // so that users of the stream can get the file information
+                    if ((viewer.getJaerViewer() != null) && (viewer.getJaerViewer().getViewers().size() == 1)) {
+                        // if there is only one viewer, start it there
+                        try {
+                            aeFileInputStream.rewind();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    // don't waste cycles grabbing events while playing back
+                    viewer.setPlayMode(AEViewer.PlayMode.PLAYBACK);
+                    viewer.getPlayerControls().addMeToPropertyChangeListeners(aeFileInputStream);
+                    // so that slider is updated when position changes
+                    viewer.setPlaybackControlsEnabledState(true);
+                    viewer.fixLoggingControls();
+                    // TODO we grab the monitor for the viewLoop here, any other thread which may change playmode should also grab it
+                    if ((viewer.aemon != null) && viewer.aemon.isOpen()) {
+                        try {
+                            viewer.getPlayMode();
+                            if (viewer.getPlayMode().equals(PlayMode.SEQUENCING)) {
+                                viewer.stopSequencing();
+                            } else {
+                                viewer.aemon.setEventAcquisitionEnabled(false);
+                            }
+                        } catch (HardwareInterfaceException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    clearMarks();
+                    getSupport().firePropertyChange(EVENT_FILEOPEN, null, file);
+                } catch (IOException e) {
+                    log.warning("Error opening file: " + e.toString());
+                } catch (InterruptedException e) {
+                    log.info("Interrupted opening file: " + e.toString());
+                } finally {
+                    if (viewer != null) {
+                        viewer.setCursor(Cursor.getDefaultCursor());
+                    }
                 }
-            } catch (HardwareInterfaceException e) {
-                e.printStackTrace();
+                return null;
             }
-        }
-        clearMarks();
-        getSupport().firePropertyChange(EVENT_FILEOPEN, null, file);
+        };
+        worker.addPropertyChangeListener(new PropertyChangeListener() {
+            @Override
+            public void propertyChange(PropertyChangeEvent evt) {
+                if (evt.getSource() == worker) {
+                    if (evt.getPropertyName().equals("progress")) {
+                        progressMonitor.setProgress((Integer) evt.getNewValue());
+                    }
+                    if (progressMonitor.isCanceled()) {
+                        worker.cancel(true);
+                    }
+                }
+            }
+        });
+
+        worker.execute();
     }
 
     /**
@@ -477,8 +517,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             if (rewindNPacketsOccuring) {
                 toggleDirection();
             }
-            fastForwardNPacketsOccuring=false;
-            rewindNPacketsOccuring=false;
+            fastForwardNPacketsOccuring = false;
+            rewindNPacketsOccuring = false;
 //                if(aeRaw!=null) time=aeRaw.getLastTimestamp();
             return aeRaw;
         } catch (EOFException e) {

@@ -11,6 +11,8 @@ package net.sf.jaer.chip;
 
 import com.github.swrirobotics.bags.reader.exceptions.BagReaderException;
 import eu.seebetter.ini.chips.davis.HotPixelFilter;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -19,7 +21,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
+import javax.swing.ProgressMonitor;
+import javax.swing.SwingWorker;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.event.BasicEvent;
@@ -27,7 +34,6 @@ import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEFileOutputStream;
-import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -435,22 +441,27 @@ public class AEChip extends Chip2D {
     }
 
     /**
-     * Constructs a new AEFileInputStream given a File. By default this just
-     * constructs a new AEFileInputStream, but it can be overridden by
-     * subclasses of AEChip to construct their own specialized readers that are
-     * implement the same interface.
+     * Constructs a new AEFileInputStream or RosbagFileInputStream given a File.
+     * By default this just constructs a new AEFileInputStream, but it can be
+     * overridden by subclasses of AEChip to construct their own specialized
+     * readers that are implement the same interface.
      *
      * @param file the file to open.
+     * @param progressMonitor pass this in to monitor progress of long-running
+     * file opening, to allow canceling it
      * @return the stream
      * @throws IOException on any IO exception
+     * @throws java.lang.InterruptedException if the operation is interrupted by user using the ProgressMonitor cancel button
      */
-    public AEFileInputStreamInterface constuctFileInputStream(File file) throws IOException {
+    public AEFileInputStreamInterface constuctFileInputStream(File file, ProgressMonitor progressMonitor) throws IOException, InterruptedException {
+        // usually called from EDT.. makes it tricky to update any progress GUI
         if (FilenameUtils.isExtension(file.getName(), RosbagFileInputStream.DATA_FILE_EXTENSION)) {
+            // for rosbag, since creating index is slow, show progress dialog and let user cancel it
             try {
-                aeInputStream = new RosbagFileInputStream(file, this);
+                aeInputStream = new RosbagFileInputStream(file, this, progressMonitor);
             } catch (BagReaderException ex) {
                 log.warning(ex.toString());
-                throw new IOException("Could not open "+file+": got "+ex.toString(), ex);
+                throw new IOException("Could not open " + file + ": got " + ex.toString(), ex);
             }
         } else if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION.substring(1))) {
             aeInputStream = new AEFileInputStream(file, this);

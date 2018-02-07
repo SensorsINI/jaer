@@ -13,8 +13,8 @@ import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.KeyStroke;
+import javax.swing.ProgressMonitor;
 import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 
 /**
@@ -339,11 +339,11 @@ public abstract class AbstractAEPlayer {
      * Opens an input stream and starts playing it.
      *
      * @param file the file to play.
+     * @param progressMonitor to monitor progress and allow canceling it
      * @throws IOException if there is some problem opening file.
+     * @throws java.lang.InterruptedException if a long-running open operation is interrupted
      */
-    public void startPlayback(File file) throws IOException {
-        inputFile = file; // TODO doesn't do as advertised, subclasses override this for actual opening
-    }
+    abstract public void startPlayback(File file) throws IOException, InterruptedException;
 
     /**
      * Should close the input stream.

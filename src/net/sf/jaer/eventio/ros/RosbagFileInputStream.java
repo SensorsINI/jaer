@@ -49,6 +49,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.ProgressMonitor;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -100,6 +101,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 //    private static final String[] TOPICS = {"/dvs/events"};\
     private static final String TOPIC_HEADER = "/dvs/", TOPIC_EVENTS = "events", TOPIC_IMAGE = "image_raw", TOPIC_IMU = "imu", TOPIC_EXPOSURE = "exposure";
     private static String[] TOPICS = {TOPIC_HEADER + TOPIC_EVENTS, TOPIC_HEADER + TOPIC_IMAGE, TOPIC_HEADER + TOPIC_IMU, TOPIC_HEADER + TOPIC_EXPOSURE};
+//    private static String[] TOPICS = {TOPIC_HEADER + TOPIC_EVENTS, TOPIC_HEADER + TOPIC_IMAGE};
     private ArrayList<String> topicList = new ArrayList();
     private ArrayList<String> topicFieldNames = new ArrayList();
     private MsgIterator msgIterator = null;
@@ -112,7 +114,14 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
     List<BagFile.MessageIndex> msgIndexes = new ArrayList();
     private int lastExposureValue; // holds last exposure value (in us?) to use for creating SOE and EOE events for frames
 
-    public RosbagFileInputStream(File f, AEChip chip) throws BagReaderException {
+    /** Makes a new instance for a file and chip. A progressMonitor can pop up a dialog for the long indexing operation
+     * 
+     * @param f the file
+     * @param chip the AEChip
+     * @param progressMonitor an optional ProgressMonitor, set to null if not desired
+     * @throws BagReaderException 
+     */
+    public RosbagFileInputStream(File f, AEChip chip, ProgressMonitor progressMonitor) throws BagReaderException, InterruptedException {
         this.eventPacket = new ApsDvsEventPacket<>(ApsDvsEvent.class);
         setFile(f);
         this.chip = chip;
@@ -133,7 +142,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
         sb.append("Chunks: " + bagFile.getChunks().size() + "\n");
         sb.append("Num messages: " + bagFile.getMessageCount() + "\n");
         log.info(sb.toString());
-//        bagFile.printInfo(); // debug
+        
+        generateMessageIndexes(progressMonitor);
     }
 
 //    // causes huge memory usage by building hashmaps internally, using index instead by prescanning file
@@ -178,7 +188,6 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     synchronized private MessageWithIndex getNextMsg() throws BagReaderException {
         MessageType msg = null;
-        maybeGenerateMessageIndexes();
         try {
             msg = bagFile.getMessageFromIndex(msgIndexes, lastMsgPosition);
         } catch (ArrayIndexOutOfBoundsException e) {
@@ -199,10 +208,16 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     private boolean nonMonotonicTimestampDetected = false; // flag set by nonmonotonic timestamp if detection enabled
 
-    private int getTimestamp(Timestamp timestamp) {
+    /** Given ROS Timestamp, this method computes the us timestamp relative to the first timestamp in the recording
+     * 
+     * @param timestamp a ROS Timestamp from a Message, either header or DVS event
+     * @return timestamp for jAER in us
+     */
+    private int getUsRelativeTimestamp(Timestamp timestamp) {
         long tsNs = timestamp.getNanos(); // gets the fractional seconds in ns
-        long tsMs = timestamp.getTime() - (tsNs / 1000000); // this Timestamp ms includes the nanos already!, so subtract off the ns part
-        long timestampUsAbsolute = tsMs * 1000 + tsNs / 1000; // ms*1000 =us and ns/1000=us, not sure about overflow however TODO check
+        // https://docs.oracle.com/javase/8/docs/api/java/sql/Timestamp.html "Only integral seconds are stored in the java.util.Date component. The fractional seconds - the nanos - are separate."
+        long tsMs = timestamp.getTime(); // the time in ms including ns, i.e. time(s)*1000+ns/1000000. 
+        long timestampUsAbsolute = (1000000*(tsMs/1000)) + tsNs / 1000; // truncate ms back to s, then turn back to us, then add fractional part of s in us
         if (!firstTimestampWasRead) {
             firstTimestampUsAbsolute = timestampUsAbsolute;
             firstTimestampWasRead = true;
@@ -280,7 +295,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                                 int width = (int) (messageType.<UInt32Type>getField("width").getValue()).intValue();
                                 int height = (int) (messageType.<UInt32Type>getField("height").getValue()).intValue();
                                 Timestamp timestamp = header.<TimeType>getField("stamp").getValue();
-                                int ts = getTimestamp(timestamp);
+                                int ts = getUsRelativeTimestamp(timestamp);
 //                                if (ts == 0) {
 //                                    log.warning("zero timestamp detected for Image ");
 //                                }
@@ -350,7 +365,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 //                                List<String> fieldNames = messageType.getFieldNames();
                                 MessageType header = messageType.getField("header"); // http://docs.ros.org/api/std_msgs/html/msg/Header.html
                                 Timestamp timestamp = header.<TimeType>getField("stamp").getValue();
-                                int ts = getTimestamp(timestamp);
+                                int ts = getUsRelativeTimestamp(timestamp);
 //                                if (ts == 0) {
 //                                    log.warning("zero timestamp detected for Imu sample ");
 //                                }
@@ -416,7 +431,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                                     int y = eventMsg.<UInt16Type>getField("y").getValue();
                                     boolean pol = eventMsg.<BoolType>getField("polarity").getValue();
                                     Timestamp timestamp = (Timestamp) eventMsg.<TimeType>getField("ts").getValue();
-                                    int ts = getTimestamp(timestamp);
+                                    int ts = getUsRelativeTimestamp(timestamp);
 //                                    if (ts == 0) {
 //                                        log.warning("zero timestamp detected for DVS event ");
 //                                    }
@@ -630,18 +645,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
         close();
     }
 
-    private void maybeGenerateMessageIndexes() throws BagReaderException {
+    private void generateMessageIndexes(ProgressMonitor progressMonitor) throws BagReaderException, InterruptedException {
         if (wasIndexed) {
             return;
         }
         log.info("creating index for all topics");
-        if (chip.getAeViewer() != null) {
-            chip.getAeViewer().setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        }
-        msgIndexes = bagFile.generateIndexesForTopicList(topicList);
-        if (chip.getAeViewer() != null) {
-            chip.getAeViewer().setCursor(Cursor.getDefaultCursor());
-        }
+        msgIndexes = bagFile.generateIndexesForTopicList(topicList, progressMonitor);
         wasIndexed = true;
     }
 

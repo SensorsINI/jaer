@@ -761,7 +761,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 //                log.info("opening "+evt.getActionCommand());
                 try {
                     if ((f != null) && f.isFile()) {
-                        getAePlayer().startPlayback(f);
+                        getAePlayer().startPlayback(f); // TODO fix with progress monitor
                         recentFiles.addFile(f);
                     } else if ((f != null) && f.isDirectory()) {
                         prefs.put("AEViewer.lastFile", f.getCanonicalPath());
@@ -5136,10 +5136,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             if ((retValue == JFileChooser.APPROVE_OPTION) && isLoggingPlaybackImmediatelyEnabled()) {
                 try {
-                    getAePlayer().startPlayback(loggingFile);
+                    getAePlayer().startPlayback(loggingFile); // TODO fix it with progress monitor later
                 } catch (IOException e) {
                     log.warning(e.toString());
                     e.printStackTrace();
+                } catch (InterruptedException ex) {
+                    log.info("playback interrupted");
                 }
 
             }
@@ -5646,7 +5648,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_closeMenuItemActionPerformed
 
 	private void openMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openMenuItemActionPerformed
-            /*getAePlayer().*/ aePlayer.openAEInputFileDialog();
+            aePlayer.openAEInputFileDialog();
 	}//GEN-LAST:event_openMenuItemActionPerformed
 
 	private void newViewerMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newViewerMenuItemActionPerformed
@@ -5896,12 +5898,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             //            log.info("AEViewer.drop(): opening file "+draggedFile);
             try {
                 recentFiles.addFile(draggedFile);
-                getAePlayer().startPlayback(draggedFile);
+                getAePlayer().startPlayback(draggedFile); // TODO fix with progress monitor
             } catch (IOException e) {
                 log.warning(e.toString());
                 e.printStackTrace();
+            } catch (InterruptedException ex) {
+                log.warning("opening dropped file "+draggedFile+" interrupted");
             }
-
         }
     }
 

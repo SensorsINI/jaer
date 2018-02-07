@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import javax.swing.JFileChooser;
@@ -111,6 +113,8 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                 prefs.put("JAERViewer.lastFile", lastFilePath);
             } catch (IOException fnf) {
                 fnf.printStackTrace();
+            } catch (InterruptedException ex) {
+                log.warning(ex.toString());
             }
         }
         fileChooser = null;
@@ -156,8 +160,8 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
      * @param indexFile the .index file containing the filenames to play
      */
     @Override
-    public void startPlayback(File indexFile) throws IOException {
-        super.startPlayback(indexFile);  // just sets the file
+    public void startPlayback(File indexFile) throws IOException, InterruptedException {
+        inputFile=indexFile;
         log.info("Starting synchronized playback of files in indexFile=" + indexFile);
         stopPlayback();
         // first check to make sure that index file is really an index file, in case a viewer called it
