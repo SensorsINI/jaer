@@ -153,6 +153,7 @@ public class ImuControl extends Observable implements HasPropertyTooltips, Biasg
 	public void setDisplayImu(final boolean yes) {
 		final boolean old = displayImuEnabled;
 		displayImuEnabled = yes;
+                davisConfig.getChip().getPrefs().putBoolean(getPreferencesKey() + "IMU.displayEnabled", displayImuEnabled);
 		davisConfig.getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_IMU_DISPLAY_ENABLED, old, displayImuEnabled);
 	}
 
@@ -202,7 +203,7 @@ public class ImuControl extends Observable implements HasPropertyTooltips, Biasg
 				setGyroScale(ImuGyroScale.valueOf(e.getNewValue()));
 			}
 			else if (e.getKey().contains("IMU.displayEnabled")) {
-				setDisplayImu(Boolean.valueOf(e.getNewValue()));
+				displayImuEnabled=(Boolean.valueOf(e.getNewValue()));
 			}
 		}
 		catch (final IllegalArgumentException iae) {
