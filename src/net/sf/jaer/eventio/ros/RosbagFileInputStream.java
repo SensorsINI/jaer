@@ -511,7 +511,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public long position() {
-        return 0;
+        return currentMessageNumber;
     }
 
     @Override
@@ -526,7 +526,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     @Override
     synchronized public void setFractionalPosition(float frac) {
-        // TODO
+        currentMessageNumber=(int)(frac*numMessages);
     }
 
     @Override
@@ -631,12 +631,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public int getCurrentStartTimestamp() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return (int)lastTimestamp;
     }
 
     @Override
     public void setCurrentStartTimestamp(int currentStartTimestamp) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        currentMessageNumber=(int)(numMessages*(float)currentStartTimestamp/getDurationUs());
     }
 
     @Override
@@ -651,6 +651,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
         }
         log.info("creating index for all topics");
         msgIndexes = bagFile.generateIndexesForTopicList(topicList, progressMonitor);
+        numMessages=msgIndexes.size();
+        firstTimestamp=getUsRelativeTimestamp(msgIndexes.get(0).timestamp);
+        lastTimestamp=getUsRelativeTimestamp(msgIndexes.get(numMessages-1).timestamp);
         wasIndexed = true;
     }
 
