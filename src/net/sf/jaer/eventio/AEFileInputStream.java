@@ -8,6 +8,7 @@
  */
 package net.sf.jaer.eventio;
 
+import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.BufferedReader;
 import java.io.DataInputStream;
@@ -924,10 +925,30 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /**
      * AEFileInputStream has PropertyChangeSupport. This support fires events on
      * certain events such as "rewind".
+     * @return the support
+     * @see AEInputStream for static Strings starting with EVENT_
      */
+    @Override
     public PropertyChangeSupport getSupport() {
         return support;
     }
+    
+    /**
+     * Adds a listener for property changes
+     * @param listener the listener
+     */
+    public void addPropertyChangeListener(PropertyChangeListener listener) {
+         this.support.addPropertyChangeListener(listener);
+     }
+
+
+    /**
+     * Removes a listener
+     * @param listener the listener
+     */
+    public void removePropertyChangeListener(PropertyChangeListener listener) {
+         this.support.removePropertyChangeListener(listener);
+     }
 
     /**
      * Sets or clears the marked IN position. Does nothing if trying to set

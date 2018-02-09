@@ -6,6 +6,7 @@ package net.sf.jaer.graphics;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
@@ -13,7 +14,6 @@ import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.KeyStroke;
-import javax.swing.ProgressMonitor;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 
@@ -131,6 +131,26 @@ public abstract class AbstractAEPlayer {
     }
 
     /**
+     * Adds a listener for property changes
+     *
+     * @param listener the listener
+     * @see #getSupport()
+     */
+    public void addPropertyChangeListener(PropertyChangeListener listener) {
+        this.support.addPropertyChangeListener(listener);
+    }
+
+    /**
+     * Removes a listener
+     *
+     * @param listener the listener
+     * @see #getSupport()
+     */
+    public void removePropertyChangeListener(PropertyChangeListener listener) {
+        this.support.removePropertyChangeListener(listener);
+    }
+
+    /**
      * Flog for all pause/resume state.
      */
     volatile protected boolean paused = false; // multiple threads will access
@@ -139,7 +159,7 @@ public abstract class AbstractAEPlayer {
      * Whether playback repeats after mark out or EOF is reached
      */
     volatile protected boolean repeat = viewer.prefs.getBoolean("AbstractAEPlayer.repeat", true); // multiple threads will access
-    
+
     public abstract void setFractionalPosition(float fracPos);
 
     abstract public void setDoSingleStepEnabled(boolean b);
@@ -177,9 +197,9 @@ public abstract class AbstractAEPlayer {
     protected PlaybackDirection playbackDirection = PlaybackDirection.Forward;
     protected int timesliceUs = 20000;
     protected int packetSizeEvents = 256;
-    protected int fastFowardRewindPacketCount=30;
-    protected boolean fastForwardNPacketsOccuring=false;
-    protected boolean rewindNPacketsOccuring=false;
+    protected int fastFowardRewindPacketCount = 30;
+    protected boolean fastForwardNPacketsOccuring = false;
+    protected boolean rewindNPacketsOccuring = false;
 
     abstract public void openAEInputFileDialog();
 
@@ -223,17 +243,17 @@ public abstract class AbstractAEPlayer {
             setTimesliceUs((int) Math.signum(getTimesliceUs()));
         }
     }
-    
-    public void fastFowardNPackets(){
-        fastForwardNPacketsOccuring=true;
-        rewindNPacketsOccuring=false;
+
+    public void fastFowardNPackets() {
+        fastForwardNPacketsOccuring = true;
+        rewindNPacketsOccuring = false;
     }
 
-    public void rewindNPackets(){
-        rewindNPacketsOccuring=true;
-        fastForwardNPacketsOccuring=false;
+    public void rewindNPackets() {
+        rewindNPacketsOccuring = true;
+        fastForwardNPacketsOccuring = false;
     }
-    
+
     /**
      * Should adjust the playback timeslice interval to approach real time
      * playback.
@@ -322,7 +342,8 @@ public abstract class AbstractAEPlayer {
     }
 
     /**
-     * repeats/unrepeats playback. Fires property change "repeatOn" or "repeatOff".
+     * repeats/unrepeats playback. Fires property change "repeatOn" or
+     * "repeatOff".
      *
      * @param yes true to repeat, false to stop after playback.
      */
@@ -341,7 +362,8 @@ public abstract class AbstractAEPlayer {
      * @param file the file to play.
      * @param progressMonitor to monitor progress and allow canceling it
      * @throws IOException if there is some problem opening file.
-     * @throws java.lang.InterruptedException if a long-running open operation is interrupted
+     * @throws java.lang.InterruptedException if a long-running open operation
+     * is interrupted
      */
     abstract public void startPlayback(File file) throws IOException, InterruptedException;
 
@@ -637,10 +659,7 @@ public abstract class AbstractAEPlayer {
             putValue(Action.SELECTED_KEY, true);
         }
     }
-    
-    
-    
-    
+
 //    final public class SyncPlaybackAction extends AbstractAction{
 //        public SyncPlaybackAction (){
 //            super("Synchronized playback");
@@ -655,11 +674,10 @@ public abstract class AbstractAEPlayer {
 //            getViewer().getJaerViewer().getToggleSyncEnabledAction().actionPerformed(e);
 //        }
 //    }
-
     @Override
     public String toString() {
         return String.format("AEPlayer paused=%s repeat=%s playBackDirection=%s playBackMode=%s timesliceUs=%d packetSizeEvents=%d ",
-                paused,repeat,playbackDirection, playbackMode,timesliceUs,packetSizeEvents);
+                paused, repeat, playbackDirection, playbackMode, timesliceUs, packetSizeEvents);
     }
 
     /**

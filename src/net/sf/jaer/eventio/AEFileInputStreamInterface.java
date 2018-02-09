@@ -8,6 +8,7 @@
  */
 package net.sf.jaer.eventio;
 
+import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
@@ -93,6 +94,18 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
      * certain events such as "rewind".
      */
     PropertyChangeSupport getSupport();
+    
+    /**
+     * Adds a listener for property changes
+     * @param listener the listener
+     */
+    public void addPropertyChangeListener(PropertyChangeListener listener);
+
+    /**
+     * Removes a listener
+     * @param listener the listener
+     */
+    public void removePropertyChangeListener(PropertyChangeListener listener);
 
     /**
      * Returns the File that is being read, or null if the instance is
