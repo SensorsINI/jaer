@@ -30,23 +30,25 @@ import com.github.swrirobotics.bags.reader.messages.serialization.Float32Type;
 import com.github.swrirobotics.bags.reader.messages.serialization.Float64Type;
 import com.github.swrirobotics.bags.reader.messages.serialization.Int32Type;
 import com.github.swrirobotics.bags.reader.messages.serialization.MessageType;
-import com.github.swrirobotics.bags.reader.messages.serialization.MsgIterator;
 import com.github.swrirobotics.bags.reader.messages.serialization.TimeType;
 import com.github.swrirobotics.bags.reader.messages.serialization.UInt16Type;
 import com.github.swrirobotics.bags.reader.messages.serialization.UInt32Type;
-import com.github.swrirobotics.bags.reader.records.ChunkInfo;
-import com.github.swrirobotics.bags.reader.records.Connection;
+import com.google.common.collect.HashMultimap;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import eu.seebetter.ini.chips.davis.imu.IMUSampleType;
-import java.awt.Cursor;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.ProgressMonitor;
@@ -57,6 +59,7 @@ import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.AEInputStream;
 
 /**
  * Reads ROS bag files holding data from https://github.com/uzh-rpg/rpg_dvs_ros
@@ -64,9 +67,10 @@ import net.sf.jaer.eventio.AEFileInputStreamInterface;
  *
  * @author Tobi
  */
-public class RosbagFileInputStream implements AEFileInputStreamInterface {
+public class RosbagFileInputStream implements AEFileInputStreamInterface, RosbagTopicMessageSupport {
 
-    private static Logger log = Logger.getLogger("RosbagFileInputStream");
+    private static final Logger log = Logger.getLogger("RosbagFileInputStream");
+    private final PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     /**
      * File name extension for ROS bag files, excluding ".", i.e. "bag". Note
@@ -92,40 +96,47 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     // marks the present read time for packets
     private int currentStartTimestamp;
-    private long absoluteStartingTimeMs = 0; // in system time since 1970 in ms
     private int currentMessageNumber = 0;
     private final ApsDvsEventPacket<ApsDvsEvent> eventPacket;
     private AEPacketRaw aePacketRawCollecting = null, aePacketRawOutput = null;
-    private final PropertyChangeSupport support = new PropertyChangeSupport(this);
+    private int lastMsgPosition = 0, numMessages = 0;
+
+    private long absoluteStartingTimeMs = 0; // in system time since 1970 in ms
     private FileChannel channel = null;
+
 //    private static final String[] TOPICS = {"/dvs/events"};\
     private static final String TOPIC_HEADER = "/dvs/", TOPIC_EVENTS = "events", TOPIC_IMAGE = "image_raw", TOPIC_IMU = "imu", TOPIC_EXPOSURE = "exposure";
-    private static String[] TOPICS = {TOPIC_HEADER + TOPIC_EVENTS, TOPIC_HEADER + TOPIC_IMAGE, TOPIC_HEADER + TOPIC_IMU, TOPIC_HEADER + TOPIC_EXPOSURE};
+    private static String[] STANARD_TOPICS = {TOPIC_HEADER + TOPIC_EVENTS, TOPIC_HEADER + TOPIC_IMAGE, TOPIC_HEADER + TOPIC_IMU, TOPIC_HEADER + TOPIC_EXPOSURE};
 //    private static String[] TOPICS = {TOPIC_HEADER + TOPIC_EVENTS, TOPIC_HEADER + TOPIC_IMAGE};
     private ArrayList<String> topicList = new ArrayList();
     private ArrayList<String> topicFieldNames = new ArrayList();
-    private MsgIterator msgIterator = null;
-//    private List<MessageData> messages = null;
-    private List<Connection> conns = null;
-    private List<ChunkInfo> chunkInfos = null;
-    private int lastMsgPosition = 0, numMessages = 0;
     private boolean wasIndexed = false;
+    private List<BagFile.MessageIndex> msgIndexes = new ArrayList();
+    private HashMultimap<String, PropertyChangeListener> msgListeners = HashMultimap.create();
+    private boolean firstReadCompleted = false;
+    private ArrayList<String> extraTopics = null; // extra topics that listeners can subscribe to
+
     private boolean nonMonotonicTimestampExceptionsChecked = true;
-    List<BagFile.MessageIndex> msgIndexes = new ArrayList();
     private int lastExposureValue; // holds last exposure value (in us?) to use for creating SOE and EOE events for frames
 
-    /** Makes a new instance for a file and chip. A progressMonitor can pop up a dialog for the long indexing operation
-     * 
+    /**
+     * Makes a new instance for a file and chip. A progressMonitor can pop up a
+     * dialog for the long indexing operation
+     *
      * @param f the file
      * @param chip the AEChip
-     * @param progressMonitor an optional ProgressMonitor, set to null if not desired
-     * @throws BagReaderException 
+     * @param progressMonitor an optional ProgressMonitor, set to null if not
+     * desired
+     * @throws BagReaderException
+     * @throws java.lang.InterruptedException if constructing the stream which
+     * requires indexing the topics takes a long time and the operation is
+     * canceled
      */
     public RosbagFileInputStream(File f, AEChip chip, ProgressMonitor progressMonitor) throws BagReaderException, InterruptedException {
         this.eventPacket = new ApsDvsEventPacket<>(ApsDvsEvent.class);
         setFile(f);
         this.chip = chip;
-        for (String s : TOPICS) {
+        for (String s : STANARD_TOPICS) {
             topicList.add(s);
             topicFieldNames.add(s.substring(s.lastIndexOf("/") + 1)); // strip off header to get to field name for the ArrayType
         }
@@ -142,8 +153,13 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
         sb.append("Chunks: " + bagFile.getChunks().size() + "\n");
         sb.append("Num messages: " + bagFile.getMessageCount() + "\n");
         log.info(sb.toString());
-        
+
         generateMessageIndexes(progressMonitor);
+    }
+
+    @Override
+    public Collection<String> getMessageListenerTopics() {
+        return msgListeners.keySet();
     }
 
 //    // causes huge memory usage by building hashmaps internally, using index instead by prescanning file
@@ -174,7 +190,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 //        MsgIterator itr = new MsgIterator(chunkInfos, myConnections, channel);
 //        return itr;
 //    }
-    private class MessageWithIndex {
+    public class MessageWithIndex {
 
         public MessageType messageType;
         public BagFile.MessageIndex messageIndex;
@@ -208,16 +224,19 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     private boolean nonMonotonicTimestampDetected = false; // flag set by nonmonotonic timestamp if detection enabled
 
-    /** Given ROS Timestamp, this method computes the us timestamp relative to the first timestamp in the recording
-     * 
-     * @param timestamp a ROS Timestamp from a Message, either header or DVS event
+    /**
+     * Given ROS Timestamp, this method computes the us timestamp relative to
+     * the first timestamp in the recording
+     *
+     * @param timestamp a ROS Timestamp from a Message, either header or DVS
+     * event
      * @return timestamp for jAER in us
      */
     private int getUsRelativeTimestamp(Timestamp timestamp) {
         long tsNs = timestamp.getNanos(); // gets the fractional seconds in ns
         // https://docs.oracle.com/javase/8/docs/api/java/sql/Timestamp.html "Only integral seconds are stored in the java.util.Date component. The fractional seconds - the nanos - are separate."
         long tsMs = timestamp.getTime(); // the time in ms including ns, i.e. time(s)*1000+ns/1000000. 
-        long timestampUsAbsolute = (1000000*(tsMs/1000)) + tsNs / 1000; // truncate ms back to s, then turn back to us, then add fractional part of s in us
+        long timestampUsAbsolute = (1000000 * (tsMs / 1000)) + tsNs / 1000; // truncate ms back to s, then turn back to us, then add fractional part of s in us
         if (!firstTimestampWasRead) {
             firstTimestampUsAbsolute = timestampUsAbsolute;
             firstTimestampWasRead = true;
@@ -259,7 +278,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
      *
      * @return the packet
      */
-    private AEPacketRaw getNextRawPacket() {
+    synchronized private AEPacketRaw getNextRawPacket() {
         DavisBaseCamera davisCamera = null;
         if (chip instanceof DavisBaseCamera) {
             davisCamera = (DavisBaseCamera) chip;
@@ -269,6 +288,16 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
             boolean gotEventsOrFrame = false;
             while (!gotEventsOrFrame) {
                 MessageWithIndex message = getNextMsg();
+                // send to listeners if topic is one we have subscribers for
+                String topic = message.messageIndex.topic;
+                Set<PropertyChangeListener> listeners = msgListeners.get(topic);
+                if (!listeners.isEmpty()) {
+                    for (PropertyChangeListener l : listeners) {
+                        l.propertyChange(new PropertyChangeEvent(this, topic, null, message));
+                    }
+                }
+
+                // now deal with standard DAVIS data
                 String pkg = message.messageType.getPackage();
                 String type = message.messageType.getType();
                 switch (pkg) {
@@ -333,7 +362,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
                                             } else {
                                                 if (davisCamera.lastFrameAddress((short) x, (short) y)) {
                                                     e.setTimestamp(ts + lastExposureValue); // set timestamp of last event written out to the frame end timestamp, TODO complete hack to have 1 pixel with larger timestamp
-                                                }else{
+                                                } else {
                                                     e.setTimestamp(ts);
                                                 }
                                             }
@@ -461,7 +490,20 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
             return null;
         }
         aePacketRawCollecting = chip.getEventExtractor().reconstructRawPacket(eventPacket);
+        fireInitPropertyChange();
         return aePacketRawCollecting;
+    }
+
+    /**
+     * Called to signal first read from file. Fires PropertyChange
+     * AEInputStream.EVENT_INIT, with new value this.
+     */
+    protected void fireInitPropertyChange() {
+        if (firstReadCompleted) {
+            return;
+        }
+        getSupport().firePropertyChange(AEInputStream.EVENT_INIT, null, this);
+        firstReadCompleted = true;
     }
 
     @Override
@@ -526,7 +568,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
 
     @Override
     synchronized public void setFractionalPosition(float frac) {
-        currentMessageNumber=(int)(frac*numMessages);
+        currentMessageNumber = (int) (frac * numMessages);
     }
 
     @Override
@@ -622,21 +664,18 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
             }
         }
         bagFile = null;
-        msgIterator = null;
-        conns = null;
-        chunkInfos = null;
         file = null;
         System.gc();
     }
 
     @Override
     public int getCurrentStartTimestamp() {
-        return (int)lastTimestamp;
+        return (int) lastTimestamp;
     }
 
     @Override
     public void setCurrentStartTimestamp(int currentStartTimestamp) {
-        currentMessageNumber=(int)(numMessages*(float)currentStartTimestamp/getDurationUs());
+        currentMessageNumber = (int) (numMessages * (float) currentStartTimestamp / getDurationUs());
     }
 
     @Override
@@ -651,10 +690,69 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface {
         }
         log.info("creating index for all topics");
         msgIndexes = bagFile.generateIndexesForTopicList(topicList, progressMonitor);
-        numMessages=msgIndexes.size();
-        firstTimestamp=getUsRelativeTimestamp(msgIndexes.get(0).timestamp);
-        lastTimestamp=getUsRelativeTimestamp(msgIndexes.get(numMessages-1).timestamp);
+        numMessages = msgIndexes.size();
+        firstTimestamp = getUsRelativeTimestamp(msgIndexes.get(0).timestamp);
+        lastTimestamp = getUsRelativeTimestamp(msgIndexes.get(numMessages - 1).timestamp);
         wasIndexed = true;
+    }
+
+    public void addPropertyChangeListener(PropertyChangeListener listener) {
+        this.support.addPropertyChangeListener(listener);
+    }
+
+    public void removePropertyChangeListener(PropertyChangeListener listener) {
+        this.support.removePropertyChangeListener(listener);
+    }
+
+    /**
+     * Adds a topic for which listeners should be informed. The PropertyChange
+     * has this as the source and the new value is the MessageType message.
+     *
+     * @param topics a string topic, e.g. "/dvs/events"
+     * @param listener a PropertyChangeListener that gets the messages
+     * @throws java.lang.InterruptedException since generating the topic index
+     * is a long-running process, the method throws
+     * @throws com.github.swrirobotics.bags.reader.exceptions.BagReaderException
+     * if there is an exception for the BagFile
+     * @see MessageType
+     */
+    @Override
+    synchronized public void addSubscribers(List<String> topics, PropertyChangeListener listener, ProgressMonitor progressMonitor) throws InterruptedException, BagReaderException {
+        List<String> topicsToAdd = new ArrayList();
+        for (String topic : topics) {
+            if (msgListeners.containsKey(topic) && msgListeners.get(topic).contains(listener)) {
+                log.warning("topic " + topic + " and listener " + listener + " already added, ignoring");
+                continue;
+            }
+            topicsToAdd.add(topic);
+        }
+        if(topicsToAdd.isEmpty()) {
+            log.warning("nothing to add");
+            return;
+        }
+             
+        addPropertyChangeListener(listener);
+        List<BagFile.MessageIndex> idx = bagFile.generateIndexesForTopicList(topicsToAdd, progressMonitor);
+        msgIndexes.addAll(idx);
+        for (String topic : topics) {
+            msgListeners.put(topic, listener);
+        }
+        Collections.sort(msgIndexes);
+    }
+
+    /**
+     * Removes a topic
+     *
+     * @param topic
+     * @param listener
+     */
+    @Override
+    public void removeTopic(String topic, PropertyChangeListener listener) {
+        log.warning("cannot remove topic parsing, just removing listener");
+        if (msgListeners.containsValue(listener)) {
+            log.info("removing listener " + listener);
+            removePropertyChangeListener(listener);
+        }
     }
 
 }
