@@ -20,11 +20,13 @@ To build yourself, clone the repo and run
 
 Please use our GitHub bug tracker to report issues and bugs, or our Google Groups mailing list for discussions and announcements.
 
+USER GUIDE: https://inilabs.com/support/software/jaer/
+
 BUG TRACKER: https://github.com/SensorsINI/jaer/issues/
 
 MAILING LIST: https://groups.google.com/d/forum/jaer-users/
 
-See https://sourceforge.net/p/jaer/wiki/Home/ for user guide (ignoring the SourceForge Subversion installation instructions there)
+See https://sourceforge.net/p/jaer/wiki/Home/ for older user guide (ignoring the SourceForge Subversion installation instructions there)
 
 The SourceForge page has a useful past help forum at https://sourceforge.net/p/jaer/discussion/631958/
 
