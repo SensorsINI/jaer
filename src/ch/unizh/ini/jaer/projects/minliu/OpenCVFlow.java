@@ -564,7 +564,7 @@ public class OpenCVFlow extends AbstractMotionFlow
             }
             
             System.out.println("The number of valid output in OpenCV Flow is : " + countOut);    
-            motionFlowStatistics.updatePacket(countIn, countOut);
+            motionFlowStatistics.updatePacket(countIn, countOut, patchFlow.ts);
             countOut = 0;
 
             Mat mask = new Mat(newFrame.rows(), newFrame.cols(), CvType.CV_32F);

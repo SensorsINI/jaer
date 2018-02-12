@@ -817,7 +817,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         
         /* Slices have been rotated */
         getSupport().firePropertyChange(PatchMatchFlow.EVENT_NEW_SLICES, slices[sliceIndex(1)], slices[sliceIndex(2)]);
-        motionFlowStatistics.updatePacket(countIn, countOut);
+        motionFlowStatistics.updatePacket(countIn, countOut, ts);
         countIn = 0;
         countOut = 0;
         return true;

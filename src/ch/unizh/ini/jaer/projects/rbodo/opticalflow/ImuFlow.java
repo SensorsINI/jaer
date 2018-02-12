@@ -83,7 +83,7 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             processGoodEvent();
         }
 
-        getMotionFlowStatistics().updatePacket(countIn, countOut);
+        getMotionFlowStatistics().updatePacket(countIn, countOut, ts);
         return isDisplayRawInput() ? in : dirPacket;
     }
 
