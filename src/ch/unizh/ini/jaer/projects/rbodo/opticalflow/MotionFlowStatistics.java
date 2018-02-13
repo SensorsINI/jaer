@@ -100,7 +100,13 @@ public class MotionFlowStatistics {
         list.add(new MLDouble("global_flow", globalFlowArray, 3));
         Date d = new Date();
         String fn= "flowExport"+ "_" + AEDataFile.DATE_FORMAT.format(d) + "_" + System.currentTimeMillis() + "_" + filterClassName + ".mat";
-        try {
+        try {          
+            File logDir = new File("logfiles");
+
+            // if the directory does not exist, create it
+            if (!logDir.exists()) {
+                logDir.mkdir();
+            }
             MatFileWriter matFileWriter = new MatFileWriter("logfiles/" + fn, list);
         } catch (IOException ex) {
             log.log(Level.SEVERE, null, ex);

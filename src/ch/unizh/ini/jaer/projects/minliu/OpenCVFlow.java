@@ -460,14 +460,18 @@ public class OpenCVFlow extends AbstractMotionFlow
                 OFResultDisplay.setPixmapFromGrayArray(new_slice_buff);
                 DateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
                 File folder = new File("EventSlices/" + chip.getAeInputStream().getFile().getName() + patchFlow.getSliceMethod().toString() + "_" + df);
-                folder.mkdir();
+                // if the directory does not exist, create it
+                if (!folder.exists()) {
+                    folder.mkdir();
+                }            
                 File outputfile = new File(folder, String.format("packet_pid%d_%fms.jpg", this.getId(), patchFlow.sliceDeltaTimeUs(2)/1000.0));
                 Core.flip(newFrame, newFrame, 0);
-                try {
-                    ImageIO.write(Mat2BufferedImage(newFrame), "jpg", outputfile);
-                } catch (IOException ex) {
-                    Logger.getLogger(OpenCVFlow.class.getName()).log(Level.SEVERE, null, ex);
-                }
+                // Uncomment this when you want to store the slice's pictures.
+//                try {
+//                    ImageIO.write(Mat2BufferedImage(newFrame), "jpg", outputfile);
+//                } catch (IOException ex) {
+//                    Logger.getLogger(OpenCVFlow.class.getName()).log(Level.SEVERE, null, ex);
+//                }
             }            
 
             // draw the tracks

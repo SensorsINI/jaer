@@ -249,7 +249,7 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
                 getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
             }
         }
-        getMotionFlowStatistics().updatePacket(countIn, countOut);
+        getMotionFlowStatistics().updatePacket(countIn, countOut, ts);
         return isDisplayRawInput() ? in : dirPacket;
     }
 
