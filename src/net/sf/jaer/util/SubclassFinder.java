@@ -5,12 +5,12 @@ package net.sf.jaer.util;
 
 import java.util.*;
 import java.lang.reflect.Modifier;
-import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.DefaultListModel;
 import javax.swing.ProgressMonitor;
 import javax.swing.SwingWorker;
-import net.sf.jaer.Description;
-import net.sf.jaer.DevelopmentStatus;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableModel;
 
 /**
  * Finds subclasses of a given class name in classes on the loaded classpath.
@@ -24,7 +24,9 @@ public class SubclassFinder {
     // TODO needs a way of caching in preferences the list of classes and the number or checksum of classes,
     // to reduce startup time, since this lookup of subclasses takes 10s of seconds on some machines
 
-    /** List of regexp package names to exclude from search */
+    /**
+     * List of regexp package names to exclude from search
+     */
     public static final ArrayList<String> exclusionList = new ArrayList();
 //    static{
 //            exclusionList.add("com.jogamp.*");
@@ -77,24 +79,32 @@ public class SubclassFinder {
     /**
      * Finds subclasses in SwingWorker
      */
-    public static class SubclassFinderWorker extends SwingWorker<ArrayList<ClassNameWithDescriptionAndDevelopmentStatus>, Object> {
+    public static class SubclassFinderWorker extends SwingWorker<ArrayList<ClassNameWithDescriptionAndDevelopmentStatus>, ClassNameWithDescriptionAndDevelopmentStatus> {
 
         Class clazz;
+        private DefaultListModel<ClassNameWithDescriptionAndDevelopmentStatus> tableModel = null;
 
-        /** Constructs the worker thread for finding subclasses of clazz.
-         * This constructor also populates the exclusion list of packages that are excluded from consideration.
-         * 
-         * @param clazz  the worker to find subclasses of clazz
+        /**
+         * Constructs the worker thread for finding subclasses of clazz. This
+         * constructor also populates the exclusion list of packages that are
+         * excluded from consideration.
+         *
+         * @param clazz the worker to find subclasses of clazz
          */
         public SubclassFinderWorker(Class clazz) {
             this.clazz = clazz;
             // exclude known libraries
-            StringBuilder sb=new StringBuilder("The following packages are excluded from searching for subclasses of "+clazz.getName()+": \n");
-            for(String s:exclusionList){
+            StringBuilder sb = new StringBuilder("The following packages are excluded from searching for subclasses of " + clazz.getName() + ": \n");
+            for (String s : exclusionList) {
                 sb.append(s).append("\n");
             }
             sb.append("To modify this list, modify the class SubclassFinder.");
             log.info(sb.toString());
+        }
+
+        public SubclassFinderWorker(Class clazz, DefaultListModel<ClassNameWithDescriptionAndDevelopmentStatus> model) {
+            this(clazz);
+            this.tableModel = model;
         }
 
         /**
@@ -112,7 +122,6 @@ public class SubclassFinder {
                 log.warning("tried to find subclasses of null class name, returning empty list");
                 return classes;
             }
-            publish("Building class list");
             Class superClass = FastClassFinder.forName(superClassName);
             List<String> allClasses = ListClasses.listClasses();  // expensive, must search all classpath and make big string array list
             int n = ".class".length();
@@ -122,9 +131,9 @@ public class SubclassFinder {
             }
             int i = 0;
             int nclasses = allClasses.size();
-            publish("Scanning class list to find subclasses");
             int lastProgress = 0;
-            allclassloop: for (String s : allClasses) {
+            allclassloop:
+            for (String s : allClasses) {
                 i++;
                 try {
                     int p = (int) ((float) i / nclasses * 100);
@@ -136,7 +145,7 @@ public class SubclassFinder {
                     s = s.substring(0, s.length() - n);
                     s = s.replace('/', '.').replace('\\', '.'); // TODO check this replacement of file separators on win/unix
                     if (s.indexOf("$") != -1) {
-                        continue  allclassloop; // inner class
+                        continue allclassloop; // inner class
                     }
                     for (String excl : exclusionList) {
                         if (s.matches(excl)) {
@@ -150,8 +159,11 @@ public class SubclassFinder {
                     if (Modifier.isAbstract(c.getModifiers())) {
                         continue;//if class is abstract, dont add to list.
                     }
-                    if (superClass.isAssignableFrom(c)) { //sees if e.g. superclass AEChip can be cast from e.g. c=DVS128, i.e. can we do (AEChip)DVS128?
-                        classes.add(new ClassNameWithDescriptionAndDevelopmentStatus(c));
+                    if (superClass.isAssignableFrom(c)) {
+                        final ClassNameWithDescriptionAndDevelopmentStatus myFoundClass = new ClassNameWithDescriptionAndDevelopmentStatus(c);
+//sees if e.g. superclass AEChip can be cast from e.g. c=DVS128, i.e. can we do (AEChip)DVS128?
+                        classes.add(myFoundClass);
+                        publish(myFoundClass);
                     }
                     // TODO: Better way of handling Errors is needed. Most of them arent a problem, as they dont belong to jAER anyway. If that is the case we should ignore, not log...    
                 } catch (ExceptionInInitializerError t) {
@@ -171,9 +183,13 @@ public class SubclassFinder {
         }
 
         @Override
-        protected void process(List<Object> chunks) {
-//            System.out.println("chunks="+chunks);
+        protected void process(List<ClassNameWithDescriptionAndDevelopmentStatus> list) {
+            if(list==null || tableModel==null) return;
+            for (ClassNameWithDescriptionAndDevelopmentStatus c : list) {
+                tableModel.addElement(c);
+            }
         }
+
     }
 
     /**
@@ -220,7 +236,8 @@ public class SubclassFinder {
         if (progressMonitor != null) {
             progressMonitor.setMaximum(allClasses.size());
         }
-        allclassloop: for (String s : allClasses) {
+        allclassloop:
+        for (String s : allClasses) {
             try {
                 if (progressMonitor != null) {
                     if (progressMonitor.isCanceled()) {
@@ -271,6 +288,5 @@ public class SubclassFinder {
         }
         System.exit(0);
     }
-    
 
 }

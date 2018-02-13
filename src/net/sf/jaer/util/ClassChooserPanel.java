@@ -127,10 +127,39 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         includeExperimentalCB.setEnabled(onlyStableCB.isSelected());
         availFilterTextField.requestFocusInWindow();
         this.defaultClassNames = defaultClassNames;
-        final SubclassFinder.SubclassFinderWorker worker = new SubclassFinder.SubclassFinderWorker(subclassOf);
         final DefaultListModel tmpList = new DefaultListModel();
         tmpList.addElement("scanning...");
         availClassJList.setModel(tmpList);
+        try {
+            availAllList = new ArrayList<ClassNameWithDescriptionAndDevelopmentStatus>();
+            availClassesListModel = new FilterableListModel(availAllList);
+            availClassJList.setModel(availClassesListModel);
+            availClassJList.setCellRenderer(new MyCellRenderer());
+            Action addAction = new AbstractAction() {
+
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    Object o = availClassJList.getSelectedValue();
+                    if (o == null) {
+                        return;
+                    }
+                    int last = chosenClassesListModel.getSize() - 1;
+                    chosenClassesListModel.add(last + 1, o);
+                    classJList.setSelectedIndex(last + 1);
+                }
+            };
+            addAction(availClassJList, addAction);
+            if (!availFilterTextField.getText().isEmpty()) {
+                // user started to select a class before list was populated
+                String s = availFilterTextField.getText();
+                availClassesListModel.filter(s);
+            }
+        } catch (Exception ex) {
+            Logger.getLogger(ClassChooserPanel.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            setCursor(Cursor.getDefaultCursor());
+        }
+        final SubclassFinder.SubclassFinderWorker worker = new SubclassFinder.SubclassFinderWorker(subclassOf, availClassesListModel);
         worker.addPropertyChangeListener(new PropertyChangeListener() {
 
             @Override
@@ -215,8 +244,10 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
         @Override
         public int compare(Object o1, Object o2) {
-            if ((o1 instanceof String) && (o2 instanceof String)) {
-                return shortName((String) o1).compareTo(shortName((String) o2));
+            if ((o1 instanceof ClassNameWithDescriptionAndDevelopmentStatus) && (o2 instanceof ClassNameWithDescriptionAndDevelopmentStatus)) {
+                ClassNameWithDescriptionAndDevelopmentStatus c1=(ClassNameWithDescriptionAndDevelopmentStatus)o1;
+                ClassNameWithDescriptionAndDevelopmentStatus c2=(ClassNameWithDescriptionAndDevelopmentStatus)o2;
+                return shortName(c1.getClassName()).compareTo(shortName(c2.getClassName()));
             } else {
                 return -1;
             }
@@ -810,7 +841,9 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     }//GEN-LAST:event_includeDescriptionCBActionPerformed
 
     private void onlyStableCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_onlyStableCBActionPerformed
-        if(availClassesListModel==null) return;  // not ready yet
+        if (availClassesListModel == null) {
+            return;  // not ready yet
+        }
         includeExperimentalCB.setEnabled(onlyStableCB.isSelected());
         String s = availFilterTextField.getText();
         availClassesListModel.filter(s);
@@ -824,7 +857,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
         //        chosenClassesListModel.clear();
         int i = 0;
-        if(defaultClassNames==null){
+        if (defaultClassNames == null) {
             log.warning("No default classes to add");
             return;
         }
