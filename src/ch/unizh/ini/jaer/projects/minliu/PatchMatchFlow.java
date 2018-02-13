@@ -136,6 +136,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     private boolean enableImuTimesliceLogging = false;
     private TobiLogger imuTimesliceLogger = null;
+    private volatile boolean resetOFHistogramFlag; // signals to reset the OF histogram after it is rendered
 
     public enum PatchCompareMethod {
         /*JaccardDistance,*/ /*HammingDistance*/
@@ -290,14 +291,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             timeLimiter.setEnabled(false);
         }
 
-        for (int[] h : resultHistogram) {
-            Arrays.fill(h, 0);
-        }
-        resultHistogramCount = 0;
-//        Arrays.fill(resultAngleHistogram, 0);
-//        resultAngleHistogramCount = 0;
-//        resultAngleHistogramMax = Integer.MIN_VALUE;
-        Arrays.fill(scaleResultCounts, 0);
         int minDistScale = 0;
         // following awkward block needed to deal with DVS/DAVIS and IMU/APS events
         // block STARTS
@@ -346,6 +339,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     boolean rotated = maybeRotateSlices();
                     if (rotated) {
                         adaptSliceDuration();
+                        setResetOFHistogramFlag();
                     }
 //                    if (ein.x >= subSizeX || ein.y > subSizeY) {
 //                        log.warning("event out of range");
@@ -403,10 +397,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             v = (float) Math.sqrt((vx * vx) + (vy * vy));
             // TODO debug
             StringBuilder sadValsString = new StringBuilder();
-            for (int k=0;k<sadVals.length-1;k++) {
+            for (int k = 0; k < sadVals.length - 1; k++) {
                 sadValsString.append(String.format("%f,", sadVals[k]));
             }
-            sadValsString.append(String.format("%f", sadVals[sadVals.length-1])); // very awkward to prevent trailing ,
+            sadValsString.append(String.format("%f", sadVals[sadVals.length - 1])); // very awkward to prevent trailing ,
             if (sadValueLogger.isEnabled()) { // TODO debug
                 sadValueLogger.log(sadValsString.toString());
             }
@@ -474,31 +468,30 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     private void adaptSliceDuration() {
-        {
-            // measure last hist to get control signal on slice duration
-            // measures avg match distance.  weights the average so that long distances with more pixels in hist are not overcounted, simply
-            // by having more pixels.
-            float radiusSum = 0;
-            int countSum = 0;
+        // measure last hist to get control signal on slice duration
+        // measures avg match distance.  weights the average so that long distances with more pixels in hist are not overcounted, simply
+        // by having more pixels.
+        float radiusSum = 0;
+        int countSum = 0;
 
 //            int maxRadius = (int) Math.ceil(Math.sqrt(2 * searchDistance * searchDistance));
 //            int countSum = 0;
-            final int totSD = searchDistance << (numScales - 1);
-            for (int xx = -totSD; xx <= totSD; xx++) {
-                for (int yy = -totSD; yy <= totSD; yy++) {
-                    int count = resultHistogram[xx + totSD][yy + totSD];
-                    if (count > 0) {
-                        final float radius = (float) Math.sqrt((xx * xx) + (yy * yy));
-                        countSum += count;
-                        radiusSum += radius * count;
-                    }
+        final int totSD = searchDistance << (numScales - 1);
+        for (int xx = -totSD; xx <= totSD; xx++) {
+            for (int yy = -totSD; yy <= totSD; yy++) {
+                int count = resultHistogram[xx + totSD][yy + totSD];
+                if (count > 0) {
+                    final float radius = (float) Math.sqrt((xx * xx) + (yy * yy));
+                    countSum += count;
+                    radiusSum += radius * count;
                 }
             }
+        }
 
-            if (countSum > 0) {
-                avgMatchDistance = radiusSum / (countSum); // compute average match distance from reference block
-            }
-            if (adaptiveSliceDuration && (countSum > adaptiveSliceDurationMinVectorsToControl)) {
+        if (countSum > 0) {
+            avgMatchDistance = radiusSum / (countSum); // compute average match distance from reference block
+        }
+        if (adaptiveSliceDuration && (countSum > adaptiveSliceDurationMinVectorsToControl)) {
 //            if (resultHistogramCount > 0) {
 
 // following stats not currently used
@@ -533,11 +526,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 // compute error signal.
 // If err<0 it means the average match distance is larger than target avg match distance, so we need to reduce slice duration
 // If err>0, it means the avg match distance is too short, so increse time slice
-                final float err = avgPossibleMatchDistance / 2 - avgMatchDistance; // use target that is smaller than average possible to bound excursions to large slices better
+            final float err = avgPossibleMatchDistance / 2 - avgMatchDistance; // use target that is smaller than average possible to bound excursions to large slices better
 //                final float err = ((searchDistance << (numScales - 1)) / 2) - avgMatchDistance;
 //                final float lastErr = searchDistance / 2 - lastHistStdDev;
 //                final double err = histMean - 1/ (rstHist1D.length * rstHist1D.length);
-                float errSign = Math.signum(err);
+            float errSign = Math.signum(err);
 //                float avgSad2 = sliceSummedSADValues[sliceIndex(4)] / sliceSummedSADCounts[sliceIndex(4)];
 //                float avgSad3 = sliceSummedSADValues[sliceIndex(3)] / sliceSummedSADCounts[sliceIndex(3)];
 //                float errSign = avgSad2 <= avgSad3 ? 1 : -1;
@@ -558,31 +551,52 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                lastErrSign = errSign;
 // problem with following is that if sliceDurationUs gets really big, then of course the avgMatchDistance becomes small because
 // of the biased-towards-zero search policy that selects the closest match
-                switch (sliceMethod) {
-                    case ConstantDuration:
-                        int durChange = (int) (errSign * adapativeSliceDurationProportionalErrorGain * sliceDurationUs);
-                        setSliceDurationUs(sliceDurationUs + durChange);
-                        break;
-                    case ConstantEventNumber:
-                    case AreaEventNumber:
-                        if (errSign > 0 && sliceDeltaTimeUs(2) < getSliceDurationUs()) { // don't increase slice past the sliceDurationUs limit
-                            // match too short, increase count
-                            setSliceEventCount(Math.round(sliceEventCount * (1 + adapativeSliceDurationProportionalErrorGain)));
-                        } else {
-                            setSliceEventCount(Math.round(sliceEventCount * (1 - adapativeSliceDurationProportionalErrorGain)));
-                        }
-                        break;
-                    case ConstantIntegratedFlow:
-                        setSliceEventCount(eventCounter);
-                }
-                if (adaptiveSliceDurationLogger != null && adaptiveSliceDurationLogger.isEnabled()) {
-                    if (!isDisplayGlobalMotion()) {
-                        setDisplayGlobalMotion(true);
+            switch (sliceMethod) {
+                case ConstantDuration:
+                    int durChange = (int) (errSign * adapativeSliceDurationProportionalErrorGain * sliceDurationUs);
+                    setSliceDurationUs(sliceDurationUs + durChange);
+                    break;
+                case ConstantEventNumber:
+                case AreaEventNumber:
+                    if (errSign > 0 && sliceDeltaTimeUs(2) < getSliceDurationUs()) { // don't increase slice past the sliceDurationUs limit
+                        // match too short, increase count
+                        setSliceEventCount(Math.round(sliceEventCount * (1 + adapativeSliceDurationProportionalErrorGain)));
+                    } else {
+                        setSliceEventCount(Math.round(sliceEventCount * (1 - adapativeSliceDurationProportionalErrorGain)));
                     }
-                    adaptiveSliceDurationLogger.log(String.format("%d\t%f\t%f\t%f\t%d\t%d", adaptiveSliceDurationPacketCount++, avgMatchDistance, err, motionFlowStatistics.getGlobalMotion().getGlobalSpeed().getMean(), sliceDurationUs, sliceEventCount));
+                    break;
+                case ConstantIntegratedFlow:
+                    setSliceEventCount(eventCounter);
+            }
+            if (adaptiveSliceDurationLogger != null && adaptiveSliceDurationLogger.isEnabled()) {
+                if (!isDisplayGlobalMotion()) {
+                    setDisplayGlobalMotion(true);
                 }
+                adaptiveSliceDurationLogger.log(String.format("%d\t%f\t%f\t%f\t%d\t%d", adaptiveSliceDurationPacketCount++, avgMatchDistance, err, motionFlowStatistics.getGlobalMotion().getGlobalSpeed().getMean(), sliceDurationUs, sliceEventCount));
             }
         }
+
+    }
+
+    private void setResetOFHistogramFlag() {
+        resetOFHistogramFlag=true;
+    }
+    
+    private void clearResetOFHistogramFlag() {
+        resetOFHistogramFlag=false;
+    }
+    
+    private void resetOFHistogram(){
+        if(!resetOFHistogramFlag) return;
+        for (int[] h : resultHistogram) {
+            Arrays.fill(h, 0);
+        }
+        resultHistogramCount = 0;
+//        Arrays.fill(resultAngleHistogram, 0);
+//        resultAngleHistogramCount = 0;
+//        resultAngleHistogramMax = Integer.MIN_VALUE;
+        Arrays.fill(scaleResultCounts, 0);
+        clearResetOFHistogramFlag();
     }
 
     private EngineeringFormat engFmt = new EngineeringFormat();
@@ -710,6 +724,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    gl.glPopMatrix();
 //                }
             }
+            resetOFHistogram();  // clears OF histogram if slices have been rotated
         }
         if (sliceMethod == SliceMethod.AreaEventNumber && showAreaCountAreasTemporarily) {
             int d = 1 << areaEventNumberSubsampling;
@@ -865,7 +880,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      *
      */
     private void rotateSlices() {
-        if(e!=null) sliceEndTimeUs[currentSliceIdx]=e.timestamp;
+        if (e != null) {
+            sliceEndTimeUs[currentSliceIdx] = e.timestamp;
+        }
         /*Thus if 0 is current index for current filling slice, then sliceIndex returns 1,2 for pointer =1,2.
         * Then if NUM_SLICES=3, after rotateSlices(),
         currentSliceIdx=NUM_SLICES-1=2, and sliceIndex(0)=2, sliceIndex(1)=0, sliceIndex(2)=1.
@@ -907,19 +924,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      *
      * @param pointer how many slices in the past to index for. I.e.. 0 for
      * current slice (one being currently filled), 1 for next oldest, 2 for
-     * oldest (when using NUM_SLICES=3). Only meaningful for pointer>=2, currently exactly only pointer==2 since
-     * we are using only 3 slices.
-     * 
-     * Modified to compute the delta time using the average of start and end timestamps of each slices, i.e. the slice 
-     * time "midpoint" where midpoint is defined by average of first and last timestamp. 
+     * oldest (when using NUM_SLICES=3). Only meaningful for pointer>=2,
+     * currently exactly only pointer==2 since we are using only 3 slices.
+     *
+     * Modified to compute the delta time using the average of start and end
+     * timestamps of each slices, i.e. the slice time "midpoint" where midpoint
+     * is defined by average of first and last timestamp.
      *
      */
     private int sliceDeltaTimeUs(int pointer) {
 //        System.out.println("dt(" + pointer + ")=" + (sliceStartTimeUs[sliceIndex(1)] - sliceStartTimeUs[sliceIndex(pointer)]));
-        int idxOlder=sliceIndex(pointer), idxYounger=sliceIndex(1);
-        int tOlder=(sliceStartTimeUs[idxOlder]+sliceEndTimeUs[idxOlder])/2;
-        int tYounger=(sliceStartTimeUs[idxYounger]+sliceEndTimeUs[idxYounger])/2;
-        int dt=tYounger-tOlder;
+        int idxOlder = sliceIndex(pointer), idxYounger = sliceIndex(1);
+        int tOlder = (sliceStartTimeUs[idxOlder] + sliceEndTimeUs[idxOlder]) / 2;
+        int tYounger = (sliceStartTimeUs[idxYounger] + sliceEndTimeUs[idxYounger]) / 2;
+        int dt = tYounger - tOlder;
         return dt;
     }
 
@@ -1335,9 +1353,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        final int maxSaturatedPixNum = (int) ((1 - this.validPixOccupancy) * blockArea);
         final float sadNormalizer = 1f / (blockArea * (rectifyPolarties ? 2 : 1) * sliceMaxValue);
         // if current or previous block has insufficient pixels with values or if all the pixels are filled up, then reject match
-        if (    (validPixNumCurSlice < minValidPixNum) 
-                || (validPixNumPrevSlice < minValidPixNum) 
-                ||  (nonZeroMatchCount < minValidPixNum) //                || (saturatedPixNumCurSlice >= maxSaturatedPixNum) || (saturatedPixNumPrevSlice >= maxSaturatedPixNum)
+        if ((validPixNumCurSlice < minValidPixNum)
+                || (validPixNumPrevSlice < minValidPixNum)
+                || (nonZeroMatchCount < minValidPixNum) //                || (saturatedPixNumCurSlice >= maxSaturatedPixNum) || (saturatedPixNumPrevSlice >= maxSaturatedPixNum)
                 ) {  // If valid pixel number of any slice is 0, then we set the distance to very big value so we can exclude it.
             return 1; // tobi changed to 1 to represent max distance // Float.MAX_VALUE;
         } else {
