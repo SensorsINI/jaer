@@ -60,6 +60,11 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
 
     @Override
     public void mouseClicked(MouseEvent e) {
+        if (e == null || e.getPoint() == null || getMousePixel(e)==null) {
+            firstPoint=true; 
+            log.info("reset to first point");
+            return; // handle out of bounds, which should reset
+        }
         if (firstPoint) {
             startPoint = new TimePoint(getMousePixel(e), currentTimestamp);
             endPoint = null;
@@ -111,7 +116,7 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
             String s = String.format("%s pps (%.0fpix /%ss)", engFmt.format(speed), distance, engFmt.format(1e-6f * deltaTimestamp));
             textRenderer.beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
 //            Rectangle2D r = textRenderer.getBounds(s);
-            textRenderer.draw(s, (startPoint.x+endPoint.x)/2,(startPoint.y+endPoint.y)/2 );
+            textRenderer.draw(s, (startPoint.x + endPoint.x) / 2, (startPoint.y + endPoint.y) / 2);
             textRenderer.endRendering();
         }
     }
