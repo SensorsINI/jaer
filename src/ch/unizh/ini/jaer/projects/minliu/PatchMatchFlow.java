@@ -167,7 +167,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     // nongreedy flow evaluation
     // the entire scene is subdivided into regions, and a bitmap of these regions distributed flow computation more fairly
     // by only servicing a region when sufficient fraction of other regions have been serviced first
-    private boolean nonGreedyFlowComputingEnabled = getBoolean("nonGreedyFlowComputingEnabled", true);
+    private boolean nonGreedyFlowComputingEnabled = getBoolean("nonGreedyFlowComputingEnabled", false);
     private boolean[][] nonGreedyRegions = null;
     private int nonGreedyRegionsNumberOfRegions, nonGreedyRegionsCount;
     /**
@@ -337,7 +337,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             switch (patchCompareMethod) {
                 case SAD:
                     boolean rotated = maybeRotateSlices();
-                    if (rotated) {
+                    if (rotated ) {
                         adaptSliceDuration();
                         setResetOFHistogramFlag();
                     }
@@ -430,13 +430,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         }
 
+        motionFlowStatistics.updatePacket(countIn, countOut);
+        adaptEventSkipping();
         if (rewindFlg) {
             rewindFlg = false;
             sliceLastTs = Integer.MAX_VALUE;
 
         }
-        motionFlowStatistics.updatePacket(countIn, countOut);
-        adaptEventSkipping();
 
         return isDisplayRawInput() ? in : dirPacket;
     }
@@ -471,6 +471,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         // measure last hist to get control signal on slice duration
         // measures avg match distance.  weights the average so that long distances with more pixels in hist are not overcounted, simply
         // by having more pixels.
+        if(rewindFlg) return; // don't adapt during rewind or delay before playing again
         float radiusSum = 0;
         int countSum = 0;
 
@@ -579,15 +580,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     private void setResetOFHistogramFlag() {
-        resetOFHistogramFlag=true;
+        resetOFHistogramFlag = true;
     }
-    
+
     private void clearResetOFHistogramFlag() {
-        resetOFHistogramFlag=false;
+        resetOFHistogramFlag = false;
     }
-    
-    private void resetOFHistogram(){
-        if(!resetOFHistogramFlag) return;
+
+    private void resetOFHistogram() {
+        if (!resetOFHistogramFlag || resultHistogram == null) {
+            return;
+        }
         for (int[] h : resultHistogram) {
             Arrays.fill(h, 0);
         }
@@ -723,8 +726,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    gl.glEnd();
 //                    gl.glPopMatrix();
 //                }
+                resetOFHistogram();  // clears OF histogram if slices have been rotated
             }
-            resetOFHistogram();  // clears OF histogram if slices have been rotated
+        } else {
+            resetOFHistogram();  // clears OF histogram if slices have been rotated and we are not displaying the histogram
         }
         if (sliceMethod == SliceMethod.AreaEventNumber && showAreaCountAreasTemporarily) {
             int d = 1 << areaEventNumberSubsampling;
