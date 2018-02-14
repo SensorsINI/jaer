@@ -89,7 +89,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private File file = null;
     BagFile bagFile = null;
     // the most recently read event timestamp, the first one in file, and the last one in file
-    private int mostRecentTimestamp;
+    private int mostRecentTimestamp, largestTimestamp = Integer.MIN_VALUE;
     private long firstTimestamp, lastTimestamp;
     private long firstTimestampUsAbsolute; // the absolute (ROS) first timestamp in us
     private boolean firstTimestampWasRead = false;
@@ -98,7 +98,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private int currentStartTimestamp;
     private int currentMessageNumber = 0;
     private final ApsDvsEventPacket<ApsDvsEvent> eventPacket;
-    private AEPacketRaw aePacketRawCollecting = null, aePacketRawOutput = null;
+    private AEPacketRaw aePacketRawBuffered = new AEPacketRaw(), aePacketRawOutput = new AEPacketRaw(), aePacketRawTmp = new AEPacketRaw();
     private int lastMsgPosition = 0, numMessages = 0;
 
     private long absoluteStartingTimeMs = 0; // in system time since 1970 in ms
@@ -117,7 +117,15 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private ArrayList<String> extraTopics = null; // extra topics that listeners can subscribe to
 
     private boolean nonMonotonicTimestampExceptionsChecked = true;
-    private int lastExposureValue; // holds last exposure value (in us?) to use for creating SOE and EOE events for frames
+    private boolean nonMonotonicTimestampDetected = false; // flag set by nonmonotonic timestamp if detection enabled
+
+    /**
+     * Interval for logging warnings about nonmonotonic timestamps.
+     */
+    public static final int NONMONOTONIC_TIMESTAMP_WARNING_INTERVAL = 1000000;
+    private int nonmonotonicTimestampCounter = 0;
+
+    private int lastExposureUs; // holds last exposure value (in us?) to use for creating SOE and EOE events for frames
 
     /**
      * Makes a new instance for a file and chip. A progressMonitor can pop up a
@@ -190,6 +198,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 //        MsgIterator itr = new MsgIterator(chunkInfos, myConnections, channel);
 //        return itr;
 //    }
+    /**
+     * Adds information to a message from the index entry for it
+     */
     public class MessageWithIndex {
 
         public MessageType messageType;
@@ -222,8 +233,6 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         return rtn;
     }
 
-    private boolean nonMonotonicTimestampDetected = false; // flag set by nonmonotonic timestamp if detection enabled
-
     /**
      * Given ROS Timestamp, this method computes the us timestamp relative to
      * the first timestamp in the recording
@@ -232,7 +241,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
      * event
      * @return timestamp for jAER in us
      */
-    private int getUsRelativeTimestamp(Timestamp timestamp) {
+    private int getTimestampUsRelative(Timestamp timestamp) {
         long tsNs = timestamp.getNanos(); // gets the fractional seconds in ns
         // https://docs.oracle.com/javase/8/docs/api/java/sql/Timestamp.html "Only integral seconds are stored in the java.util.Date component. The fractional seconds - the nanos - are separate."
         long tsMs = timestamp.getTime(); // the time in ms including ns, i.e. time(s)*1000+ns/1000000. 
@@ -245,14 +254,21 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 //        if (ts == 0) {
 //            log.warning("zero timestamp detected for Image ");
 //        }
+        if (ts > largestTimestamp) {
+            largestTimestamp = ts;
+        }
         final int dt = ts - mostRecentTimestamp;
         if (dt < 0 && nonMonotonicTimestampExceptionsChecked) {
-            log.warning("Discarding event with nonmonotonic timestamp " + timestamp + " detected; delta time=" + dt);
-            mostRecentTimestamp = ts;
+            if (nonmonotonicTimestampCounter % NONMONOTONIC_TIMESTAMP_WARNING_INTERVAL == 0) {
+                log.warning("Nonmonotonic timestamp=" + timestamp + " with dt=" + dt + "; replacing with largest timestamp=" + largestTimestamp + "; skipping next " + NONMONOTONIC_TIMESTAMP_WARNING_INTERVAL + " warnings");
+            }
+            nonmonotonicTimestampCounter++;
+            ts = largestTimestamp; // replace actual timestamp with largest one so far
             nonMonotonicTimestampDetected = true;
         } else {
             nonMonotonicTimestampDetected = false;
         }
+        mostRecentTimestamp = ts;
         return ts;
     }
 
@@ -306,10 +322,10 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 //                         List<String> fieldNames = messageType.getFieldNames();
                         try {
                             int exposureUs = messageType.<Int32Type>getField("data").getValue(); // message seems to be exposure in ms as float although https://github.com/uzh-rpg/rpg_dvs_ros/blob/master/davis_ros_driver/src/driver.cpp publishes as Int32, very confusing
-                            lastExposureValue = (int) (exposureUs);
+                            lastExposureUs = (int) (exposureUs);
                         } catch (Exception e) {
                             float exposureUs = messageType.<Float32Type>getField("data").getValue(); // message seems to be exposure in ms as float although https://github.com/uzh-rpg/rpg_dvs_ros/blob/master/davis_ros_driver/src/driver.cpp publishes as Int32, very confusing
-                            lastExposureValue = (int) (exposureUs); // hack to deal with recordings made with pre-Int32 version of rpg-ros-dvs
+                            lastExposureUs = (int) (exposureUs); // hack to deal with recordings made with pre-Int32 version of rpg-ros-dvs
                         }
 
                     }
@@ -324,13 +340,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                 int width = (int) (messageType.<UInt32Type>getField("width").getValue()).intValue();
                                 int height = (int) (messageType.<UInt32Type>getField("height").getValue()).intValue();
                                 Timestamp timestamp = header.<TimeType>getField("stamp").getValue();
-                                int ts = getUsRelativeTimestamp(timestamp);
-//                                if (ts == 0) {
-//                                    log.warning("zero timestamp detected for Image ");
-//                                }
-                                if (nonMonotonicTimestampDetected) {
-                                    continue;
-                                }
+                                int ts = getTimestampUsRelative(timestamp);
                                 gotEventsOrFrame = true;
                                 byte[] bytes = data.getAsBytes();
                                 int idx = 0;
@@ -361,7 +371,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                                 e.setTimestamp(ts);
                                             } else {
                                                 if (davisCamera.lastFrameAddress((short) x, (short) y)) {
-                                                    e.setTimestamp(ts + lastExposureValue); // set timestamp of last event written out to the frame end timestamp, TODO complete hack to have 1 pixel with larger timestamp
+                                                    e.setTimestamp(ts + lastExposureUs); // set timestamp of last event written out to the frame end timestamp, TODO complete hack to have 1 pixel with larger timestamp
                                                 } else {
                                                     e.setTimestamp(ts);
                                                 }
@@ -375,13 +385,13 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.EOE);
                                 e.x = (short) 0;
                                 e.y = (short) 0;
-                                e.setTimestamp(ts + lastExposureValue); // TODO should really be end of exposure timestamp, have to get that from last exposure message
+                                e.setTimestamp(ts + lastExposureUs); // TODO should really be end of exposure timestamp, have to get that from last exposure message
                                 // end of frame event
                                 e = outItr.nextOutput();
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.EOF);
                                 e.x = (short) 0;
                                 e.y = (short) 0;
-                                e.setTimestamp(ts + lastExposureValue);
+                                e.setTimestamp(ts + lastExposureUs);
 
                             }
                             break;
@@ -394,14 +404,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 //                                List<String> fieldNames = messageType.getFieldNames();
                                 MessageType header = messageType.getField("header"); // http://docs.ros.org/api/std_msgs/html/msg/Header.html
                                 Timestamp timestamp = header.<TimeType>getField("stamp").getValue();
-                                int ts = getUsRelativeTimestamp(timestamp);
-//                                if (ts == 0) {
-//                                    log.warning("zero timestamp detected for Imu sample ");
-//                                }
-                                if (nonMonotonicTimestampDetected) {
-                                    continue;
-                                }
-                                List<Field> fields = null;
+                                int ts = getTimestampUsRelative(timestamp);
                                 MessageType angular_velocity = messageType.getField("angular_velocity");
 //                                List<String> angvelfields=angular_velocity.getFieldNames();
 //                                for(String s:angvelfields){
@@ -460,14 +463,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                     int y = eventMsg.<UInt16Type>getField("y").getValue();
                                     boolean pol = eventMsg.<BoolType>getField("polarity").getValue();
                                     Timestamp timestamp = (Timestamp) eventMsg.<TimeType>getField("ts").getValue();
-                                    int ts = getUsRelativeTimestamp(timestamp);
-//                                    if (ts == 0) {
-//                                        log.warning("zero timestamp detected for DVS event ");
-//                                    }
-                                    if (nonMonotonicTimestampDetected) {
-                                        continue;
-                                    }
-                                    mostRecentTimestamp = ts;
+                                    int ts = getTimestampUsRelative(timestamp); // sets nonMonotonicTimestampDetected flag, faster than throwing exception
                                     ApsDvsEvent e = outItr.nextOutput();
                                     e.setReadoutType(ApsDvsEvent.ReadoutType.DVS);
                                     e.timestamp = ts;
@@ -489,7 +485,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             log.info(bre.toString());
             return null;
         }
-        aePacketRawCollecting = chip.getEventExtractor().reconstructRawPacket(eventPacket);
+        AEPacketRaw aePacketRawCollecting = chip.getEventExtractor().reconstructRawPacket(eventPacket);
         fireInitPropertyChange();
         return aePacketRawCollecting;
     }
@@ -507,12 +503,25 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     }
 
     @Override
-    synchronized public AEPacketRaw readPacketByNumber(int n) throws IOException {
-        return getNextRawPacket();
+    synchronized public AEPacketRaw readPacketByNumber(int numEventsToRead) throws IOException {
+        int numCollected = aePacketRawBuffered.getNumEvents();
+        aePacketRawOutput.setNumEvents(0);
+        while (aePacketRawBuffered.getNumEvents() < numEventsToRead) {
+            aePacketRawBuffered.append(getNextRawPacket());
+        }
+        AEPacketRaw.copy(aePacketRawBuffered, 0, aePacketRawOutput, 0, numEventsToRead); // copy over collected events
+        // now use tmp packet to copy rest of buffered to, and then make that the new buffered
+        aePacketRawTmp.setNumEvents(0);
+        AEPacketRaw.copy(aePacketRawBuffered, numEventsToRead, aePacketRawTmp, 0, aePacketRawBuffered.getNumEvents() - numEventsToRead);
+        AEPacketRaw tmp = aePacketRawBuffered;
+        aePacketRawBuffered = aePacketRawTmp;
+        aePacketRawTmp = tmp;
+        return aePacketRawOutput;
     }
 
     @Override
     synchronized public AEPacketRaw readPacketByTime(int dt) throws IOException {
+
         return getNextRawPacket();
     }
 
@@ -521,6 +530,15 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         return nonMonotonicTimestampExceptionsChecked;
     }
 
+    /**
+     * If this option is set, then non-monotonic timestamps are replaced with
+     * the newest timestamp in the file, ensuring monotonicity. It seems that
+     * the frames and IMU samples are captured or timestamped out of order in
+     * the file, resulting in DVS packets that contain timestamps younger than
+     * earlier frames or IMU samples.
+     *
+     * @param yes to guarantee monotonicity
+     */
     @Override
     public void setNonMonotonicTimeExceptionsChecked(boolean yes) {
         nonMonotonicTimestampExceptionsChecked = yes;
@@ -564,6 +582,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     @Override
     synchronized public void rewind() throws IOException {
         lastMsgPosition = 0;
+        largestTimestamp = Integer.MIN_VALUE;
     }
 
     @Override
@@ -691,8 +710,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         log.info("creating index for all topics");
         msgIndexes = bagFile.generateIndexesForTopicList(topicList, progressMonitor);
         numMessages = msgIndexes.size();
-        firstTimestamp = getUsRelativeTimestamp(msgIndexes.get(0).timestamp);
-        lastTimestamp = getUsRelativeTimestamp(msgIndexes.get(numMessages - 1).timestamp);
+        firstTimestamp = getTimestampUsRelative(msgIndexes.get(0).timestamp);
+        lastTimestamp = getTimestampUsRelative(msgIndexes.get(numMessages - 1).timestamp);
         wasIndexed = true;
     }
 
@@ -726,11 +745,11 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             }
             topicsToAdd.add(topic);
         }
-        if(topicsToAdd.isEmpty()) {
+        if (topicsToAdd.isEmpty()) {
             log.warning("nothing to add");
             return;
         }
-             
+
         addPropertyChangeListener(listener);
         List<BagFile.MessageIndex> idx = bagFile.generateIndexesForTopicList(topicsToAdd, progressMonitor);
         msgIndexes.addAll(idx);
@@ -753,6 +772,17 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             log.info("removing listener " + listener);
             removePropertyChangeListener(listener);
         }
+    }
+
+    /**
+     * Set if nonmonotonic timestamp was detected. Cleared at start of
+     * collecting each new packet.
+     *
+     * @return the nonMonotonicTimestampDetected true if a nonmonotonic
+     * timestamp was detected.
+     */
+    public boolean isNonMonotonicTimestampDetected() {
+        return nonMonotonicTimestampDetected;
     }
 
 }

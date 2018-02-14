@@ -293,10 +293,29 @@ public class AEPacketRaw extends AEPacket {
         if (source == null || source.getNumEvents() == 0) {
             return this;
         }
-        ensureCapacity(capacity+source.getNumEvents());
-        System.arraycopy(source.getAddresses(),  numEvents, addresses, 0, source.getNumEvents());
-        System.arraycopy(source.getTimestamps(),  numEvents, timestamps, 0, source.getNumEvents());
-        setNumEvents(capacity+source.getNumEvents());
+        ensureCapacity(getNumEvents() + source.getNumEvents());
+        System.arraycopy(source.getAddresses(), 0, addresses, numEvents, source.getNumEvents());
+        System.arraycopy(source.getTimestamps(), 0, timestamps, numEvents, source.getNumEvents());
+        setNumEvents(getNumEvents() + source.getNumEvents());
         return this;
+    }
+
+    /**
+     * Static method to copy from one AEPacketRaw to another
+     *
+     * @param src source packet
+     * @param srcPos the starting index in src
+     * @param dest destination packet
+     * @param destPos the starting index in destination
+     * @param length the number of events to copy
+     */
+    public static void copy(AEPacketRaw src, int srcPos, AEPacketRaw dest, int destPos, int length) {
+        if (src == null || dest == null) {
+            throw new NullPointerException("null src or dest");
+        }
+        dest.ensureCapacity(dest.getNumEvents() + length);
+        System.arraycopy(src.getAddresses(), srcPos, dest.getAddresses(), destPos, length);
+        System.arraycopy(src.getTimestamps(), srcPos, dest.getTimestamps(), destPos, length);
+        dest.setNumEvents(dest.getNumEvents() + length);
     }
 }
