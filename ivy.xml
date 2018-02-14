@@ -68,6 +68,7 @@ MA 02110-1301  USA
         <dependency org="org.uncommons.maths" name="uncommons-maths" rev="1.2.2a" />
         <dependency org="io.github.andreas-solti.matrix-toolkits-java" name="mtj" rev="1.0.7" />
         <dependency org="org.usb4java" name="usb4java" rev="1.2.0" />
+        <dependency org="com.google.guava" name="guava" rev="18.0" />
         <!--libusb4java needs following to work around bug in maven that incorrectly constucts the ivy dependency - see https://github.com/sbt/sbt/issues/285 -->
         <dependency org="org.usb4java" name="libusb4java" rev="1.2.0">
             <artifact name="libusb4java" type="jar" ext="jar" m:classifier="osx-x86_64"/>
