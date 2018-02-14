@@ -427,11 +427,11 @@ public class OpenCVFlow extends AbstractMotionFlow
             File outputfile = new File(folder, String.format("packet_pid_%d.jpg", lastApsTS));
             Core.flip(newFrameTmp, newFrameTmp, 0);
             // Uncomment this when you want to store the slice's pictures.
-            try {
-                ImageIO.write(Mat2BufferedImage(newFrameTmp), "jpg", outputfile);
-            } catch (IOException ex) {
-                Logger.getLogger(OpenCVFlow.class.getName()).log(Level.SEVERE, null, ex);
-            }
+//            try {
+//                ImageIO.write(Mat2BufferedImage(newFrameTmp), "jpg", outputfile);
+//            } catch (IOException ex) {
+//                Logger.getLogger(OpenCVFlow.class.getName()).log(Level.SEVERE, null, ex);
+//            }
         }
         
         if (evt.getPropertyName().equals(PatchMatchFlow.EVENT_NEW_SLICES)) {
@@ -703,9 +703,9 @@ public class OpenCVFlow extends AbstractMotionFlow
         int bufferSize = m.channels()*m.cols()*m.rows();
         byte [] b = new byte[bufferSize];
         m.get(0,0,b); // get all the pixels
-//        for (int i=0; i < b.length; i++) {
-//            b[i] = (byte)(100 + b[i]);
-//        }
+        for (int i=0; i < b.length; i++) {
+            b[i] = (byte)(100 + b[i]);
+        }
         BufferedImage image = new BufferedImage(m.cols(),m.rows(), type);
         final byte[] targetPixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
         System.arraycopy(b, 0, targetPixels, 0, b.length);  
