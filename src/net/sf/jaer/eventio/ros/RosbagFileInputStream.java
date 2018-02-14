@@ -99,6 +99,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private int currentMessageNumber = 0;
     private final ApsDvsEventPacket<ApsDvsEvent> eventPacket;
     private AEPacketRaw aePacketRawBuffered = new AEPacketRaw(), aePacketRawOutput = new AEPacketRaw(), aePacketRawTmp = new AEPacketRaw();
+    private AEPacketRaw emptyPacket = new AEPacketRaw();
     private int lastMsgPosition = 0, numMessages = 0;
 
     private long absoluteStartingTimeMs = 0; // in system time since 1970 in ms
@@ -504,7 +505,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     synchronized public AEPacketRaw readPacketByNumber(int numEventsToRead) throws IOException {
-        int numCollected = aePacketRawBuffered.getNumEvents();
+        if (numEventsToRead < 0) {
+            return emptyPacket;
+        }
         aePacketRawOutput.setNumEvents(0);
         while (aePacketRawBuffered.getNumEvents() < numEventsToRead) {
             aePacketRawBuffered.append(getNextRawPacket());
@@ -521,8 +524,33 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     synchronized public AEPacketRaw readPacketByTime(int dt) throws IOException {
-
-        return getNextRawPacket();
+        if (dt < 0) {
+            return emptyPacket;
+        }
+        int newEndTime = currentStartTimestamp + dt;
+        aePacketRawOutput.setNumEvents(0);
+        while (aePacketRawBuffered.getLastTimestamp() < newEndTime) {
+            aePacketRawBuffered.append(getNextRawPacket());
+        }
+        int[] ts = aePacketRawBuffered.getTimestamps();
+        int idx = 0;
+        while (ts[idx] < newEndTime) {
+            idx++;
+        }
+        // idx counts event with higher timestamp than we want to end, i.e. one more than we want
+        idx--; // make it exactly number we want
+        if (idx < 0) {
+            idx = 0; // make sure we don't do something illegal here
+        }
+        AEPacketRaw.copy(aePacketRawBuffered, 0, aePacketRawOutput, 0, idx); // copy over collected events
+        // now use tmp packet to copy rest of buffered to, and then make that the new buffered
+        aePacketRawTmp.setNumEvents(0);
+        AEPacketRaw.copy(aePacketRawBuffered, idx, aePacketRawTmp, 0, aePacketRawBuffered.getNumEvents() - idx);
+        AEPacketRaw tmp = aePacketRawBuffered;
+        aePacketRawBuffered = aePacketRawTmp;
+        aePacketRawTmp = tmp;
+        currentStartTimestamp=newEndTime;
+        return aePacketRawOutput;
     }
 
     @Override
