@@ -100,7 +100,7 @@ import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.util.TobiLogger;
 import org.apache.commons.lang3.ArrayUtils;
-
+import java.util.Random;
 
 /**
  *
@@ -157,7 +157,7 @@ public class OpenCVFlow extends AbstractMotionFlow
             patchFlow = new PatchMatchFlow(chip);
             patchFlow.imuFlowEstimator = this.imuFlowEstimator;
             patchFlow.setFilterEnabled(true);
-            chain.add(patchFlow);
+            // chain.add(patchFlow);
         } catch (Exception e) {
             log.warning("could not setup PatchMatchFlow fiter.");
         }        
@@ -165,6 +165,18 @@ public class OpenCVFlow extends AbstractMotionFlow
         chain.add(apsFrameExtractor);
         setEnclosedFilterChain(chain);
 
+        // Init random value for OF vectors.
+        for (int i = 0; i < 100; i++) {
+            Random rand = new Random();
+            // Java 'Color' class takes 3 floats, from 0 to 1.
+            float r = rand.nextFloat();
+            float g = rand.nextFloat();
+            float b = rand.nextFloat();     
+            color[i][0] = (int)(1*255);
+            color[i][1] = (int)(0*255);
+            color[i][2] = (int)(0*255);
+        }
+        
         tPos = Mat.zeros(3, 1, CvType.CV_32F);
         RPos = Mat.eye(3, 3, CvType.CV_32F);
         apsFrameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);   
@@ -380,10 +392,12 @@ public class OpenCVFlow extends AbstractMotionFlow
             Point[] nextPoints = nextPts.toArray();
             byte[] st = status.toArray();
             float[] er = err.toArray();    
-            Mat mask = new Mat(newFrame.rows(), newFrame.cols(), CvType.CV_32F);
+            
+            Mat colorNewFrame = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_32FC3);
+            Imgproc.cvtColor(newFrame, colorNewFrame, Imgproc.COLOR_GRAY2RGB);
             for (int i = 0; i < prevPoints.length; i++) {
-                Imgproc.arrowedLine(newFrame, prevPoints[i], nextPoints[i], new Scalar(color[i][0],color[i][1],color[i][2]), 5, 8, 0, 0.1);  
-                Imgproc.circle(newFrame,prevPoints[i], 1, new Scalar(255,255,255),-1);
+                Imgproc.arrowedLine(colorNewFrame, prevPoints[i], nextPoints[i], new Scalar(color[i][0],color[i][1],color[i][2]), 2, 8, 0, 0.1);  
+                Imgproc.circle(colorNewFrame, prevPoints[i], 1, new Scalar(255,255,255),-1);
             }
             
             // Select good points and copy them for output
@@ -410,13 +424,13 @@ public class OpenCVFlow extends AbstractMotionFlow
                 index++;                
             }
             motionFlowStatistics.updatePacket(countIn, countOut, lastApsTS);
-            float[] return_buff = new float[(int) (newFrame.total() * 
-                                            newFrame.channels())];
-            newFrame.get(0, 0, return_buff);
+            float[] return_buff = new float[(int) (colorNewFrame.total() * 
+                                            colorNewFrame.channels())];
+            colorNewFrame.get(0, 0, return_buff);
             for ( int i = 0; i < return_buff.length; i++ ) {
                     return_buff[i] = return_buff[i]/255.0f;
             }      
-            OFResultDisplay.setPixmapFromGrayArray(return_buff);  
+            OFResultDisplay.setPixmapArray(return_buff);  
             
             DateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
             File folder = new File("EventSlices/" + chip.getAeInputStream().getFile().getName() + "_" + df);
