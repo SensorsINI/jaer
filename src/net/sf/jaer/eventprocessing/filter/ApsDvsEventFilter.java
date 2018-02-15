@@ -52,10 +52,10 @@ public class ApsDvsEventFilter extends EventFilter2D {
         OutputEventIterator outItr = out.outputIterator();
         while (fullIterator.hasNext()) {
             ApsDvsEvent event = (ApsDvsEvent) fullIterator.next();
-            if (event.isEndOfFrame()) {
+            if (event.isEndOfExposure()) {
                 lastFrameStartTimestamp = event.getTimestamp();
             }
-            if (filterFrameTransientEvents && lastFrameStartTimestamp != Integer.MIN_VALUE && event.getTimestamp() - lastFrameStartTimestamp < filterFrameTransientEventsTimeUs) {
+            if (  filterFrameTransientEvents && !event.isApsData() && !event.isImuSample() && lastFrameStartTimestamp != Integer.MIN_VALUE && event.getTimestamp() - lastFrameStartTimestamp < filterFrameTransientEventsTimeUs) {
                 continue;
             }
             if (filterAPSEvents && event.isApsData() /*&& !((event instanceof IMUSample) && !(((IMUSample) event).imuSampleEvent))*/)  {
