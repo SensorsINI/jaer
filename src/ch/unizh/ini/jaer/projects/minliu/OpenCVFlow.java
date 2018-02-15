@@ -152,17 +152,18 @@ public class OpenCVFlow extends AbstractMotionFlow
             }
         }); 
         
-        FilterChain chain = new FilterChain(chip);        
+        FilterChain chain = new FilterChain(chip);      
+        apsFrameExtractor = new ApsFrameExtractor(chip);
+        chain.add(apsFrameExtractor);
         try {
             patchFlow = new PatchMatchFlow(chip);
             patchFlow.imuFlowEstimator = this.imuFlowEstimator;
             patchFlow.setFilterEnabled(true);
-            // chain.add(patchFlow);
+            chain.add(patchFlow);
         } catch (Exception e) {
             log.warning("could not setup PatchMatchFlow fiter.");
         }        
-        apsFrameExtractor = new ApsFrameExtractor(chip);
-        chain.add(apsFrameExtractor);
+
         setEnclosedFilterChain(chain);
 
         // Init random value for OF vectors.
@@ -431,21 +432,6 @@ public class OpenCVFlow extends AbstractMotionFlow
                     return_buff[i] = return_buff[i]/255.0f;
             }      
             OFResultDisplay.setPixmapArray(return_buff);  
-            
-            DateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
-            File folder = new File("EventSlices/" + chip.getAeInputStream().getFile().getName() + "_" + df);
-            // if the directory does not exist, create it
-            if (!folder.exists()) {
-                folder.mkdir();
-            }            
-            File outputfile = new File(folder, String.format("packet_pid_%d.jpg", lastApsTS));
-            Core.flip(newFrameTmp, newFrameTmp, 0);
-            // Uncomment this when you want to store the slice's pictures.
-//            try {
-//                ImageIO.write(Mat2BufferedImage(newFrameTmp), "jpg", outputfile);
-//            } catch (IOException ex) {
-//                Logger.getLogger(OpenCVFlow.class.getName()).log(Level.SEVERE, null, ex);
-//            }
         }
         
         if (evt.getPropertyName().equals(PatchMatchFlow.EVENT_NEW_SLICES)) {
