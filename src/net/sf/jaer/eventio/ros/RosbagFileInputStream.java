@@ -40,6 +40,7 @@ import eu.seebetter.ini.chips.davis.imu.IMUSampleType;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -127,6 +128,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private int nonmonotonicTimestampCounter = 0;
 
     private int lastExposureUs; // holds last exposure value (in us?) to use for creating SOE and EOE events for frames
+    private int markIn = 0;
+    private int markOut;
+    private boolean repeatEnabled = true;
 
     /**
      * Makes a new instance for a file and chip. A progressMonitor can pop up a
@@ -214,19 +218,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     }
 
-    synchronized private MessageWithIndex getNextMsg() throws BagReaderException {
+    synchronized private MessageWithIndex getNextMsg() throws BagReaderException, EOFException {
         MessageType msg = null;
         try {
             msg = bagFile.getMessageFromIndex(msgIndexes, lastMsgPosition);
         } catch (ArrayIndexOutOfBoundsException e) {
-            if (isRepeat()) {
-                try {
-                    rewind();
-                    return getNextMsg();
-                } catch (IOException ex) {
-
-                }
-            }
+            throw new EOFException();
         }
 
         MessageWithIndex rtn = new MessageWithIndex(msg, msgIndexes.get(lastMsgPosition));
@@ -295,7 +292,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
      *
      * @return the packet
      */
-    synchronized private AEPacketRaw getNextRawPacket() {
+    synchronized private AEPacketRaw getNextRawPacket() throws EOFException, BagReaderException {
         DavisBaseCamera davisCamera = null;
         if (chip instanceof DavisBaseCamera) {
             davisCamera = (DavisBaseCamera) chip;
@@ -510,7 +507,14 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         }
         aePacketRawOutput.setNumEvents(0);
         while (aePacketRawBuffered.getNumEvents() < numEventsToRead) {
-            aePacketRawBuffered.append(getNextRawPacket());
+            try {
+                aePacketRawBuffered.append(getNextRawPacket());
+            } catch (EOFException ex) {
+                rewind();
+                return readPacketByNumber(numEventsToRead);
+            } catch (BagReaderException ex) {
+                throw new IOException(ex);
+            }
         }
         AEPacketRaw.copy(aePacketRawBuffered, 0, aePacketRawOutput, 0, numEventsToRead); // copy over collected events
         // now use tmp packet to copy rest of buffered to, and then make that the new buffered
@@ -530,7 +534,15 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         int newEndTime = currentStartTimestamp + dt;
         aePacketRawOutput.setNumEvents(0);
         while (aePacketRawBuffered.getLastTimestamp() < newEndTime) {
-            aePacketRawBuffered.append(getNextRawPacket());
+            try {
+                aePacketRawBuffered.append(getNextRawPacket()); // reaching EOF here will throw EOFException
+            } catch (EOFException ex) {
+                aePacketRawBuffered.clear();
+                rewind();
+                return readPacketByTime(dt);
+            } catch (BagReaderException ex) {
+                throw new IOException(ex);
+            }
         }
         int[] ts = aePacketRawBuffered.getTimestamps();
         int idx = 0;
@@ -549,7 +561,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         AEPacketRaw tmp = aePacketRawBuffered;
         aePacketRawBuffered = aePacketRawTmp;
         aePacketRawTmp = tmp;
-        currentStartTimestamp=newEndTime;
+        currentStartTimestamp = newEndTime;
         return aePacketRawOutput;
     }
 
@@ -610,7 +622,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     @Override
     synchronized public void rewind() throws IOException {
         lastMsgPosition = 0;
+        currentStartTimestamp=(int)firstTimestamp;
         largestTimestamp = Integer.MIN_VALUE;
+        aePacketRawBuffered.clear();
     }
 
     @Override
@@ -629,41 +643,44 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     public long setMarkIn() {
-        return 0;
+        markIn = currentMessageNumber;
+        return markIn;
     }
 
     @Override
     public long setMarkOut() {
-        return 0;
+        markOut = currentMessageNumber;
+        return markOut;
     }
 
     @Override
     public long getMarkInPosition() {
-        return 0;
+        return markIn;
     }
 
     @Override
     public long getMarkOutPosition() {
-        return 0;
+        return markOut;
     }
 
     @Override
     public boolean isMarkInSet() {
-        return false;
+        return markIn > 0;
     }
 
     @Override
     public boolean isMarkOutSet() {
-        return false;
+        return markOut <= numMessages;
     }
 
     @Override
     public void setRepeat(boolean repeat) {
+        this.repeatEnabled = repeat;
     }
 
     @Override
     public boolean isRepeat() {
-        return true;
+        return repeatEnabled;
     }
 
     /**
@@ -738,6 +755,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         log.info("creating index for all topics");
         msgIndexes = bagFile.generateIndexesForTopicList(topicList, progressMonitor);
         numMessages = msgIndexes.size();
+        markIn = 0;
+        markOut = numMessages;
         firstTimestamp = getTimestampUsRelative(msgIndexes.get(0).timestamp);
         lastTimestamp = getTimestampUsRelative(msgIndexes.get(numMessages - 1).timestamp);
         wasIndexed = true;
