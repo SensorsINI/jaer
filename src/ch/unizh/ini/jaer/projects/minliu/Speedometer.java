@@ -59,9 +59,11 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
     }
 
     @Override
-    public void mouseClicked(MouseEvent e) {
+    synchronized public void mouseClicked(MouseEvent e) {
         if (e == null || e.getPoint() == null || getMousePixel(e)==null) {
             firstPoint=true; 
+            startPoint=null;
+            endPoint=null;
             log.info("reset to first point");
             return; // handle out of bounds, which should reset
         }
@@ -97,7 +99,7 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
     }
 
     @Override
-    public void annotate(GLAutoDrawable drawable) {
+    synchronized public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable); //To change body of generated methods, choose Tools | Templates.
         GL2 gl = drawable.getGL().getGL2();
         drawCursor(gl, startPoint, new float[]{0, 1, 0, 1});
