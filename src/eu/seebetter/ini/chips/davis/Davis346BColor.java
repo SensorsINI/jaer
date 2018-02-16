@@ -17,7 +17,7 @@ public class Davis346BColor extends Davis346BaseCamera {
 
 	public Davis346BColor() {
 		setName("Davis346BColor");
-		setDefaultPreferencesFile("biasgenSettings/Davis346b/DAVIS346b_Test.xml");
+		setDefaultPreferencesFile("biasgenSettings/Davis346b/DAVIS346bColor_Test.xml");
 
 		setEventExtractor(new DavisColorEventExtractor(this, false, true, Davis346BColor.COLOR_FILTER, false));
 
