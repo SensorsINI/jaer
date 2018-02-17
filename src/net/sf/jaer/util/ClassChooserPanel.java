@@ -143,6 +143,10 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                     if (o == null) {
                         return;
                     }
+                    if (containsClass(chosenClassesListModel, o)) {
+                        log.warning("list already contains " + o.toString() + "; ignoring");
+                        return;
+                    }
                     int last = chosenClassesListModel.getSize() - 1;
                     chosenClassesListModel.add(last + 1, o);
                     classJList.setSelectedIndex(last + 1);
@@ -184,10 +188,15 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                                 if (o == null) {
                                     return;
                                 }
+                                if (containsClass(chosenClassesListModel, o)) {
+                                    log.warning("chosen classes already contains " + o.toString() + "; ignoring");
+                                    return;
+                                }
                                 int last = chosenClassesListModel.getSize() - 1;
                                 chosenClassesListModel.add(last + 1, o);
                                 classJList.setSelectedIndex(last + 1);
                             }
+
                         };
                         addAction(availClassJList, addAction);
                         if (!availFilterTextField.getText().isEmpty()) {
@@ -240,13 +249,23 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         classJList.setCellRenderer(new MyCellRenderer());
     }
 
+    private boolean containsClass(FilterableListModel model, Object obj) {
+        for (Object o : model.toArray()) {
+            if (((String)o)
+                    .equals(((ClassNameWithDescriptionAndDevelopmentStatus)obj).getClassName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private class ClassNameSorter implements Comparator {
 
         @Override
         public int compare(Object o1, Object o2) {
             if ((o1 instanceof ClassNameWithDescriptionAndDevelopmentStatus) && (o2 instanceof ClassNameWithDescriptionAndDevelopmentStatus)) {
-                ClassNameWithDescriptionAndDevelopmentStatus c1=(ClassNameWithDescriptionAndDevelopmentStatus)o1;
-                ClassNameWithDescriptionAndDevelopmentStatus c2=(ClassNameWithDescriptionAndDevelopmentStatus)o2;
+                ClassNameWithDescriptionAndDevelopmentStatus c1 = (ClassNameWithDescriptionAndDevelopmentStatus) o1;
+                ClassNameWithDescriptionAndDevelopmentStatus c2 = (ClassNameWithDescriptionAndDevelopmentStatus) o2;
                 return shortName(c1.getClassName()).compareTo(shortName(c2.getClassName()));
             } else {
                 return -1;
@@ -926,7 +945,10 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         if (o == null) {
             return;
         }
-
+        if (containsClass(chosenClassesListModel, o)) {
+            log.warning("list already contains " + o.toString() + "; ignoring");
+            return;
+        }
         int last = chosenClassesListModel.getSize() - 1;
         chosenClassesListModel.add(last + 1, o);
         classJList.setSelectedIndex(last + 1);
