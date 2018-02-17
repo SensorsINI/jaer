@@ -594,8 +594,8 @@ public class OpenCVFlow extends AbstractMotionFlow
                             e.x = (short)x;
                             e.y = (short)y;    // e, x and y all of them are used in processGoodEvent();
         //                    e.timestamp = ts;
-                            vx = (float)(nextPoints[index].x - prevPoints[index].x) * 1000000 / -patchFlow.getSliceDeltaT();
-                            vy = (float)(nextPoints[index].y - prevPoints[index].y) * 1000000 / -patchFlow.getSliceDeltaT();
+                            vx = (float)(nextPoints[index].x - prevPoints[index].x) * 1000000 / -patchFlow.sliceDeltaTimeUs(2);
+                            vy = (float)(nextPoints[index].y - prevPoints[index].y) * 1000000 / -patchFlow.sliceDeltaTimeUs(2);
                             v = (float) Math.sqrt(vx * vx + vy * vy);
                             processGoodEvent();                      
                         // exportFlowToMatlab(false);                            
@@ -608,13 +608,13 @@ public class OpenCVFlow extends AbstractMotionFlow
             
             //if (st.length > 0) {
                 if (globalMotionVectorLogger != null && globalMotionVectorLogger.isEnabled()) {
-                    String s = String.format("%d %d %s %.3g %.3g %.3g %d", patchFlow.ts - patchFlow.getChip().getAeInputStream().getFirstTimestamp(), patchFlow.getSliceDeltaT(), "OpenLK", motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean(), 
+                    String s = String.format("%d %d %s %.3g %.3g %.3g %d", patchFlow.ts - patchFlow.getChip().getAeInputStream().getFirstTimestamp(), patchFlow.sliceDeltaTimeUs(2), "OpenLK", motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean(), 
                                                                               motionFlowStatistics.getGlobalMotion().getGlobalVy().getMean(), 
                                                                               motionFlowStatistics.getGlobalMotion().getGlobalRotation().getMean(),
                                                                               motionFlowStatistics.getGlobalMotion().getGlobalVx().getN());
                     globalMotionVectorLogger.log(s);
                     
-                    s = String.format("%d %d %s %.3g %.3g %.3g %d", patchFlow.ts - patchFlow.getChip().getAeInputStream().getFirstTimestamp(), patchFlow.getSliceDeltaT(), "ABMOF", patchFlow.motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean(), 
+                    s = String.format("%d %d %s %.3g %.3g %.3g %d", patchFlow.ts - patchFlow.getChip().getAeInputStream().getFirstTimestamp(), patchFlow.sliceDeltaTimeUs(2), "ABMOF", patchFlow.motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean(), 
                                                         patchFlow.motionFlowStatistics.getGlobalMotion().getGlobalVy().getMean(), 
                                                         patchFlow.motionFlowStatistics.getGlobalMotion().getGlobalRotation().getMean(), 
                                                         patchFlow.motionFlowStatistics.getGlobalMotion().getGlobalRotation().getN());
