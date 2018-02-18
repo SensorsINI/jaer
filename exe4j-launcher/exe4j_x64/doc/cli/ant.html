@@ -1,211 +1,98 @@
-<html>
-   <head>
-      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-      <title>Using exe4j with ant</title>
-      <link rel="stylesheet" type="text/css" href="../standalone/help_common.css">
-      <link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>Using exe4j with ant</title><link rel="stylesheet" type="text/css" href="../standalone/help_common.css"><link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
 helpId = 'exe4j.cli.ant';
 indexUrl= '../index.html';
-</script><script type="text/javascript" src="../standalone/jquery.min.js"></script><script type="text/javascript" src="../standalone/tracking.js"></script></head>
-   <body>
-      <div class="header-container">
-         <div class="header-title">
-            <h2>Using Exe4j With Ant</h2>
-         </div>
-         <div class="header-nav">
-            <div class="nav-wrapper"><a class="nav-left" href="../cli/options.html" title="key: j"></a></div>
-            <div class="nav-wrapper"><a class="nav-up" href="../cli/$folder$.html" title="key: u"></a></div>
-            <div class="nav-wrapper"><a class="nav-right" href="../cli/relative.html" title="key: k"></a></div>
-         </div>
-      </div>
-      <hr>
-      <div class="spacer"></div>
-      <div>
-         
-         <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex">
-            <tr>
-               <td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;
-               </td>
-               <td>
-                  
-                  Integrating exe4j with your ant script (read about ant at
-                  <a href="http://ant.apache.org" target="_blank">http://ant.apache.org</a>)
-                  is easy. Just use the <tt class="executable">exe4j</tt> task 
-                  that is provided in <tt>{exe4j installation directory}/bin/ant.jar</tt>
-                  and set the <tt>projectfile</tt> parameter to the exe4j config 
-                  file that you want to build.
-                  
-                  
-                  <p>
-                     To make the <tt class="executable">exe4j</tt> task available to ant, you
-                     must first insert a <tt class="executable">taskdef</tt> element that tells
-                     ant where to find the task definition. Here is an example of using the
-                     task in an ant build file:
-                     
-                  </p>
-                  <pre>      &lt;taskdef name="exe4j"
+</script><script type="text/javascript" src="../standalone/jquery.min.js"></script><script type="text/javascript" src="../standalone/tracking.js"></script></head><body><div class="header-container"><div class="header-title"><h2>Using Exe4j With Ant</h2></div><div class="header-nav"><div class="nav-wrapper"><a class="nav-left" href="../cli/options.html" title="key: j"></a></div><div class="nav-wrapper"><a class="nav-up" href="../cli/$folder$.html" title="key: u"></a></div><div class="nav-wrapper"><a class="nav-right" href="../cli/relative.html" title="key: k"></a></div></div></div><hr><div class="spacer"></div><div>
+    <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex"><tr><td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;</td><td>
+      
+        Integrating exe4j with your ant script (read about ant at
+        <a href="http://ant.apache.org" target="_blank">http://ant.apache.org</a>)
+        is easy. Just use the <tt class="executable">exe4j</tt> task 
+        that is provided in <tt>{exe4j installation directory}/bin/ant.jar</tt>
+        and set the <tt>projectfile</tt> parameter to the exe4j config 
+        file that you want to build.
+      
+      <p>
+        To make the <tt class="executable">exe4j</tt> task available to ant, you
+        must first insert a <tt class="executable">taskdef</tt> element that tells
+        ant where to find the task definition. Here is an example of using the
+        task in an ant build file:
+      </p>
+      <pre>      &lt;taskdef name="exe4j"
                classname="com.exe4j.Exe4JTask"
                classpath="C:\Program Files\exe4j\bin\ant.jar"/&gt;
                
       &lt;target name="launcher"&gt;
         &lt;exe4j projectfile="myapp.exe4j"/&gt;
       &lt;/target&gt;</pre>
-                  <p>
-                     The <tt class="executable">taskdef</tt> definition must occur only once per
-                     ant-build file and can appear anywhere on the top level below the 
-                     <tt class="executable">project</tt> element.
-                     
-                  </p>
-                  
-                  <p>
-                     <b>Note:</b> it is <b>not possible</b> to copy the <tt>ant.jar</tt> archive to
-                     the <tt>lib</tt> folder of your ant distribution. You have to reference a full
-                     installation of exe4j in the task definition.
-                     
-                  </p>
-                  
-               </td>
-            </tr>
-         </table>
-         
-         <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex">
-            <tr>
-               <td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;
-               </td>
-               <td>
-                  
-                  The exe4j task supports the following parameters:
-                  
-                  <div>&nbsp;</div>
-                  
-                  <table class="doc with-borders">
-                     <tr>
-                        <th align="">Attribute</th>
-                        <th align="">Description</th>
-                        <th align="">Required</th>
-                     </tr>
-                     <tr>
-                        <td align="">projectfile</td>
-                        <td align="">The exe4j config file for the launcher that should be generated.</td>
-                        <td align="center">Yes</td>
-                     </tr>
-                     <tr>
-                        <td align="">verbose</td>
-                        <td align="">
-                           Corresponds to the <tt>--verbose</tt>
-                           <a href="../cli/options.html">command line option</a>.
-                           Either <tt>true</tt> or <tt>false</tt>.
-                           
-                        </td>
-                        <td rowspan="2" align="center">
-                           No, verbose and quiet cannot <b>both</b> be <tt>true</tt>
-                           
-                        </td>
-                     </tr>
-                     <tr>
-                        <td align="">quiet</td>
-                        <td align="">
-                           Corresponds to the <tt>--quiet</tt>
-                           <a href="../cli/options.html">command line option</a>. 
-                           Either <tt>true</tt> or <tt>false</tt>.
-                           
-                        </td>
-                     </tr>
-                     <tr>
-                        <td align="">test</td>
-                        <td align="">
-                           Corresponds to the <tt>--test</tt>
-                           <a href="../cli/options.html">command line option</a>.
-                           Either <tt>true</tt> or <tt>false</tt>.
-                           
-                        </td>
-                        <td align="center">No</td>
-                     </tr>
-                     <tr>
-                        <td align="">release</td>
-                        <td align="">
-                           Corresponds to the <tt>--release</tt>
-                           <a href="../cli/options.html">command line option</a>.
-                           Enter a version number like "<tt>3.1.2</tt>".
-                           The version number may only contain numbers and dots.
-                           
-                        </td>
-                        <td align="center">No</td>
-                     </tr>
-                     <tr>
-                        <td align="">requirelicense</td>
-                        <td align="">
-                           Corresponds to the <tt>--require-license</tt>
-                           <a href="../cli/options.html">command line option</a>.
-                           
-                        </td>
-                        <td align="center">No</td>
-                     </tr>
-                     <tr>
-                        <td align="">license</td>
-                        <td align="">
-                           Corresponds to the <tt>--license</tt>
-                           <a href="../cli/options.html">command line option</a>.
-                           If the license has not been configured yet, you can set the license key with this
-                           attribute.
-                           
-                        </td>
-                        <td align="center">No</td>
-                     </tr>
-                     <tr>
-                        <td align="">destination</td>
-                        <td align="">
-                           Corresponds to the <tt>--destination</tt>
-                           <a href="../cli/options.html">command line option</a>.
-                           Enter a directory where the generated launcher should be placed.
-                           
-                        </td>
-                        <td align="center">No</td>
-                     </tr>
-                  </table>
-                  
-               </td>
-            </tr>
-         </table>
-         
-         <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex">
-            <tr>
-               <td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;
-               </td>
-               <td>
-                  To customize aspects of the exe4j build that cannot be overridden with
-                  he above parameters, you can add appropriate tokens in the config file and use
-                  the  <tt>copy</tt> task with a nested  <tt>filterset</tt>
-                  element. For example, if the main class in
-                  
-                  <pre>    &lt;java mainClass="com.mycorp.MyApp" ...</pre>
-                  
-                  should by dynamically adjusted by ant, just edit the line to 
-                  
-                  <pre>    &lt;java mainClass="@MAIN_CLASS@" ...</pre>
-                  
-                  and copy the template config file (here <tt>myapp_template.exe4j</tt>) 
-                  with
-                  
-                  <pre>      &lt;copy tofile="myapp.exe4j" file="myapp_template.exe4j"&gt;
+      <p>
+        The <tt class="executable">taskdef</tt> definition must occur only once per
+        ant-build file and can appear anywhere on the top level below the 
+        <tt class="executable">project</tt> element.
+      </p>
+      <p>
+        <b>Note:</b> it is <b>not possible</b> to copy the <tt>ant.jar</tt> archive to
+        the <tt>lib</tt> folder of your ant distribution. You have to reference a full
+        installation of exe4j in the task definition.
+      </p>
+    </td></tr></table>
+    <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex"><tr><td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;</td><td>
+      
+        The exe4j task supports the following parameters:
+      <div>&nbsp;</div>
+      <table class="doc with-borders"><tr><th align="">Attribute</th><th align="">Description</th><th align="">Required</th></tr><tr><td align="">projectfile</td><td align="">The exe4j config file for the launcher that should be generated.</td><td align="center">Yes</td></tr><tr><td align="">verbose</td><td align="">
+            Corresponds to the <tt>--verbose</tt>
+            <a href="../cli/options.html">command line option</a>.
+            Either <tt>true</tt> or <tt>false</tt>.
+          </td><td rowspan="2" align="center">
+            No, verbose and quiet cannot <b>both</b> be <tt>true</tt>
+          </td></tr><tr><td align="">quiet</td><td align="">
+            Corresponds to the <tt>--quiet</tt>
+            <a href="../cli/options.html">command line option</a>. 
+            Either <tt>true</tt> or <tt>false</tt>.
+          </td></tr><tr><td align="">test</td><td align="">
+            Corresponds to the <tt>--test</tt>
+            <a href="../cli/options.html">command line option</a>.
+            Either <tt>true</tt> or <tt>false</tt>.
+          </td><td align="center">No</td></tr><tr><td align="">release</td><td align="">
+            Corresponds to the <tt>--release</tt>
+            <a href="../cli/options.html">command line option</a>.
+            Enter a version number like "<tt>3.1.2</tt>".
+            The version number may only contain numbers and dots.
+          </td><td align="center">No</td></tr><tr><td align="">requirelicense</td><td align="">
+            Corresponds to the <tt>--require-license</tt>
+            <a href="../cli/options.html">command line option</a>.
+          </td><td align="center">No</td></tr><tr><td align="">license</td><td align="">
+            Corresponds to the <tt>--license</tt>
+            <a href="../cli/options.html">command line option</a>.
+            If the license has not been configured yet, you can set the license key with this attribute.
+          </td><td align="center">No</td></tr><tr><td align="">destination</td><td align="">
+            Corresponds to the <tt>--destination</tt>
+            <a href="../cli/options.html">command line option</a>.
+            Enter a directory where the generated launcher should be placed.
+          </td><td align="center">No</td></tr></table>
+    </td></tr></table>
+    <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex"><tr><td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;</td><td>
+      To customize aspects of the exe4j build that cannot be overridden with
+      he above parameters, you can add appropriate tokens in the config file and use
+      the  <tt>copy</tt> task with a nested  <tt>filterset</tt>
+      element. For example, if the main class in
+      
+      <pre>    &lt;java mainClass="com.mycorp.MyApp" ...</pre>
+      
+      should by dynamically adjusted by ant, just edit the line to 
+      
+      <pre>    &lt;java mainClass="@MAIN_CLASS@" ...</pre>
+      
+      and copy the template config file (here <tt>myapp_template.exe4j</tt>) 
+      with
+      
+      <pre>      &lt;copy tofile="myapp.exe4j" file="myapp_template.exe4j"&gt;
         &lt;filterset&gt;
           &lt;filter token="MAIN_CLASS" value="com.mycorp.MyOtherApp" /&gt;
         &lt;/filterset&gt;
       &lt;/copy&gt;</pre>
-                  
-                  before running the exe4j compiler as before.
-                  </td>
-            </tr>
-         </table>
-         
-         
-      </div><br><hr>
-      <div class="header-container">
-         <div class="header-nav">
-            <div class="nav-wrapper"><a class="nav-left" href="../cli/options.html" title="key: j"></a></div>
-            <div class="nav-wrapper"><a class="nav-up" href="../cli/$folder$.html" title="key: u"></a></div>
-            <div class="nav-wrapper"><a class="nav-right" href="../cli/relative.html" title="key: k"></a></div>
-         </div>
-      </div>
-   </body>
-</html>
+      
+      before running the exe4j compiler as before.
+    </td></tr></table>
+    
+  </div><br><hr><div class="header-container"><div class="header-nav"><div class="nav-wrapper"><a class="nav-left" href="../cli/options.html" title="key: j"></a></div><div class="nav-wrapper"><a class="nav-up" href="../cli/$folder$.html" title="key: u"></a></div><div class="nav-wrapper"><a class="nav-right" href="../cli/relative.html" title="key: k"></a></div></div></div></body></html>

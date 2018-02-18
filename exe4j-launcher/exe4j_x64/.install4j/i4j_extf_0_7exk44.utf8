@@ -214,7 +214,7 @@ UnixDaemonsSubTitle=Please note the daemons that are provided by {0}.
 UnixDaemonStartStopScriptLabel=Start/stop script for daemon "{0}":
 MacosStartupItemsTitle=Startup items
 MacosStartupItemsSubTitle=Please choose the details of how the startup items should be installed.
-# {0} is the name of the Mac OS X startup item
+# {0} is the name of the macOS startup item
 MacosStartupItemInstallCheckbox=Install startup item "{0}"
 # {0} is the name of the service
 ErrorInstallService=Could not install service "{0}"
@@ -526,7 +526,7 @@ RunningProcessesDetected=Running Processes Detected
 DownloadFileCorrupt=The downloaded file is corrupted. Do you want to try again?
 DownloadInterrupted=The download was interrupted. Do you want to try again?
 DownloadContentError=Could not download content files. Do you want to try again?
-# Do not translate "dock", it is a UI element on Mac OS X
+# Do not translate "dock", it is a UI element on macOS
 AddToDock=Add to the dock
 UploadingWithFileName=Uploading {0} ...
 Uploading=Uploading ...
@@ -542,3 +542,7 @@ AdminPrivilegesRequiredExecute=You must have administrator privileges to executi
 RootPrivilegesRequiredExecute=You must be logged in as root when executing this program.
 # Same as StatusRunProgram, only use "execute" instead of "install"
 StatusRunProgramExecute=Finishing execution ...
+# A title like SelectDirectory, only for a file
+SelectFile=Select File
+# Text for a button that selects something
+ButtonSelect=Select
