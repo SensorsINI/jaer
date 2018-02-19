@@ -251,7 +251,10 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
     private boolean containsClass(FilterableListModel model, Object obj) {
         for (Object o : model.toArray()) {
-            if (((String)o)
+            if (o instanceof String && ((String)o)
+                    .equals(((ClassNameWithDescriptionAndDevelopmentStatus)obj).getClassName())) {
+                return true;
+            }else if (o instanceof ClassNameWithDescriptionAndDevelopmentStatus && ((ClassNameWithDescriptionAndDevelopmentStatus)o).getClassName()
                     .equals(((ClassNameWithDescriptionAndDevelopmentStatus)obj).getClassName())) {
                 return true;
             }
