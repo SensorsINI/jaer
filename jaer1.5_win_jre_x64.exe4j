@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <exe4j version="5.1" transformSequenceNumber="2">
-  <directoryPresets config="./jars/win64" />
+  <directoryPresets config="E:/Dropbox (Personal)/GitHub/SensorsINI/jaer/jars" />
   <application name="jaer1.5_win_x64" distributionSourceDir=".">
     <languages>
       <principalLanguage id="en" customLocalizationFile="" />
@@ -24,10 +24,11 @@
     </searchSequence>
     <classPath>
       <archive location="./dist/jAER.jar" failOnError="false" />
+      <scanDirectory location="./lib" failOnError="false" />
       <scanDirectory location="./jars" failOnError="false" />
       <scanDirectory location="./jars/javacv" failOnError="false" />
       <scanDirectory location="./jars/jogl" failOnError="false" />
-      <scanDirectory location="./jars/usb4java" failOnError="false" />
+      <scanDirectory location="./jars/opencv" failOnError="false" />
     </classPath>
     <nativeLibraryDirectories>
       <directory name="./jars/win64" />
