@@ -181,7 +181,7 @@ public class MotionFlowStatistics {
     public class EventDensity {
 
         // Number of events in packet before and after filtering.
-        private int packetIn, packetOut, totalIn, totalOut, nPackets;
+        private long packetIn, packetOut, totalIn, totalOut, nPackets;
 
         /**
          * Returns density of last packet
