@@ -16,9 +16,7 @@ import javax.swing.filechooser.FileFilter;
 
 import com.jogamp.opengl.GLException;
 import java.awt.Cursor;
-import java.util.concurrent.ExecutionException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 import javax.swing.ProgressMonitor;
 import javax.swing.SwingWorker;
 
@@ -329,6 +327,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         }
         final ProgressMonitor progressMonitor = new ProgressMonitor(viewer, "Opening " + viewer.lastFile, "", 0, 100);
         SwingWorker<Void, Void> worker = new SwingWorker() {
+            Exception exception = null;
+
             @Override
             protected Object doInBackground() throws Exception {
                 try {
@@ -372,9 +372,13 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     clearMarks();
                     getSupport().firePropertyChange(EVENT_FILEOPEN, null, file);
                 } catch (IOException e) {
+                    exception = e;
                     log.warning("Error opening file: " + e.toString());
                 } catch (InterruptedException e) {
                     log.info("Interrupted opening file: " + e.toString());
+                } catch (Exception e) {
+                    exception = e;
+                    log.warning("other type of exception " + e.toString());
                 } finally {
                     if (viewer != null) {
                         viewer.setCursor(Cursor.getDefaultCursor());
@@ -382,6 +386,20 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 }
                 return null;
             }
+
+            @Override
+            protected void done() {
+                if (exception != null) {
+                    JOptionPane.showMessageDialog(
+                            viewer != null ? viewer : null,
+                            exception.toString(),
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE
+                    );
+
+                }
+            }
+
         };
         worker.addPropertyChangeListener(new PropertyChangeListener() {
             @Override
