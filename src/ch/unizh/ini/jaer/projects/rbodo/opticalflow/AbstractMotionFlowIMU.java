@@ -100,8 +100,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     private boolean displayRawInput = getBoolean("displayRawInput", true);
     private boolean displayColorWheelLegend = getBoolean("displayColorWheelLegend", true);
 
-    private float ppsScale = getFloat("ppsScale", .1f);
-    private boolean ppsScaleDisplayRelativeOFLength = getBoolean("ppsScaleDisplayRelativeOFLength", true);
+    private float ppsScale = getFloat("ppsScale", 0.1f);
+    private boolean ppsScaleDisplayRelativeOFLength = getBoolean("ppsScaleDisplayRelativeOFLength", false);
 
     // A pixel can fire an event only after this period. Used for smoother flow
     // and speedup.
@@ -148,7 +148,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     // Performing statistics and logging results. lastLoggingFolder starts off 
     // at user.dir which is startup folder "host/java" where .exe launcher lives
     private String loggingFolder = getPrefs().get("DataLogger.loggingFolder", System.getProperty("user.dir"));
-    public boolean measureAccuracy = getBoolean("measureAccuracy", false);
+    public boolean measureAccuracy = getBoolean("measureAccuracy", true);
     boolean measureProcessingTime = getBoolean("measureProcessingTime", false);
     public int countIn, countOut;
     protected MotionFlowStatistics motionFlowStatistics;
@@ -159,7 +159,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     // Discard events that are considerably faster than average
     private float avgSpeed = 0;
-    boolean speedControlEnabled = getBoolean("speedControlEnabled", false);
+    boolean speedControlEnabled = getBoolean("speedControlEnabled", true);
     private float speedMixingFactor = getFloat("speedMixingFactor", 1e-3f);
     private float excessSpeedRejectFactor = getFloat("excessSpeedRejectFactor", 2f);
 
@@ -219,9 +219,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         dirPacket = new EventPacket(ApsDvsMotionOrientationEvent.class);
         filterClassName = getClass().getSimpleName();
         motionFlowStatistics = new MotionFlowStatistics(filterClassName, subSizeX, subSizeY);
-        setMeasureAccuracy(getBoolean("measureAccuracy", false));
+        setMeasureAccuracy(getBoolean("measureAccuracy", true));
         setMeasureProcessingTime(getBoolean("measureProcessingTime", false));
-        setDisplayGlobalMotion(getBoolean("displayGlobalMotion", false));
+        setDisplayGlobalMotion(getBoolean("displayGlobalMotion", true));// these setters set other flags, so call them to set these flags to default values
 
         FilterChain chain = new FilterChain(chip);
         try {
