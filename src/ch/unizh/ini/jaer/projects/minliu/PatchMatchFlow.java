@@ -337,7 +337,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             switch (patchCompareMethod) {
                 case SAD:
                     boolean rotated = maybeRotateSlices();
-                    if (rotated ) {
+                    if (rotated) {
                         adaptSliceDuration();
                         setResetOFHistogramFlag();
                     }
@@ -471,7 +471,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         // measure last hist to get control signal on slice duration
         // measures avg match distance.  weights the average so that long distances with more pixels in hist are not overcounted, simply
         // by having more pixels.
-        if(rewindFlg) return; // don't adapt during rewind or delay before playing again
+        if (rewindFlg) {
+            return; // don't adapt during rewind or delay before playing again
+        }
         float radiusSum = 0;
         int countSum = 0;
 
@@ -696,15 +698,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 float sc = subSizeX / w / 6; // scale to histogram width
                 gl.glTranslatef(0, .65f * subSizeY, 0); // translate to UL corner of histogram
                 textRenderer.draw3D(s, 0, 0, 0, sc);
-                String s2 = String.format("skip: %d", skipProcessingEventsCount);
+                String s2 = String.format("Skip: %d", skipProcessingEventsCount);
                 textRenderer.draw3D(s2, 0, (float) (rt.getHeight()) * sc, 0, sc);
-                String s3 = String.format("events: %d", sliceEventCount);
+                String s3 = String.format("Slice events: %d", sliceEventCount);
                 textRenderer.draw3D(s3, 0, 2 * (float) (rt.getHeight()) * sc, 0, sc);
                 StringBuilder sb = new StringBuilder("Scale counts: ");
                 for (int c : scaleResultCounts) {
                     sb.append(String.format("%d ", c));
                 }
                 textRenderer.draw3D(sb.toString(), 0, (float) (3 * rt.getHeight()) * sc, 0, sc);
+                if (timeLimiter.isTimedOut()) {
+                    String s4 = String.format("Timed out: skipped %d events", nSkipped);
+                    textRenderer.draw3D(s4, 0, 4 * (float) (rt.getHeight()) * sc, 0, sc);
+                }
                 textRenderer.end3DRendering();
                 gl.glPopMatrix(); // back to original chip coordinates
 //                log.info(String.format("processed %.1f%% (%d/%d)", 100 * (float) nProcessed / (nSkipped + nProcessed), nProcessed, (nProcessed + nSkipped)));
@@ -1071,7 +1077,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         } else {
             searchMethod = getSearchMethod();
         }
-        
+
         final int xsub = x >> subSampleBy;
         final int ysub = y >> subSampleBy;
         final int r = ((blockDimension) / 2);
