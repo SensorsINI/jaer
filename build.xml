@@ -263,18 +263,18 @@
         <echo message="Making build version file ${buildversion.outputfile} - you can ignore any error ${line.separator}generated here since it will only affect the Help/About... dialog. ${line.separator}To remove this error, you need to install a command line svn client ${line.separator}and make svnversion available on the PATH." />
         <delete file="${buildversion.outputfile}"/>
         <!-- run svnversion (must have svn installed and on PATH) to get revision numnber -->
-        <exec executable="svnversion" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" searchpath="true">
-            <arg line="."/>
+        <exec executable="git" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" searchpath="true">
+            <arg line="show"/>
         </exec>
         <!-- make it a property line -->
-        <replaceregexp file="${buildversion.outputfile}"
+<!--        <replaceregexp file="${buildversion.outputfile}"
                        match="(.*)"
                        replace="subversion.revisionNumber=\1"
-                       byline="false"/>
+                       byline="false"/>-->
         <!-- run subwcrev (must have tortoisesvn installed and on PATH) to get svn revision numnber -->
-        <exec executable="subWCrev" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" append="true">
+<!--        <exec executable="subWCrev" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" append="true">
             <arg line="."/>
-        </exec>
+        </exec>-->
         <!-- add a datestamp property -->
         <echo message="build.date=${DSTAMP} at ${TSTAMP}" append="true" file="${buildversion.outputfile}" />
         <concat>
