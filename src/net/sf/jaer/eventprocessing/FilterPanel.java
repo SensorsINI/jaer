@@ -52,6 +52,7 @@ import javax.swing.JPanel;
 import javax.swing.JSlider;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 import javax.swing.border.Border;
 import javax.swing.border.LineBorder;
@@ -1492,7 +1493,20 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             printedSetterWarning = true;
                         }
                     } else {
-                        setter.set(propertyChangeEvent.getNewValue());
+                        if (SwingUtilities.isEventDispatchThread()) {
+                            setter.set(propertyChangeEvent.getNewValue());
+                        } else {
+                            SwingUtilities.invokeLater(new Runnable() {
+                                @Override
+                                public void run() {
+                                    try {
+                                        setter.set(propertyChangeEvent.getNewValue());
+                                    } catch (Exception e) {
+                                        log.warning("caught exception " + propertyChangeEvent.getNewValue() + " in property change:" + e.toString());
+                                    }
+                                }
+                            });
+                        }
                     }
 
 //                    PropertyDescriptor pd=new PropertyDescriptor(propertyChangeEvent.getPropertyName(), getFilter().getClass());
@@ -1964,7 +1978,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      */
     public void highlightProperties(String s) {
         s = s.toLowerCase();
-        System.out.println("\n************** \n searching for "+s+"\n");
+        System.out.println("\n************** \n searching for " + s + "\n");
         for (MyControl c : highlightedControls) {
             c.setBorder(null);
             c.repaint(300);
@@ -1972,11 +1986,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
 //        System.out.println("");
         highlightedControls.clear();
-        if(s.isEmpty()) return;
+        if (s.isEmpty()) {
+            return;
+        }
         for (String propName : propertyControlMap.keySet()) {
             if (propName.toLowerCase().contains(s)) {
                 MyControl c = propertyControlMap.get(propName);
-                    System.out.println("highlighted "+propName);
+                System.out.println("highlighted " + propName);
                 if (c != null) {
                     c.setBorder(new LineBorder(Color.red));
                     c.repaint(300);
