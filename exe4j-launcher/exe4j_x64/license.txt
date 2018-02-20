@@ -334,7 +334,7 @@ resulting from use without a Software Product License.
 ej-technologies may provide you with support services related to the Software
 Product according to your order. Use of any such support services is governed
 by policies described on ej-technologies' web site
-(http://www.ej-technologies.com).
+(https://www.ej-technologies.com).
 
 Any supplemental software code or related materials that ej-technologies
 provides to you as part of the support services, in periodic updates to the

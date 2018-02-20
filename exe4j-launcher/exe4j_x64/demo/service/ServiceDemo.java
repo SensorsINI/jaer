@@ -1,4 +1,6 @@
-import java.io.*;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Date;
 
 public class ServiceDemo {
@@ -39,12 +41,13 @@ public class ServiceDemo {
 
 
     private static class ShutdownThread extends Thread {
-        private Thread workerThread;
+        private final Thread workerThread;
 
         public ShutdownThread(Thread workerThread) {
             this.workerThread = workerThread;
         }
 
+        @Override
         public void run() {
             log("shutdown requested at " + new Date());
 
