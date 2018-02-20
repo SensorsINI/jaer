@@ -133,8 +133,6 @@
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator3">
             </MenuItem>
-            <MenuItem class="javax.swing.JSeparator" name="jSeparator4">
-            </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="restoreFilterEnabledStateCheckBoxMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Restore filter enabled state"/>

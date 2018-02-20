@@ -139,18 +139,18 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
 //        timeLimitTimer.restart();
 //    }
 
-    /**
-     * restart the time limiter with limit timeLimitMs
-     *
-     * @param timeLimitMs time in ms
-     */
-    public void restartTimeLimiter(final int timeLimitMs) {
-        if (timeLimitTimer == null) {
-            timeLimitTimer = new TimeLimiter();
-        }
-        timeLimitTimer.setTimeLimitMs(timeLimitMs);
-        restartTimeLimiter();
-    }
+//    /**
+//     * restart the time limiter with limit timeLimitMs
+//     *
+//     * @param timeLimitMs time in ms
+//     */
+//    public void restartTimeLimiter(final int timeLimitMs) {
+//        if (timeLimitTimer == null) {
+//            timeLimitTimer = new TimeLimiter();
+//        }
+//        timeLimitTimer.setTimeLimitMs(timeLimitMs);
+//        restartTimeLimiter();
+//    }
 
     /**
      * Constructs a new EventPacket filled with BasicEvent.

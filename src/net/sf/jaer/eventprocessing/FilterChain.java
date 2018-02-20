@@ -211,7 +211,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
                 f.perf.start(in);
             }
             out = f.filterPacket(in);
-            timedOut = in.isTimedOut();
+//            timedOut = in.isTimedOut();
             if (measurePerformanceEnabled && f.perf != null) {
                 f.perf.stop();
                 System.out.println(f.perf);

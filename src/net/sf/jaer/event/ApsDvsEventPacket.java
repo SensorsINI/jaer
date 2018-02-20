@@ -123,9 +123,10 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E> {
 		 */
 		@Override
 		public boolean hasNext() {
-			if (usingTimeout && timeLimitTimer.isTimedOut()) {
-				return false;
-			}
+//			if (usingTimeout && timeLimitTimer.isTimedOut()) {
+//				return false;
+//			}
+//              tobi removed, too many problems with it
 
 			while ((cursor < size) && (elementData[cursor] != null)
 				&& (elementData[cursor].isFilteredOut() || !elementData[cursor].isDVSEvent())) {

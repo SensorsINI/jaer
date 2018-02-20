@@ -202,7 +202,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         measurePerformanceCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         resetPerformanceMeasurementMI = new javax.swing.JMenuItem();
         jSeparator3 = new javax.swing.JSeparator();
-        jSeparator4 = new javax.swing.JSeparator();
         restoreFilterEnabledStateCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         helpMenu = new javax.swing.JMenu();
         jaerFilterHelpMI = new javax.swing.JMenuItem();
@@ -425,7 +424,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         });
         modeMenu.add(resetPerformanceMeasurementMI);
         modeMenu.add(jSeparator3);
-        modeMenu.add(jSeparator4);
 
         restoreFilterEnabledStateCheckBoxMenuItem.setText("Restore filter enabled state");
         restoreFilterEnabledStateCheckBoxMenuItem.setToolTipText("If enabled, filter enabled state is restored on startup");
@@ -910,7 +908,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;
-    private javax.swing.JSeparator jSeparator4;
     private javax.swing.JMenuItem jaerFilterHelpMI;
     private javax.swing.JButton jbuttonSelectFilt;
     private javax.swing.JMenuItem loadMenuItem;
