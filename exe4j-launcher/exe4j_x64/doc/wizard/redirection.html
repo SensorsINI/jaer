@@ -1,89 +1,40 @@
-<html>
-   <head>
-      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-      <title>exe4j Wizard - Redirection</title>
-      <link rel="stylesheet" type="text/css" href="../standalone/help_common.css">
-      <link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>exe4j Wizard - Redirection</title><link rel="stylesheet" type="text/css" href="../standalone/help_common.css"><link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
 helpId = 'exe4j.wizard.redirection';
 indexUrl= '../index.html';
-</script><script type="text/javascript" src="../standalone/jquery.min.js"></script><script type="text/javascript" src="../standalone/tracking.js"></script></head>
-   <body>
-      <div class="header-container">
-         <div class="header-title">
-            <h2>Exe4j Wizard - Redirection</h2>
-         </div>
-         <div class="header-nav">
-            <div class="nav-wrapper"><a class="nav-left" href="../wizard/finish.html" title="key: j"></a></div>
-            <div class="nav-wrapper"><a class="nav-up" href="../wizard/$advancedFolder$.html" title="key: u"></a></div>
-            <div class="nav-wrapper"><a class="nav-right" href="../wizard/service.html" title="key: k"></a></div>
-         </div>
-      </div>
-      <hr>
-      <div class="spacer"></div>
-      <div>
-         
-         <p>
-            <b>Note:</b> this advanced option screen is reachable by selecting the 
-            <a href="../wizard/executable.html">"Executable" step</a> and choosing
-            "Redirection" from the <b>[Advanced options]</b>
-            popup menu or by clicking directly on the index.
-            
-         </p>
-         
-         <p>
-            In this step of the <a href="../wizard/wizard.html">exe4j wizard</a>, you can
-            configure the redirection settings for stderr and stdout.
-            
-         </p>
-         
-         <p>
-            The following redirection settings can be edited:
-            
-         </p>
-         
-         <ul>
-            <li><span class="sectiontitle">Redirection of stderr</span><br>
-               To redirect stderr to a file, select the <tt>Redirect stderr</tt>
-               checkbox and enter a file name in the adjacent text field.
-               
-            </li>
-            <li><span class="sectiontitle">Redirection of stdout</span><br>
-               To redirect stdout to a file, select the <tt>Redirect stdout</tt>
-               checkbox and enter a file name in the adjacent text field.
-               
-            </li>
-         </ul>
-         
-         <p>
-            File name are interpreted relative to the executable. Enter <tt>/dev/null</tt>
-            if you want to suppress output completely. You can choose whether the
-            redirection file is overwritten each time the launcher is started or if output should
-            be appended
-            to an existing redirection file.
-            
-         </p>
-         
-         <p>
-            Note that redirection files are created lazily. This means that if nothing is written
-            to the redirected stream,
-            the file file will not be created or overwritten.
-            
-         </p>
-         
-         <p>
-            You can use environment variables in the redirection files with the following syntax:
-            <tt>${VARIABLE_NAME}</tt> where you replace VARIABLE_NAME with the desired
-            environment variable.
-            
-         </p>
-         
-      </div><br><hr>
-      <div class="header-container">
-         <div class="header-nav">
-            <div class="nav-wrapper"><a class="nav-left" href="../wizard/finish.html" title="key: j"></a></div>
-            <div class="nav-wrapper"><a class="nav-up" href="../wizard/$advancedFolder$.html" title="key: u"></a></div>
-            <div class="nav-wrapper"><a class="nav-right" href="../wizard/service.html" title="key: k"></a></div>
-         </div>
-      </div>
-   </body>
-</html>
+</script><script type="text/javascript" src="../standalone/jquery.min.js"></script><script type="text/javascript" src="../standalone/tracking.js"></script></head><body><div class="header-container"><div class="header-title"><h2>Exe4j Wizard - Redirection</h2></div><div class="header-nav"><div class="nav-wrapper"><a class="nav-left" href="../wizard/finish.html" title="key: j"></a></div><div class="nav-wrapper"><a class="nav-up" href="../wizard/$advancedFolder$.html" title="key: u"></a></div><div class="nav-wrapper"><a class="nav-right" href="../wizard/service.html" title="key: k"></a></div></div></div><hr><div class="spacer"></div><div>
+    <p>
+      <b>Note:</b> this advanced option screen is reachable by selecting the 
+      <a href="../wizard/executable.html">"Executable" step</a> and choosing
+      "Redirection" from the <b>[Advanced options]</b>
+      popup menu or by clicking directly on the index.
+    </p>
+    <p>
+      In this step of the <a href="../wizard/wizard.html">exe4j wizard</a>, you can
+      configure the redirection settings for stderr and stdout.
+    </p>
+    <p>
+      The following redirection settings can be edited:
+    </p>
+    <ul><li><span class="sectiontitle">Redirection of stderr</span><br>
+        To redirect stderr to a file, select the <tt>Redirect stderr</tt>
+        checkbox and enter a file name in the adjacent text field.
+      </li><li><span class="sectiontitle">Redirection of stdout</span><br>
+        To redirect stdout to a file, select the <tt>Redirect stdout</tt>
+        checkbox and enter a file name in the adjacent text field.
+      </li></ul>
+    <p>
+      File name are interpreted relative to the executable. Enter <tt>/dev/null</tt>
+      if you want to suppress output completely. You can choose whether the
+      redirection file is overwritten each time the launcher is started or if output should be appended
+      to an existing redirection file.
+    </p>
+    <p>
+      Note that redirection files are created lazily. This means that if nothing is written to the redirected stream,
+      the file file will not be created or overwritten.
+    </p>
+    <p>
+      You can use environment variables in the redirection files with the following syntax:
+      <tt>${VARIABLE_NAME}</tt> where you replace VARIABLE_NAME with the desired
+      environment variable.
+    </p>
+  </div><br><hr><div class="header-container"><div class="header-nav"><div class="nav-wrapper"><a class="nav-left" href="../wizard/finish.html" title="key: j"></a></div><div class="nav-wrapper"><a class="nav-up" href="../wizard/$advancedFolder$.html" title="key: u"></a></div><div class="nav-wrapper"><a class="nav-right" href="../wizard/service.html" title="key: k"></a></div></div></div></body></html>

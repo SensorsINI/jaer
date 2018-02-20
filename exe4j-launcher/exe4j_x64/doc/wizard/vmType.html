@@ -1,91 +1,38 @@
-<html>
-   <head>
-      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-      <title>exe4j Wizard - Choose Preferred VM</title>
-      <link rel="stylesheet" type="text/css" href="../standalone/help_common.css">
-      <link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>exe4j Wizard - Choose Preferred VM</title><link rel="stylesheet" type="text/css" href="../standalone/help_common.css"><link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
 helpId = 'exe4j.wizard.vmType';
 indexUrl= '../index.html';
-</script><script type="text/javascript" src="../standalone/jquery.min.js"></script><script type="text/javascript" src="../standalone/tracking.js"></script></head>
-   <body>
-      <div class="header-container">
-         <div class="header-title">
-            <h2>Exe4j Wizard - Choose Preferred VM</h2>
-         </div>
-         <div class="header-nav">
-            <div class="nav-wrapper"><a class="nav-left" href="../wizard/searchSequence.html" title="key: j"></a></div>
-            <div class="nav-wrapper"><a class="nav-up" href="../wizard/$advancedFolder$.html" title="key: u"></a></div>
-            <div class="nav-wrapper"><a class="nav-right" href="../wizard/splashScreenOptions.html" title="key: k"></a></div>
-         </div>
-      </div>
-      <hr>
-      <div class="spacer"></div>
-      <div>
-         
-         <p>
-            <b>Note:</b> this advanced option screen is reachable by selecting the 
-            <a href="../wizard/jdk.html">"JRE" step</a> and choosing
-            "Preferred VM" from the <b>[Advanced options]</b>
-            popup menu or by clicking directly on the index.
-            
-         </p>
-         
-         <p>
-            In this step of the <a href="../wizard/wizard.html">exe4j wizard</a>, you can configure the
-            preferred VM that exe4j will choose to invoke your application. This setting only
-            influences
-            the choice of the VM type after a JRE has been selected according to the search sequence.
-            The search sequence for the JRE is specified in a <a href="../wizard/jdk.html">different step</a>.
-            
-         </p>
-         
-         <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex">
-            <tr>
-               <td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;
-               </td>
-               <td>
-                  
-                  After exe4j finds a suitable JRE or JDK, it tries to honor the setting you make in
-                  this step.
-                  You can select one of the following:
-                  
-                  <ul>
-                     <li><span class="sectiontitle">default VM</span><br>
-                        exe4j will use the default VM for the found JRE.
-                        
-                     </li>
-                     <li><span class="sectiontitle">client hotspot VM</span><br>
-                        exe4j will try to use the client hotspot VM for the found JRE. This is
-                        equivalent to using the <tt>-client</tt> switch when invoking
-                        <tt>java</tt> from the command line.
-                        
-                     </li>
-                     <li><span class="sectiontitle">server hotspot VM</span><br>
-                        exe4j will try to use the server hotspot VM for the found JRE. This is
-                        equivalent to using the <tt>-server</tt> switch when invoking
-                        <tt>java</tt> from the command line.
-                        
-                     </li>
-                  </ul>
-                  
-                  
-                  <p>
-                     Please note that it is not an error if the selected JVM is not present for the 
-                     found JRE. exe4j will simply use another JVM to launch your application in that case.
-                     
-                  </p>
-                  
-               </td>
-            </tr>
-         </table>
-         
-      </div><br><hr>
-      <div class="header-container">
-         <div class="header-nav">
-            <div class="nav-wrapper"><a class="nav-left" href="../wizard/searchSequence.html" title="key: j"></a></div>
-            <div class="nav-wrapper"><a class="nav-up" href="../wizard/$advancedFolder$.html" title="key: u"></a></div>
-            <div class="nav-wrapper"><a class="nav-right" href="../wizard/splashScreenOptions.html" title="key: k"></a></div>
-         </div>
-      </div>
-   </body>
-</html>
+</script><script type="text/javascript" src="../standalone/jquery.min.js"></script><script type="text/javascript" src="../standalone/tracking.js"></script></head><body><div class="header-container"><div class="header-title"><h2>Exe4j Wizard - Choose Preferred VM</h2></div><div class="header-nav"><div class="nav-wrapper"><a class="nav-left" href="../wizard/searchSequence.html" title="key: j"></a></div><div class="nav-wrapper"><a class="nav-up" href="../wizard/$advancedFolder$.html" title="key: u"></a></div><div class="nav-wrapper"><a class="nav-right" href="../wizard/splashScreenOptions.html" title="key: k"></a></div></div></div><hr><div class="spacer"></div><div>
+    <p>
+      <b>Note:</b> this advanced option screen is reachable by selecting the 
+      <a href="../wizard/jdk.html">"JRE" step</a> and choosing
+      "Preferred VM" from the <b>[Advanced options]</b>
+      popup menu or by clicking directly on the index.
+    </p>
+    <p>
+      In this step of the <a href="../wizard/wizard.html">exe4j wizard</a>, you can configure the
+      preferred VM that exe4j will choose to invoke your application. This setting only influences
+      the choice of the VM type after a JRE has been selected according to the search sequence.
+      The search sequence for the JRE is specified in a <a href="../wizard/jdk.html">different step</a>.
+    </p>
+    <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex"><tr><td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;</td><td>
+      
+        After exe4j finds a suitable JRE or JDK, it tries to honor the setting you make in this step.
+        You can select one of the following:
+        <ul><li><span class="sectiontitle">default VM</span><br>
+            exe4j will use the default VM for the found JRE.
+          </li><li><span class="sectiontitle">client hotspot VM</span><br>
+            exe4j will try to use the client hotspot VM for the found JRE. This is
+            equivalent to using the <tt>-client</tt> switch when invoking
+            <tt>java</tt> from the command line.
+          </li><li><span class="sectiontitle">server hotspot VM</span><br>
+            exe4j will try to use the server hotspot VM for the found JRE. This is
+            equivalent to using the <tt>-server</tt> switch when invoking
+            <tt>java</tt> from the command line.
+          </li></ul>
+      
+      <p>
+        Please note that it is not an error if the selected JVM is not present for the 
+        found JRE. exe4j will simply use another JVM to launch your application in that case.
+      </p>
+    </td></tr></table>
+  </div><br><hr><div class="header-container"><div class="header-nav"><div class="nav-wrapper"><a class="nav-left" href="../wizard/searchSequence.html" title="key: j"></a></div><div class="nav-wrapper"><a class="nav-up" href="../wizard/$advancedFolder$.html" title="key: u"></a></div><div class="nav-wrapper"><a class="nav-right" href="../wizard/splashScreenOptions.html" title="key: k"></a></div></div></div></body></html>

@@ -1,8 +1,8 @@
 -------------------------------------------------------------------------
 exe4j readme
 
-version 5.1
-released on 2016-02-19
+version 6.0
+released on 2017-07-13
 -------------------------------------------------------------------------
 
 I. LICENSE
@@ -13,7 +13,7 @@ directory as this readme file.
 
 II. RUNNING exe4j
 
-1. WINDOWS 98/ME/2000/XP
+1. WINDOWS
 
 Start exe4j by executing
 
@@ -27,7 +27,7 @@ Start exe4j by executing the shell script
    [exe4j install directory]/bin/exe4j
 
 
-3. MAC OS X
+3. macOS
 
 Start exe4j with the installed application bundle. Usually, exe4j 
 will be installed to:
@@ -49,7 +49,7 @@ Help is available
 1. from the "Help" button in the exe4j wizard
 2. as HTML pages the doc directory of your exe4j installation.
    Start with index.html or open any other HTML file directly.
-3. online at http://resources.ej-technologies.com/exe4j/help/doc/
+3. online at https://resources.ej-technologies.com/exe4j/help/doc/
 4. by executing exe4jc.exe --help
 
 
