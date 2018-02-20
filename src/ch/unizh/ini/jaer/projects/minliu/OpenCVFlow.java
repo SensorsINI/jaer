@@ -196,7 +196,9 @@ public class OpenCVFlow extends AbstractMotionFlow
             patchFlow.resetFilter();
         }
 
-        OFResultDisplay.setImageSize(chip.getSizeX(), chip.getSizeY());
+        if (this.OFResultDisplay != null) {
+            OFResultDisplay.setImageSize(chip.getSizeX(), chip.getSizeY());
+        }
     }
 
     @Override

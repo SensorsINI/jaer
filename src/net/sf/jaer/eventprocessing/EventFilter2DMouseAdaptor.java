@@ -33,7 +33,9 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
 
     protected GLCanvas glCanvas;
     protected ChipCanvas chipCanvas;
-    /** Cursor size for drawn mouse cursor when filter is selected. */
+    /**
+     * Cursor size for drawn mouse cursor when filter is selected.
+     */
     protected final float CURSOR_SIZE_CHIP_PIXELS = 7;
     protected GLU glu = new GLU();
     protected GLUquadric quad = null;
@@ -44,6 +46,18 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
         if (chip.getCanvas() != null && chip.getCanvas().getCanvas() != null) {
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
         }
+    }
+    float[] cursorColor = null;
+
+    /**
+     * Sets a cursor color vector 
+     * @param color a 4-vector. Set it to null to return to default white shadowed cursor.
+     */
+    protected void setCursorColor(float[] color) {
+        if (color == null) {
+            return;
+        }
+        this.cursorColor = color;
     }
 
     /**
@@ -69,7 +83,11 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
                 return;
             }
             checkBlend(gl);
-            gl.glColor4f(1f, 1f, 1f, 1);
+            if (cursorColor != null && cursorColor.length == 4) {
+                gl.glColor4fv(cursorColor, 0);
+            } else {
+                gl.glColor4f(1f, 1f, 1f, 1);
+            }
             gl.glLineWidth(3f);
             gl.glPushMatrix();
             gl.glTranslatef(p.x, p.y, 0);
@@ -153,9 +171,10 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
     }
 
     /**
-     * Returns the chip pixel position from the MouseEvent.
-     * Note that any calls that modify the GL model matrix (or viewport, etc) will make the location meaningless.
-     * Make sure that your graphics rendering code wraps transforms inside pushMatrix and popMatrix calls.
+     * Returns the chip pixel position from the MouseEvent. Note that any calls
+     * that modify the GL model matrix (or viewport, etc) will make the location
+     * meaningless. Make sure that your graphics rendering code wraps transforms
+     * inside pushMatrix and popMatrix calls.
      *
      * @param e the mouse event
      * @return the pixel position in the chip object, origin 0,0 in lower left
@@ -182,14 +201,14 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
         chip.getCanvas().repaint(100);
     }
 
-    /** Handles wheel event. Empty by default
-     * 
+    /**
+     * Handles wheel event. Empty by default
+     *
      * @param mwe the mouse wheel roll event
      */
     @Override
-    public void mouseWheelMoved(MouseWheelEvent mwe){
-        
+    public void mouseWheelMoved(MouseWheelEvent mwe) {
+
     }
-    
-    
+
 }

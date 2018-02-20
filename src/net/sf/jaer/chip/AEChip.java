@@ -18,6 +18,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -465,6 +466,8 @@ public class AEChip extends Chip2D {
             }
         } else if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION.substring(1))) {
             aeInputStream = new AEFileInputStream(file, this);
+        }else{
+            throw new FileNotFoundException("file "+file+" file type is not known; .dat, .aedat or .bag files are currently supported");
         }
         return aeInputStream;
     }

@@ -1071,6 +1071,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         } else {
             searchMethod = getSearchMethod();
         }
+        
+        final int xsub = x >> subSampleBy;
+        final int ysub = y >> subSampleBy;
+        final int r = ((blockDimension) / 2);
+        int w = subSizeX >> subSampleBy, h = subSizeY >> subSampleBy;
+
+        // Make sure both ref block and past slice block are in bounds on all sides or there'll be arrayIndexOutOfBoundary exception.
+        // Also we don't want to match ref block only on inner sides or there will be a bias towards motion towards middle
+        if (xsub - r - searchDistance < 0 || xsub + r + searchDistance >= w
+                || ysub - r - searchDistance < 0 || ysub + r + searchDistance >= h) {
+            result.sadValue = Float.MAX_VALUE; // return very large distance for this match so it is not selected
+            return result;
+        }
 
         switch (searchMethod) {
             case DiamondSearch:
@@ -1288,16 +1301,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         final int x = xfull >> subsampleBy;
         final int y = yfull >> subsampleBy;
         final int r = ((blockDimension) / 2);
-        int w = subSizeX >> subsampleBy, h = subSizeY >> subsampleBy;
-        int adx = dx > 0 ? dx : -dx; // abs val of dx and dy, to compute limits
-        int ady = dy > 0 ? dy : -dy;
-
-        // Make sure both ref block and past slice block are in bounds on all sides or there'll be arrayIndexOutOfBoundary exception.
-        // Also we don't want to match ref block only on inner sides or there will be a bias towards motion towards middle
-        if (x - r - adx < 0 || x + r + adx >= w
-                || y - r - ady < 0 || y + r + ady >= h) {
-            return 1; // tobi changed to 1 again // Float.MAX_VALUE; // return very large distance for this match so it is not selected
-        }
+//        int w = subSizeX >> subsampleBy, h = subSizeY >> subsampleBy;
+//        int adx = dx > 0 ? dx : -dx; // abs val of dx and dy, to compute limits
+//        int ady = dy > 0 ? dy : -dy;
+//
+//        // Make sure both ref block and past slice block are in bounds on all sides or there'll be arrayIndexOutOfBoundary exception.
+//        // Also we don't want to match ref block only on inner sides or there will be a bias towards motion towards middle
+//        if (x - r - adx < 0 || x + r + adx >= w
+//                || y - r - ady < 0 || y + r + ady >= h) {
+//            return 1; // tobi changed to 1 again // Float.MAX_VALUE; // return very large distance for this match so it is not selected
+//        }
 
         int validPixNumCurSlice = 0, validPixNumPrevSlice = 0; // The valid pixel number in the current block
         int nonZeroMatchCount = 0;

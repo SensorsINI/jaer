@@ -36,6 +36,7 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
     private float speed = 0, distance, deltaTimestamp;
     EngineeringFormat engFmt = new EngineeringFormat();
     TextRenderer textRenderer = null;
+    private static final float[] START_COLOR = new float[]{0, 1, 0, 1}, END_COLOR = new float[]{1, 0, 0, 1};
 
     public Speedometer(AEChip chip) {
         super(chip);
@@ -60,10 +61,10 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
 
     @Override
     synchronized public void mouseClicked(MouseEvent e) {
-        if (e == null || e.getPoint() == null || getMousePixel(e)==null) {
-            firstPoint=true; 
-            startPoint=null;
-            endPoint=null;
+        if (e == null || e.getPoint() == null || getMousePixel(e) == null) {
+            firstPoint = true;
+            startPoint = null;
+            endPoint = null;
             log.info("reset to first point");
             return; // handle out of bounds, which should reset
         }
@@ -100,10 +101,15 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
+        if (firstPoint) {
+            setCursorColor(START_COLOR);
+        } else {
+            setCursorColor(END_COLOR);
+        }
         super.annotate(drawable); //To change body of generated methods, choose Tools | Templates.
         GL2 gl = drawable.getGL().getGL2();
-        drawCursor(gl, startPoint, new float[]{0, 1, 0, 1});
-        drawCursor(gl, endPoint, new float[]{1, 0, 0, 1});
+        drawCursor(gl, startPoint,START_COLOR);
+        drawCursor(gl, endPoint, END_COLOR);
         if (startPoint != null && endPoint != null) {
             gl.glColor3f(1, 1, 0);
             gl.glBegin(GL.GL_LINES);

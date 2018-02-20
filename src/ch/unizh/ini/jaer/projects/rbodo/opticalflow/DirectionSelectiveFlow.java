@@ -36,7 +36,6 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
     // min 100us to filter noise or multiple spikes.
     private int minDtThreshold = getInt("minDtThreshold", 100);
 
-    private EventPacket oriPacket; // Holds orientation events.
     private final AbstractOrientationFilter oriFilter;
     private byte ori;
     private int polValue;
@@ -81,7 +80,7 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
 
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        oriPacket = oriFilter.filterPacket(in);  // compute orientation events.
+        in = oriFilter.filterPacket(in);  // compute orientation events.
         DvsMotionOrientationEvent.Dir d1, d2;
         int dt1, dt2, n1, n2, s;
         float speed1, speed2;
@@ -123,9 +122,6 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
             }
             PolarityEvent ein = (PolarityEvent)o;
            
-            if (!extractEventInfo(o)) {
-                continue;
-            }
             if ( measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                 if(imuFlowEstimator.calculateImuFlow(o)) continue;
             }
