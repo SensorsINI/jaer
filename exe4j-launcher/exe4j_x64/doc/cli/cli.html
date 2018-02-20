@@ -1,3 +1,4 @@
+<<<<<<< OURS
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>exe4j Command Line Compiler</title><link rel="stylesheet" type="text/css" href="../standalone/help_common.css"><link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
 helpId = 'exe4j.cli';
 indexUrl= '../index.html';
@@ -36,3 +37,77 @@ indexUrl= '../index.html';
       or by applying XSLT stylesheets to the config file.
     </p>
   </div><br><hr><div class="header-container"><div class="header-nav"><div class="nav-wrapper"><a class="nav-left" href="../splash/singleInstance.html" title="key: j"></a></div><div class="nav-wrapper"><a class="nav-up" href="../cli/$folder$.html" title="key: u"></a></div><div class="nav-wrapper"><a class="nav-right" href="../cli/options.html" title="key: k"></a></div></div></div></body></html>
+=======
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+      <title>exe4j Command Line Compiler</title>
+      <link rel="stylesheet" type="text/css" href="../standalone/help_common.css">
+      <link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
+helpId = 'exe4j.cli';
+indexUrl= '../index.html';
+</script><script type="text/javascript" src="../standalone/jquery.min.js"></script><script type="text/javascript" src="../standalone/tracking.js"></script></head>
+   <body>
+      <div class="header-container">
+         <div class="header-title">
+            <h2>Exe4j Command Line Compiler</h2>
+         </div>
+         <div class="header-nav">
+            <div class="nav-wrapper"><a class="nav-left" href="../splash/singleInstance.html" title="key: j"></a></div>
+            <div class="nav-wrapper"><a class="nav-up" href="../cli/$folder$.html" title="key: u"></a></div>
+            <div class="nav-wrapper"><a class="nav-right" href="../cli/options.html" title="key: k"></a></div>
+         </div>
+      </div>
+      <hr>
+      <div class="spacer"></div>
+      <div>
+         
+         <p>
+            exe4j's command line compiler <tt>exe4jc.exe</tt> can be found in the
+            <tt>bin</tt> directory of your exe4j installation. It operates on any
+            config file with extension <tt>.exe4j</tt> that has been produced with
+            the exe4j wizard. (<tt>exe4j.exe</tt>). The exe4j command line compiler is 
+            invoked as follows:
+            
+         </p>
+         <pre>    exe4jc [OPTIONS] [config file]</pre>
+         <p>
+            The available options are described <a href="../cli/options.html">here</a>.
+            A quick help for all options is printed to the terminal when invoking
+            <pre>    exe4jc --help</pre>
+            </p>
+         
+         <p>
+            A typical run of the exe4j command line compiler looks like this:
+            
+         </p>
+         <pre>    exe4j version 4.0, built on 2006-09-26
+    Unregistered evaluation version
+
+    Loading config file myapp.exe4j
+    Deleting temporary directory
+    Compiled executable for myapp in 0.8 seconds.      </pre>
+         
+         <p>
+            In order to facilitate the use of exe4j in automated build processes, the
+            destination directory for the executable and the
+            <a href="../wizard/splashScreen.html">version text line of the splash screen</a>
+            can be overridden with <a href="../cli/options.html">command line options</a>.
+            Since the file format of exe4j's config files is xml-based, you can achieve
+            arbitrary customizations by replacing tokens
+            (see the <a href="../cli/ant.html">ant integration help page</a> for an example)
+            or by applying XSLT stylesheets to the config file.
+            
+         </p>
+         
+      </div><br><hr>
+      <div class="header-container">
+         <div class="header-nav">
+            <div class="nav-wrapper"><a class="nav-left" href="../splash/singleInstance.html" title="key: j"></a></div>
+            <div class="nav-wrapper"><a class="nav-up" href="../cli/$folder$.html" title="key: u"></a></div>
+            <div class="nav-wrapper"><a class="nav-right" href="../cli/options.html" title="key: k"></a></div>
+         </div>
+      </div>
+   </body>
+</html>
+>>>>>>> THEIRS

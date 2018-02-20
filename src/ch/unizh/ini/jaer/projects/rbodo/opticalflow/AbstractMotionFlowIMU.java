@@ -848,8 +848,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         // Draw individual motion vectors
         if (dirPacket != null && (displayVectorsEnabled || displayVectorsAsColorDots)) {
             gl.glLineWidth(2f);
-            boolean timeoutEnabled = dirPacket.isTimeLimitEnabled();
-            dirPacket.setTimeLimitEnabled(false);
+//            boolean timeoutEnabled = dirPacket.isTimeLimitEnabled();
+//            dirPacket.setTimeLimitEnabled(false);
             for (Object o : dirPacket) {
                 MotionOrientationEventInterface ei = (MotionOrientationEventInterface) o;
                 // If we passAllEvents then the check is needed to not annotate 
@@ -867,7 +867,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     gl.glPopMatrix();
                 }
             }
-            dirPacket.setTimeLimitEnabled(timeoutEnabled);
+//            dirPacket.setTimeLimitEnabled(timeoutEnabled);
         }
 
         if (displayColorWheelLegend) {

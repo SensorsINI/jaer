@@ -1,3 +1,4 @@
+<<<<<<< OURS
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>exe4j Wizard - Manifest Options</title><link rel="stylesheet" type="text/css" href="../standalone/help_common.css"><link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
 helpId = 'exe4j.wizard.executionLevel';
 indexUrl= '../index.html';
@@ -37,3 +38,112 @@ indexUrl= '../index.html';
       </p>
     </td></tr></table>
   </div><br><hr><div class="header-container"><div class="header-nav"><div class="nav-wrapper"><a class="nav-left" href="../wizard/64bit.html" title="key: j"></a></div><div class="nav-wrapper"><a class="nav-up" href="../wizard/$advancedFolder$.html" title="key: u"></a></div><div class="nav-wrapper"><a class="nav-right" href="../wizard/native.html" title="key: k"></a></div></div></div></body></html>
+=======
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+      <title>exe4j Wizard - Manifest Options</title>
+      <link rel="stylesheet" type="text/css" href="../standalone/help_common.css">
+      <link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
+helpId = 'exe4j.wizard.executionLevel';
+indexUrl= '../index.html';
+</script><script type="text/javascript" src="../standalone/jquery.min.js"></script><script type="text/javascript" src="../standalone/tracking.js"></script></head>
+   <body>
+      <div class="header-container">
+         <div class="header-title">
+            <h2>Exe4j Wizard - Manifest Options</h2>
+         </div>
+         <div class="header-nav">
+            <div class="nav-wrapper"><a class="nav-left" href="../wizard/64bit.html" title="key: j"></a></div>
+            <div class="nav-wrapper"><a class="nav-up" href="../wizard/$advancedFolder$.html" title="key: u"></a></div>
+            <div class="nav-wrapper"><a class="nav-right" href="../wizard/native.html" title="key: k"></a></div>
+         </div>
+      </div>
+      <hr>
+      <div class="spacer"></div>
+      <div>
+         
+         <p>
+            In this step of the <a href="../wizard/wizard.html">exe4j wizard</a>, you can
+            configure manifest options for your executable. The manifest of an executable is a
+            resource entry
+            that can enable or disable certain features provided by the operating system.
+            
+         </p>
+         
+         <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex">
+            <tr>
+               <td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;
+               </td>
+               <td>
+                  
+                  The execution level can be one of
+                  
+                  
+                  <ul>
+                     <li><span class="sectiontitle">As invoker</span><br>
+                        This is the default setting. The executable will be executed with the rights of the
+                        current token.
+                        If the user is an Administrator, this will be a filtered token so the executable will
+                        not have all
+                        administration rights.
+                        
+                     </li>
+                     <li><span class="sectiontitle">Highest available</span><br>
+                        This level will raise the rights of the executable to the maximum extend available
+                        for the current user.
+                        This applies to Administrators that usually run with a filtered token. Windows Vista
+                        and higher will show a question
+                        to the user if he wants to elevate the rights of this application. For a standard
+                        user this is the same
+                        as "As invoker".
+                        
+                     </li>
+                     <li><span class="sectiontitle">Require administrator</span><br>
+                        This is the same as "Highest available" when the user is an Administrator running
+                        with a filtered token.
+                        If the user is a standard user, Windows Vista and higher will ask for the credentials
+                        of an Administrator account.
+                        
+                     </li>
+                  </ul>
+                  
+               </td>
+            </tr>
+         </table>
+         
+         <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex">
+            <tr>
+               <td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;
+               </td>
+               <td>
+                  
+                  The user can set the Windows DPI setting to a value that is larger than 100%. This
+                  is particularly relevant for
+                  high-resolution screens.
+                  
+                  
+                  <p>
+                     If your application can deal with different DPI settings, you can tell exe4j to add
+                     the manifest entry to the
+                     executable that enables DPI-awareness. If this option is not selected, the GUI will
+                     be scaled up automatically
+                     and may look somewhat blurry.
+                     
+                  </p>
+                  
+               </td>
+            </tr>
+         </table>
+         
+      </div><br><hr>
+      <div class="header-container">
+         <div class="header-nav">
+            <div class="nav-wrapper"><a class="nav-left" href="../wizard/64bit.html" title="key: j"></a></div>
+            <div class="nav-wrapper"><a class="nav-up" href="../wizard/$advancedFolder$.html" title="key: u"></a></div>
+            <div class="nav-wrapper"><a class="nav-right" href="../wizard/native.html" title="key: k"></a></div>
+         </div>
+      </div>
+   </body>
+</html>
+>>>>>>> THEIRS

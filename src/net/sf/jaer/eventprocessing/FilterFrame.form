@@ -133,29 +133,6 @@
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator3">
             </MenuItem>
-            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="limitTimeCheckBoxMenuItem">
-              <Properties>
-                <Property name="mnemonic" type="int" value="108"/>
-                <Property name="selected" type="boolean" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
-                  <Connection code="filterChain.isTimeLimitEnabled()" type="code"/>
-                </Property>
-                <Property name="text" type="java.lang.String" value="Limit processing time"/>
-                <Property name="toolTipText" type="java.lang.String" value="Filters that implement limiting will be aborted if they take too longer than the limit time"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="limitTimeCheckBoxMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="setTimeLimitMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
-                  <Connection code="getTimeLimitMenuItemText()" type="code"/>
-                </Property>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setTimeLimitMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator4">
             </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="restoreFilterEnabledStateCheckBoxMenuItem">

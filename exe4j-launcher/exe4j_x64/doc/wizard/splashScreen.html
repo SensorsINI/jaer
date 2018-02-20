@@ -1,3 +1,4 @@
+<<<<<<< OURS
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>exe4j Wizard - Step 7: Configure Splash Screen</title><link rel="stylesheet" type="text/css" href="../standalone/help_common.css"><link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
 helpId = 'exe4j.wizard.splashScreen';
 indexUrl= '../index.html';
@@ -26,3 +27,78 @@ indexUrl= '../index.html';
       </p>
     </td></tr></table>
   </div><br><hr><div class="header-container"><div class="header-nav"><div class="nav-wrapper"><a class="nav-left" href="../wizard/jdk.html" title="key: j"></a></div><div class="nav-wrapper"><a class="nav-up" href="../wizard/$folder$.html" title="key: u"></a></div><div class="nav-wrapper"><a class="nav-right" href="../wizard/messages.html" title="key: k"></a></div></div></div></body></html>
+=======
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+      <title>exe4j Wizard - Step 7: Configure Splash Screen</title>
+      <link rel="stylesheet" type="text/css" href="../standalone/help_common.css">
+      <link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
+helpId = 'exe4j.wizard.splashScreen';
+indexUrl= '../index.html';
+</script><script type="text/javascript" src="../standalone/jquery.min.js"></script><script type="text/javascript" src="../standalone/tracking.js"></script></head>
+   <body>
+      <div class="header-container">
+         <div class="header-title">
+            <h2>Exe4j Wizard - Step 7: Configure Splash Screen</h2>
+         </div>
+         <div class="header-nav">
+            <div class="nav-wrapper"><a class="nav-left" href="../wizard/jdk.html" title="key: j"></a></div>
+            <div class="nav-wrapper"><a class="nav-up" href="../wizard/$folder$.html" title="key: u"></a></div>
+            <div class="nav-wrapper"><a class="nav-right" href="../wizard/messages.html" title="key: k"></a></div>
+         </div>
+      </div>
+      <hr>
+      <div class="spacer"></div>
+      <div>
+         
+         <p>
+            In this step of the <a href="../wizard/wizard.html">exe4j wizard</a>, you can
+            configure a splash screen for your application.
+            
+         </p>
+         
+         <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex">
+            <tr>
+               <td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;
+               </td>
+               <td>
+                  
+                  If the "Show splash screen" check box is selected, the Java splash screen is shown
+                  with the specified
+                  image file. If you decide to display a splash screen, you have to enter an image file.
+                  The file format can be PNG, GIF or Windows BMP.
+                  
+                  
+                  <p>
+                     Please note that you cannot specify the <code>-splash:</code> VM parameter in the
+                     <a href="../wizard/java.html">"Java Invocation" step</a>, since this VM parameter is parsed by the
+                     default Java launchers (<tt>java.exe</tt> and <tt>javaw.exe</tt>) which are not used by exe4j.
+                     
+                  </p>
+                  
+                  <p>
+                     If you select the "Native splash screen" option, the launcher will use its own implementation
+                     of a splash screen that can be shown extremely quickly. The native splash screen does
+                     not support
+                     translucent images. In that case, you cannot use the <tt>java.awt.SplashScreen</tt>
+                     API to modify the splash screen. However, the <a href="../wizard/splashScreenOptions.html">text lines</a>
+                     on the splash screen work with the native splash screen as well.
+                     
+                  </p>
+                  
+               </td>
+            </tr>
+         </table>
+         
+      </div><br><hr>
+      <div class="header-container">
+         <div class="header-nav">
+            <div class="nav-wrapper"><a class="nav-left" href="../wizard/jdk.html" title="key: j"></a></div>
+            <div class="nav-wrapper"><a class="nav-up" href="../wizard/$folder$.html" title="key: u"></a></div>
+            <div class="nav-wrapper"><a class="nav-right" href="../wizard/messages.html" title="key: k"></a></div>
+         </div>
+      </div>
+   </body>
+</html>
+>>>>>>> THEIRS

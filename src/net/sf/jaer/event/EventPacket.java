@@ -82,7 +82,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     /**
      * The processing time limiter
      */
-    public TimeLimiter timeLimitTimer = null; // new TimeLimiter(); // don't allocate until we use it
+//    public TimeLimiter timeLimitTimer = null; // new TimeLimiter(); // don't allocate until we use it
     /**
      * Default capacity in events for new EventPackets
      */
@@ -127,17 +127,17 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      */
     public long systemModificationTimeNs = 0;
 
-    /**
-     * Resets the time limiter for input iteration. After the timer times out
-     * (time determined by timeLimitMs) input iterators will not return any more
-     * events.
-     */
-    public void restartTimeLimiter() {
-        if (timeLimitTimer == null) {
-            timeLimitTimer = new TimeLimiter();
-        }
-        timeLimitTimer.restart();
-    }
+//    /**
+//     * Resets the time limiter for input iteration. After the timer times out
+//     * (time determined by timeLimitMs) input iterators will not return any more
+//     * events.
+//     */
+//    public void restartTimeLimiter() {
+//        if (timeLimitTimer == null) {
+//            timeLimitTimer = new TimeLimiter();
+//        }
+//        timeLimitTimer.restart();
+//    }
 
     /**
      * restart the time limiter with limit timeLimitMs
@@ -508,9 +508,10 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
          */
         @Override
         public boolean hasNext() {
-            if (usingTimeout && timeLimitTimer != null && timeLimitTimer.isTimedOut()) {
-                return false;
-            }
+            // tobi removed this functionality since it causes too many problems. Users need to implement their own timeout using TimeLimiter, e.g. as in PatchMatchFlow
+//            if (usingTimeout && timeLimitTimer != null && timeLimitTimer.isTimedOut()) {
+//                return false;
+//            }
 
             while ((cursor < size) && (elementData[cursor] != null) && elementData[cursor].isFilteredOut()) {
                 filteredOutCount++;
@@ -536,7 +537,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
          */
         public void reset() {
             cursor = 0;
-            usingTimeout = timeLimitTimer==null?false:timeLimitTimer.isEnabled(); // timelimiter only used if timeLimitTimer is enabled
+//            usingTimeout = timeLimitTimer==null?false:timeLimitTimer.isEnabled(); // timelimiter only used if timeLimitTimer is enabled
             // but flag to
             // check it it only set on packet reset
             filteredOutCount = 0;
@@ -889,62 +890,62 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
         initializeEvents();
     }
 
-    /**
-     * Gets the time limit for iteration in ms. Returns 0 if no time limit is enabled.
-     */
-    final public int getTimeLimitMs() {
-        if(timeLimitTimer==null) return 0;
-        return timeLimitTimer.getTimeLimitMs();
-    }
+//    /**
+//     * Gets the time limit for iteration in ms. Returns 0 if no time limit is enabled.
+//     */
+//    final public int getTimeLimitMs() {
+//        if(timeLimitTimer==null) return 0;
+//        return timeLimitTimer.getTimeLimitMs();
+//    }
 
-    /**
-     * Sets the time limit for filtering a packet through the filter chain in
-     * ms.
-     *
-     * @param timeLimitMs the time limit in ms
-     * @see #restartTimeLimiter
-     */
-    final public void setTimeLimitMs(final int timeLimitMs) {
-        if (timeLimitTimer == null) {
-            timeLimitTimer = new TimeLimiter();
-        }
-        timeLimitTimer.setTimeLimitMs(timeLimitMs);
-    }
+//    /**
+//     * Sets the time limit for filtering a packet through the filter chain in
+//     * ms.
+//     *
+//     * @param timeLimitMs the time limit in ms
+//     * @see #restartTimeLimiter
+//     */
+//    final public void setTimeLimitMs(final int timeLimitMs) {
+//        if (timeLimitTimer == null) {
+//            timeLimitTimer = new TimeLimiter();
+//        }
+//        timeLimitTimer.setTimeLimitMs(timeLimitMs);
+//    }
+//
+//    /**
+//     * Sets the time limit enabled or not
+//     *
+//     * @param yes to enable time limit for iteration
+//     */
+//    final public void setTimeLimitEnabled(final boolean yes) {
+//        if (timeLimitTimer == null) {
+//            timeLimitTimer = new TimeLimiter();
+//        }
+//        timeLimitTimer.setEnabled(yes);
+//    }
 
-    /**
-     * Sets the time limit enabled or not
-     *
-     * @param yes to enable time limit for iteration
-     */
-    final public void setTimeLimitEnabled(final boolean yes) {
-        if (timeLimitTimer == null) {
-            timeLimitTimer = new TimeLimiter();
-        }
-        timeLimitTimer.setEnabled(yes);
-    }
+//    /**
+//     * Returns status of time limiting
+//     *
+//     * @return true if timelimiting is enabled
+//     */
+//    final public boolean isTimeLimitEnabled() {
+//        if (timeLimitTimer == null) {
+//            return false;
+//        }
+//        return timeLimitTimer.isEnabled();
+//    }
 
-    /**
-     * Returns status of time limiting
-     *
-     * @return true if timelimiting is enabled
-     */
-    final public boolean isTimeLimitEnabled() {
-        if (timeLimitTimer == null) {
-            return false;
-        }
-        return timeLimitTimer.isEnabled();
-    }
-
-    /**
-     * Returns true if timeLimitTimer is timed out and timeLimitEnabled
-     */
-    final public boolean isTimedOut() {
-        if (timeLimitTimer == null) {
-            return false;
-        }
-
-        return timeLimitTimer.isTimedOut();
-    }
+//    /**
+//     * Returns true if timeLimitTimer is timed out and timeLimitEnabled
+//     */
+//    final public boolean isTimedOut() {
+//        if (timeLimitTimer == null) {
+//            return false;
+//        }
+//
+//        return timeLimitTimer.isTimedOut();
+//    }
 
     /**
      * Returns the element data.

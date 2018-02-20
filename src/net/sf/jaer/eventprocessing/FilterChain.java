@@ -135,8 +135,6 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         timeLimitMs = chip.getPrefs().getInt("FilterChain.timeLimitMs", 10);
         updateIntervalMs = chip.getPrefs().getFloat("FilterChain.updateIntervalMs", 10);
 
-        setTimeLimitEnabled(timeLimitEnabled);
-        setTimeLimitMs(timeLimitMs);
         timedOut = false;
         try {
             processingMode = ProcessingMode.valueOf(
@@ -183,16 +181,16 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             return in;
         }
         EventPacket out;
-        if (timeLimitEnabled) {
-            if (chip.getAeViewer().isPaused()) {
-                in.setTimeLimitEnabled(false);
-            } else {
-                in.setTimeLimitEnabled(true);
-                in.restartTimeLimiter(timeLimitMs);
-            }
-        } else {
-            in.setTimeLimitEnabled(false);
-        }
+//        if (timeLimitEnabled) {
+//            if (chip.getAeViewer().isPaused()) {
+//                in.setTimeLimitEnabled(false);
+//            } else {
+//                in.setTimeLimitEnabled(true);
+//                in.restartTimeLimiter(timeLimitMs);
+//            }
+//        } else {
+//            in.setTimeLimitEnabled(false);
+//        }
         if (resetPerformanceMeasurementStatistics) {
             for (EventFilter2D f : this) {
                 if (f.perf != null && f.isFilterEnabled()) { // check to reset performance meter
@@ -270,27 +268,6 @@ public class FilterChain extends LinkedList<EventFilter2D> {
 
     public boolean isTimeLimitEnabled() {
         return timeLimitEnabled;
-    }
-
-    /**
-     * Enables/disables limit on processing time for packets.
-     */
-    public void setTimeLimitEnabled(boolean timeLimitEnabled) {
-        this.timeLimitEnabled = timeLimitEnabled;
-        chip.getPrefs().putBoolean("FilterChain.timeLimitEnabled", timeLimitEnabled);
-    }
-
-    public int getTimeLimitMs() {
-        return timeLimitMs;
-    }
-
-    /**
-     * Set the time limit in ms for packet processing if time limiting is
-     * enabled.
-     */
-    public void setTimeLimitMs(int timeLimitMs) {
-        this.timeLimitMs = timeLimitMs;
-        chip.getPrefs().putInt("FilterChain.timeLimitMs", timeLimitMs);
     }
 
     public ProcessingMode getProcessingMode() {

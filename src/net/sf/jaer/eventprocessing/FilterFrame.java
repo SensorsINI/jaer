@@ -161,14 +161,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         }
     }
 
-    private void setSetTimeLimitMenuItem() {
-        setTimeLimitMenuItem.setText(getTimeLimitMenuItemText());
-    }
-
-    private String getTimeLimitMenuItemText() {
-        return String.format("Set time limit. (Currently %d ms)", filterChain.getTimeLimitMs());
-    }
-
     private void prefsEditorMenuItemActionPerformed(ActionEvent evt) {
         // only added to handle leftover prefs editor that was removed by Luca without removing from netbeans FORM
     }
@@ -210,8 +202,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         measurePerformanceCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         resetPerformanceMeasurementMI = new javax.swing.JMenuItem();
         jSeparator3 = new javax.swing.JSeparator();
-        limitTimeCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        setTimeLimitMenuItem = new javax.swing.JMenuItem();
         jSeparator4 = new javax.swing.JSeparator();
         restoreFilterEnabledStateCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         helpMenu = new javax.swing.JMenu();
@@ -435,25 +425,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         });
         modeMenu.add(resetPerformanceMeasurementMI);
         modeMenu.add(jSeparator3);
-
-        limitTimeCheckBoxMenuItem.setMnemonic('l');
-        limitTimeCheckBoxMenuItem.setSelected(filterChain.isTimeLimitEnabled());
-        limitTimeCheckBoxMenuItem.setText("Limit processing time");
-        limitTimeCheckBoxMenuItem.setToolTipText("Filters that implement limiting will be aborted if they take too longer than the limit time");
-        limitTimeCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                limitTimeCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
-        modeMenu.add(limitTimeCheckBoxMenuItem);
-
-        setTimeLimitMenuItem.setText(getTimeLimitMenuItemText());
-        setTimeLimitMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                setTimeLimitMenuItemActionPerformed(evt);
-            }
-        });
-        modeMenu.add(setTimeLimitMenuItem);
         modeMenu.add(jSeparator4);
 
         restoreFilterEnabledStateCheckBoxMenuItem.setText("Restore filter enabled state");
@@ -520,21 +491,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 	private void disableFilteringToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_disableFilteringToggleButtonActionPerformed
             filterChain.setFilteringEnabled(!disableFilteringToggleButton.isSelected());
 	}//GEN-LAST:event_disableFilteringToggleButtonActionPerformed
-
-	private void setTimeLimitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setTimeLimitMenuItemActionPerformed
-            String limitString = JOptionPane.showInputDialog("Choose new time limit in ms", filterChain.getTimeLimitMs());
-            try {
-                int val = Integer.valueOf(limitString);
-                filterChain.setTimeLimitMs(val);
-                setSetTimeLimitMenuItem();
-            } catch (Exception e) {
-                log.warning(e.getMessage());
-            }
-	}//GEN-LAST:event_setTimeLimitMenuItemActionPerformed
-
-	private void limitTimeCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_limitTimeCheckBoxMenuItemActionPerformed
-            filterChain.setTimeLimitEnabled(limitTimeCheckBoxMenuItem.isSelected());
-	}//GEN-LAST:event_limitTimeCheckBoxMenuItemActionPerformed
 
 	private void customizeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_customizeMenuItemActionPerformed
             filterChain.customize();
@@ -957,7 +913,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JSeparator jSeparator4;
     private javax.swing.JMenuItem jaerFilterHelpMI;
     private javax.swing.JButton jbuttonSelectFilt;
-    private javax.swing.JCheckBoxMenuItem limitTimeCheckBoxMenuItem;
     private javax.swing.JMenuItem loadMenuItem;
     private javax.swing.JMenuBar mainMenuBar;
     private javax.swing.JCheckBoxMenuItem measurePerformanceCheckBoxMenuItem;
@@ -970,7 +925,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JCheckBoxMenuItem restoreFilterEnabledStateCheckBoxMenuItem;
     private javax.swing.JMenuItem saveAsMenuItem;
     private javax.swing.JScrollPane scrollPane;
-    private javax.swing.JMenuItem setTimeLimitMenuItem;
     private javax.swing.JToolBar toolBar1;
     private javax.swing.JTextField updateIntervalField;
     private javax.swing.JLabel updateIntervalLabel;

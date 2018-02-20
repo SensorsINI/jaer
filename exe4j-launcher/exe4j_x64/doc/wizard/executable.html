@@ -1,3 +1,4 @@
+<<<<<<< OURS
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>exe4j Wizard - Step 4: Configure Executable</title><link rel="stylesheet" type="text/css" href="../standalone/help_common.css"><link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
 helpId = 'exe4j.wizard.executable';
 indexUrl= '../index.html';
@@ -86,3 +87,161 @@ indexUrl= '../index.html';
         </li></ul>
     </td></tr></table>
   </div><br><hr><div class="header-container"><div class="header-nav"><div class="nav-wrapper"><a class="nav-left" href="../wizard/application.html" title="key: j"></a></div><div class="nav-wrapper"><a class="nav-up" href="../wizard/$folder$.html" title="key: u"></a></div><div class="nav-wrapper"><a class="nav-right" href="../wizard/java.html" title="key: k"></a></div></div></div></body></html>
+=======
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+      <title>exe4j Wizard - Step 4: Configure Executable</title>
+      <link rel="stylesheet" type="text/css" href="../standalone/help_common.css">
+      <link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
+helpId = 'exe4j.wizard.executable';
+indexUrl= '../index.html';
+</script><script type="text/javascript" src="../standalone/jquery.min.js"></script><script type="text/javascript" src="../standalone/tracking.js"></script></head>
+   <body>
+      <div class="header-container">
+         <div class="header-title">
+            <h2>Exe4j Wizard - Step 4: Configure Executable</h2>
+         </div>
+         <div class="header-nav">
+            <div class="nav-wrapper"><a class="nav-left" href="../wizard/application.html" title="key: j"></a></div>
+            <div class="nav-wrapper"><a class="nav-up" href="../wizard/$folder$.html" title="key: u"></a></div>
+            <div class="nav-wrapper"><a class="nav-right" href="../wizard/java.html" title="key: k"></a></div>
+         </div>
+      </div>
+      <hr>
+      <div class="spacer"></div>
+      <div>
+         
+         <p>
+            In this step of the <a href="../wizard/wizard.html">exe4j wizard</a>, you enter 
+            the properties of the executable that is to be generated.
+            
+         </p>
+         
+         <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex">
+            <tr>
+               <td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;
+               </td>
+               <td>
+                  
+                  The following properties of the executable can be edited in the 
+                  <tt>Executable</tt> section of this step:
+                  
+                  
+                  <ul>
+                     <li><span class="sectiontitle">Executable type</span><br>
+                        Executables created by exe4j can be either GUI or console applications:
+                        
+                        <ul>
+                           <li><span class="sectiontitle">GUI application</span><br>
+                              There is no terminal window associated with a GUI application.
+                              If stdout and stderr are not redirected (see the 
+                              <a href="../wizard/redirection.html">redirection advanced step</a>),
+                              both streams are inaccessible for the user. This corresponds to the behavior of
+                              <tt>javaw.exe</tt>.
+                              
+                              <p>
+                                 If you launch the executable from a console window, a GUI application
+                                 can neither write to or read from that console window. Sometimes it might
+                                 be useful to use the console, for example for seeing debug output or
+                                 for simulating a console mode with the same executable. In this
+                                 case you can select the <b>Allow -console parameter</b> check box. If the user
+                                 supplies the -console parameter when starting the launcher from a console window,
+                                 the launcher will try to acquire the console window and redirect stdout and stderr
+                                 to it. If you redirect stderr and stdout in the
+                                 <a href="../wizard/redirection.html">redirection settings</a>, that output
+                                 will not be written to the console.
+                                 
+                              </p>
+                              
+                           </li>
+                           <li><span class="sectiontitle">Console application</span><br>
+                              A console application has an associated terminal window.
+                              If a console application is opened from the Windows explorer, a new terminal
+                              window is opened.
+                              If stdout and stderr are not redirected (see the
+                              <a href="../wizard/redirection.html">redirection advanced step</a>),
+                              both streams are printed on the terminal window. This corresponds to the behavior
+                              of
+                              <tt>java.exe</tt>.
+                              
+                           </li>
+                           <li><span class="sectiontitle">Service</span><br>
+                              A Windows service runs independently of logged in users and can be run even
+                              if no user is logged on. 
+                              The <tt>main</tt> method will be called when the service is started.               
+                              
+                              <p>
+                                 To handle the shutdown of the service, you can use the 
+                                 <tt>Runtime.addShutdownHook()</tt> method to register a thread
+                                 that will be executed before the JVM is terminated.
+                                 
+                              </p>
+                              
+                              <p>
+                                 For information on how services are installed or uninstalled, please see the
+                                 help on <a href="../wizard/service.html">service start options</a>.
+                                 
+                              </p>
+                              
+                           </li>
+                        </ul>
+                        
+                     </li>
+                     <li><span class="sectiontitle">Executable name</span><br>
+                        Enter the desired name of the executable without the trailing <tt>.exe</tt>.
+                        
+                     </li>
+                     <li><span class="sectiontitle">Icon file</span><br>
+                        If you would like a custom icon to be compiled into your executable, select
+                        the <tt>Icon file</tt> checkbox and choose an icon file
+                        (extension <tt>*.ico</tt>).
+                        
+                     </li>
+                     <li><span class="sectiontitle">Working directory</span><br>
+                        For some applications (especially GUI applications) you might want to change 
+                        the working directory to a specific directory relative to the executable,
+                        for example to read config files that are in a fixed location. To do so,
+                        please select the <tt>Change working directory to:</tt> checkbox and 
+                        enter a directory relative to the executable in the adjacent text field.
+                        To change the current directory to the same directory where the executable is 
+                        located, please enter a single dot.
+                        
+                     </li>
+                     <li><span class="sectiontitle">Allow only a single running instance of the application</span><br>
+                        If you select this checkbox, the generated exe4j executable can only be started
+                        once. Subsequent user invocations will bring the application to the front.
+                        In the <code>Controller</code> class of the
+                        <a href="../splash/singleInstance.html">exe4j launcher API</a>
+                        you can register a startup handler to receive the command line parameters.
+                        In this way, you can handle file associations with a single application instance.
+                        
+                     </li>
+                     <li><span class="sectiontitle">Fail if an exception in the main thread is thrown</span><br>
+                        Executables created by exe4j can monitor whether the main method
+                        throws an exception and show an error dialog in that case.
+                        This provides a generic startup error notification facility for the developer
+                        that handles a range of errors that would otherwise not be notified correctly.
+                        For example, if an uncaught exception is thrown during application startup,
+                        a GUI application might simply hang, leaving the user in the dark about the
+                        reasons for the malfunction. With the error message provided by the exe4j
+                        executable, reasons for startup errors are found much more easily.
+                        
+                     </li>
+                  </ul>
+                  
+               </td>
+            </tr>
+         </table>
+         
+      </div><br><hr>
+      <div class="header-container">
+         <div class="header-nav">
+            <div class="nav-wrapper"><a class="nav-left" href="../wizard/application.html" title="key: j"></a></div>
+            <div class="nav-wrapper"><a class="nav-up" href="../wizard/$folder$.html" title="key: u"></a></div>
+            <div class="nav-wrapper"><a class="nav-right" href="../wizard/java.html" title="key: k"></a></div>
+         </div>
+      </div>
+   </body>
+</html>
+>>>>>>> THEIRS
