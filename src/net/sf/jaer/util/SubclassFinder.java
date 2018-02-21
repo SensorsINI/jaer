@@ -183,7 +183,7 @@ public class SubclassFinder {
         }
 
         @Override
-        protected void process(List<ClassNameWithDescriptionAndDevelopmentStatus> list) {
+        protected void process(List<ClassNameWithDescriptionAndDevelopmentStatus> list) { // publish comes here
             if(list==null || tableModel==null) return;
             for (ClassNameWithDescriptionAndDevelopmentStatus c : list) {
                 tableModel.addElement(c);
