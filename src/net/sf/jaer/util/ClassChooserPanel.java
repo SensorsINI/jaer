@@ -32,6 +32,8 @@ import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.SwingWorker;
+import javax.swing.event.ListDataEvent;
+import javax.swing.event.ListDataListener;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -112,6 +114,25 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         }
     }
 
+    private class AddAction extends AbstractAction {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            Object o = availClassJList.getSelectedValue();
+            if (o == null) {
+                return;
+            }
+            if (containsClass(chosenClassesListModel, o)) {
+                log.warning("In adding class to chosen class list, chosen classes already contains " + o.toString() + "; ignoring");
+                return;
+            }
+            int last = chosenClassesListModel.getSize() - 1;
+            chosenClassesListModel.add(last + 1, o);
+            classJList.setSelectedIndex(last + 1);
+        }
+
+    };
+
     /**
      * Creates new form ClassChooserPanel
      *
@@ -135,29 +156,23 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             availClassesListModel = new FilterableListModel(availAllList);
             availClassJList.setModel(availClassesListModel);
             availClassJList.setCellRenderer(new MyCellRenderer());
-            Action addAction = new AbstractAction() {
+
+            addAction(availClassJList, new AddAction());
+            filterAvailable(); // user typed while list is populated
+            availClassesListModel.addListDataListener(new ListDataListener() {
+                @Override
+                public void intervalAdded(ListDataEvent lde) {
+                    filterAvailable();
+                }
 
                 @Override
-                public void actionPerformed(ActionEvent e) {
-                    Object o = availClassJList.getSelectedValue();
-                    if (o == null) {
-                        return;
-                    }
-                    if (containsClass(chosenClassesListModel, o)) {
-                        log.warning("list already contains " + o.toString() + "; ignoring");
-                        return;
-                    }
-                    int last = chosenClassesListModel.getSize() - 1;
-                    chosenClassesListModel.add(last + 1, o);
-                    classJList.setSelectedIndex(last + 1);
+                public void intervalRemoved(ListDataEvent lde) {
                 }
-            };
-            addAction(availClassJList, addAction);
-            if (!availFilterTextField.getText().isEmpty()) {
-                // user started to select a class before list was populated
-                String s = availFilterTextField.getText();
-                availClassesListModel.filter(s);
-            }
+
+                @Override
+                public void contentsChanged(ListDataEvent lde) {
+                }
+            });
         } catch (Exception ex) {
             Logger.getLogger(ClassChooserPanel.class.getName()).log(Level.SEVERE, null, ex);
         } finally {
@@ -180,41 +195,21 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                         availClassesListModel = new FilterableListModel(availAllList);
                         availClassJList.setModel(availClassesListModel);
                         availClassJList.setCellRenderer(new MyCellRenderer());
-                        Action addAction = new AbstractAction() {
 
-                            @Override
-                            public void actionPerformed(ActionEvent e) {
-                                Object o = availClassJList.getSelectedValue();
-                                if (o == null) {
-                                    return;
-                                }
-                                if (containsClass(chosenClassesListModel, o)) {
-                                    log.warning("chosen classes already contains " + o.toString() + "; ignoring");
-                                    return;
-                                }
-                                int last = chosenClassesListModel.getSize() - 1;
-                                chosenClassesListModel.add(last + 1, o);
-                                classJList.setSelectedIndex(last + 1);
-                            }
-
-                        };
-                        addAction(availClassJList, addAction);
-                        if (!availFilterTextField.getText().isEmpty()) {
-                            // user started to select a class before list was populated
-                            String s = availFilterTextField.getText();
-                            availClassesListModel.filter(s);
-                        }
+                        addAction(availClassJList, new AddAction());
+                        filterAvailable();
                     } catch (Exception ex) {
                         Logger.getLogger(ClassChooserPanel.class.getName()).log(Level.SEVERE, null, ex);
                     } finally {
                         setCursor(Cursor.getDefaultCursor());
                     }
-                } else if ((evt != null) && (evt.getNewValue() instanceof Integer)) {
-                    int progress = (Integer) evt.getNewValue();
-                    String s = String.format("Scanning %d/100...", progress);
-                    tmpList.removeAllElements();
-                    tmpList.addElement(s);
-                }
+                } 
+//                else if ((evt != null) && (evt.getNewValue() instanceof Integer)) {
+//                    int progress = (Integer) evt.getNewValue();
+//                    String s = String.format("Scanning %d/100...", progress);
+//                    tmpList.removeAllElements();
+//                    tmpList.addElement(s);
+//                }
             }
         });
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
@@ -251,11 +246,11 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
     private boolean containsClass(FilterableListModel model, Object obj) {
         for (Object o : model.toArray()) {
-            if (o instanceof String && ((String)o)
-                    .equals(((ClassNameWithDescriptionAndDevelopmentStatus)obj).getClassName())) {
+            if (o instanceof String && ((String) o)
+                    .equals(((ClassNameWithDescriptionAndDevelopmentStatus) obj).getClassName())) {
                 return true;
-            }else if (o instanceof ClassNameWithDescriptionAndDevelopmentStatus && ((ClassNameWithDescriptionAndDevelopmentStatus)o).getClassName()
-                    .equals(((ClassNameWithDescriptionAndDevelopmentStatus)obj).getClassName())) {
+            } else if (o instanceof ClassNameWithDescriptionAndDevelopmentStatus && ((ClassNameWithDescriptionAndDevelopmentStatus) o).getClassName()
+                    .equals(((ClassNameWithDescriptionAndDevelopmentStatus) obj).getClassName())) {
                 return true;
             }
         }
@@ -840,22 +835,20 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     }//GEN-LAST:event_clearFilterButActionPerformed
 
     private void availFilterTextFieldKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_availFilterTextFieldKeyTyped
-        if (availClassesListModel == null) {
-            return;
-        }
-
-        String s = availFilterTextField.getText();
-        availClassesListModel.filter(s);
+        filterAvailable();
     }//GEN-LAST:event_availFilterTextFieldKeyTyped
 
     private void availFilterTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_availFilterTextFieldActionPerformed
+        filterAvailable();
+    }//GEN-LAST:event_availFilterTextFieldActionPerformed
+
+    private void filterAvailable() {
         if (availClassesListModel == null) {
             return;
         }
-
         String s = availFilterTextField.getText();
         availClassesListModel.filter(s);
-    }//GEN-LAST:event_availFilterTextFieldActionPerformed
+    }
 
     private void includeDescriptionCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_includeDescriptionCBActionPerformed
         String s = availFilterTextField.getText();
