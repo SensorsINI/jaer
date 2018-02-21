@@ -332,8 +332,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         }
                         int dx_init = (result == null || result.sadValue == Float.MAX_VALUE) ? 0 : ( result.dx >> scale );
                         int dy_init = (result == null || result.sadValue == Float.MAX_VALUE) ? 0 : ( result.dy >> scale );
-                        dx_init = 0;
-                        dy_init = 0;
+//                        dx_init = 0;
+//                        dy_init = 0;
                         sliceResult = minSADDistance(ein.x, ein.y, dx_init, dy_init, slices[sliceIndex(1)], slices[sliceIndex(2)], scale); // from ref slice to past slice k+1, using scale 0,1,....
 //                        sliceSummedSADValues[sliceIndex(scale + 2)] += sliceResult.sadValue; // accumulate SAD for this past slice
 //                        sliceSummedSADCounts[sliceIndex(scale + 2)]++; // accumulate SAD count for this past slice
