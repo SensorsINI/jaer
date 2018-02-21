@@ -96,7 +96,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
      */
     public void propertyChange(PropertyChangeEvent evt) {
         try {
-            if (evt.getSource() instanceof AEFileInputStream) {
+            if (evt.getSource() instanceof AEFileInputStreamInterface) {
                 if (evt.getPropertyName().equals(AEInputStream.EVENT_POSITION)) { // comes from AEFileInputStream
                     sliderDontProcess = true;
                     // note this cool semaphore/flag trick to avoid processing the
