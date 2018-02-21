@@ -78,8 +78,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * The computed average possible match distance from 0 motion
      */
     protected float avgPossibleMatchDistance;
-    private static final int MIN_SLICE_EVENT_COUNT_FULL_FRAME = 50;
-    private static final int MAX_SLICE_EVENT_COUNT_FULL_FRAME = 100000;
+    private static final int MIN_SLICE_EVENT_COUNT_FULL_FRAME = 1000;
+    private static final int MAX_SLICE_EVENT_COUNT_FULL_FRAME = 1000000;
 
 //    private int sx, sy;
     private int currentSliceIdx = 0; // the slice we are currently filling with events
@@ -163,6 +163,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     // counting events into subsampled areas, when count exceeds the threshold in any area, the slices are rotated
     private int areaEventNumberSubsampling = getInt("areaEventNumberSubsampling", 5);
     private int[][] areaCounts = null;
+    private int numAreas = 1;
+
     private boolean areaCountExceeded = false;
 
     // nongreedy flow evaluation
@@ -532,7 +534,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 // compute error signal.
 // If err<0 it means the average match distance is larger than target avg match distance, so we need to reduce slice duration
 // If err>0, it means the avg match distance is too short, so increse time slice
-            final float err = avgMatchDistance / (avgPossibleMatchDistance / 2); // use target that is smaller than average possible to bound excursions to large slices better
+            final float err = avgMatchDistance / (avgPossibleMatchDistance); // use target that is smaller than average possible to bound excursions to large slices better
 //            final float err = avgPossibleMatchDistance / 2 - avgMatchDistance; // use target that is smaller than average possible to bound excursions to large slices better
 //                final float err = ((searchDistance << (numScales - 1)) / 2) - avgMatchDistance;
 //                final float lastErr = searchDistance / 2 - lastHistStdDev;
@@ -572,10 +574,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     if (adapativeSliceDurationUseProportionalControl) { // proportional
                         setSliceEventCount(Math.round((1 / (1 + (err - 1) * adapativeSliceDurationProportionalErrorGain)) * sliceEventCount));
                     } else {
-                        if (errSign < 0 && sliceDeltaTimeUs(2) < getSliceDurationUs()) { // don't increase slice past the sliceDurationUs limit
+                        if (errSign < 0) { // match distance too short, increase duration
                             // match too short, increase count
                             setSliceEventCount(Math.round(sliceEventCount * (1 + adapativeSliceDurationProportionalErrorGain)));
-                        } else {
+                        } else if (errSign > 0) { // match too long, decrease duration
                             setSliceEventCount(Math.round(sliceEventCount * (1 - adapativeSliceDurationProportionalErrorGain)));
                         }
                     }
@@ -1915,11 +1917,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param sliceEventCount the sliceEventCount to set
      */
     public void setSliceEventCount(int sliceEventCount) {
-        int old = this.sliceEventCount;
-        if (sliceEventCount < MIN_SLICE_EVENT_COUNT_FULL_FRAME) {
-            sliceEventCount = MIN_SLICE_EVENT_COUNT_FULL_FRAME;
-        } else if (sliceEventCount > MAX_SLICE_EVENT_COUNT_FULL_FRAME) {
-            sliceEventCount = MAX_SLICE_EVENT_COUNT_FULL_FRAME;
+        final int div=sliceMethod==SliceMethod.AreaEventNumber? numAreas:1;
+        final int old = this.sliceEventCount;
+        if (sliceEventCount < MIN_SLICE_EVENT_COUNT_FULL_FRAME/div) {
+            sliceEventCount = MIN_SLICE_EVENT_COUNT_FULL_FRAME/div;
+        } else if (sliceEventCount > MAX_SLICE_EVENT_COUNT_FULL_FRAME/div) {
+            sliceEventCount = MAX_SLICE_EVENT_COUNT_FULL_FRAME/div;
         }
         this.sliceEventCount = sliceEventCount;
         putInt("sliceEventCount", sliceEventCount);
@@ -2564,7 +2567,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             return;
         }
         if (areaCounts == null || areaCounts.length != 1 + (subSizeX >> areaEventNumberSubsampling)) {
-            areaCounts = new int[1 + (subSizeX >> areaEventNumberSubsampling)][1 + (subSizeY >> areaEventNumberSubsampling)];
+            int nax = 1 + (subSizeX >> areaEventNumberSubsampling), nay = 1 + (subSizeY >> areaEventNumberSubsampling);
+            numAreas = nax * nay;
+            areaCounts = new int[nax][nay];
         } else {
             for (int[] i : areaCounts) {
                 Arrays.fill(i, 0);
@@ -2678,11 +2683,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     /**
-     * @param adapativeSliceDurationUseProportionalControl the adapativeSliceDurationUseProportionalControl to set
+     * @param adapativeSliceDurationUseProportionalControl the
+     * adapativeSliceDurationUseProportionalControl to set
      */
     public void setAdapativeSliceDurationUseProportionalControl(boolean adapativeSliceDurationUseProportionalControl) {
         this.adapativeSliceDurationUseProportionalControl = adapativeSliceDurationUseProportionalControl;
-        putBoolean("adapativeSliceDurationUseProportionalControl",adapativeSliceDurationUseProportionalControl);
+        putBoolean("adapativeSliceDurationUseProportionalControl", adapativeSliceDurationUseProportionalControl);
     }
 
 }
