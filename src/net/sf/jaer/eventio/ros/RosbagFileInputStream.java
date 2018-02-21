@@ -107,8 +107,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private FileChannel channel = null;
 
 //    private static final String[] TOPICS = {"/dvs/events"};\
-    private static final String TOPIC_HEADER = "/dvs/", TOPIC_EVENTS = "events", TOPIC_IMAGE = "image_raw", TOPIC_IMU = "imu", TOPIC_EXPOSURE = "exposure";
-    private static String[] STANARD_TOPICS = {TOPIC_HEADER + TOPIC_EVENTS, TOPIC_HEADER + TOPIC_IMAGE, TOPIC_HEADER + TOPIC_IMU, TOPIC_HEADER + TOPIC_EXPOSURE};
+    private static final String RPG_TOPIC_HEADER = "/dvs/", MVSEC_TOPIC_HEADER="/davis/left/"; // TODO arbitrarily choose left camera for MVSEC for now
+    private static final String TOPIC_EVENTS = "events", TOPIC_IMAGE = "image_raw", TOPIC_IMU = "imu", TOPIC_EXPOSURE = "exposure";
+    private static String[] STANARD_TOPICS = {TOPIC_EVENTS, TOPIC_IMAGE, TOPIC_IMU, TOPIC_EXPOSURE};
 //    private static String[] TOPICS = {TOPIC_HEADER + TOPIC_EVENTS, TOPIC_HEADER + TOPIC_IMAGE};
     private ArrayList<String> topicList = new ArrayList();
     private ArrayList<String> topicFieldNames = new ArrayList();
@@ -120,6 +121,21 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     private boolean nonMonotonicTimestampExceptionsChecked = true;
     private boolean nonMonotonicTimestampDetected = false; // flag set by nonmonotonic timestamp if detection enabled
+
+    private enum RosbagFileType {
+        RPG(RPG_TOPIC_HEADER), MVSEC(MVSEC_TOPIC_HEADER), Unknown("???");
+        private String header;
+
+        private RosbagFileType(String header) {
+            this.header=header;
+        }
+
+    } 
+    
+    // two types of topics depending on format of rosbag
+    // RPG is from https://github.com/uzh-rpg/rpg_dvs_ros/tree/master/dvs_msgs/msg
+    // MVSEC is from https://daniilidis-group.github.io/mvsec/data_format/
+    RosbagFileType rosbagFileType = RosbagFileType.Unknown;
 
     /**
      * Interval for logging warnings about nonmonotonic timestamps.
@@ -149,10 +165,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         this.eventPacket = new ApsDvsEventPacket<>(ApsDvsEvent.class);
         setFile(f);
         this.chip = chip;
-        for (String s : STANARD_TOPICS) {
-            topicList.add(s);
-            topicFieldNames.add(s.substring(s.lastIndexOf("/") + 1)); // strip off header to get to field name for the ArrayType
-        }
+
         log.info("reading rosbag file " + f + " for chip " + chip);
         bagFile = BagReader.readFile(file);
         StringBuilder sb = new StringBuilder("Bagfile information:\n");
@@ -161,11 +174,23 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                     + " msgs \t: " + topic.getMessageType() + " \t"
                     + (topic.getConnectionCount() > 1 ? ("(" + topic.getConnectionCount() + " connections)") : "")
                     + "\n");
+            if (topic.getName().contains(RosbagFileType.MVSEC.header)) {
+                rosbagFileType = RosbagFileType.MVSEC;
+            } else if (topic.getName().contains(RosbagFileType.RPG.header)) {
+                rosbagFileType = RosbagFileType.RPG;
+            }
         }
-        sb.append("duration: " + bagFile.getDurationS() + "s\n");
+        sb.append("Duration: " + bagFile.getDurationS() + "s\n");
         sb.append("Chunks: " + bagFile.getChunks().size() + "\n");
         sb.append("Num messages: " + bagFile.getMessageCount() + "\n");
+        sb.append("File type is detected as "+rosbagFileType);
         log.info(sb.toString());
+
+        for (String s : STANARD_TOPICS) {
+            String topic=rosbagFileType.header+s;
+            topicList.add(topic);
+            topicFieldNames.add(topic.substring(topic.lastIndexOf("/") + 1)); // strip off header to get to field name for the ArrayType
+        }
 
         generateMessageIndexes(progressMonitor);
     }
@@ -622,7 +647,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     @Override
     synchronized public void rewind() throws IOException {
         lastMsgPosition = 0;
-        currentStartTimestamp=(int)firstTimestamp;
+        currentStartTimestamp = (int) firstTimestamp;
         largestTimestamp = Integer.MIN_VALUE;
         aePacketRawBuffered.clear();
     }
