@@ -386,7 +386,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     public class DavisEventExtractor extends RetinaExtractor {
 
         protected static final long serialVersionUID = 3890914720599660376L;
-        protected static final int WARNING_COUNT_DIVIDER = 10000;
+        protected static final int WARNING_COUNT_DIVIDER = 100000;
+        protected static final int WARNING_COUNT_MAX = 100;
         protected int warningCount = 0;
 
         protected static final int IMU_WARNING_INTERVAL = 1000;
@@ -529,7 +530,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                             break;
 
                         default:
-                            if ((warningCount < 10) || ((warningCount % DavisEventExtractor.WARNING_COUNT_DIVIDER) == 0)) {
+                            if ((warningCount < WARNING_COUNT_MAX) || ((warningCount % DavisEventExtractor.WARNING_COUNT_DIVIDER) == 0)) {
                                 Chip.log.warning(
                                         "Event with unknown readout cycle was sent out! You might be reading a file that had the deprecated C readout mode enabled.");
                             }
