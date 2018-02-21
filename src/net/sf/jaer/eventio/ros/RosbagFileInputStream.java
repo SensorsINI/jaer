@@ -503,11 +503,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             }
         } catch (UninitializedFieldException ex) {
             Logger.getLogger(ExampleRosBagReader.class.getName()).log(Level.SEVERE, null, ex);
-            return null;
-        } catch (BagReaderException bre) {
-            log.info(bre.toString());
-            return null;
-        }
+            throw new BagReaderException(ex);
+        } 
         AEPacketRaw aePacketRawCollecting = chip.getEventExtractor().reconstructRawPacket(eventPacket);
         fireInitPropertyChange();
         return aePacketRawCollecting;
