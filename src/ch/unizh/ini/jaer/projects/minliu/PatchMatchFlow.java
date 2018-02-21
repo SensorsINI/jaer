@@ -112,7 +112,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private boolean useSubsampling = getBoolean("useSubsampling", false);
     private int adaptiveSliceDurationMinVectorsToControl = getInt("adaptiveSliceDurationMinVectorsToControl", 10);
     private boolean showSliceBitMap = false; // Display the bitmaps
-    private float adapativeSliceDurationProportionalErrorGain = 0.05f; // factor by which an error signal on match distance changes slice duration
+    private float adapativeSliceDurationProportionalErrorGain = getFloat("adapativeSliceDurationProportionalErrorGain", 0.05f); // factor by which an error signal on match distance changes slice duration
+    private boolean adapativeSliceDurationUseProportionalControl = getBoolean("adapativeSliceDurationUseProportionalControl", false);
     private int processingTimeLimitMs = getInt("processingTimeLimitMs", 100); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
     private int sliceMaxValue = getInt("sliceMaxValue", 7);
     private boolean rectifyPolarties = getBoolean("rectifyPolarties", false);
@@ -235,6 +236,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 + "<li>AreaEventNumber: slices are fixed event number in any subsampled area defined by areaEventNumberSubsampling"
                 + "<li>ConstantIntegratedFlow: slices are rotated when average speeds times delta time exceeds half the search distance");
         setPropertyTooltip(patchTT, "areaEventNumberSubsampling", "<html>how to subsample total area to count events per unit subsampling blocks for AreaEventNumber method. <p>For example, if areaEventNumberSubsampling=5, <br> then events falling into 32x32 blocks of pixels are counted <br>to determine when they exceed sliceEventCount to make new slice");
+        setPropertyTooltip(patchTT, "adapativeSliceDurationProportionalErrorGain", "gain for proporportional change of duration or slice event number. typically 0.05f for bang-bang, and 0.5f for proportional control");
+        setPropertyTooltip(patchTT, "adapativeSliceDurationUseProportionalControl", "If true, then use proportional error control. If false, use bang-bang control with sign of match distance error");
         setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
         setPropertyTooltip(patchTT, "adaptiveEventSkipping", "enables adaptive event skipping depending on free time left in AEViewer animation loop");
         setPropertyTooltip(patchTT, "adaptiveSliceDuration", "<html>Enables adaptive slice duration using feedback control, <br> based on average match search distance compared with total search distance. <p>If the match distance is too small, increaes duration or event count, and if too far, decreases duration or event count.<p>If using <i>AreaEventNumber</i> slice rotation method, don't increase count if actual duration is already longer than <i>sliceDurationUs</i>");
@@ -529,11 +532,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 // compute error signal.
 // If err<0 it means the average match distance is larger than target avg match distance, so we need to reduce slice duration
 // If err>0, it means the avg match distance is too short, so increse time slice
-            final float err = avgPossibleMatchDistance / 2 - avgMatchDistance; // use target that is smaller than average possible to bound excursions to large slices better
+            final float err = avgMatchDistance / (avgPossibleMatchDistance / 2); // use target that is smaller than average possible to bound excursions to large slices better
+//            final float err = avgPossibleMatchDistance / 2 - avgMatchDistance; // use target that is smaller than average possible to bound excursions to large slices better
 //                final float err = ((searchDistance << (numScales - 1)) / 2) - avgMatchDistance;
 //                final float lastErr = searchDistance / 2 - lastHistStdDev;
 //                final double err = histMean - 1/ (rstHist1D.length * rstHist1D.length);
-            float errSign = Math.signum(err);
+            float errSign = Math.signum(err - 1);
 //                float avgSad2 = sliceSummedSADValues[sliceIndex(4)] / sliceSummedSADCounts[sliceIndex(4)];
 //                float avgSad3 = sliceSummedSADValues[sliceIndex(3)] / sliceSummedSADCounts[sliceIndex(3)];
 //                float errSign = avgSad2 <= avgSad3 ? 1 : -1;
@@ -556,16 +560,24 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 // of the biased-towards-zero search policy that selects the closest match
             switch (sliceMethod) {
                 case ConstantDuration:
-                    int durChange = (int) (errSign * adapativeSliceDurationProportionalErrorGain * sliceDurationUs);
-                    setSliceDurationUs(sliceDurationUs + durChange);
+                    if (adapativeSliceDurationUseProportionalControl) { // proportional
+                        setSliceDurationUs(Math.round((1 / (1 + (err - 1) * adapativeSliceDurationProportionalErrorGain)) * sliceDurationUs));
+                    } else { // bang bang
+                        int durChange = (int) (-errSign * adapativeSliceDurationProportionalErrorGain * sliceDurationUs);
+                        setSliceDurationUs(sliceDurationUs + durChange);
+                    }
                     break;
                 case ConstantEventNumber:
                 case AreaEventNumber:
-                    if (errSign > 0 && sliceDeltaTimeUs(2) < getSliceDurationUs()) { // don't increase slice past the sliceDurationUs limit
-                        // match too short, increase count
-                        setSliceEventCount(Math.round(sliceEventCount * (1 + adapativeSliceDurationProportionalErrorGain)));
+                    if (adapativeSliceDurationUseProportionalControl) { // proportional
+                        setSliceEventCount(Math.round((1 / (1 + (err - 1) * adapativeSliceDurationProportionalErrorGain)) * sliceEventCount));
                     } else {
-                        setSliceEventCount(Math.round(sliceEventCount * (1 - adapativeSliceDurationProportionalErrorGain)));
+                        if (errSign < 0 && sliceDeltaTimeUs(2) < getSliceDurationUs()) { // don't increase slice past the sliceDurationUs limit
+                            // match too short, increase count
+                            setSliceEventCount(Math.round(sliceEventCount * (1 + adapativeSliceDurationProportionalErrorGain)));
+                        } else {
+                            setSliceEventCount(Math.round(sliceEventCount * (1 - adapativeSliceDurationProportionalErrorGain)));
+                        }
                     }
                     break;
                 case ConstantIntegratedFlow:
@@ -2640,6 +2652,37 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     public void setNonGreedyFractionToBeServiced(float nonGreedyFractionToBeServiced) {
         this.nonGreedyFractionToBeServiced = nonGreedyFractionToBeServiced;
         putFloat("nonGreedyFractionToBeServiced", nonGreedyFractionToBeServiced);
+    }
+
+    /**
+     * @return the adapativeSliceDurationProportionalErrorGain
+     */
+    public float getAdapativeSliceDurationProportionalErrorGain() {
+        return adapativeSliceDurationProportionalErrorGain;
+    }
+
+    /**
+     * @param adapativeSliceDurationProportionalErrorGain the
+     * adapativeSliceDurationProportionalErrorGain to set
+     */
+    public void setAdapativeSliceDurationProportionalErrorGain(float adapativeSliceDurationProportionalErrorGain) {
+        this.adapativeSliceDurationProportionalErrorGain = adapativeSliceDurationProportionalErrorGain;
+        putFloat("adapativeSliceDurationProportionalErrorGain", adapativeSliceDurationProportionalErrorGain);
+    }
+
+    /**
+     * @return the adapativeSliceDurationUseProportionalControl
+     */
+    public boolean isAdapativeSliceDurationUseProportionalControl() {
+        return adapativeSliceDurationUseProportionalControl;
+    }
+
+    /**
+     * @param adapativeSliceDurationUseProportionalControl the adapativeSliceDurationUseProportionalControl to set
+     */
+    public void setAdapativeSliceDurationUseProportionalControl(boolean adapativeSliceDurationUseProportionalControl) {
+        this.adapativeSliceDurationUseProportionalControl = adapativeSliceDurationUseProportionalControl;
+        putBoolean("adapativeSliceDurationUseProportionalControl",adapativeSliceDurationUseProportionalControl);
     }
 
 }
