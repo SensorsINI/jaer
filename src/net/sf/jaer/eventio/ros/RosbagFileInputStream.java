@@ -649,13 +649,18 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     synchronized public void rewind() throws IOException {
         nextMessageNumber = 0;
         currentStartTimestamp = (int) firstTimestamp;
+        clearAccumulatedEvents();
+    }
+
+    private void clearAccumulatedEvents() {
         largestTimestamp = Integer.MIN_VALUE;
         aePacketRawBuffered.clear();
     }
 
     @Override
     synchronized public void setFractionalPosition(float frac) {
-        nextMessageNumber = (int) (frac * numMessages);
+        nextMessageNumber = (int) (frac * numMessages); // must also clear partially accumulated events in collecting packet and reset the timestamp
+        clearAccumulatedEvents();
     }
 
     @Override
