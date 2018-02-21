@@ -97,17 +97,16 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     // marks the present read time for packets
     private int currentStartTimestamp;
-    private int currentMessageNumber = 0;
     private final ApsDvsEventPacket<ApsDvsEvent> eventPacket;
     private AEPacketRaw aePacketRawBuffered = new AEPacketRaw(), aePacketRawOutput = new AEPacketRaw(), aePacketRawTmp = new AEPacketRaw();
     private AEPacketRaw emptyPacket = new AEPacketRaw();
-    private int lastMsgPosition = 0, numMessages = 0;
+    private int nextMessageNumber = 0, numMessages = 0;
 
     private long absoluteStartingTimeMs = 0; // in system time since 1970 in ms
     private FileChannel channel = null;
 
 //    private static final String[] TOPICS = {"/dvs/events"};\
-    private static final String RPG_TOPIC_HEADER = "/dvs/", MVSEC_TOPIC_HEADER="/davis/left/"; // TODO arbitrarily choose left camera for MVSEC for now
+    private static final String RPG_TOPIC_HEADER = "/dvs/", MVSEC_TOPIC_HEADER = "/davis/left/"; // TODO arbitrarily choose left camera for MVSEC for now
     private static final String TOPIC_EVENTS = "events", TOPIC_IMAGE = "image_raw", TOPIC_IMU = "imu", TOPIC_EXPOSURE = "exposure";
     private static String[] STANARD_TOPICS = {TOPIC_EVENTS, TOPIC_IMAGE, TOPIC_IMU, TOPIC_EXPOSURE};
 //    private static String[] TOPICS = {TOPIC_HEADER + TOPIC_EVENTS, TOPIC_HEADER + TOPIC_IMAGE};
@@ -127,11 +126,11 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         private String header;
 
         private RosbagFileType(String header) {
-            this.header=header;
+            this.header = header;
         }
 
-    } 
-    
+    }
+
     // two types of topics depending on format of rosbag
     // RPG is from https://github.com/uzh-rpg/rpg_dvs_ros/tree/master/dvs_msgs/msg
     // MVSEC is from https://daniilidis-group.github.io/mvsec/data_format/
@@ -183,11 +182,11 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         sb.append("Duration: " + bagFile.getDurationS() + "s\n");
         sb.append("Chunks: " + bagFile.getChunks().size() + "\n");
         sb.append("Num messages: " + bagFile.getMessageCount() + "\n");
-        sb.append("File type is detected as "+rosbagFileType);
+        sb.append("File type is detected as " + rosbagFileType);
         log.info(sb.toString());
 
         for (String s : STANARD_TOPICS) {
-            String topic=rosbagFileType.header+s;
+            String topic = rosbagFileType.header + s;
             topicList.add(topic);
             topicFieldNames.add(topic.substring(topic.lastIndexOf("/") + 1)); // strip off header to get to field name for the ArrayType
         }
@@ -246,13 +245,13 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     synchronized private MessageWithIndex getNextMsg() throws BagReaderException, EOFException {
         MessageType msg = null;
         try {
-            msg = bagFile.getMessageFromIndex(msgIndexes, lastMsgPosition);
+            msg = bagFile.getMessageFromIndex(msgIndexes, nextMessageNumber);
         } catch (ArrayIndexOutOfBoundsException e) {
             throw new EOFException();
         }
 
-        MessageWithIndex rtn = new MessageWithIndex(msg, msgIndexes.get(lastMsgPosition));
-        lastMsgPosition++;
+        MessageWithIndex rtn = new MessageWithIndex(msg, msgIndexes.get(nextMessageNumber));
+        nextMessageNumber++;
         return rtn;
     }
 
@@ -504,7 +503,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         } catch (UninitializedFieldException ex) {
             Logger.getLogger(ExampleRosBagReader.class.getName()).log(Level.SEVERE, null, ex);
             throw new BagReaderException(ex);
-        } 
+        }
         AEPacketRaw aePacketRawCollecting = chip.getEventExtractor().reconstructRawPacket(eventPacket);
         fireInitPropertyChange();
         return aePacketRawCollecting;
@@ -524,6 +523,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     synchronized public AEPacketRaw readPacketByNumber(int numEventsToRead) throws IOException {
+        int oldPosition = nextMessageNumber;
         if (numEventsToRead < 0) {
             return emptyPacket;
         }
@@ -545,11 +545,14 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         AEPacketRaw tmp = aePacketRawBuffered;
         aePacketRawBuffered = aePacketRawTmp;
         aePacketRawTmp = tmp;
+        getSupport().firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, position());
+
         return aePacketRawOutput;
     }
 
     @Override
     synchronized public AEPacketRaw readPacketByTime(int dt) throws IOException {
+        int oldPosition = nextMessageNumber;
         if (dt < 0) {
             return emptyPacket;
         }
@@ -584,6 +587,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         aePacketRawBuffered = aePacketRawTmp;
         aePacketRawTmp = tmp;
         currentStartTimestamp = newEndTime;
+        getSupport().firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, position());
         return aePacketRawOutput;
     }
 
@@ -633,7 +637,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     public long position() {
-        return currentMessageNumber;
+        return nextMessageNumber;
     }
 
     @Override
@@ -643,7 +647,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     synchronized public void rewind() throws IOException {
-        lastMsgPosition = 0;
+        nextMessageNumber = 0;
         currentStartTimestamp = (int) firstTimestamp;
         largestTimestamp = Integer.MIN_VALUE;
         aePacketRawBuffered.clear();
@@ -651,7 +655,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     synchronized public void setFractionalPosition(float frac) {
-        currentMessageNumber = (int) (frac * numMessages);
+        nextMessageNumber = (int) (frac * numMessages);
     }
 
     @Override
@@ -665,13 +669,13 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     public long setMarkIn() {
-        markIn = currentMessageNumber;
+        markIn = nextMessageNumber;
         return markIn;
     }
 
     @Override
     public long setMarkOut() {
-        markOut = currentMessageNumber;
+        markOut = nextMessageNumber;
         return markOut;
     }
 
@@ -761,7 +765,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     public void setCurrentStartTimestamp(int currentStartTimestamp) {
-        currentMessageNumber = (int) (numMessages * (float) currentStartTimestamp / getDurationUs());
+        nextMessageNumber = (int) (numMessages * (float) currentStartTimestamp / getDurationUs());
     }
 
     @Override
