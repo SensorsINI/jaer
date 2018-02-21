@@ -546,7 +546,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         aePacketRawBuffered = aePacketRawTmp;
         aePacketRawTmp = tmp;
         getSupport().firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, position());
-
+        if (aePacketRawOutput.getNumEvents() > 0) {
+            currentStartTimestamp = aePacketRawOutput.getLastTimestamp();
+        }
         return aePacketRawOutput;
     }
 
@@ -661,6 +663,18 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     synchronized public void setFractionalPosition(float frac) {
         nextMessageNumber = (int) (frac * numMessages); // must also clear partially accumulated events in collecting packet and reset the timestamp
         clearAccumulatedEvents();
+        try {
+            aePacketRawBuffered.append(getNextRawPacket()); // reaching EOF here will throw EOFException
+        } catch (EOFException ex) {
+            try {
+                aePacketRawBuffered.clear();
+                rewind();
+            } catch (IOException ex1) {
+                Logger.getLogger(RosbagFileInputStream.class.getName()).log(Level.SEVERE, null, ex1);
+            }
+        } catch (BagReaderException ex) {
+            Logger.getLogger(RosbagFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     @Override
