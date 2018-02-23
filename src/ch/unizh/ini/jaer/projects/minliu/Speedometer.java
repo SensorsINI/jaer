@@ -12,7 +12,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Font;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
-import java.awt.geom.Rectangle2D;
+import java.awt.geom.Point2D;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -31,21 +31,28 @@ import net.sf.jaer.util.EngineeringFormat;
 public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnotater {
 
     private int currentTimestamp = 0;
-    private TimePoint startPoint, endPoint;
+    protected TimePoint startPoint;
+    protected TimePoint endPoint;
     private boolean firstPoint = true;
-    private float speed = 0, distance, deltaTimestamp;
+    protected float speedPps = 0;
+    protected float vxPps = 0;
+    protected float vyPps = 0;
+    protected Point2D.Float velocityPps = new Point2D.Float();
+    private float distance, deltaTimestamp;
     EngineeringFormat engFmt = new EngineeringFormat();
     TextRenderer textRenderer = null;
     private static final float[] START_COLOR = new float[]{0, 1, 0, 1}, END_COLOR = new float[]{1, 0, 0, 1};
 
     public Speedometer(AEChip chip) {
         super(chip);
+        startPoint = getTimepoint("startPoint");
+        endPoint = getTimepoint("endPoint");
     }
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (in.getSize() > 2) {
-            currentTimestamp = (in.getLastTimestamp() + in.getFirstTimestamp()) / 2;
+             currentTimestamp = (in.getLastTimestamp() + in.getFirstTimestamp()) / 2;
         }
         return in;
     }
@@ -63,25 +70,34 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
     synchronized public void mouseClicked(MouseEvent e) {
         if (e == null || e.getPoint() == null || getMousePixel(e) == null) {
             firstPoint = true;
-            startPoint = null;
-            endPoint = null;
+            setStartPoint(null);
+            setEndPoint(null);
             log.info("reset to first point");
             return; // handle out of bounds, which should reset
         }
         if (firstPoint) {
-            startPoint = new TimePoint(getMousePixel(e), currentTimestamp);
-            endPoint = null;
+            setStartPoint(new TimePoint(getMousePixel(e), currentTimestamp));
+            setEndPoint(null);
         } else {
-            endPoint = new TimePoint(getMousePixel(e), currentTimestamp);
+            setEndPoint(new TimePoint(getMousePixel(e), currentTimestamp));
         }
-        if (startPoint != null && endPoint != null) {
-            distance = (float) (endPoint.distance(startPoint));
-            deltaTimestamp = endPoint.t - startPoint.t;
-            speed = 1e6f * distance / deltaTimestamp;
-            log.info(String.format("%s pps", engFmt.format(speed)));
+        if (getStartPoint() != null && getEndPoint() != null) {
+            distance = (float) (getEndPoint().distance(getStartPoint()));
+            int dx = getEndPoint().x - getStartPoint().x, dy = getEndPoint().y - getStartPoint().y;
+            deltaTimestamp = getEndPoint().t - getStartPoint().t;
+            speedPps = 1e6f * distance / deltaTimestamp;
+            vxPps = 1e6f * dx / deltaTimestamp;
+            vyPps = 1e6f * dy / deltaTimestamp;
+            velocityPps.setLocation(vxPps, vyPps);
+            log.info(String.format("%s pps (vx,vy)=(%s,%s)", engFmt.format(speedPps), engFmt.format(vxPps), engFmt.format(vyPps)));
         }
         firstPoint = !firstPoint;
     }
+    /**
+     * Checks if a preference value exists.
+     * @param key - the filter preference key header is prepended.
+     * @return true if a non-null value exists
+     */
 
     private class TimePoint extends Point {
 
@@ -101,30 +117,32 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
-        if (firstPoint) {
-            setCursorColor(START_COLOR);
-        } else {
-            setCursorColor(END_COLOR);
+        if (isSelected()) {
+            if (firstPoint) {
+                setCursorColor(START_COLOR);
+            } else {
+                setCursorColor(END_COLOR);
+            }
         }
         super.annotate(drawable); //To change body of generated methods, choose Tools | Templates.
         GL2 gl = drawable.getGL().getGL2();
-        drawCursor(gl, startPoint,START_COLOR);
-        drawCursor(gl, endPoint, END_COLOR);
-        if (startPoint != null && endPoint != null) {
+        drawCursor(gl, getStartPoint(), START_COLOR);
+        drawCursor(gl, getEndPoint(), END_COLOR);
+        if (getStartPoint() != null && getEndPoint() != null) {
             gl.glColor3f(1, 1, 0);
             gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(startPoint.x, startPoint.y);
-            gl.glVertex2f(endPoint.x, endPoint.y);
+            gl.glVertex2f(getStartPoint().x, getStartPoint().y);
+            gl.glVertex2f(getEndPoint().x, getEndPoint().y);
             gl.glEnd();
 
             if (textRenderer == null) {
                 textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, false);
             }
             textRenderer.setColor(1, 1, 0, 1);
-            String s = String.format("%s pps (%.0fpix /%ss)", engFmt.format(speed), distance, engFmt.format(1e-6f * deltaTimestamp));
+            String s = String.format("%s pps (%.0fpix /%ss)", engFmt.format(speedPps), distance, engFmt.format(1e-6f * deltaTimestamp));
             textRenderer.beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
 //            Rectangle2D r = textRenderer.getBounds(s);
-            textRenderer.draw(s, (startPoint.x + endPoint.x) / 2, (startPoint.y + endPoint.y) / 2);
+            textRenderer.draw(s, (getStartPoint().x + getEndPoint().x) / 2, (getStartPoint().y + getEndPoint().y) / 2);
             textRenderer.endRendering();
         }
     }
@@ -153,6 +171,78 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
         gl.glVertex2f(+CURSOR_SIZE_CHIP_PIXELS / 2, 0);
         gl.glEnd();
         gl.glPopMatrix();
+    }
+
+    /**
+     * @return the speedPps
+     */
+    public float getSpeedPps() {
+        return speedPps;
+    }
+
+    /**
+     * @return the vxPps
+     */
+    public float getVxPps() {
+        return vxPps;
+    }
+
+    /**
+     * @return the vyPps
+     */
+    public float getVyPps() {
+        return vyPps;
+    }
+
+    public Point2D.Float getVelocity() {
+        return velocityPps;
+    }
+
+    public boolean isMeasurementValid() {
+        return getStartPoint() != null && getEndPoint() != null;
+    }
+
+    /**
+     * @return the startPoint
+     */
+    public TimePoint getStartPoint() {
+        return startPoint;
+    }
+
+    /**
+     * @param startPoint the startPoint to set
+     */
+    public void setStartPoint(TimePoint startPoint) {
+        this.startPoint = startPoint;
+        putTimepoint("startPoint", startPoint);
+    }
+
+    /**
+     * @return the endPoint
+     */
+    public TimePoint getEndPoint() {
+        return endPoint;
+    }
+
+    /**
+     * @param endPoint the endPoint to set
+     */
+    public void setEndPoint(TimePoint endPoint) {
+        this.endPoint = endPoint;
+        putTimepoint("endPoint", endPoint);
+    }
+
+    private void putTimepoint(String pointName, TimePoint timepoint) {
+        if(timepoint==null) return;
+        putInt(pointName+".x",timepoint.x);
+        putInt(pointName+".y",timepoint.y);
+        putInt(pointName+".t",timepoint.t);
+    }
+
+    private TimePoint getTimepoint(String pointName) {
+        if(preferenceExists(pointName+".x")) return null;
+        TimePoint t=new TimePoint(getInt(pointName+".t",0), getInt(pointName+".x",0), getInt(pointName+".y",0));
+        return t;
     }
 
 }
