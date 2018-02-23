@@ -127,11 +127,10 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * chip that we are filtering for
      */
     protected AEChip chip;
-    
+
     // for checkBlend()
     private boolean hasBlendChecked = false;
     private boolean hasBlend = false;
- 
 
     protected PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
 
@@ -402,7 +401,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 
     /**
      * Convenience method to set cursor on containing AEViewer window if it
-     * exists, in case of long running operations. Typical usage is as follows:     
+     * exists, in case of long running operations. Typical usage is as follows:
      * <pre><code>
      * try{
      *     setCursor(new Cursor(Cursor.WAIT_CURSOR));
@@ -416,13 +415,15 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @param cursor
      */
     protected void setCursor(Cursor cursor) {
-        if(chip!=null && chip.getAeViewer()!=null){
+        if (chip != null && chip.getAeViewer() != null) {
             chip.getAeViewer().setCursor(cursor);
         }
     }
 
-    /** Convenience method to check if blending in OpenGL is available, and if so, to turn it on.
-     * 
+    /**
+     * Convenience method to check if blending in OpenGL is available, and if
+     * so, to turn it on.
+     *
      * @param gl the GL2 context
      */
     protected void checkBlend(GL2 gl) {
@@ -606,71 +607,73 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     protected String prefsKeyHeader() {
         return getClass().getSimpleName() + ".";
     }
-    
-    /** Puts initial preference value if the value has not 
-     * already been set to a value different that default value.
-     * This method is intended for subclasses to override the default preferred value. 
-     * For instance, a subclass, or a filter that uses another one,
-     * can select the default starting value, for example if using a 
-     * tracker, the tracker could be configured for to track only a single object.
-     * 
-     * 
+
+    /**
+     * Puts initial preference value if the value has not already been set to a
+     * value different that default value. This method is intended for
+     * subclasses to override the default preferred value. For instance, a
+     * subclass, or a filter that uses another one, can select the default
+     * starting value, for example if using a tracker, the tracker could be
+     * configured for to track only a single object.
+     *
+     *
      * @param key the preference key, e.g. "dt"
      * @param value the initial preference value, e.g. 10
-     * @return true if successful, false if there was already a preference value there that is not the default one.
+     * @return true if successful, false if there was already a preference value
+     * there that is not the default one.
      */
-    public boolean putInitialPreferenceValue(String key, Object value){
-        if(key==null || value==null){
+    public boolean putInitialPreferenceValue(String key, Object value) {
+        if (key == null || value == null) {
             log.warning("null key or value, doing nothing");
             return false;
         }
-        if(value instanceof String){
-            if(!getString(key, (String)value).equals((String)value)){
-                putString(key,(String)value);
+        if (value instanceof String) {
+            if (!getString(key, (String) value).equals((String) value)) {
+                putString(key, (String) value);
                 return true;
-            }else{ 
+            } else {
                 return false;
             }
-        }else if(value instanceof Boolean){
-            if((getBoolean(key, (Boolean)value)!=(Boolean)value)){
-                putBoolean(key,(Boolean)value);
+        } else if (value instanceof Boolean) {
+            if ((getBoolean(key, (Boolean) value) != (Boolean) value)) {
+                putBoolean(key, (Boolean) value);
                 return true;
-            }else{ 
+            } else {
                 return false;
             }
-        }else if(value instanceof Integer){
-            if((getInt(key, (Integer)value)!=(Integer)value)){
-                putInt(key,(Integer)value);
+        } else if (value instanceof Integer) {
+            if ((getInt(key, (Integer) value) != (Integer) value)) {
+                putInt(key, (Integer) value);
                 return true;
-            }else{ 
+            } else {
                 return false;
             }
-        }else if(value instanceof Long){
-            if((getLong(key, (Long)value)!=(Long)value)){
-                putLong(key,(Long)value);
+        } else if (value instanceof Long) {
+            if ((getLong(key, (Long) value) != (Long) value)) {
+                putLong(key, (Long) value);
                 return true;
-            }else{ 
+            } else {
                 return false;
             }
-        }else if(value instanceof Float){
-            if((getFloat(key, (Float)value)!=(Float)value)){
-                putFloat(key,(Float)value);
+        } else if (value instanceof Float) {
+            if ((getFloat(key, (Float) value) != (Float) value)) {
+                putFloat(key, (Float) value);
                 return true;
-            }else{ 
+            } else {
                 return false;
             }
-        }else if(value instanceof Double){
-            if((getDouble(key, (Double)value)!=(Double)value)){
-                putDouble(key,(Double)value);
+        } else if (value instanceof Double) {
+            if ((getDouble(key, (Double) value) != (Double) value)) {
+                putDouble(key, (Double) value);
                 return true;
-            }else{ 
+            } else {
                 return false;
             }
-        }else{
-            log.warning("cannot handle initial preferred value of type "+value.getClass()+" of value "+value);
+        } else {
+            log.warning("cannot handle initial preferred value of type " + value.getClass() + " of value " + value);
             return false;
         }
-        
+
     }
 
     // <editor-fold defaultstate="collapsed" desc="-- putter Methods for types of preference variables --">
@@ -994,6 +997,23 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      */
     public boolean hasPropertyGroups() {
         return tooltipSupport.hasPropertyGroups();
+    }
+
+    /**
+     * Finds in this filter's enclosing filter chain an instance of a particular
+     * class of filter
+     *
+     * @param filterClass the class of the filter to be searched for
+     * @return the last instance of the class of filter, or null if there is no instance
+     */
+    protected  EventFilter findFilter(Class<? extends EventFilter> filterClass) {
+        EventFilter rtn = null;
+        for (EventFilter f : chip.getFilterChain()) {
+            if (f.getClass() == filterClass) {
+                rtn = f;
+            }
+        }
+        return rtn;
     }
 
 }
