@@ -27,16 +27,17 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.filter.HighpassFilter;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
+import ch.unizh.ini.jaer.projects.minliu.PatchMatchFlow;
+import ch.unizh.ini.jaer.projects.minliu.Speedometer;
+import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
@@ -49,7 +50,6 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
@@ -80,7 +80,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
      */
     public enum CameraRotationEstimator {
 
-        VORSensor
+        VORSensor, OpticalFlow, Speedometer
     };
     private CameraRotationEstimator cameraRotationEstimator = null; //PositionComputer.valueOf(get("positionComputer", "OpticalGyro"));
 //    private float gainTranslation = getFloat("gainTranslation", 1f);
@@ -115,7 +115,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     private float highpassTauMsRotation = getFloat("highpassTauMsRotation", 1000);
     float radPerPixel;
     private volatile boolean resetCalled = false;
-    private int lastImuTimestamp = 0;
+    private int lastTransformUpdateTimestamp = 0;
     private boolean initialized = false;
     private boolean addTimeStampsResetPropertyChangeListener = false;
     private int transformResetLimitDegrees = getInt("transformResetLimitDegrees", 45);
@@ -146,6 +146,8 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     ApsDvsEventPacket outputPacket = null;
     private Point centerOfRotation = null;
     private boolean centerOfRotationSelectionPending = false;
+    private AbstractMotionFlowIMU flowEstimator = null;
+    private Speedometer speedometer = null;
 
     /**
      * Creates a new instance of SceneStabilizer
@@ -157,18 +159,24 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         addObserver(this); // we add ourselves as observer so that our update() can be called during packet iteration periodically according to global FilterFrame update interval settting
 
         try {
-            cameraRotationEstimator = CameraRotationEstimator.valueOf(getString("positionComputer", "OpticalGyro"));
+            cameraRotationEstimator = CameraRotationEstimator.valueOf(getString("positionComputer", "VORSensor"));
         } catch (IllegalArgumentException e) {
-            log.warning("bad preference " + getString("positionComputer", "OpticalGyro") + " for preferred PositionComputer, choosing default OpticalGyro");
+            log.warning("bad preference " + getString("positionComputer", "VORSensor") + " for preferred PositionComputer, choosing default VORSensor");
             cameraRotationEstimator = CameraRotationEstimator.VORSensor;
-            putString("positionComputer", "OpticalGyro");
+            putString("positionComputer", "VORSensor");
         }
 
         setCameraRotationEstimator(cameraRotationEstimator); // init filter enabled states
         initFilter(); // init filters for motion compensation
         String transform = "Transform", pantilt = "Pan-Tilt", display = "Display", imu = "IMU";
 
-        setPropertyTooltip("cameraRotationEstimator", "specifies which method is used to measure camera rotation");
+        setPropertyTooltip("cameraRotationEstimator", "<html>Specifies which method is used to measure camera rotation"
+                + "<ul>"
+                + "<li> VORSensor: use the built in IMU rate gyros"
+                + "<li> OpticalFlow: use a prior optical flow filter that is subclass of AbstractMotionFlowIMU"
+                + "<li> Speedometer: use a prior Speedometer filter that lets user manually measure the flow"
+                + "</ul>"
+                + "</html");
 //        setPropertyTooltip(pantilt, "gainTranslation", "gain applied to measured scene translation to affect electronic or mechanical output");
 //        setPropertyTooltip(pantilt, "gainVelocity", "gain applied to measured scene velocity times the weighted-average cluster aqe to affect electronic or mechanical output");
 //        setPropertyTooltip(pantilt, "gainPanTiltServos", "gain applied to translation for pan/tilt servo values");
@@ -178,8 +186,8 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         setPropertyTooltip(display, "flipContrast", "flips contrast of output events depending on x*y sign of motion - should maintain colors of edges");
 //        setPropertyTooltip("cornerFreqHz", "sets highpass corner frequency in Hz for stabilization - frequencies smaller than this will not be stabilized and transform will return to zero on this time scale");
         setPropertyTooltip(display, "annotateEnclosedEnabled", "showing tracking or motion filter output annotation of output, for setting up parameters of enclosed filters");
-        setPropertyTooltip(transform, "opticalGyroTauLowpassMs", "lowpass filter time constant in ms for optical gyro camera rotation measure");
-        setPropertyTooltip(transform, "opticalGyroRotationEnabled", "enables rotation in transform");
+//        setPropertyTooltip(transform, "opticalGyroTauLowpassMs", "lowpass filter time constant in ms for optical gyro camera rotation measure");
+//        setPropertyTooltip(transform, "opticalGyroRotationEnabled", "enables rotation in transform");
         setPropertyTooltip(transform, "vestibularStabilizationEnabled", "use the gyro/accelometer to provide transform");
         setPropertyTooltip(imu, "zeroGyro", "zeros the gyro output. Sensor should be stationary for period of 1-2 seconds during zeroing");
         setPropertyTooltip(imu, "eraseGyroZero", "Erases the gyro zero values");
@@ -300,6 +308,11 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
                         }
 
                         break;
+                    case Speedometer:
+                        Point2D.Float velocityPps = speedometer.getVelocity();
+                        lastTransform = updateTransform(velocityPps, ev.getTimestamp());
+
+                        break;
                     default:
                         lastTransform = transformItr.next();
                 }
@@ -347,10 +360,10 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
 //                displayMethod.setImageTransform(lastTransform.translationPixels,lastTransform.rotationRad);
 //            }
 
-        if(rewindFlg) {
-            initialized = false;
-            rewindFlg = false;
-        }
+            if (rewindFlg) {
+                initialized = false;
+                rewindFlg = false;
+            }
         } // electronicStabilizationEnabled
 
         if (isPanTiltEnabled()) { // mechanical pantilt
@@ -370,11 +383,11 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
 
     private final int INIITAL_QUEUE_SIZE = 1000;
     private ArrayBlockingQueue<ApsDvsEvent> eventQueue = new ArrayBlockingQueue<ApsDvsEvent>(INIITAL_QUEUE_SIZE);
-    private ApsDvsEvent heldEvent=null; // used when imuLagMs==0
-    
+    private ApsDvsEvent heldEvent = null; // used when imuLagMs==0
+
     private void pushEvent(ApsDvsEvent ev) {
-        if(imuLagMs==0){
-            heldEvent=ev;
+        if (imuLagMs == 0) {
+            heldEvent = ev;
             return;
         }
         ApsDvsEvent ne = new ApsDvsEvent();
@@ -390,16 +403,18 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     }
 
     private ApsDvsEvent popEvent() {
-        if(imuLagMs==0) {
-            ApsDvsEvent re=heldEvent;
-            heldEvent=null;
+        if (imuLagMs == 0) {
+            ApsDvsEvent re = heldEvent;
+            heldEvent = null;
             return re;
         }
         return eventQueue.poll();
     }
 
     private ApsDvsEvent peekEvent() {
-        if(imuLagMs==0) return heldEvent;
+        if (imuLagMs == 0) {
+            return heldEvent;
+        }
         return eventQueue.peek();
     }
 
@@ -437,8 +452,8 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             return null;  // flush some samples if the timestamps have been reset and we need to discard some samples here
         }//        System.outputPacket.println(imuSample.toString());
         int timestamp = imuSample.getTimestampUs();
-        float dtS = (timestamp - lastImuTimestamp) * 1e-6f;
-        lastImuTimestamp = timestamp;
+        float dtS = (timestamp - lastTransformUpdateTimestamp) * 1e-6f;
+        lastTransformUpdateTimestamp = timestamp;
         if (!initialized) {
             initialized = true;
             return null;
@@ -476,6 +491,80 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         tiltTranslationDeg = tiltTranslationFilter.filter(tiltDC, timestamp);
         rollDeg = rollFilter.filter(rollDC, timestamp);
 
+        // check limits, make limit for rotationRad a lot higher to avoid reset on big rolls, which are different than pans and tilts
+        if ((Math.abs(panTranslationDeg) > transformResetLimitDegrees) || (Math.abs(tiltTranslationDeg) > transformResetLimitDegrees) || (Math.abs(rollDeg) > (transformResetLimitDegrees * 3))) {
+            panDC = 0;
+            tiltDC = 0;
+            rollDC = 0;
+
+            panTranslationDeg = 0;
+            tiltTranslationDeg = 0;
+            rollDeg = 0;
+            panTranslationFilter.reset();
+            tiltTranslationFilter.reset();
+            rollFilter.reset();
+            log.info("transform reset limit reached, transform reset to zero");
+        }
+
+        if (flipContrast) {
+            if (Math.abs(panRate) > Math.abs(tiltRate)) {
+                evenMotion = panRate > 0; // used to flip contrast
+            } else {
+                evenMotion = tiltRate > 0;
+            }
+        }
+
+        if (disableRotation) {
+            rollDeg = 0;
+        }
+        if (disableTranslation) {
+            panTranslationDeg = 0;
+            tiltTranslationDeg = 0;
+        }
+
+        // computute transform in TransformAtTime units here.
+        // Use the lens focal length and camera resolution.
+        TransformAtTime tr = new TransformAtTime(timestamp,
+                new Point2D.Float(
+                        (float) ((Math.PI / 180) * panTranslationDeg) / radPerPixel,
+                        (float) ((Math.PI / 180) * tiltTranslationDeg) / radPerPixel),
+                (-rollDeg * (float) Math.PI) / 180);
+        return tr;
+    }
+
+    /**
+     * Computes transform using current gyro outputs based on timestamp supplied
+     * and returns a TransformAtTime object. Should be called by update in
+     * enclosing processor.
+     *
+     * @param flowVelocityPps the measured global optical flow
+     * @return the transform object representing the camera rotationRad
+     */
+    synchronized public TransformAtTime updateTransform(Point2D.Float flowVelocityPps, int timestamp) {
+
+        if (resetCalled) {
+            log.info("reset called, panDC" + panDC + " panTranslationFilter=" + panTranslationFilter);
+            resetCalled = false;
+        }
+        float dtS = (timestamp - lastTransformUpdateTimestamp) * 1e-6f;
+        lastTransformUpdateTimestamp = timestamp;
+        if (!initialized) {
+            initialized = true;
+            return null;
+        }
+        // transform flow velocity to a pan and tilt rate assuming rectified simple camera
+        panRate = (float) (180/Math.PI) * -flowVelocityPps.x * radPerPixel;
+        tiltRate = (float) (180/Math.PI) * -flowVelocityPps.y * radPerPixel;
+        rollRate = 0;  // for speedo we only get global velocity
+       
+        panDC += getPanRate() * dtS;
+        tiltDC += getTiltRate() * dtS;
+        rollDC += getRollRate() * dtS;
+
+        panTranslationDeg = panTranslationFilter.filter(panDC, timestamp);
+        tiltTranslationDeg = tiltTranslationFilter.filter(tiltDC, timestamp);
+        rollDeg = rollFilter.filter(rollDC, timestamp);
+        
         // check limits, make limit for rotationRad a lot higher to avoid reset on big rolls, which are different than pans and tilts
         if ((Math.abs(panTranslationDeg) > transformResetLimitDegrees) || (Math.abs(tiltTranslationDeg) > transformResetLimitDegrees) || (Math.abs(rollDeg) > (transformResetLimitDegrees * 3))) {
             panDC = 0;
@@ -588,21 +677,21 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     }
 
     /**
-     * @return the panRate
+     * @return the panRate in deg/s
      */
     public float getPanRate() {
         return panRate - panOffset;
     }
 
     /**
-     * @return the tiltRate
+     * @return the tiltRate in deg/s
      */
     public float getTiltRate() {
         return tiltRate - tiltOffset;
     }
 
     /**
-     * @return the rollRate
+     * @return the rollRate in deg/s
      */
     public float getRollRate() {
         return rollRate - rollOffset;
@@ -684,18 +773,18 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             }
             gl.glEnd();
         }
-        
-        if(centerOfRotation!=null){
+
+        if (centerOfRotation != null) {
             gl.glLineWidth(4f);
             gl.glColor3f(1, 0, 0);
-            final int L=4;
+            final int L = 4;
 
             // draw xhairs on frame to help show locations of objects and if they have moved.
             gl.glBegin(GL.GL_LINES); // sequence of individual segments, in pairs of vertices
-            gl.glVertex2f(centerOfRotation.x-L, centerOfRotation.y);
-            gl.glVertex2f(centerOfRotation.x+L, centerOfRotation.y);
-            gl.glVertex2f(centerOfRotation.x, centerOfRotation.y-L);
-            gl.glVertex2f(centerOfRotation.x, centerOfRotation.y+L);
+            gl.glVertex2f(centerOfRotation.x - L, centerOfRotation.y);
+            gl.glVertex2f(centerOfRotation.x + L, centerOfRotation.y);
+            gl.glVertex2f(centerOfRotation.x, centerOfRotation.y - L);
+            gl.glVertex2f(centerOfRotation.x, centerOfRotation.y + L);
             gl.glEnd();
         }
 
@@ -753,9 +842,9 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         tiltTranslationFilter.reset();
         rollFilter.reset();
         radPerPixel = (float) Math.atan((getChip().getPixelWidthUm() * 1e-3f) / lensFocalLengthMm);
-        filterX.setInternalValue(0);
-        filterY.setInternalValue(0);
-        filterRotation.setInternalValue(0);
+        filterX.reset();
+        filterY.reset();;
+        filterRotation.reset();;
         translation.x = 0;
         translation.y = 0;
         lastTransform = null;
@@ -842,6 +931,20 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         putString("positionComputer", positionComputer.toString());
         switch (positionComputer) {
             case VORSensor:
+                break;
+            case OpticalFlow:
+                if (findFilter(PatchMatchFlow.class) != null) {
+                    flowEstimator = (AbstractMotionFlowIMU) findFilter(PatchMatchFlow.class);
+                }
+                if (flowEstimator == null) {
+                    log.warning("missing flow estimater earlier in filter chain. Add PatchMatchFlow and try again");
+                }
+                break;
+            case Speedometer:
+                if (findFilter(Speedometer.class) != null) {
+                    speedometer = (Speedometer) findFilter(Speedometer.class);
+                }
+                break;
         }
     }
 
@@ -1187,7 +1290,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         log.info("selected center of rotation as " + centerOfRotation);
         putInt("centerOfRotationX", p.x);
         putInt("centerOfRotationY", p.y);
-        centerOfRotationSelectionPending=false;
+        centerOfRotationSelectionPending = false;
     }
 
     @Override
@@ -1198,6 +1301,5 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         Point p = getMousePixel(e);
         centerOfRotation = p;
     }
-    
-    
+
 }
