@@ -652,7 +652,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                 int oldtime = aeViewer.aePlayer.getAEInputStream().getMostRecentTimestamp();
                 aeViewer.aePlayer.setFractionalPosition(fracPos); // sets position in events
                 int time = aeViewer.aePlayer.getAEInputStream().getMostRecentTimestamp();
-//                aeViewer.aePlayer.getAEInputStream().setCurrentStartTimestamp(time); // tobi commented out to support RosbagFileInputStream
+                aeViewer.aePlayer.getAEInputStream().setCurrentStartTimestamp(time); // tobi commented out to support RosbagFileInputStream
                 String s=String.format("%8.3f s, %10d events",time*1e-6f,aeViewer.aePlayer.getAEInputStream().position());
                 log.info("slider position "+s);
                 //                log.info(this+" slider set time to "+time);
