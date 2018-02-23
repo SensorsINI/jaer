@@ -57,7 +57,7 @@ public class LowpassFilter extends Filter {
     }
 
     public String toString() {
-        return "LP: " + lastVal + "->" + lpVal;
+        return "LP: " + (initialized? lastVal + "->" + lpVal:" (uninitialized)");
     }
 
     /** Sets the internal value; used to initialize filter. If the filter is reset, then setting
