@@ -540,6 +540,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 //                if(aeRaw!=null) time=aeRaw.getLastTimestamp();
             return aeRaw;
         } catch (EOFException e) {
+            rewindNPacketsOccuring = false;
+            setDirectionForwards(true);
             try {
                 Thread.sleep(200);
             } catch (InterruptedException ignore) {
@@ -555,6 +557,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             //getAePlayer().toggleDirection();
             return aeRaw;
         } catch (Exception anyOtherException) {
+            rewindNPacketsOccuring = false;
+            setDirectionForwards(true);
             log.warning(anyOtherException.toString() + ", returning empty AEPacketRaw");
             anyOtherException.printStackTrace();
             return new AEPacketRaw(0);
