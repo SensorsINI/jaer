@@ -53,7 +53,7 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (in.getSize() > 2) {
-             currentTimestamp = (in.getLastTimestamp() + in.getFirstTimestamp()) / 2;
+            currentTimestamp = (in.getLastTimestamp() + in.getFirstTimestamp()) / 2;
         }
         return in;
     }
@@ -69,6 +69,9 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
 
     @Override
     synchronized public void mouseClicked(MouseEvent e) {
+        if (!isSelected()) {
+            return;
+        }
         if (e == null || e.getPoint() == null || getMousePixel(e) == null) {
             firstPoint = true;
             setStartPoint(null);
@@ -98,8 +101,10 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
             log.info(String.format("%s pps (vx,vy)=(%s,%s)", engFmt.format(speedPps), engFmt.format(vxPps), engFmt.format(vyPps)));
         }
     }
+
     /**
      * Checks if a preference value exists.
+     *
      * @param key - the filter preference key header is prepended.
      * @return true if a non-null value exists
      */
@@ -238,15 +243,19 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
     }
 
     private void putTimepoint(String pointName, TimePoint timepoint) {
-        if(timepoint==null) return;
-        putInt(pointName+".x",timepoint.x);
-        putInt(pointName+".y",timepoint.y);
-        putInt(pointName+".t",timepoint.t);
+        if (timepoint == null) {
+            return;
+        }
+        putInt(pointName + ".x", timepoint.x);
+        putInt(pointName + ".y", timepoint.y);
+        putInt(pointName + ".t", timepoint.t);
     }
 
     private TimePoint getTimepoint(String pointName) {
-        if(preferenceExists(pointName+".x")) return null;
-        TimePoint t=new TimePoint(getInt(pointName+".t",0), getInt(pointName+".x",0), getInt(pointName+".y",0));
+        if (preferenceExists(pointName + ".x")) {
+            return null;
+        }
+        TimePoint t = new TimePoint(getInt(pointName + ".t", 0), getInt(pointName + ".x", 0), getInt(pointName + ".y", 0));
         return t;
     }
 
