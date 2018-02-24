@@ -47,6 +47,7 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
         super(chip);
         startPoint = getTimepoint("startPoint");
         endPoint = getTimepoint("endPoint");
+        computeVelocity();
     }
 
     @Override
@@ -81,6 +82,11 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
         } else {
             setEndPoint(new TimePoint(getMousePixel(e), currentTimestamp));
         }
+        computeVelocity();
+        firstPoint = !firstPoint;
+    }
+
+    private void computeVelocity() {
         if (getStartPoint() != null && getEndPoint() != null) {
             distance = (float) (getEndPoint().distance(getStartPoint()));
             int dx = getEndPoint().x - getStartPoint().x, dy = getEndPoint().y - getStartPoint().y;
@@ -91,7 +97,6 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
             velocityPps.setLocation(vxPps, vyPps);
             log.info(String.format("%s pps (vx,vy)=(%s,%s)", engFmt.format(speedPps), engFmt.format(vxPps), engFmt.format(vyPps)));
         }
-        firstPoint = !firstPoint;
     }
     /**
      * Checks if a preference value exists.
