@@ -72,8 +72,6 @@ import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotater, Observer, PropertyChangeListener {
 
-    private boolean rewindFlg;
-
     /**
      * Classes that compute camera rotationRad estimate based on scene shift and
      * maybe rotationRad around the center of the scene.
@@ -148,6 +146,8 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     private boolean centerOfRotationSelectionPending = false;
     private AbstractMotionFlowIMU flowEstimator = null;
     private Speedometer speedometer = null;
+    private boolean rewindFlg;
+    private int resetTimestamp = 0;
 
     /**
      * Creates a new instance of SceneStabilizer
@@ -212,6 +212,8 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         rollFilter.setTauMs(highpassTauMsRotation);
         panTranslationFilter.setTauMs(highpassTauMsTranslation);
         tiltTranslationFilter.setTauMs(highpassTauMsTranslation);
+        filterX.setTauMs(highpassTauMsTranslation);
+        filterY.setTauMs(highpassTauMsTranslation);
         panCalibrator = new CalibrationFilter();
         tiltCalibrator = new CalibrationFilter();
         rollCalibrator = new CalibrationFilter();
@@ -306,59 +308,76 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
 //                            pushEvent(ev);
 //                            continue; // next event
                         }
+                        pushEvent(ev);
+//                System.outputPacket.print(">");
+
+                        ApsDvsEvent be = null;
+                        while ((be = peekEvent()) != null && (be.timestamp <= ev.timestamp - imuLagMs * 1000 || be.timestamp > ev.timestamp)) {
+                            be = popEvent();
+//                    System.outputPacket.print("<");
+                            if (!(be.isImuSample())) {
+                                if (lastTransform != null) {
+
+                                    // apply transform Re+T. First center events from middle of array at 0,0, then transform, then move them back to their origin
+                                    int nx = be.x - corx, ny = be.y - cory;
+                                    be.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + corx);
+                                    be.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + cory);
+                                    be.address = chip.getEventExtractor().getAddressFromCell(be.x, be.y, be.getType()); // so event is logged properly to disk
+                                }
+
+                                if ((be.x > sxm1) || (be.x < 0) || (be.y > sym1) || (be.y < 0)) {
+                                    be.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them outputPacket in the reused packet.
+                                    continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
+                                } else {
+                                    be.setFilteredOut(false);
+                                }
+                                // deal with flipping contrast of output event depending on direction of motion, to make things appear the same regardless of camera rotationRad
+
+                                if (flipContrast) {
+                                    if (evenMotion) {
+                                        be.type = (byte) (1 - be.type); // don't let contrast flip when direction changes, try to stabilze contrast  by flipping it as well
+                                        be.polarity = be.polarity == PolarityEvent.Polarity.On ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
+                                    }
+                                }
+                            }
+                            outItr.nextOutput().copyFrom(be);
+
+                        }
 
                         break;
                     case Speedometer:
+                        // when we measure the flow, then we can directly use it to shift the event according to the flow and the time since reset
+                        // i.e., we don't need to do all the filtering and trigonometry of the IMU method
                         Point2D.Float velocityPps = speedometer.getVelocity();
-                        lastTransform = updateTransform(velocityPps, ev.getTimestamp());
+                        if (resetCalled) {
+                            resetTimestamp = ev.timestamp;
+//                            filterX.reset();
+//                            filterY.reset();
+                            resetCalled = false;
+                        }
+                        float dtS = (ev.timestamp - resetTimestamp) * 1e-6f;
+                        float xShift = dtS * velocityPps.x,
+                        yShift = dtS * velocityPps.y;
+
+                        xShift = filterX.filter(xShift, ev.timestamp);
+                        yShift = filterX.filter(yShift, ev.timestamp);
+
+                        ev.x -= xShift;
+                        ev.y -= yShift;
+                        if ((ev.x > sxm1) || (ev.x < 0) || (ev.y > sym1) || (ev.y < 0)) {
+                            ev.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them outputPacket in the reused packet.
+                            continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
+                        } else {
+                            ev.setFilteredOut(false);
+                        }
+                        outItr.nextOutput().copyFrom(ev);
 
                         break;
                     default:
                         lastTransform = transformItr.next();
                 }
-                pushEvent(ev);
-//                System.outputPacket.print(">");
 
-                ApsDvsEvent be = null;
-                while ((be = peekEvent()) != null && (be.timestamp <= ev.timestamp - imuLagMs * 1000 || be.timestamp > ev.timestamp)) {
-                    be = popEvent();
-//                    System.outputPacket.print("<");
-                    if (!(be.isImuSample())) {
-                        if (lastTransform != null) {
-
-                            // apply transform Re+T. First center events from middle of array at 0,0, then transform, then move them back to their origin
-                            int nx = be.x - corx, ny = be.y - cory;
-                            be.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + corx);
-                            be.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + cory);
-                            be.address = chip.getEventExtractor().getAddressFromCell(be.x, be.y, be.getType()); // so event is logged properly to disk
-                        }
-
-                        if ((be.x > sxm1) || (be.x < 0) || (be.y > sym1) || (be.y < 0)) {
-                            be.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them outputPacket in the reused packet.
-                            continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
-                        } else {
-                            be.setFilteredOut(false);
-                        }
-                        // deal with flipping contrast of output event depending on direction of motion, to make things appear the same regardless of camera rotationRad
-
-                        if (flipContrast) {
-                            if (evenMotion) {
-                                be.type = (byte) (1 - be.type); // don't let contrast flip when direction changes, try to stabilze contrast  by flipping it as well
-                                be.polarity = be.polarity == PolarityEvent.Polarity.On ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
-                            }
-                        }
-                    }
-                    outItr.nextOutput().copyFrom(be);
-
-                }
             } // event iterator
-//            if(transformImageEnabled && lastTransform!=null && chip.getAeViewer()!=null && chip.getCanvas()!=null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA){
-//                ChipRendererDisplayMethodRGBA displayMethod=(ChipRendererDisplayMethodRGBA)chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
-//                displayMethod.setImageTransform(lastTransform.translationPixels,lastTransform.rotationRad);
-//            }//            if(transformImageEnabled && lastTransform!=null && chip.getAeViewer()!=null && chip.getCanvas()!=null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA){
-//                ChipRendererDisplayMethodRGBA displayMethod=(ChipRendererDisplayMethodRGBA)chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
-//                displayMethod.setImageTransform(lastTransform.translationPixels,lastTransform.rotationRad);
-//            }
 
             if (rewindFlg) {
                 initialized = false;
@@ -491,80 +510,6 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         tiltTranslationDeg = tiltTranslationFilter.filter(tiltDC, timestamp);
         rollDeg = rollFilter.filter(rollDC, timestamp);
 
-        // check limits, make limit for rotationRad a lot higher to avoid reset on big rolls, which are different than pans and tilts
-        if ((Math.abs(panTranslationDeg) > transformResetLimitDegrees) || (Math.abs(tiltTranslationDeg) > transformResetLimitDegrees) || (Math.abs(rollDeg) > (transformResetLimitDegrees * 3))) {
-            panDC = 0;
-            tiltDC = 0;
-            rollDC = 0;
-
-            panTranslationDeg = 0;
-            tiltTranslationDeg = 0;
-            rollDeg = 0;
-            panTranslationFilter.reset();
-            tiltTranslationFilter.reset();
-            rollFilter.reset();
-            log.info("transform reset limit reached, transform reset to zero");
-        }
-
-        if (flipContrast) {
-            if (Math.abs(panRate) > Math.abs(tiltRate)) {
-                evenMotion = panRate > 0; // used to flip contrast
-            } else {
-                evenMotion = tiltRate > 0;
-            }
-        }
-
-        if (disableRotation) {
-            rollDeg = 0;
-        }
-        if (disableTranslation) {
-            panTranslationDeg = 0;
-            tiltTranslationDeg = 0;
-        }
-
-        // computute transform in TransformAtTime units here.
-        // Use the lens focal length and camera resolution.
-        TransformAtTime tr = new TransformAtTime(timestamp,
-                new Point2D.Float(
-                        (float) ((Math.PI / 180) * panTranslationDeg) / radPerPixel,
-                        (float) ((Math.PI / 180) * tiltTranslationDeg) / radPerPixel),
-                (-rollDeg * (float) Math.PI) / 180);
-        return tr;
-    }
-
-    /**
-     * Computes transform using current gyro outputs based on timestamp supplied
-     * and returns a TransformAtTime object. Should be called by update in
-     * enclosing processor.
-     *
-     * @param flowVelocityPps the measured global optical flow
-     * @return the transform object representing the camera rotationRad
-     */
-    synchronized public TransformAtTime updateTransform(Point2D.Float flowVelocityPps, int timestamp) {
-
-        if (resetCalled) {
-            log.info("reset called, panDC" + panDC + " panTranslationFilter=" + panTranslationFilter);
-            resetCalled = false;
-        }
-        float dtS = (timestamp - lastTransformUpdateTimestamp) * 1e-6f;
-        lastTransformUpdateTimestamp = timestamp;
-        if (!initialized) {
-            initialized = true;
-            return null;
-        }
-        // transform flow velocity to a pan and tilt rate assuming rectified simple camera
-        panRate = (float) (180/Math.PI) * -flowVelocityPps.x * radPerPixel;
-        tiltRate = (float) (180/Math.PI) * -flowVelocityPps.y * radPerPixel;
-        rollRate = 0;  // for speedo we only get global velocity
-       
-        panDC += getPanRate() * dtS;
-        tiltDC += getTiltRate() * dtS;
-        rollDC += getRollRate() * dtS;
-
-        panTranslationDeg = panTranslationFilter.filter(panDC, timestamp);
-        tiltTranslationDeg = tiltTranslationFilter.filter(tiltDC, timestamp);
-        rollDeg = rollFilter.filter(rollDC, timestamp);
-        
         // check limits, make limit for rotationRad a lot higher to avoid reset on big rolls, which are different than pans and tilts
         if ((Math.abs(panTranslationDeg) > transformResetLimitDegrees) || (Math.abs(tiltTranslationDeg) > transformResetLimitDegrees) || (Math.abs(rollDeg) > (transformResetLimitDegrees * 3))) {
             panDC = 0;
@@ -1055,6 +1000,8 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         putFloat("highpassTauMsTranslation", highpassTauMs);
         panTranslationFilter.setTauMs(highpassTauMs);
         tiltTranslationFilter.setTauMs(highpassTauMs);
+        filterX.setTauMs(highpassTauMs);
+        filterY.setTauMs(highpassTauMs);
     }
 
     /**
