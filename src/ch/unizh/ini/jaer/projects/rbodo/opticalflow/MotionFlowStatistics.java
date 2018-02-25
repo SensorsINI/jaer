@@ -1,5 +1,6 @@
 package ch.unizh.ini.jaer.projects.rbodo.opticalflow;
 
+import java.awt.geom.Point2D;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -209,6 +210,7 @@ public class MotionFlowStatistics {
         public float meanGlobalVx, sdGlobalVx, meanGlobalVy, sdGlobalVy, meanGlobalRotation, meanGlobalTrans, sdGlobalTrans,
                 sdGlobalRotation, meanGlobalExpansion, sdGlobalExpansion, meanGlobalSpeed;
         private final Measurand globalVx, globalVy, globalRotation, globalExpansion, globalSpeed;
+        private Point2D.Float flowVelocityPps=new Point2D.Float();
         private int rx, ry;
         private int subSizeX, subSizeY;
         private final Measurand rollDps;
@@ -369,6 +371,11 @@ public class MotionFlowStatistics {
          */
         public Measurand getGlobalSpeed() {
             return globalSpeed;
+        }
+
+        public Point2D.Float getGlobalFlowVelocityPps() {
+            flowVelocityPps.setLocation(meanGlobalVx, meanGlobalVy);
+            return flowVelocityPps;
         }
 
     }
