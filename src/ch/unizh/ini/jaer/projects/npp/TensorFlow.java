@@ -22,6 +22,7 @@ import java.util.Arrays;
 import org.tensorflow.DataType;
 import org.tensorflow.Graph;
 import org.tensorflow.Output;
+import org.tensorflow.SavedModelBundle;
 import org.tensorflow.Session;
 import org.tensorflow.Shape;
 import org.tensorflow.Tensor;
@@ -77,22 +78,37 @@ public class TensorFlow {
             }
         }
     }
-    
+
     public static float[] executeGraph(Graph graph, Tensor<Float> image, String inputLayerName, String outputLayerName) {
 //        try (Graph g=graph) {
-            try (Session s = new Session(graph);
-                    Tensor<Float> result = s.runner().feed(inputLayerName, image).fetch(outputLayerName).run().get(0).expect(Float.class)
-                    ) { 
-                final long[] rshape = result.shape();
-                if (result.numDimensions() != 2 || rshape[0] != 1) {
-                    throw new RuntimeException(
-                            String.format(
-                                    "Expected model to produce a [1 N] shaped tensor where N is the number of labels, instead it produced one with shape %s",
-                                    Arrays.toString(rshape)));
-                }
-                int nlabels = (int) rshape[1];
-                return result.copyTo(new float[1][nlabels])[0];
+        try (Session s = new Session(graph);
+                Tensor<Float> result = s.runner().feed(inputLayerName, image).fetch(outputLayerName).run().get(0).expect(Float.class)) {
+            final long[] rshape = result.shape();
+            if (result.numDimensions() != 2 || rshape[0] != 1) {
+                throw new RuntimeException(
+                        String.format(
+                                "Expected model to produce a [1 N] shaped tensor where N is the number of labels, instead it produced one with shape %s",
+                                Arrays.toString(rshape)));
             }
+            int nlabels = (int) rshape[1];
+            return result.copyTo(new float[1][nlabels])[0];
+        }
+//        }
+    }
+
+    static float[] executeSession(SavedModelBundle savedModelBundle, Tensor<Float> image, String inputLayerName, String outputLayerName) {
+        try (Session s = savedModelBundle.session();
+                Tensor<Float> result = s.runner().feed(inputLayerName, image).fetch(outputLayerName).run().get(0).expect(Float.class)) {
+            final long[] rshape = result.shape();
+            if (result.numDimensions() != 2 || rshape[0] != 1) {
+                throw new RuntimeException(
+                        String.format(
+                                "Expected model to produce a [1 N] shaped tensor where N is the number of labels, instead it produced one with shape %s",
+                                Arrays.toString(rshape)));
+            }
+            int nlabels = (int) rshape[1];
+            return result.copyTo(new float[1][nlabels])[0];
+        }
 //        }
     }
 
@@ -101,6 +117,7 @@ public class TensorFlow {
     // like Python, C++ and Go.
     // see 
     public static class GraphBuilder {
+
         private Graph g;
 
         GraphBuilder(Graph g) {
