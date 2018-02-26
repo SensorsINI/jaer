@@ -33,7 +33,7 @@ MA 02110-1301  USA
                 
         <!--<dependency org="org.jogamp.jogl" name="jogl-all" rev="2.3.2" />--> 
         <!--<dependency org="org.jogamp.jogl" name="jogl-all-main" rev="2.3.2" />--> 
-<!--        <dependency org="org.jogamp.jogl" name="jogl-all-main" rev="2.3.2" > 
+        <!--        <dependency org="org.jogamp.jogl" name="jogl-all-main" rev="2.3.2" > 
             <artifact name="jogl-all-main" type="jar" ext="jar" m:classifier="natives-linux-amd64"/>
             <artifact name="jogl-all-main" type="jar" ext="jar" m:classifier="natives-linux-i586"/>
             <artifact name="jogl-all-main" type="jar" ext="jar" m:classifier="natives-macosx-universal"/>
@@ -84,7 +84,10 @@ MA 02110-1301  USA
         <!--<dependency org="org.bytedeco.javacpp-presets" name="opencv" rev="3.4.0-1.4" />-->
         <!--<dependency org="org.bytedeco" name="javacv" rev="1.4" />-->
         <!--tensorflow has native libraries, not clear how to handle with ivy/maven-->
-        <!--<dependency org="org.tensorflow" name="libtensorflow" rev="1.4.0" />-->
+        <dependency org="org.tensorflow" name="tensorflow" rev="1.5.0" />
+
+        <!--for reading yaml files that store the input format for tensorflow graphs, e.g. cnns-->
+        <dependency org="com.esotericsoftware.yamlbeans" name="yamlbeans" rev="1.13" />
     </dependencies>
 </ivy-module>
 
