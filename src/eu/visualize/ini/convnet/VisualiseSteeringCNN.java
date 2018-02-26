@@ -256,12 +256,12 @@ public class VisualiseSteeringCNN extends DavisClassifierCNNProcessor implements
                 MultilineAnnotationTextRenderer.renderMultilineString(String.format("SMXL states: [S=%6.1f]  [M=%6.1f]  [XL=%6.1f] ", SMXLstate[0], SMXLstate[1], SMXLstate[2]));
             }
             MultilineAnnotationTextRenderer.setScale(.3f);
-            if (dvsSubsampler != null) {
+            if (dvsFramer != null) {
                 MultilineAnnotationTextRenderer.renderMultilineString(
                         String.format("DVS subsampler, %d events, inst/avg interval %6.1f/%6.1f ms", 
-                                dvsSubsampler.getDvsEventsPerFrame(), 
-                                dvsSubsampler.getLastSubsamplerFrameIntervalUs() * 1e-3f, 
-                                dvsSubsampler.getFilteredSubsamplerIntervalUs() * 1e-3f));
+                                dvsFramer.getDvsEventsPerFrame(), 
+                                dvsFramer.getLastSubsamplerFrameIntervalUs() * 1e-3f, 
+                                dvsFramer.getFilteredSubsamplerIntervalUs() * 1e-3f));
             }
             if (error.totalCount > 0) {
                 MultilineAnnotationTextRenderer.renderMultilineString(error.toString());

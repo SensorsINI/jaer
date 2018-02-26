@@ -250,7 +250,9 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         // this is not the case when using integrated IMU which generates IMUSamples in the event stream.
         getEnclosedFilterChain().filterPacket(in);
 //        System.outputPacket.println("new steadicam input packet "+in);
-        if (electronicStabilizationEnabled) { // here we stabilize by using the measured camera rotationRad to counter-transform the events
+        if (electronicStabilizationEnabled) {
+            Point2D.Float flowVelocity = null;
+            // here we stabilize by using the measured camera rotationRad to counter-transform the events
             // transform events in place, no need to copy to output packet
 //            checkOutputPacketEventType(in);
 //            OutputEventIterator outItr = getOutputPacket().outputIterator();// the transformed events output packet
@@ -346,9 +348,15 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
 
                         break;
                     case Speedometer:
+                    case OpticalFlow:
+                        if (cameraRotationEstimator == CameraRotationEstimator.Speedometer) {
+                            flowVelocity = speedometer.getVelocity();
+                        } else {
+                            flowVelocity = flowEstimator.getMotionFlowStatistics().getGlobalMotion().getGlobalFlowVelocityPps();
+                        }
+
                         // when we measure the flow, then we can directly use it to shift the event according to the flow and the time since reset
                         // i.e., we don't need to do all the filtering and trigonometry of the IMU method
-                        Point2D.Float velocityPps = speedometer.getVelocity();
                         if (resetCalled) {
                             resetTimestamp = ev.timestamp;
 //                            filterX.reset();
@@ -356,8 +364,8 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
                             resetCalled = false;
                         }
                         float dtS = (ev.timestamp - resetTimestamp) * 1e-6f;
-                        float xShift = dtS * velocityPps.x,
-                        yShift = dtS * velocityPps.y;
+                        float xShift = dtS * flowVelocity.x,
+                         yShift = dtS * flowVelocity.y;
 
                         xShift = filterX.filter(xShift, ev.timestamp);
                         yShift = filterX.filter(yShift, ev.timestamp);
@@ -1050,7 +1058,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         if (evt.getPropertyName() == AEViewer.EVENT_TIMESTAMPS_RESET) {
             resetFilter();
             flushCounter = FLUSH_COUNT;
-        } else if (evt.getPropertyName().equals(AEInputStream.EVENT_REWIND)) {
+        } else if (evt.getPropertyName().equals(AEInputStream.EVENT_REWOUND)) {
             resetFilter();
             flushCounter = FLUSH_COUNT;
         } else if (evt.getPropertyName().equals(AEViewer.EVENT_FILEOPEN)) {

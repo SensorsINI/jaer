@@ -267,7 +267,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         getSupport().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
         getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
-        getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWIND, this);
+        getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP, this);
         computeAveragePossibleMatchDistance();
     }

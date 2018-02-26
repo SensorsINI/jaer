@@ -318,7 +318,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
             }          
         }
         
-        if(evt.getPropertyName().equals(AEInputStream.EVENT_REWIND)) {
+        if(evt.getPropertyName().equals(AEInputStream.EVENT_REWOUND)) {
             resetFilter();
         }
     }

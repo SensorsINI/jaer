@@ -372,9 +372,22 @@ public abstract class AbstractAEPlayer {
      */
     abstract public void stopPlayback();
 
+    /**
+     * Toggles the direction of playback
+     */
     public void toggleDirection() {
         setPacketSizeEvents(getPacketSizeEvents() * -1);
         setTimesliceUs(getTimesliceUs() * -1);
+    }
+    
+    /**
+     * Sets the playback direction
+     * @param forwards true for forwards, false for backwards
+     */
+    public void setDirectionForwards(boolean forwards){
+        int sign=forwards?1:-1;
+        setPacketSizeEvents(sign*Math.abs(getPacketSizeEvents()));
+        setTimesliceUs(sign*Math.abs(getTimesliceUs()));
     }
 
     public int getPacketSizeEvents() {

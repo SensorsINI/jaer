@@ -89,7 +89,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!chipPropertyChangeListenerAdded) {
             if (chip.getAeViewer() != null) {
-                chip.getAeViewer().addPropertyChangeListener(AEInputStream.EVENT_REWIND, this);
+                chip.getAeViewer().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
                 chipPropertyChangeListenerAdded = true;
             }
         }
@@ -411,7 +411,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (closeOnRewind && evt.getPropertyName() == AEInputStream.EVENT_REWIND) {
+        if (closeOnRewind && evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             doCloseFile();
         }
     }

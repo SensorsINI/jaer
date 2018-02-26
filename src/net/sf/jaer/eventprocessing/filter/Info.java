@@ -381,7 +381,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getSource() instanceof AEFileInputStream) {
-            if (evt.getPropertyName().equals(AEInputStream.EVENT_REWIND)) {
+            if (evt.getPropertyName().equals(AEInputStream.EVENT_REWOUND)) {
                 log.info("rewind PropertyChangeEvent received by " + this + " from " + evt.getSource());
                 wrappingCorrectionMs = 0;
                 rateHistory.clear();

@@ -224,7 +224,7 @@ public class RefractoryFilter extends EventFilter2D implements Observer, Propert
         if (this.filterEnabled) {
             switch (evt.getPropertyName()) {
                 case AEViewer.EVENT_TIMESTAMPS_RESET:
-                case AEInputStream.EVENT_REWIND:
+                case AEInputStream.EVENT_REWOUND:
                     resetFilter();
                     break;
                 case AEViewer.EVENT_FILEOPEN:

@@ -120,6 +120,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     private boolean nonMonotonicTimestampExceptionsChecked = true;
     private boolean nonMonotonicTimestampDetected = false; // flag set by nonmonotonic timestamp if detection enabled
+    private boolean rewindFlag=false;
 
     private enum RosbagFileType {
         RPG(RPG_TOPIC_HEADER), MVSEC(MVSEC_TOPIC_HEADER), Unknown("???");
@@ -549,6 +550,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         if (aePacketRawOutput.getNumEvents() > 0) {
             currentStartTimestamp = aePacketRawOutput.getLastTimestamp();
         }
+        maybeSendRewoundEvent(oldPosition);
         return aePacketRawOutput;
     }
 
@@ -590,6 +592,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         aePacketRawTmp = tmp;
         currentStartTimestamp = newEndTime;
         getSupport().firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, position());
+        maybeSendRewoundEvent(oldPosition);
         return aePacketRawOutput;
     }
 
@@ -652,7 +655,16 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         nextMessageNumber = 0;
         currentStartTimestamp = (int) firstTimestamp;
         clearAccumulatedEvents();
+        rewindFlag=true;
     }
+    
+      private void maybeSendRewoundEvent(long oldPosition) {
+        if (rewindFlag) {
+            getSupport().firePropertyChange(AEInputStream.EVENT_REWOUND, oldPosition, position());
+            rewindFlag = false;
+        }
+    }
+
 
     private void clearAccumulatedEvents() {
         largestTimestamp = Integer.MIN_VALUE;

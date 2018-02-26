@@ -4661,7 +4661,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setStatusMessage(null);
         } else if (evt.getSource() instanceof AEFileInputStream) {
             switch (evt.getPropertyName()) {
-                case AEInputStream.EVENT_REWIND:
+                case AEInputStream.EVENT_REWOUND:
                     log.info("rewind");
                     firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());
                     break;
@@ -4884,11 +4884,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile), chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
 
             if (playMode == PlayMode.PLAYBACK) { // add change listener for rewind to stop logging
-                getAePlayer().getAEInputStream().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWIND, new PropertyChangeListener() {
+                getAePlayer().getAEInputStream().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, new PropertyChangeListener() {
 
                     @Override
                     public void propertyChange(PropertyChangeEvent evt) {
-                        if ((evt.getSource() == getAePlayer().getAEInputStream()) && evt.getPropertyName().equals(AEInputStream.EVENT_REWIND)) {
+                        if ((evt.getSource() == getAePlayer().getAEInputStream()) && evt.getPropertyName().equals(AEInputStream.EVENT_REWOUND)) {
                             log.info("recording reached end, stopping re-logging");
                             SwingUtilities.invokeLater(new Runnable() {
 

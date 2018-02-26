@@ -107,7 +107,7 @@ public class DavisFrameAviWriter extends AbstractAviWriter {
             } catch (IOException ex) {
                 Logger.getLogger(DavisFrameAviWriter.class.getName()).log(Level.SEVERE, null, ex);
             }
-        } else if (evt.getPropertyName() == AEInputStream.EVENT_REWIND) {
+        } else if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             doCloseFile();
         }
     }

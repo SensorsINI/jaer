@@ -255,7 +255,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                 v.setAeChipClass(chipClass);
                 v.aePlayer.stopPlayback();
                 v.aePlayer.startPlayback(e.getKey());
-                v.aePlayer.getAEInputStream().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWIND, this);
+                v.aePlayer.getAEInputStream().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
                 getPlayingViewers().add(v);
             }
             initTime();
@@ -468,7 +468,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     /** JAERViewer gets PropertyChangeEvent from the AEPlayer in the AEViewers. This method presently only logs this event.
      */
     public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName().equals(AEInputStream.EVENT_REWIND)) {
+        if (evt.getPropertyName().equals(AEInputStream.EVENT_REWOUND)) {
             // comes from AEFileInputStream when file reaches end and AEViewer rewinds the file
             for (AEViewer v : outer.getViewers()) {
                 v.getChip().getRenderer().resetFrame(v.getChip().getRenderer().getGrayValue());

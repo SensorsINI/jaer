@@ -681,7 +681,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 case AEViewer.EVENT_TIMESTAMPS_RESET:
                     resetFilter();
                     break;
-                case AEInputStream.EVENT_REWIND:
+                case AEInputStream.EVENT_REWOUND:
                 case AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP:
                 case AEInputStream.EVENT_REPOSITIONED:
                     log.info(evt.toString() + ": resetting filter after printing collected statistics if measurement enabled");
@@ -694,7 +694,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     log.info("File Open");
 //                    AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
 //                    AEFileInputStream in = (player.getAEInputStream());
-//                    in.getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWIND,this);
+//                    in.getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND,this);
 //                    in.getSupport().addPropertyChangeListener(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP,this);
                     // Treat FileOpen same as a rewind
                     resetFilter();

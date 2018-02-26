@@ -69,7 +69,7 @@ public class ActionRecognition extends DavisClassifierCNNProcessor implements Pr
 
     public ActionRecognition(AEChip chip) {
         super(chip);
-        dvsSubsampler = new DvsFramerSingleFrameMultiCameraChip(chip);
+        dvsFramer = new DvsFramerSingleFrameMultiCameraChip(chip);
 
         String actionRecognition = "0. ActionRecognition";
         setPropertyTooltip(actionRecognition, "showDecisionStatistic", "Show list of movement");
@@ -81,7 +81,7 @@ public class ActionRecognition extends DavisClassifierCNNProcessor implements Pr
 
         FilterChain chain = new FilterChain(chip);
         setEnclosedFilterChain(chain);
-        chain.add(dvsSubsampler);
+        chain.add(dvsFramer);
         apsDvsNet.getSupport().addPropertyChangeListener(DavisCNNPureJava.EVENT_MADE_DECISION, statistics);
 //        super.setDvsEventsPerFrame(40000); //eventsPerFrame in the 4 cam, DVSmovies Dataset Sophie
         MultilineAnnotationTextRenderer.setFontSize(50);
@@ -96,7 +96,7 @@ public class ActionRecognition extends DavisClassifierCNNProcessor implements Pr
         }
 //        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsDvsNet on each frame in PropertyChangeListener
         // send DVS timeslice to convnet
-        if (dvsSubsampler == null) {
+        if (dvsFramer == null) {
             throw new RuntimeException("Null dvsSubsamplerMultiCam; this should not occur");
         }
 
@@ -107,8 +107,8 @@ public class ActionRecognition extends DavisClassifierCNNProcessor implements Pr
                 lastProcessedEventTimestamp = e.getTimestamp();
                 MultiCameraApsDvsEvent p = (MultiCameraApsDvsEvent) e; //TODO add change in case of MultiCameraApsDvsEvent
 
-                if (dvsSubsampler != null) {
-                    dvsSubsampler.addEvent(p); // generates PropertyChangeEvent EVENT_NEW_FRAME_AVAILBLE when frame fills up, which processes CNN on it
+                if (dvsFramer != null) {
+                    dvsFramer.addEvent(p); // generates PropertyChangeEvent EVENT_NEW_FRAME_AVAILBLE when frame fills up, which processes CNN on it
                 }
             }
 
@@ -119,8 +119,8 @@ public class ActionRecognition extends DavisClassifierCNNProcessor implements Pr
     @Override
     public void resetFilter() {
         super.resetFilter();
-        if (dvsSubsampler != null) {
-            dvsSubsampler.clear();
+        if (dvsFramer != null) {
+            dvsFramer.clear();
         }
         statistics.reset();
     }
@@ -130,7 +130,7 @@ public class ActionRecognition extends DavisClassifierCNNProcessor implements Pr
         super.initFilter();
         if (apsDvsNet != null) {
             try {
-                dvsSubsampler = new DvsFramerSingleFrameMultiCameraChip(chip);
+                dvsFramer = new DvsFramerSingleFrameMultiCameraChip(chip);
             } catch (Exception ex) {
                 log.warning("Problem with the class SubsamplerToFromMultiCameraChip, caught exception " + ex);
             }

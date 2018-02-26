@@ -250,7 +250,7 @@ public class DavisDeepLearnCnnProcessor_HJ extends EventFilter2D implements Prop
         // new activationsFrame is available, process it
         if (isFilterEnabled() && (apsDvsNet != null) && (processAPSFrames)) {
 //            float[] frame = frameExtractor.getNewFrame();
-//            if (frame == null || frame.length == 0 || frameExtractor.getWidth() == 0) {
+//            if (frame == null || frame.length == 0 || frameExtractor.getOutputImageWidth() == 0) {
 //                return;
 //            }
 

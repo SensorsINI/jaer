@@ -154,7 +154,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
 
     @Override
     public synchronized void doStartRecordingAndSaveAVIAs() {
-        String[] s = {"dvsSubsampler.getWidth()=" + dvsFrame.getWidth(), "dvsSubsampler.getHeight()=" + dvsFrame.getHeight(), "grayScale=" + dvsFrame.getDvsGrayScale(), "dvsMinEvents=" + dvsFrame.getDvsEventsPerFrame(), "format=" + format.toString(), "compressionQuality=" + compressionQuality};
+        String[] s = {"dvsSubsampler.getWidth()=" + dvsFrame.getOutputImageWidth(), "dvsSubsampler.getHeight()=" + dvsFrame.getOutputImageHeight(), "grayScale=" + dvsFrame.getDvsGrayScale(), "dvsMinEvents=" + dvsFrame.getDvsEventsPerFrame(), "format=" + format.toString(), "compressionQuality=" + compressionQuality};
         setAdditionalComments(s);
         super.doStartRecordingAndSaveAVIAs(); //To change body of generated methods, choose Tools | Templates.
     }
@@ -163,15 +163,15 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     }
 
     private BufferedImage toImage(DvsFramerSingleFrame subSampler) {
-        BufferedImage bi = new BufferedImage(dvsFrame.getWidth(), dvsFrame.getHeight(), BufferedImage.TYPE_INT_BGR);
+        BufferedImage bi = new BufferedImage(dvsFrame.getOutputImageWidth(), dvsFrame.getOutputImageHeight(), BufferedImage.TYPE_INT_BGR);
         int[] bd = ((DataBufferInt) bi.getRaster().getDataBuffer()).getData();
 
-        for (int y = 0; y < dvsFrame.getHeight(); y++) {
-            for (int x = 0; x < dvsFrame.getWidth(); x++) {
+        for (int y = 0; y < dvsFrame.getOutputImageHeight(); y++) {
+            for (int x = 0; x < dvsFrame.getOutputImageWidth(); x++) {
                 int b = (int) (255 * subSampler.getValueAtPixel(x, y));
                 int g = b;
                 int r = b;
-                int idx = (dvsFrame.getHeight() - y - 1) * dvsFrame.getWidth() + x;
+                int idx = (dvsFrame.getOutputImageHeight() - y - 1) * dvsFrame.getOutputImageWidth() + x;
                 if (idx >= bd.length) {
                     throw new RuntimeException(String.format("index %d out of bounds for x=%d y=%d", idx, x, y));
                 }
@@ -196,7 +196,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
             display = ImageDisplay.createOpenGLCanvas();
             display.setBorderSpacePixels(10);
-            display.setImageSize(dvsFrame.getWidth(), dvsFrame.getHeight());
+            display.setImageSize(dvsFrame.getOutputImageWidth(), dvsFrame.getOutputImageHeight());
             display.setSize(200, 200);
             panel.add(display);
 
@@ -211,11 +211,11 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if (!frame.isVisible()) {
             frame.setVisible(true);
         }
-        if (display.getWidth() != dvsFrame.getWidth() || display.getHeight() != dvsFrame.getHeight()) {
-            display.setImageSize(dvsFrame.getWidth(), dvsFrame.getHeight());
+        if (display.getWidth() != dvsFrame.getOutputImageWidth() || display.getHeight() != dvsFrame.getOutputImageHeight()) {
+            display.setImageSize(dvsFrame.getOutputImageWidth(), dvsFrame.getOutputImageHeight());
         }
-        for (int x = 0; x < dvsFrame.getWidth(); x++) {
-            for (int y = 0; y < dvsFrame.getHeight(); y++) {
+        for (int x = 0; x < dvsFrame.getOutputImageWidth(); x++) {
+            for (int y = 0; y < dvsFrame.getOutputImageHeight(); y++) {
                 display.setPixmapGray(x, y, dvsFramer.getValueAtPixel(x, y));
             }
         }
@@ -262,7 +262,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             AEFrameChipRenderer renderer = (AEFrameChipRenderer) evt.getNewValue();
             endOfFrameTimestamp = renderer.getTimestampFrameEnd();
             newFrameAvailable = true;
-        } else if (isCloseOnRewind() && evt.getPropertyName() == AEInputStream.EVENT_REWIND) {
+        } else if (isCloseOnRewind() && evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             doCloseFile();
         }
     }
@@ -385,7 +385,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if (opt.getSet().isSet("dimx")) {
             try {
                 int n = Integer.parseInt(opt.getSet().getOption("dvsSubsampler.getWidth()").getResultValue(0));
-                writer.getDvsFrame().setWidth(n);
+                writer.getDvsFrame().setOutputImageWidth(n);
             } catch (NumberFormatException e) {
                 System.err.println("Bad dvsSubsampler.getWidth() argument: " + e.toString());
                 System.exit(1);
@@ -395,7 +395,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if (opt.getSet().isSet("dimy")) {
             try {
                 int n = Integer.parseInt(opt.getSet().getOption("dvsSubsampler.getHeight()").getResultValue(0));
-                writer.getDvsFrame().setHeight(n);
+                writer.getDvsFrame().setOutputImageHeight(n);
             } catch (NumberFormatException e) {
                 System.err.println("Bad dvsSubsampler.getHeight() argument: " + e.toString());
                 System.exit(1);
@@ -560,7 +560,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         System.out.println(String.format("Settings: aechip=%s\ndvsSubsampler.getWidth()=%d dvsSubsampler.getHeight()=%d quality=%f format=%s framerate=%d grayscale=%d\n"
                 + "writedvssliceonapsframe=%s writetimecodefile=%s\n"
                 + "numevents=%d rectify=%s normalize=%s showoutput=%s maxframes=%d",
-                chipname, writer.getDvsFrame().getWidth(), writer.getDvsFrame().getHeight(),
+                chipname, writer.getDvsFrame().getOutputImageWidth(), writer.getDvsFrame().getOutputImageHeight(),
                 writer.getCompressionQuality(), writer.getFormat().toString(),
                 writer.getFrameRate(), writer.getDvsFrame().getDvsGrayScale(), writer.isWriteDvsSliceImageOnApsFrame(),
                 writer.isWriteTimecodeFile(), writer.getDvsFrame().getDvsEventsPerFrame(), writer.getDvsFrame().isRectifyPolarities(), 

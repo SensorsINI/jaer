@@ -73,8 +73,8 @@ public class DvsFramerSingleFrameMultiCameraChip  extends DvsFramerSingleFrame{
         int srcWidthReshaped=srcWidthSigleCamera*2; //reshapde size in the square configuration
         int srcHeightReshaped=chip.getSizeY()*2;
         
-        int xReshaped = (int) Math.floor(((float) X / srcWidthReshaped) * super.getWidth()); //coordinates in the reshaped configuration
-        int yReshaped = (int) Math.floor(((float) Y / srcHeightReshaped) * super.getHeight());
+        int xReshaped = (int) Math.floor(((float) X / srcWidthReshaped) * super.getOutputImageWidth()); //coordinates in the reshaped configuration
+        int yReshaped = (int) Math.floor(((float) Y / srcHeightReshaped) * super.getOutputImageHeight());
 
         dvsFrame.addEvent(xReshaped, yReshaped, e.polarity);
     }

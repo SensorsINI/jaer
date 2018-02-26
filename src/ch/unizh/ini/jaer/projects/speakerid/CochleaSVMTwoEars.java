@@ -168,7 +168,7 @@ public class CochleaSVMTwoEars extends ISIFilterTwoEars implements FrameAnnotate
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName() == AEInputStream.EVENT_REWIND) {
+        if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             chip.getAeViewer().getAePlayer().setPaused(true);
             timeSinceLastPrediction = 0;
             timeOfLastWrite = 0;
@@ -179,7 +179,7 @@ public class CochleaSVMTwoEars extends ISIFilterTwoEars implements FrameAnnotate
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!propertyChangeListenerAdded) {
             if (chip.getAeViewer() != null) {
-                chip.getAeViewer().addPropertyChangeListener(AEInputStream.EVENT_REWIND, this);
+                chip.getAeViewer().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
                 propertyChangeListenerAdded = true;
             }
         }

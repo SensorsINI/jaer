@@ -122,6 +122,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT = 1000;
     private int numNonMonotonicTimeExceptionsPrinted = 0;
     private int numHeaderLines = 0;
+    private boolean rewindFlag = false;
 
     /**
      * Marking positions
@@ -161,7 +162,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * the size of the memory mapped part of the input file. This window is
      * centered over the file position except at the start and end of the file.
      */
-    private long CHUNK_SIZE_EVENTS = Integer.MAX_VALUE / 64  / EVENT32_SIZE;
+    private long CHUNK_SIZE_EVENTS = Integer.MAX_VALUE / 64 / EVENT32_SIZE;
     private long chunkSizeBytes = CHUNK_SIZE_EVENTS * EVENT32_SIZE; // size of memory mapped file chunk, depends on event 
     // size and number of events to map, initialized as
     // though we didn't have a file header. Max value is Integer.MAX_VALUE however. Will generate illegalargument exception if we try to allowcate larger chunk
@@ -630,6 +631,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         }
         packet.setNumEvents(count);
         getSupport().firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, position());
+        maybeSendRewoundEvent(oldPosition);
         return packet;
         // return new AEPacketRaw(addr,ts);
     }
@@ -807,6 +809,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         getSupport().firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, position());
         // System.out.println("bigwrap="+bigWrap+" read "+packet.getNumEvents()+"
         // mostRecentTimestamp="+mostRecentTimestamp+" currentStartTimestamp="+currentStartTimestamp);
+        maybeSendRewoundEvent(oldPosition);
         return packet;
     }
 
@@ -836,9 +839,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // System.out.println("AEInputStream.rewind(): set position="+byteBuffer.position()+"
         // mostRecentTimestamp="+mostRecentTimestamp);
         getSupport().firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, position());
-        getSupport().firePropertyChange(AEInputStream.EVENT_REWIND, oldPosition, position());
+        rewindFlag = true;
         // String s=ListPropertyChangeListeners.listListeners(getSupport());
-        // log.info("Listeners for EVENT_REWIND of "+this+" are \n"+s);
+        // log.info("Listeners for EVENT_REWOUND of "+this+" are \n"+s);
     }
 
     /**
@@ -925,6 +928,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /**
      * AEFileInputStream has PropertyChangeSupport. This support fires events on
      * certain events such as "rewind".
+     *
      * @return the support
      * @see AEInputStream for static Strings starting with EVENT_
      */
@@ -932,23 +936,24 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     public PropertyChangeSupport getSupport() {
         return support;
     }
-    
+
     /**
      * Adds a listener for property changes
+     *
      * @param listener the listener
      */
     public void addPropertyChangeListener(PropertyChangeListener listener) {
-         this.support.addPropertyChangeListener(listener);
-     }
-
+        this.support.addPropertyChangeListener(listener);
+    }
 
     /**
      * Removes a listener
+     *
      * @param listener the listener
      */
     public void removePropertyChangeListener(PropertyChangeListener listener) {
-         this.support.removePropertyChangeListener(listener);
-     }
+        this.support.removePropertyChangeListener(listener);
+    }
 
     /**
      * Sets or clears the marked IN position. Does nothing if trying to set
@@ -1044,7 +1049,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     public void close() throws IOException {
         super.close();
         fileChannel.close();
-        fileChannel=null;
+        fileChannel = null;
         System.gc();
         System.runFinalization(); // try to free memory mapped file buffers so file can be deleted....
     }
@@ -1127,6 +1132,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      */
     public MappedByteBuffer getByteBuffer() {
         return byteBuffer;
+    }
+
+    private void maybeSendRewoundEvent(long oldPosition) {
+        if (rewindFlag) {
+            getSupport().firePropertyChange(AEInputStream.EVENT_REWOUND, oldPosition, position());
+            rewindFlag = false;
+        }
     }
 
     /**

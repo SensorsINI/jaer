@@ -50,8 +50,8 @@ public class AEInputStream implements Closeable {
      * <li>EVENT_EOF end of input file or stream
      * <li>EVENT_WRAPPED_TIME means timestamp has wrapped around 32-bit value
      * <li>EVENT_POSITION means input stream position has changed (called just before returning each new packet) 
-     * <li>EVENT_REWIND means files has just rewound to start
-     * <li>EVENT_MARKSET means the mark has just been set on the stream for
+     * <li>EVENT_REWOUND means files has just rewound to start
+    *  <li>EVENT_MARKSET means the mark has just been set on the stream for
      * later possible rewind 
      * <li>EVENT_MARKS_CLEARED means the marks were cleared
      * <li>EVENT_INIT is called after initialization of the input stream, with new value this
@@ -59,8 +59,439 @@ public class AEInputStream implements Closeable {
      * <li>EVENT_REPOSITIONED the input stream has been repositioned (e.g. by using slider in AEPlayer) to a new position
      * </ul>
      */
-     public static final String EVENT_EOF="eof", EVENT_WRAPPED_TIME="wrappedTime", EVENT_POSITION="position", EVENT_REWIND="rewind",
-             EVENT_MARKSET="markset", EVENT_MARKS_CLEARED="marksCleared",EVENT_MARK_IN_SET="markInSet",EVENT_MARK_OUT_SET="markOutSet", EVENT_INIT="init", EVENT_NON_MONOTONIC_TIMESTAMP="nonMonotonicTimestamp", EVENT_REPOSITIONED="respositioned", EVENT_REPEAT_ON = "repeatOn", EVENT_REPEAT_OFF = "repeatOff";
+     public static final String EVENT_EOF="eof", 
+
+    /**
+     * Property change event.Listeners should check for events using these static String objects.
+ <p>
+ In order to use these events, an EventFilter must register itself either with the AEInputStream or with the owning AEViewer. 
+ But this registration
+ is only possible after AEViewer is constructed, which is after the
+ EventFilter is constructed. The registration can occur in the EventFilter
+ filterPacket() method as in the code snippet below:
+ <pre><code>
+    private boolean addedViewerPropertyChangeListener = false;
+
+ synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
+  if (!addedViewerPropertyChangeListener) {
+      if (chip.getAeViewer() != null) {
+ chip.getAeViewer().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+ addedViewerPropertyChangeListener = true;
+ }
+ }
+ }
+ </code></pre>
+ <p>
+ <ul>
+ <li>EVENT_EOF end of input file or stream
+ <li>EVENT_WRAPPED_TIME means timestamp has wrapped around 32-bit value
+ <li>EVENT_POSITION means input stream position has changed (called just before returning each new packet) 
+ <li>EVENT_REWOUND means files has just rewound to start
+ <li>EVENT_MARKSET means the mark has just been set on the stream for
+ later possible rewind 
+ <li>EVENT_MARKS_CLEARED means the marks were cleared
+ <li>EVENT_INIT is called after initialization of the input stream, with new value this
+ <li>EVENT_NON_MONOTONIC_TIMESTAMP a non-monotonic timestamp was detected
+ <li>EVENT_REPOSITIONED the input stream has been repositioned (e.g. by using slider in AEPlayer) to a new position
+ </ul>
+     */
+    EVENT_WRAPPED_TIME="wrappedTime", 
+
+    /**
+     * Property change event.Listeners should check for events using these static String objects.
+ <p>
+ In order to use these events, an EventFilter must register itself either with the AEInputStream or with the owning AEViewer. 
+ But this registration
+ is only possible after AEViewer is constructed, which is after the
+ EventFilter is constructed. The registration can occur in the EventFilter
+ filterPacket() method as in the code snippet below:
+ <pre><code>
+    private boolean addedViewerPropertyChangeListener = false;
+
+ synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
+  if (!addedViewerPropertyChangeListener) {
+      if (chip.getAeViewer() != null) {
+ chip.getAeViewer().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+ addedViewerPropertyChangeListener = true;
+ }
+ }
+ }
+ </code></pre>
+ <p>
+ <ul>
+ <li>EVENT_EOF end of input file or stream
+ <li>EVENT_WRAPPED_TIME means timestamp has wrapped around 32-bit value
+ <li>EVENT_POSITION means input stream position has changed (called just before returning each new packet) 
+ <li>EVENT_REWOUND means files has just rewound to start
+ <li>EVENT_MARKSET means the mark has just been set on the stream for
+ later possible rewind 
+ <li>EVENT_MARKS_CLEARED means the marks were cleared
+ <li>EVENT_INIT is called after initialization of the input stream, with new value this
+ <li>EVENT_NON_MONOTONIC_TIMESTAMP a non-monotonic timestamp was detected
+ <li>EVENT_REPOSITIONED the input stream has been repositioned (e.g. by using slider in AEPlayer) to a new position
+ </ul>
+     */
+    EVENT_POSITION="position", 
+
+    /**
+     * Property change event.Listeners should check for events using these static String objects.
+ <p>
+ In order to use these events, an EventFilter must register itself either with the AEInputStream or with the owning AEViewer. 
+ But this registration
+ is only possible after AEViewer is constructed, which is after the
+ EventFilter is constructed. The registration can occur in the EventFilter
+ filterPacket() method as in the code snippet below:
+ <pre><code>
+    private boolean addedViewerPropertyChangeListener = false;
+
+ synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
+  if (!addedViewerPropertyChangeListener) {
+      if (chip.getAeViewer() != null) {
+ chip.getAeViewer().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+ addedViewerPropertyChangeListener = true;
+ }
+ }
+ }
+ </code></pre>
+ <p>
+ <ul>
+ <li>EVENT_EOF end of input file or stream
+ <li>EVENT_WRAPPED_TIME means timestamp has wrapped around 32-bit value
+ <li>EVENT_POSITION means input stream position has changed (called just before returning each new packet) 
+ <li>EVENT_REWOUND means files has just rewound to start
+ <li>EVENT_MARKSET means the mark has just been set on the stream for
+ later possible rewind 
+ <li>EVENT_MARKS_CLEARED means the marks were cleared
+ <li>EVENT_INIT is called after initialization of the input stream, with new value this
+ <li>EVENT_NON_MONOTONIC_TIMESTAMP a non-monotonic timestamp was detected
+ <li>EVENT_REPOSITIONED the input stream has been repositioned (e.g. by using slider in AEPlayer) to a new position
+ </ul>
+     */
+    EVENT_REWOUND="rewound",
+
+    /**
+     * Property change event.Listeners should check for events using these static String objects.
+ <p>
+ In order to use these events, an EventFilter must register itself either with the AEInputStream or with the owning AEViewer. 
+ But this registration
+ is only possible after AEViewer is constructed, which is after the
+ EventFilter is constructed. The registration can occur in the EventFilter
+ filterPacket() method as in the code snippet below:
+ <pre><code>
+    private boolean addedViewerPropertyChangeListener = false;
+
+ synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
+  if (!addedViewerPropertyChangeListener) {
+      if (chip.getAeViewer() != null) {
+ chip.getAeViewer().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+ addedViewerPropertyChangeListener = true;
+ }
+ }
+ }
+ </code></pre>
+ <p>
+ <ul>
+ <li>EVENT_EOF end of input file or stream
+ <li>EVENT_WRAPPED_TIME means timestamp has wrapped around 32-bit value
+ <li>EVENT_POSITION means input stream position has changed (called just before returning each new packet) 
+ <li>EVENT_REWOUND means files has just rewound to start
+ <li>EVENT_MARKSET means the mark has just been set on the stream for
+ later possible rewind 
+ <li>EVENT_MARKS_CLEARED means the marks were cleared
+ <li>EVENT_INIT is called after initialization of the input stream, with new value this
+ <li>EVENT_NON_MONOTONIC_TIMESTAMP a non-monotonic timestamp was detected
+ <li>EVENT_REPOSITIONED the input stream has been repositioned (e.g. by using slider in AEPlayer) to a new position
+ </ul>
+     */
+    EVENT_MARKSET="markset", 
+
+    /**
+     * Property change event.Listeners should check for events using these static String objects.
+ <p>
+ In order to use these events, an EventFilter must register itself either with the AEInputStream or with the owning AEViewer. 
+ But this registration
+ is only possible after AEViewer is constructed, which is after the
+ EventFilter is constructed. The registration can occur in the EventFilter
+ filterPacket() method as in the code snippet below:
+ <pre><code>
+    private boolean addedViewerPropertyChangeListener = false;
+
+ synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
+  if (!addedViewerPropertyChangeListener) {
+      if (chip.getAeViewer() != null) {
+ chip.getAeViewer().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+ addedViewerPropertyChangeListener = true;
+ }
+ }
+ }
+ </code></pre>
+ <p>
+ <ul>
+ <li>EVENT_EOF end of input file or stream
+ <li>EVENT_WRAPPED_TIME means timestamp has wrapped around 32-bit value
+ <li>EVENT_POSITION means input stream position has changed (called just before returning each new packet) 
+ <li>EVENT_REWOUND means files has just rewound to start
+ <li>EVENT_MARKSET means the mark has just been set on the stream for
+ later possible rewind 
+ <li>EVENT_MARKS_CLEARED means the marks were cleared
+ <li>EVENT_INIT is called after initialization of the input stream, with new value this
+ <li>EVENT_NON_MONOTONIC_TIMESTAMP a non-monotonic timestamp was detected
+ <li>EVENT_REPOSITIONED the input stream has been repositioned (e.g. by using slider in AEPlayer) to a new position
+ </ul>
+     */
+    EVENT_MARKS_CLEARED="marksCleared",
+
+    /**
+     * Property change event.Listeners should check for events using these static String objects.
+ <p>
+ In order to use these events, an EventFilter must register itself either with the AEInputStream or with the owning AEViewer. 
+ But this registration
+ is only possible after AEViewer is constructed, which is after the
+ EventFilter is constructed. The registration can occur in the EventFilter
+ filterPacket() method as in the code snippet below:
+ <pre><code>
+    private boolean addedViewerPropertyChangeListener = false;
+
+ synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
+  if (!addedViewerPropertyChangeListener) {
+      if (chip.getAeViewer() != null) {
+ chip.getAeViewer().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+ addedViewerPropertyChangeListener = true;
+ }
+ }
+ }
+ </code></pre>
+ <p>
+ <ul>
+ <li>EVENT_EOF end of input file or stream
+ <li>EVENT_WRAPPED_TIME means timestamp has wrapped around 32-bit value
+ <li>EVENT_POSITION means input stream position has changed (called just before returning each new packet) 
+ <li>EVENT_REWOUND means files has just rewound to start
+ <li>EVENT_MARKSET means the mark has just been set on the stream for
+ later possible rewind 
+ <li>EVENT_MARKS_CLEARED means the marks were cleared
+ <li>EVENT_INIT is called after initialization of the input stream, with new value this
+ <li>EVENT_NON_MONOTONIC_TIMESTAMP a non-monotonic timestamp was detected
+ <li>EVENT_REPOSITIONED the input stream has been repositioned (e.g. by using slider in AEPlayer) to a new position
+ </ul>
+     */
+    EVENT_MARK_IN_SET="markInSet",
+
+    /**
+     * Property change event.Listeners should check for events using these static String objects.
+ <p>
+ In order to use these events, an EventFilter must register itself either with the AEInputStream or with the owning AEViewer. 
+ But this registration
+ is only possible after AEViewer is constructed, which is after the
+ EventFilter is constructed. The registration can occur in the EventFilter
+ filterPacket() method as in the code snippet below:
+ <pre><code>
+    private boolean addedViewerPropertyChangeListener = false;
+
+ synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
+  if (!addedViewerPropertyChangeListener) {
+      if (chip.getAeViewer() != null) {
+ chip.getAeViewer().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+ addedViewerPropertyChangeListener = true;
+ }
+ }
+ }
+ </code></pre>
+ <p>
+ <ul>
+ <li>EVENT_EOF end of input file or stream
+ <li>EVENT_WRAPPED_TIME means timestamp has wrapped around 32-bit value
+ <li>EVENT_POSITION means input stream position has changed (called just before returning each new packet) 
+ <li>EVENT_REWOUND means files has just rewound to start
+ <li>EVENT_MARKSET means the mark has just been set on the stream for
+ later possible rewind 
+ <li>EVENT_MARKS_CLEARED means the marks were cleared
+ <li>EVENT_INIT is called after initialization of the input stream, with new value this
+ <li>EVENT_NON_MONOTONIC_TIMESTAMP a non-monotonic timestamp was detected
+ <li>EVENT_REPOSITIONED the input stream has been repositioned (e.g. by using slider in AEPlayer) to a new position
+ </ul>
+     */
+    EVENT_MARK_OUT_SET="markOutSet", 
+
+    /**
+     * Property change event.Listeners should check for events using these static String objects.
+ <p>
+ In order to use these events, an EventFilter must register itself either with the AEInputStream or with the owning AEViewer. 
+ But this registration
+ is only possible after AEViewer is constructed, which is after the
+ EventFilter is constructed. The registration can occur in the EventFilter
+ filterPacket() method as in the code snippet below:
+ <pre><code>
+    private boolean addedViewerPropertyChangeListener = false;
+
+ synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
+  if (!addedViewerPropertyChangeListener) {
+      if (chip.getAeViewer() != null) {
+ chip.getAeViewer().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+ addedViewerPropertyChangeListener = true;
+ }
+ }
+ }
+ </code></pre>
+ <p>
+ <ul>
+ <li>EVENT_EOF end of input file or stream
+ <li>EVENT_WRAPPED_TIME means timestamp has wrapped around 32-bit value
+ <li>EVENT_POSITION means input stream position has changed (called just before returning each new packet) 
+ <li>EVENT_REWOUND means files has just rewound to start
+ <li>EVENT_MARKSET means the mark has just been set on the stream for
+ later possible rewind 
+ <li>EVENT_MARKS_CLEARED means the marks were cleared
+ <li>EVENT_INIT is called after initialization of the input stream, with new value this
+ <li>EVENT_NON_MONOTONIC_TIMESTAMP a non-monotonic timestamp was detected
+ <li>EVENT_REPOSITIONED the input stream has been repositioned (e.g. by using slider in AEPlayer) to a new position
+ </ul>
+     */
+    EVENT_INIT="init", 
+
+    /**
+     * Property change event.Listeners should check for events using these static String objects.
+ <p>
+ In order to use these events, an EventFilter must register itself either with the AEInputStream or with the owning AEViewer. 
+ But this registration
+ is only possible after AEViewer is constructed, which is after the
+ EventFilter is constructed. The registration can occur in the EventFilter
+ filterPacket() method as in the code snippet below:
+ <pre><code>
+    private boolean addedViewerPropertyChangeListener = false;
+
+ synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
+  if (!addedViewerPropertyChangeListener) {
+      if (chip.getAeViewer() != null) {
+ chip.getAeViewer().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+ addedViewerPropertyChangeListener = true;
+ }
+ }
+ }
+ </code></pre>
+ <p>
+ <ul>
+ <li>EVENT_EOF end of input file or stream
+ <li>EVENT_WRAPPED_TIME means timestamp has wrapped around 32-bit value
+ <li>EVENT_POSITION means input stream position has changed (called just before returning each new packet) 
+ <li>EVENT_REWOUND means files has just rewound to start
+ <li>EVENT_MARKSET means the mark has just been set on the stream for
+ later possible rewind 
+ <li>EVENT_MARKS_CLEARED means the marks were cleared
+ <li>EVENT_INIT is called after initialization of the input stream, with new value this
+ <li>EVENT_NON_MONOTONIC_TIMESTAMP a non-monotonic timestamp was detected
+ <li>EVENT_REPOSITIONED the input stream has been repositioned (e.g. by using slider in AEPlayer) to a new position
+ </ul>
+     */
+    EVENT_NON_MONOTONIC_TIMESTAMP="nonMonotonicTimestamp", 
+
+    /**
+     * Property change event.Listeners should check for events using these static String objects.
+ <p>
+ In order to use these events, an EventFilter must register itself either with the AEInputStream or with the owning AEViewer. 
+ But this registration
+ is only possible after AEViewer is constructed, which is after the
+ EventFilter is constructed. The registration can occur in the EventFilter
+ filterPacket() method as in the code snippet below:
+ <pre><code>
+    private boolean addedViewerPropertyChangeListener = false;
+
+ synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
+  if (!addedViewerPropertyChangeListener) {
+      if (chip.getAeViewer() != null) {
+ chip.getAeViewer().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+ addedViewerPropertyChangeListener = true;
+ }
+ }
+ }
+ </code></pre>
+ <p>
+ <ul>
+ <li>EVENT_EOF end of input file or stream
+ <li>EVENT_WRAPPED_TIME means timestamp has wrapped around 32-bit value
+ <li>EVENT_POSITION means input stream position has changed (called just before returning each new packet) 
+ <li>EVENT_REWOUND means files has just rewound to start
+ <li>EVENT_MARKSET means the mark has just been set on the stream for
+ later possible rewind 
+ <li>EVENT_MARKS_CLEARED means the marks were cleared
+ <li>EVENT_INIT is called after initialization of the input stream, with new value this
+ <li>EVENT_NON_MONOTONIC_TIMESTAMP a non-monotonic timestamp was detected
+ <li>EVENT_REPOSITIONED the input stream has been repositioned (e.g. by using slider in AEPlayer) to a new position
+ </ul>
+     */
+    EVENT_REPOSITIONED="respositioned", 
+
+    /**
+     * Property change event.Listeners should check for events using these static String objects.
+ <p>
+ In order to use these events, an EventFilter must register itself either with the AEInputStream or with the owning AEViewer. 
+ But this registration
+ is only possible after AEViewer is constructed, which is after the
+ EventFilter is constructed. The registration can occur in the EventFilter
+ filterPacket() method as in the code snippet below:
+ <pre><code>
+    private boolean addedViewerPropertyChangeListener = false;
+
+ synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
+  if (!addedViewerPropertyChangeListener) {
+      if (chip.getAeViewer() != null) {
+ chip.getAeViewer().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+ addedViewerPropertyChangeListener = true;
+ }
+ }
+ }
+ </code></pre>
+ <p>
+ <ul>
+ <li>EVENT_EOF end of input file or stream
+ <li>EVENT_WRAPPED_TIME means timestamp has wrapped around 32-bit value
+ <li>EVENT_POSITION means input stream position has changed (called just before returning each new packet) 
+ <li>EVENT_REWOUND means files has just rewound to start
+ <li>EVENT_MARKSET means the mark has just been set on the stream for
+ later possible rewind 
+ <li>EVENT_MARKS_CLEARED means the marks were cleared
+ <li>EVENT_INIT is called after initialization of the input stream, with new value this
+ <li>EVENT_NON_MONOTONIC_TIMESTAMP a non-monotonic timestamp was detected
+ <li>EVENT_REPOSITIONED the input stream has been repositioned (e.g. by using slider in AEPlayer) to a new position
+ </ul>
+     */
+    EVENT_REPEAT_ON = "repeatOn", 
+
+    /**
+     * Property change event.Listeners should check for events using these static String objects.
+ <p>
+ In order to use these events, an EventFilter must register itself either with the AEInputStream or with the owning AEViewer. 
+ But this registration
+ is only possible after AEViewer is constructed, which is after the
+ EventFilter is constructed. The registration can occur in the EventFilter
+ filterPacket() method as in the code snippet below:
+ <pre><code>
+    private boolean addedViewerPropertyChangeListener = false;
+
+ synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
+  if (!addedViewerPropertyChangeListener) {
+      if (chip.getAeViewer() != null) {
+ chip.getAeViewer().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+ addedViewerPropertyChangeListener = true;
+ }
+ }
+ }
+ </code></pre>
+ <p>
+ <ul>
+ <li>EVENT_EOF end of input file or stream
+ <li>EVENT_WRAPPED_TIME means timestamp has wrapped around 32-bit value
+ <li>EVENT_POSITION means input stream position has changed (called just before returning each new packet) 
+ <li>EVENT_REWOUND means files has just rewound to start
+ <li>EVENT_MARKSET means the mark has just been set on the stream for
+ later possible rewind 
+ <li>EVENT_MARKS_CLEARED means the marks were cleared
+ <li>EVENT_INIT is called after initialization of the input stream, with new value this
+ <li>EVENT_NON_MONOTONIC_TIMESTAMP a non-monotonic timestamp was detected
+ <li>EVENT_REPOSITIONED the input stream has been repositioned (e.g. by using slider in AEPlayer) to a new position
+ </ul>
+     */
+    EVENT_REPEAT_OFF = "repeatOff";
 
     private InputStream is;
     AEPacketRaw packet = new AEPacketRaw();
