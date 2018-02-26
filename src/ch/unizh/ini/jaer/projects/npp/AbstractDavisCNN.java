@@ -255,7 +255,7 @@ public abstract class AbstractDavisCNN {
     }
 
     /**
-     * Loads the network
+     * Loads the network from a protobuf binary file 
      *
      * @param f
      * @throws IOException

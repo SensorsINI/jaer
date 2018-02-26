@@ -50,9 +50,9 @@ public class DavisWhatWhereCNNProcessor extends AbstractDavisCNNProcessor {
         super(chip);
         String deb = "3. Debug", disp = "1. Display", anal = "2. Analysis";
 
-        dvsSubsampler = new DvsFramerROIGenerator(chip);
+        dvsFramer = new DvsFramerROIGenerator(chip);
         FilterChain chain = new FilterChain(chip);
-        chain.add(dvsSubsampler); // only for control, we iterate with it here using the events we recieve
+        chain.add(dvsFramer); // only for control, we iterate with it here using the events we recieve
         setEnclosedFilterChain(chain);
         setPropertyTooltip(disp, "alpha", "how opaque the overlay of ROI processing results is drawn");
         initFilter();
@@ -62,8 +62,8 @@ public class DavisWhatWhereCNNProcessor extends AbstractDavisCNNProcessor {
 //    @Override
 //    public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
 //        if (!addedPropertyChangeListener) {
-//            if (dvsSubsampler != null) {
-//                dvsSubsampler.getSupport().addPropertyChangeListener(DvsFramerROIGenerator.EVENT_NEW_ROI_AVAILABLE, this);
+//            if (dvsFramer != null) {
+//                dvsFramer.getSupport().addPropertyChangeListener(DvsFramerROIGenerator.EVENT_NEW_ROI_AVAILABLE, this);
 //            }
 //            if (apsDvsNet != null) {
 //                apsDvsNet.getSupport().addPropertyChangeListener(DavisCNNPureJava.EVENT_MADE_DECISION, this);
@@ -76,7 +76,7 @@ public class DavisWhatWhereCNNProcessor extends AbstractDavisCNNProcessor {
 //        }
 //
 //        resetTimeLimiter();
-//        if (!dvsSubsampler.allocateMemory()) {
+//        if (!dvsFramer.allocateMemory()) {
 //            return in;
 //        }
 //        for (BasicEvent e : in) {
@@ -87,7 +87,7 @@ public class DavisWhatWhereCNNProcessor extends AbstractDavisCNNProcessor {
 //            lastProcessedEventTimestamp = e.getTimestamp();
 //            PolarityEvent p = (PolarityEvent) e;
 //
-//            dvsSubsampler.addEvent(p); // generates ROI complete EVENT_NEW_FRAME_AVAILBLE, no need to process frames here
+//            dvsFramer.addEvent(p); // generates ROI complete EVENT_NEW_FRAME_AVAILBLE, no need to process frames here
 //
 //        }
 //        return in;
@@ -96,7 +96,7 @@ public class DavisWhatWhereCNNProcessor extends AbstractDavisCNNProcessor {
     @Override
     public void resetFilter() {
         super.resetFilter();
-        dvsSubsampler.resetFilter();
+        dvsFramer.resetFilter();
     }
 
     @Override

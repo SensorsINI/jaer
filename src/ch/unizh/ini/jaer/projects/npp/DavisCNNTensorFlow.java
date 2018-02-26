@@ -35,6 +35,7 @@ import org.tensorflow.DataType;
 import org.tensorflow.Graph;
 import org.tensorflow.Operation;
 import org.tensorflow.Output;
+import org.tensorflow.SavedModelBundle;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 
@@ -56,6 +57,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
     private Graph executionGraph = null;
     private Graph inputNormalizationGraph = null;
     private ArrayList<String> ioLayers = new ArrayList();
+    SavedModelBundle savedModelBundle = null;
 
     public DavisCNNTensorFlow(AbstractDavisCNNProcessor processor) {
         super(processor);
@@ -127,7 +129,12 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
                 .run()
                 .get(0).expect(Float.class);
 
-        float[] results = TensorFlow.executeGraph(executionGraph, normalizedImage, processor.getInputLayerName(), processor.getOutputLayerName());
+        float[] results = null;
+        if (savedModelBundle == null) {
+            results = TensorFlow.executeGraph(executionGraph, normalizedImage, processor.getInputLayerName(), processor.getOutputLayerName());
+        } else {
+            results = TensorFlow.executeSession(savedModelBundle, normalizedImage, processor.getInputLayerName(), processor.getOutputLayerName());
+        }
         outputLayer = new OutputLayer(results);
         getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
         return results;
@@ -183,12 +190,13 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
             getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
             return output;
         } catch (IllegalArgumentException ex) {
-            StringBuilder msg = new StringBuilder("<html>Caught exception <p>" + ex.toString() + "<p>Did you set inputLayerName and outputLayerName in the property group <i>2. Analysis</i>?</p>");
+            StringBuilder msg = new StringBuilder("<html>Caught exception <p>" + ex.toString() + "<p>Did you set <i>inputLayerName</i> and <i>outputLayerName</i>?</p>");
             msg.append("<p>The IO layer names could be as follows (the string inside the single quotes):</p> <ul> ");
             for (String s : ioLayers) {
                 msg.append("<li>" + (s.replaceAll("<", "").replaceAll(">", "")) + "</li>");
             }
             msg.append("</ul>");
+            log.warning(msg.toString());
             JOptionPane.showMessageDialog(processor.getChip().getAeViewer(), msg.toString(),
                     "Error computing network", JOptionPane.WARNING_MESSAGE);
             throw new IllegalArgumentException(ex.getCause());
@@ -235,12 +243,20 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
             throw new IOException("null file");
         }
         try {
+            if (f.isDirectory()) {
+                log.info("loading \"serve\" graph from tensorflow SavedModelBundle folder " + f);
+                savedModelBundle = SavedModelBundle.load(f.getCanonicalPath(), "serve");
+                executionGraph = savedModelBundle.graph();
+            } else {
+                log.info("loading network from file " + f);
+                graphDef = Files.readAllBytes(Paths.get(f.getAbsolutePath())); // "tensorflow_inception_graph.pb"
+                executionGraph = new Graph();
+                executionGraph.importGraphDef(graphDef);
+            }
             setFilename(f.toString());
             setNettype("TensorFlow");
             setNetname(f.getName());
-            graphDef = Files.readAllBytes(Paths.get(f.getAbsolutePath())); // "tensorflow_inception_graph.pb"
-            executionGraph = new Graph();
-            executionGraph.importGraphDef(graphDef);
+
             Iterator<Operation> itr = executionGraph.operations();
             StringBuilder b = new StringBuilder("TensorFlow Graph: \n");
             int opnum = 0;
@@ -249,7 +265,10 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
                 Operation o = itr.next();
                 final String s = o.toString().toLowerCase();
 //                if(s.contains("input") || s.contains("output") || s.contains("placeholder")){
-                if (s.contains("input") || s.contains("placeholder") || s.contains("output")) {  // find input placeholder & output
+                if (s.contains("input")
+                        || s.contains("placeholder")
+                        || s.contains("output")
+                        || s.contains("prediction")) {  // find input placeholder & output
 //                    int numOutputs = o.numOutputs();
                     b.append("********** ");
                     ioLayers.add(s);
@@ -262,8 +281,8 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
 //                        }
 //                    }
 //                    int inputLength=o.inputListLength("");
+                    b.append(opnum++ + ": " + o.toString() + "\n");
                 }
-                b.append(opnum++ + ": " + o.toString() + "\n");
             }
             log.info(b.toString());
         } catch (Exception e) {
@@ -331,6 +350,10 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
     public class InputLayer implements AbstractDavisCNN.InputLayer {
 
         int height, width, numChannels;
+
+        // set one of these nonnull depending on application
+        public DvsFramerSingleFrame dvsFramerSingleFrame = null;
+        public DvsFramerROIGenerator dvsFramerROIGenerator = null;
 
         public InputLayer(int width, int height, int numChannels) {
             this.width = width;

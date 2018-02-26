@@ -1183,7 +1183,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 }
                 filePositionTimestamp = chip.getAeViewer().getAePlayer().getAEInputStream().getMostRecentTimestamp();
                 break;
-            case AEInputStream.EVENT_REWIND:
+            case AEInputStream.EVENT_REWOUND:
             case AEInputStream.EVENT_REPOSITIONED:
 //                log.info("rewind to start or mark position or reposition event " + evt.toString());
                 if (evt.getNewValue() instanceof Long) {
@@ -1209,7 +1209,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 shiftPressed = false;
                 ctlPressed = false; // disable labeling on rewind to prevent bad labels at start
                 altPressed = false; // disable labeling on rewind to prevent bad labels at start
-                if (evt.getPropertyName() == AEInputStream.EVENT_REWIND) {
+                if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
                     try {
                         Thread.currentThread().sleep(1000);// time for preparing label
 

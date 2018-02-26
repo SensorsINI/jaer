@@ -63,9 +63,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * @see #EVENT_NEW_FRAME_AVAILABLE
  *
  */
-@Description("Abstract super class for making DVS frames from DVS events")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-abstract public class DvsFramer extends EventFilter2D  {
+abstract public class DvsFramer extends EventFilter2D {
 
     protected static Logger log = Logger.getLogger("DvsFramer");
     /**
@@ -96,12 +94,35 @@ abstract public class DvsFramer extends EventFilter2D  {
     protected DvsFrame lastDvsFrame = null;
 
     /**
+     * Output image width and height
+     */
+    protected int outputImageWidth = getInt("outputImageWidth", 0), outputImageHeight = getInt("outputImageHeight", 0);
+
+    /**
+     * frame cut is the pixels we cut from the original image, it follows [[top,
+     * bottom], [left, right]]
+     */
+    protected int frameCutBottom = 0;
+    /**
+     * frame cut is the pixels we cut from the original image, it follows [[top,
+     * bottom], [left, right]]
+     */
+    protected int frameCutLeft = 0;
+    /**
+     * frame cut is the pixels we cut from the original image, it follows [[top,
+     * bottom], [left, right]]
+     */
+    protected int frameCutRight = 0;
+    /**
+     * frame cut is the pixels we cut from the original image, it follows [[top,
+     * bottom], [left, right]]
+     */
+    protected int frameCutTop = 0;
+
+    /**
      * Makes a new DvsSubsamplingTimesliceConvNetInput
      *
-     * @param dimX
-     * @param dimY
-     * @param colorScale initial scale by which each ON or OFF event is added to
-     * the pixmap.
+     * @param chip
      * @see #setDvsGrayScale(int)
      */
     public DvsFramer(AEChip chip) {
@@ -112,6 +133,12 @@ abstract public class DvsFramer extends EventFilter2D  {
         setPropertyTooltip("dvsGrayScale", "sets the full scale value for the DVS frame rendering");
         setPropertyTooltip("rectifyPolarities", "whether DVS events have their polarity ignored.");
         setPropertyTooltip("normalizeDVSForZsNullhop", "uses DvsSubsamplerToFrame normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1\n");
+        setPropertyTooltip("outputImageHeight", "height of output image");
+        setPropertyTooltip("outputImageWidth", "width of output image");
+        setPropertyTooltip("frameCutTop", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
+        setPropertyTooltip("frameCutBottom", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
+        setPropertyTooltip("frameCutLeft", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
+        setPropertyTooltip("frameCutRight", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
     }
 
     /**
@@ -295,6 +322,88 @@ abstract public class DvsFramer extends EventFilter2D  {
         activationsFrame.setPreferredSize(new Dimension(400, 400));
     }
 
+    public int getOutputImageWidth() {
+        return outputImageWidth;
+    }
+
+    public int getOutputImageHeight() {
+        return outputImageHeight;
+    }
+
+    synchronized public void setOutputImageWidth(int width) {
+        this.outputImageWidth = width;
+        putInt("outputImageWidth", width);
+    }
+
+    synchronized public void setOutputImageHeight(int height) {
+        this.outputImageHeight = height;
+        putInt("outputImageHeight", height);
+    }
+
+    /**
+     * @return the frameCutBottom
+     */
+    public int getFrameCutBottom() {
+        return frameCutBottom;
+    }
+
+    /**
+     * @return the frameCutLeft
+     */
+    public int getFrameCutLeft() {
+        return frameCutLeft;
+    }
+
+    /**
+     * @return the frameCutRight
+     */
+    public int getFrameCutRight() {
+        return frameCutRight;
+    }
+
+    /**
+     * @return the frameCutTop
+     */
+    public int getFrameCutTop() {
+        return frameCutTop;
+    }
+
+    /**
+     * @param frameCutBottom the frameCutBottom to set
+     */
+    public void setFrameCutBottom(int frameCutBottom) {
+        int old = this.frameCutBottom;
+        this.frameCutBottom = frameCutBottom;
+        getSupport().firePropertyChange("frameCutBottom", old, frameCutBottom);
+    }
+
+    /**
+     * @param frameCutLeft the frameCutLeft to set
+     */
+    public void setFrameCutLeft(int frameCutLeft) {
+        int old = this.frameCutLeft;
+        this.frameCutLeft = frameCutLeft;
+        getSupport().firePropertyChange("frameCutLeft", old, frameCutLeft);
+    }
+
+    /**
+     * @param frameCutRight the frameCutRight to set
+     */
+    public void setFrameCutRight(int frameCutRight) {
+        int old = this.frameCutRight;
+        this.frameCutRight = frameCutRight;
+        getSupport().firePropertyChange("frameCutRight", old, frameCutRight);
+    }
+
+    /**
+     * @param frameCutTop the frameCutTop to set
+     */
+    public void setFrameCutTop(int frameCutTop) {
+        int old = this.frameCutTop;
+        this.frameCutTop = frameCutTop;
+        getSupport().firePropertyChange("frameCutTop", old, frameCutTop);
+    }
+
 //    @Override
 //    public void annotate(GLAutoDrawable drawable) {
 //        GL2 gl = drawable.getGL().getGL2();
@@ -303,7 +412,6 @@ abstract public class DvsFramer extends EventFilter2D  {
 ////        }
 //
 //    }
-
     /**
      * The frame of accumulated DVS events. The origin of the frame is the same
      * as of the sensor, i.e. for jAER, 0,0 is the LL corner

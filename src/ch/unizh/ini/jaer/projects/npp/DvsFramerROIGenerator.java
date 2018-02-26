@@ -531,9 +531,41 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
      * @param decisionThreshold the decisionThreshold to set
      */
     public void setDecisionThreshold(float decisionThreshold) {
-        if(decisionThreshold>1)decisionThreshold=1;
+        if (decisionThreshold > 1) {
+            decisionThreshold = 1;
+        }
         this.decisionThreshold = decisionThreshold;
-        putFloat("decisionThreshold",decisionThreshold);
+        putFloat("decisionThreshold", decisionThreshold);
+    }
+
+    @Override
+    synchronized public void setOutputImageWidth(int width) {
+        super.setOutputImageWidth(width);
+        setRoiDimensions();
+        allocateMemory();
+    }
+
+    @Override
+    synchronized public void setOutputImageHeight(int height) {
+        super.setOutputImageHeight(height);
+        setRoiDimensions();
+        allocateMemory();
+    }
+
+    synchronized private void setRoiDimensions() {
+        if (rois != null) {
+            for (ROI[][] a : rois) {
+                for (ROI[] b : a) {
+                    for (ROI c : b) {
+                        if (c == null) {
+                            continue;
+                        }
+                        c.setWidth(getOutputImageWidth());
+                        c.setHeight(getOutputImageHeight());
+                    }
+                }
+            }
+        }
     }
 
     /**

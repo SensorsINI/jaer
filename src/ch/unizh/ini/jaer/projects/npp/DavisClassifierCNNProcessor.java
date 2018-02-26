@@ -34,9 +34,9 @@ public class DavisClassifierCNNProcessor extends AbstractDavisCNNProcessor {
 
     public DavisClassifierCNNProcessor(AEChip chip) {
         super(chip);
-        dvsSubsampler = new DvsFramerSingleFrame(chip); // must be replaced by the right subsampler object by subclasses TODO not clean
+        dvsFramer = new DvsFramerSingleFrame(chip); // must be replaced by the right subsampler object by subclasses TODO not clean
         FilterChain chain = new FilterChain(chip);
-        chain.add(dvsSubsampler); // only for control, we iterate with it here using the events we recieve by directly calling addEvent in the event processing loop, not by using the subsampler filterPacket method
+        chain.add(dvsFramer); // only for control, we iterate with it here using the events we recieve by directly calling addEvent in the event processing loop, not by using the subsampler filterPacket method
         setEnclosedFilterChain(chain);
         initFilter();
     }

@@ -18,10 +18,11 @@
  */
 package ch.unizh.ini.jaer.projects.npp;
 
-import ch.unizh.ini.jaer.projects.npp.AbstractDavisCNN.OutputLayer;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import ch.unizh.ini.jaer.projects.npp.DvsFramer.DvsFrame;
+import com.esotericsoftware.yamlbeans.YamlException;
+import com.esotericsoftware.yamlbeans.YamlReader;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -30,7 +31,11 @@ import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
@@ -62,38 +67,8 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
 
-    /**
-     * @return the showTop1Label
-     */
-    public boolean isShowTop1Label() {
-        return showTop1Label;
-    }
-
-    /**
-     * @param showTop1Label the showTop1Label to set
-     */
-    public void setShowTop1Label(boolean showTop1Label) {
-        this.showTop1Label = showTop1Label;
-        putBoolean("showTop1Label", showTop1Label);
-    }
-
-    /**
-     * @return the showTop5Labels
-     */
-    public boolean isShowTop5Labels() {
-        return showTop5Labels;
-    }
-
-    /**
-     * @param showTop5Labels the showTop5Labels to set
-     */
-    public void setShowTop5Labels(boolean showTop5Labels) {
-        this.showTop5Labels = showTop5Labels;
-        putBoolean("showTop5Labels", showTop5Labels);
-    }
-
     protected AbstractDavisCNN apsDvsNet = null; // new DavisCNNPureJava(); //, dvsNet = new DavisCNNPureJava();
-    protected DvsFramer dvsSubsampler = null;
+    protected DvsFramer dvsFramer = null;
     protected String lastNetworkFilename = getString("lastNetworkFilename", "");
     protected String lastLabelsFilename = getString("lastLabelsFilename", "");
     protected String lastNetworkPathname = getString("lastNetworkPathname", "");
@@ -130,7 +105,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
 
     public AbstractDavisCNNProcessor(AEChip chip) {
         super(chip);
-        String deb = "4. Debug", disp = "1. Display", anal = "2. Analysis", tf = "3. Tensorflow";
+        String deb = "5. Debug", disp = "2. Display", anal = "3. Analysis", tf = "0. Tensorflow", input = "1. Input";
         setPropertyTooltip("loadNetwork", "Load an XML or PB file containing a CNN");
         setPropertyTooltip("loadLabels", "Load labels for output units");
         setPropertyTooltip(disp, "showOutputAsBarChart", "displays activity of output units as bar chart, where height indicates activation");
@@ -157,19 +132,25 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         setPropertyTooltip(tf, "makeRGBFrames", "(TensorFlow only) Tells the CNN to make RGB input from grayscale DVS/APS frames; use it with a network configured for RGB input");
         setPropertyTooltip(tf, "inputLayerName", "(TensorFlow only) Input layer; parse it from loading the network and examining console output for layers for lines starting with ****");
         setPropertyTooltip(tf, "outputLayerName", "(TensorFlow only) Output layer; parse it from loading the network and examining console output for layers for lines starting with ****");
-        setPropertyTooltip(tf, "imageWidth", "(TensorFlow only, only for APS frames) Input image width; the APS frames are scaled to this width in pixels");
-        setPropertyTooltip(tf, "imageHeight", "(TensorFlow only, only for APS frames) Input image height; the APS frames are scaled to this height in pixels");
-        setPropertyTooltip(tf, "imageScale", "(TensorFlow only, only for APS frames) Input image pixel value scaling; the APS frames are scaled by this value, e.g. 255 for imagenet images. The jaer units are typically 0-1 range.");
         setPropertyTooltip(tf, "imageMean", "(TensorFlow only, only for APS frames) Input image pixel value mean; the APS frames have this mean value, typically on scale 0-255. The jaer frames typically have mean value in range 0-1.");
+        setPropertyTooltip(input, "imageWidth", "(TensorFlow only, only for APS frames) Input image width; the APS frames are scaled to this width in pixels");
+        setPropertyTooltip(input, "imageHeight", "(TensorFlow only, only for APS frames) Input image height; the APS frames are scaled to this height in pixels");
+        setPropertyTooltip(input, "imageScale", "(TensorFlow only, only for APS frames) Input image pixel value scaling; the APS frames are scaled by this value, e.g. 255 for imagenet images. The jaer units are typically 0-1 range.");
+        setPropertyTooltip(input, "loadInputSpecification", "Load the .yaml file that specifies the network input cropping and format (DVS/APS) etc");
+        setPropertyTooltip(input, "frameCutRight", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
+        setPropertyTooltip(input, "frameCutLeft", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
+        setPropertyTooltip(input, "frameCutBottom", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
+        setPropertyTooltip(input, "frameCutTop", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
     }
 
-    private File openFileDialogAndGetFile(String tip, String key, String type, String... ext) {
-        File file = null;
-        JFileChooser c = new JFileChooser(lastNetworkFilename);
-        File f = new File(lastNetworkFilename);
-        c.setCurrentDirectory(new File(getString("lastNetworkPathname", "")));
+    private File openFileDialogAndGetFile(String tip, String key, String defaultFile, String type, String... ext) {
+        String name = getString(key, defaultFile);
+        JFileChooser c = new JFileChooser(name);
+        File f = new File(name);
+        c.setCurrentDirectory(new File(getString(key, "")));
         c.setToolTipText(tip);
         FileFilter filt = new FileNameExtensionFilter(type, ext);
+        c.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
         c.addChoosableFileFilter(filt);
         c.setFileFilter(filt);
         c.setSelectedFile(new File(lastNetworkFilename));
@@ -177,11 +158,11 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         if (ret != JFileChooser.APPROVE_OPTION) {
             return null;
         }
-        lastNetworkFilename = c.getSelectedFile().toString();
-        putString(key, lastNetworkFilename);
+        name = c.getSelectedFile().toString();
+        putString(key, name);
         lastNetworkPathname = f.getPath();
-        putString("lastNetworkPathname", lastNetworkPathname);
-        file = c.getSelectedFile();
+        putString(key + ".path", lastNetworkPathname);
+        File file = c.getSelectedFile();
         return file;
     }
 
@@ -193,7 +174,9 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
      */
     public synchronized void doLoadNetwork() {
         File file = null;
-        file = openFileDialogAndGetFile("Choose a CNN network, either protobuf binary (pb) or jaer xml", "lastNetworkFilename", "CNN file", "xml", "pb");
+        file = openFileDialogAndGetFile("Choose a CNN network, either tensorflow protobuf binary (pb),  or folder holding tensorflow SavedModelBundle, or jaer xml",
+                "lastNetworkFilename", "",
+                "CNN file", "xml", "pb");
         if (file == null) {
             return;
         }
@@ -203,6 +186,123 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
             Logger.getLogger(DavisClassifierCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file, caught exception " + ex + ". See console for logging.", "Bad network file", JOptionPane.WARNING_MESSAGE);
         }
+    }
+
+    public synchronized void doLoadInputSpecification() {
+//        if (apsDvsNet == null) {
+//            JOptionPane.showMessageDialog(chip.getFilterFrame(), "null CNN - load a DavisCNNTensorFlow first", "Error - no network", JOptionPane.ERROR_MESSAGE);
+//            return;
+//        }
+//        if (!(apsDvsNet instanceof DavisCNNTensorFlow)) {
+//            JOptionPane.showMessageDialog(chip.getFilterFrame(), apsDvsNet.toString() + " is not a DavisCNNTensorFlow type; cannot load layer specification for it", "Error", JOptionPane.ERROR_MESSAGE);
+//            return;
+//        }
+        File file = null;
+        file = openFileDialogAndGetFile("Choose the YAML file specifying the input for the CNN",
+                "yamlFile",
+                apsDvsNet!=null?apsDvsNet.getFilename():"",
+                "YAML file", "yaml");
+        if (file == null) {
+            return;
+        }
+        try {
+            loadInputSpecification(file);
+        } catch (Exception ex) {
+            Logger.getLogger(DavisClassifierCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
+            JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load YAML " + ex + ". See console for logging.", "Bad YAML file", JOptionPane.ERROR_MESSAGE);
+        }
+
+    }
+
+    /*
+        @tobi, I've uploaded the converted tensorflow model to NAS.
+        it's located at HongmingYuhuangTobiTraxxas
+        and in driving_model folder
+        you will see two folders in there, which are nvidia-foyer and resnet-20-foyer
+        I used the SaveModelBuilder to save the model. so for each folder you will see the model definition and weights variables.
+        you also gonna need to read two yaml files which list the configurations
+        use resnet-20-foyer-param.yaml as example:
+        model_name: "resnet-20-foyer.json"
+        frame_cut: [[90, 10], [0, 1]]
+        img_shape: [180, 240]
+        target_size: [30, 90]
+        clip_value: 8
+        mode: 0
+        the frame cut is the pixels we cut from the original image, it follows [[top, down], [left, right]]
+        for top, it means 90 pixels are cut from the top
+        for bottom, it means 10 pixels are cut from the bottom
+        we resize to target_size after cutting
+        the clip value is to tell you that the largest value in DVS channel is 8*2=16
+        and the mode 0 means DVS only. 1 is APS, 2 means DVS+APS
+        you will need to resize the model to appropriate inputs so that the model can be run properly.
+        in the same folder, Hong Ming will upload the test bag dataset so that you can play with it.
+        you will need to subscribe /dvs_bind topic to get the input image.
+         /dvs_bind publish an RGB image where the first channel is DVS image and the second channel is the APS image.
+        i hope this can help you import the models to jAER.
+     */
+    public void loadInputSpecification(File yamlFile) throws FileNotFoundException, YamlException {
+        if (!yamlFile.exists()) {
+            throw new FileNotFoundException("cannot find the yaml file " + yamlFile);
+        }
+        YamlReader reader = new YamlReader(new FileReader(yamlFile));
+        /* # PATHS ARE USED in each nodes, will be used via launch file under `rosparam load iyaml_file`
+                    model_name: "resnet-20-foyer.json"
+                    frame_cut: [[90, 10], [0, 1]]
+                    img_shape: [180, 240]
+                    target_size: [30, 90]
+                    clip_value: 8
+                    mode: 0 //mode 0 means DVS only. 1 is APS, 2 means DVS+APS
+         */
+        Object object = reader.read();
+        log.info("yaml network input specification:\n" + object.toString() + "; setting DvsFramer from these specs");
+        Map map = (Map) object;
+        try {
+            ArrayList frame_cut = (ArrayList) map.get("frame_cut");
+            ArrayList<String> sublist;
+            sublist=(ArrayList<String>)frame_cut.get(0);
+            dvsFramer.setFrameCutBottom(Integer.parseInt(sublist.get(1)));
+            dvsFramer.setFrameCutTop(Integer.parseInt(sublist.get(0)));
+            sublist=(ArrayList<String>)frame_cut.get(1);
+            dvsFramer.setFrameCutLeft(Integer.parseInt(sublist.get(0)));
+            dvsFramer.setFrameCutRight(Integer.parseInt(sublist.get(1)));
+        } catch (Exception e) {
+            throw new YamlException("frame_cut parsing error " + e);
+        }
+        ArrayList<String> img_shape = (ArrayList<String>) map.get("img_shape");
+        try {
+            ArrayList<String> target_size = (ArrayList<String>) map.get("target_size");
+            dvsFramer.setOutputImageHeight(Integer.parseInt(target_size.get(0)));
+            dvsFramer.setOutputImageWidth(Integer.parseInt(target_size.get(1)));
+        } catch (Exception e) {
+            throw new YamlException("img_shape parsing error " + e);
+        }
+        try {
+            String clip_value = (String) map.get("clip_value");
+            dvsFramer.setDvsGrayScale(2 * Integer.parseInt(clip_value));
+        } catch (Exception e) {
+            throw new YamlException("clip_value parsing error " + e);
+        }
+        try {
+            String mode = (String) map.get("mode");
+            switch (mode) {
+                case "0":
+                    setProcessDVSTimeSlices(true);
+                    setProcessAPSFrames(false);
+                    break;
+                case "1":
+                    setProcessDVSTimeSlices(false);
+                    setProcessAPSFrames(true);
+                    break;
+                case "2":
+                    setProcessDVSTimeSlices(true);
+                    setProcessAPSFrames(true);
+                    break;
+            }
+        } catch (Exception e) {
+            throw new YamlException("mode parsing error " + e);
+        }
+        log.info("set dvsFramer="+dvsFramer);
+
     }
 
     public synchronized void doLoadLabels() {
@@ -237,7 +337,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     //        lastDVSNetXMLFilename = c.getSelectedFile().toString();
     //        putString("lastDVSNetXMLFilename", lastDVSNetXMLFilename);
     //        dvsNet.loadNetwork(c.getSelectedFile());
-    //        dvsSubsampler = new DvsFramer(dvsNet.inputLayer.dimx, dvsNet.inputLayer.dimy, getDvsColorScale());
+    //        dvsFramer = new DvsFramer(dvsNet.inputLayer.dimx, dvsNet.inputLayer.dimy, getDvsColorScale());
     //    }
     // debug only
     //    public void doSetNetworkToUniformValues() {
@@ -277,10 +377,10 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!addedPropertyChangeListener) {
             ((AEFrameChipRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
-            if (dvsSubsampler == null) {
+            if (dvsFramer == null) {
                 throw new RuntimeException("Null dvsSubsampler; this should not occur");
             } else {
-                dvsSubsampler.getSupport().addPropertyChangeListener(DvsFramer.EVENT_NEW_FRAME_AVAILABLE, this);
+                dvsFramer.getSupport().addPropertyChangeListener(DvsFramer.EVENT_NEW_FRAME_AVAILABLE, this);
             }
             addedPropertyChangeListener = true;
         }
@@ -295,8 +395,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         for (BasicEvent e : in) {
             lastProcessedEventTimestamp = e.getTimestamp();
             PolarityEvent p = (PolarityEvent) e;
-            if (dvsSubsampler != null) {
-                dvsSubsampler.addEvent(p); // generates event when full, which processes it in propertyChange() which computes CNN
+            if (dvsFramer != null) {
+                dvsFramer.addEvent(p); // generates event when full, which processes it in propertyChange() which computes CNN
             }
             if (timeLimiter.isTimedOut()) {
                 break; // discard rest of this packet
@@ -316,8 +416,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
 
     @Override
     public void resetFilter() {
-        if (dvsSubsampler != null) {
-            dvsSubsampler.resetFilter();
+        if (dvsFramer != null) {
+            dvsFramer.resetFilter();
         }
     }
 
@@ -349,22 +449,27 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
 
     protected void loadNetwork(File f) {
         try {
-            if (f.exists() && f.isFile()) {
-                switch (getExtension(f)) {
-                    case "xml": // from caffe2jaer tool
-                        apsDvsNet = new DavisCNNPureJava(this);
-                        apsDvsNet.loadNetwork(f);
-                        break;
-                    case "pb": // tensorflow
-                        apsDvsNet = new DavisCNNTensorFlow(this);
-                        apsDvsNet.loadNetwork(f);
-                        break;
-                    default:
-                        log.warning("unknown extension; can only read XML or pb network files");
+            if (f.exists()) {
+                if (f.isFile()) {
+                    switch (getExtension(f)) {
+                        case "xml": // from caffe2jaer tool
+                            apsDvsNet = new DavisCNNPureJava(this);
+                            apsDvsNet.loadNetwork(f);
+                            break;
+                        case "pb": // tensorflow
+                            apsDvsNet = new DavisCNNTensorFlow(this);
+                            apsDvsNet.loadNetwork(f);
+                            break;
+                        default:
+                            log.warning("unknown extension; can only read XML or pb network files");
+                    }
+                } else if (f.isDirectory()) { // load from SavedModelBundle tensorflow net with yaml input specification file
+                    apsDvsNet = new DavisCNNTensorFlow(this);
+                    apsDvsNet.loadNetwork(f);
                 }
                 apsDvsNet.setSoftMaxOutput(softMaxOutput); // must set manually since net doesn't know option kept here.
                 apsDvsNet.setZeroPadding(zeroPadding); // must set manually since net doesn't know option kept here.
-                dvsSubsampler.setFromNetwork(apsDvsNet);
+                dvsFramer.setFromNetwork(apsDvsNet);
             }
         } catch (IOException ex) {
             log.warning("Couldn't load the CNN from file " + f + ": got exception " + ex);
@@ -392,7 +497,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         switch (evt.getPropertyName()) {
             case AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE:
                 if (timeLimiter.isTimedOut()) {
-                    log.warning("skipped this frame because "+timeLimiter.toString());
+                    log.warning("skipped this frame because " + timeLimiter.toString());
                     return; // don't process this frame
                 }
                 if (isFilterEnabled() && (apsDvsNet != null) && (processAPSFrames)) {
@@ -450,12 +555,42 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
             }
         }
 
-        if ((showTop1Label || showTop5Labels) && apsDvsNet.getLabels() != null
+        if (apsDvsNet != null && (showTop1Label || showTop5Labels) && apsDvsNet.getLabels() != null
                 && apsDvsNet.getLabels().size() > 0) {
             if (showTop1Label) {
                 drawDecisionOutput(drawable, apsDvsNet);
             }
         }
+    }
+
+    /**
+     * @return the showTop1Label
+     */
+    public boolean isShowTop1Label() {
+        return showTop1Label;
+    }
+
+    /**
+     * @param showTop1Label the showTop1Label to set
+     */
+    public void setShowTop1Label(boolean showTop1Label) {
+        this.showTop1Label = showTop1Label;
+        putBoolean("showTop1Label", showTop1Label);
+    }
+
+    /**
+     * @return the showTop5Labels
+     */
+    public boolean isShowTop5Labels() {
+        return showTop5Labels;
+    }
+
+    /**
+     * @param showTop5Labels the showTop5Labels to set
+     */
+    public void setShowTop5Labels(boolean showTop5Labels) {
+        this.showTop5Labels = showTop5Labels;
+        putBoolean("showTop5Labels", showTop5Labels);
     }
 
     private TextRenderer textRenderer = null;

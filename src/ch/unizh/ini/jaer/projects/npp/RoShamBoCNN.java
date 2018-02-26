@@ -144,8 +144,8 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         setPropertyTooltip(roshambo, "playToWin", "If selected, symbol showsn and sent to hand will  beat human; if unselected, it ties the human");
         setPropertyTooltip(roshambo, "showSymbol", "If selected, symbol is displayed as overlay, either the one recognized or the winner, depending on playToWin");
 
-        dvsSubsampler.setRectifyPolarities(true);
-        dvsSubsampler.setNormalizeDVSForZsNullhop(true); // to make it work out of the box
+        dvsFramer.setRectifyPolarities(true);
+        dvsFramer.setNormalizeDVSForZsNullhop(true); // to make it work out of the box
 
         if (apsDvsNet != null) {
             apsDvsNet.getSupport().addPropertyChangeListener(AbstractDavisCNN.EVENT_MADE_DECISION, statistics);

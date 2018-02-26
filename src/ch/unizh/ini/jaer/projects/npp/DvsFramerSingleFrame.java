@@ -19,6 +19,7 @@
 package ch.unizh.ini.jaer.projects.npp;
 
 import eu.visualize.ini.convnet.DeepLearnCnnNetwork_HJ;
+import java.awt.Rectangle;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -45,22 +46,21 @@ public class DvsFramerSingleFrame extends DvsFramer {
 
     protected DvsFrame dvsFrame = null;
 
+
     public DvsFramerSingleFrame(AEChip chip) {
         super(chip);
         dvsFrame = new DvsFrame();
         dvsFrame.setWidth(getInt("width", 64));
         dvsFrame.setHeight(getInt("height", 64));
         dvsFrame.allocateMemory();
-        setPropertyTooltip("width", "width of output DVS frame in pixels");
-        setPropertyTooltip("height", "height of output DVS frame in pixels");
     }
 
- 
     /**
      * Adds event from a source event location to the map by integer division to
-     * the correct location in the subsampled DVS frame. 
-     *<p>
-     * If the frame is filled up, then it is normalized and teh EVENT_NEW_FRAME_AVAILABLE PropertyChangeEvent is fired.
+     * the correct location in the subsampled DVS frame.
+     * <p>
+     * If the frame is filled up, then it is normalized and teh
+     * EVENT_NEW_FRAME_AVAILABLE PropertyChangeEvent is fired.
      *
      *
      * @param e the event to add
@@ -75,6 +75,11 @@ public class DvsFramerSingleFrame extends DvsFramer {
         int srcWidth = chip.getSizeX(), srcHeight = chip.getSizeY();
         initialize(e);
         int x = e.x, y = e.y;
+        if (x <= frameCutLeft || x >= chip.getSizeX() - frameCutRight || y <= frameCutBottom || y >= chip.getSizeY() - frameCutTop) {
+            return;
+        }
+        x-=(frameCutLeft);
+        y-=(frameCutBottom); // shift address to start at 0,0 from cut frame
         if (srcWidth != dvsFrame.getWidth()) {
             x = (int) Math.floor(((float) e.x / srcWidth) * dvsFrame.getWidth());
         }
@@ -90,31 +95,23 @@ public class DvsFramerSingleFrame extends DvsFramer {
         dvsFrame.clear();
     }
 
-    public int getWidth() {
-        return dvsFrame.getWidth();
-    }
-
-    public int getHeight() {
-        return dvsFrame.getHeight();
-    }
-
-    synchronized public void setWidth(int width) {
+    synchronized public void setOutputImageWidth(int width) {
+        super.setOutputImageWidth(width);
         dvsFrame.setWidth(width);
-        putInt("width", width);
         allocateMemory();
     }
 
-    synchronized public void setHeight(int height) {
+    synchronized public void setOutputImageHeight(int height) {
+        super.setOutputImageHeight(height);
         dvsFrame.setHeight(height);
-        putInt("height", height);
         allocateMemory();
     }
 
     @Override
     synchronized public void setFromNetwork(AbstractDavisCNN apsDvsNet) {
         if (apsDvsNet != null && apsDvsNet.getInputLayer() != null) {
-            setWidth(apsDvsNet.getInputLayer().getWidth());
-            setHeight(apsDvsNet.getInputLayer().getHeight());
+            setOutputImageWidth(apsDvsNet.getInputLayer().getWidth());
+            setOutputImageHeight(apsDvsNet.getInputLayer().getHeight());
         } else {
             log.warning("null network, cannot set dvsFrame size");
         }
@@ -123,8 +120,8 @@ public class DvsFramerSingleFrame extends DvsFramer {
     @Override
     synchronized public void setFromNetwork(DeepLearnCnnNetwork_HJ apsDvsNet) {
         if (apsDvsNet != null && apsDvsNet.inputLayer != null) {
-            setWidth(apsDvsNet.inputLayer.dimx);
-            setHeight(apsDvsNet.inputLayer.dimy);
+            setOutputImageWidth(apsDvsNet.inputLayer.dimx);
+            setOutputImageHeight(apsDvsNet.inputLayer.dimy);
         } else {
             log.warning("null network, cannot set dvsFrame size");
         }
@@ -186,7 +183,6 @@ public class DvsFramerSingleFrame extends DvsFramer {
     public String toString() {
         return "DvsFramerSingleFrame{" + "dvsFrame=" + dvsFrame + '}';
     }
-    
-    
+
 
 }
