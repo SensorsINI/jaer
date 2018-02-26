@@ -151,9 +151,9 @@
     -->
     <target name="jaer-exe4j">
         <echo message="Building Windows .exe. launchers using exe4j (https://www.ej-technologies.com/download/exe4j/files). ${line.separator} Note that depending on 32- or 64-bit installed JDKs, ${line.separator} you may not be able to build one or the other of these launchers. ${line.separator} Don't worry about this."/>
-        <subant failonerror="false" target="jaer-exe4jx86">
+<!--        <subant failonerror="false" target="jaer-exe4jx86">
             <fileset dir="." includes="build.xml"/>
-        </subant>
+        </subant>-->
         <subant failonerror="false" target="jaer-exe4jx64">
             <fileset dir="." includes="build.xml"/>
         </subant>
