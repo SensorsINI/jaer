@@ -80,7 +80,7 @@ public class SlasherRosbagDisplay extends RosbagMessageDisplayer implements Fram
             log.info(String.format("PWM: steering: %8.2f\t throttle %8.2f\t gear: %8.2f", steeringPwm, throttlePwm, gear_shiftPwm));
             final float pwmCenter = 1500, pwmRange = 500; // us
 
-            steering = -(steeringPwm - pwmCenter) / pwmRange;
+            steering = -(steeringPwm - pwmCenter) / pwmRange; // produces an output that is zero for 1500 and ranges from -1 to +1
             throttle = (throttlePwm - pwmCenter) / pwmRange;
             gear_shift = (gear_shiftPwm - pwmCenter) / pwmRange;
         } catch (UninitializedFieldException ex) {
