@@ -46,6 +46,8 @@ public class SlasherCNN extends DavisClassifierCNNProcessor {
     /**
      * steering, positive is to right, throttle, positive is faster forwards,
      * gearshift?
+     * 
+     *  Steering is a value from -1 to 1 representing the servo value 1000us to 2000us, with 1500us as steering nominally straight
      */
     private float steering, throttle, gear_shift;
     private boolean showSteering = getBoolean("showSteering", true);
@@ -54,6 +56,9 @@ public class SlasherCNN extends DavisClassifierCNNProcessor {
 
     public SlasherCNN(AEChip chip) {
         super(chip);
+        final String slasher_Prediction = "Slasher Prediction";
+        setPropertyTooltip(slasher_Prediction,"showSteering","shows the steering prediction");
+        setPropertyTooltip(slasher_Prediction,"showThrottleBrake","shows the throttle prediction");
     }
 
     @Override
@@ -70,6 +75,7 @@ public class SlasherCNN extends DavisClassifierCNNProcessor {
         super.propertyChange(evt); // runs the CNN
         switch (evt.getPropertyName()) {
             case AbstractDavisCNN.EVENT_MADE_DECISION:
+                // the steering output is a value from -1 to 1 representing the servo value 1000us to 2000us, with 1500us as steering nominally straight
                 steering = apsDvsNet.getOutputLayer().getActivations()[0];
                 break;
         }
@@ -77,6 +83,7 @@ public class SlasherCNN extends DavisClassifierCNNProcessor {
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
+        super.annotate(drawable);
         TextRenderer textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
         textRenderer.setColor(Color.red);
 
@@ -88,7 +95,7 @@ public class SlasherCNN extends DavisClassifierCNNProcessor {
         if (showThrottleBrake) {
             final float x = chip.getSizeX() * .2f, y = (chip.getSizeY()) * .2f, scale = .4f;
             textRenderer.begin3DRendering();
-            String s = String.format("Prediction throttle: %3.0f%%", throttle * 100);
+            String s = String.format("Prediction throttle: %+3.0f%%", throttle * 100);
 
             Rectangle2D r = textRenderer.getBounds(s);
             textRenderer.draw3D(s, (float) (x - scale * r.getWidth() / 2), (float) (y - scale * r.getHeight() / 2), 0, scale);
@@ -98,7 +105,7 @@ public class SlasherCNN extends DavisClassifierCNNProcessor {
         if (showSteering) { 
             float x = chip.getSizeX() * .2f, y = (chip.getSizeY()) * .25f, scale = .4f;
             textRenderer.begin3DRendering();
-            String s = String.format("Prediction steering: %5.2f", steering);
+            String s = String.format("Prediction steering: %+5.3f", steering);
 
             Rectangle2D r = textRenderer.getBounds(s);
             textRenderer.draw3D(s, (float) (x - scale * r.getWidth() / 2), (float) (y - scale * r.getHeight() / 2), 0, scale);
@@ -116,7 +123,7 @@ public class SlasherCNN extends DavisClassifierCNNProcessor {
             }
             gl.glPopMatrix();
 
-            // draw steering vector, including external radio input value
+            // draw steering vector
             gl.glPushMatrix();
             {
                 gl.glTranslatef(x, y, 0);
