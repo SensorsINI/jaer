@@ -31,8 +31,11 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream.MessageWithIndex;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.graphics.AEViewer;
 
 /**
  * Parses and displays information from a ROS file that has messages that might
@@ -49,32 +52,38 @@ abstract public class RosbagMessageDisplayer extends EventFilter2D {
     protected List<String> topics = new ArrayList(); // stores topics and their fields for each topic
 
     private RosbagFileInputStream rosbagInputStream;
+    private boolean addedPropertyChangeListener = false;
 
     public RosbagMessageDisplayer(AEChip chip) {
         super(chip);
     }
-    
-    synchronized protected void addTopics(List<String> topics){
+
+    synchronized protected void addTopics(List<String> topics) {
         this.topics.addAll(topics);
     }
-    
+
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-//        if (!addedPropertyChangeListener) {
-//            if (chip.getAeViewer() != null) {
-//                chip.getAeViewer().getAePlayer().addPropertyChangeListener(this);
-//                addedPropertyChangeListener=true;
-//            }
-//        }
+        if (!addedPropertyChangeListener) {
+            if (chip.getAeViewer() != null) {
+                chip.getAeViewer().getAePlayer().addPropertyChangeListener(this);
+                addedPropertyChangeListener = true;
+            }
+        }
         return in;
     }
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        if (evt.getPropertyName() == AEViewer.EVENT_FILEOPEN) {
+            doAddSubscribers();
+            return;
+        }
         if (evt.getSource() == rosbagInputStream) {
             if (!isFilterEnabled()) {
                 return;
             }
+
             if (evt.getNewValue() instanceof RosbagFileInputStream.MessageWithIndex) {
                 MessageWithIndex msg = (RosbagFileInputStream.MessageWithIndex) (evt.getNewValue());
                 MessageType msgType = msg.messageType;
@@ -84,14 +93,16 @@ abstract public class RosbagMessageDisplayer extends EventFilter2D {
         }
     }
 
-    /** Parses the MessageWithIndex from the ROS file 
-     * 
+    /**
+     * Parses the MessageWithIndex from the ROS file
+     *
      * @param msg the message
      */
     abstract protected void parseMessage(MessageWithIndex msg);
 
     /**
-     * Makes the GUI button to add subscriptions, run this long process in worker thread that can be canceled.
+     * Makes the GUI button to add subscriptions, run this long process in
+     * worker thread that can be canceled.
      */
     synchronized public void doAddSubscribers() {
         if (!(chip.getAeInputStream() instanceof RosbagFileInputStream)) {
