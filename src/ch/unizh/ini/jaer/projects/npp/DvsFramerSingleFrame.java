@@ -46,7 +46,6 @@ public class DvsFramerSingleFrame extends DvsFramer {
 
     protected DvsFrame dvsFrame = null;
 
-
     public DvsFramerSingleFrame(AEChip chip) {
         super(chip);
         dvsFrame = new DvsFrame();
@@ -78,13 +77,13 @@ public class DvsFramerSingleFrame extends DvsFramer {
         if (x <= frameCutLeft || x >= chip.getSizeX() - frameCutRight || y <= frameCutBottom || y >= chip.getSizeY() - frameCutTop) {
             return;
         }
-        x-=(frameCutLeft);
-        y-=(frameCutBottom); // shift address to start at 0,0 from cut frame
+        x -= (frameCutLeft);
+        y -= (frameCutBottom); // shift address to start at 0,0 from cut frame
         if (srcWidth != dvsFrame.getWidth()) {
-            x = (int) Math.floor(((float) e.x / srcWidth) * dvsFrame.getWidth());
+            x = (int) Math.floor(((float) x / (srcWidth - (frameCutLeft + frameCutRight))) * dvsFrame.getWidth());
         }
         if (srcHeight != dvsFrame.getHeight()) {
-            y = (int) Math.floor(((float) e.y / srcHeight) * dvsFrame.getHeight());
+            y = (int) Math.floor(((float) y / (srcHeight - (frameCutBottom + frameCutTop))) * dvsFrame.getHeight());
         }
         dvsFrame.addEvent(x, y, e.polarity);
 
@@ -183,6 +182,5 @@ public class DvsFramerSingleFrame extends DvsFramer {
     public String toString() {
         return "DvsFramerSingleFrame{" + "dvsFrame=" + dvsFrame + '}';
     }
-
 
 }
