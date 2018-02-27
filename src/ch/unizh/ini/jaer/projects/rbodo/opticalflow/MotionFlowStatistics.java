@@ -1,17 +1,24 @@
 package ch.unizh.ini.jaer.projects.rbodo.opticalflow;
 
 import java.awt.geom.Point2D;
+import com.jmatio.io.MatFileWriter;
+import com.jmatio.types.MLDouble;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.logging.Level;
+import net.sf.jaer.eventio.AEDataFile;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.util.TobiLogger;
 
 /**
  * This class computes and prints several objects of interest when evaluating
@@ -38,11 +45,12 @@ public class MotionFlowStatistics {
 
     private GlobalMotion globalMotion;
     AngularError angularError;
-    EndpointErrorAbs endpointErrorAbs;
+    public EndpointErrorAbs endpointErrorAbs;
     EndpointErrorRel endpointErrorRel;
     ProcessingTime processingTime;
     EventDensity eventDensity;
-
+    TobiLogger globalMotionVectorLogger;
+       
     // For logging.
     private static String filename;
     private final DateFormat DATE_FORMAT;
@@ -61,9 +69,14 @@ public class MotionFlowStatistics {
 
     private boolean measureGlobalMotion = false;
 
+    private List<Double> globalFlows = new ArrayList<>();
+
     protected MotionFlowStatistics(String filterClassName, int sX, int sY) {
         DATE_FORMAT = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
         reset(sX, sY);
+//        globalMotionVectorLogger = new TobiLogger("logfiles/" + "GlobalMotion" + filterClassName ,  "Global Motion vector for every generated slice");
+//        globalMotionVectorLogger.setNanotimeEnabled(false);
+//        globalMotionVectorLogger.setEnabled(true);
         this.filterClassName = filterClassName;
     }
 
@@ -74,7 +87,31 @@ public class MotionFlowStatistics {
         endpointErrorRel = new EndpointErrorRel();
         processingTime = new ProcessingTime();
         eventDensity = new EventDensity();
-        warmupCounter = 5;
+        warmupCounter = 8;
+        if(globalMotionVectorLogger != null) {
+            // globalMotionVectorLogger.setEnabled(false);            
+            // globalMotionVectorLogger = new TobiLogger("logfiles/" + "GlobalMotion" + filterClassName ,  "Global Motion vector for every generated slice");
+            // globalMotionVectorLogger.setNanotimeEnabled(false);
+            // globalMotionVectorLogger.setEnabled(true);
+        }
+        ArrayList list = new ArrayList();
+        Double[] globalFlowArray = new Double[globalFlows.size()];
+        globalFlowArray =  globalFlows.toArray(globalFlowArray);
+        globalFlows.clear();
+        list.add(new MLDouble("global_flow", globalFlowArray, 3));
+        Date d = new Date();
+        String fn= "flowExport"+ "_" + AEDataFile.DATE_FORMAT.format(d) + "_" + System.currentTimeMillis() + "_" + filterClassName + ".mat";
+//        try {          
+//            File logDir = new File("logfiles");
+//
+//            // if the directory does not exist, create it
+//            if (!logDir.exists()) {
+//                logDir.mkdir();
+//            }
+//            MatFileWriter matFileWriter = new MatFileWriter("logfiles/" + fn, list);
+//        } catch (IOException ex) {
+//            log.log(Level.SEVERE, null, ex);
+//        }
     }
 
     protected final void setMeasureAccuracy(boolean measureAccuracy) {
@@ -109,13 +146,13 @@ public class MotionFlowStatistics {
         endpointErrorRel.update(vx, vy, v, vxGT, vyGT, vGT);
     }
 
-    public void updatePacket(int countIn, int countOut) {
+    public void updatePacket(int countIn, int countOut, int currentTs) {
         eventDensity.update(countIn, countOut);
         if (measureProcessingTime) {
             processingTime.update();
         }
         if (measureGlobalMotion) {
-            globalMotion.bufferMean();
+            globalMotion.bufferMean(currentTs);
         }
     }
 
@@ -145,7 +182,7 @@ public class MotionFlowStatistics {
     public class EventDensity {
 
         // Number of events in packet before and after filtering.
-        private int packetIn, packetOut, totalIn, totalOut, nPackets;
+        private long packetIn, packetOut, totalIn, totalOut, nPackets;
 
         /**
          * Returns density of last packet
@@ -304,8 +341,7 @@ public class MotionFlowStatistics {
 
         }
 
-        /** computes statistics and clear buffers of accumulated values */
-        void bufferMean() {
+        void bufferMean(int currentTs) {
             meanGlobalVx = (float)globalVx.getMean();
             sdGlobalVx = (float)globalVx.getStandardDeviation();
             meanGlobalVy = (float)globalVy.getMean();
@@ -318,6 +354,12 @@ public class MotionFlowStatistics {
             sdGlobalExpansion = (float)globalExpansion.getStandardDeviation();
             meanGlobalSpeed = (float)globalSpeed.getMean();
 
+            globalFlows.add((double)currentTs);
+            globalFlows.add((double)meanGlobalVx);
+            globalFlows.add((double)meanGlobalVy);
+
+            //globalVxList.add(new MLDouble("vy", meanGlobalVy));
+//            globalMotionVectorLogger.log(meanGlobalVx + " " + meanGlobalVy);
             // Call resets here because global motion should in general not
             // be averaged over more than one packet.
             globalVx.clear();

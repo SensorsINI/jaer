@@ -494,7 +494,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
 
             processGoodEvent();
         }
-        getMotionFlowStatistics().updatePacket(countIn, countOut);
+        getMotionFlowStatistics().updatePacket(countIn, countOut, ts);
         return isDisplayRawInput() ? in : dirPacket;
     }
 

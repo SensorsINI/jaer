@@ -287,7 +287,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (cameraCalibration != null && cameraCalibration.isFilterEnabled()) {
             in = cameraCalibration.filterPacket(in);
         }
-        setupFilter(in);
+        setupFilter(in);        
         checkArrays();
         if (processingTimeLimitMs > 0) {
             timeLimiter.setTimeLimitMs(processingTimeLimitMs);
@@ -435,7 +435,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         }
 
-        motionFlowStatistics.updatePacket(countIn, countOut);
+        motionFlowStatistics.updatePacket(countIn, countOut, ts);
         adaptEventSkipping();
         if (rewindFlg) {
             rewindFlg = false;
@@ -792,7 +792,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             gl.glVertex2f(xx - sd, yy + sd);
             gl.glEnd();
         }
-    }
+        }
 
     @Override
     public synchronized void resetFilter() {
@@ -957,7 +957,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * is defined by average of first and last timestamp.
      *
      */
-    private int sliceDeltaTimeUs(int pointer) {
+    protected int sliceDeltaTimeUs(int pointer) {
 //        System.out.println("dt(" + pointer + ")=" + (sliceStartTimeUs[sliceIndex(1)] - sliceStartTimeUs[sliceIndex(pointer)]));
         int idxOlder = sliceIndex(pointer), idxYounger = sliceIndex(1);
         int tOlder = (sliceStartTimeUs[idxOlder] + sliceEndTimeUs[idxOlder]) / 2;
@@ -1091,7 +1091,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         } else {
             searchMethod = getSearchMethod();
         }
-
+        
         final int xsub = x >> subSampleBy;
         final int ysub = y >> subSampleBy;
         final int r = ((blockDimension) / 2);
