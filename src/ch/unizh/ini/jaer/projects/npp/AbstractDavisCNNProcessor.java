@@ -69,11 +69,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
 
     protected AbstractDavisCNN apsDvsNet = null; // new DavisCNNPureJava(); //, dvsNet = new DavisCNNPureJava();
     protected DvsFramer dvsFramer = null;
-    protected String lastNetworkFilename = getString("lastNetworkFilename", "");
+    protected final String KEY_NETWORK_FILENAME = "lastNetworkFilename", KEY_LABELS_FILENAME = "lastLabelsFilename", KEY_INPUTSPECIFICATION_FILENAME = "lastNetworkSpecificationFilename";
     protected String lastLabelsFilename = getString("lastLabelsFilename", "");
-    protected String lastNetworkPathname = getString("lastNetworkPathname", "");
-    //    private String lastDVSNetXMLFilename = getString("lastDVSNetXMLFilename", "LCRN_cnn.xml");
-    //    private ApsFrameExtractor frameExtractor = new ApsFrameExtractor(chip);
     protected boolean showActivations = getBoolean("showActivations", false);
     protected boolean showOutputAsBarChart = getBoolean("showOutputAsBarChart", true);
     private boolean showTop1Label = getBoolean("showTop1Label", true);
@@ -153,15 +150,13 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         c.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
         c.addChoosableFileFilter(filt);
         c.setFileFilter(filt);
-        c.setSelectedFile(new File(lastNetworkFilename));
+        c.setSelectedFile(f);
         int ret = c.showOpenDialog(chip.getAeViewer());
         if (ret != JFileChooser.APPROVE_OPTION) {
             return null;
         }
         name = c.getSelectedFile().toString();
         putString(key, name);
-        lastNetworkPathname = f.getPath();
-        putString(key + ".path", lastNetworkPathname);
         File file = c.getSelectedFile();
         return file;
     }
@@ -175,7 +170,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     public synchronized void doLoadNetwork() {
         File file = null;
         file = openFileDialogAndGetFile("Choose a CNN network, either tensorflow protobuf binary (pb),  or folder holding tensorflow SavedModelBundle, or jaer xml",
-                "lastNetworkFilename", "",
+                KEY_NETWORK_FILENAME, "",
                 "CNN file", "xml", "pb");
         if (file == null) {
             return;
@@ -198,9 +193,9 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
 //            return;
 //        }
         File file = null;
-        file = openFileDialogAndGetFile("Choose the YAML file specifying the input for the CNN",
-                "yamlFile",
-                apsDvsNet!=null?apsDvsNet.getFilename():"",
+        file = openFileDialogAndGetFile("Choose the YAML file specifying the input cropping and input layer size for the CNN",
+                KEY_INPUTSPECIFICATION_FILENAME,
+                apsDvsNet != null ? apsDvsNet.getFilename() : "",
                 "YAML file", "yaml");
         if (file == null) {
             return;
@@ -259,10 +254,10 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         try {
             ArrayList frame_cut = (ArrayList) map.get("frame_cut");
             ArrayList<String> sublist;
-            sublist=(ArrayList<String>)frame_cut.get(0);
+            sublist = (ArrayList<String>) frame_cut.get(0);
             dvsFramer.setFrameCutBottom(Integer.parseInt(sublist.get(1)));
             dvsFramer.setFrameCutTop(Integer.parseInt(sublist.get(0)));
-            sublist=(ArrayList<String>)frame_cut.get(1);
+            sublist = (ArrayList<String>) frame_cut.get(1);
             dvsFramer.setFrameCutLeft(Integer.parseInt(sublist.get(0)));
             dvsFramer.setFrameCutRight(Integer.parseInt(sublist.get(1)));
         } catch (Exception e) {
@@ -301,13 +296,13 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         } catch (Exception e) {
             throw new YamlException("mode parsing error " + e);
         }
-        log.info("set dvsFramer="+dvsFramer);
+        log.info("set dvsFramer=" + dvsFramer);
 
     }
 
     public synchronized void doLoadLabels() {
         File file = null;
-        file = openFileDialogAndGetFile("Choose a labels file, one label per line", "lastLabelsFilename", "labels file", "txt");
+        file = openFileDialogAndGetFile("Choose a labels file, one label per line", KEY_LABELS_FILENAME, "","labelsFile.txt", "txt");
         if (file == null) {
             return;
         }
@@ -424,16 +419,31 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     @Override
     public void initFilter() {
         // if apsDvsNet was loaded before, load it now
-        if (lastNetworkFilename != null && apsDvsNet == null) {
-            File f = new File(lastNetworkFilename);
+        if (preferenceExists(KEY_NETWORK_FILENAME) && apsDvsNet == null) {
+            File f = new File(getString(KEY_NETWORK_FILENAME, ""));
             if (f.exists() && f.isFile()) {
                 loadNetwork(f);
-                File l = new File(lastLabelsFilename);
-                if (l.exists() && l.isFile()) {
-                    loadLabels(l);
+                if (preferenceExists(KEY_LABELS_FILENAME)) {
+                    File l = new File(getString(KEY_LABELS_FILENAME,""));
+                    if (l.exists() && l.isFile()) {
+                        loadLabels(l);
+                    }
+                }
+            }
+            if (preferenceExists(KEY_INPUTSPECIFICATION_FILENAME)) {
+                File f2 = new File(getString(KEY_INPUTSPECIFICATION_FILENAME, ""));
+                if (f2.exists() && f2.isFile()) {
+                    try {
+                        loadInputSpecification(f2);
+                    } catch (FileNotFoundException ex) {
+                        log.warning(ex.toString());
+                    } catch (YamlException ex) {
+                        log.warning(ex.toString());
+                    }
                 }
             }
         }
+
     }
 
     private String getExtension(File f) {
