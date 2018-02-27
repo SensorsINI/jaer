@@ -95,7 +95,7 @@ public class SlasherCNN extends DavisClassifierCNNProcessor {
             textRenderer.end3DRendering();
 
         }
-        if (showSteering) {
+        if (showSteering) { 
             float x = chip.getSizeX() * .2f, y = (chip.getSizeY()) * .25f, scale = .4f;
             textRenderer.begin3DRendering();
             String s = String.format("Prediction steering: %5.2f", steering);

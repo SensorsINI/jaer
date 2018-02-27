@@ -134,7 +134,7 @@ public class SlasherRosbagDisplay extends RosbagMessageDisplayer implements Fram
             textRenderer.end3DRendering();
 
         }
-        if (showSteering) {
+        if (showSteering) { 
             float x = chip.getSizeX() * .2f, y = (chip.getSizeY()) * .15f, scale = .4f;
             textRenderer.begin3DRendering();
             String s = String.format("Human steering: %5.2f", steering);
