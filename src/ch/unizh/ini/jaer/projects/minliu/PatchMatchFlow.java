@@ -1095,6 +1095,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      *
      * @param x coordinate in subsampled space
      * @param y
+     * @param dx_init initial offset
+     * @param dy_init
      * @param prevSlice the slice over which we search for best match
      * @param curSlice the slice from which we get the reference block
      * @param subSampleBy the scale to compute this SAD on, 0 for full
