@@ -181,6 +181,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * we reset the nonGreedyRegions map
      */
     private float nonGreedyFractionToBeServiced = getFloat("nonGreedyFractionToBeServiced", .5f);
+    
+    // Print scale count's statics
+    private boolean printScaleCntStatEnabled = getBoolean("printScaleCntStatEnabled", false);
 
     // timers and flags for showing filter properties temporarily
     private final int SHOW_STUFF_DURATION_MS = 4000;
@@ -215,7 +218,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        Date date = new Date();
         // Log file for the OF distribution's statistics
 //        outputFilename = "PMF_HistStdDev" + formatter.format(date) + ".txt";
-        String patchTT = "0a: Block matching";
+        String patchTT = "0a: Block matching";        
 //        String eventSqeMatching = "Event squence matching";
 //        String preProcess = "Denoise";
         String metricConfid = "Confidence of current metric";
@@ -267,6 +270,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchDispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
         setPropertyTooltip(patchDispTT, "displayOutputVectors", "display the output motion vectors or not");
         setPropertyTooltip(patchDispTT, "displayResultHistogram", "display the output motion vectors histogram to show disribution of results for each packet. Only implemented for HammingDistance");
+        setPropertyTooltip(patchDispTT, "printScaleCntStatEnabled", "enables printing the statics of scale counts");
 
         getSupport().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
         getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
@@ -284,7 +288,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     public void doStopLogSadValues() {
         sadValueLogger.setEnabled(false);
     }
-
+     
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
         if (cameraCalibration != null && cameraCalibration.isFilterEnabled()) {
@@ -628,14 +632,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        resultAngleHistogramMax = Integer.MIN_VALUE;
         
         // Print statics of scale count, only for debuuging.
-        float sumScaleCounts = 0;
-        for (int scale : scalesToComputeArray) {
-            sumScaleCounts += scaleResultCounts[scale];
+        if ( printScaleCntStatEnabled ) {
+            float sumScaleCounts = 0;
+            for (int scale : scalesToComputeArray) {
+                sumScaleCounts += scaleResultCounts[scale];
+            }
+
+            for (int scale : scalesToComputeArray) {
+                System.out.println("Scale " + scale + " count percentage is: " + scaleResultCounts[scale]/sumScaleCounts);            
+            }            
         }
-        
-        for (int scale : scalesToComputeArray) {
-            System.out.println("Scale " + scale + " count is: " + scaleResultCounts[scale]/sumScaleCounts);            
-        }
+
         
         Arrays.fill(scaleResultCounts, 0);        
         clearResetOFHistogramFlag();
@@ -2713,6 +2720,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     public void setAdapativeSliceDurationUseProportionalControl(boolean adapativeSliceDurationUseProportionalControl) {
         this.adapativeSliceDurationUseProportionalControl = adapativeSliceDurationUseProportionalControl;
         putBoolean("adapativeSliceDurationUseProportionalControl", adapativeSliceDurationUseProportionalControl);
+    }
+
+    public boolean isPrintScaleCntStatEnabled() {
+        return printScaleCntStatEnabled;
+    }
+
+    public void setPrintScaleCntStatEnabled(boolean printScaleCntStatEnabled) {
+        this.printScaleCntStatEnabled = printScaleCntStatEnabled;
+        putBoolean("printScaleCntStatEnabled", printScaleCntStatEnabled);
     }
 
 }
