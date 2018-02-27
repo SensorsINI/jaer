@@ -58,7 +58,7 @@ public class DvsFramerSingleFrame extends DvsFramer {
      * Adds event from a source event location to the map by integer division to
      * the correct location in the subsampled DVS frame.
      * <p>
-     * If the frame is filled up, then it is normalized and teh
+     * If the frame is filled up, then it is normalized and the
      * EVENT_NEW_FRAME_AVAILABLE PropertyChangeEvent is fired.
      *
      *
