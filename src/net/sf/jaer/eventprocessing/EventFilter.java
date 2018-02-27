@@ -452,6 +452,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * Checks if a preference value exists.
      * @param key - the filter preference key header is prepended.
      * @return true if a non-null value exists
+     * @since 1.6.0
      */
     protected boolean preferenceExists(String key) {
         return getPrefs().get(prefsKeyHeader() + key, null) != null;
