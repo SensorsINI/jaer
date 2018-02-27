@@ -91,10 +91,10 @@ public class SlasherRosbagDisplay extends RosbagMessageDisplayer implements Fram
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
+        GL2 gl = drawable.getGL().getGL2();
         TextRenderer textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
         textRenderer.setColor(Color.blue);
 
-        GL2 gl = drawable.getGL().getGL2();
         gl.glColor3f(0, 0, 1);
         gl.glLineWidth(2);
         GLU glu = new GLU();
@@ -127,7 +127,7 @@ public class SlasherRosbagDisplay extends RosbagMessageDisplayer implements Fram
         if (showThrottleBrake) {
             final float x = chip.getSizeX() * .2f, y = (chip.getSizeY()) * .1f, scale = .4f;
             textRenderer.begin3DRendering();
-            String s = String.format("Throttle: %3.0f%%", throttle * 100);
+            String s = String.format("Human throttle: %3.0f%%", throttle * 100);
 
             Rectangle2D r = textRenderer.getBounds(s);
             textRenderer.draw3D(s, (float) (x - scale * r.getWidth() / 2), (float) (y - scale * r.getHeight() / 2), 0, scale);
@@ -135,9 +135,17 @@ public class SlasherRosbagDisplay extends RosbagMessageDisplayer implements Fram
 
         }
         if (showSteering) {
-            final float radius = chip.getMinSize() * .25f;
+            float x = chip.getSizeX() * .2f, y = (chip.getSizeY()) * .15f, scale = .4f;
+            textRenderer.begin3DRendering();
+            String s = String.format("Human steering: %5.2f", steering);
+
+            Rectangle2D r = textRenderer.getBounds(s);
+            textRenderer.draw3D(s, (float) (x - scale * r.getWidth() / 2), (float) (y - scale * r.getHeight() / 2), 0, scale);
+            textRenderer.end3DRendering();
+            
+            final float radius = chip.getMinSize() * .2f;
             // draw steering wheel
-            final float x = chip.getSizeX() / 2, y = (chip.getSizeY()) / 2;
+            x = chip.getSizeX() / 2; y = (chip.getSizeY()) / 2;
             gl.glPushMatrix();
             {
                 gl.glTranslatef(x, y, 0);
