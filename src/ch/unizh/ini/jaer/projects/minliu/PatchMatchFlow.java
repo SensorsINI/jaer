@@ -29,10 +29,13 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import com.jogamp.opengl.GLException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.StringTokenizer;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.stream.IntStream;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -72,7 +75,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int numSlices = 3; //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
     volatile private int numScales = getInt("numScales", 3); //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
     private String scalesToCompute = getString("scalesToCompute", ""); //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
-    private int[] scalesToComputeArray = null; // holds array of scales to actually compute, for debugging
+    private Integer[] scalesToComputeArray = null; // holds array of scales to actually compute, for debugging
     private int[] scaleResultCounts = new int[numScales]; // holds counts at each scale for min SAD results
     /**
      * The computed average possible match distance from 0 motion
@@ -295,7 +298,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         } else {
             timeLimiter.setEnabled(false);
         }
-
+        
         int minDistScale = 0;
         // following awkward block needed to deal with DVS/DAVIS and IMU/APS events
         // block STARTS
@@ -355,16 +358,22 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     }
                     SADResult sliceResult;
                     minDistScale = 0;
+                    
+                    // Sorts scalesToComputeArray[] in descending order
+                    Arrays.sort(scalesToComputeArray, Collections.reverseOrder());
+                    
                     for (int scale : scalesToComputeArray) {
                         if (scale >= numScales) {
                             log.warning("scale " + scale + " is out of range of " + numScales + "; fix scalesToCompute for example by clearing it");
                             break;
                         }
-                        int dx_init = (result == null || result.sadValue == Float.MAX_VALUE) ? 0 : ( result.dx >> scale );
-                        int dy_init = (result == null || result.sadValue == Float.MAX_VALUE) ? 0 : ( result.dy >> scale );
+                        int dx_init = ((result != null ) && !isNotSufficientlyAccurate(result)) ? ( result.dx >> scale ) : 0;
+                        int dy_init = ((result != null ) && !isNotSufficientlyAccurate(result)) ? ( result.dx >> scale ) : 0;
 //                        dx_init = 0;
 //                        dy_init = 0;
-                        sliceResult = minSADDistance(ein.x, ein.y, dx_init, dy_init, slices[sliceIndex(1)], slices[sliceIndex(2)], scale); // from ref slice to past slice k+1, using scale 0,1,....
+                        // The reason why we inverse dx_init, dy_init i is the offset is pointing from previous slice to current slice.
+                        // The dx_init, dy_init are from the corse scale's result, and it is used as the finer scale's initial guess.
+                        sliceResult = minSADDistance(ein.x, ein.y, -dx_init, -dy_init, slices[sliceIndex(1)], slices[sliceIndex(2)], scale); // from ref slice to past slice k+1, using scale 0,1,....
 //                        sliceSummedSADValues[sliceIndex(scale + 2)] += sliceResult.sadValue; // accumulate SAD for this past slice
 //                        sliceSummedSADCounts[sliceIndex(scale + 2)]++; // accumulate SAD count for this past slice
                         // sliceSummedSADValues should end up filling 2 values for 4 slices 
@@ -372,10 +381,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                             result = sliceResult; // result holds the overall min sad result
                             minDistScale = scale;
                         }
-                        sadVals[scale] = sliceResult.sadValue; // TODO debug
-
+                        sadVals[scale] = sliceResult.sadValue; // TODO debug 
                     }
-                    scaleResultCounts[minDistScale]++;
                     float dt = (sliceDeltaTimeUs(2) * 1e-6f);
                     if (result != null) {
                         result.vx = result.dx / dt; // hack, convert to pix/second
@@ -394,13 +401,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    result.dy = result.dy / dtj;
 //                    break;
             }
-            if (result == null /*|| result.sadValue == Float.MAX_VALUE*/) {
+            if (result == null || result.sadValue == Float.MAX_VALUE) {
                 continue; // maybe some property change caused this
             }
             // reject values that are unreasonable
             if (isNotSufficientlyAccurate(result)) {
                 continue;
             }
+            scaleResultCounts[minDistScale]++;
             vx = result.vx;
             vy = result.vy;
             v = (float) Math.sqrt((vx * vx) + (vy * vy));
@@ -618,7 +626,18 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        Arrays.fill(resultAngleHistogram, 0);
 //        resultAngleHistogramCount = 0;
 //        resultAngleHistogramMax = Integer.MIN_VALUE;
-        Arrays.fill(scaleResultCounts, 0);
+        
+        // Print statics of scale count, only for debuuging.
+        float sumScaleCounts = 0;
+        for (int scale : scalesToComputeArray) {
+            sumScaleCounts += scaleResultCounts[scale];
+        }
+        
+        for (int scale : scalesToComputeArray) {
+            System.out.println("Scale " + scale + " count is: " + scaleResultCounts[scale]/sumScaleCounts);            
+        }
+        
+        Arrays.fill(scaleResultCounts, 0);        
         clearResetOFHistogramFlag();
     }
 
@@ -1096,8 +1115,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             searchMethod = getSearchMethod();
         }
         
-        final int xsub = x >> subSampleBy;
-        final int ysub = y >> subSampleBy;
+        final int xsub = ( x >> subSampleBy ) + dx_init;
+        final int ysub = ( y >> subSampleBy ) + dy_init;
         final int r = ((blockDimension) / 2);
         int w = subSizeX >> subSampleBy, h = subSizeY >> subSampleBy;
 
@@ -1219,8 +1238,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                     if (sumArray[xidx][yidx] <= minSum) {
                         minSum = sumArray[xidx][yidx];
-                        result.dx = -dx;  // minus is because result points to the past slice and motion is in the other direction
-                        result.dy = -dy;
+                        result.dx = -dx - dx_init;  // minus is because result points to the past slice and motion is in the other direction
+                        result.dy = -dy - dy_init;
                         result.sadValue = minSum;
                     }
 
@@ -1242,8 +1261,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         sumArray[dx + searchDistance][dy + searchDistance] = sum;
                         if (sum < minSum) {
                             minSum = sum;
-                            result.dx = -dx; // minus is because result points to the past slice and motion is in the other direction
-                            result.dy = -dy;
+                            result.dx = -dx - dx_init; // minus is because result points to the past slice and motion is in the other direction
+                            result.dy = -dy - dy_init;
                             result.sadValue = minSum;
                         }
                     }
@@ -1269,11 +1288,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         result.scale = subSampleBy;
         // convert dx in search steps to dx in pixels including subsampling
         // compute index assuming no subsampling or centering
-        result.xidx = result.dx + searchDistance;
-        result.yidx = result.dy + searchDistance;
+        result.xidx = ( result.dx + dx_init ) + searchDistance;
+        result.yidx = ( result.dy + dy_init ) + searchDistance;
         // compute final dx and dy including subsampling
-        result.dx = (result.dx - dx_init) << subSampleBy;
-        result.dy = (result.dy - dy_init) << subSampleBy;
+        result.dx = ( result.dx ) << subSampleBy;
+        result.dy = ( result.dy ) << subSampleBy;
         // compute final index including subsampling and centering
         // idxCentering is shift needed to be applyed to store this result finally into the hist, 
         final int idxCentering = (searchDistance << (numScales - 1)) - ((searchDistance) << subSampleBy); // i.e. for subSampleBy=0 and numScales=2, shift=1 so that full scale search is centered in 5x5 hist
@@ -2486,7 +2505,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             if (n == 0) {
                 setDefaultScalesToCompute();
             } else {
-                scalesToComputeArray = new int[n];
+                scalesToComputeArray = new Integer[n];
                 int i = 0;
                 while (st.hasMoreTokens()) {
                     try {
@@ -2502,7 +2521,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     private void setDefaultScalesToCompute() {
-        scalesToComputeArray = new int[numScales];
+        scalesToComputeArray = new Integer[numScales];
         for (int i = 0; i < numScales; i++) {
             scalesToComputeArray[i] = i;
         }
