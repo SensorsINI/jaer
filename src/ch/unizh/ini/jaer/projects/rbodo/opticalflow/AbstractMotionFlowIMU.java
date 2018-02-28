@@ -68,7 +68,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      * Basic event information. Type is event polarity value, 0=OFF and 1=ON,
      * typically but not always
      */
-    protected int x, y, ts, type, lastTs;
+    public int x, y, ts, type, lastTs;
 
     /**
      * (Subsampled) chip sizes.
@@ -132,7 +132,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     /**
      * Use IMU gyro values to estimate motion flow.
      */
-    protected ImuFlowEstimator imuFlowEstimator;
+    public ImuFlowEstimator imuFlowEstimator;
 
     // Focal length of camera lens in mm needed to convert rad/s to pixel/s.
     // Conversion factor is atan(pixelWidth/focalLength).
@@ -382,7 +382,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             }
         }
     }
-
+    
     void resetGroundTruth() {
         importedGTfromMatlab = false;
         vxGTframe = null;

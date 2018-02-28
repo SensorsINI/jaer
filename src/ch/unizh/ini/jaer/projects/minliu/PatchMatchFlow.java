@@ -29,10 +29,13 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import com.jogamp.opengl.GLException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.StringTokenizer;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.stream.IntStream;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -72,7 +75,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int numSlices = 3; //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
     volatile private int numScales = getInt("numScales", 3); //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
     private String scalesToCompute = getString("scalesToCompute", ""); //getInt("numSlices", 3); // fix to 4 slices to compute error sign from min SAD result from t-2d to t-3d
-    private int[] scalesToComputeArray = null; // holds array of scales to actually compute, for debugging
+    private Integer[] scalesToComputeArray = null; // holds array of scales to actually compute, for debugging
     private int[] scaleResultCounts = new int[numScales]; // holds counts at each scale for min SAD results
     /**
      * The computed average possible match distance from 0 motion
@@ -178,6 +181,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * we reset the nonGreedyRegions map
      */
     private float nonGreedyFractionToBeServiced = getFloat("nonGreedyFractionToBeServiced", .5f);
+    
+    // Print scale count's statics
+    private boolean printScaleCntStatEnabled = getBoolean("printScaleCntStatEnabled", false);
 
     // timers and flags for showing filter properties temporarily
     private final int SHOW_STUFF_DURATION_MS = 4000;
@@ -212,7 +218,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        Date date = new Date();
         // Log file for the OF distribution's statistics
 //        outputFilename = "PMF_HistStdDev" + formatter.format(date) + ".txt";
-        String patchTT = "0a: Block matching";
+        String patchTT = "0a: Block matching";        
 //        String eventSqeMatching = "Event squence matching";
 //        String preProcess = "Denoise";
         String metricConfid = "Confidence of current metric";
@@ -264,6 +270,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchDispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
         setPropertyTooltip(patchDispTT, "displayOutputVectors", "display the output motion vectors or not");
         setPropertyTooltip(patchDispTT, "displayResultHistogram", "display the output motion vectors histogram to show disribution of results for each packet. Only implemented for HammingDistance");
+        setPropertyTooltip(patchDispTT, "printScaleCntStatEnabled", "enables printing the statics of scale counts");
 
         getSupport().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
         getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
@@ -281,13 +288,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     public void doStopLogSadValues() {
         sadValueLogger.setEnabled(false);
     }
-
+     
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
         if (cameraCalibration != null && cameraCalibration.isFilterEnabled()) {
             in = cameraCalibration.filterPacket(in);
         }
-        setupFilter(in);
+        setupFilter(in);        
         checkArrays();
         if (processingTimeLimitMs > 0) {
             timeLimiter.setTimeLimitMs(processingTimeLimitMs);
@@ -295,7 +302,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         } else {
             timeLimiter.setEnabled(false);
         }
-
+        
         int minDistScale = 0;
         // following awkward block needed to deal with DVS/DAVIS and IMU/APS events
         // block STARTS
@@ -355,12 +362,22 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     }
                     SADResult sliceResult;
                     minDistScale = 0;
+                    
+                    // Sorts scalesToComputeArray[] in descending order
+                    Arrays.sort(scalesToComputeArray, Collections.reverseOrder());
+                    
                     for (int scale : scalesToComputeArray) {
                         if (scale >= numScales) {
                             log.warning("scale " + scale + " is out of range of " + numScales + "; fix scalesToCompute for example by clearing it");
                             break;
                         }
-                        sliceResult = minSADDistance(ein.x, ein.y, slices[sliceIndex(1)], slices[sliceIndex(2)], scale); // from ref slice to past slice k+1, using scale 0,1,....
+                        int dx_init = ((result != null ) && !isNotSufficientlyAccurate(result)) ? ( result.dx >> scale ) : 0;
+                        int dy_init = ((result != null ) && !isNotSufficientlyAccurate(result)) ? ( result.dx >> scale ) : 0;
+//                        dx_init = 0;
+//                        dy_init = 0;
+                        // The reason why we inverse dx_init, dy_init i is the offset is pointing from previous slice to current slice.
+                        // The dx_init, dy_init are from the corse scale's result, and it is used as the finer scale's initial guess.
+                        sliceResult = minSADDistance(ein.x, ein.y, -dx_init, -dy_init, slices[sliceIndex(1)], slices[sliceIndex(2)], scale); // from ref slice to past slice k+1, using scale 0,1,....
 //                        sliceSummedSADValues[sliceIndex(scale + 2)] += sliceResult.sadValue; // accumulate SAD for this past slice
 //                        sliceSummedSADCounts[sliceIndex(scale + 2)]++; // accumulate SAD count for this past slice
                         // sliceSummedSADValues should end up filling 2 values for 4 slices 
@@ -368,10 +385,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                             result = sliceResult; // result holds the overall min sad result
                             minDistScale = scale;
                         }
-                        sadVals[scale] = sliceResult.sadValue; // TODO debug
-
+                        sadVals[scale] = sliceResult.sadValue; // TODO debug 
                     }
-                    scaleResultCounts[minDistScale]++;
                     float dt = (sliceDeltaTimeUs(2) * 1e-6f);
                     if (result != null) {
                         result.vx = result.dx / dt; // hack, convert to pix/second
@@ -390,13 +405,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    result.dy = result.dy / dtj;
 //                    break;
             }
-            if (result == null /*|| result.sadValue == Float.MAX_VALUE*/) {
+            if (result == null || result.sadValue == Float.MAX_VALUE) {
                 continue; // maybe some property change caused this
             }
             // reject values that are unreasonable
             if (isNotSufficientlyAccurate(result)) {
                 continue;
             }
+            scaleResultCounts[minDistScale]++;
             vx = result.vx;
             vy = result.vy;
             v = (float) Math.sqrt((vx * vx) + (vy * vy));
@@ -435,7 +451,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         }
 
-        motionFlowStatistics.updatePacket(countIn, countOut);
+        motionFlowStatistics.updatePacket(countIn, countOut, ts);
         adaptEventSkipping();
         if (rewindFlg) {
             rewindFlg = false;
@@ -614,7 +630,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        Arrays.fill(resultAngleHistogram, 0);
 //        resultAngleHistogramCount = 0;
 //        resultAngleHistogramMax = Integer.MIN_VALUE;
-        Arrays.fill(scaleResultCounts, 0);
+        
+        // Print statics of scale count, only for debuuging.
+        if ( printScaleCntStatEnabled ) {
+            float sumScaleCounts = 0;
+            for (int scale : scalesToComputeArray) {
+                sumScaleCounts += scaleResultCounts[scale];
+            }
+
+            for (int scale : scalesToComputeArray) {
+                System.out.println("Scale " + scale + " count percentage is: " + scaleResultCounts[scale]/sumScaleCounts);            
+            }            
+        }
+
+        
+        Arrays.fill(scaleResultCounts, 0);        
         clearResetOFHistogramFlag();
     }
 
@@ -792,7 +822,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             gl.glVertex2f(xx - sd, yy + sd);
             gl.glEnd();
         }
-    }
+        }
 
     @Override
     public synchronized void resetFilter() {
@@ -957,7 +987,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * is defined by average of first and last timestamp.
      *
      */
-    private int sliceDeltaTimeUs(int pointer) {
+    protected int sliceDeltaTimeUs(int pointer) {
 //        System.out.println("dt(" + pointer + ")=" + (sliceStartTimeUs[sliceIndex(1)] - sliceStartTimeUs[sliceIndex(pointer)]));
         int idxOlder = sliceIndex(pointer), idxYounger = sliceIndex(1);
         int tOlder = (sliceStartTimeUs[idxOlder] + sliceEndTimeUs[idxOlder]) / 2;
@@ -1065,6 +1095,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      *
      * @param x coordinate in subsampled space
      * @param y
+     * @param dx_init initial offset
+     * @param dy_init
      * @param prevSlice the slice over which we search for best match
      * @param curSlice the slice from which we get the reference block
      * @param subSampleBy the scale to compute this SAD on, 0 for full
@@ -1072,7 +1104,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @return SADResult that provides the shift and SAD value
      */
 //    private SADResult minHammingDistance(int x, int y, BitSet prevSlice, BitSet curSlice) {
-    private SADResult minSADDistance(int x, int y, byte[][][] curSlice, byte[][][] prevSlice, int subSampleBy) {
+    private SADResult minSADDistance(int x, int y, int dx_init, int dy_init, byte[][][] curSlice, byte[][][] prevSlice, int subSampleBy) {
         SADResult result = new SADResult();
         float minSum = Float.MAX_VALUE, sum;
 
@@ -1091,9 +1123,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         } else {
             searchMethod = getSearchMethod();
         }
-
-        final int xsub = x >> subSampleBy;
-        final int ysub = y >> subSampleBy;
+        
+        final int xsub = ( x >> subSampleBy ) + dx_init;
+        final int ysub = ( y >> subSampleBy ) + dy_init;
         final int r = ((blockDimension) / 2);
         int w = subSizeX >> subSampleBy, h = subSizeY >> subSampleBy;
 
@@ -1102,6 +1134,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (xsub - r - searchDistance < 0 || xsub + r + searchDistance >= w
                 || ysub - r - searchDistance < 0 || ysub + r + searchDistance >= h) {
             result.sadValue = Float.MAX_VALUE; // return very large distance for this match so it is not selected
+            result.scale = subSampleBy;
             return result;
         }
 
@@ -1155,7 +1188,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                         /* We just calculate the blocks that haven't been calculated before */
                         if (computedFlg[xidx][yidx] == false) {
-                            sumArray[xidx][yidx] = sadDistance(x, y, dx, dy, curSlice, prevSlice, subSampleBy);
+                            sumArray[xidx][yidx] = sadDistance(x, y, dx_init + dx, dy_init + dy, curSlice, prevSlice, subSampleBy);
                             computedFlg[xidx][yidx] = true;
                             if (outputSearchErrorInfo) {
                                 DSAverageNum++;
@@ -1200,7 +1233,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                     /* We just calculate the blocks that haven't been calculated before */
                     if (computedFlg[xidx][yidx] == false) {
-                        sumArray[xidx][yidx] = sadDistance(x, y, dx, dy, curSlice, prevSlice, subSampleBy);
+                        sumArray[xidx][yidx] = sadDistance(x, y, dx_init + dx, dy_init + dy, curSlice, prevSlice, subSampleBy);
                         computedFlg[xidx][yidx] = true;
                         if (outputSearchErrorInfo) {
                             DSAverageNum++;
@@ -1214,8 +1247,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                     if (sumArray[xidx][yidx] <= minSum) {
                         minSum = sumArray[xidx][yidx];
-                        result.dx = -dx;  // minus is because result points to the past slice and motion is in the other direction
-                        result.dy = -dy;
+                        result.dx = -dx - dx_init;  // minus is because result points to the past slice and motion is in the other direction
+                        result.dy = -dy - dy_init;
                         result.sadValue = minSum;
                     }
 
@@ -1233,12 +1266,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             case FullSearch:
                 for (dx = -searchDistance; dx <= searchDistance; dx++) {
                     for (dy = -searchDistance; dy <= searchDistance; dy++) {
-                        sum = sadDistance(x, y, dx, dy, curSlice, prevSlice, subSampleBy);
+                        sum = sadDistance(x, y, dx_init + dx, dy_init + dy, curSlice, prevSlice, subSampleBy);
                         sumArray[dx + searchDistance][dy + searchDistance] = sum;
                         if (sum < minSum) {
                             minSum = sum;
-                            result.dx = -dx; // minus is because result points to the past slice and motion is in the other direction
-                            result.dy = -dy;
+                            result.dx = -dx - dx_init; // minus is because result points to the past slice and motion is in the other direction
+                            result.dy = -dy - dy_init;
                             result.sadValue = minSum;
                         }
                     }
@@ -1264,11 +1297,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         result.scale = subSampleBy;
         // convert dx in search steps to dx in pixels including subsampling
         // compute index assuming no subsampling or centering
-        result.xidx = result.dx + searchDistance;
-        result.yidx = result.dy + searchDistance;
+        result.xidx = ( result.dx + dx_init ) + searchDistance;
+        result.yidx = ( result.dy + dy_init ) + searchDistance;
         // compute final dx and dy including subsampling
-        result.dx = result.dx << subSampleBy;
-        result.dy = result.dy << subSampleBy;
+        result.dx = ( result.dx ) << subSampleBy;
+        result.dy = ( result.dy ) << subSampleBy;
         // compute final index including subsampling and centering
         // idxCentering is shift needed to be applyed to store this result finally into the hist, 
         final int idxCentering = (searchDistance << (numScales - 1)) - ((searchDistance) << subSampleBy); // i.e. for subSampleBy=0 and numScales=2, shift=1 so that full scale search is centered in 5x5 hist
@@ -2481,7 +2514,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             if (n == 0) {
                 setDefaultScalesToCompute();
             } else {
-                scalesToComputeArray = new int[n];
+                scalesToComputeArray = new Integer[n];
                 int i = 0;
                 while (st.hasMoreTokens()) {
                     try {
@@ -2497,7 +2530,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     }
 
     private void setDefaultScalesToCompute() {
-        scalesToComputeArray = new int[numScales];
+        scalesToComputeArray = new Integer[numScales];
         for (int i = 0; i < numScales; i++) {
             scalesToComputeArray[i] = i;
         }
@@ -2689,6 +2722,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     public void setAdapativeSliceDurationUseProportionalControl(boolean adapativeSliceDurationUseProportionalControl) {
         this.adapativeSliceDurationUseProportionalControl = adapativeSliceDurationUseProportionalControl;
         putBoolean("adapativeSliceDurationUseProportionalControl", adapativeSliceDurationUseProportionalControl);
+    }
+
+    public boolean isPrintScaleCntStatEnabled() {
+        return printScaleCntStatEnabled;
+    }
+
+    public void setPrintScaleCntStatEnabled(boolean printScaleCntStatEnabled) {
+        this.printScaleCntStatEnabled = printScaleCntStatEnabled;
+        putBoolean("printScaleCntStatEnabled", printScaleCntStatEnabled);
     }
 
 }
