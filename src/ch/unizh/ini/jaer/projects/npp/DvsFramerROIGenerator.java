@@ -197,7 +197,10 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
             Random random = new Random();
             float hue = 0;
             for (ROI[][] r : rois) {
+                scale:
                 for (ROI[] rr : r) {
+                    int stridenum=0;
+                    x:
                     for (ROI rrr : rr) {
                         if (rrr == null) {
                             continue;
@@ -214,6 +217,7 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
                                 (rrr.yCenter) + 3 * (random.nextFloat() - 0.5f),
                                 rrr.xRight - rrr.xLeft + 1, rrr.yTop - rrr.yBot + 1, 0);
                         gl.glPopMatrix();
+                        if(++stridenum>1) break scale; // only show first one
                     }
                 }
             }
