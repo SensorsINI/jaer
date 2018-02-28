@@ -42,7 +42,9 @@ import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.EOFException;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.nio.channels.FileChannel;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -120,7 +122,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     private boolean nonMonotonicTimestampExceptionsChecked = true;
     private boolean nonMonotonicTimestampDetected = false; // flag set by nonmonotonic timestamp if detection enabled
-    private boolean rewindFlag=false;
+    private boolean rewindFlag = false;
 
     private enum RosbagFileType {
         RPG(RPG_TOPIC_HEADER), MVSEC(MVSEC_TOPIC_HEADER), Unknown("???");
@@ -655,16 +657,15 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         nextMessageNumber = 0;
         currentStartTimestamp = (int) firstTimestamp;
         clearAccumulatedEvents();
-        rewindFlag=true;
+        rewindFlag = true;
     }
-    
-      private void maybeSendRewoundEvent(long oldPosition) {
+
+    private void maybeSendRewoundEvent(long oldPosition) {
         if (rewindFlag) {
             getSupport().firePropertyChange(AEInputStream.EVENT_REWOUND, oldPosition, position());
             rewindFlag = false;
         }
     }
-
 
     private void clearAccumulatedEvents() {
         largestTimestamp = Integer.MIN_VALUE;
@@ -796,6 +797,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     public void setCurrentStartTimestamp(int currentStartTimestamp) {
+        this.currentStartTimestamp=currentStartTimestamp;
         nextMessageNumber = (int) (numMessages * (float) currentStartTimestamp / getDurationUs());
     }
 
@@ -817,6 +819,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         firstTimestamp = getTimestampUsRelative(msgIndexes.get(0).timestamp);
         lastTimestamp = getTimestampUsRelative(msgIndexes.get(numMessages - 1).timestamp);
         wasIndexed = true;
+        cacheMsgIndexes(msgIndexes);
     }
 
     public void addPropertyChangeListener(PropertyChangeListener listener) {
@@ -887,6 +890,17 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
      */
     public boolean isNonMonotonicTimestampDetected() {
         return nonMonotonicTimestampDetected;
+    }
+
+    private void cacheMsgIndexes(List<BagFile.MessageIndex> msgIndexes) {
+        try {
+            FileOutputStream out = new FileOutputStream("rosbag-cache.dat");
+            ObjectOutputStream oos = new ObjectOutputStream(out);
+            oos.writeObject(msgIndexes);
+            oos.flush();
+        } catch (Exception e) {
+            log.warning("could not cache the message index to disk: "+e.toString());
+        }
     }
 
 }
