@@ -925,7 +925,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             }
             log.info("reading cached index for rosbag file " + getFile() + " from " + file);
             FileInputStream in = new FileInputStream(file);
-            new ProgressMonitorInputStream(chip.getAeViewer(), "Reading cached file indexes " + file, in);
+            (new ProgressMonitorInputStream(chip.getAeViewer(), "Reading cached file indexes " + file, in)).getProgressMonitor().setMillisToPopup(100);
             ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(in));
             List<BagFile.MessageIndex> tmpIdx = (List<BagFile.MessageIndex>) ois.readObject();
             msgIndexes = tmpIdx;
