@@ -40,10 +40,13 @@ import eu.seebetter.ini.chips.davis.imu.IMUSampleType;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.io.BufferedInputStream;
 import java.io.EOFException;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.channels.FileChannel;
 import java.sql.Timestamp;
@@ -55,6 +58,7 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.ProgressMonitor;
+import javax.swing.ProgressMonitorInputStream;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -797,7 +801,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     public void setCurrentStartTimestamp(int currentStartTimestamp) {
-        this.currentStartTimestamp=currentStartTimestamp;
+        this.currentStartTimestamp = currentStartTimestamp;
         nextMessageNumber = (int) (numMessages * (float) currentStartTimestamp / getDurationUs());
     }
 
@@ -812,14 +816,16 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             return;
         }
         log.info("creating index for all topics");
-        msgIndexes = bagFile.generateIndexesForTopicList(topicList, progressMonitor);
+        if (!maybeLoadCachedMsgIndexes()) {
+            msgIndexes = bagFile.generateIndexesForTopicList(topicList, progressMonitor);
+            cacheMsgIndexes();
+        }
         numMessages = msgIndexes.size();
         markIn = 0;
         markOut = numMessages;
         firstTimestamp = getTimestampUsRelative(msgIndexes.get(0).timestamp);
         lastTimestamp = getTimestampUsRelative(msgIndexes.get(numMessages - 1).timestamp);
         wasIndexed = true;
-        cacheMsgIndexes(msgIndexes);
     }
 
     public void addPropertyChangeListener(PropertyChangeListener listener) {
@@ -892,15 +898,47 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         return nonMonotonicTimestampDetected;
     }
 
-    private void cacheMsgIndexes(List<BagFile.MessageIndex> msgIndexes) {
+    synchronized private void cacheMsgIndexes() {
         try {
-            FileOutputStream out = new FileOutputStream("rosbag-cache.dat");
+            File file = new File(messageIndexesCacheFileName());
+            if (file.exists() && file.canRead() && file.isFile()) {
+                log.info("cached indexes " + file + " for file " + getFile() + " already exists, not storing it again");
+                return;
+            }
+            log.info("caching the index for rosbag file " + getFile() + " in " + file);
+            FileOutputStream out = new FileOutputStream(file);
             ObjectOutputStream oos = new ObjectOutputStream(out);
             oos.writeObject(msgIndexes);
             oos.flush();
+            log.info("cached the index for rosbag file " + getFile() + " in " + file);
         } catch (Exception e) {
-            log.warning("could not cache the message index to disk: "+e.toString());
+            log.warning("could not cache the message index to disk: " + e.toString());
         }
+    }
+
+    synchronized private boolean maybeLoadCachedMsgIndexes() {
+        try {
+            File file = new File(messageIndexesCacheFileName());
+            if (!file.exists() || !file.canRead() || !file.isFile()) {
+                log.info("cached indexes " + file + " for file " + getFile() + " does not exist");
+                return false;
+            }
+            log.info("reading cached index for rosbag file " + getFile() + " from " + file);
+            FileInputStream in = new FileInputStream(file);
+            new ProgressMonitorInputStream(chip.getAeViewer(), "Reading cached file indexes " + file, in);
+            ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(in));
+            List<BagFile.MessageIndex> tmpIdx = (List<BagFile.MessageIndex>) ois.readObject();
+            msgIndexes = tmpIdx;
+            log.info("done reading cached index for rosbag file " + getFile() + " from " + file);
+            return true;
+        } catch (Exception e) {
+            log.warning("could load cached message index from disk: " + e.toString());
+            return false;
+        }
+    }
+
+    private String messageIndexesCacheFileName() {
+        return System.getProperty("java.io.tmpdir") + getFile().getName() + ".rosbagidx";
     }
 
 }
