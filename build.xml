@@ -325,7 +325,7 @@
         <delete file="${buildversion.outputfile}"/>
         <!-- run version command to get revision numnber -->
         <exec executable="git" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" searchpath="true">
-            <arg line="show"/>
+            <arg line="describe"/>
         </exec>
         <!-- make it a property line -->
 <!--        <replaceregexp file="${buildversion.outputfile}"
