@@ -16,6 +16,7 @@ import javax.swing.filechooser.FileFilter;
 
 import com.jogamp.opengl.GLException;
 import java.awt.Cursor;
+import java.util.concurrent.TimeUnit;
 import javax.swing.JOptionPane;
 import javax.swing.ProgressMonitor;
 import javax.swing.SwingWorker;
@@ -325,8 +326,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         if (viewer.getChip() == null) {
             throw new IOException("chip is not set in AEViewer so we cannot contruct the file input stream for it");
         }
-        final ProgressMonitor progressMonitor = new ProgressMonitor(viewer, "Opening " + viewer.lastFile, "", 0, 100);
-        progressMonitor.setMillisToPopup(0);
+        final ProgressMonitor progressMonitor = new ProgressMonitor(viewer, "Opening " + file, "Generating or loading cache of message indexes", 0, 100);
+        progressMonitor.setMillisToPopup(300);
+        progressMonitor.setMillisToDecideToPopup(0);
         SwingWorker<Void, Void> worker = new SwingWorker() {
             Exception exception = null;
 
@@ -336,6 +338,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     if (viewer != null) {
                         viewer.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                     }
+//                    progressMonitor.setNote("Opening " + file);
+                    progressMonitor.setProgress(0);
+//                    TimeUnit.SECONDS.sleep(10);
                     aeFileInputStream = viewer.getChip().constuctFileInputStream(file, progressMonitor); // new AEFileInputStream(file);
                     aeFileInputStream.setRepeat(isRepeat());
                     aeFileInputStream.setNonMonotonicTimeExceptionsChecked(viewer.getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem().isSelected());
