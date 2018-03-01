@@ -49,16 +49,18 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.channels.FileChannel;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Formatter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.ProgressMonitor;
-import javax.swing.ProgressMonitorInputStream;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -927,7 +929,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                 return false;
             }
             log.info("reading cached index for rosbag file " + getFile() + " from " + file);
-            long startTime=System.currentTimeMillis();
+            long startTime = System.currentTimeMillis();
             if (progressMonitor != null) {
                 if (progressMonitor.isCanceled()) {
                     progressMonitor.setNote("canceling");
@@ -939,8 +941,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(in));
             List<BagFile.MessageIndex> tmpIdx = (List<BagFile.MessageIndex>) ois.readObject();
             msgIndexes = tmpIdx;
-            long ms=System.currentTimeMillis()-startTime;
-            log.info("done after "+ms+"ms with reading cached index for rosbag file " + getFile() + " from " + file);
+            long ms = System.currentTimeMillis() - startTime;
+            log.info("done after " + ms + "ms with reading cached index for rosbag file " + getFile() + " from " + file);
             if (progressMonitor != null) {
                 if (progressMonitor.isCanceled()) {
                     progressMonitor.setNote("canceling");
