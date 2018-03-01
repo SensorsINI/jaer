@@ -685,8 +685,9 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();
             }
-
+            boolean wasPaused=aeViewer.getJaerViewer().getSyncPlayer().isPaused();
             aeViewer.getJaerViewer().getSyncPlayer().doSingleStep();
+            aeViewer.getJaerViewer().getSyncPlayer().setPaused(wasPaused);
             // inform all listeners on the players that they have been repositioned
             for (AEViewer v : aeViewer.getJaerViewer().getViewers()) {
                 if(v.getAePlayer()!=null && v.getAePlayer().getAEInputStream()!=null){
