@@ -5822,7 +5822,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         boolean old = isPaused();
         jaerViewer.getSyncPlayer().setPaused(paused);
         pauseRenderingCheckBoxMenuItem.setSelected(paused);
-        interruptViewloop();  // to break out of exchangeers that might be waiting, problem is that it also interrupts a singleStep ....
+        if(!isSingleStep()&& getJaerViewer().getNumViewers()>1) interruptViewloop();  // to break out of exchangeers that might be waiting, problem is that it also interrupts a singleStep ....
         firePropertyChange(EVENT_PAUSED, old, isPaused());
     }
 
