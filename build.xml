@@ -78,15 +78,15 @@
          You can override this target in the ../build.xml file. 
     </target>-->
 
-
-    <!--    https://blog.alejandrocelaya.com/2014/02/22/dependency-management-in-java-projects-with-ant-and-ivy/ 
+<!--
+        https://blog.alejandrocelaya.com/2014/02/22/dependency-management-in-java-projects-with-ant-and-ivy/ 
     https://ant.apache.org/ivy/ 
     http://wiki.netbeans.org/FaqIvy 
     see ivy.xml 
     <target name="retrieve-dependencies"
             description="Retrieve dependencies with Apache IVY">
         <ivy:retrieve type="jar" />
-    </target>-->
+    </target>
     
     <path id="ivy.lib.path">
         <fileset dir="jars" includes="ivy-2.4.0.jar"/>
@@ -99,7 +99,7 @@
     </target>
     
     <target name="-ivy-retrieve">
-        <ivy:retrieve/> <!-- Load dependencies to the project -->
+        <ivy:retrieve/>  Load dependencies to the project 
         <pathconvert property="ivy.classpath.computed" dirsep="/" pathsep=":">
             <path>
                 <fileset dir="lib" includes="*.jar"/>
@@ -109,20 +109,81 @@
         <propertyfile file="nbproject/project.properties">
             <entry operation="=" key="ivy.classpath" value="${ivy.classpath.computed}"/>
         </propertyfile>
-    </target>
+    </target>-->
     
     
-    <target name="-pre-compile" depends="-ivy-retrieve"/>
-    <target name="-pre-compile-single" depends="-ivy-retrieve"/>
+    <!--    <target name="-pre-compile" depends="-ivy-retrieve"/>-->
+   
     
     
-    <target name="-post-clean">
+<!--    <target name="-post-clean">
         <delete dir="lib"/>
+    </target>-->
+    
+    <!--ivy download and configure, from https://gist.github.com/snipsnipsnip/3284453 -->
+      <property name="ivy.install.version" value="2.4.0" />
+    <property name="ivy.jar.dir" value="${basedir}/ivy" />
+    <property name="ivy.cache.dir" value="${basedir}/ivy" />
+    <property name="ivy.jar.file" value="${ivy.jar.dir}/ivy.jar" />
+    <property name="ivy.lib" value="${basedir}/lib" />
+    <property name="ivy.settings.location" value="${basedir}/ivysettings.xml" />
+
+    <target name="-check-ivy">
+        <available file="${ivy.jar.file}" property="ivy.skip.download"/>
     </target>
 
-    <target name="-pre-init">
-        <!-- Empty placeholder for easier customization. -->
-        <!-- You can override this target in the ../build.xml file. -->
+    <target name="-download-ivy" unless="ivy.skip.download" depends="-check-ivy">
+        <mkdir dir="${ivy.jar.dir}"/>
+        <echo message="installing ivy..."/>
+        <get src="http://repo1.maven.org/maven2/org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar"
+             dest="${ivy.jar.file}" usetimestamp="true"/>
+    </target>
+
+    <target name="-load-ivy-tasks" depends="-download-ivy">
+        <path id="ivy.lib.path">
+            <pathelement location="${ivy.jar.file}"/>
+        </path>
+        <taskdef resource="org/apache/ivy/ant/antlib.xml" uri="antlib:org.apache.ivy.ant" classpathref="ivy.lib.path"/>
+    </target>
+
+    <target name="download-deps" depends="-load-ivy-tasks"
+            description="Download dependent libraries.">
+        <ivy:resolve/>
+        <ivy:retrieve/>
+
+        <pathconvert property="ivy.classpath.computed" dirsep="/" pathsep=":">
+            <path>
+                <fileset dir="${ivy.lib}" includes="*.jar"/>
+            </path>
+            <map from="${basedir}${file.separator}" to=""/>
+        </pathconvert>
+
+        <propertyfile file="${basedir}/nbproject/project.properties">
+            <entry operation="=" key="ivy.classpath" value="${ivy.classpath.computed}"/>
+        </propertyfile>
+    </target>
+
+    <target name="clean-deps" description="Clean downloaded libraries.">
+        <delete dir="${ivy.lib}"/>
+    </target>
+
+    <target name="clean-ivy" depends="clean-deps" description="Clean ivy.">
+        <delete dir="${ivy.jar.dir}"/>
+        <ivy:cleancache/>
+        <propertyfile file="${basedir}/nbproject/project.properties">
+            <entry operation="=" key="ivy.classpath" value=""/>
+        </propertyfile>
+    </target>
+
+    <target name="-use-ivy-junit" depends="download-deps" unless="netbeans.home">
+        <property name="libs.junit_4.classpath" value="${ivy.lib}/junit-4.10.jar"/>
+    </target>
+    
+     <target name="-pre-compile" depends="download-deps"/>
+
+    <target name="-pre-compile-single" depends="download-deps"/>
+
+    <target name="-pre-init" depends="-use-ivy-junit">
         <tstamp/>
     </target>
 
@@ -260,9 +321,9 @@
     <!--TODO fix to get rev info from git-->
     <target name="jaer-setBuildVersion" depends="init">
         <tstamp/>
-        <echo message="Making build version file ${buildversion.outputfile} - you can ignore any error ${line.separator}generated here since it will only affect the Help/About... dialog. ${line.separator}To remove this error, you need to install a command line svn client ${line.separator}and make svnversion available on the PATH." />
+        <echo message="Making build version file ${buildversion.outputfile} - you can ignore any error ${line.separator}generated here since it will only affect the Help/About... dialog." />
         <delete file="${buildversion.outputfile}"/>
-        <!-- run svnversion (must have svn installed and on PATH) to get revision numnber -->
+        <!-- run version command to get revision numnber -->
         <exec executable="git" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" searchpath="true">
             <arg line="show"/>
         </exec>

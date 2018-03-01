@@ -326,6 +326,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             throw new IOException("chip is not set in AEViewer so we cannot contruct the file input stream for it");
         }
         final ProgressMonitor progressMonitor = new ProgressMonitor(viewer, "Opening " + viewer.lastFile, "", 0, 100);
+        progressMonitor.setMillisToPopup(0);
         SwingWorker<Void, Void> worker = new SwingWorker() {
             Exception exception = null;
 

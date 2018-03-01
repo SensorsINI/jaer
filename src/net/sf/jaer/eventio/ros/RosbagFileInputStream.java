@@ -819,7 +819,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             return;
         }
         log.info("creating index for all topics");
-        if (!maybeLoadCachedMsgIndexes()) {
+        if (!maybeLoadCachedMsgIndexes(progressMonitor)) {
             msgIndexes = bagFile.generateIndexesForTopicList(topicList, progressMonitor);
             cacheMsgIndexes();
         }
@@ -919,7 +919,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         }
     }
 
-    synchronized private boolean maybeLoadCachedMsgIndexes() {
+    synchronized private boolean maybeLoadCachedMsgIndexes(ProgressMonitor progressMonitor) {
         try {
             File file = new File(messageIndexesCacheFileName());
             if (!file.exists() || !file.canRead() || !file.isFile()) {
@@ -927,12 +927,28 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                 return false;
             }
             log.info("reading cached index for rosbag file " + getFile() + " from " + file);
+            long startTime=System.currentTimeMillis();
+            if (progressMonitor != null) {
+                if (progressMonitor.isCanceled()) {
+                    progressMonitor.setNote("canceling");
+                    throw new InterruptedException("canceled loading caches");
+                }
+                progressMonitor.setNote("reading cached index from " + file);
+            }
             FileInputStream in = new FileInputStream(file);
-            (new ProgressMonitorInputStream(chip.getAeViewer(), "Reading cached file indexes " + file, in)).getProgressMonitor().setMillisToPopup(100);
             ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(in));
             List<BagFile.MessageIndex> tmpIdx = (List<BagFile.MessageIndex>) ois.readObject();
             msgIndexes = tmpIdx;
-            log.info("done reading cached index for rosbag file " + getFile() + " from " + file);
+            long ms=System.currentTimeMillis()-startTime;
+            log.info("done after "+ms+"ms with reading cached index for rosbag file " + getFile() + " from " + file);
+            if (progressMonitor != null) {
+                if (progressMonitor.isCanceled()) {
+                    progressMonitor.setNote("canceling");
+                    throw new InterruptedException("canceled loading caches");
+                }
+                progressMonitor.setNote("done reading cached index");
+                progressMonitor.setProgress(progressMonitor.getMaximum());
+            }
             return true;
         } catch (Exception e) {
             log.warning("could load cached message index from disk: " + e.toString());

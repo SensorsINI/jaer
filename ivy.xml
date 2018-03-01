@@ -88,6 +88,16 @@ MA 02110-1301  USA
 
         <!--for reading yaml files that store the input format for tensorflow graphs, e.g. cnns-->
         <dependency org="com.esotericsoftware.yamlbeans" name="yamlbeans" rev="1.13" />
+        <!--
+        rosjava is not in maven apparently. Attempts to get the jar from github fail because they are actually at 
+        https://github.com/rosjava/rosjava_mvn_repo/tree/master/org/ros/rosjava_messages/geometry_msgs/1.12.5 
+        and not at 
+        https://github.com/rosjava/rosjava_mvn_repo/org/ros/rosjava_core/geometry_msgs/1.12.5/geometry_msgs-1.12.5.jar
+        as the default pattern looks for them
+        For now we stick with static jar file for geometry_msgs
+        -->
+        <!--<dependency org="org.ros.rosjava_core" name="geometry_msgs" rev="1.12.5" />-->
+        
     </dependencies>
 </ivy-module>
 
