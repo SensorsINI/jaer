@@ -535,7 +535,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             return emptyPacket;
         }
         aePacketRawOutput.setNumEvents(0);
-        while (aePacketRawBuffered.getNumEvents() < numEventsToRead) {
+        while (aePacketRawBuffered.getNumEvents() < numEventsToRead && aePacketRawBuffered.getNumEvents() < AEPacketRaw.MAX_PACKET_SIZE_EVENTS) {
             try {
                 aePacketRawBuffered.append(getNextRawPacket());
             } catch (EOFException ex) {
@@ -568,7 +568,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         }
         int newEndTime = currentStartTimestamp + dt;
         aePacketRawOutput.setNumEvents(0);
-        while (aePacketRawBuffered.getLastTimestamp() < newEndTime) {
+        while (aePacketRawBuffered.isEmpty()
+                || (aePacketRawBuffered.getLastTimestamp() < newEndTime
+                && aePacketRawBuffered.getNumEvents() < AEPacketRaw.MAX_PACKET_SIZE_EVENTS)) {
             try {
                 aePacketRawBuffered.append(getNextRawPacket()); // reaching EOF here will throw EOFException
             } catch (EOFException ex) {
@@ -581,7 +583,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         }
         int[] ts = aePacketRawBuffered.getTimestamps();
         int idx = 0;
-        while (ts[idx] < newEndTime) {
+        while (ts[idx] < newEndTime && idx < aePacketRawBuffered.getNumEvents()) {
             idx++;
         }
         // idx counts event with higher timestamp than we want to end, i.e. one more than we want
@@ -597,7 +599,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         aePacketRawBuffered = aePacketRawTmp;
         aePacketRawTmp = tmp;
         currentStartTimestamp = newEndTime;
-        getSupport().firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, position());
+        getSupport().firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, nextMessageNumber);
         maybeSendRewoundEvent(oldPosition);
         return aePacketRawOutput;
     }
@@ -800,9 +802,10 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     }
 
     @Override
-    public void setCurrentStartTimestamp(int currentStartTimestamp) {
+    synchronized public void setCurrentStartTimestamp(int currentStartTimestamp) {
         this.currentStartTimestamp = currentStartTimestamp;
         nextMessageNumber = (int) (numMessages * (float) currentStartTimestamp / getDurationUs());
+        aePacketRawBuffered.clear();
     }
 
     @Override
