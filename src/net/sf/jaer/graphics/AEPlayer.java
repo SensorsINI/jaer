@@ -404,6 +404,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     );
 
                 }
+                progressMonitor.close();
             }
 
         };
