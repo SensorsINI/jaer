@@ -232,7 +232,7 @@
     </target>
 
     <target name="jaer-exe4jx64" depends="checkos" if="isWindows">
-        <echo message="Building exe4j jAERViewer.exe 64-bit Windows launcher for 64-bit Java Virtual Machines - embedding ico and setting SplashScreen in jAERViewer.exe. ${line.separator} Don't worry if this task fails for you unless you have changed the classpath. ${line.separator}jAERViewer.exe does not normally need to be rebuilt."/>
+        <echo message="Building exe4j jAERViewer.exe 64-bit Windows launcher for 64-bit Java Virtual Machines - embedding icon and setting SplashScreen in jAERViewer.exe. ${line.separator} Don't worry if this task fails for you unless you have changed the classpath. ${line.separator}jAERViewer.exe does not normally need to be rebuilt."/>
         <taskdef name="exe4j" classname="com.exe4j.Exe4JTask" classpath="exe4j-launcher/exe4j_x64/bin/ant.jar" onerror="report"/>
         <exe4j projectfile="jaer1.5_win_jre_x64.exe4j" requirelicense="true"/>
     </target>
