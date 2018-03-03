@@ -256,7 +256,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips
         setToolTipText(f.getDescription());
-        helpBut.setToolTipText("<html>" + f.getDescription() + "<p>Click to show/create wiki page");
+//        helpBut.setToolTipText("<html>" + f.getDescription() + "<p>Click to show/create wiki page");
     }
 
     // checks for group container and adds to that if needed.
@@ -1540,7 +1540,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         enabledCheckBox = new javax.swing.JCheckBox();
         resetButton = new javax.swing.JButton();
         showControlsToggleButton = new javax.swing.JToggleButton();
-        helpBut = new javax.swing.JButton();
 
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
 
@@ -1579,17 +1578,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         bindingGroup.addBinding(binding);
 
         enableResetControlsHelpPanel.add(showControlsToggleButton);
-
-        helpBut.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
-        helpBut.setText("?");
-        helpBut.setToolTipText("Shows help on jAER wiki");
-        helpBut.setMargin(new java.awt.Insets(1, 5, 1, 5));
-        helpBut.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                helpButActionPerformed(evt);
-            }
-        });
-        enableResetControlsHelpPanel.add(helpBut);
 
         add(enableResetControlsHelpPanel);
 
@@ -1723,16 +1711,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         getFilter().setSelected(true);
     }//GEN-LAST:event_resetButtonActionPerformed
 
-    private void helpButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpButActionPerformed
-        if (getFilter() != null) {
-            getFilter().showHelpInBrowser();
-        }
-    }//GEN-LAST:event_helpButActionPerformed
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
     protected javax.swing.JPanel enableResetControlsHelpPanel;
     protected javax.swing.JCheckBox enabledCheckBox;
-    private javax.swing.JButton helpBut;
     private javax.swing.JButton resetButton;
     private javax.swing.JToggleButton showControlsToggleButton;
     private org.jdesktop.beansbinding.BindingGroup bindingGroup;

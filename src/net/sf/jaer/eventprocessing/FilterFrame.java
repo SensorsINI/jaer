@@ -31,6 +31,7 @@ import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.JAERWindowUtilities;
 import net.sf.jaer.util.RecentFiles;
@@ -439,7 +440,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         helpMenu.setMnemonic('h');
         helpMenu.setText("Help");
 
-        jaerFilterHelpMI.setText("Go to jAER wiki Filter page");
+        jaerFilterHelpMI.setText("jAER home");
         jaerFilterHelpMI.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jaerFilterHelpMIActionPerformed(evt);
@@ -715,7 +716,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 	}//GEN-LAST:event_jbuttonSelectFiltActionPerformed
 
 	private void jaerFilterHelpMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jaerFilterHelpMIActionPerformed
-            showInBrowser(EventFilter.HELP_WIKI_URL + "FilterIndex");
+            showInBrowser(AEViewer.HELP_URL_JAER_HOME);
 	}//GEN-LAST:event_jaerFilterHelpMIActionPerformed
 
     private void resetPerformanceMeasurementMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetPerformanceMeasurementMIActionPerformed

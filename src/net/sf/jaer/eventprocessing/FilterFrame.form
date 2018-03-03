@@ -152,7 +152,7 @@
           <SubComponents>
             <MenuItem class="javax.swing.JMenuItem" name="jaerFilterHelpMI">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Go to jAER wiki Filter page"/>
+                <Property name="text" type="java.lang.String" value="jAER home"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jaerFilterHelpMIActionPerformed"/>
