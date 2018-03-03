@@ -580,8 +580,6 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 					//Add the new timestamp to the list
 					lastTs[i.x][ganglionCellThreshold][ear][lastTsCursor[i.x][ganglionCellThreshold][ear]] = i.timestamp;
 
-					RubiEcho.time = i.timestamp;
-
 					if (write2FileForEverySpike == true) {
 						if ((writeAvgITD2File == true) && (AvgITDFile != null)) {
 							refreshITD();

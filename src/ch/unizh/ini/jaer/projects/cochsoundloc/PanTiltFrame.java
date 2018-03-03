@@ -1209,13 +1209,6 @@ DecimalFormat format = new DecimalFormat("#.##");
     private void cbxLogResponseActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cbxLogResponseActionPerformed
         if (panTiltControl != null) {
             this.panTiltControl.setLogResponses(cbxLogResponse.isSelected());
-            if (panTiltControl.getClass() == PanTiltControlRUBI.class) {
-                if (cbxLogResponse.isSelected()) {
-                    RubiEcho.startLog();
-                } else {
-                    RubiEcho.stopLog();
-                }
-            }
         }
     }//GEN-LAST:event_cbxLogResponseActionPerformed
 
@@ -1398,9 +1391,6 @@ DecimalFormat format = new DecimalFormat("#.##");
 
     private void btnConnectRUBIServerActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnConnectRUBIServerActionPerformed
 
-        //if (panTiltControl == null) {
-            panTiltControl = new PanTiltControlRUBI();
-        //}
         panTiltControl.setWaitPeriod(Integer.parseInt(txtWaitPeriod.getText()));
         if (panTiltControl.isConnected() == false) {
             try {
