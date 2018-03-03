@@ -68,9 +68,9 @@ import net.sf.jaer.util.histogram.AbstractHistogram;
  */
 abstract public class DavisBaseCamera extends DavisChip implements RemoteControlled {
 
-    public static final String HELP_URL_HW_USERGUIDES = "http://inilabs.com/support/hardware/";
-    public static final String USER_GUIDE_URL_FLASHY = "http://inilabs.com/support/software/reflashing/";
-    public static final String USER_GUIDE_URL_DAVIS240 = "http://inilabs.com/support/hardware/davis240/";
+//    public static final String HELP_URL_HW_USERGUIDES = "http://inilabs.com/support/hardware/";
+   
+//    public static final String USER_GUIDE_URL_DAVIS240 = "http://inilabs.com/support/hardware/davis240/";
 
     // Remote control support
     private final String CMD_EXPOSURE = "exposure";
@@ -93,9 +93,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
     protected IMUSample imuSample; // latest IMUSample from sensor
 
-    private JComponent helpMenuItem1 = null;
-    private JComponent helpMenuItem2 = null;
-    private JComponent helpMenuItem3 = null;
+//    private JComponent helpMenuItem1 = null;
+//    private JComponent helpMenuItem2 = null;
+//    private JComponent helpMenuItem3 = null;
 
     private JMenu davisMenu = null;
 
@@ -149,9 +149,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         if (getAeViewer() == null) {
             return;
         }
-        getAeViewer().removeHelpItem(helpMenuItem1);
-        getAeViewer().removeHelpItem(helpMenuItem2);
-        getAeViewer().removeHelpItem(helpMenuItem3);
+//        getAeViewer().removeHelpItem(helpMenuItem1);
+//        getAeViewer().removeHelpItem(helpMenuItem2);
+//        getAeViewer().removeHelpItem(helpMenuItem3);
         if (davisMenu != null) {
             getAeViewer().removeMenu(davisMenu);
             davisMenu = null;
@@ -164,11 +164,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         if (getAeViewer() == null) {
             return;
         }
-        helpMenuItem1 = getAeViewer().addHelpURLItem(DavisBaseCamera.HELP_URL_HW_USERGUIDES, "inilabs hardware user guides overview", "Opens product overview guide");
-        helpMenuItem2 = getAeViewer().addHelpURLItem(DavisBaseCamera.USER_GUIDE_URL_DAVIS240, "DAVIS240 user guide",
-                "Opens DAVIS240 user guide");
-        helpMenuItem3 = getAeViewer().addHelpURLItem(DavisBaseCamera.USER_GUIDE_URL_FLASHY, "Flashy user guide",
-                "User guide for external tool flashy for firmware/logic updates to devices using the libusb driver");
+//        helpMenuItem1 = getAeViewer().addHelpURLItem(DavisBaseCamera.HELP_URL_HW_USERGUIDES, "inilabs hardware user guides overview", "Opens product overview guide");
+//        helpMenuItem2 = getAeViewer().addHelpURLItem(DavisBaseCamera.USER_GUIDE_URL_DAVIS240, "DAVIS240 user guide",
+//                "Opens DAVIS240 user guide");
+//        helpMenuItem3 = getAeViewer().
 
         davisMenu = new JMenu("DAVIS");
         davisMenu.add(new JMenuItem(new ToggleEventsAction()));
