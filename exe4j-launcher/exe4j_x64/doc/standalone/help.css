@@ -1,0 +1,134 @@
+@import "fonts.css";
+
+body, td, th, p, ul, ol, div {
+    font-family: "Open Sans", Verdana, Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+}
+
+body {
+    width: 800px;
+    margin: 0 10px 10px 20px;
+}
+
+h2 {
+    font-family: "Open Sans", Verdana, Arial, Helvetica, sans-serif;
+    font-size: 14pt;
+}
+
+.header-container {
+    display: table;
+    width: 100%;
+}
+
+.header-title {
+    display: table-cell;
+    vertical-align: middle;
+    width: auto;
+}
+
+.header-nav {
+    display: table-cell;
+    vertical-align: baseline;
+    text-align: right;
+    padding-right: 8px;
+}
+
+.nav-left, .nav-right, .nav-up, .nav-down {
+    background-repeat: no-repeat;
+    margin-left: 8px;
+    display: block;
+}
+
+.nav-left {
+    background-image: url("nav-left.png");
+    height: 13px;
+    width: 8px;
+}
+
+.nav-right {
+    background-image: url("nav-right.png");
+    height: 13px;
+    width: 8px;
+}
+
+.nav-up {
+    background-image: url("nav-up.png");
+    height: 9px;
+    width: 14px;
+}
+
+.nav-down {
+    background-image: url("nav-down.png");
+    height: 9px;
+    width: 14px;
+}
+
+.nav-wrapper {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+h2 {
+    margin: 0 0 5px 0;
+}
+
+h3 {
+    margin: 10px 0;
+}
+
+div.spacer {
+    height: 5px;
+}
+
+table.doc {
+    margin-bottom: 15px;
+    border-collapse: collapse;
+}
+
+table.doc th {
+    font-weight: bold;
+    text-align: left;
+}
+
+.with-borders th, .with-borders td {
+    border: 1px solid #dddddd;
+}
+
+table.doc th, table.doc td {
+    padding: 8px;
+    vertical-align: middle;
+}
+
+table.doc tr:nth-child(even) td, table.doc tr:nth-child(even) th {
+    background-color: #f9f9f9;
+}
+
+
+code:before, code:after, tt:before, tt:after {
+    content: " ";
+}
+
+code, tt {
+    background-color: #F8F8F8;
+    border: 1px solid #E1E1E8;
+    border-radius: 3px;
+    display: inline-block;
+    margin: 0;
+    max-width: 100%;
+    overflow: auto;
+    padding: 0;
+    vertical-align: middle;
+}
+
+.executable {
+	background-image: url(executable.png);
+	background-repeat: no-repeat;
+	background-position: 0 50%;
+	padding-left: 15px;
+}
+
+pre {
+    padding: 5px;
+    border: 1px solid #E1E1E8;
+    background: #F8F8F8;
+}

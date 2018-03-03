@@ -1,0 +1,108 @@
+@import "reset.css";
+
+.header {
+    padding-left: 1em;
+    height: 60px;
+    background-image: linear-gradient(to bottom, #50B6FA 2%, #1C91DC 98%);
+    background-repeat: repeat-x;
+    background-color: #0072BC;
+}
+
+.header:after {
+    content: ' ';
+    display: block;
+    background: #fff;
+    left: 290px;
+    height: 12px;
+    width: 830px; /* 800px + 10px + 20px margin */
+    position: absolute;
+    bottom: 0;
+    border-radius: 5px 5px 0 0;
+}
+
+.header h2 {
+    color: white;
+    padding-top: 12pt;
+    font-size: 18pt;
+    font-weight: bold;
+}
+
+.jqtree-tree a {
+    background:transparent;
+    text-decoration: none;
+}
+
+.body {
+    top: 60px;
+    bottom: 0;
+}
+
+.menu {
+    left: 0;
+    width: 280px;
+}
+
+.content {
+    left: 290px;
+    right: 0;
+}
+
+#content-shadow {
+    background-image: url("content-shadow.png");
+    background-repeat: no-repeat;
+    height: 766px;
+    top: 0;
+    left: 284px;
+    position: absolute;
+    width: 6px;
+}
+
+.full-size {
+    width: 100%;
+    height: 100%;
+}
+
+#tree {
+    overflow-y: auto;
+    height: 100%;
+    width: 100%;
+}
+
+ul.jqtree-tree .jqtree-title {
+/*    color: #000 !important;*/
+}
+
+.jqtree-element {
+    padding-bottom: 1px;
+}
+
+ul.jqtree-tree {
+    margin-top: 10px !important;
+    margin-left: 23px !important;
+    margin-right: 10px !important;
+}
+
+/* Generic single page layout classes */
+
+.row, .col {
+    overflow: hidden;
+    position: absolute;
+}
+
+.row {
+    left: 0;
+    right: 0;
+}
+
+.col {
+    top: 0;
+    bottom: 0;
+}
+
+.scroll-x {
+    overflow-x: auto;
+}
+
+.scroll-y {
+    overflow-y: auto;
+}

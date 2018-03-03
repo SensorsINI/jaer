@@ -1,0 +1,72 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>exe4j Wizard - Service Options</title><link rel="stylesheet" type="text/css" href="../standalone/help_common.css"><link rel="stylesheet" type="text/css" href="../standalone/help.css"><script type="text/javascript">
+helpId = 'exe4j.wizard.service';
+indexUrl= '../index.html';
+</script><script type="text/javascript" src="../standalone/jquery.min.js"></script><script type="text/javascript" src="../standalone/tracking.js"></script></head><body><div class="header-container"><div class="header-title"><h2>Exe4j Wizard - Service Options</h2></div><div class="header-nav"><div class="nav-wrapper"><a class="nav-left" href="../wizard/redirection.html" title="key: j"></a></div><div class="nav-wrapper"><a class="nav-up" href="../wizard/$advancedFolder$.html" title="key: u"></a></div><div class="nav-wrapper"><a class="nav-right" href="../wizard/versionInfo.html" title="key: k"></a></div></div></div><hr><div class="spacer"></div><div>
+    <p>
+      <b>Note:</b> this advanced option screen is reachable by selecting the 
+      <a href="../wizard/executable.html">"Executable" step</a> and choosing
+      "Service options" from the <b>[Advanced options]</b>
+      popup menu or by clicking directly on the index.
+    </p>
+    <p>
+      In this step of the <a href="../wizard/wizard.html">exe4j wizard</a>, you define 
+      further options for Windows service executables. All options on this
+      screen will only be enabled if the selected executable type
+      in the <a href="../wizard/executable.html">executable step</a> is "Service".
+    </p>
+    <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex"><tr><td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;</td><td>
+      Windows services are installed by passing <tt>/install</tt> to the
+      generated service executable. The default start mode of the service can be determined
+      in this step:
+      <ul><li><span class="sectiontitle">start on demand</span><br>
+          In start on demand mode, your service must be manually started
+          by the user in the Windows service manager. Use this option, if you're not sure
+          if your users will actually want to run your application as a service, but you 
+          want to give them an easy way to do so. This installation mode can be forced if the
+          user passes <tt>/install-demand</tt> to the generated executable instead of
+          <tt>/install</tt>.
+        </li><li><span class="sectiontitle">auto start</span><br>
+          In auto start mode, your service is always started when Windows is booted. This 
+          installation mode can be forced if the user passes <tt>/install-auto</tt>
+          to the generated executable instead of <tt>/install</tt>.
+        </li></ul>
+      
+        Windows services are always uninstalled by passing <tt>/uninstall</tt> to the
+        generated service executable. All command line switches also work with a prefixed dash
+        instead of a slash (like <tt>-uninstall</tt>) or two prefixed dashes
+        (like <tt>--uninstall</tt>).
+      
+      <p>
+        To start or stop the service, the <tt>/start</tt>, <tt>/stop</tt> and <tt>/restart</tt>
+        options are available.  In addition, a <tt>/status</tt> argument
+        shows if the service is already running. The exit code of the status command is 0 when the service is running,
+        3 when it is not running and 1 when the state cannot be determined (for example when it is not installed).
+      </p>
+      <p>
+        As a second parameter after the <tt>/install</tt> parameter, you can optionally pass
+        a <b>service name</b>. In that way you can
+        <ul><li>
+            install a service with a different service name than the default name.
+          </li><li>
+            Use the same service executable to start multiple services with different
+            names. To distinguish several running service instances at runtime, you can query the
+            system property <tt>exe4j.launchName</tt> for the service name. Note that
+            you also have to pass the same service name as the second parameter if you use the
+            <tt>/uninstall</tt>, <tt>/start</tt> and <tt>/stop</tt> parameters.
+          </li></ul>
+      </p>
+    </td></tr></table>
+    <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex"><tr><td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;</td><td>
+      For debugging purposes, you may want to run the executable on the command line without starting it as a service.
+      This can be done with the <tt>/run</tt> parameter. In that case, all output will be printed on the
+      console. If you want to keep the redirection settings, use the <tt>/run-redirect</tt> parameter instead.
+    </td></tr></table>
+    <table border="0" cellspacing="0" cellpadding="3" style="margin-top: 1ex"><tr><td valign="top"><img src="../images/help_section_bullet_16@2x.png" border="0" style="vertical-align: middle" width="16" height="16">&nbsp;</td><td>
+      If your service depends on another service, say a database, you can enter the 
+      service name of the other service in the <tt>dependencies</tt> text field.
+      You do not have to enter core OS services such as filesystem or network,
+      these services will always be initialized before your service is launched.
+      If you have dependencies on multiple services, you can enter a list of these service
+      names separated by commas.
+    </td></tr></table>
+  </div><br><hr><div class="header-container"><div class="header-nav"><div class="nav-wrapper"><a class="nav-left" href="../wizard/redirection.html" title="key: j"></a></div><div class="nav-wrapper"><a class="nav-up" href="../wizard/$advancedFolder$.html" title="key: u"></a></div><div class="nav-wrapper"><a class="nav-right" href="../wizard/versionInfo.html" title="key: k"></a></div></div></div></body></html>
