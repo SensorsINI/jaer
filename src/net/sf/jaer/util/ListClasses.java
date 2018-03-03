@@ -19,6 +19,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.zip.ZipException;
 
 /**
  * Provides a static method that returns a List<String> of all classes on
@@ -37,7 +38,7 @@ public class ListClasses {
      */
     public static final String[] IGNORED_CLASSPATH = {
         "java", "javax",
-        "com/sun", "com/oracle", "org/w3c", "org.omg", "org/xml", "sun", "oracle", 
+        "com/sun", "com/oracle", "org/w3c", "org.omg", "org/xml", "sun", "oracle",
         "gnu/io", // added because we don't bother with the native code for I2C, parallel ports, etc
         "build/classes", // added to ignore classes not in jaer.jar and only temporarily built
         //Below list is to speed up the search as well as the subclassFinder
@@ -46,9 +47,9 @@ public class ListClasses {
         "com/googlecode", "org/jfree", "org/jblas", "flanagan", "org/apache",
         "org/jdesktop", "de/thesycon", "com/kitfox", "org/uncommons",
         "de/ailis", "jspikestack", "org/netbeans",
-        "com/kitfox", "org/bytedeco", "com/phidgets", "org/usb4java", "org/openni", 
-        "jogamp", "org/jogamp", "com/jogamp", "gluegen", "newt", 
-        "lib"
+        "com/kitfox", "org/bytedeco", "com/phidgets", "org/usb4java", "org/openni",
+        "jogamp", "org/jogamp", "com/jogamp", "gluegen", "newt",
+        "lib", "org/tensorflow", "org/ros", "com/fasterxml", "ch/qos", "groovy/lang", "com/google", "groovy", "ch/systemsx"
     };
 
     static final Logger log = Logger.getLogger("net.sf.jaer.util");
@@ -95,10 +96,10 @@ public class ListClasses {
                         ? loadClassesFromDir(null, classpathElement, classpathElement)
                         : loadClassesFromJar(classpathElement));
             }
-            HashSet<String> hash=new HashSet(classNames); // store only unique
-            classNames=new ArrayList(hash);
-            log.info("found "+classNames.size()+" classes in "+classpath);
-       } catch (Exception e) {
+            HashSet<String> hash = new HashSet(classNames); // store only unique
+            classNames = new ArrayList(hash);
+            log.info("found " + classNames.size() + " classes in " + classpath);
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return classNames;
@@ -111,8 +112,13 @@ public class ListClasses {
                 if (debug) {
                     log.log(Level.INFO, "{0} is being scanned", jarFile);
                 }
-                Enumeration<JarEntry> fileNames;
-                fileNames = new JarFile(jarFile).entries();
+                Enumeration<JarEntry> fileNames=null;
+                try {
+                    fileNames = new JarFile(jarFile).entries();
+                } catch (ZipException e) {
+                    log.warning("jar file "+jarFile+" is corrupt: "+e);
+                    return files;
+                }
                 JarEntry entry = null;
                 while (fileNames.hasMoreElements()) {
                     entry = fileNames.nextElement();
@@ -132,8 +138,8 @@ public class ListClasses {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        if(files.size()>0){
-            log.info("found "+files.size()+" class files in "+jarFile.getName());
+        if (files.size() > 0) {
+            log.info("found " + files.size() + " class files in " + jarFile.getName());
         }
         return files;
     }
