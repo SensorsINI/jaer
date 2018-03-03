@@ -204,10 +204,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             EVENT_CHECK_NONMONOTONIC_TIMESTAMPS = "checkNonMonotonicTimestamps",
             EVENT_ACCUMULATE_ENABLED = "accumulateEnabled";
 
-    public static String HELP_URL_USER_GUIDE = "http://jaerproject.net/";
-    public static String HELP_URL_HELP_FORUM = "https://sourceforge.net/projects/jaer/forums/forum/631958";
-    public static String HELP_URL_JAVADOC_WEB = "http://jaer.sourceforge.net/javadoc";
-    public static String HELP_URL_JAVADOC;
+    public static String HELP_URL_JAER_HOME = "https://github.com/SensorsINI/jaer";
+    public static String HELP_URL_USER_GUIDE = "https://inivation.com/support/software/jaer/";
+    public static String HELP_URL_HELP_FORUM = "https://groups.google.com/forum/#!forum/jaer-users";
     // note filenames cannot have spaces in them for browser to work easily, some problem with space encoding; %20 doesn't work as advertized.
     public static String HELP_USER_GUIDE_USB2_MINI = "/docs/USBAERmini2userguide.pdf";
     public static String HELP_USER_GUIDE_AER_CABLING = "/docs/AERHardwareAndCabling.pdf";
@@ -777,14 +776,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         // additional help
         try {
-            addHelpURLItem(HELP_URL_USER_GUIDE, "jAER wiki and user guide", "Opens the jAER wiki and user guide");
-            addHelpURLItem(HELP_URL_HELP_FORUM, "jAER help forum", "Opens the Help Forum on sourceforge.  Post your questions and look for answers there.");
-            addHelpURLItem(HELP_URL_JAVADOC_WEB, "jAER javadoc", "jAER online javadoc (probably out of date)");
+            addHelpURLItem(HELP_URL_JAER_HOME, "jAER home page", "Opens the jAER home page");
+            addHelpURLItem(HELP_URL_USER_GUIDE, "jAER user guide", "Opens the jAER user guide");
+            addHelpURLItem(HELP_URL_HELP_FORUM, "jAER user forum", "Opens the jaer-users forum.  Post your questions and look for answers there.");
+//            addHelpURLItem(HELP_URL_JAVADOC_WEB, "jAER javadoc", "jAER online javadoc (probably out of date)");
 
-            addHelpItem(new JSeparator());
-            addHelpURLItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
-            addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING), "AER protocol and cabling guide", "Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
-            addHelpURLItem(pathToURL("/devices/pcbs/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
+//            addHelpItem(new JSeparator());
+//            addHelpURLItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
+//            addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING), "AER protocol and cabling guide", "Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
+//            addHelpURLItem(pathToURL("/devices/pcbs/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
             addHelpItem(new JSeparator());
         } catch (Exception e) {
             log.warning("could register help item: " + e.toString());
