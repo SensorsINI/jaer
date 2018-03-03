@@ -55,6 +55,7 @@ MA 02110-1301  USA
         <dependency org="org.apache.commons" name="commons-math3" rev="3.6.1" />
         <dependency org="org.webjars.npm" name="semver" rev="5.4.1" />
         <dependency org="commons-net" name="commons-net" rev="3.6" />
+        <dependency org="org.apache.directory.studio" name="org.apache.commons.io" rev="2.4" />
         <dependency org="com.google.code.gson" name="gson" rev="2.8.2" />
         <dependency org="javax.mail" name="javax.mail-api" rev="1.6.0" />
         <!--only pom exists for comm.jar-->
@@ -62,7 +63,7 @@ MA 02110-1301  USA
         <!--<dependency org="javax.comm" name="comm" rev="3.0-u1" />-->
         <dependency org="org.jblas" name="jblas" rev="1.2.4" />
         <!--TODO sort out HDF5-->
-        <!--<dependency org="org.scala-saddle" name="jhdf5" rev="2.9" />-->
+        <dependency org="org.scala-saddle" name="jhdf5" rev="2.9" />
         <dependency org="net.java.linoleum" name="jlfgr" rev="1_0" />
         <dependency org="com.neuronrobotics" name="nrjavaserial" rev="3.13.0" />
         <dependency org="com.kitfox.svg" name="svg-salamander" rev="1.0" />
@@ -70,7 +71,7 @@ MA 02110-1301  USA
         <!--<dependency org="io.github.andreas-solti.matrix-toolkits-java" name="mtj" rev="1.0.7" />-->
         <dependency org="org.tallison" name="jmatio" rev="1.2" />
         <!--<dependency org="com.github.fommil.netlib" name="all" rev="1.1.2" />-->
-<!--        <dependency org="com.github.fommil.netlib" name="native_system-java" rev="1.1" />
+        <!--        <dependency org="com.github.fommil.netlib" name="native_system-java" rev="1.1" />
         <dependency org="com.github.fommil.netlib" name="core" rev="1.1.2" />-->
         <dependency org="org.usb4java" name="usb4java" rev="1.2.0" />
         <dependency org="com.google.guava" name="guava" rev="18.0" />
