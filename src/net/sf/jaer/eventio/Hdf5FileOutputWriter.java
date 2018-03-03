@@ -5,11 +5,12 @@
  */
 package net.sf.jaer.eventio;
 
-import ch.systemsx.cisd.hdf5.hdf5lib.HDF5Constants;
+//import ch.systemsx.cisd.hdf5.hdf5lib.HDF5Constants; // this library not available  via maven cental; comes from http://svnsis.ethz.ch/
 import ncsa.hdf.hdf5lib.H5;
+import ncsa.hdf.hdf5lib.HDF5Constants; // tobi replaced from standard ncsa library
 
 /**
- *
+ * Test of writing HDF5 output file
  * @author minliu
  */
 public class Hdf5FileOutputWriter {

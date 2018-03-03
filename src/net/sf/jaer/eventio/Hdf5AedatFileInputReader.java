@@ -10,9 +10,12 @@ import java.io.IOException;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import ncsa.hdf.hdf5lib.H5;
 import ncsa.hdf.hdf5lib.HDF5Constants;
+import ncsa.hdf.hdf5lib.exceptions.HDF5Exception;
+import ncsa.hdf.hdf5lib.exceptions.HDF5LibraryException;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
@@ -24,29 +27,31 @@ import static net.sf.jaer.eventio.Jaer3BufferParser.JAER3XMASK;
 import static net.sf.jaer.eventio.Jaer3BufferParser.JAER3XSHIFT;
 import static net.sf.jaer.eventio.Jaer3BufferParser.JAER3YMASK;
 import static net.sf.jaer.eventio.Jaer3BufferParser.JAER3YSHIFT;
+
 /**
  * Reads HDF5 AER3.1 data files
- * 
+ *
  * @author Tobi Delbruck and Min Liu
  */
-public class Hdf5AedatFileInputReader  {
-    protected static Logger log=Logger.getLogger("Hdf5AedatFileInputReader");
+public class Hdf5AedatFileInputReader {
+
+    protected static Logger log = Logger.getLogger("Hdf5AedatFileInputReader");
 
     private String fileName;
-    
-    private int file_id = -1;     
+
+    private int file_id = -1;
     private int dataset_id = -1;
     private int eventCamPktSpace_id = -1;  // Memory data space for event camera data.
     private int wholespace_id = -1;        // The whole file data space.
 
     private int memtype = -1;              // Memeory data type
-            
+
     // Create a new event packet data memory space.
     long[] eventPktDimsM = new long[2];
 
     // Allocate array to stor one event packet.
     // String is a variable length array of char.
-    final String[] eventPktData;       
+    final String[] eventPktData;
     AEChip chip;
     private ApsDvsEventPacket out;
 
@@ -59,8 +64,9 @@ public class Hdf5AedatFileInputReader  {
         private static final Map<Integer, H5O_type> lookup = new HashMap<Integer, H5O_type>();
 
         static {
-            for (H5O_type s : EnumSet.allOf(H5O_type.class))
+            for (H5O_type s : EnumSet.allOf(H5O_type.class)) {
                 lookup.put(s.getCode(), s);
+            }
         }
         private int code;
 
@@ -76,30 +82,44 @@ public class Hdf5AedatFileInputReader  {
             return lookup.get(code);
         }
     }
-    
+
     /**
      * Constructor.
+     *
      * @param f: The Hdf5 file to be read.
      * @param chip
      * @throws IOException
      */
-    public Hdf5AedatFileInputReader(File f, AEChip chip) throws IOException  {
+    public Hdf5AedatFileInputReader(File f, AEChip chip) throws IOException {
+
         fileName = f.getName();
         this.chip = chip;
-        
+
         // An event packet is a row in the dataset. A row consists of 3 columns.
         // It's ordered like this: timestamp_system | packet header | dvs data.
         eventPktDimsM[0] = 1;
         eventPktDimsM[1] = 3;
-        
-        eventPktData = new String[(int)(eventPktDimsM[0] * eventPktDimsM[1])]; 
+
+        eventPktData = new String[(int) (eventPktDimsM[0] * eventPktDimsM[1])];
         // Create the memory datatype.
-        memtype = H5.H5Tvlen_create(HDF5Constants.H5T_NATIVE_UCHAR);       
-        eventCamPktSpace_id = H5.H5Screate_simple(2, eventPktDimsM, null); 
+        try {
+            memtype = H5.H5Tvlen_create(HDF5Constants.H5T_NATIVE_UCHAR);
+            try {
+                eventCamPktSpace_id = H5.H5Screate_simple(2, eventPktDimsM, null);
+            } catch (HDF5Exception ex) {
+                Logger.getLogger(Hdf5AedatFileInputReader.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (NullPointerException ex) {
+                Logger.getLogger(Hdf5AedatFileInputReader.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        } catch (HDF5LibraryException ex) {
+            Logger.getLogger(Hdf5AedatFileInputReader.class.getName()).log(Level.SEVERE, null, ex);
+            throw new RuntimeException("could not construct Hdf5AedatFileInputReader: ",ex);
+        }
     }
-    
+
     /**
      * Open the dataset in the file.
+     *
      * @param datasetPath: the path of the dataset that will be opened.
      * @return. True if open successfully, otherwise false.
      */
@@ -109,7 +129,7 @@ public class Hdf5AedatFileInputReader  {
         // Open file using the default properties.
         try {
             file_id = H5.H5Fopen(fileName, HDF5Constants.H5F_ACC_RDWR, HDF5Constants.H5P_DEFAULT);
-            
+
             // Open dataset using the default properties.
             if (file_id >= 0) {
                 int count = (int) H5.H5Gn_members(file_id, "/dvs");
@@ -122,20 +142,20 @@ public class Hdf5AedatFileInputReader  {
                 // Get type of the object and display its name and type.
                 for (int indx = 0; indx < otype.length; indx++) {
                     switch (H5O_type.get(otype[indx])) {
-                    case H5O_TYPE_GROUP:
-                        System.out.println("  Group: " + oname[indx]);
-                        break;
-                    case H5O_TYPE_DATASET:
-                        System.out.println("  Dataset: " + oname[indx]);
-                        break;
-                    case H5O_TYPE_NAMED_DATATYPE:
-                        System.out.println("  Datatype: " + oname[indx]);
-                        break;
-                    default:
-                        System.out.println("  Unknown: " + oname[indx]);
+                        case H5O_TYPE_GROUP:
+                            System.out.println("  Group: " + oname[indx]);
+                            break;
+                        case H5O_TYPE_DATASET:
+                            System.out.println("  Dataset: " + oname[indx]);
+                            break;
+                        case H5O_TYPE_NAMED_DATATYPE:
+                            System.out.println("  Datatype: " + oname[indx]);
+                            break;
+                        default:
+                            System.out.println("  Unknown: " + oname[indx]);
                     }
                 }
-                dataset_id = H5.H5Dopen(file_id, datasetPath, HDF5Constants.H5P_DEFAULT);  
+                dataset_id = H5.H5Dopen(file_id, datasetPath, HDF5Constants.H5P_DEFAULT);
                 retVal = true;
             }
         } catch (Exception e) {
@@ -143,33 +163,34 @@ public class Hdf5AedatFileInputReader  {
         }
         return retVal;
     }
-    
+
     /**
      * Create the whole file data space.
      */
     public void creatWholeFileSpace() {
         try {
-            wholespace_id = H5.H5Dget_space(dataset_id);            
+            wholespace_id = H5.H5Dget_space(dataset_id);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-    
+
     /**
      * Read the file's data space dimensions.
+     *
      * @return: the data space dimensions.
      */
-    public long[] getFileDims() {    
-        long[] retDims = {0, 0};  
-        try {            
+    public long[] getFileDims() {
+        long[] retDims = {0, 0};
+        try {
             H5.H5Sget_simple_extent_dims(wholespace_id, retDims, null);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        
+
         return retDims;
     }
-    
+
     /**
      *
      * @return the chunk's dimensions.
@@ -178,35 +199,36 @@ public class Hdf5AedatFileInputReader  {
         long[] retDims = {0, 0};
         int dcpl = -1;
         int chunknDims = 2;
-        try {            
+        try {
             dcpl = H5.H5Dget_create_plist(dataset_id);
-            if( HDF5Constants.H5D_CHUNKED == H5.H5Pget_layout(dcpl)) {
+            if (HDF5Constants.H5D_CHUNKED == H5.H5Pget_layout(dcpl)) {
                 H5.H5Pget_chunk(dcpl, chunknDims, retDims);
             }
         } catch (Exception e) {
             e.printStackTrace();
-        }  
+        }
         return retDims;
     }
 
     /**
-     * This function is used to read a row data from the file. Every row in the ddd-17
-     * consists of 3 columns: timestamp, header, data.
+     * This function is used to read a row data from the file. Every row in the
+     * ddd-17 consists of 3 columns: timestamp, header, data.
+     *
      * @param rowNum: the number of the row that will be read.
      * @return: the data in the rowNumth row.
      */
     public String[] readRowData(int rowNum) {
-               
+
         // Select the row data to read.      
         long[] offset = {0, 0};
         long[] count = {1, 3};
-        long[] stride = {1, 1};        
-        long[] block = {1, 1};   
-    
+        long[] stride = {1, 1};
+        long[] block = {1, 1};
+
         offset[0] = rowNum;
-        try { 
+        try {
             if (wholespace_id >= 0) {
-        
+
                 H5.H5Sselect_hyperslab(wholespace_id, HDF5Constants.H5S_SELECT_SET, offset, stride, count, block);
 
                 /*
@@ -214,50 +236,53 @@ public class Hdf5AedatFileInputReader  {
                  * which is subtracted from the first selection by the use of
                  * H5S_SELECT_NOTB
                  */
-                 // H5.H5Sselect_hyperslab (wholespace_id, HDF5Constants.H5S_SELECT_NOTB, offset, stride, count,
-                 //               block);    
-                 
+                // H5.H5Sselect_hyperslab (wholespace_id, HDF5Constants.H5S_SELECT_NOTB, offset, stride, count,
+                //               block);    
                 H5.H5DreadVL(dataset_id, memtype,
-                    eventCamPktSpace_id, wholespace_id,
-                    HDF5Constants.H5P_DEFAULT, eventPktData);
+                        eventCamPktSpace_id, wholespace_id,
+                        HDF5Constants.H5P_DEFAULT, eventPktData);
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        
+
         return eventPktData;
     }
-    
+
     /**
      * Release all the resources.
      */
     public void closeResources() {
-        
+
         // End access to the dataset and release resources used by it.
         try {
             // Close the dataset. 
-            if (dataset_id >= 0)
+            if (dataset_id >= 0) {
                 H5.H5Dclose(dataset_id);
-        
+            }
+
             // Close the memory data space.
-            if (eventCamPktSpace_id >= 0)
+            if (eventCamPktSpace_id >= 0) {
                 H5.H5Sclose(eventCamPktSpace_id);
-            
+            }
+
             // Close the file data space.
-            if (wholespace_id >= 0)
+            if (wholespace_id >= 0) {
                 H5.H5Sclose(wholespace_id);
-            
+            }
+
             // Close the file.
-            if (file_id >= 0)
+            if (file_id >= 0) {
                 H5.H5Fclose(file_id);
-        }
-        catch (Exception e) {
+            }
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     /**
      * Convert the String to Int Array. Such as ["20", "30"] to [20, 30].
+     *
      * @param str the String will be converted.
      * @return
      */
@@ -275,26 +300,26 @@ public class Hdf5AedatFileInputReader  {
         }
         return results;
     }
-    
+
     public int fourIntsToInt(int[] dataArray, int index) {
         return (dataArray[index + 3] << 24) + (dataArray[index + 2] << 16) + (dataArray[index + 1] << 8) + dataArray[index];
     }
-    
+
     public int getRowPktFirstTs(int rowNum) {
         int[] pktData = stringToIntArray(readRowData(rowNum)[2]);
-        return  fourIntsToInt(pktData, 4);
+        return fourIntsToInt(pktData, 4);
     }
 
     public int getRowPktLastTs(int rowNum) {
         int[] pktData = stringToIntArray(readRowData(rowNum)[2]);
         int length = pktData.length;
-        return  fourIntsToInt(pktData, length - 4);
+        return fourIntsToInt(pktData, length - 4);
     }
-    
+
     public EventPacket extractPacket(int rowNum) {
         int[] pktHeader = stringToIntArray(eventPktData[1]);
         int[] pktData = stringToIntArray(eventPktData[2]);
-        
+
         if (out == null) {
             out = new ApsDvsEventPacket(ApsDvsEvent.class); // In order to be general, we make the packet's event ApsDvsEvent.
         } else {
@@ -319,7 +344,7 @@ public class Hdf5AedatFileInputReader  {
 //        }
         return out;
     }
-    
+
     /**
      * Extractor the DVS events.
      *
@@ -345,27 +370,31 @@ public class Hdf5AedatFileInputReader  {
         // autoshot triggering
         // autoshotEventsSinceLastShot++; // number DVS events captured here
     }
-        
-    public static void main(String[] args){
-        int[] libversion = new int[3];
-        String[] test = new String[3]; 
-        int rowNum = 0;
-        H5.H5get_libversion(libversion);
-        System.out.println("The hdf5 library version is: " + 
-                String.valueOf(libversion[0]) + "." + String.valueOf(libversion[1]) + "."
-                + String.valueOf(libversion[2]) + ".");
+
+    public static void main(String[] args) {
         try {
-            Hdf5AedatFileInputReader r = new Hdf5AedatFileInputReader(new File("rec1498945830.hdf5"),null);
-            r.openDataset("/dvs/polarity/data");
-            r.creatWholeFileSpace();
-            test = r.readRowData(rowNum);
-            r.extractPacket(rowNum);
-            System.out.println("The packet header in row " + rowNum + " is: " + test[1]);
-            System.out.println("The packet data in row " + rowNum + " is: " + test[2]);    
-            System.out.println("The first timestamp in row" + rowNum + " is: " + r.getRowPktFirstTs(rowNum));
-            System.out.println("The last timestamp in row" + rowNum + " is: " + r.getRowPktLastTs(rowNum));
-        } catch (IOException ex) {
-            log.warning("caught "+ex.toString());
-        }        
+            int[] libversion = new int[3];
+            String[] test = new String[3];
+            int rowNum = 0;
+            H5.H5get_libversion(libversion);
+            System.out.println("The hdf5 library version is: "
+                    + String.valueOf(libversion[0]) + "." + String.valueOf(libversion[1]) + "."
+                    + String.valueOf(libversion[2]) + ".");
+            try {
+                Hdf5AedatFileInputReader r = new Hdf5AedatFileInputReader(new File("rec1498945830.hdf5"), null);
+                r.openDataset("/dvs/polarity/data");
+                r.creatWholeFileSpace();
+                test = r.readRowData(rowNum);
+                r.extractPacket(rowNum);
+                System.out.println("The packet header in row " + rowNum + " is: " + test[1]);
+                System.out.println("The packet data in row " + rowNum + " is: " + test[2]);
+                System.out.println("The first timestamp in row" + rowNum + " is: " + r.getRowPktFirstTs(rowNum));
+                System.out.println("The last timestamp in row" + rowNum + " is: " + r.getRowPktLastTs(rowNum));
+            } catch (IOException ex) {
+                log.warning("caught " + ex.toString());
+            }
+        } catch (HDF5LibraryException ex) {
+            Logger.getLogger(Hdf5AedatFileInputReader.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 }
