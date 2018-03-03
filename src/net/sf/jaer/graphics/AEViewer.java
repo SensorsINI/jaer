@@ -1300,8 +1300,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setChip(constructor.newInstance((java.lang.Object[]) null));
 
         } catch (Exception e) {
-            log.warning("AEViewer.constructChip exception " + e.getMessage());
-            e.printStackTrace();
+           throw new RuntimeException("error constructing the AEChip",e);
         }
     }
 
@@ -5969,6 +5968,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @return the renderer
      */
     protected AEChipRenderer getRenderer() {
+        if(chip==null){
+            throw new NullPointerException("chip instance is null; this should not happen. Something probably went wrong in the constructor. You can try to clear the preferences.");
+        }
         return chip.getRenderer();
     }
 

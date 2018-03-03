@@ -36,7 +36,7 @@ public class LoggingWindow extends JFrame {
 
     final private JTextArea textArea = new JTextArea();
     /** Developer email addresses */
-    public static final String DEVELOPER_EMAIL = "tobidelbruck@users.sourceforge.net,llongi@users.sourceforge.net,braendch@users.sourceforge.net";
+    public static final String DEVELOPER_EMAIL = "jaer-users@googlegroups.com";
 
     public LoggingWindow(String title, final int width,
             final int height) {
@@ -65,8 +65,8 @@ public class LoggingWindow extends JFrame {
                     }
                 });
 
-                JButton mailBut = new JButton("Mail to developers");
-                mailBut.setToolTipText("Opens your email client to mail this exception to the jAER core developers. Restricted to 2048 characters.");
+                JButton mailBut = new JButton("Mail to user forum");
+                mailBut.setToolTipText("Opens your email client to mail this exception to the jAER user group. Restricted to 2048 characters.");
                 mailBut.addActionListener(new ActionListener() {
 
                     @Override
@@ -78,8 +78,8 @@ public class LoggingWindow extends JFrame {
                         }
                     }
                 });
-                JButton helpForumButton = new JButton("Open jAER help forum");
-                helpForumButton.setToolTipText("Opens your browser to the jAER help forum on sourceforge.");
+                JButton helpForumButton = new JButton("Open jAER user forum");
+                helpForumButton.setToolTipText("Opens your browser to the jAER user forum");
                 helpForumButton.addActionListener(new ActionListener() {
 
                     @Override
