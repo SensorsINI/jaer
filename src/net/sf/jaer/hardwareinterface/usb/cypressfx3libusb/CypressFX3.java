@@ -5,6 +5,7 @@
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx3libusb;
 
+import ch.unizh.ini.jaer.projects.npp.HelloTF;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeSupport;
 import java.nio.ByteBuffer;
@@ -39,6 +40,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.hardwareinterface.BlankDeviceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
@@ -547,7 +549,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		if (updateStringBuilder.length() > 0) {
 			updateStringBuilder
-				.append("Please updated by following the Flashy upgrade documentation at 'http://inilabs.com/support/reflashing/'.");
+				.append("Please update by following the Flashy upgrade documentation at "+AEViewer.HELP_USER_GUIDE_URL_FLASHY);
 
 			final String updateString = updateStringBuilder.toString();
 

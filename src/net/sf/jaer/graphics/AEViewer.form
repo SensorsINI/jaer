@@ -799,49 +799,6 @@
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator5">
             </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="updateFirmwareMenuItem">
-              <Properties>
-                <Property name="mnemonic" type="int" value="117"/>
-                <Property name="text" type="java.lang.String" value="Update firmware..."/>
-                <Property name="toolTipText" type="java.lang.String" value="Updates device firmware with confirm dialog"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="updateFirmwareMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="cypressFX2EEPROMMenuItem">
-              <Properties>
-                <Property name="mnemonic" type="int" value="101"/>
-                <Property name="text" type="java.lang.String" value="(Advanced users only) Launch CypressFX2 EEPPROM utility"/>
-                <Property name="toolTipText" type="java.lang.String" value="(advanced users) Opens dialog to download device firmware and logic for devices that use the Thesycon UsbIo driver"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="cypressFX2EEPROMMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="flashyMenuItem">
-              <Properties>
-                <Property name="mnemonic" type="int" value="101"/>
-                <Property name="text" type="java.lang.String" value="(Advanced users only) Lanch flashy utility"/>
-                <Property name="toolTipText" type="java.lang.String" value="(advanced users) Opens dialog to download device firmware and logic for devices that use the libusb driver "/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="flashyMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="setDefaultFirmwareMenuItem">
-              <Properties>
-                <Property name="mnemonic" type="int" value="102"/>
-                <Property name="text" type="java.lang.String" value="Set default firmware for blank device..."/>
-                <Property name="toolTipText" type="java.lang.String" value="Sets the firmware that is downloaded to a blank CypressFX2"/>
-              </Properties>
-              <Events>
-                <EventHandler event="mouseEntered" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="setDefaultFirmwareMenuItemMouseEntered"/>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setDefaultFirmwareMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator6">
-            </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="printUSBStatisticsCBMI">
               <Properties>
                 <Property name="mnemonic" type="int" value="116"/>
