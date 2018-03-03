@@ -779,8 +779,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         // additional help
         try {
-            addHelpURLItem(HELP_URL_USER_GUIDE, "jAER user guide", "Opens the jAER wiki and user guide");
-            addHelpURLItem(HELP_URL_HELP_FORUM, "jAER help forum", "Opens the Help Forum on sourceforge.  Post your questions and look for answers there.");
+            addHelpURLItem(HELP_URL_USER_GUIDE, "jAER user guide", "Opens the jAER user guide");
+            addHelpURLItem(HELP_URL_HELP_FORUM, "jAER help forum", "Opens the help forum.  Post your questions and look for answers there.");
             addHelpURLItem(HELP_URL_JAER_HOME, "jAER project home", "jAER project home");
 //            addHelpURLItem(HELP_URL_JAVADOC_WEB, "jAER javadoc", "jAER online javadoc (probably out of date)");
 
