@@ -1,0 +1,101 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.google.android</groupId>
+	<artifactId>android</artifactId>
+	<version>4.1.1.4</version>
+	<packaging>jar</packaging>
+
+	<parent>
+		<groupId>org.sonatype.oss</groupId>
+		<artifactId>oss-parent</artifactId>
+		<version>7</version>
+	</parent>
+
+	<name>Google Android Library</name>
+	<description>A library jar that provides APIs for Applications written for the Google Android Platform.</description>
+	<url>http://source.android.com/</url>
+	<inceptionYear>2008</inceptionYear>
+	<licenses>
+		<license>
+			<name>Apache 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0</url>
+			<comments>
+				While the EULA for the Android SDK restricts distribution of those binaries, the source code 
+				is licensed under Apache 2.0 which allows compiling binaries from source and then distributing
+				those versions. 
+			</comments>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+	<scm>
+		<url>https://android.git.kernel.org/</url>
+		<connection>git://android.git.kernel.org/platform/manifest.git</connection>
+	</scm>
+	<developers>
+		<developer>
+			<name>The Android Open Source Projects</name>
+		</developer>
+	</developers>
+
+	<properties> 
+		<release.name>jellybean-4.1</release.name>
+		<platform>android-16</platform>
+		<branch.tag>android-4.1.1_r4</branch.tag>
+	</properties> 
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>2.3.2</version>
+				<configuration>
+					<source>1.5</source>
+					<target>1.5</target>
+				</configuration>
+			</plugin>
+		</plugins>
+
+	</build>
+
+	<dependencies>
+		<!-- org.apache.commons.logging -->
+		<dependency>
+			<groupId>commons-logging</groupId>
+			<artifactId>commons-logging</artifactId>
+			<version>1.1.1</version>
+		</dependency>
+		<!-- org.apache.http.* -->
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpclient</artifactId>
+			<version>4.0.1</version>
+		</dependency>
+		<!-- javax.microedition.khronos.* -->
+		<dependency>
+			<groupId>org.khronos</groupId>
+			<artifactId>opengl-api</artifactId>
+			<version>gl1.1-android-2.1_r1</version>
+		</dependency>
+		<!-- org.xml.sax.*, org.w3c.dom.* -->
+		<dependency>
+			<groupId>xerces</groupId>
+			<artifactId>xmlParserAPIs</artifactId>
+			<version>2.6.2</version>
+		</dependency>
+		<!-- org.xmlpull.v1.* -->
+		<dependency>
+			<groupId>xpp3</groupId>
+			<artifactId>xpp3</artifactId>
+			<version>1.1.4c</version>
+		</dependency>
+		<!-- org.json.* -->
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>json</artifactId>
+			<version>20080701</version>
+		</dependency>
+	</dependencies>
+
+</project>

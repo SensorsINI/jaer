@@ -5,26 +5,16 @@
  */
 package ch.unizh.ini.jaer.projects.minliu;
 
-import ch.unizh.ini.jaer.projects.davis.calibration.SingleCameraCalibration;
 import java.awt.FlowLayout;
 import java.awt.HeadlessException;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 
-import static java.nio.file.Files.list;
-import static java.rmi.Naming.list;
-
-import java.util.ArrayList;
-import static java.util.Collections.list;
-import java.util.Random;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
@@ -33,33 +23,11 @@ import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
 
-import org.opencv.core.Core;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
-import org.opencv.core.MatOfByte;
-import org.opencv.core.MatOfFloat;
-import org.opencv.core.MatOfPoint;
-import org.opencv.core.TermCriteria;
-import org.opencv.core.MatOfPoint2f;
-import org.opencv.core.Point;
-import org.opencv.core.Rect;
-import org.opencv.core.RotatedRect;
-import org.opencv.core.Scalar;
-import org.opencv.core.Size;
-import org.opencv.video.Video;
-import org.opencv.videoio.VideoCapture;
-import org.bytedeco.javacpp.opencv_videoio.VideoWriter;
-import org.opencv.imgcodecs.Imgcodecs;
-import org.opencv.imgproc.Imgproc;
-import org.opencv.calib3d.Calib3d;
-
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
-import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU;
 import static ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU.v;
 import static ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU.vx;
 import static ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU.vy;
-import com.jogamp.common.util.Bitstream.ByteStream;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -75,12 +43,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.Iterator;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 import javax.swing.JFileChooser;
 
 import net.sf.jaer.Description;
@@ -91,16 +54,27 @@ import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.event.orientation.ApsDvsMotionOrientationEvent;
-import net.sf.jaer.eventprocessing.EventFilter;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.util.TobiLogger;
 import org.apache.commons.lang3.ArrayUtils;
 import java.util.Random;
+import org.bytedeco.javacpp.opencv_core.TermCriteria;
+import org.opencv.calib3d.Calib3d;
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfByte;
+import org.opencv.core.MatOfFloat;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.MatOfPoint2f;
+import org.opencv.core.Point;
+import org.opencv.core.Scalar;
+import org.opencv.core.Size;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
+import org.opencv.video.Video;
 
 /**
  *
@@ -135,7 +109,7 @@ public class OpenCVFlow extends AbstractMotionFlow
     Mat RPos, tPos;
     private ApsFrameExtractor apsFrameExtractor;
     private int lastApsTS, currentApsTS;
-    
+
     public OpenCVFlow(AEChip chip) {
         super(chip);
         System.out.println("Welcome to OpenCV " + Core.VERSION);
@@ -151,9 +125,9 @@ public class OpenCVFlow extends AbstractMotionFlow
             public void windowClosing(final WindowEvent e) {
                 setShowAPSFrameDisplay(false);
             }
-        }); 
-        
-        FilterChain chain = new FilterChain(chip);      
+        });
+
+        FilterChain chain = new FilterChain(chip);
         apsFrameExtractor = new ApsFrameExtractor(chip);
         chain.add(apsFrameExtractor);
         try {
@@ -163,7 +137,7 @@ public class OpenCVFlow extends AbstractMotionFlow
             chain.add(patchFlow);
         } catch (Exception e) {
             log.warning("could not setup PatchMatchFlow fiter.");
-        }        
+        }
 
         setEnclosedFilterChain(chain);
 
@@ -173,16 +147,16 @@ public class OpenCVFlow extends AbstractMotionFlow
             // Java 'Color' class takes 3 floats, from 0 to 1.
             float r = rand.nextFloat();
             float g = rand.nextFloat();
-            float b = rand.nextFloat();     
-            color[i][0] = (int)(1*255);
-            color[i][1] = (int)(0*255);
-            color[i][2] = (int)(0*255);
+            float b = rand.nextFloat();
+            color[i][0] = (int) (1 * 255);
+            color[i][1] = (int) (0 * 255);
+            color[i][2] = (int) (0 * 255);
         }
-        
+
         tPos = Mat.zeros(3, 1, CvType.CV_32F);
         RPos = Mat.eye(3, 3, CvType.CV_32F);
-        apsFrameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);   
-        patchFlow.getSupport().addPropertyChangeListener(PatchMatchFlow.EVENT_NEW_SLICES,this);
+        apsFrameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);
+        patchFlow.getSupport().addPropertyChangeListener(PatchMatchFlow.EVENT_NEW_SLICES, this);
         chip.addObserver(this); // to allocate memory once chip size is known
     }
 
@@ -226,24 +200,24 @@ public class OpenCVFlow extends AbstractMotionFlow
             }
             countIn++;
         }
-        
+
         /* This part is to start logging global motion vector according to user's configurations automatically. */
         int timeMarker = patchFlow.ts - patchFlow.getChip().getAeInputStream().getFirstTimestamp();
         int startTime = 500000, endTime = 6000000;
-        if ( timeMarker >= startTime && timeMarker <= endTime && globalMotionVectorLogger == null) {                
-            globalMotionVectorLogger = new TobiLogger(patchFlow.getChip().getAeInputStream().getFile().getName() + patchFlow.getSliceMethod() + patchFlow.getSliceDurationUs() , 
-                                                        "Global Motion vector for every generated slice");
+        if (timeMarker >= startTime && timeMarker <= endTime && globalMotionVectorLogger == null) {
+            globalMotionVectorLogger = new TobiLogger(patchFlow.getChip().getAeInputStream().getFile().getName() + patchFlow.getSliceMethod() + patchFlow.getSliceDurationUs(),
+                    "Global Motion vector for every generated slice");
             globalMotionVectorLogger.setNanotimeEnabled(false);
             globalMotionVectorLogger.setHeaderLine("system_time(ms) relative_timestamp(us) sliceDeltaT(us) method globalVx(pps) globalVy(pps) globalRotation(degree/s) samples");
             globalMotionVectorLogger.setEnabled(true);
-        } 
+        }
 
-        if ( timeMarker >= endTime && globalMotionVectorLogger != null) {
+        if (timeMarker >= endTime && globalMotionVectorLogger != null) {
             doStopLoggingGlobalMotion();
-        } 
-        
-        OFResultDisplay.checkPixmapAllocation();       
-        
+        }
+
+        OFResultDisplay.checkPixmapAllocation();
+
 //        final ApsDvsEventPacket packet = (ApsDvsEventPacket) in;
 //        if (packet == null) {
 //            return null;
@@ -276,7 +250,7 @@ public class OpenCVFlow extends AbstractMotionFlow
         tPos = Mat.zeros(3, 1, CvType.CV_32F);
         RPos = Mat.eye(3, 3, CvType.CV_32F);
         if (OFResultDisplay != null) {
-            OFResultDisplay.setImageSize(chip.getSizeX(), chip.getSizeY());            
+            OFResultDisplay.setImageSize(chip.getSizeX(), chip.getSizeY());
         }
     }
 
@@ -304,8 +278,8 @@ public class OpenCVFlow extends AbstractMotionFlow
             gl.glBlendEquation(GL.GL_FUNC_ADD);
         } catch (GLException e) {
             e.printStackTrace();
-        }   
-        
+        }
+
         if (measureAccuracy) {
             gl.glPushMatrix();
             final int offset = -10;
@@ -315,7 +289,7 @@ public class OpenCVFlow extends AbstractMotionFlow
             gl.glPopMatrix();
         }
     }
-    
+
     @Override
     public synchronized void setFilterEnabled(final boolean yes) {
         super.setFilterEnabled(yes); // To change body of generated methods, choose Tools | Templates.
@@ -330,9 +304,9 @@ public class OpenCVFlow extends AbstractMotionFlow
     public synchronized void propertyChange(PropertyChangeEvent evt) {
         super.propertyChange(evt); // resets filter on rewind, etc
         if (evt.getPropertyName().equals(ApsFrameExtractor.EVENT_NEW_FRAME)) {
-            if(newBuffer == null) {
+            if (newBuffer == null) {
                 newBuffer = ((float[]) evt.getNewValue()).clone();
-                for ( int i = 0; i < newBuffer.length; i++ ) {
+                for (int i = 0; i < newBuffer.length; i++) {
                     newBuffer[i] = newBuffer[i] * 255;
                 }
                 lastApsTS = apsFrameExtractor.getLastFrameTimestamp();
@@ -348,14 +322,14 @@ public class OpenCVFlow extends AbstractMotionFlow
                 byteBuffer[i] = (byte) (buffer[i] * 255);
             }
             newBuffer = ((float[]) evt.getNewValue()).clone();
-            for ( int i = 0; i < newBuffer.length; i++ ) {
-                    newBuffer[i] = newBuffer[i] * 255;
-            }            
+            for (int i = 0; i < newBuffer.length; i++) {
+                newBuffer[i] = newBuffer[i] * 255;
+            }
             Mat newFrame = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_32F);
             newFrame.put(0, 0, newBuffer);
             Mat oldFrame = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_32F);
-            oldFrame.put(0, 0, oldBuffer); 
-            
+            oldFrame.put(0, 0, oldBuffer);
+
             Mat newFrameTmp = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_8U);
             Mat oldFrameTmp = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_8U);
             newFrame.convertTo(newFrameTmp, CvType.CV_8U);
@@ -366,7 +340,7 @@ public class OpenCVFlow extends AbstractMotionFlow
 
             // Feature extraction
             MatOfPoint p0 = new MatOfPoint();
-            Imgproc.goodFeaturesToTrack(newFrameTmp, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance);       
+            Imgproc.goodFeaturesToTrack(newFrameTmp, p0, feature_params.maxCorners, feature_params.qualityLevel, feature_params.minDistance);
 
             MatOfPoint2f prevPts = new MatOfPoint2f(p0.toArray());
             MatOfPoint2f nextPts = new MatOfPoint2f();
@@ -381,7 +355,7 @@ public class OpenCVFlow extends AbstractMotionFlow
                 return;
             }
             try {
-                Video.calcOpticalFlowPyrLK(oldFrameTmp, newFrameTmp, prevPts, nextPts, status, err);            
+                Video.calcOpticalFlowPyrLK(oldFrameTmp, newFrameTmp, prevPts, nextPts, status, err);
             } catch (Exception e) {
                 System.err.println(e);
                 // newFrame.copyTo(oldFrame);
@@ -392,76 +366,76 @@ public class OpenCVFlow extends AbstractMotionFlow
             Point[] prevPoints = prevPts.toArray();
             Point[] nextPoints = nextPts.toArray();
             byte[] st = status.toArray();
-            float[] er = err.toArray();    
-            
+            float[] er = err.toArray();
+
             Mat colorNewFrame = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_32FC3);
             Imgproc.cvtColor(newFrame, colorNewFrame, Imgproc.COLOR_GRAY2RGB);
             for (int i = 0; i < prevPoints.length; i++) {
-                Imgproc.arrowedLine(colorNewFrame, prevPoints[i], nextPoints[i], new Scalar(color[i][0],color[i][1],color[i][2]), 2, 8, 0, 0.1);  
-                Imgproc.circle(colorNewFrame, prevPoints[i], 1, new Scalar(255,255,255),-1);
+                Imgproc.arrowedLine(colorNewFrame, prevPoints[i], nextPoints[i], new Scalar(color[i][0], color[i][1], color[i][2]), 2, 8, 0, 0.1);
+                Imgproc.circle(colorNewFrame, prevPoints[i], 1, new Scalar(255, 255, 255), -1);
             }
-            
+
             // Select good points and copy them for output
             int index = 0;
-            for(byte stTmp: st) {
-                if(stTmp == 1) {
+            for (byte stTmp : st) {
+                if (stTmp == 1) {
                     // if (outlierFlg.length >0 ) {
-                        // if (outlierFlg[index] == 1) {
-                            e = new PolarityEvent();
-                            x = (short)(prevPoints[index].x);
-                            y = (short)prevPoints[index].y;
-                            e.x = (short)x;
-                            e.y = (short)y;    // e, x and y all of them are used in processGoodEvent();
-        //                    e.timestamp = ts;
-                            vx = (float)(nextPoints[index].x - prevPoints[index].x) * 1000000 / (currentApsTS - lastApsTS);
-                            vy = (float)(nextPoints[index].y - prevPoints[index].y) * 1000000 / (currentApsTS - lastApsTS);
-                            v = (float) Math.sqrt(vx * vx + vy * vy);
-                            processGoodEvent();                      
-                        // exportFlowToMatlab(false);                            
-                        // }
+                    // if (outlierFlg[index] == 1) {
+                    e = new PolarityEvent();
+                    x = (short) (prevPoints[index].x);
+                    y = (short) prevPoints[index].y;
+                    e.x = (short) x;
+                    e.y = (short) y;    // e, x and y all of them are used in processGoodEvent();
+                    //                    e.timestamp = ts;
+                    vx = (float) (nextPoints[index].x - prevPoints[index].x) * 1000000 / (currentApsTS - lastApsTS);
+                    vy = (float) (nextPoints[index].y - prevPoints[index].y) * 1000000 / (currentApsTS - lastApsTS);
+                    v = (float) Math.sqrt(vx * vx + vy * vy);
+                    processGoodEvent();
+                    // exportFlowToMatlab(false);                            
+                    // }
                     // }
 
                 }
-                index++;                
+                index++;
             }
             motionFlowStatistics.updatePacket(countIn, countOut, lastApsTS);
-            float[] return_buff = new float[(int) (colorNewFrame.total() * 
-                                            colorNewFrame.channels())];
+            float[] return_buff = new float[(int) (colorNewFrame.total()
+                    * colorNewFrame.channels())];
             colorNewFrame.get(0, 0, return_buff);
-            for ( int i = 0; i < return_buff.length; i++ ) {
-                    return_buff[i] = return_buff[i]/255.0f;
-            }      
-            OFResultDisplay.setPixmapArray(return_buff);  
+            for (int i = 0; i < return_buff.length; i++) {
+                return_buff[i] = return_buff[i] / 255.0f;
+            }
+            OFResultDisplay.setPixmapArray(return_buff);
         }
 
         if (evt.getPropertyName().equals(PatchMatchFlow.EVENT_NEW_SLICES)) {
             this.countIn = patchFlow.countIn;
             // System.out.println("The number of valid output in patchFlow is : " + patchFlow.countOut); 
-     
+
             MyThread OpenCVCalThread = new MyThread("OpenCV_Calculation");
             OpenCVCalThread.setName("OpenCV_Calculation");
             OpenCVCalThread.setEvt(evt);
             OpenCVCalThread.start();
         }
-        
+
     }
 
-    public class MyThread extends Thread
-    {
+    public class MyThread extends Thread {
+
         private String name;
         PropertyChangeEvent evt;
-        
-        public MyThread(String name)
-        {
+
+        public MyThread(String name) {
             this.name = name;
         }
+
         public void setEvt(PropertyChangeEvent evt) {
             this.evt = evt;
         }
 
         public void run() {
             byte[][][] tMinus2dSlice = (byte[][][]) evt.getOldValue();
-            byte[][][] tMinusdSlice = (byte[][][]) evt.getNewValue();  
+            byte[][][] tMinusdSlice = (byte[][][]) evt.getNewValue();
             Mat newFrame = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_8U);
             Mat oldFrame = new Mat(chip.getSizeY(), chip.getSizeX(), CvType.CV_8U);
 
@@ -474,7 +448,6 @@ public class OpenCVFlow extends AbstractMotionFlow
 //                    .toArray();
 //
 //            System.out.println(Arrays.toString(test));
-
             // Flatten the two arrays to 1D array
             byte[] old1DArray = new byte[chip.getSizeY() * chip.getSizeX()],
                     new1DArray = new byte[chip.getSizeY() * chip.getSizeX()];
@@ -494,7 +467,7 @@ public class OpenCVFlow extends AbstractMotionFlow
             oldFrame.put(0, 0, old1DArray);
 
             // params for ShiTomasi corner detection            
-            FeatureParams feature_params  = new FeatureParams(100, 0.3, 7, 7);
+            FeatureParams feature_params = new FeatureParams(100, 0.3, 7, 7);
 
             // Feature extraction
             MatOfPoint p0 = new MatOfPoint();
@@ -514,11 +487,11 @@ public class OpenCVFlow extends AbstractMotionFlow
                 System.err.println(e);
                 return;
             } finally {
-                float[] new_slice_buff = new float[(int) (newFrame.total() *
-                        newFrame.channels())];
+                float[] new_slice_buff = new float[(int) (newFrame.total()
+                        * newFrame.channels())];
                 for (int i = 0; i < chip.getSizeY(); i++) {
                     for (int j = 0; j < chip.getSizeX(); j++) {
-                        new_slice_buff[chip.getSizeX()*i + j] = new1DArray[chip.getSizeX()*i + j]/newGrayScale;
+                        new_slice_buff[chip.getSizeX() * i + j] = new1DArray[chip.getSizeX() * i + j] / newGrayScale;
                     }
                 }
                 OFResultDisplay.setPixmapFromGrayArray(new_slice_buff);
@@ -527,8 +500,8 @@ public class OpenCVFlow extends AbstractMotionFlow
                 // if the directory does not exist, create it
                 if (!folder.exists()) {
                     folder.mkdir();
-                }            
-                File outputfile = new File(folder, String.format("packet_pid%d_%fms.jpg", this.getId(), patchFlow.sliceDeltaTimeUs(2)/1000.0));
+                }
+                File outputfile = new File(folder, String.format("packet_pid%d_%fms.jpg", this.getId(), patchFlow.sliceDeltaTimeUs(2) / 1000.0));
                 Core.flip(newFrame, newFrame, 0);
                 // Uncomment this when you want to store the slice's pictures.
 //                try {
@@ -536,34 +509,33 @@ public class OpenCVFlow extends AbstractMotionFlow
 //                } catch (IOException ex) {
 //                    Logger.getLogger(OpenCVFlow.class.getName()).log(Level.SEVERE, null, ex);
 //                }
-            }            
-            
+            }
+
             // draw the tracks
             Point[] prevPoints = prevPts.toArray();
             Point[] nextPoints = nextPts.toArray();
             byte[] st = status.toArray();
             float[] er = err.toArray();
-            
-            double data[] = {  335.419462958,        0,         129.924663379, 
-                0,        335.352935612,    99.1864303447, 
-                0,               0,                1 };
 
-            Mat cameraMatrix = new Mat( 3, 3, CvType.CV_64F );
+            double data[] = {335.419462958, 0, 129.924663379,
+                0, 335.352935612, 99.1864303447,
+                0, 0, 1};
+
+            Mat cameraMatrix = new Mat(3, 3, CvType.CV_64F);
             cameraMatrix.put(0, 0, data);
             Mat outPutMask = new Mat();
-            Mat E = Calib3d.findEssentialMat(prevPts, nextPts, cameraMatrix, Calib3d.RANSAC,  0.999, 1, outPutMask);
-            Mat R = new Mat ();
-            Mat t = new Mat ();
+            Mat E = Calib3d.findEssentialMat(prevPts, nextPts, cameraMatrix, Calib3d.RANSAC, 0.999, 1, outPutMask);
+            Mat R = new Mat();
+            Mat t = new Mat();
 
-            
             if (E.empty()) {
                 System.out.println("The essential matrix is empty!");
-            } else {            
+            } else {
                 if (E.size().height != 3 || E.size().width != 3) {
                     System.out.println("The essential matrix shape is: " + E.size().height + " x " + E.size().width);
                 } else {
 
-                    Calib3d.recoverPose(E, prevPts, nextPts, R, t);        
+                    Calib3d.recoverPose(E, prevPts, nextPts, R, t);
                     R.convertTo(R, CvType.CV_32F);
                     t.convertTo(t, CvType.CV_32F);
                     System.out.println("Printing the Rotation Matrix");
@@ -572,39 +544,39 @@ public class OpenCVFlow extends AbstractMotionFlow
                     Core.gemm(RPos, t, 1, new Mat(), 0, t);
                     Core.add(tPos, t, tPos);
                     System.out.println("Printing the Mask Matrix and the Mask Matrix size is: " + outPutMask.size().height * outPutMask.size().width);
-    //                System.out.println(outPutMask.dump());
+                    //                System.out.println(outPutMask.dump());
                     System.out.println("Printing the Translation Matrix");
-                    System.out.println(tPos.dump());   
+                    System.out.println(tPos.dump());
                 }
             }
 
             byte outlierFlg[] = new byte[(int) (outPutMask.size().height * outPutMask.size().width)];
             outPutMask.get(0, 0, outlierFlg);
-                    
+
             // Select good points and copy them for output
             int index = 0;
-            for(byte stTmp: st) {
-                if(stTmp == 1) {
+            for (byte stTmp : st) {
+                if (stTmp == 1) {
                     // if (outlierFlg.length >0 ) {
-                        // if (outlierFlg[index] == 1) {
-                            e = new PolarityEvent();
-                            x = (short)(prevPoints[index].x);
-                            y = (short)prevPoints[index].y;
-                            e.x = (short)x;
-                            e.y = (short)y;    // e, x and y all of them are used in processGoodEvent();
-        //                    e.timestamp = ts;
-                            vx = (float)(nextPoints[index].x - prevPoints[index].x) * 1000000 / -patchFlow.sliceDeltaTimeUs(2);
-                            vy = (float)(nextPoints[index].y - prevPoints[index].y) * 1000000 / -patchFlow.sliceDeltaTimeUs(2);
-                            v = (float) Math.sqrt(vx * vx + vy * vy);
-                            processGoodEvent();                      
-                        // exportFlowToMatlab(false);                            
-                        // }
+                    // if (outlierFlg[index] == 1) {
+                    e = new PolarityEvent();
+                    x = (short) (prevPoints[index].x);
+                    y = (short) prevPoints[index].y;
+                    e.x = (short) x;
+                    e.y = (short) y;    // e, x and y all of them are used in processGoodEvent();
+                    //                    e.timestamp = ts;
+                    vx = (float) (nextPoints[index].x - prevPoints[index].x) * 1000000 / -patchFlow.sliceDeltaTimeUs(2);
+                    vy = (float) (nextPoints[index].y - prevPoints[index].y) * 1000000 / -patchFlow.sliceDeltaTimeUs(2);
+                    v = (float) Math.sqrt(vx * vx + vy * vy);
+                    processGoodEvent();
+                    // exportFlowToMatlab(false);                            
+                    // }
                     // }
 
                 }
-                index++;                
+                index++;
             }
-            
+
             //if (st.length > 0) {
 //                if (globalMotionVectorLogger != null && globalMotionVectorLogger.isEnabled()) {
 //                    String s = String.format("%d %d %s %.3g %.3g %.3g %d", patchFlow.ts - patchFlow.getChip().getAeInputStream().getFirstTimestamp(), patchFlow.sliceDeltaTimeUs(2), "OpenLK", motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean(), 
@@ -621,12 +593,11 @@ public class OpenCVFlow extends AbstractMotionFlow
 //
 //                }                
             //}
-
             if (st.length > 0) {
 
             }
-            
-            System.out.println("The number of valid output in OpenCV Flow is : " + countOut);    
+
+            System.out.println("The number of valid output in OpenCV Flow is : " + countOut);
             motionFlowStatistics.updatePacket(countIn, countOut, patchFlow.ts);
             countOut = 0;
 
@@ -634,10 +605,10 @@ public class OpenCVFlow extends AbstractMotionFlow
             for (int i = 0; i < prevPoints.length; i++) {
                 // Imgproc.line(displayFrame, prevPoints[i], nextPoints[i], new Scalar(color[i][0],color[i][1],color[i][2]), 2);  
                 // Imgproc.circle(newFrame,prevPoints[i], 5, new Scalar(255,255,255),-1);
-            }  
+            }
         }
     }
-    
+
     public class FeatureParams {
 
         int maxCorners;
@@ -695,13 +666,13 @@ public class OpenCVFlow extends AbstractMotionFlow
         if (m.channels() > 1) {
             type = BufferedImage.TYPE_3BYTE_BGR;
         }
-        int bufferSize = m.channels()*m.cols()*m.rows();
-        byte [] b = new byte[bufferSize];
-        m.get(0,0,b); // get all the pixels
-        for (int i=0; i < b.length; i++) {
-            b[i] = (byte)(100 + b[i]);
+        int bufferSize = m.channels() * m.cols() * m.rows();
+        byte[] b = new byte[bufferSize];
+        m.get(0, 0, b); // get all the pixels
+        for (int i = 0; i < b.length; i++) {
+            b[i] = (byte) (100 + b[i]);
         }
-        BufferedImage image = new BufferedImage(m.cols(),m.rows(), type);
+        BufferedImage image = new BufferedImage(m.cols(), m.rows(), type);
         final byte[] targetPixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
         System.arraycopy(b, 0, targetPixels, 0, b.length);
         return image;
@@ -720,8 +691,8 @@ public class OpenCVFlow extends AbstractMotionFlow
         frame.setVisible(true);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-    }    
-     
+    }
+
     /**
      * @return the showAPSFrameDisplay
      */
@@ -739,9 +710,8 @@ public class OpenCVFlow extends AbstractMotionFlow
             OFResultFrame.setVisible(showAPSFrameDisplay);
         }
         getSupport().firePropertyChange("showAPSFrameDisplay", null, showAPSFrameDisplay);
-    }    
-    
-    
+    }
+
     synchronized public void doStartLoggingGlobalMotion() {
         if (globalMotionVectorLogger != null && globalMotionVectorLogger.isEnabled()) {
             log.info("logging already started");
@@ -763,9 +733,9 @@ public class OpenCVFlow extends AbstractMotionFlow
             globalMotionVectorLogger.setEnabled(true);
         } else {
             log.info("Cancelled logging motion vectors");
-        }    
+        }
     }
-    
+
     synchronized public void doStopLoggingGlobalMotion() {
         if (globalMotionVectorLogger == null) {
             return;

@@ -1,7 +1,5 @@
 package ch.unizh.ini.jaer.projects.davis.calibration;
 
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -16,6 +14,8 @@ import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.util.Locale;
 import java.util.Scanner;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
 
 /** Reads and writes Mat files to XML
  * 

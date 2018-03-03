@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ivy-module version="2.0" xmlns:m="http://ant.apache.org/ivy/maven">
+	<info organisation="org.bytedeco"
+		module="javacv"
+		revision="1.4"
+		status="release"
+		publication="20180116165000"
+	>
+		<license name="Apache License, Version 2.0" url="http://www.apache.org/licenses/LICENSE-2.0" />
+		<license name="GNU General Public License (GPL) version 2, or any later version" url="http://www.gnu.org/licenses/" />
+		<license name="GPLv2 with Classpath exception" url="http://www.gnu.org/software/classpath/license.html" />
+		<description homepage="http://bytedeco.org/javacv/">
+		Java interface to OpenCV and more
+		</description>
+		<m:properties__maven.build.timestamp.format>yyyyMMddhhmm</m:properties__maven.build.timestamp.format>
+		<m:properties__project.build.sourceEncoding>UTF-8</m:properties__project.build.sourceEncoding>
+		<m:properties__javacpp.version>${project.version}</m:properties__javacpp.version>
+		<m:maven.plugins>null__maven-compiler-plugin__3.3|null__maven-jar-plugin__3.0.2|null__maven-install-plugin__2.5.2|null__maven-source-plugin__3.0.1|null__maven-javadoc-plugin__2.10.4|null__maven-deploy-plugin__2.8.2|org.sonatype.plugins__nexus-staging-maven-plugin__1.6.6</m:maven.plugins>
+	</info>
+	<configurations>
+		<conf name="default" visibility="public" description="runtime dependencies and master artifact can be used with this conf" extends="runtime,master"/>
+		<conf name="master" visibility="public" description="contains only the artifact published by this module itself, with no transitive dependencies"/>
+		<conf name="compile" visibility="public" description="this is the default scope, used if none is specified. Compile dependencies are available in all classpaths."/>
+		<conf name="provided" visibility="public" description="this is much like compile, but indicates you expect the JDK or a container to provide it. It is only available on the compilation classpath, and is not transitive."/>
+		<conf name="runtime" visibility="public" description="this scope indicates that the dependency is not required for compilation, but is for execution. It is in the runtime and test classpaths, but not the compile classpath." extends="compile"/>
+		<conf name="test" visibility="private" description="this scope indicates that the dependency is not required for normal use of the application, and is only available for the test compilation and execution phases." extends="runtime"/>
+		<conf name="system" visibility="public" description="this scope is similar to provided except that you have to provide the JAR which contains it explicitly. The artifact is always available and is not looked up in a repository."/>
+		<conf name="sources" visibility="public" description="this configuration contains the source artifact of this module, if any."/>
+		<conf name="javadoc" visibility="public" description="this configuration contains the javadoc artifact of this module, if any."/>
+		<conf name="optional" visibility="public" description="contains all optional dependencies"/>
+	</configurations>
+	<publications>
+		<artifact name="javacv" type="jar" ext="jar" conf="master"/>
+		<artifact name="javacv" type="source" ext="jar" conf="sources" m:classifier="sources"/>
+		<artifact name="javacv" type="javadoc" ext="jar" conf="javadoc" m:classifier="javadoc"/>
+	</publications>
+	<dependencies>
+		<dependency org="org.bytedeco" name="javacpp" rev="1.4" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="org.bytedeco.javacpp-presets" name="opencv" rev="3.4.0-1.4" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="org.bytedeco.javacpp-presets" name="ffmpeg" rev="3.4.1-1.4" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="org.bytedeco.javacpp-presets" name="flycapture" rev="2.11.3.121-1.4" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="org.bytedeco.javacpp-presets" name="libdc1394" rev="2.2.5-1.4" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="org.bytedeco.javacpp-presets" name="libfreenect" rev="0.5.3-1.4" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="org.bytedeco.javacpp-presets" name="libfreenect2" rev="0.2.0-1.4" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="org.bytedeco.javacpp-presets" name="librealsense" rev="1.12.1-1.4" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="org.bytedeco.javacpp-presets" name="videoinput" rev="0.200-1.4" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="org.bytedeco.javacpp-presets" name="artoolkitplus" rev="2.3.1-1.4" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="org.bytedeco.javacpp-presets" name="flandmark" rev="1.07-1.4" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.google.android" name="android" rev="4.1.1.4" force="true" conf="optional->compile(*),master(*)">
+			<exclude org="*" module="*" name="*" type="*" ext="*" conf="" matcher="exact"/>
+		</dependency>
+		<dependency org="org.jogamp.gluegen" name="gluegen-rt-main" rev="2.3.1" force="true" conf="optional->compile(*),master(*)"/>
+		<dependency org="org.jogamp.jogl" name="jogl-all-main" rev="2.3.1" force="true" conf="optional->compile(*),master(*)"/>
+		<dependency org="org.jogamp.jocl" name="jocl-main" rev="2.3.1" force="true" conf="optional->compile(*),master(*)"/>
+	</dependencies>
+</ivy-module>
