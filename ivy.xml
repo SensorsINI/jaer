@@ -67,7 +67,11 @@ MA 02110-1301  USA
         <dependency org="com.neuronrobotics" name="nrjavaserial" rev="3.13.0" />
         <dependency org="com.kitfox.svg" name="svg-salamander" rev="1.0" />
         <dependency org="org.uncommons.maths" name="uncommons-maths" rev="1.2.2a" />
-        <dependency org="io.github.andreas-solti.matrix-toolkits-java" name="mtj" rev="1.0.7" />
+        <!--<dependency org="io.github.andreas-solti.matrix-toolkits-java" name="mtj" rev="1.0.7" />-->
+        <dependency org="org.tallison" name="jmatio" rev="1.2" />
+        <!--<dependency org="com.github.fommil.netlib" name="all" rev="1.1.2" />-->
+<!--        <dependency org="com.github.fommil.netlib" name="native_system-java" rev="1.1" />
+        <dependency org="com.github.fommil.netlib" name="core" rev="1.1.2" />-->
         <dependency org="org.usb4java" name="usb4java" rev="1.2.0" />
         <dependency org="com.google.guava" name="guava" rev="18.0" />
         <!--libusb4java needs following to work around bug in maven that incorrectly constucts the ivy dependency - see https://github.com/sbt/sbt/issues/285 -->
@@ -94,7 +98,9 @@ MA 02110-1301  USA
         and not at 
         https://github.com/rosjava/rosjava_mvn_repo/org/ros/rosjava_core/geometry_msgs/1.12.5/geometry_msgs-1.12.5.jar
         as the default pattern looks for them
-        For now we stick with static jar file for geometry_msgs
+        For now we stick with static jar file for geometry_msgs and rosjava
+        https://github.com/rosjava/rosjava_mvn_repo/tree/master/org/ros/rosjava_core/rosjava
+        https://github.com/rosjava/rosjava_mvn_repo/tree/master/org/ros/rosjava_bootstrap/message_generation
         -->
         <!--<dependency org="org.ros.rosjava_core" name="geometry_msgs" rev="1.12.5" />-->
         
