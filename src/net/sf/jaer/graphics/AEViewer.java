@@ -209,7 +209,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public static final String HELP_URL_USER_GUIDE = "https://inivation.com/support/software/jaer/";
     public static final String HELP_URL_HELP_FORUM = "https://groups.google.com/forum/#!forum/jaer-users";
     public static final String HELP_USER_GUIDE_URL_FLASHY = "http://inivation.com/support/software/reflashing/";
-//    public static String HELP_URL_JAVADOC;
+    public static final String HELP_URL_HARDWARE_USER_GUIDE = "http://www.inivation.com/support/hardware/";
+    public static String HELP_URL_JAVADOC;
     // note filenames cannot have spaces in them for browser to work easily, some problem with space encoding; %20 doesn't work as advertized.
 //    public static String HELP_USER_GUIDE_USB2_MINI = "/docs/USBAERmini2userguide.pdf";
 //    public static String HELP_USER_GUIDE_AER_CABLING = "/docs/AERHardwareAndCabling.pdf";
@@ -785,6 +786,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            addHelpURLItem(HELP_URL_JAVADOC_WEB, "jAER javadoc", "jAER online javadoc (probably out of date)");
 
             addHelpItem(new JSeparator());
+            addHelpURLItem(HELP_URL_HARDWARE_USER_GUIDE, "Hardware user guides", "Guides for inivation hardware");
             addHelpURLItem(HELP_USER_GUIDE_URL_FLASHY, "Flashy reflashing utility help", "Guide for reflashing firmware");
 //            addHelpURLItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
 //            addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING), "AER protocol and cabling guide", "Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
@@ -832,7 +834,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewRenderBlankFramesCheckBoxMenuItem.setSelected(isRenderBlankFramesEnabled());
         logFilteredEventsCheckBoxMenuItem.setSelected(logFilteredEventsEnabled);
         enableFiltersOnStartupCheckBoxMenuItem.setSelected(enableFiltersOnStartup);
-        setFwdRewindNCount.setText("Set forward/rewind N... (currently "+getAePlayer().getFastFowardRewindPacketCount()+")");
+        setFwdRewindNCount.setText("Set forward/rewind N... (currently " + getAePlayer().getFastFowardRewindPacketCount() + ")");
 
 //        fixSkipPacketsRenderingMenuItems();
 //        if (!showedSkippedPacketsRenderingWarning && skipPacketsRenderingNumberMax > 1) {
@@ -4939,40 +4941,37 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 loggingFile = newFile; // so that we play it back if it was saved and playback immediately is selected
                                 log.info("renamed logging file to " + newFile.getAbsolutePath());
                             } else {
-                            	// if this fails, it does not only mean that a file already exists,
-                            	// the failure reasons are platform dependent, for example on Linux
-                            	// this might fail if its a move across different file-systems, such
-                            	// as from /tmp to /home depending on configuration.
-                            	// so we check if the new file really exists, if it doesn't, we don't
-                            	// have to delete it or ask for overwrite confirmation, just use it.
-                            	if (newFile.exists()) {
-                            		int overwrite = JOptionPane.showConfirmDialog(chooser, "Overwrite file \"" + newFile + "\"?", "Overwrite file?", JOptionPane.WARNING_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
-									if (overwrite == JOptionPane.OK_OPTION) {
-										// we need to delete the file
-										boolean deletedOld = newFile.delete();
-										if (deletedOld) {
-											loggingFile.renameTo(newFile);
-											savedIt = true;
-											log.info("renamed logging file to " + newFile); // TODO something messed up
-																							// here with confirmed
-																							// overwrite of logging file
-											loggingFile = newFile;
-										}
-										else {
-											log.warning("couldn't delete logging file " + newFile);
-										}
+                                // if this fails, it does not only mean that a file already exists,
+                                // the failure reasons are platform dependent, for example on Linux
+                                // this might fail if its a move across different file-systems, such
+                                // as from /tmp to /home depending on configuration.
+                                // so we check if the new file really exists, if it doesn't, we don't
+                                // have to delete it or ask for overwrite confirmation, just use it.
+                                if (newFile.exists()) {
+                                    int overwrite = JOptionPane.showConfirmDialog(chooser, "Overwrite file \"" + newFile + "\"?", "Overwrite file?", JOptionPane.WARNING_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
+                                    if (overwrite == JOptionPane.OK_OPTION) {
+                                        // we need to delete the file
+                                        boolean deletedOld = newFile.delete();
+                                        if (deletedOld) {
+                                            loggingFile.renameTo(newFile);
+                                            savedIt = true;
+                                            log.info("renamed logging file to " + newFile); // TODO something messed up
+                                            // here with confirmed
+                                            // overwrite of logging file
+                                            loggingFile = newFile;
+                                        } else {
+                                            log.warning("couldn't delete logging file " + newFile);
+                                        }
 
-									}
-									else {
-										chooser.setDialogTitle("Couldn't save file there, try again");
-									}
-								}
-                            	else {
-                            		FileUtils.moveFile(loggingFile, newFile);
+                                    } else {
+                                        chooser.setDialogTitle("Couldn't save file there, try again");
+                                    }
+                                } else {
+                                    FileUtils.moveFile(loggingFile, newFile);
 
-                            		savedIt = true;
-                            		loggingFile = newFile;
-                            	}
+                                    savedIt = true;
+                                    loggingFile = newFile;
+                                }
                             }
                         } else {
                             // user hit cancel, delete logged data
@@ -5556,7 +5555,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_skipPacketsRenderingCheckBoxMenuItemStateChanged
 
     private void rewindNMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rewindNMIActionPerformed
-         if ((getPlayMode()==PlayMode.PLAYBACK) && (getAePlayer() != null)) {
+        if ((getPlayMode() == PlayMode.PLAYBACK) && (getAePlayer() != null)) {
             getAePlayer().rewindNPackets();
         }
     }//GEN-LAST:event_rewindNMIActionPerformed
@@ -5569,14 +5568,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             int n = Integer.parseInt(s);
             getAePlayer().setFastFowardRewindPacketCount(n);
-            setFwdRewindNCount.setText("Set forward/rewind N... (currently "+getAePlayer().getFastFowardRewindPacketCount()+")");
+            setFwdRewindNCount.setText("Set forward/rewind N... (currently " + getAePlayer().getFastFowardRewindPacketCount() + ")");
         } catch (NumberFormatException e) {
             return;
         }
     }//GEN-LAST:event_setFwdRewindNCountActionPerformed
 
     private void forwardNMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_forwardNMIActionPerformed
-        if ((getPlayMode()==PlayMode.PLAYBACK) &&  (getAePlayer() != null)) {
+        if ((getPlayMode() == PlayMode.PLAYBACK) && (getAePlayer() != null)) {
             getAePlayer().fastFowardNPackets();
         }
     }//GEN-LAST:event_forwardNMIActionPerformed
@@ -5622,7 +5621,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         boolean old = isPaused();
         jaerViewer.getSyncPlayer().setPaused(paused);
         pauseRenderingCheckBoxMenuItem.setSelected(paused);
-        if(!isSingleStep()&& getJaerViewer().getNumViewers()>1) interruptViewloop();  // to break out of exchangeers that might be waiting, problem is that it also interrupts a singleStep ....
+        if (!isSingleStep() && getJaerViewer().getNumViewers() > 1) {
+            interruptViewloop();  // to break out of exchangeers that might be waiting, problem is that it also interrupts a singleStep ....
+        }
         firePropertyChange(EVENT_PAUSED, old, isPaused());
     }
 
@@ -5703,7 +5704,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.warning(e.toString());
                 e.printStackTrace();
             } catch (InterruptedException ex) {
-                log.warning("opening dropped file "+draggedFile+" interrupted");
+                log.warning("opening dropped file " + draggedFile + " interrupted");
             }
         }
     }
@@ -6122,7 +6123,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //    private void launchFlashy() {
 //        JOptionPane.showMessageDialog(this, "<html>Launching flashy from jAER is not supported yet. <p>See the Help menu", "Not supported yet", JOptionPane.WARNING_MESSAGE);
 //    }
-
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuItem aboutMenuItem;
