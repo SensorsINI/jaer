@@ -399,17 +399,19 @@ public class FilterChain extends LinkedList<EventFilter2D> {
                     EventFilter2D fi = (EventFilter2D) co.newInstance(chip);
                     add(fi);
                 } catch (Exception e) {
-                    log.warning("couldn't construct filter " + s + " for chip " + chip.getClass().getName() + " : " + e.toString() + " will remove this filter from Preferences");
+                    log.warning(e.toString() + ": couldn't construct filter " + s + " for chip " + chip.getClass().getName() + " : " + e.toString() + " will remove this filter from Preferences");
                     toRemove.add(s);
                     if (e.getCause() != null) {
-                        Throwable t = e.getCause();
+                         Throwable t = e.getCause();
+                        log.warning("cause of previous exception was " + t.toString()); 
                         t.printStackTrace();
                     }
                 } catch (NoClassDefFoundError err) {
-                    log.warning("couldn't construct filter " + s + " for chip " + chip.getClass().getName() + " : " + err.toString() + " will remove this filter from Preferences");
+                    log.warning(err.toString() + ": couldn't construct filter " + s + " for chip " + chip.getClass().getName() + " : " + err.toString() + " will remove this filter from Preferences");
                     toRemove.add(s);
                     if (err.getCause() != null) {
                         Throwable t = err.getCause();
+                        log.warning("cause of previous error was " + t.toString());
                         t.printStackTrace();
                     }
 
