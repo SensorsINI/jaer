@@ -328,13 +328,14 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         }
         final ProgressMonitor progressMonitor = new ProgressMonitor(viewer, "Opening " + file, "Generating or loading cache of message indexes", 0, 100);
         progressMonitor.setMillisToPopup(300);
-        progressMonitor.setMillisToDecideToPopup(0);
+        progressMonitor.setMillisToDecideToPopup(300);
         SwingWorker<Void, Void> worker = new SwingWorker() {
             Exception exception = null;
 
             @Override
             protected Object doInBackground() throws Exception {
                 try {
+                    setPaused(true);
                     if (viewer != null) {
                         viewer.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                     }
@@ -342,10 +343,10 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     progressMonitor.setProgress(0);
 //                    TimeUnit.SECONDS.sleep(10);
                     aeFileInputStream = viewer.getChip().constuctFileInputStream(file, progressMonitor); // new AEFileInputStream(file);
+                    aeFileInputStream.setFile(file);
                     aeFileInputStream.setRepeat(isRepeat());
                     aeFileInputStream.setNonMonotonicTimeExceptionsChecked(viewer.getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem().isSelected());
                     aeFileInputStream.setTimestampResetBitmask(viewer.getAeFileInputStreamTimestampResetBitmask());
-                    aeFileInputStream.setFile(file);
                     aeFileInputStream.getSupport().addPropertyChangeListener(viewer);
                     // so that users of the stream can get the file information
                     if ((viewer.getJaerViewer() != null) && (viewer.getJaerViewer().getViewers().size() == 1)) {
@@ -387,6 +388,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     log.warning("other type of exception " + e.toString());
                 } finally {
                     if (viewer != null) {
+                        setPaused(false);
                         viewer.setCursor(Cursor.getDefaultCursor());
                     }
                 }
