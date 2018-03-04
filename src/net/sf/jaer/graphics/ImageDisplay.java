@@ -316,6 +316,10 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         if (gl == null) {
             return;
         }
+        if(pixmap==null){
+            log.warning("null pixmap, cannot display");
+            return;
+        }
 
         checkGLError(gl, "before pixmap");
         final int wi = drawable.getSurfaceWidth(), hi = drawable.getSurfaceHeight();
