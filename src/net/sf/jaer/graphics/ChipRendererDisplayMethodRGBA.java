@@ -23,6 +23,7 @@ import com.jogamp.opengl.GL2ES1;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.fixedfunc.GLMatrixFunc;
 import com.jogamp.opengl.util.awt.TextRenderer;
+//import com.jogamp.opengl.util.awt.TextRenderer;
 
 import net.sf.jaer.util.TextRendererScale;
 

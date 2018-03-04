@@ -8,6 +8,7 @@
  */
 package net.sf.jaer.graphics;
 
+import com.jogamp.common.nio.Buffers;
 import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Font;
@@ -46,10 +47,8 @@ import net.sf.jaer.eventprocessing.FilterChain;
 
 import org.apache.commons.lang3.SystemUtils;
 
-import com.jogamp.common.nio.Buffers;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GL2ES2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLCapabilitiesImmutable;
 import com.jogamp.opengl.GLContext;
