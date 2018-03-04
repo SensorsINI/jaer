@@ -688,7 +688,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                     if (measureAccuracy || measureProcessingTime) {
                         doPrintStatistics();
                     }
-                    resetFilter();
+                    resetFilter(); // will grab this instance. if called from AWT via e.g. slider, then can deadlock if we also invokeAndWait to draw something in ViewLoop
                     break;
                 case AEViewer.EVENT_FILEOPEN:
                     log.info("File Open");
