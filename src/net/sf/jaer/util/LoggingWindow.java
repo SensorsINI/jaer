@@ -87,7 +87,21 @@ public class LoggingWindow extends JFrame {
                         try {
                             showInBrowser(AEViewer.HELP_URL_HELP_FORUM);
                         } catch (Exception ex) {
-                            System.err.println("couldn't copy exception pane: " + ex.toString());
+                            System.err.println("couldn't browse to jaer user forum: " + ex.toString());
+                        }
+                    }
+                });
+                
+                JButton jaerprojecthome = new JButton("jaerproject.org");
+                jaerprojecthome.setToolTipText("Opens your browser to the jAER project home page");
+                jaerprojecthome.addActionListener(new ActionListener() {
+
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        try {
+                            showInBrowser(AEViewer.HELP_URL_JAER_HOME);
+                        } catch (Exception ex) {
+                            System.err.println("couldn't go to jaer project homa: " + ex.toString());
                         }
                     }
                 });
@@ -96,8 +110,9 @@ public class LoggingWindow extends JFrame {
                 butPan.setLayout(new BoxLayout(butPan, BoxLayout.X_AXIS));
                 butPan.add(new Box(BoxLayout.X_AXIS));
                 butPan.add(copyBut);
-                butPan.add(mailBut);
+//                butPan.add(mailBut); // TODO tobi: doesn't work anymore, just opens web browser
                 butPan.add(helpForumButton);
+                butPan.add(jaerprojecthome);
                 getContentPane().add(butPan, BorderLayout.SOUTH);
                 setVisible(true);
             }
@@ -172,7 +187,7 @@ public class LoggingWindow extends JFrame {
                 URI uriMailTo = null;
                 try {
                     if (mailTo.length() > 0) {
-                        uriMailTo = new URI("mailto", mailTo + "?subject=jAER uncaught exception&body=" + textArea.getText(), null);
+                        uriMailTo = new URI("mailto", mailTo + "?subject=jAER uncaught exception" , textArea.getText());
                         desktop.mail(uriMailTo);
                     } else {
                         desktop.mail();
