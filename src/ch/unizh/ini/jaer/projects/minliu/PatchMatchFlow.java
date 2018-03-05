@@ -200,9 +200,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     private JFrame blockMatchingFrame = null;
     private ImageDisplay blockMatchingImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+    private Legend blockMatchingDisplayLegend;
+    private static final String LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH = "G: search area\nR: ref block area\nB: best match";
+
     private JFrame sliceBitMapFrame = null;
     private ImageDisplay sliceBitmapImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
-    private Legend sliceBitmapLegend;
+    private Legend sliceBitmapImageDisplayLegend;
+    private static final String LEGEND_SLICES = "G: Slice t-d\nR: Slice t-2d";
 
     /**
      * A PropertyChangeEvent with this value is fired when the slices has been
@@ -2292,8 +2296,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     private int dim = blockDimension + (2 * searchDistance);
 
-    protected static final String G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH = "G: search area\nR: ref block area\nB: best match";
-
     /**
      * Draws the block matching bitmap
      *
@@ -2326,7 +2328,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             blockMatchingImageDisplay.setImageSize(dimNew, dimNew);
             blockMatchingImageDisplay.setSize(200, 200);
             blockMatchingImageDisplay.setGrayValue(0);
-            sliceBitmapLegend = blockMatchingImageDisplay.addLegend(G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
+            blockMatchingDisplayLegend = blockMatchingImageDisplay.addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
             panel.add(blockMatchingImageDisplay);
 
             blockMatchingFrame.getContentPane().add(panel);
@@ -2352,7 +2354,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     dim = dimNew;
                     blockMatchingImageDisplay.setImageSize(dimNew, dimNew);
                     blockMatchingImageDisplay.clearLegends();
-                    sliceBitmapLegend = blockMatchingImageDisplay.addLegend(G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
+                    blockMatchingDisplayLegend = blockMatchingImageDisplay.addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
                 }
 
 //        TextRenderer textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 12));
@@ -2385,9 +2387,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         blockMatchingImageDisplay.setPixmapRGB(i, j, f);
                     }
                 }
-                if (sliceBitmapLegend != null) {
-                    sliceBitmapLegend.s
-                            = G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH
+                if (blockMatchingDisplayLegend != null) {
+                    blockMatchingDisplayLegend.s
+                            = LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH
                             + "\nScale: "
                             + subSampleBy
                             + "\nSAD: "
@@ -2415,7 +2417,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             sliceBitmapImageDisplay.setImageSize(sizex, sizey);
             sliceBitmapImageDisplay.setSize(200, 200);
             sliceBitmapImageDisplay.setGrayValue(0);
-//            sliceBitmapLegend = blockMatchingImageDisplay.addLegend(G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
+            sliceBitmapImageDisplayLegend = sliceBitmapImageDisplay.addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
             panel.add(sliceBitmapImageDisplay);
 
             sliceBitMapFrame.getContentPane().add(panel);
@@ -2439,6 +2441,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 // TODO only draw scale 0 (no subsampling) for now
                 sliceBitmapImageDisplay.setPixmapRGB(x, y, scale * slices[d2][0][x][y], scale * slices[d1][0][x][y], 0);
             }
+        }
+        if (sliceBitmapImageDisplayLegend != null) {
+            sliceBitmapImageDisplayLegend.s
+                    = LEGEND_SLICES;
         }
 
         sliceBitmapImageDisplay.repaint();
