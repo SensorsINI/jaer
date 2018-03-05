@@ -389,6 +389,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                        dy_init = 0;
                         // The reason why we inverse dx_init, dy_init i is the offset is pointing from previous slice to current slice.
                         // The dx_init, dy_init are from the corse scale's result, and it is used as the finer scale's initial guess.
+                        
+                        // tobi: shouldn't the search be initiated and *centered* at the result of the coarser scale resulting location?
                         sliceResult = minSADDistance(ein.x, ein.y, -dx_init, -dy_init, slices[sliceIndex(1)], slices[sliceIndex(2)], scale); // from ref slice to past slice k+1, using scale 0,1,....
 //                        sliceSummedSADValues[sliceIndex(scale + 2)] += sliceResult.sadValue; // accumulate SAD for this past slice
 //                        sliceSummedSADCounts[sliceIndex(scale + 2)]++; // accumulate SAD count for this past slice
@@ -398,6 +400,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                             minDistScale = scale;
                         }
                         sadVals[scale] = sliceResult.sadValue; // TODO debug 
+//                        result=sliceResult; // TODO tobi: override the absolute minimum to always use the finest scale result, which has been guided by coarser scales
                     }
                     float dt = (sliceDeltaTimeUs(2) * 1e-6f);
                     if (result != null) {
@@ -416,6 +419,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    result.dx = result.dx / dtj;
 //                    result.dy = result.dy / dtj;
 //                    break;
+            
             }
             if (result == null || result.sadValue == Float.MAX_VALUE) {
                 continue; // maybe some property change caused this
