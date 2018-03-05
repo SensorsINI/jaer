@@ -161,6 +161,7 @@ public class ApsFrameExtractor extends EventFilter2D
             apsChip = (DavisChip) chip;
         } else {
             EventFilter.log.warning("The filter ApsFrameExtractor can only be used for chips that extend the ApsDvsChip class");
+            return;
         }
         newFrame = false;
         width = chip.getSizeX(); // note that on initial construction width=0 because this constructor is called while
