@@ -119,6 +119,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int adaptiveSliceDurationMinVectorsToControl = getInt("adaptiveSliceDurationMinVectorsToControl", 10);
     private boolean showBlockMatches = false; // Display the bitmaps
     private boolean showSlices = false; // Display the bitmaps
+    private int showSlicesScale = 0; // Display the bitmaps
     private float adapativeSliceDurationProportionalErrorGain = getFloat("adapativeSliceDurationProportionalErrorGain", 0.05f); // factor by which an error signal on match distance changes slice duration
     private boolean adapativeSliceDurationUseProportionalControl = getBoolean("adapativeSliceDurationUseProportionalControl", false);
     private int processingTimeLimitMs = getInt("processingTimeLimitMs", 100); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
@@ -276,6 +277,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         String patchDispTT = "0b: Block matching display";
         setPropertyTooltip(patchDispTT, "showSlices", "enables displaying the entire bitmaps slices (the current slices)");
+        setPropertyTooltip(patchDispTT, "showSlicesScale", "sets which scale of the slices to display");
         setPropertyTooltip(patchDispTT, "showBlockMatches", "enables displaying the individual block matches");
         setPropertyTooltip(patchDispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
         setPropertyTooltip(patchDispTT, "displayOutputVectors", "display the output motion vectors or not");
@@ -2436,10 +2438,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         float scale = 1f / getSliceMaxValue();
         sliceBitmapImageDisplay.clearImage();
         int d1 = sliceIndex(1), d2 = sliceIndex(2);
-        for (int x = 0; x < sizex; x++) {
-            for (int y = 0; y < sizey; y++) {
+        if(showSlicesScale>=numScales){
+            showSlicesScale=numScales-1;
+        }
+        for (int x = 0; x < sizex >> showSlicesScale; x++) {
+            for (int y = 0; y < sizey >> showSlicesScale; y++) {
                 // TODO only draw scale 0 (no subsampling) for now
-                sliceBitmapImageDisplay.setPixmapRGB(x, y, scale * slices[d2][0][x][y], scale * slices[d1][0][x][y], 0);
+                sliceBitmapImageDisplay.setPixmapRGB(x, y, scale * slices[d2][showSlicesScale][x][y], scale * slices[d1][showSlicesScale][x][y], 0);
             }
         }
         if (sliceBitmapImageDisplayLegend != null) {
@@ -2815,6 +2820,25 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     public void setPrintScaleCntStatEnabled(boolean printScaleCntStatEnabled) {
         this.printScaleCntStatEnabled = printScaleCntStatEnabled;
         putBoolean("printScaleCntStatEnabled", printScaleCntStatEnabled);
+    }
+
+    /**
+     * @return the showSlicesScale
+     */
+    public int getShowSlicesScale() {
+        return showSlicesScale;
+    }
+
+    /**
+     * @param showSlicesScale the showSlicesScale to set
+     */
+    public void setShowSlicesScale(int showSlicesScale) {
+        if (showSlicesScale < 0) {
+            showSlicesScale = 0;
+        } else if (showSlicesScale > numScales - 1) {
+            showSlicesScale = numScales - 1;
+        }
+        this.showSlicesScale = showSlicesScale;
     }
 
 }
