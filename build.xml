@@ -67,16 +67,10 @@
 
     -->
     <!-- override clean to not delete dist dir, because this messes up svn -->
-    <target name="-do-clean" depends="init">
+    <target name="-do-clean" depends="init,clean-ivy">
         <delete dir="${build.dir}"/>
     </target>
 
-
-
-    <!--    <target name="-pre-compile" depends="retrieve-dependencies">
-         Empty placeholder for easier customization. 
-         You can override this target in the ../build.xml file. 
-    </target>-->
 
 <!--
         https://blog.alejandrocelaya.com/2014/02/22/dependency-management-in-java-projects-with-ant-and-ivy/ 
@@ -116,12 +110,12 @@
    
     
     
-<!--    <target name="-post-clean">
+    <!--    <target name="-post-clean">
         <delete dir="lib"/>
     </target>-->
     
     <!--ivy download and configure, from https://gist.github.com/snipsnipsnip/3284453 -->
-      <property name="ivy.install.version" value="2.4.0" />
+    <property name="ivy.install.version" value="2.4.0" />
     <property name="ivy.jar.dir" value="${basedir}/ivy" />
     <property name="ivy.cache.dir" value="${basedir}/ivy" />
     <property name="ivy.jar.file" value="${ivy.jar.dir}/ivy.jar" />
@@ -179,7 +173,7 @@
         <property name="libs.junit_4.classpath" value="${ivy.lib}/junit-4.10.jar"/>
     </target>
     
-     <target name="-pre-compile" depends="download-deps"/>
+    <target name="-pre-compile" depends="download-deps"/>
 
     <target name="-pre-compile-single" depends="download-deps"/>
 
@@ -212,7 +206,7 @@
     -->
     <target name="jaer-exe4j">
         <echo message="Building Windows .exe. launchers using exe4j (https://www.ej-technologies.com/download/exe4j/files). ${line.separator} Note that depending on 32- or 64-bit installed JDKs, ${line.separator} you may not be able to build one or the other of these launchers. ${line.separator} Don't worry about this."/>
-<!--        <subant failonerror="false" target="jaer-exe4jx86">
+        <!--        <subant failonerror="false" target="jaer-exe4jx86">
             <fileset dir="." includes="build.xml"/>
         </subant>-->
         <subant failonerror="false" target="jaer-exe4jx64">
@@ -225,7 +219,7 @@
     L-TOBI_DELBRUCK#50022033010001-1evjjgm42c2fj#2311
     -->
     
-<!--    <target name="jaer-exe4jx86" depends="checkos" if="isWindows" >
+    <!--    <target name="jaer-exe4jx86" depends="checkos" if="isWindows" >
         <echo message="Building jaer-exe4j jAERViewer.exe 32-bit Windows launcher for 32-bit Java Virtual Machines - embedding ico and setting SplashScreen in jAERViewer.exe. ${line.separator} Don't worry if this task fails for you unless you have changed the classpath. ${line.separator}jAERViewer.exe does not normally need to be rebuilt."/>
         <taskdef name="jaer-exe4j" classname="com.jaer-exe4j.Exe4JTask" classpath="exe4j-launcher/exe4j_x86/bin/ant.jar" onerror="ignore" />
         <exe4j projectfile="jaer1.5_win_jre_x86.exe4j" requirelicense="true"/>
@@ -328,12 +322,12 @@
             <arg line="describe"/>
         </exec>
         <!-- make it a property line -->
-<!--        <replaceregexp file="${buildversion.outputfile}"
-                       match="(.*)"
-                       replace="subversion.revisionNumber=\1"
-                       byline="false"/>-->
+        <!--        <replaceregexp file="${buildversion.outputfile}"
+        match="(.*)"
+        replace="subversion.revisionNumber=\1"
+        byline="false"/>-->
         <!-- run subwcrev (must have tortoisesvn installed and on PATH) to get svn revision numnber -->
-<!--        <exec executable="subWCrev" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" append="true">
+        <!--        <exec executable="subWCrev" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" append="true">
             <arg line="."/>
         </exec>-->
         <!-- add a datestamp property -->
