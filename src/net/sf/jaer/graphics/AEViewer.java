@@ -88,6 +88,7 @@ import ch.unizh.ini.jaer.chip.retina.DVS128;
 import eu.seebetter.ini.chips.davis.DAVIS240B;
 import eu.seebetter.ini.chips.davis.DAVIS240C;
 import eu.seebetter.ini.chips.davis.Davis640;
+import java.lang.reflect.InvocationTargetException;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -1294,14 +1295,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-    private void constructChip(Constructor<AEChip> constructor) {
-        try {
-            //            System.out.println("AEViewer.constructChip(): constructing chip with constructor "+constructor);
-            setChip(constructor.newInstance((java.lang.Object[]) null));
-
-        } catch (Exception e) {
-           throw new RuntimeException("error constructing the AEChip",e);
-        }
+    private void constructChip(Constructor<AEChip> constructor)
+            throws InvocationTargetException, InstantiationException, IllegalAccessException, IllegalArgumentException, ExceptionInInitializerError {
+        setChip(constructor.newInstance((java.lang.Object[]) null));
     }
 
     void makeCanvas() {
@@ -5968,7 +5964,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @return the renderer
      */
     protected AEChipRenderer getRenderer() {
-        if(chip==null){
+        if (chip == null) {
             throw new NullPointerException("chip instance is null; this should not happen. Something probably went wrong in the constructor. You can try to clear the preferences.");
         }
         return chip.getRenderer();
