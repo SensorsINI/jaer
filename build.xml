@@ -162,7 +162,7 @@
     </target>
 
     <target name="clean-ivy" depends="clean-deps" description="Clean ivy.">
-        <delete dir="${ivy.jar.dir}"/>
+        <!--<delete dir="${ivy.jar.dir}"/>-->
         <ivy:cleancache/>
         <propertyfile file="${basedir}/nbproject/project.properties">
             <entry operation="=" key="ivy.classpath" value=""/>
