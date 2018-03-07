@@ -2,3 +2,5 @@
 /bin
 /build
 /lib
+/ivy/
+/jars unused/
