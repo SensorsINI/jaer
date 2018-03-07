@@ -30,11 +30,12 @@ MA 02110-1301  USA
         <!--see https://jogamp.org/wiki/index.php/Maven-->
         <!--see http://search.maven.org to find libraries -->
         <!--following does not work, since the latest jogl doesn't have com.jogamp.opengl--> 
-        <!--<dependency org="org.jogamp.jogl" name="jogl" rev="2.3.2" />-->
         <!--https://repo1.maven.org/maven2/org/jogamp/gluegen/gluegen-rt/2.3.2/-->
         <dependency org="org.jogamp.gluegen" name="gluegen-rt" rev="2.3.2" />
         <dependency org="org.jogamp.gluegen" name="gluegen-rt-main" rev="2.3.2" />
         <dependency org="org.jogamp.gluegen" name="gluegen-rt" rev="2.3.2" >
+            <!--include main jar-->
+            <artifact name="gluegen-rt" type="jar" ext="jar"/>
             <artifact name="gluegen-rt" type="jar" ext="jar" m:classifier="natives-linux-amd64"/>
             <artifact name="gluegen-rt" type="jar" ext="jar" m:classifier="natives-linux-i586"/>
             <artifact name="gluegen-rt" type="jar" ext="jar" m:classifier="natives-macosx-universal"/>
@@ -45,12 +46,14 @@ MA 02110-1301  USA
             <artifact name="gluegen-rt" type="jar" ext="jar" m:classifier="natives-windows-amd64"/>
         </dependency>
         <!--https://repo1.maven.org/maven2/org/jogamp/jogl/jogl-all/2.3.2/-->
-        <dependency org="org.jogamp.jogl" name="jogl-all" rev="2.3.2" /> 
-        <!--<dependency org="org.jogamp.jogl" name="jogl-all-main" rev="2.3.2" />--> 
+        <!--<dependency org="org.jogamp.jogl" name="jogl-all" rev="2.3.2" />--> 
+        <dependency org="org.jogamp.jogl" name="jogl-all-main" rev="2.3.2" /> 
         <!--<dependency org="org.jogamp.jogl" name="nativewindow" rev="2.3.2" />-->
         <!--<dependency org="org.jogamp.jogl" name="newt" rev="2.3.2" />-->
         <!--<dependency org="org.jogamp.jogl" name="jogl-all-main" rev="2.3.2" />--> 
         <dependency org="org.jogamp.jogl" name="jogl-all" rev="2.3.2" > 
+            <!--include main jar-->
+            <artifact name="jogl-all" type="jar" ext="jar"/>
             <artifact name="jogl-all" type="jar" ext="jar" m:classifier="natives-linux-amd64"/>
             <artifact name="jogl-all" type="jar" ext="jar" m:classifier="natives-linux-i586"/>
             <artifact name="jogl-all" type="jar" ext="jar" m:classifier="natives-macosx-universal"/>
