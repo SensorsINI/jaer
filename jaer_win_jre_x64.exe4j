@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<exe4j version="5.1" transformSequenceNumber="2">
+<exe4j version="6.0" transformSequenceNumber="2">
   <directoryPresets config="E:/Dropbox (Personal)/GitHub/SensorsINI/jaer/jars" />
   <application name="jaer1.6_win_x64" distributionSourceDir=".">
     <languages>
@@ -10,13 +10,13 @@
     <messageSet />
     <versionInfo include="true" fileVersion="" fileDescription="Launcher for AEViewer for jAER" legalCopyright="jAER Team, 2018" internalName="jAERViewer" productName="" companyName="University of Zurich, inilabs.com, inivation.com" productVersion="1.6.0" />
   </executable>
-  <splashScreen show="true" width="0" height="0" bitmapFile="SplashScreen.gif" windowsNative="false" textOverlay="false">
+  <splashScreen show="true" width="0" height="0" bitmapFile="SplashScreen.gif" textOverlay="false">
     <text>
       <statusLine x="20" y="20" text="" fontSize="8" fontColor="0,0,0" bold="false" />
       <versionLine x="20" y="40" text="version %VERSION%" fontSize="8" fontColor="0,0,0" bold="false" />
     </text>
   </splashScreen>
-  <java mainClass="net.sf.jaer.JAERViewer" vmParameters="-Djava.util.logging.config.file=conf/Logging.properties -Dsun.java2d.noddraw=true -Dsun.java2d.opengl=false" arguments="" allowVMPassthroughParameters="true" preferredVM="" bundleRuntime="true" minVersion="1.8" maxVersion="" allowBetaVM="true" jdkOnly="false">
+  <java mainClass="net.sf.jaer.JAERViewer" mainMode="1" vmParameters="-Djava.util.logging.config.file=conf/Logging.properties -Dsun.java2d.noddraw=true -Dsun.java2d.opengl=false -Djogl.disable.opengles=false" arguments="" allowVMPassthroughParameters="true" preferredVM="" bundleRuntime="true" minVersion="1.8" maxVersion="" allowBetaVM="true" jdkOnly="false">
     <searchSequence>
       <registry />
       <envVar name="JAVA_HOME" />
@@ -30,6 +30,7 @@
       <scanDirectory location="./jars/opencv" failOnError="false" />
       <scanDirectory location="./lib" failOnError="false" />
     </classPath>
+    <modulePath />
     <nativeLibraryDirectories>
       <directory name="./jars/win64" />
     </nativeLibraryDirectories>
