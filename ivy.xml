@@ -113,6 +113,7 @@ MA 02110-1301  USA
         </dependency>
         <!--TODO sort out opencv and javacv - seems to be multiple versions used in jaer-->
         <dependency org="org.bytedeco.javacpp-presets" name="opencv" rev="3.2.0-1.3" >
+            <artifact name="opencv" type="jar" ext="jar"/>
             <artifact name="opencv" type="jar" ext="jar" m:classifier="macosx-x86_64"/>
             <artifact name="opencv" type="jar" ext="jar" m:classifier="windows-x86_64"/>
             <artifact name="opencv" type="jar" ext="jar" m:classifier="windows-x86"/>
