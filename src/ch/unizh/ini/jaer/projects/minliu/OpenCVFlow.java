@@ -25,9 +25,6 @@ import java.util.Observer;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
-import static ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU.v;
-import static ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU.vx;
-import static ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU.vy;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
