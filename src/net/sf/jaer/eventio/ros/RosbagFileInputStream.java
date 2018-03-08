@@ -959,7 +959,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     }
 
     private String messageIndexesCacheFileName() {
-        return System.getProperty("java.io.tmpdir") + getFile().getName() + ".rosbagidx";
+        return System.getProperty("java.io.tmpdir") + "/" + getFile().getName() + ".rosbagidx";
     }
 
 }
