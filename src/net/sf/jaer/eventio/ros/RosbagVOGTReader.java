@@ -58,7 +58,7 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
     @Override
     protected void parseMessage(RosbagFileInputStream.MessageWithIndex message) {
         String pkg = message.messageType.getPackage();
-        PoseStampedMessageType poseStamped = <PoseStampedMessageType>message.messageType;
+        PoseStampedMessageType poseStamped = (PoseStampedMessageType)(message.messageType);
         try {
             message.messageType.getField("0");
             float steeringPwm = message.messageType.<Float32Type>getField("steering").getValue();
