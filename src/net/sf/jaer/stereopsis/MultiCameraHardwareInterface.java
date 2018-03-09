@@ -599,7 +599,7 @@ public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderB
             NUM_CAMERAS=HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
             n=NUM_CAMERAS;
             firstTimeReadHWInterface=false;
-            System.out.println("Number of cameras: "+ NUM_CAMERAS);
+            log.info("Number of cameras: "+ NUM_CAMERAS);
             return n;
         }
         else{
