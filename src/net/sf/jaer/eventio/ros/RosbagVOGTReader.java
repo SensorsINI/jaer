@@ -31,6 +31,7 @@ import net.sf.jaer.chip.AEChip;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.FrameAnnotater;
 import org.opencv.core.Point3;
+import org.ojalgo.scalar.Quaternion;
 
 /** Rosbag reader for MSVEC VO Groundtruth which is packed in rosbag format. 
  *  Dataset paper: 
@@ -54,16 +55,26 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
     protected void parseMessage(RosbagFileInputStream.MessageWithIndex message) {
         String pkg = message.messageType.getPackage();
         try {
-            message.messageType.getField("0");
-            double x = message.messageType.<MessageType>getField("pose").<MessageType>getField("position")
+            // Extract position information.
+            double x_pos = message.messageType.<MessageType>getField("pose").<MessageType>getField("position")
                     .<Float64Type>getField("x").getValue();
-            double y = message.messageType.<MessageType>getField("pose").<MessageType>getField("position")
+            double y_pos = message.messageType.<MessageType>getField("pose").<MessageType>getField("position")
                     .<Float64Type>getField("y").getValue();
-            double z = message.messageType.<MessageType>getField("pose").<MessageType>getField("position")
-                    .<Float64Type>getField("z").getValue();         
-            Point3 position = new Point3(x, y, z);
-            log.info("Pose: position: " + position);
-
+            double z_pos = message.messageType.<MessageType>getField("pose").<MessageType>getField("position")
+                    .<Float64Type>getField("z").getValue();  
+            // Extract orientation information
+            double x_quat = message.messageType.<MessageType>getField("pose").<MessageType>getField("orientation")
+                    .<Float64Type>getField("x").getValue();
+            double y_quat = message.messageType.<MessageType>getField("pose").<MessageType>getField("orientation")
+                    .<Float64Type>getField("y").getValue();
+            double z_quat = message.messageType.<MessageType>getField("pose").<MessageType>getField("orientation")
+                    .<Float64Type>getField("z").getValue();  
+            double w_quat = message.messageType.<MessageType>getField("pose").<MessageType>getField("orientation")
+                    .<Float64Type>getField("w").getValue();   
+            
+            Point3 position = new Point3(x_pos, y_pos, z_pos);
+            Quaternion quat = Quaternion.of(w_quat, x_quat, y_quat, z_quat);
+            log.info("\nPose: position: " + position + "\n" + "Pose: orientation: " + quat);
         } catch (UninitializedFieldException ex) {
             Logger.getLogger(SlasherRosbagDisplay.class.getName()).log(Level.SEVERE, null, ex);
         }    
