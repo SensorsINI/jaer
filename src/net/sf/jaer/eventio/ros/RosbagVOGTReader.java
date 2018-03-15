@@ -31,7 +31,11 @@ import net.sf.jaer.chip.AEChip;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.FrameAnnotater;
 import org.opencv.core.Point3;
-import org.ojalgo.scalar.Quaternion;
+import org.apache.commons.math3.complex.Quaternion;
+import org.jblas.DoubleMatrix;
+import org.apache.commons.math3.geometry.euclidean.threed.Rotation;
+import org.jblas.MatrixFunctions;
+import org.jblas.Solve;
 
 /** Rosbag reader for MSVEC VO Groundtruth which is packed in rosbag format. 
  *  Dataset paper: 
@@ -43,6 +47,9 @@ import org.ojalgo.scalar.Quaternion;
 @Description("Shows Slasher robot car PWM signals for steering throttle and gearshift")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnnotater {
+
+    private DoubleMatrix last_rotation = DoubleMatrix.eye(3);
+    private DoubleMatrix current_rotation = DoubleMatrix.eye(3);
 
     public RosbagVOGTReader(AEChip chip) {
         super(chip);
@@ -73,8 +80,21 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
                     .<Float64Type>getField("w").getValue();   
             
             Point3 position = new Point3(x_pos, y_pos, z_pos);
-            Quaternion quat = Quaternion.of(w_quat, x_quat, y_quat, z_quat);
-            log.info("\nPose: position: " + position + "\n" + "Pose: orientation: " + quat);
+            
+            // Construct rotation matrix using Quaternion
+            Rotation rota = new Rotation(w_quat, x_quat, y_quat, z_quat, true);
+            Quaternion quat = new Quaternion(w_quat, x_quat, y_quat, z_quat);
+            
+            // Convert it to a matrix type that could use log function from jblas library.
+            last_rotation = current_rotation.dup();
+            current_rotation = new DoubleMatrix(rota.getMatrix());
+            log.info("\nPose: position: " + position + "\n" + "Pose: orientation: " + current_rotation 
+                    + "\n" + "Pose: quaternion: " + quat);
+
+            DoubleMatrix inv_last = Solve.pinv(last_rotation);
+            DoubleMatrix T = inv_last.mul(current_rotation);
+            DoubleMatrix lie_group_T = MatrixFunctions.expm(T);
+            log.info("The skew symmetric matrix is:" + lie_group_T);
         } catch (UninitializedFieldException ex) {
             Logger.getLogger(SlasherRosbagDisplay.class.getName()).log(Level.SEVERE, null, ex);
         }    

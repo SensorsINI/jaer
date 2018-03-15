@@ -133,7 +133,11 @@ MA 02110-1301  USA
         <dependency org="com.esotericsoftware.yamlbeans" name="yamlbeans" rev="1.13" />
 
         <!--mathematics, linear algebra and optimisation java library-->
-        <dependency org="org.ojalgo" name="ojalgo" rev="44.0.0" />        
+        <dependency org="org.ojalgo" name="ojalgo" rev="44.0.0" />      
+        
+        <!--jblas is a matrix library for Java which uses existing high performance BLAS and LAPACK libraries like ATLAS -->
+        <dependency org="org.jblas" name="jblas" rev="1.2.4" />        
+  
     </dependencies>
 </ivy-module>
 
