@@ -18,11 +18,8 @@
  */
 package net.sf.jaer.eventio.ros;
 
-import com.github.swrirobotics.bags.reader.exceptions.InvalidDefinitionException;
 import com.github.swrirobotics.bags.reader.exceptions.UninitializedFieldException;
-import com.github.swrirobotics.bags.reader.exceptions.UnknownMessageException;
-import com.github.swrirobotics.bags.reader.messages.serialization.Float32Type;
-import com.github.swrirobotics.bags.reader.messages.serialization.MessageCollection;
+import com.github.swrirobotics.bags.reader.messages.serialization.Float64Type;
 import com.github.swrirobotics.bags.reader.messages.serialization.MessageType;
 import com.jogamp.opengl.GLAutoDrawable;
 import java.util.ArrayList;
@@ -33,9 +30,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.FrameAnnotater;
-import geometry_msgs.Pose;
-import geometry_msgs.PoseStamped;
-import org.ros.internal.message.RawMessage;
+import org.opencv.core.Point3;
 
 /** Rosbag reader for MSVEC VO Groundtruth which is packed in rosbag format. 
  *  Dataset paper: 
@@ -58,14 +53,16 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
     @Override
     protected void parseMessage(RosbagFileInputStream.MessageWithIndex message) {
         String pkg = message.messageType.getPackage();
-        PoseStampedMessageType poseStamped = (PoseStampedMessageType)(message.messageType);
         try {
             message.messageType.getField("0");
-            float steeringPwm = message.messageType.<Float32Type>getField("steering").getValue();
-            float throttlePwm = message.messageType.<Float32Type>getField("throttle").getValue();
-            float gear_shiftPwm = message.messageType.<Float32Type>getField("gear_shift").getValue();
-            log.info(String.format("PWM: steering: %8.2f\t throttle %8.2f\t gear: %8.2f", steeringPwm, throttlePwm, gear_shiftPwm));
-            final float pwmCenter = 1500, pwmRange = 500; // us
+            double x = message.messageType.<MessageType>getField("pose").<MessageType>getField("position")
+                    .<Float64Type>getField("x").getValue();
+            double y = message.messageType.<MessageType>getField("pose").<MessageType>getField("position")
+                    .<Float64Type>getField("y").getValue();
+            double z = message.messageType.<MessageType>getField("pose").<MessageType>getField("position")
+                    .<Float64Type>getField("z").getValue();         
+            Point3 position = new Point3(x, y, z);
+            log.info("Pose: position: " + position);
 
         } catch (UninitializedFieldException ex) {
             Logger.getLogger(SlasherRosbagDisplay.class.getName()).log(Level.SEVERE, null, ex);
@@ -74,42 +71,6 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-    }
-    
-    /**
-     *
-     */
-    public class PoseStampedMessageType extends MessageType implements PoseStamped {
-
-        public PoseStampedMessageType(String definition, MessageCollection msgCollection) throws InvalidDefinitionException, UnknownMessageException {
-            super(definition, msgCollection);
-        }
-
-        @Override
-        public std_msgs.Header getHeader() {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-        }
-
-        @Override
-        public void setHeader(std_msgs.Header header) {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-        }
-
-        @Override
-        public Pose getPose() {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-        }
-
-        @Override
-        public void setPose(Pose pose) {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-        }
-
-        @Override
-        public RawMessage toRawMessage() {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-        }
-
-    }
+    }    
     
 }
