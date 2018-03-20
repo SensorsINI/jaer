@@ -21,21 +21,32 @@ package net.sf.jaer.eventio.ros;
 import com.github.swrirobotics.bags.reader.exceptions.UninitializedFieldException;
 import com.github.swrirobotics.bags.reader.messages.serialization.Float64Type;
 import com.github.swrirobotics.bags.reader.messages.serialization.MessageType;
+
 import com.jogamp.opengl.GLAutoDrawable;
+
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.FrameAnnotater;
+
 import org.opencv.core.Point3;
+import org.opencv.calib3d.Calib3d;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+
 import org.apache.commons.math3.complex.Quaternion;
-import org.jblas.DoubleMatrix;
 import org.apache.commons.math3.geometry.euclidean.threed.Rotation;
+
+import org.jblas.DoubleMatrix;
 import org.jblas.MatrixFunctions;
 import org.jblas.Solve;
+
+
 
 /** Rosbag reader for MSVEC VO Groundtruth which is packed in rosbag format. 
  *  Dataset paper: 
@@ -44,7 +55,7 @@ import org.jblas.Solve;
  * 
  * @author minliu
  */
-@Description("Shows Slasher robot car PWM signals for steering throttle and gearshift")
+@Description("Converts MSVEC VO GT to OF GT.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnnotater {
 
@@ -90,11 +101,32 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
             current_rotation = new DoubleMatrix(rota.getMatrix());
             log.info("\nPose: position: " + position + "\n" + "Pose: orientation: " + current_rotation 
                     + "\n" + "Pose: quaternion: " + quat);
+           
+            DoubleMatrix T = last_rotation.transpose().mul(current_rotation);
+            
+            Mat src = new Mat(3, 3, CvType.CV_64FC1);            
+            src.put(0, 0, T.data);
+            Mat dst = new Mat();
+            Mat jocobian = new Mat();
+            Calib3d.Rodrigues(src, dst, jocobian);
+            log.info("The Rodrigues vector is: " + dst.dump());
+            
+            /* 
+            Following code is just for testing the matrix exp function in jblas.                        
+            Test rotation vector is:
+            {-2.100418,-2.167796,0.273330}
+            
+            The result rotation matrix should be:
+            {0, -0.273330, -2.167796}, 
+            {0.273330, 0, 2.100418}, 
+            {2.16779, -2.100418, 0}}
 
-            DoubleMatrix inv_last = Solve.pinv(last_rotation);
-            DoubleMatrix T = inv_last.mul(current_rotation);
-            DoubleMatrix lie_group_T = MatrixFunctions.expm(T);
-            log.info("The skew symmetric matrix is:" + lie_group_T);
+            */
+            DoubleMatrix lie_group_test = MatrixFunctions.expm(new DoubleMatrix(new double[][]{{0, -0.273330, -2.167796}, 
+                                                                                            {0.273330, 0, 2.100418}, 
+                                                                                            {2.16779, -2.100418, 0}}
+            ));
+            log.info("The skew symmetric matrix is:" + lie_group_test);
         } catch (UninitializedFieldException ex) {
             Logger.getLogger(SlasherRosbagDisplay.class.getName()).log(Level.SEVERE, null, ex);
         }    
