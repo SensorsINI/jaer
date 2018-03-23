@@ -159,26 +159,27 @@ public class ApsFrameExtractor extends EventFilter2D
     public void resetFilter() {
         if (DavisChip.class.isAssignableFrom(chip.getClass())) {
             apsChip = (DavisChip) chip;
+            maxADC = apsChip.getMaxADC();
+            newFrame = false;
+            width = chip.getSizeX(); // note that on initial construction width=0 because this constructor is called while
+            // chip is still being built
+            height = chip.getSizeY();
+            maxIDX = width * height;
+            apsDisplay.setImageSize(width, height);
+            resetBuffer = new float[width * height];
+            signalBuffer = new float[width * height];
+            displayFrame = new float[width * height];
+            displayBuffer = new float[width * height];
+            apsDisplayPixmapBuffer = new float[3 * width * height];
+            Arrays.fill(resetBuffer, 0.0f);
+            Arrays.fill(signalBuffer, 0.0f);
+            Arrays.fill(displayFrame, 0.0f);
+            Arrays.fill(displayBuffer, 0.0f);
+            Arrays.fill(apsDisplayPixmapBuffer, 0.0f);
         } else {
             EventFilter.log.warning("The filter ApsFrameExtractor can only be used for chips that extend the ApsDvsChip class");
         }
-        newFrame = false;
-        width = chip.getSizeX(); // note that on initial construction width=0 because this constructor is called while
-        // chip is still being built
-        height = chip.getSizeY();
-        maxIDX = width * height;
-        maxADC = apsChip.getMaxADC();
-        apsDisplay.setImageSize(width, height);
-        resetBuffer = new float[width * height];
-        signalBuffer = new float[width * height];
-        displayFrame = new float[width * height];
-        displayBuffer = new float[width * height];
-        apsDisplayPixmapBuffer = new float[3 * width * height];
-        Arrays.fill(resetBuffer, 0.0f);
-        Arrays.fill(signalBuffer, 0.0f);
-        Arrays.fill(displayFrame, 0.0f);
-        Arrays.fill(displayBuffer, 0.0f);
-        Arrays.fill(apsDisplayPixmapBuffer, 0.0f);
+
     }
 
     @Override
@@ -332,8 +333,8 @@ public class ApsFrameExtractor extends EventFilter2D
                     case JOptionPane.NO_OPTION:
                         break;
                 }
-            }else{
-                done=true;
+            } else {
+                done = true;
             }
         }
         try {
