@@ -21,8 +21,11 @@ package net.sf.jaer.eventio.ros;
 import com.github.swrirobotics.bags.reader.exceptions.UninitializedFieldException;
 import com.github.swrirobotics.bags.reader.messages.serialization.Float64Type;
 import com.github.swrirobotics.bags.reader.messages.serialization.MessageType;
+import com.github.swrirobotics.bags.reader.messages.serialization.TimeType;
+import com.github.swrirobotics.bags.reader.messages.serialization.UInt32Type;
 
 import com.jogamp.opengl.GLAutoDrawable;
+import java.sql.Timestamp;
 
 import java.util.ArrayList;
 import java.util.logging.Level;
@@ -61,6 +64,8 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
 
     private DoubleMatrix last_rotation = DoubleMatrix.eye(3);
     private DoubleMatrix current_rotation = DoubleMatrix.eye(3);
+    private DoubleMatrix last_position = DoubleMatrix.zeros(3, 1);
+    private DoubleMatrix current_position = DoubleMatrix.zeros(3, 1);
 
     public RosbagVOGTReader(AEChip chip) {
         super(chip);
@@ -90,26 +95,51 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
             double w_quat = message.messageType.<MessageType>getField("pose").<MessageType>getField("orientation")
                     .<Float64Type>getField("w").getValue();   
             
-            Point3 position = new Point3(x_pos, y_pos, z_pos);
+            long seq_num = message.messageType.<MessageType>getField("header").<UInt32Type>getField("seq").getValue();
+            Timestamp ts = message.messageType.<MessageType>getField("header").<TimeType>getField("stamp").getValue();
+            log.info("\nPose: seq: " + seq_num + "\n" + "Pose: timestamp: " + ts + "\t" + (ts.getTime() + ts.getNanos()/1.e6 - (int)(ts.getNanos()/1.e6)));
+                
+            last_position = current_position;
+            current_position = new DoubleMatrix(new double[]{x_pos, y_pos, z_pos});
             
             // Construct rotation matrix using Quaternion
-            Rotation rota = new Rotation(w_quat, x_quat, y_quat, z_quat, true);
+            Rotation rota = new Rotation(w_quat, x_quat, y_quat, z_quat, false);
             Quaternion quat = new Quaternion(w_quat, x_quat, y_quat, z_quat);
             
             // Convert it to a matrix type that could use log function from jblas library.
             last_rotation = current_rotation.dup();
             current_rotation = new DoubleMatrix(rota.getMatrix());
-            log.info("\nPose: position: " + position + "\n" + "Pose: orientation: " + current_rotation 
+            log.info("\nPose: position: " + current_position + "\n" + "Pose: orientation: " + current_rotation 
                     + "\n" + "Pose: quaternion: " + quat);
            
-            DoubleMatrix T = last_rotation.transpose().mul(current_rotation);
+            DoubleMatrix R = current_rotation.mmul(last_rotation.transpose());
+            DoubleMatrix trans = current_position.sub(R.mmul(last_position));
             
+            // Calculate rotation's lie algebra w.
             Mat src = new Mat(3, 3, CvType.CV_64FC1);            
-            src.put(0, 0, T.data);
-            Mat dst = new Mat();
+            src.put(0, 0, R.data);
+            Mat w = new Mat();
             Mat jocobian = new Mat();
-            Calib3d.Rodrigues(src, dst, jocobian);
-            log.info("The Rodrigues vector is: " + dst.dump());
+            Calib3d.Rodrigues(src, w, jocobian);
+//            log.info("The Rodrigues vector is: " + w.dump());
+            
+            double[] w_data = new double[3];
+            w.get(0, 0, w_data);
+            DoubleMatrix ww = new  DoubleMatrix(1, 3, w_data);
+            double theta = ww.norm2();
+            DoubleMatrix W = new DoubleMatrix(new double[][]{{0, -ww.get(2), ww.get(1)}, 
+                                                             {ww.get(2), 0, -ww.get(0)}, 
+                                                             {-ww.get(1), ww.get(0), 0}});
+
+            DoubleMatrix jaccobLieAlg = DoubleMatrix.eye(3);   // Translational part of lie algebra
+            if (theta != 0) {
+                double A = Math.sin(theta)/theta;
+                double B = (1 - Math.cos(theta))/(theta * theta);
+                jaccobLieAlg = DoubleMatrix.eye(3).sub(W.mul(0.5)).add(W.mmul(W).mul(1/(theta*theta) * (1 - (0.5*A/B))));
+            }
+            DoubleMatrix v = jaccobLieAlg.mmul(trans);
+            DoubleMatrix se3 = new DoubleMatrix(new double[]{v.get(0), v.get(1), v.get(2),ww.get(0), ww.get(1),ww.get(2)});            
+            log.info("The se3 vector is: " + se3);
             
             /* 
             Following code is just for testing the matrix exp function in jblas.                        
