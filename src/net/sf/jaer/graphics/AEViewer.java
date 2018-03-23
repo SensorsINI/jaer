@@ -12,49 +12,28 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Desktop;
-import java.awt.Dimension;
-import java.awt.DisplayMode;
-import java.awt.Font;
 import java.awt.Frame;
 import java.awt.Graphics2D;
-import java.awt.GraphicsDevice;
-import java.awt.GraphicsEnvironment;
 import java.awt.HeadlessException;
-import java.awt.Point;
-import java.awt.Toolkit;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.Transferable;
-import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.dnd.DropTarget;
-import java.awt.dnd.DropTargetDragEvent;
-import java.awt.dnd.DropTargetDropEvent;
-import java.awt.dnd.DropTargetEvent;
 import java.awt.dnd.DropTargetListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.SocketException;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -67,9 +46,7 @@ import java.util.prefs.Preferences;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
-import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
-import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -81,14 +58,35 @@ import javax.swing.JSeparator;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 
-import org.apache.commons.io.FileUtils;
-
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c;
 import ch.unizh.ini.jaer.chip.retina.DVS128;
 import eu.seebetter.ini.chips.davis.DAVIS240B;
 import eu.seebetter.ini.chips.davis.DAVIS240C;
 import eu.seebetter.ini.chips.davis.Davis640;
+import java.awt.Dimension;
+import java.awt.DisplayMode;
+import java.awt.Font;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.Point;
+import java.awt.Toolkit;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
+import java.awt.dnd.DropTargetDragEvent;
+import java.awt.dnd.DropTargetDropEvent;
+import java.awt.dnd.DropTargetEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeSupport;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Date;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JDialog;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -125,14 +123,12 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryChooserDialog;
-import net.sf.jaer.hardwareinterface.HasUpdatableFirmware;
 import net.sf.jaer.hardwareinterface.udp.NetworkChip;
 import net.sf.jaer.hardwareinterface.udp.UDPInterface;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2FirmwareFilennameChooserOkCancelDialog;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import net.sf.jaer.util.ClassChooserDialog;
@@ -148,6 +144,7 @@ import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.filter.LowpassFilter;
+import org.apache.commons.io.FileUtils;
 
 /**
  * This is the main jAER interface to the user. The main event loop "ViewLoop"
@@ -302,8 +299,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             Desktop.getDesktop().browse(new URI(url));
         } catch (Exception ex) {
-            ex.printStackTrace();
-            log.warning("Couldn't show " + url + "; caught " + ex);
+            log.log(Level.WARNING, "Couldn't show " + url + "; caught " + ex, ex);
         }
     }
 
@@ -486,7 +482,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aeSocket.close();
                 log.info("closed " + aeSocket);
             } catch (IOException e) {
-                e.printStackTrace();
+                log.log(Level.WARNING, "In trying close socket, caught: " + e.toString(), e);
             } finally {
                 openSocketInputStreamMenuItem.setText("Open remote server input stream socket...");
                 aeSocketClient = null;
@@ -501,7 +497,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aeSocketClient.close();
                 log.info("closed " + aeSocketClient);
             } catch (IOException e) {
-                e.printStackTrace();
+                log.log(Level.WARNING, "In trying close client socket, caught: " + e.toString(), e);
             } finally {
                 openSocketOutputStreamMenuItem.setText("Open remote server iutput stream socket...");
                 aeSocketClient = null;
@@ -772,8 +768,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         recentFiles.addFile(f);
                     }
                 } catch (Exception fnf) {
-                    fnf.printStackTrace();
-                    //                    exceptionOccurred(fnf,this);
+                    log.log(Level.WARNING, fnf.toString(), fnf);
                     recentFiles.removeFile(f);
                 }
             }
@@ -786,6 +781,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             addHelpURLItem(HELP_URL_JAER_HOME, "jAER project home", "jAER project home");
 //            addHelpURLItem(HELP_URL_JAVADOC_WEB, "jAER javadoc", "jAER online javadoc (probably out of date)");
 
+//            addHelpItem(new JSeparator());
+//            addHelpURLItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
+//            addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING), "AER protocol and cabling guide", "Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
+//            addHelpURLItem(pathToURL("/devices/pcbs/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
             addHelpItem(new JSeparator());
             addHelpURLItem(HELP_URL_HARDWARE_USER_GUIDE, "Hardware user guides", "Guides for inivation hardware");
             addHelpURLItem(HELP_USER_GUIDE_URL_FLASHY, "Flashy reflashing utility help", "Guide for reflashing firmware");
@@ -1026,7 +1025,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             byte[] buf = bos.toByteArray();
             prefs.putByteArray("chipClassNames", buf);
         } catch (IOException e) {
-            e.printStackTrace();
+            log.log(Level.SEVERE, e.toString(), e);
         } catch (IllegalArgumentException e2) {
             log.warning("too many classes in Preferences, " + chipClassNames.size() + " class names");
         }
@@ -1076,7 +1075,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 setCursor(Cursor.getDefaultCursor());
                             }
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            log.log(Level.SEVERE, e.toString(), e);
                         }
                     }
                 });
@@ -1291,13 +1290,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setTitleAccordingToState();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.log(Level.SEVERE, e.toString(), e);
         }
     }
 
     private void constructChip(Constructor<AEChip> constructor)
-            throws InvocationTargetException, InstantiationException, IllegalAccessException, IllegalArgumentException, ExceptionInInitializerError {
-        setChip(constructor.newInstance((java.lang.Object[]) null));
+            throws InvocationTargetException,
+            InstantiationException,
+            IllegalAccessException,
+            IllegalArgumentException,
+            ExceptionInInitializerError {
+        try {
+            setChip(constructor.newInstance((java.lang.Object[]) null));
+        } catch (Exception e) {
+            log.log(Level.SEVERE, "AEViewer.constructChip exception " + e.getMessage(), e); // log stack trace
+        }
     }
 
     void makeCanvas() {
@@ -1477,7 +1484,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     });
                 } catch (Exception e) {
                     log.warning(c + " threw Exception when trying to get HardwareInterfaceChooserFactory: " + e.toString());
-                    e.printStackTrace();
+                    log.log(Level.SEVERE, e.toString(), e);
                 }
 
             }
@@ -1659,7 +1666,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             } catch (Exception e) {
                 log.warning(e.getMessage() + " (Could some other process have the device open, e.g. flashy or caer?)");
-                e.printStackTrace();
+                log.log(Level.SEVERE, e.toString(), e);
                 if (aemon != null) {
                     log.info("closing Monitor" + aemon);
                     aemon.close();
@@ -1890,7 +1897,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             cause = e.getCause().toString();
                         }
                         log.warning("caught " + e.toString() + " caused by " + cause);
-                        e.printStackTrace();
+                        log.log(Level.SEVERE, e.toString(), e);
                     }
                     if (packet == null) {
                         log.warning("packet became null after rendering");
@@ -2081,7 +2088,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     } catch (ClassCastException cce) {
                         setPlayMode(PlayMode.WAITING);
                         log.warning("Interface changed out from under us: " + cce.toString());
-                        cce.printStackTrace();
+                        log.log(Level.SEVERE, cce.toString(), cce);
                         nullifyHardware();
                         return true;
                     }
@@ -2217,7 +2224,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     packet = filterChain.filterPacket(packet);
                 } catch (Exception e) {
                     log.warning("Caught " + e + ", disabling all filters. See following stack trace.");
-                    e.printStackTrace();
+                    log.log(Level.SEVERE, e.toString(), e);
+
                     log.log(Level.WARNING, "Filter exception", e);
                     for (EventFilter f : filterChain) {
                         f.setFilterEnabled(false);
@@ -2242,12 +2250,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         loggingOutputStream.writePacket(aeRawRecon);
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.log(Level.SEVERE, e.toString(), e);
+
                     loggingEnabled = false;
                     try {
                         loggingOutputStream.close();
                     } catch (IOException e2) {
-                        e2.printStackTrace();
+                        log.log(Level.SEVERE, "Exception closing file: " + e2.toString(), e2);
+
                     }
                 }
             }
@@ -2263,7 +2273,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }
                         });
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        log.log(Level.SEVERE, "Exception stopping logging: " + e.toString(), e);
+
                     }
                 }
             }
@@ -2290,12 +2301,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         s.writePacket(aeRawRecon);
                     }
                 } catch (IOException e) {
-                    //                            e.printStackTrace();
                     log.warning("sending packet " + aeRaw + " from " + this + " to " + s + " failed, closing socket");
                     try {
                         s.close();
                     } catch (IOException e2) {
-                        e2.printStackTrace();
+                        log.log(Level.SEVERE, e2.toString(), e2);
+
                     } finally {
                         getAeServerSocket().setSocket(null);
                     }
@@ -2349,7 +2360,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         aeMulticastOutput.writePacket(aeRawRecon);
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.log(Level.SEVERE, e.toString(), e);
+
                 }
             }
 
@@ -2365,7 +2377,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         unicastOutput.writePacket(aeRawRecon);
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.log(Level.SEVERE, e.toString(), e);
+
                 }
             }
 
@@ -4001,7 +4014,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         ((AEMonitorSequencerInterface) aemonseq).stopMonitoringSequencing();
                     }
                 } catch (HardwareInterfaceException e) {
-                    e.printStackTrace();
+                    log.log(Level.SEVERE, e.toString(), e);
+
                 }
 
                 JFileChooser fileChooser = new JFileChooser();
@@ -4108,7 +4122,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             playerControls.getPlayerSlider().setEnabled(false);
             //            System.gc(); // garbage collect...
         } catch (Exception e) {
-            e.printStackTrace();
+            log.log(Level.SEVERE, e.toString(), e);
         }
     }
 
@@ -4122,7 +4136,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
 
         } catch (HardwareInterfaceException e) {
-            e.printStackTrace();
+            log.log(Level.SEVERE, e.toString(), e);
         }
         sequenceMenuItem.setActionCommand("start");
         sequenceMenuItem.setText("Sequence data file...");
@@ -4157,7 +4171,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 try {
                     JOptionPane.showMessageDialog(this, fx + " missed approximately " + fx.getNumMissedEvents() + " events");
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    log.log(Level.SEVERE, e.toString(), e);
                     aemon.close();
                 }
             }
@@ -4770,12 +4784,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         } catch (FileNotFoundException e) {
             loggingFile = null;
-            log.warning("In trying open a logging output file, caught: " + e.toString());
-            e.printStackTrace();
+            log.log(Level.WARNING, "In trying open a logging output file, caught: " + e.toString(), e);
+
         } catch (IOException ioe) {
             loggingFile = null;
-            log.warning("In trying open a logging output file, caught: " + ioe.toString());
-            ioe.printStackTrace();
+            log.log(Level.WARNING, "In trying open a logging output file, caught: " + ioe.toString(), ioe);
         }
 
         return loggingFile;
@@ -4984,15 +4997,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
 
             } catch (IOException e) {
-                e.printStackTrace();
+                log.log(Level.WARNING, "In trying save a logging output file, caught: " + e.toString(), e);
             }
 
             if ((retValue == JFileChooser.APPROVE_OPTION) && isLoggingPlaybackImmediatelyEnabled()) {
                 try {
                     getAePlayer().startPlayback(loggingFile); // TODO fix it with progress monitor later
                 } catch (IOException e) {
-                    log.warning(e.toString());
-                    e.printStackTrace();
+                    log.log(Level.WARNING, "In trying play a file, caught: " + e.toString(), e);
                 } catch (InterruptedException ex) {
                     log.info("playback interrupted");
                 }
@@ -5053,7 +5065,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     fx.setOperationMode(0);
                     JOptionPane.showMessageDialog(this, "Timestamp tick set to " + fx.getOperationMode() + " us.");
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    log.log(Level.WARNING, "In trying set sequncer operation mode: " + e.toString(), e);
                     aemon.close();
                 }
 
@@ -5067,7 +5079,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     fx.setOperationMode(1);
                     JOptionPane.showMessageDialog(this, "Timestamp tick set to " + fx.getOperationMode() + " us. Note that jAER will treat the ticks as 1us anyway.");
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    log.log(Level.WARNING, "In trying sequence, caught: " + e.toString(), e);
                     aemon.close();
                 }
             }
@@ -5080,7 +5092,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     fx.enableMissedEvents(enableMissedEventsCheckBox.getState());
                     // JOptionPane.showMessageDialog(this, "Timestamp tick set to " + fx.getOperationMode() + " us. Note that jAER will treat the ticks as 1us anyway.");
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    log.log(Level.WARNING, "In trying enable missed events count: " + e.toString(), e);
                     aemon.close();
                 }
 
