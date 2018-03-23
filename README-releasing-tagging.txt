@@ -11,4 +11,4 @@ To https://github.com/SensorsINI/jaer.git
  * [new tag]             20180115 -> 20180115
 
 After some minutes, the new release will appear on https://github.com/SensorsINI/jaer/releases 
-The release notes can then be edited on github web page
+The release notes can then be edited on github web page, if you are logged in and have commit rights.
