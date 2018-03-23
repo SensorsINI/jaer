@@ -1292,10 +1292,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             //            System.out.println("AEViewer.constructChip(): constructing chip with constructor "+constructor);
             setChip(constructor.newInstance((java.lang.Object[]) null));
-
         } catch (Exception e) {
-            log.warning("AEViewer.constructChip exception " + e.getMessage());
-            e.printStackTrace();
+            log.log(Level.SEVERE, "AEViewer.constructChip exception " + e.getMessage(), e); // log stack trace
         }
     }
 
