@@ -20,7 +20,7 @@ To build yourself, clone the repo and run
 
 Please use our GitHub bug tracker to report issues and bugs, or our Google Groups mailing list for discussions and announcements.
 
-USER GUIDE: https://inivation.com/support/software/jaer/
+USER GUIDE: [jAER User Guide gdoc]( https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing), or embedded as https://inivation.com/support/software/jaer/
 
 BUG TRACKER: https://github.com/SensorsINI/jaer/issues/
 
