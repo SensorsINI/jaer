@@ -48,6 +48,8 @@ import org.apache.commons.math3.geometry.euclidean.threed.Rotation;
 import org.jblas.DoubleMatrix;
 import org.jblas.MatrixFunctions;
 import org.jblas.Solve;
+import org.opencv.core.Core;
+import nu.pattern.OpenCV;
 
 
 
@@ -66,7 +68,16 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
     private DoubleMatrix current_rotation = DoubleMatrix.eye(3);
     private DoubleMatrix last_position = DoubleMatrix.zeros(3, 1);
     private DoubleMatrix current_position = DoubleMatrix.zeros(3, 1);
-
+        
+    static {        
+        try {
+            OpenCV.loadShared();   // search opencv native library with nu.pattern package.
+            System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+        } catch (UnsatisfiedLinkError e) {
+            System.err.println("Native code library failed to load.\n" + e);
+        }
+    }
+    
     public RosbagVOGTReader(AEChip chip) {
         super(chip);
         ArrayList<String> topics = new ArrayList();
