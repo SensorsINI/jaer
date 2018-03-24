@@ -109,6 +109,12 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
             // Convert it to a matrix type that could use log function from jblas library.
             last_rotation = current_rotation.dup();
             current_rotation = new DoubleMatrix(rota.getMatrix());
+             /*
+                Jblas and apache use a different matrix order, the transpose is required here.
+                The reason why we don't use jblas only for matrix calculation is jblas doesn't
+                support Quaternion            
+            */
+            current_rotation = current_rotation.transpose(); 
             log.info("\nPose: position: " + current_position + "\n" + "Pose: orientation: " + current_rotation 
                     + "\n" + "Pose: quaternion: " + quat);
            
@@ -139,7 +145,7 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
             }
             DoubleMatrix v = jaccobLieAlg.mmul(trans);
             DoubleMatrix se3 = new DoubleMatrix(new double[]{v.get(0), v.get(1), v.get(2),ww.get(0), ww.get(1),ww.get(2)});            
-            log.info("The se3 vector is: " + se3);
+            log.info("The se3 vector is: " + se3 + "\n");
             
             /* 
             Following code is just for testing the matrix exp function in jblas.                        
@@ -151,12 +157,13 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
             {0.273330, 0, 2.100418}, 
             {2.16779, -2.100418, 0}}
 
-            */
+
             DoubleMatrix lie_group_test = MatrixFunctions.expm(new DoubleMatrix(new double[][]{{0, -0.273330, -2.167796}, 
                                                                                             {0.273330, 0, 2.100418}, 
                                                                                             {2.16779, -2.100418, 0}}
             ));
             log.info("The skew symmetric matrix is:" + lie_group_test);
+            */
         } catch (UninitializedFieldException ex) {
             Logger.getLogger(SlasherRosbagDisplay.class.getName()).log(Level.SEVERE, null, ex);
         }    
