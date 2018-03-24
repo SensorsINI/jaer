@@ -46,8 +46,8 @@ public class ListClasses {
         // This also helps eliminating 'UnsatisfiedLinkError' on some systems.
         "com/googlecode", "org/jfree", "org/jblas", "flanagan", "org/apache",
         "org/jdesktop", "de/thesycon", "com/kitfox", "org/uncommons",
-        "de/ailis", "jspikestack", "org/netbeans",
-        "com/kitfox", "org/bytedeco", "com/phidgets", "org/usb4java", "org/openni",
+        "de/ailis", "org/netbeans",
+        "com/kitfox", "org/bytedeco", "org/usb4java", "org/openni",
         "jogamp", "org/jogamp", "com/jogamp", "gluegen", "newt",
         "lib", "org/tensorflow", "org/ros", "com/fasterxml", "ch/qos", "groovy/lang", "com/google", "groovy", "ch/systemsx"
     };
