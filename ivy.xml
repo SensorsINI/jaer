@@ -79,6 +79,7 @@ MA 02110-1301  USA
         
         <dependency org="javax.mail" name="javax.mail-api" rev="1.6.0" />
         
+        <!--jblas is a matrix library for Java which uses existing high performance BLAS and LAPACK libraries like ATLAS -->
         <dependency org="org.jblas" name="jblas" rev="1.2.4" />
         
         <dependency org="org.scala-saddle" name="jhdf5" rev="2.9" />
@@ -135,7 +136,6 @@ MA 02110-1301  USA
         <!--mathematics, linear algebra and optimisation java library-->
         <dependency org="org.ojalgo" name="ojalgo" rev="44.0.0" />      
         
-        <!--jblas is a matrix library for Java which uses existing high performance BLAS and LAPACK libraries like ATLAS -->
         <dependency org="org.jblas" name="jblas" rev="1.2.4" />        
   
     </dependencies>
