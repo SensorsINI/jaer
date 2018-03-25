@@ -28,6 +28,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import java.sql.Timestamp;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -68,7 +69,7 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
     private DoubleMatrix current_rotation = DoubleMatrix.eye(3);
     private DoubleMatrix last_position = DoubleMatrix.zeros(3, 1);
     private DoubleMatrix current_position = DoubleMatrix.zeros(3, 1);
-        
+    
     static {        
         try {
             OpenCV.loadShared();   // search opencv native library with nu.pattern package.
@@ -77,17 +78,31 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
             System.err.println("Native code library failed to load.\n" + e);
         }
     }
-    
+    private ArrayList<Se3Info> se3InfoList;
+//    private long firstAbsoluteTs;
+//    private boolean firstTimestampWasRead;
+
     public RosbagVOGTReader(AEChip chip) {
         super(chip);
         ArrayList<String> topics = new ArrayList();
         topics.add("/davis/left/pose");
         addTopics(topics);
+        se3InfoList = new ArrayList<Se3Info>();
     }
 
     @Override
     protected void parseMessage(RosbagFileInputStream.MessageWithIndex message) {
         String pkg = message.messageType.getPackage();
+
+//        if (chip.getAeInputStream() instanceof RosbagFileInputStream) {
+//            if (!firstTimestampWasRead) {
+//                firstAbsoluteTs = ((RosbagFileInputStream)(chip.getAeInputStream())).getFirstTimestampUsAbsolute();
+//                firstTimestampWasRead = true;
+//            }
+//        }
+        
+        Se3Info se3Info = new Se3Info();
+
         try {
             // Extract position information.
             double x_pos = message.messageType.<MessageType>getField("pose").<MessageType>getField("position")
@@ -106,9 +121,11 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
             double w_quat = message.messageType.<MessageType>getField("pose").<MessageType>getField("orientation")
                     .<Float64Type>getField("w").getValue();   
             
-            long seq_num = message.messageType.<MessageType>getField("header").<UInt32Type>getField("seq").getValue();
-            Timestamp ts = message.messageType.<MessageType>getField("header").<TimeType>getField("stamp").getValue();
-            log.info("\nPose: seq: " + seq_num + "\n" + "Pose: timestamp: " + ts + "\t" + (ts.getTime() + ts.getNanos()/1.e6 - (int)(ts.getNanos()/1.e6)));
+            se3Info.pose_seq_num = message.messageType.<MessageType>getField("header").<UInt32Type>getField("seq").getValue();
+            se3Info.se3_ts = message.messageType.<MessageType>getField("header").<TimeType>getField("stamp").getValue();
+//            se3Info.se3_ts_relative_us = se3Info.se3_ts.getTime()*1000+(long)(se3Info.se3_ts.getNanos()/1000) - firstAbsoluteTs;
+            log.info("\nPose: seq: " + se3Info.pose_seq_num + "\n" + "Pose: timestamp: " + se3Info.se3_ts + "\t" + 
+                    (se3Info.se3_ts.getTime() + se3Info.se3_ts.getNanos()/1.e6 - (int)(se3Info.se3_ts.getNanos()/1.e6)));
                 
             last_position = current_position;
             current_position = new DoubleMatrix(new double[]{x_pos, y_pos, z_pos});
@@ -155,9 +172,10 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
                 jaccobLieAlg = DoubleMatrix.eye(3).sub(W.mul(0.5)).add(W.mmul(W).mul(1/(theta*theta) * (1 - (0.5*A/B))));
             }
             DoubleMatrix v = jaccobLieAlg.mmul(trans);
-            DoubleMatrix se3 = new DoubleMatrix(new double[]{v.get(0), v.get(1), v.get(2),ww.get(0), ww.get(1),ww.get(2)});            
-            log.info("The se3 vector is: " + se3 + "\n");
+            se3Info.se3_data = new DoubleMatrix(new double[]{v.get(0), v.get(1), v.get(2),ww.get(0), ww.get(1),ww.get(2)});            
+            log.info("The se3 vector is: " + se3Info.se3_data + "\n");
             
+            se3InfoList.add(se3Info);
             /* 
             Following code is just for testing the matrix exp function in jblas.                        
             Test rotation vector is:
@@ -180,8 +198,26 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
         }    
     }
 
+    public ArrayList<Se3Info> getSe3InfoList() {
+        return se3InfoList;
+    }
+    
     @Override
     public void annotate(GLAutoDrawable drawable) {
     }    
+    
+    public class Se3Info {
+        public long pose_seq_num;
+        public Timestamp se3_ts;
+        public DoubleMatrix se3_data;
+        public long se3_ts_relative_us;
+
+        public Se3Info() {
+            this.se3_ts = new Timestamp(0);
+            this.se3_data = new DoubleMatrix();
+            this.pose_seq_num = 0;
+        }
+        
+    }
     
 }
