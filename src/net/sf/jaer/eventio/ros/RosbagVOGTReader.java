@@ -99,6 +99,9 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
         topics.add("/davis/left/pose");
         topics.add("/davis/left/depth_image_raw");
         addTopics(topics);
+        lastPose_ts = new Timestamp(0);
+        currentPose_ts = new Timestamp(0);
+        currentDepth_ts = new Timestamp(0);
 //        se3InfoList = new ArrayList<Se3Info>();
 //        depthList = new ArrayList<float[]>();
 //        currentSe3Info = new Se3Info();
