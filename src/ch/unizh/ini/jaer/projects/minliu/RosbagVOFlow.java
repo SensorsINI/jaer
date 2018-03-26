@@ -53,7 +53,7 @@ import org.jblas.DoubleMatrix;
  *
  * @author minliu
  */
-@Description("Optical Flow methods based on Visual Odometry")
+@Description("Optical Flow method based on Visual Odometry")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class RosbagVOFlow extends AbstractMotionFlowIMU {
     RosbagVOGTReader VOGTReader = null;
@@ -142,6 +142,7 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
             
             Timestamp current_depth_ts = VOGTReader.getCurrentDepth_ts();            
             Timestamp current_pose_ts = VOGTReader.getCurrentPose_ts();
+            Timestamp last_pose_ts = VOGTReader.getLastPose_ts();
             
             double fx = 226.3802;
             double fy = 226.1500;
@@ -160,8 +161,10 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
                     {0, fy/Z, -fy*Y/Z,  -fy - fx*Y*Y/(Z*Z), fy*X*Y/(Z*Z), fy*X/Z}});
                 
                 offsetPixel = pose2pixelJaccobi.mmul(current_pose_se3);
-                vx = (float) offsetPixel.get(0);
-                vy = (float) offsetPixel.get(1);
+                double delta_ts = ((current_pose_ts.getTime() - last_pose_ts.getTime())*1e3 
+                        + (current_pose_ts.getNanos() - last_pose_ts.getNanos())/1e3)/1e6;
+                vx = (float) offsetPixel.get(0)/(float)delta_ts;
+                vy = (float) offsetPixel.get(1)/(float)delta_ts;
                 v = (float) Math.sqrt((vx * vx) + (vy * vy));
                 processGoodEvent();
 //                log.info("Current pose relative timestamp is:  " + (current_pose_ts.getTime()*1000+(long)(current_pose_ts.getNanos()/1000) 
@@ -170,9 +173,7 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
 //                log.info("Current depth relative timestamp is: " + (current_depth_ts.getTime()*1000+(long)(current_depth_ts.getNanos()/1000) 
 //                        - chip.getAeInputStream().getAbsoluteStartingTimeMs() * 1000));                
                 
-            }
-
-            
+            }            
         }
 
         return in;

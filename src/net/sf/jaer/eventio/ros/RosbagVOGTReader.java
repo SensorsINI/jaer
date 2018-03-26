@@ -88,6 +88,7 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
     private Timestamp currentPose_ts;
     private DoubleMatrix currentPoseSe3;
     private Timestamp currentDepth_ts;
+    private Timestamp lastPose_ts;
     
 //    private long firstAbsoluteTs;
 //    private boolean firstTimestampWasRead;
@@ -153,6 +154,7 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
                         .<Float64Type>getField("w").getValue();   
 
                 currentPose_seq_num = message.messageType.<MessageType>getField("header").<UInt32Type>getField("seq").getValue();
+                lastPose_ts = currentPose_ts;
                 currentPose_ts = message.messageType.<MessageType>getField("header").<TimeType>getField("stamp").getValue();
     //            se3Info.se3_ts_relative_us = se3Info.se3_ts.getTime()*1000+(long)(se3Info.se3_ts.getNanos()/1000) - firstAbsoluteTs;
 //                log.info("\nPose: seq: " + currentPose_seq_num + "\n" + "Pose: timestamp: " + currentPose_ts + "\t" + 
@@ -180,7 +182,7 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
                 DoubleMatrix R = current_rotation.mmul(last_rotation.transpose());
                 DoubleMatrix trans = current_position.sub(R.mmul(last_position));          
 
-                currentPoseSe3 = SE3Tose3(R, trans);            
+                currentPoseSe3 = SE3Tose3(R, trans);   
 //                log.info("The se3 vector is: " + currentSe3Info.se3_data + "\n");
 
 //                se3InfoList.add(currentSe3Info);
@@ -243,6 +245,10 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
         this.currentPoseSe3 = currentPoseSe3;
     }
 
+    public Timestamp getLastPose_ts() {
+        return lastPose_ts;
+    }    
+    
     public Timestamp getCurrentDepth_ts() {
         return currentDepth_ts;
     }   
