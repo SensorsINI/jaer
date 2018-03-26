@@ -22,6 +22,7 @@ import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU;
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.beans.PropertyChangeEvent;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -176,6 +177,13 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
 
         return in;
     }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if(evt.getPropertyName().equals(AEInputStream.EVENT_REWOUND)) {
+            resetFilter();
+        }
+    }
     
     private void drawSlices(float[] depth) {
 //        log.info("drawing slices");
@@ -229,6 +237,8 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
     synchronized public void setShowDepthmap(boolean showDepthmap) {
         boolean old = this.showDepthmap;
         this.showDepthmap = showDepthmap;
-        getSupport().firePropertyChange("showSlices", old, this.showDepthmap);
+        getSupport().firePropertyChange("showDepthmap", old, this.showDepthmap);
+        putBoolean("showDepthmap", showDepthmap);
+
     }
 }
