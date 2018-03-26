@@ -81,8 +81,13 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
             System.err.println("Native code library failed to load.\n" + e);
         }
     }
-    private ArrayList<Se3Info> se3InfoList;
-    private ArrayList< float[] > depthList;
+//    private ArrayList<Se3Info> se3InfoList;
+//    private ArrayList< float[] > depthList;
+    private float[] currentDepth_image;
+    private long currentPose_seq_num;
+    private Timestamp currentPose_ts;
+    private DoubleMatrix currentPoseSe3;
+    private Timestamp currentDepth_ts;
     
 //    private long firstAbsoluteTs;
 //    private boolean firstTimestampWasRead;
@@ -93,8 +98,9 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
         topics.add("/davis/left/pose");
         topics.add("/davis/left/depth_image_raw");
         addTopics(topics);
-        se3InfoList = new ArrayList<Se3Info>();
-        depthList = new ArrayList<float[]>();
+//        se3InfoList = new ArrayList<Se3Info>();
+//        depthList = new ArrayList<float[]>();
+//        currentSe3Info = new Se3Info();
     }
 
     @Override
@@ -117,12 +123,16 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
             }
             message.messageType.<ArrayType>getField("data").setOrder(byteOrder);
             
-            float[] depth_image = message.messageType.<ArrayType>getField("data").getAsFloats();
-            depthList.add(depth_image);
+            try {
+                currentDepth_ts = message.messageType.<MessageType>getField("header").<TimeType>getField("stamp").getValue();
+            } catch (UninitializedFieldException ex) {
+                Logger.getLogger(RosbagVOGTReader.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            currentDepth_image = message.messageType.<ArrayType>getField("data").getAsFloats();
+//            depthList.add(current_depth_image);
         }
         
         if (pkg.equalsIgnoreCase("geometry_msgs")) {
-            Se3Info se3Info = new Se3Info();
 
             try {
                 // Extract position information.
@@ -142,11 +152,11 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
                 double w_quat = message.messageType.<MessageType>getField("pose").<MessageType>getField("orientation")
                         .<Float64Type>getField("w").getValue();   
 
-                se3Info.pose_seq_num = message.messageType.<MessageType>getField("header").<UInt32Type>getField("seq").getValue();
-                se3Info.se3_ts = message.messageType.<MessageType>getField("header").<TimeType>getField("stamp").getValue();
+                currentPose_seq_num = message.messageType.<MessageType>getField("header").<UInt32Type>getField("seq").getValue();
+                currentPose_ts = message.messageType.<MessageType>getField("header").<TimeType>getField("stamp").getValue();
     //            se3Info.se3_ts_relative_us = se3Info.se3_ts.getTime()*1000+(long)(se3Info.se3_ts.getNanos()/1000) - firstAbsoluteTs;
-                log.info("\nPose: seq: " + se3Info.pose_seq_num + "\n" + "Pose: timestamp: " + se3Info.se3_ts + "\t" + 
-                        (se3Info.se3_ts.getTime() + se3Info.se3_ts.getNanos()/1.e6 - (int)(se3Info.se3_ts.getNanos()/1.e6)));
+//                log.info("\nPose: seq: " + currentPose_seq_num + "\n" + "Pose: timestamp: " + currentPose_ts + "\t" + 
+//                        (currentPose_ts.getTime() + currentPose_ts.getNanos()/1.e6 - (int)(currentPose_ts.getNanos()/1.e6)));
 
                 last_position = current_position;
                 current_position = new DoubleMatrix(new double[]{x_pos, y_pos, z_pos});
@@ -164,16 +174,16 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
                     support Quaternion            
                 */
                 current_rotation = current_rotation.transpose(); 
-                log.info("\nPose: position: " + current_position + "\n" + "Pose: orientation: " + current_rotation 
-                        + "\n" + "Pose: quaternion: " + quat);
+//                log.info("\nPose: position: " + current_position + "\n" + "Pose: orientation: " + current_rotation 
+//                        + "\n" + "Pose: quaternion: " + quat);
 
                 DoubleMatrix R = current_rotation.mmul(last_rotation.transpose());
                 DoubleMatrix trans = current_position.sub(R.mmul(last_position));          
 
-                se3Info.se3_data = SE3Tose3(R, trans);            
-                log.info("The se3 vector is: " + se3Info.se3_data + "\n");
+                currentPoseSe3 = SE3Tose3(R, trans);            
+//                log.info("The se3 vector is: " + currentSe3Info.se3_data + "\n");
 
-                se3InfoList.add(se3Info);
+//                se3InfoList.add(currentSe3Info);
                 /* 
                 Following code is just for testing the matrix exp function in jblas.                        
                 Test rotation vector is:
@@ -197,14 +207,50 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
         }   
     }
 
-    public ArrayList<Se3Info> getSe3InfoList() {
-        return se3InfoList;
+//    public ArrayList<Se3Info> getSe3InfoList() {
+//        return se3InfoList;
+//    }
+//
+//    public ArrayList<float[]> getDepthList() {
+//        return depthList;
+//    }
+
+    public float[] getCurrent_depth_image() {
+        return currentDepth_image;
+    }   
+
+    public long getCurrentPose_seq_num() {
+        return currentPose_seq_num;
     }
 
-    public ArrayList<float[]> getDepthList() {
-        return depthList;
+    public void setCurrentPose_seq_num(long currentPose_seq_num) {
+        this.currentPose_seq_num = currentPose_seq_num;
     }
+
+    public Timestamp getCurrentPose_ts() {
+        return currentPose_ts;
+    }
+
+    public void setCurrentPose_ts(Timestamp currentPose_ts) {
+        this.currentPose_ts = currentPose_ts;
+    }
+
+    public DoubleMatrix getCurrentPoseSe3() {
+        return currentPoseSe3;
+    }
+
+    public void setCurrentPoseSe3(DoubleMatrix currentPoseSe3) {
+        this.currentPoseSe3 = currentPoseSe3;
+    }
+
+    public Timestamp getCurrentDepth_ts() {
+        return currentDepth_ts;
+    }   
     
+    
+//    public Se3Info getCurrentSe3Info() {
+//        return currentSe3Info;
+//    }    
     
     @Override
     public void annotate(GLAutoDrawable drawable) {
@@ -237,18 +283,18 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
         return new DoubleMatrix(new double[]{v.get(0), v.get(1), v.get(2),ww.get(0), ww.get(1),ww.get(2)});
     }
     
-    public class Se3Info {
-        public long pose_seq_num;
-        public Timestamp se3_ts;
-        public DoubleMatrix se3_data;
-        public long se3_ts_relative_us;
-
-        public Se3Info() {
-            this.se3_ts = new Timestamp(0);
-            this.se3_data = new DoubleMatrix();
-            this.pose_seq_num = 0;
-        }
-        
-    }
+//    public class Se3Info {
+//        public long pose_seq_num;
+//        public Timestamp se3_ts;
+//        public DoubleMatrix se3_data;
+//        public long se3_ts_relative_us;
+//
+//        public Se3Info() {
+//            this.se3_ts = new Timestamp(0);
+//            this.se3_data = DoubleMatrix.zeros(1, 6);
+//            this.pose_seq_num = 0;
+//        }
+//        
+//    }
     
 }
