@@ -64,7 +64,7 @@ import nu.pattern.OpenCV;
  * 
  * @author minliu
  */
-@Description("Converts MSVEC VO GT to OF GT.")
+@Description("Extract pose message in se3 representation and parse depth message.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnnotater {
 
