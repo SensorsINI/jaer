@@ -19,12 +19,15 @@
 package net.sf.jaer.eventio.ros;
 
 import com.github.swrirobotics.bags.reader.exceptions.UninitializedFieldException;
+import com.github.swrirobotics.bags.reader.messages.serialization.ArrayType;
 import com.github.swrirobotics.bags.reader.messages.serialization.Float64Type;
 import com.github.swrirobotics.bags.reader.messages.serialization.MessageType;
 import com.github.swrirobotics.bags.reader.messages.serialization.TimeType;
 import com.github.swrirobotics.bags.reader.messages.serialization.UInt32Type;
+import com.github.swrirobotics.bags.reader.messages.serialization.UInt8Type;
 
 import com.jogamp.opengl.GLAutoDrawable;
+import java.nio.ByteOrder;
 import java.sql.Timestamp;
 
 import java.util.ArrayList;
@@ -79,6 +82,8 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
         }
     }
     private ArrayList<Se3Info> se3InfoList;
+    private ArrayList< float[] > depthList;
+    
 //    private long firstAbsoluteTs;
 //    private boolean firstTimestampWasRead;
 
@@ -86,8 +91,10 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
         super(chip);
         ArrayList<String> topics = new ArrayList();
         topics.add("/davis/left/pose");
+        topics.add("/davis/left/depth_image_raw");
         addTopics(topics);
         se3InfoList = new ArrayList<Se3Info>();
+        depthList = new ArrayList<float[]>();
     }
 
     @Override
@@ -101,110 +108,134 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
 //            }
 //        }
         
-        Se3Info se3Info = new Se3Info();
-
-        try {
-            // Extract position information.
-            double x_pos = message.messageType.<MessageType>getField("pose").<MessageType>getField("position")
-                    .<Float64Type>getField("x").getValue();
-            double y_pos = message.messageType.<MessageType>getField("pose").<MessageType>getField("position")
-                    .<Float64Type>getField("y").getValue();
-            double z_pos = message.messageType.<MessageType>getField("pose").<MessageType>getField("position")
-                    .<Float64Type>getField("z").getValue();  
-            // Extract orientation information
-            double x_quat = message.messageType.<MessageType>getField("pose").<MessageType>getField("orientation")
-                    .<Float64Type>getField("x").getValue();
-            double y_quat = message.messageType.<MessageType>getField("pose").<MessageType>getField("orientation")
-                    .<Float64Type>getField("y").getValue();
-            double z_quat = message.messageType.<MessageType>getField("pose").<MessageType>getField("orientation")
-                    .<Float64Type>getField("z").getValue();  
-            double w_quat = message.messageType.<MessageType>getField("pose").<MessageType>getField("orientation")
-                    .<Float64Type>getField("w").getValue();   
-            
-            se3Info.pose_seq_num = message.messageType.<MessageType>getField("header").<UInt32Type>getField("seq").getValue();
-            se3Info.se3_ts = message.messageType.<MessageType>getField("header").<TimeType>getField("stamp").getValue();
-//            se3Info.se3_ts_relative_us = se3Info.se3_ts.getTime()*1000+(long)(se3Info.se3_ts.getNanos()/1000) - firstAbsoluteTs;
-            log.info("\nPose: seq: " + se3Info.pose_seq_num + "\n" + "Pose: timestamp: " + se3Info.se3_ts + "\t" + 
-                    (se3Info.se3_ts.getTime() + se3Info.se3_ts.getNanos()/1.e6 - (int)(se3Info.se3_ts.getNanos()/1.e6)));
-                
-            last_position = current_position;
-            current_position = new DoubleMatrix(new double[]{x_pos, y_pos, z_pos});
-            
-            // Construct rotation matrix using Quaternion
-            Rotation rota = new Rotation(w_quat, x_quat, y_quat, z_quat, false);
-            Quaternion quat = new Quaternion(w_quat, x_quat, y_quat, z_quat);
-            
-            // Convert it to a matrix type that could use log function from jblas library.
-            last_rotation = current_rotation.dup();
-            current_rotation = new DoubleMatrix(rota.getMatrix());
-             /*
-                Jblas and apache use a different matrix order, the transpose is required here.
-                The reason why we don't use jblas only for matrix calculation is jblas doesn't
-                support Quaternion            
-            */
-            current_rotation = current_rotation.transpose(); 
-            log.info("\nPose: position: " + current_position + "\n" + "Pose: orientation: " + current_rotation 
-                    + "\n" + "Pose: quaternion: " + quat);
-           
-            DoubleMatrix R = current_rotation.mmul(last_rotation.transpose());
-            DoubleMatrix trans = current_position.sub(R.mmul(last_position));
-            
-            // Calculate rotation's lie algebra w.
-            Mat src = new Mat(3, 3, CvType.CV_64FC1);            
-            src.put(0, 0, R.data);
-            Mat w = new Mat();
-            Mat jocobian = new Mat();
-            Calib3d.Rodrigues(src, w, jocobian);
-//            log.info("The Rodrigues vector is: " + w.dump());
-            
-            double[] w_data = new double[3];
-            w.get(0, 0, w_data);
-            DoubleMatrix ww = new  DoubleMatrix(1, 3, w_data);
-            double theta = ww.norm2();
-            DoubleMatrix W = new DoubleMatrix(new double[][]{{0, -ww.get(2), ww.get(1)}, 
-                                                             {ww.get(2), 0, -ww.get(0)}, 
-                                                             {-ww.get(1), ww.get(0), 0}});
-
-            DoubleMatrix jaccobLieAlg = DoubleMatrix.eye(3);   // Translational part of lie algebra
-            if (theta != 0) {
-                double A = Math.sin(theta)/theta;
-                double B = (1 - Math.cos(theta))/(theta * theta);
-                jaccobLieAlg = DoubleMatrix.eye(3).sub(W.mul(0.5)).add(W.mmul(W).mul(1/(theta*theta) * (1 - (0.5*A/B))));
+        if (pkg.equalsIgnoreCase("sensor_msgs")) {
+            ByteOrder byteOrder = ByteOrder.LITTLE_ENDIAN;
+            try {
+                byteOrder = (message.messageType.<UInt8Type>getField("is_bigendian").getValue() == 0) ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
+            } catch (UninitializedFieldException ex) {
+                Logger.getLogger(RosbagVOGTReader.class.getName()).log(Level.SEVERE, null, ex);
             }
-            DoubleMatrix v = jaccobLieAlg.mmul(trans);
-            se3Info.se3_data = new DoubleMatrix(new double[]{v.get(0), v.get(1), v.get(2),ww.get(0), ww.get(1),ww.get(2)});            
-            log.info("The se3 vector is: " + se3Info.se3_data + "\n");
+            message.messageType.<ArrayType>getField("data").setOrder(byteOrder);
             
-            se3InfoList.add(se3Info);
-            /* 
-            Following code is just for testing the matrix exp function in jblas.                        
-            Test rotation vector is:
-            {-2.100418,-2.167796,0.273330}
-            
-            The result rotation matrix should be:
-            {0, -0.273330, -2.167796}, 
-            {0.273330, 0, 2.100418}, 
-            {2.16779, -2.100418, 0}}
+            float[] depth_image = message.messageType.<ArrayType>getField("data").getAsFloats();
+            depthList.add(depth_image);
+        }
+        
+        if (pkg.equalsIgnoreCase("geometry_msgs")) {
+            Se3Info se3Info = new Se3Info();
+
+            try {
+                // Extract position information.
+                double x_pos = message.messageType.<MessageType>getField("pose").<MessageType>getField("position")
+                        .<Float64Type>getField("x").getValue();
+                double y_pos = message.messageType.<MessageType>getField("pose").<MessageType>getField("position")
+                        .<Float64Type>getField("y").getValue();
+                double z_pos = message.messageType.<MessageType>getField("pose").<MessageType>getField("position")
+                        .<Float64Type>getField("z").getValue();  
+                // Extract orientation information
+                double x_quat = message.messageType.<MessageType>getField("pose").<MessageType>getField("orientation")
+                        .<Float64Type>getField("x").getValue();
+                double y_quat = message.messageType.<MessageType>getField("pose").<MessageType>getField("orientation")
+                        .<Float64Type>getField("y").getValue();
+                double z_quat = message.messageType.<MessageType>getField("pose").<MessageType>getField("orientation")
+                        .<Float64Type>getField("z").getValue();  
+                double w_quat = message.messageType.<MessageType>getField("pose").<MessageType>getField("orientation")
+                        .<Float64Type>getField("w").getValue();   
+
+                se3Info.pose_seq_num = message.messageType.<MessageType>getField("header").<UInt32Type>getField("seq").getValue();
+                se3Info.se3_ts = message.messageType.<MessageType>getField("header").<TimeType>getField("stamp").getValue();
+    //            se3Info.se3_ts_relative_us = se3Info.se3_ts.getTime()*1000+(long)(se3Info.se3_ts.getNanos()/1000) - firstAbsoluteTs;
+                log.info("\nPose: seq: " + se3Info.pose_seq_num + "\n" + "Pose: timestamp: " + se3Info.se3_ts + "\t" + 
+                        (se3Info.se3_ts.getTime() + se3Info.se3_ts.getNanos()/1.e6 - (int)(se3Info.se3_ts.getNanos()/1.e6)));
+
+                last_position = current_position;
+                current_position = new DoubleMatrix(new double[]{x_pos, y_pos, z_pos});
+
+                // Construct rotation matrix using Quaternion
+                Rotation rota = new Rotation(w_quat, x_quat, y_quat, z_quat, false);
+                Quaternion quat = new Quaternion(w_quat, x_quat, y_quat, z_quat);
+
+                // Convert it to a matrix type that could use log function from jblas library.
+                last_rotation = current_rotation.dup();
+                current_rotation = new DoubleMatrix(rota.getMatrix());
+                 /*
+                    Jblas and apache use a different matrix order, the transpose is required here.
+                    The reason why we don't use jblas only for matrix calculation is jblas doesn't
+                    support Quaternion            
+                */
+                current_rotation = current_rotation.transpose(); 
+                log.info("\nPose: position: " + current_position + "\n" + "Pose: orientation: " + current_rotation 
+                        + "\n" + "Pose: quaternion: " + quat);
+
+                DoubleMatrix R = current_rotation.mmul(last_rotation.transpose());
+                DoubleMatrix trans = current_position.sub(R.mmul(last_position));          
+
+                se3Info.se3_data = SE3Tose3(R, trans);            
+                log.info("The se3 vector is: " + se3Info.se3_data + "\n");
+
+                se3InfoList.add(se3Info);
+                /* 
+                Following code is just for testing the matrix exp function in jblas.                        
+                Test rotation vector is:
+                {-2.100418,-2.167796,0.273330}
+
+                The result rotation matrix should be:
+                {0, -0.273330, -2.167796}, 
+                {0.273330, 0, 2.100418}, 
+                {2.16779, -2.100418, 0}}
 
 
-            DoubleMatrix lie_group_test = MatrixFunctions.expm(new DoubleMatrix(new double[][]{{0, -0.273330, -2.167796}, 
-                                                                                            {0.273330, 0, 2.100418}, 
-                                                                                            {2.16779, -2.100418, 0}}
-            ));
-            log.info("The skew symmetric matrix is:" + lie_group_test);
-            */
-        } catch (UninitializedFieldException ex) {
-            Logger.getLogger(SlasherRosbagDisplay.class.getName()).log(Level.SEVERE, null, ex);
-        }    
+                DoubleMatrix lie_group_test = MatrixFunctions.expm(new DoubleMatrix(new double[][]{{0, -0.273330, -2.167796}, 
+                                                                                                {0.273330, 0, 2.100418}, 
+                                                                                                {2.16779, -2.100418, 0}}
+                ));
+                log.info("The skew symmetric matrix is:" + lie_group_test);
+                */
+            } catch (UninitializedFieldException ex) {
+                Logger.getLogger(SlasherRosbagDisplay.class.getName()).log(Level.SEVERE, null, ex);
+            } 
+        }   
     }
 
     public ArrayList<Se3Info> getSe3InfoList() {
         return se3InfoList;
     }
+
+    public ArrayList<float[]> getDepthList() {
+        return depthList;
+    }
+    
     
     @Override
     public void annotate(GLAutoDrawable drawable) {
     }    
+    
+    public DoubleMatrix SE3Tose3(DoubleMatrix R, DoubleMatrix trans) {
+        // Calculate rotation's lie algebra w.
+        Mat src = new Mat(3, 3, CvType.CV_64FC1);            
+        src.put(0, 0, R.data);
+        Mat w = new Mat();
+        Mat jocobian = new Mat();
+        Calib3d.Rodrigues(src, w, jocobian);
+//            log.info("The Rodrigues vector is: " + w.dump());
+
+        double[] w_data = new double[3];
+        w.get(0, 0, w_data);
+        DoubleMatrix ww = new  DoubleMatrix(1, 3, w_data);
+        double theta = ww.norm2();
+        DoubleMatrix W = new DoubleMatrix(new double[][]{{0, -ww.get(2), ww.get(1)}, 
+                                                         {ww.get(2), 0, -ww.get(0)}, 
+                                                         {-ww.get(1), ww.get(0), 0}});
+
+        DoubleMatrix jaccobLieAlg = DoubleMatrix.eye(3);   // Translational part of lie algebra
+        if (theta != 0) {
+            double A = Math.sin(theta)/theta;
+            double B = (1 - Math.cos(theta))/(theta * theta);
+            jaccobLieAlg = DoubleMatrix.eye(3).sub(W.mul(0.5)).add(W.mmul(W).mul(1/(theta*theta) * (1 - (0.5*A/B))));
+        }
+        DoubleMatrix v = jaccobLieAlg.mmul(trans);
+        return new DoubleMatrix(new double[]{v.get(0), v.get(1), v.get(2),ww.get(0), ww.get(1),ww.get(2)});
+    }
     
     public class Se3Info {
         public long pose_seq_num;
