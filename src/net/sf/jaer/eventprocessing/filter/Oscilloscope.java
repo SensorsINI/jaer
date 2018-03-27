@@ -220,6 +220,10 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
                 }
             }
             statusText = String.format("playing %d events at %s", playbackPacket.getSize(), playbackIterator.toString());
+            if(playing && triggerType==TriggerType.BiasChange && biasChanged){
+                playing=false;
+                biasChanged=false;
+            }
             if (!playbackIterator.hasNext()) {
                 if (++nPlaybacks < playbackNumberOfCycles) {
                     playbackIterator = capturedPacket.inputIterator();
