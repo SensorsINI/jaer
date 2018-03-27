@@ -758,6 +758,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             datagramSocket.bind(address);
             log.info("bound " + this);
             datagramSocket.setSoTimeout(0); // infinite timeout
+            datagramSocket.setReceiveBufferSize(bufferSize);
             return true;
         } catch (IOException e) {
             log.warning("caught " + e + ", datagramSocket will be constructed later");
