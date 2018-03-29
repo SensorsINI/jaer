@@ -197,9 +197,9 @@ public abstract class AbstractAEPlayer {
     protected PlaybackDirection playbackDirection = PlaybackDirection.Forward;
     protected int timesliceUs = 20000;
     protected int packetSizeEvents = 256;
-    protected int fastFowardRewindPacketCount = 30;
-    protected boolean fastForwardNPacketsOccuring = false;
-    protected boolean rewindNPacketsOccuring = false;
+    protected int jogPacketCount = 30;
+    protected int jogPacketsLeft = 0;
+    protected boolean jogOccuring = false;
 
     abstract public void openAEInputFileDialog();
 
@@ -213,12 +213,15 @@ public abstract class AbstractAEPlayer {
      *
      */
     public void speedUp() {
-        setPacketSizeEvents(getPacketSizeEvents() * 2);
-        long newTimeSlice = (long) getTimesliceUs() * 2;
-        if (newTimeSlice > (long) Integer.MAX_VALUE) {
-            newTimeSlice = Integer.MAX_VALUE; // clip to avoid negative slices sizes for slices > 2G us
+        if (isFlexTimeEnabled()) {
+            setPacketSizeEvents(getPacketSizeEvents() * 2);
+        } else {
+            long newTimeSlice = (long) getTimesliceUs() * 2;
+            if (newTimeSlice > (long) Integer.MAX_VALUE) {
+                newTimeSlice = Integer.MAX_VALUE; // clip to avoid negative slices sizes for slices > 2G us
+            }
+            setTimesliceUs((int) newTimeSlice);
         }
-        setTimesliceUs((int) newTimeSlice);
     }
 
     /**
@@ -227,14 +230,17 @@ public abstract class AbstractAEPlayer {
      *
      */
     public void slowDown() {
-        setPacketSizeEvents(getPacketSizeEvents() / 2);
-        if (getPacketSizeEvents() == 0) {
-            setPacketSizeEvents(1);
-        }
-        setTimesliceUs(getTimesliceUs() / 2);
-        if (getTimesliceUs() == 0) {
-            log.info("tried to reduce timeslice below 1us, clipped to 1us");
-            setTimesliceUs(1);
+        if (isFlexTimeEnabled()) {
+            setPacketSizeEvents(getPacketSizeEvents() / 2);
+            if (getPacketSizeEvents() == 0) {
+                setPacketSizeEvents(1);
+            }
+        } else {
+            setTimesliceUs(getTimesliceUs() / 2);
+            if (getTimesliceUs() == 0) {
+                log.info("tried to reduce timeslice below 1us, clipped to 1us");
+                setTimesliceUs(1);
+            }
         }
         if (Math.abs(getPacketSizeEvents()) < 1) {
             setPacketSizeEvents((int) Math.signum(getPacketSizeEvents()));
@@ -244,14 +250,19 @@ public abstract class AbstractAEPlayer {
         }
     }
 
-    public void fastFowardNPackets() {
-        fastForwardNPacketsOccuring = true;
-        rewindNPacketsOccuring = false;
+    public void jogForwards() {
+        jogOccuring = true;
+        jogPacketsLeft += jogPacketCount;
     }
 
-    public void rewindNPackets() {
-        rewindNPacketsOccuring = true;
-        fastForwardNPacketsOccuring = false;
+    public void jogBackwards() {
+        jogOccuring = true;
+        jogPacketsLeft -= jogPacketCount;
+    }
+    
+    public void cancelJog(){
+        jogOccuring=false;
+        jogPacketsLeft=0;
     }
 
     /**
@@ -379,15 +390,16 @@ public abstract class AbstractAEPlayer {
         setPacketSizeEvents(getPacketSizeEvents() * -1);
         setTimesliceUs(getTimesliceUs() * -1);
     }
-    
+
     /**
      * Sets the playback direction
+     *
      * @param forwards true for forwards, false for backwards
      */
-    public void setDirectionForwards(boolean forwards){
-        int sign=forwards?1:-1;
-        setPacketSizeEvents(sign*Math.abs(getPacketSizeEvents()));
-        setTimesliceUs(sign*Math.abs(getTimesliceUs()));
+    public void setDirectionForwards(boolean forwards) {
+        int sign = forwards ? 1 : -1;
+        setPacketSizeEvents(sign * Math.abs(getPacketSizeEvents()));
+        setTimesliceUs(sign * Math.abs(getTimesliceUs()));
     }
 
     public int getPacketSizeEvents() {
@@ -694,16 +706,16 @@ public abstract class AbstractAEPlayer {
     }
 
     /**
-     * @return the fastFowardRewindPacketCount
+     * @return the jogPacketCount
      */
-    public int getFastFowardRewindPacketCount() {
-        return fastFowardRewindPacketCount;
+    public int getJogPacketCount() {
+        return jogPacketCount;
     }
 
     /**
-     * @param fastFowardRewindPacketCount the fastFowardRewindPacketCount to set
+     * @param jogPacketCount the jogPacketCount to set
      */
-    public void setFastFowardRewindPacketCount(int fastFowardRewindPacketCount) {
-        this.fastFowardRewindPacketCount = fastFowardRewindPacketCount;
+    public void setJogPacketCount(int jogPacketCount) {
+        this.jogPacketCount = jogPacketCount;
     }
 }
