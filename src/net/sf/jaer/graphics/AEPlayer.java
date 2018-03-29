@@ -472,6 +472,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public void rewind() {
+        cancelJog();
         if (aeFileInputStream == null) {
             return;
         }
@@ -527,29 +528,32 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         AEPacketRaw aeRaw = null;
 
         try {
-            if (rewindNPacketsOccuring) {
-                toggleDirection();
-            }
-            int nPackets = 1;
-            if (fastForwardNPacketsOccuring || rewindNPacketsOccuring) {
-                nPackets = fastFowardRewindPacketCount;
-            }
-            for (int i = 0; i < nPackets; i++) {
+            if(!jogOccuring || (jogOccuring && jogPacketsLeft==0)){
                 if (!viewer.aePlayer.isFlexTimeEnabled()) {
                     aeRaw = aeFileInputStream.readPacketByTime(viewer.getAePlayer().getTimesliceUs());
                 } else {
                     aeRaw = aeFileInputStream.readPacketByNumber(viewer.getAePlayer().getPacketSizeEvents());
                 }
+            }else while (jogPacketsLeft != 0) {
+                setDirectionForwards(jogPacketsLeft >= 0);
+                if (!viewer.aePlayer.isFlexTimeEnabled()) {
+                    aeRaw = aeFileInputStream.readPacketByTime(viewer.getAePlayer().getTimesliceUs());
+                } else {
+                    aeRaw = aeFileInputStream.readPacketByNumber(viewer.getAePlayer().getPacketSizeEvents());
+                }
+                if (jogPacketsLeft < 0) {
+                    jogPacketsLeft++;
+                } else if (jogPacketsLeft > 0) {
+                    jogPacketsLeft--;
+                }
             }
-            if (rewindNPacketsOccuring) {
-                toggleDirection();
+            if(jogOccuring && jogPacketsLeft==0){
+                jogOccuring=false;
             }
-            fastForwardNPacketsOccuring = false;
-            rewindNPacketsOccuring = false;
-//                if(aeRaw!=null) time=aeRaw.getLastTimestamp();
+            setDirectionForwards(true);
             return aeRaw;
         } catch (EOFException e) {
-            rewindNPacketsOccuring = false;
+            cancelJog();
             setDirectionForwards(true);
             try {
                 Thread.sleep(200);
@@ -566,8 +570,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             //getAePlayer().toggleDirection();
             return aeRaw;
         } catch (Exception anyOtherException) {
-            rewindNPacketsOccuring = false;
             setDirectionForwards(true);
+            cancelJog();
             log.warning(anyOtherException.toString() + ", returning empty AEPacketRaw");
             anyOtherException.printStackTrace();
             return new AEPacketRaw(0);
