@@ -279,7 +279,10 @@ public class AEPacketRaw extends AEPacket {
         if (getNumEvents() == 0) {
             return super.toString();
         } else {
-            return super.toString() + (numEvents > 0 ? String.format(" tstart=%d tend=%d", timestamps[0], timestamps[numEvents - 1]) : " empty");
+            return super.toString() + (numEvents > 0 ? 
+                    String.format(" tstart=%d tend=%d dt=%d", timestamps[0], timestamps[numEvents - 1], (timestamps[numEvents - 1]- timestamps[0])) 
+                    :
+                    " empty");
         }
     }
 
