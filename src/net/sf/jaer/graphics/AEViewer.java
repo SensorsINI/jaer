@@ -240,7 +240,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /**
      * Adds item above separator/about
      *
-     * @param menuItem item to add
+     * @param menuItem item to appendCopy
      * @see #removeHelpItem(javax.swing.JMenuItem)
      * @see #addHelpURLItem(java.lang.String, java.lang.String,
      * java.lang.String)
@@ -349,6 +349,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * re-rendering of the data.
      */
     public void interruptViewloop() {
+        log.info("interrupting ViewLoop");
         viewLoop.interrupt(); // to break it out of blocking operation such as wait on cyclic barrier or socket
     }
 
@@ -519,8 +520,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /**
      * Returns the main viewer image display panel where the ChipCanvas is
-     * shown. DisplayMethod's can use this getter to add their own display
-     * controls.
+     * shown. DisplayMethod's can use this getter to appendCopy their own display
+ controls.
      *
      * @return the imagePanel
      */
@@ -834,7 +835,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewRenderBlankFramesCheckBoxMenuItem.setSelected(isRenderBlankFramesEnabled());
         logFilteredEventsCheckBoxMenuItem.setSelected(logFilteredEventsEnabled);
         enableFiltersOnStartupCheckBoxMenuItem.setSelected(enableFiltersOnStartup);
-        setFwdRewindNCount.setText("Set forward/rewind N... (currently " + getAePlayer().getFastFowardRewindPacketCount() + ")");
+        setFwdRewindNCount.setText("Set forward/rewind N... (currently " + getAePlayer().getJogPacketCount() + ")");
 
 //        fixSkipPacketsRenderingMenuItems();
 //        if (!showedSkippedPacketsRenderingWarning && skipPacketsRenderingNumberMax > 1) {
@@ -855,7 +856,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         viewLoop.start();
 
-        // add remote control commands
+        // appendCopy remote control commands
         // TODO encapsulate all this and command processor
         try {
             int remoteControlPort = REMOTE_CONTROL_PORT;
@@ -1097,7 +1098,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             putChipClassPrefs();
         }
         /*
-             * add scroll arrows to menu
+             * appendCopy scroll arrows to menu
              * arguments are: items to show, scrolling interval,
              * froozen items top, frozen items bottom
          */
@@ -1173,7 +1174,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * Sets the device class, e.g. DVS127, from the fully qualified class name
      * which is provided by the menu item itself.
      *
-     * @param deviceClass the Class of the AEChip to add to the AEChip menu
+     * @param deviceClass the Class of the AEChip to appendCopy to the AEChip menu
      */
     public void setAeChipClass(Class deviceClass) {
         //        log.infox("AEViewer.setAeChipClass("+deviceClass+")");
@@ -1388,7 +1389,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             item.setSelected(true);
             interfaceMenu.add(new JSeparator());
             interfaceAlreadyOpen = true;
-            // don't add action listener because we are already selected as interface
+            // don't appendCopy action listener because we are already selected as interface
         }
         ButtonGroup bg = new ButtonGroup();
 
@@ -1410,7 +1411,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if ((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip))
                     || (UDPInterface.class.isInstance(hw) && NetworkChip.class.isInstance(chip))) {
                 // if the chip is a normal AEChip with regular (not network) hardware interface, and the interface is not a network interface,
-                // then add a menu item to select this interface.
+                // then appendCopy a menu item to select this interface.
                 String menuText = String.format("%s (#%d)", hw.toString(), i);
                 interfaceButton = new JRadioButtonMenuItem(menuText);
                 interfaceButton.putClientProperty(HARDWARE_INTERFACE_NUMBER_PROPERTY, new Integer(i));
@@ -1539,7 +1540,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         //        log.info(sb.toString());
 
-        // TODO add menu item for choosers for things that cannot be easily enumerated like serial port devices, e.g. where enumeration is very expensive because
+        // TODO appendCopy menu item for choosers for things that cannot be easily enumerated like serial port devices, e.g. where enumeration is very expensive because
     }
 
     void fixBiasgenControls() {
@@ -4254,7 +4255,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     //                    statLabel.setFont(statLabel.getFont().deriveFont(16f));
     //                    statLabel.setToolTipText("Type \"1\" to update interval statistics");
     //                    statFrame.getContentPane().setLayout(new BorderLayout());
-    //                    statFrame.getContentPane().add(statLabel, BorderLayout.CENTER);
+    //                    statFrame.getContentPane().appendCopy(statLabel, BorderLayout.CENTER);
     //                    statFrame.pack();
     //                }
     //                String s = " dt=" + fmt.format(dtSec) + "s, freq=" + fmt.format(freqHz) + " Hz ";
@@ -4296,7 +4297,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_formWindowClosing
 
 	private void refreshInterfaceMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshInterfaceMenuItemActionPerformed
-            // TODO add your handling code here:
+            // TODO appendCopy your handling code here:
 	}//GEN-LAST:event_refreshInterfaceMenuItemActionPerformed
 
 	private void filtersToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_filtersToggleButtonActionPerformed
@@ -4753,7 +4754,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //			loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), AEFileOutputStream.OUTPUT_BUFFER_SIZE), chip); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
             loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile), chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
 
-            if (playMode == PlayMode.PLAYBACK) { // add change listener for rewind to stop logging
+            if (playMode == PlayMode.PLAYBACK) { // appendCopy change listener for rewind to stop logging
                 getAePlayer().getAEInputStream().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, new PropertyChangeListener() {
 
                     @Override
@@ -4902,13 +4903,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     String fn
                             = loggingFile.getName();
                     //                System.out.println("fn="+fn);
-                    // strip off .aedat to make it easier to add comment to filename
+                    // strip off .aedat to make it easier to appendCopy comment to filename
                     int extInd = fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION);
                     String base = fn;
                     if (extInd > 0) {
                         base = fn.substring(0, extInd); // maybe trying to save old .dat extension
                     }//                System.out.println("base="+base);
-                    // we'll add the extension back later
+                    // we'll appendCopy the extension back later
                     chooser.setSelectedFile(new File(base));
                     //                chooser.setAccessory(new ResetFileButton(base,chooser));
                     chooser.setDialogType(JFileChooser.SAVE_DIALOG);
@@ -4916,15 +4917,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     //                Component[] comps=chooser.getComponents();
                     //                for(Component c:comps){
                     //                    if(c.getName().equals("buttonPanel")){
-                    //                        ((JPanel)c).add(new ResetFileButton(base,chooser));
+                    //                        ((JPanel)c).appendCopy(new ResetFileButton(base,chooser));
                     //                    }
                     //                }
 //                                        JPanel commentsPanel=new JPanel();
 //                                        commentsPanel.setLayout(new BoxLayout(commentsPanel,BoxLayout.Y_AXIS));
 //                                        JTextField tf=new JTextField("");
 //                                        JLabel tfLabel=new JLabel("Optional comment");
-//                                        commentsPanel.add(tfLabel);
-//                                        commentsPanel.add(tf);
+//                                        commentsPanel.appendCopy(tfLabel);
+//                                        commentsPanel.appendCopy(tf);
 //                                        chooser.setAccessory(commentsPanel);
 
                     boolean savedIt = false;
@@ -5134,7 +5135,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_showConsoleOutputButtonActionPerformed
 
 	private void multiModeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_multiModeButtonActionPerformed
-            // TODO add your handling code here:
+            // TODO appendCopy your handling code here:
             jaerViewer.setViewMode(true);
             //        jaerViewer.launchMultiModeViewer();
 	}//GEN-LAST:event_multiModeButtonActionPerformed
@@ -5344,7 +5345,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_reopenSocketInputStreamMenuItemActionPerformed
 
 	private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openSocketOutputStreamMenuItemActionPerformed
-            // TODO add your handling code here:
+            // TODO appendCopy your handling code here:
             if (socketOutputEnabled) {
                 closeAESocketClient();
                 setPlayMode(PlayMode.WAITING);
@@ -5558,24 +5559,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_viewActiveRenderingEnabledMenuItemActionPerformed
 
     private void skipPacketsRenderingCheckBoxMenuItemStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_skipPacketsRenderingCheckBoxMenuItemStateChanged
-        fixSkipPacketsRenderingMenuItems();        // TODO add your handling code here:
+        fixSkipPacketsRenderingMenuItems();        // TODO appendCopy your handling code here:
     }//GEN-LAST:event_skipPacketsRenderingCheckBoxMenuItemStateChanged
 
     private void rewindNMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rewindNMIActionPerformed
         if ((getPlayMode() == PlayMode.PLAYBACK) && (getAePlayer() != null)) {
-            getAePlayer().rewindNPackets();
+            getAePlayer().jogBackwards();
         }
     }//GEN-LAST:event_rewindNMIActionPerformed
 
     private void setFwdRewindNCountActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setFwdRewindNCountActionPerformed
-        String s = JOptionPane.showInputDialog("Number of packets to fast forward or rewind?", getAePlayer().getFastFowardRewindPacketCount());
+        String s = JOptionPane.showInputDialog("Number of packets to fast forward or rewind?", getAePlayer().getJogPacketCount());
         if ((s == null) || s.isEmpty()) {
             return;
         }
         try {
             int n = Integer.parseInt(s);
-            getAePlayer().setFastFowardRewindPacketCount(n);
-            setFwdRewindNCount.setText("Set forward/rewind N... (currently " + getAePlayer().getFastFowardRewindPacketCount() + ")");
+            getAePlayer().setJogPacketCount(n);
+            setFwdRewindNCount.setText("Set forward/rewind N... (currently " + getAePlayer().getJogPacketCount() + ")");
         } catch (NumberFormatException e) {
             return;
         }
@@ -5583,7 +5584,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void forwardNMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_forwardNMIActionPerformed
         if ((getPlayMode() == PlayMode.PLAYBACK) && (getAePlayer() != null)) {
-            getAePlayer().fastFowardNPackets();
+            getAePlayer().jogForwards();
         }
     }//GEN-LAST:event_forwardNMIActionPerformed
 
@@ -5914,7 +5915,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             }
         }
-        // otherwise add just before Help menu
+        // otherwise appendCopy just before Help menu
         boolean didit = false;
         for (int i = 0; i < n; i++) {
             JMenu m = b.getMenu(i);
@@ -5923,7 +5924,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 didit = true;
             }
         }
-        if (!didit) { // if no help menu, add to end
+        if (!didit) { // if no help menu, appendCopy to end
             b.add(menu, -1);
         }
     }
@@ -6025,7 +6026,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             jt.add(fileMenu);
             jt.add(viewMenu);
-            //jt.add(deviceMenu);
+            //jt.appendCopy(deviceMenu);
             jt.add(interfaceMenu);
             jt.add(controlMenu);
             jt.add(monSeqMenu);
@@ -6041,10 +6042,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             //            canv.getParent().remove(canv);
             //
             //            canv.setBounds(imagePanel.getBounds());
-            ////            imagePanel.add(chip.getCanvas().getCanvas());
+            ////            imagePanel.appendCopy(chip.getCanvas().getCanvas());
             //
             //            displayPanel=imagePanel;
-            //            imagePanel.add(canv);
+            //            imagePanel.appendCopy(canv);
             //
             //
             //            throw new UnsupportedOperationException("Not supported yet.");

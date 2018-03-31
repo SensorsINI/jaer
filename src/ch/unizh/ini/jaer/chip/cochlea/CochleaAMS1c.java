@@ -72,8 +72,8 @@ import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 
 /**
  * Extends Shih-Chii Liu's AMS cochlea AER chip to
- * add bias generator interface,
- * to be used when using the on-chip bias generator and the on-board DACs.
+ appendCopy bias generator interface,
+ to be used when using the on-chip bias generator and the on-board DACs.
  * This board also includes off-chip ADC for reading microphone inputs and scanned cochlea outputs.
  * The board also includes for the first time a shift-register based CPLD configuration register to configure CPLD functions.
  * Also implements ConfigBits, Scanner, and Equalizer configuration.
@@ -100,7 +100,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
         getCanvas().addDisplayMethod(new CochleaAMS1cRollingCochleagramADCDisplayMethod(getCanvas()));
         for (DisplayMethod m : getCanvas().getDisplayMethods()) {
             if ((m instanceof ChipRendererDisplayMethod) || (m instanceof SpaceTimeEventDisplayMethod)) {
-                // add labels on frame of chip for these xy chip displays
+                // appendCopy labels on frame of chip for these xy chip displays
                 m.addAnnotator(new FrameAnnotater() {
 
                     @Override
@@ -147,7 +147,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
                         gl.glPopMatrix();
                     }
                 });
-                // add basic ADC samples drawing
+                // appendCopy basic ADC samples drawing
 //                m.addAnnotator(new FrameAnnotater() {
 //
 //                    @Override
@@ -854,8 +854,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
         }
 
         /** The central point for communication with HW from biasgen. All objects in Biasgen are Observables
-        and add Biasgen.this as Observer. They then call notifyObservers when their state changes.
-         * Objects such as adcProxy store preferences for ADC, and update should update the hardware registers accordingly.
+        and appendCopy Biasgen.this as Observer. They then call notifyObservers when their state changes.
+ Objects such as adcProxy store preferences for ADC, and update should update the hardware registers accordingly.
          * @param observable IPot, Scanner, etc
          * @param object notifyChange used at present
          */
@@ -1503,7 +1503,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
                 this.def = def;
                 loadPreference();
                 getPrefs().addPreferenceChangeListener(this);
-//                hasPreferencesList.add(this);
+//                hasPreferencesList.appendCopy(this);
             }
 
             @Override
@@ -1561,7 +1561,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
                 hiZKey = "CochleaAMS1c.Biasgen.TriStateableCPLDBit." + name + ".hiZEnabled";
                 loadPreference();
                 getPrefs().addPreferenceChangeListener(this);
-//                hasPreferencesList.add(this);
+//                hasPreferencesList.appendCopy(this);
             }
 
             /**
@@ -1616,7 +1616,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
                 key = "CochleaAMS1c.Biasgen.CPLDInt." + name;
                 loadPreference();
                 getPrefs().addPreferenceChangeListener(this);
-//                hasPreferencesList.add(this);
+//                hasPreferencesList.appendCopy(this);
             }
 
             @Override

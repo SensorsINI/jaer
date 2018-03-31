@@ -129,7 +129,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
         }
 
         FilterChain filterChain = new FilterChain(chip);
-//        filterChain.add(new BackgroundActivityFilter(chip));
+//        filterChain.appendCopy(new BackgroundActivityFilter(chip));
 //        nearbyTrackFilter = new NearbyTrackEventFilter(chip);
         trackHistogramFilter = new Histogram2DFilter(chip);
         filterChain.add(trackHistogramFilter);

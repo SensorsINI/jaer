@@ -69,7 +69,7 @@ public class SourceSynchronizer {
         c.weightx=1;
         c.insets=new Insets(10,10,10,10);
         
-//        panel.add(vpanes,BorderLayout.CENTER);
+//        panel.appendCopy(vpanes,BorderLayout.CENTER);
         
         
 //        vpanes.setLayout(new FlowLayout());

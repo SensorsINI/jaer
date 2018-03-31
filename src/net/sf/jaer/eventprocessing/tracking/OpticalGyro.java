@@ -271,11 +271,11 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
 			//                int tx = 0, ty = 0;
 			//                float a = -0.1f;
 			////                for ( int i = 0 ; i < 30 ; i++ ){
-			////                    clusters.add(new DebugCluster(random.nextInt(128),random.nextInt(128),tx,ty,a));
+			////                    clusters.appendCopy(new DebugCluster(random.nextInt(128),random.nextInt(128),tx,ty,a));
 			////                }
-			//                     clusters.add(new DebugCluster(64,74,tx,ty,a));
-			//                     clusters.add(new DebugCluster(74,74,tx,ty,a));
-			//                     clusters.add(new DebugCluster(74,64,tx,ty,a));
+			//                     clusters.appendCopy(new DebugCluster(64,74,tx,ty,a));
+			//                     clusters.appendCopy(new DebugCluster(74,74,tx,ty,a));
+			//                     clusters.appendCopy(new DebugCluster(74,64,tx,ty,a));
 			//               n = clusters.size();
 
 			// form sums

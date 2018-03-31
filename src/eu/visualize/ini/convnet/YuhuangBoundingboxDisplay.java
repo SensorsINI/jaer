@@ -197,7 +197,7 @@ public class YuhuangBoundingboxDisplay extends EventFilter2D implements FrameAnn
             }
         }
         for (BasicEvent ev : in) {
-            lastTs = ev.timestamp;  // gets next in list, then add to currentBoundingBoxes when timestamp reaches that value
+            lastTs = ev.timestamp;  // gets next in list, then appendCopy to currentBoundingBoxes when timestamp reaches that value
             if (next != null && ev.timestamp > next.timestamp) {
                 currentBoundingBoxes.add(next);
                 entry = usedBounndingBoxes.higherEntry(next.timestamp);

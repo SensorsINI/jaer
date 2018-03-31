@@ -84,7 +84,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 
 		for (final DisplayMethod m : getCanvas().getDisplayMethods()) {
 			if ((m instanceof ChipRendererDisplayMethod) || (m instanceof SpaceTimeEventDisplayMethod)) {
-				// add labels on frame of chip for these xy chip displays
+				// appendCopy labels on frame of chip for these xy chip displays
 				m.addAnnotator(new FrameAnnotater() {
 					@Override
 					public void setAnnotationEnabled(final boolean yes) {
@@ -592,8 +592,8 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 
 		/**
 		 * The central point for communication with HW from biasgen. All objects
-		 * in Biasgen are Observables and add Biasgen.this as Observer. They
-		 * then call notifyObservers when their state changes.
+ in Biasgen are Observables and appendCopy Biasgen.this as Observer. They
+ then call notifyObservers when their state changes.
 		 *
 		 * @param observable
 		 *            IPot, DAC, etc

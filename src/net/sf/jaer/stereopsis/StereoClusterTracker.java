@@ -360,7 +360,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 		}
 
 		/** adds one BasicEvent event to this cluster, updating its parameters in the process
-        @param event the event to add
+        @param event the event to appendCopy
 		 */
 		@Override
 		public void addEvent (BasicEvent event){
@@ -371,7 +371,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 
 
 		/** adds one BinocularEvent to this cluster, updating its parameters in the process
-        @param event the event to add
+        @param event the event to appendCopy
 		 */
 		public void addEvent (BinocularEvent event){
 			super.addEvent(event);
@@ -407,7 +407,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 
 		private float updateDisparity(BinocularEvent event) {
 			float thisEventDisparity = 0;
-			// if we add events from each eye, moviing disparity and location according to each event, then a mismatch
+			// if we appendCopy events from each eye, moviing disparity and location according to each event, then a mismatch
 			// in the number of events from each eye will putString cluster location closer to this eye; eventually the cluster center
 			// will move so far away from one eye that that eye's inputs will be outside the cluster
 			// and disparity tracking will be lost.

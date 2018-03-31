@@ -1371,7 +1371,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     }
 
     /**
-     * Used to add custom Menu items and keyboard accelerators for DAVIS cameras
+     * Used to appendCopy custom Menu items and keyboard accelerators for DAVIS cameras
      */
     abstract public class DavisMenuAction extends AbstractAction {
 

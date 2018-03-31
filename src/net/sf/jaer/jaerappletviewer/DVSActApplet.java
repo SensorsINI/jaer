@@ -453,7 +453,7 @@ public class DVSActApplet extends javax.swing.JApplet {
         float activity = activityChartLowpassFilter.filter(instantaneousActivity, ae.getLastTimestamp());
 //                    activity=activity*activity; // power
         activitySeries.add(msTime, activity);
-//                    activitySeries.add(msTime, random.nextFloat()); // debug
+//                    activitySeries.appendCopy(msTime, random.nextFloat()); // debug
         timeAxis.setMaximum(msTime);
         timeAxis.setMinimum(msTime - (1000 * ACTVITY_SECONDS_TO_SHOW));
         sampleCount++;

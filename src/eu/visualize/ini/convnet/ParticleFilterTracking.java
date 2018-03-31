@@ -216,7 +216,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
             numMeasure = 0;
         }
         
-        // If heatMap is enabled, then the number of the measurement should add 1.
+        // If heatMap is enabled, then the number of the measurement should appendCopy 1.
         if(heatMapCNN.isFilterEnabled()) { 
             if(measurementLocationsX.size() == numMeasure + 1) {
                 measurementWeight.set(measurementWeight.size() - 1, measurementWeight.get(numMeasure)*decay);     

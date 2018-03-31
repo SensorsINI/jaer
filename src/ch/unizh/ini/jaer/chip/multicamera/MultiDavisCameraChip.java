@@ -153,7 +153,7 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
         multiCameraMenu.add(new JMenuItem(new SelectCamera()));
         multiCameraMenu.add(new JSeparator());
         multiCameraMenu.add(new JMenuItem(new ApsDisplay()));
-//        multiCameraMenu.add(new JMenuItem(new createMultipleAEViewer()));
+//        multiCameraMenu.appendCopy(new JMenuItem(new createMultipleAEViewer()));
         getAeViewer().addMenu(multiCameraMenu);
     }
     
@@ -389,7 +389,7 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
         public AEPacketRaw reconstructRawPacket(EventPacket oldPacket) {
             AEPacketRaw newPacket = super.reconstructRawPacket(oldPacket);
             int n=oldPacket.getSize();
-            // we also need to add camera info to raw events
+            // we also need to appendCopy camera info to raw events
             for (int i = 0; i < n; i++) {
                 MultiCameraApsDvsEvent mce = (MultiCameraApsDvsEvent) oldPacket.getEvent(i);
                 EventRaw event = newPacket.getEvent(i);

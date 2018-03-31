@@ -126,9 +126,9 @@ public final class NBFG256 extends AETemporalConstastRetina {
 //            JPanel imagePanel = viewer.getImagePanel();
 //			JFrame controlFrame = new JFrame("SBret10 display controls");
 //            JPanel imagePanel = new JPanel();
-//			imagePanel.add((displayControlPanel = new eu.seebetter.ini.chips.sbret10.SBret10DisplayControlPanel(this)), BorderLayout.SOUTH);
+//			imagePanel.appendCopy((displayControlPanel = new eu.seebetter.ini.chips.sbret10.SBret10DisplayControlPanel(this)), BorderLayout.SOUTH);
  //           imagePanel.revalidate();
-//			controlFrame.getContentPane().add(imagePanel);
+//			controlFrame.getContentPane().appendCopy(imagePanel);
 //			controlFrame.pack();
 //			controlFrame.setVisible(true);
 //        } catch (Exception e) {
@@ -457,7 +457,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
         return frameEventPacket.getFrameData();
     }
 
-    /** Extends EventPacket to add the log intensity frame data */
+    /** Extends EventPacket to appendCopy the log intensity frame data */
     public class FrameEventPacket extends EventPacket {
 
         public FrameEventPacket(Class eventClass) {

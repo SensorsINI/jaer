@@ -245,8 +245,8 @@ public class Tmpdiff128 extends AETemporalConstastRetina implements Serializable
 
 			//            // test
 			//            IPotGroup pixelGroup=new IPotGroup(Tmpdiff128.this,"Pixel");
-			//            pixelGroup.add(getPotByName("cas"));
-			//            pixelGroup.add(getPotByName("injGnd"));
+			//            pixelGroup.appendCopy(getPotByName("cas"));
+			//            pixelGroup.appendCopy(getPotByName("injGnd"));
 
 			loadPreferences();
 

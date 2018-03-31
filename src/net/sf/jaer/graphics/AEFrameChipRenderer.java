@@ -466,7 +466,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 if (!((DavisChip) chip).getAutoExposureController().isCenterWeighted()) {
                     nextHist.add(val);
                 } else {
-                    // randomly add histogram values to histogram depending on distance from center of image
+                    // randomly appendCopy histogram values to histogram depending on distance from center of image
                     // to implement a simple form of center weighting of the histogram
                     float d = (1 - Math.abs(((float) e.x - (sizeX / 2)) / sizeX)) + Math.abs(((float) e.y - (sizeY / 2)) / sizeY);
                     // d is zero at center, 1 at corners
@@ -739,8 +739,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     /**
-     * Returns index into pixmap. To access RGB values, just add 0,1, or 2 to
-     * the returned index.
+     * Returns index into pixmap. To access RGB values, just appendCopy 0,1, or 2 to
+ the returned index.
      *
      * @param x
      * @param y

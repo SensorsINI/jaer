@@ -430,7 +430,7 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 					nextHist.add(val);
 				}
 				else {
-					// randomly add histogram values to histogram depending on distance from center of image
+					// randomly appendCopy histogram values to histogram depending on distance from center of image
 					// to implement a simple form of center weighting of the histogram
 					float d = (1 - Math.abs(((float) e.x - (sizeX / 2)) / sizeX)) + Math.abs(((float) e.y - (sizeY / 2)) / sizeY);
 					// d is zero at center, 1 at corners

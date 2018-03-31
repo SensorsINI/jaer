@@ -360,7 +360,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 			return;
 		}
 
-		// for input neuron group, see which cluster it is closest to and add it to this cluster.
+		// for input neuron group, see which cluster it is closest to and appendCopy it to this cluster.
 		// if its too far from any cluster, make a new cluster if we can
 		Cluster closest = null;
 		closest = getNearestCluster(newNeuronGroup); // find cluster that event falls within (or also within surround if scaling enabled)

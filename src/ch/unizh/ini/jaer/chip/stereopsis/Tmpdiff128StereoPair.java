@@ -57,14 +57,14 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
         setLeft(left);
         setRight(right);
 
-//        getFilterChain().add(new StereoTranslateRotate(this));
-//        getFilterChain().add(new StereoVergenceFilter(this));
-//        getFilterChain().add(new GlobalDisparityFilter(this));
-//        getFilterChain().add(new GlobalDisparityFilter2(this));
-//        getFilterChain().add(new DisparityFilter(this));
-//        getFilterChain().add(new StereoClusterTracker(this));
-//        getFilterChain().add(new Batter(this));
-//        getRealTimeFilterChain().add(new Batter(this));
+//        getFilterChain().appendCopy(new StereoTranslateRotate(this));
+//        getFilterChain().appendCopy(new StereoVergenceFilter(this));
+//        getFilterChain().appendCopy(new GlobalDisparityFilter(this));
+//        getFilterChain().appendCopy(new GlobalDisparityFilter2(this));
+//        getFilterChain().appendCopy(new DisparityFilter(this));
+//        getFilterChain().appendCopy(new StereoClusterTracker(this));
+//        getFilterChain().appendCopy(new Batter(this));
+//        getRealTimeFilterChain().appendCopy(new Batter(this));
 //        if(filterFrame!=null) filterFrame.dispose();
 //        filterFrame=new FilterFrame(this);
     }
@@ -167,7 +167,7 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
         @Override
         public AEPacketRaw reconstructRawPacket (EventPacket packet){
             AEPacketRaw p = super.reconstructRawPacket(packet);
-            // we also need to add binocularity (eye) to raw events
+            // we also need to appendCopy binocularity (eye) to raw events
             for ( int i = 0 ; i < packet.getSize() ; i++ ){
                 BinocularEvent be = (BinocularEvent)packet.getEvent(i);
                 if ( be.eye == BinocularEvent.Eye.RIGHT ){

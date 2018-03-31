@@ -50,11 +50,13 @@ import org.apache.commons.lang3.SystemUtils;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLCapabilities;
 import com.jogamp.opengl.GLCapabilitiesImmutable;
 import com.jogamp.opengl.GLContext;
 import com.jogamp.opengl.GLDrawableFactory;
 import com.jogamp.opengl.GLEventListener;
 import com.jogamp.opengl.GLException;
+import com.jogamp.opengl.GLProfile;
 import com.jogamp.opengl.awt.GLCanvas;
 import com.jogamp.opengl.fixedfunc.GLLightingFunc;
 import com.jogamp.opengl.fixedfunc.GLMatrixFunc;
@@ -225,27 +227,30 @@ public class ChipCanvas implements GLEventListener, Observer {
 
         // make the canvas
         try {
-            if (SystemUtils.IS_OS_WINDOWS) {
-                List<GLCapabilitiesImmutable> capsAvailable = GLDrawableFactory.getDesktopFactory()
-                        .getAvailableCapabilities(null);
-                GLCapabilitiesImmutable chosenGLCaps = null;
-                int listnum = 0;
-                if (capsAvailable != null) {
-                    for (GLCapabilitiesImmutable cap : capsAvailable) {
-                        log.info("GLCapabilitiesImmutable #" + listnum + " is " + cap.toString());
-                        if (chosenGLCaps == null) {
-                            chosenGLCaps = cap;
-                        }
-                        if (listnum++ >= 0) {
-                            break;
-                        }
-                    }
-                }
-
-                drawable = new GLCanvas(chosenGLCaps);
-            } else {
-                drawable = new GLCanvas();
-            }
+            final GLProfile glp = GLProfile.getMaxProgrammable(true);// FixedFunc(true);
+            final GLCapabilities caps = new GLCapabilities(glp);
+            drawable = new GLCanvas(caps);
+//            if (SystemUtils.IS_OS_WINDOWS) {
+//                List<GLCapabilitiesImmutable> capsAvailable = GLDrawableFactory.getDesktopFactory()
+//                        .getAvailableCapabilities(null);
+//                GLCapabilitiesImmutable chosenGLCaps = null;
+//                int listnum = 0;
+//                if (capsAvailable != null) {
+//                    for (GLCapabilitiesImmutable cap : capsAvailable) {
+//                        log.info("GLCapabilitiesImmutable #" + listnum + " is " + cap.toString());
+//                        if (chosenGLCaps == null) {
+//                            chosenGLCaps = cap;
+//                        }
+//                        if (listnum++ >= 0) {
+//                            break;
+//                        }
+//                    }
+//                }
+//
+//                drawable = new GLCanvas(chosenGLCaps);
+//            } else {
+//                drawable = new GLCanvas();
+//            }
 
             if (drawable == null) {
                 // Failed to init OpenGL, exit system!
@@ -654,7 +659,9 @@ public class ChipCanvas implements GLEventListener, Observer {
         } catch (final GLException e) {
             log.warning("couldn't make GL context current, mouse position meaningless: " + e.toString());
         } finally {
-            drawable.getContext().release();
+            if (drawable.getContext().isCurrent()) {
+                drawable.getContext().release();
+            }
         }
 //        }
         final Point p = new Point();

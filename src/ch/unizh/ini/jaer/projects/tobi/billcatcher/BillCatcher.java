@@ -97,7 +97,7 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
         chain = new FilterChain(chip);
 //        tracker=new RectangularClusterTracker(chip);
         motionFilter = new DirectionSelectiveFlow(chip);
-//        chain.add(tracker);
+//        chain.appendCopy(tracker);
         chain.add(motionFilter);
         setEnclosedFilterChain(chain);
     }

@@ -136,7 +136,7 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
         powerSettingsDialog.setVisible(true);
     }
 
-    /** Overrides to add the menu. */
+    /** Overrides to appendCopy the menu. */
     @Override
     public void setAeViewer(AEViewer v) {
         if (v != null) {

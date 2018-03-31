@@ -765,7 +765,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //        progressBar.setName("EEPROM programming");
 //        progressBar.setValue(0);
 //        progressBar.setStringPainted(true);
-//        frame.getContentPane().add(progressBar);
+//        frame.getContentPane().appendCopy(progressBar);
 //        frame.pack();
 //        frame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
 //        frame.setVisible(true);
@@ -1646,7 +1646,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         
         final int WRAP_START = 0; //(int)(0xFFFFFFFFL&(2147483648L-0x400000L)); // set high to test big wrap 1<<30;
         /**
-         * wrapAdd is the time to add to short timestamp to unwrap it
+         * wrapAdd is the time to appendCopy to short timestamp to unwrap it
          */
         protected int wrapAdd = WRAP_START; //0;
         protected int lastwrap = WRAP_START; //0;

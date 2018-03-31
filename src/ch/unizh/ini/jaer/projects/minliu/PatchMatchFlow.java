@@ -1559,7 +1559,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        int size = spikeTrains[blockX][blockY].size();
 //        int lastTs = spikeTrains[blockX][blockY].get(size - forwardEventNum)[0];
 //        for (int i = size - forwardEventNum; i < size; i++) {
-//            seq1.add(spikeTrains[blockX][blockY].get(i));
+//            seq1.appendCopy(spikeTrains[blockX][blockY].get(i));
 //        }
 //
 ////        if(seq1.get(2)[0] - seq1.get(0)[0] > thresholdTime) {
@@ -1579,7 +1579,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    if (tmpSpikes != null) {
 //                        for (int index = 0; index < tmpSpikes.size(); index++) {
 //                            if (tmpSpikes.get(index)[0] >= lastTs) {
-//                                seq2.add(tmpSpikes.get(index));
+//                                seq2.appendCopy(tmpSpikes.get(index));
 //                            }
 //                        }
 //

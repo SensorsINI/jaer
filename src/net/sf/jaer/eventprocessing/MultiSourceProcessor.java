@@ -164,7 +164,7 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
                     if(bufferStarts[i] == Integer.MIN_VALUE)
                         bufferStarts[i] = ev.timestamp;
                     int preadjust = ev.timestamp;                    
-                    // Subtract off start time and add loop offset time
+                    // Subtract off start time and appendCopy loop offset time
                     ev.timestamp = ev.timestamp - bufferStarts[i] + bufferLoopOffsets[i];
                     
                     // If we've looped in time, continue adding time
@@ -223,7 +223,7 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
         
         goToTime-=getMaxWaitTime();
         
-        /* Step 2, if dead queues have received events, revive them, add their 
+        /* Step 2, if dead queues have received events, revive them, appendCopy their 
          * elements back into the priority queue.
          */
         if (pq.size()<buffers.size())

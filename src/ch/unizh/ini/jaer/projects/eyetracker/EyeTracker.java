@@ -231,7 +231,7 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
     }
 
     synchronized public EventPacket filterPacket(EventPacket in) {
-        // for each event, see which cluster it is closest to and add it to this cluster.
+        // for each event, see which cluster it is closest to and appendCopy it to this cluster.
         // if its too far from any cluster, make a new cluster if we can
 //        supportCount=0; outCount=0; inCount=0;
         for (Object o : in) {

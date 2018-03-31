@@ -129,7 +129,7 @@ public class Tmpdiff128StereoBoard extends Tmpdiff128 implements StereoChipInter
          */
         @Override public AEPacketRaw reconstructRawPacket(EventPacket packet) {
             AEPacketRaw p=super.reconstructRawPacket(packet);
-            // we also need to add binocularity (eye) to raw events
+            // we also need to appendCopy binocularity (eye) to raw events
             for(int i=0;i<packet.getSize();i++){
                 BinocularEvent be=(BinocularEvent)packet.getEvent(i);
                 if(be.eye==BinocularEvent.Eye.RIGHT){

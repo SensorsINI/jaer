@@ -138,7 +138,6 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
 //        }
 //        timeLimitTimer.restart();
 //    }
-
 //    /**
 //     * restart the time limiter with limit timeLimitMs
 //     *
@@ -151,7 +150,6 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
 //        timeLimitTimer.setTimeLimitMs(timeLimitMs);
 //        restartTimeLimiter();
 //    }
-
     /**
      * Constructs a new EventPacket filled with BasicEvent.
      *
@@ -196,7 +194,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
         try {
             for (int i = startIndex; i < endIndex; i++) {
                 final E e = eventConstructor.newInstance();
-                // eventList.add(e);
+                // eventList.appendCopy(e);
                 elementData[i] = e;
                 eventPrototype = e;
             }
@@ -647,7 +645,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      *
      * @param packet EventPacket to be added
      */
-    public void add(final EventPacket<E> packet) {
+    public void appendCopy(final EventPacket<E> packet) {
         if (packet.getEventClass() != getEventClass()) {
             EventPacket.log.warning("Trying to merge packets that contain different events types");
         }
@@ -657,6 +655,20 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
         System.arraycopy(oldData, 0, elementData, 0, size);
         System.arraycopy(newData, 0, elementData, size, packet.size);
         size = size + packet.size;
+    }
+
+    /**
+     * Appends event. A copy of the event is appended to the end of the packet 
+     *
+     * @param event the event reference to be copied from.
+     */
+    public void appendCopy(final E event) {
+        if (size >= capacity) {
+            enlargeCapacity();
+        }
+        // System.out.println("at position "+size+" wrote event "+event);
+        event.setFilteredOut(false);
+        elementData[size++].copyFrom(event);
     }
 
     // public static void main(String[] args){
@@ -897,7 +909,6 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
 //        if(timeLimitTimer==null) return 0;
 //        return timeLimitTimer.getTimeLimitMs();
 //    }
-
 //    /**
 //     * Sets the time limit for filtering a packet through the filter chain in
 //     * ms.
@@ -923,7 +934,6 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
 //        }
 //        timeLimitTimer.setEnabled(yes);
 //    }
-
 //    /**
 //     * Returns status of time limiting
 //     *
@@ -935,7 +945,6 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
 //        }
 //        return timeLimitTimer.isEnabled();
 //    }
-
 //    /**
 //     * Returns true if timeLimitTimer is timed out and timeLimitEnabled
 //     */
@@ -946,7 +955,6 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
 //
 //        return timeLimitTimer.isTimedOut();
 //    }
-
     /**
      * Returns the element data.
      *

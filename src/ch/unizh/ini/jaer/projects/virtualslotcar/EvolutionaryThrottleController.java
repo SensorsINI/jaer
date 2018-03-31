@@ -45,16 +45,16 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 /**
  * Learns the throttle at different part of the track.
  * <p>
- * After a discussion with Garrick and Tobias Glassmachers we decided to go for
- * coding up a learning approach that saves successful ThrottleSetting profiles
- * if the car makes it around the track twice, and then randomly perturbs the
- * throttleValues to increase the throttle smoothly somewhere along the track.
- * If the change causes a crash, we go back to the saved throttleValues and
- * perturb again, using a random bump of throttle increase somewhere on the
- * track. This approach will guarantee increase in speed and will always
- * eventually cause a crash but we can add a button to go back to the last
- * successful throttleValues. The track model is the basis of this because it
- * tells us where we are.
+ After a discussion with Garrick and Tobias Glassmachers we decided to go for
+ coding up a learning approach that saves successful ThrottleSetting profiles
+ if the car makes it around the track twice, and then randomly perturbs the
+ throttleValues to increase the throttle smoothly somewhere along the track.
+ If the change causes a crash, we go back to the saved throttleValues and
+ perturb again, using a random bump of throttle increase somewhere on the
+ track. This approach will guarantee increase in speed and will always
+ eventually cause a crash but we can appendCopy a button to go back to the last
+ successful throttleValues. The track model is the basis of this because it
+ tells us where we are.
  *
  *
  * @author Juston, Tobi
@@ -1050,7 +1050,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             resetMarkedSegments();
         }
 
-		// chooses next spot to add throttle, based on previous throttle throttleValues.
+		// chooses next spot to appendCopy throttle, based on previous throttle throttleValues.
         // The higher the previous throttle, the less likely to choose it.
         private int getNextThrottleBumpPoint() {
 			// do accept/reject sampling to getString next throttle bump center point, such that

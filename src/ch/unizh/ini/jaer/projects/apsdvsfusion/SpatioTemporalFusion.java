@@ -1397,14 +1397,14 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //				kernelEditor.getOutWidth(), kernelEditor.getOutHeight(),kernel);
 //		kernelProcessor.addSpikeHandler(soViewer);
 //		synchronized (kernelProcessors) {
-//			kernelProcessors.add(kernelProcessor);
+//			kernelProcessors.appendCopy(kernelProcessor);
 //		}
 //	}
 
 //	public void addKernelProcessor(KernelProcessor kernelProcessor) {
 //		synchronized (kernelProcessors) {
 //			if (!kernelProcessors.contains(kernelProcessor))
-//				kernelProcessors.add(kernelProcessor);
+//				kernelProcessors.appendCopy(kernelProcessor);
 //		}
 //	}
 //

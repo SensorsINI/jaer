@@ -235,7 +235,7 @@ public class DataLogger extends EventFilter2D {
                 String fn =
                         loggingFile.getName();
 //                System.out.println("fn="+fn);
-                // strip off .aedat to make it easier to add comment to filename
+                // strip off .aedat to make it easier to appendCopy comment to filename
                 String base =
                         fn.substring(0, fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION));
                 chooser.setSelectedFile(new File(base));

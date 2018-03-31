@@ -126,7 +126,7 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 			final int evtTS = evt.getTimestamp() / 1000; // in ms from µs
 
 			// If the timestamp is the same as the last one, we
-			// just add the transformed event to the packet, up
+			// just appendCopy the transformed event to the packet, up
 			// to a certain packet size, and then send that packet.
 			if (evtTS == lastTS) {
 				encodeCochleaEvent(evt);

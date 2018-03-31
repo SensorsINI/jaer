@@ -232,7 +232,6 @@ public class MedianTrackingFilter extends EventFilter2D implements FrameAnnotate
         GL2 gl=drawable.getGL().getGL2();
         // already in chip pixel context with LL corner =0,0
         
-        /*          //I took this out so it would not slow the program down
         gl.glPushMatrix();
         gl.glColor3f(0,0,1);
         gl.glLineWidth(4);
@@ -243,7 +242,6 @@ public class MedianTrackingFilter extends EventFilter2D implements FrameAnnotate
         gl.glVertex2d(p.getX()-s.getX(), p.getY()+s.getY());
         gl.glEnd();
         gl.glPopMatrix();
-        */
 
     }
 

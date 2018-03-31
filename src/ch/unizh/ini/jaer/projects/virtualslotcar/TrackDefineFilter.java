@@ -838,7 +838,7 @@ public class TrackDefineFilter extends EventFilter2D implements FrameAnnotater, 
 //
 //        // Insert starting point
 //        extractPoints = new LinkedList<Point2D.Float>();
-//        extractPoints.add(new Point2D.Float(firstPoint.x, firstPoint.y));
+//        extractPoints.appendCopy(new Point2D.Float(firstPoint.x, firstPoint.y));
 //        boolean trackFinished = false;
 //
 //
@@ -850,7 +850,7 @@ public class TrackDefineFilter extends EventFilter2D implements FrameAnnotater, 
 //            float dist;
 //            if ((dist = (float) p.distance(lastPoint)) > minDistance) {
 //                TrackPoint tp = new TrackPoint(p.x, p.y, dist);
-//                pq.add(tp);
+//                pq.appendCopy(tp);
 //            }
 //        }
 //
@@ -866,7 +866,7 @@ public class TrackDefineFilter extends EventFilter2D implements FrameAnnotater, 
 //                // Add new track point
 //                TrackPoint nextPoint = pq.remove();
 //                if (Point2D.distance(nextPoint.x, nextPoint.y, curX, curY) < maxDistance) {
-//                    extractPoints.add(new Point2D.Float(nextPoint.x, nextPoint.y));
+//                    extractPoints.appendCopy(new Point2D.Float(nextPoint.x, nextPoint.y));
 //                    curX = nextPoint.x;
 //                    curY = nextPoint.y;
 //                } else {

@@ -116,7 +116,7 @@ public class BinNetFilt extends EventFilter2D implements FrameAnnotater {
                     continue;
                 }
 
-                // Copy the event, add to 'turnoff' buffer.
+                // Copy the event, appendCopy to 'turnoff' buffer.
                 ClusterEvent evBuf=new ClusterEvent();
                 evBuf.copyFrom(ev);
                 offBuffer.addLast(evBuf);
@@ -423,7 +423,7 @@ public class BinNetFilt extends EventFilter2D implements FrameAnnotater {
         C.setClusterMassDecayTauUs(100000);
 
         dickChainy.add(new PreProcess(chip));
-        //dickChainy.add(N);
+        //dickChainy.appendCopy(N);
         dickChainy.add(C);
 
         setEnclosedFilterChain(dickChainy);

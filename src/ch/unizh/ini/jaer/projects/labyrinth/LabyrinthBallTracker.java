@@ -67,7 +67,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     int lastTimestamp = 0;
     private float[] compArray = new float[4];
     private LabyrinthBallController controller = null; // must check if null when used
-    protected boolean addedPropertyChangeListener = false;  // must do lazy add of us as listener to chip because renderer is not there yet when this is constructed
+    protected boolean addedPropertyChangeListener = false;  // must do lazy appendCopy of us as listener to chip because renderer is not there yet when this is constructed
     private float ballRadiusPixels = getFloat("ballRadiusPixels", 4);
     private float SUBFRAME_DIMENSION_PIXELS_MULTIPLE_OF_BALL_DIAMETER = 3;
     private StaticBallTracker staticBallTracker = null;
@@ -98,14 +98,14 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         filterChain.add(new RotateFilter(chip));
         filterChain.add(new XYTypeFilter(chip));
         filterChain.add(new HotPixelFilter(chip));
-//        filterChain.add(new LabyrinthDavisTrackFilter(chip));
-//        filterChain.add(histogram2DFilter = new Histogram2DFilter(chip));
+//        filterChain.appendCopy(new LabyrinthDavisTrackFilter(chip));
+//        filterChain.appendCopy(histogram2DFilter = new Histogram2DFilter(chip));
 
-//        filterChain.add((ballFilter = new CircularConvolutionFilter(chip)));
-//        filterChain.add(new net.sf.jaer.eventprocessing.filter.DepressingSynapseFilter(chip));
+//        filterChain.appendCopy((ballFilter = new CircularConvolutionFilter(chip)));
+//        filterChain.appendCopy(new net.sf.jaer.eventprocessing.filter.DepressingSynapseFilter(chip));
         filterChain.add(new BackgroundActivityFilter(chip));
-        //        filterChain.add(new CircularConvolutionFilter(chip));
-        //        filterChain.add(new SubSamplingBandpassFilter(chip)); // TODO preferences should save enabled state of filters
+        //        filterChain.appendCopy(new CircularConvolutionFilter(chip));
+        //        filterChain.appendCopy(new SubSamplingBandpassFilter(chip)); // TODO preferences should save enabled state of filters
         filterChain.add((tracker = new RectangularClusterTracker(chip)));
         tracker.addObserver(this);
         setEnclosedFilterChain(filterChain);

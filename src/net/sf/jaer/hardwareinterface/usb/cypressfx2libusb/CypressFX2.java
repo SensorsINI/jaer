@@ -1170,7 +1170,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		// sync so that we don't try to copy events while buffer is being
 		// translated
 		final int WRAP_START = 0;
-		/** wrapAdd is the time to add to short timestamp to unwrap it */
+		/** wrapAdd is the time to appendCopy to short timestamp to unwrap it */
 		protected int wrapAdd = WRAP_START; // 0;
 		protected int lastwrap = WRAP_START; // 0;
 		protected int currentwrap = WRAP_START; // 0;

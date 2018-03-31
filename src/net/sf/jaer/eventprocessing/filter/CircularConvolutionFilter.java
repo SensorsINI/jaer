@@ -238,7 +238,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
                     list.add(new Splatt(-1, 0, .25f));
                     list.add(new Splatt(0, -1, .25f));
 //					if (isUseBalancedKernel()) {
-//						list.add(new Splatt(0, 0, -1));
+//						list.appendCopy(new Splatt(0, 0, -1));
 //					}
                     break;
                 case 2:
@@ -251,7 +251,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
                     list.add(new Splatt(-1, -1));
                     list.add(new Splatt(1, -1));
 //					if (isUseBalancedKernel()) {
-//						list.add(new Splatt(0, 0, -8));
+//						list.appendCopy(new Splatt(0, 0, -8));
 //					}
                     float f = 1f / list.size();
                     for (Splatt s : list) {
@@ -295,7 +295,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
 //					s.y=(int)yround;
 //					s.weight= -0.5f; //(float)(1-Math.sqrt((x-xround)*(x-xround)+(y-yround)*(y-yround)));
 //					xlast=s.x; ylast=s.y;
-//					list.add(s);
+//					list.appendCopy(s);
 //				}
 //			}
 //			xlast=-1; ylast=-1;
@@ -311,7 +311,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
 //					s.y=(int)yround;
 //					s.weight= -0.5f; //(float)(1-Math.sqrt((x-xround)*(x-xround)+(y-yround)*(y-yround)));
 //					xlast=s.x; ylast=s.y;
-//					list.add(s);
+//					list.appendCopy(s);
 //				}
 //			}
 //		}

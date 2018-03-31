@@ -198,7 +198,7 @@ public class LIFNetFilt extends SuperLIFFilter implements FrameAnnotater {
         C=new ClusterSet(chip);
 
         dickChainy.add(new PreProcess(chip));
-        //dickChainy.add(N);
+        //dickChainy.appendCopy(N);
         dickChainy.add(C);
 
         setEnclosedFilterChain(dickChainy);
@@ -216,7 +216,7 @@ public class LIFNetFilt extends SuperLIFFilter implements FrameAnnotater {
     }
 
     public int getNetCount(){
-        // Number of networks to add
+        // Number of networks to appendCopy
         return this.netCount;
         /*
         if (enclosedFilter!=null && enclosedFilter.isFilterEnabled() && enclosedFilter instanceof ClusterSet)

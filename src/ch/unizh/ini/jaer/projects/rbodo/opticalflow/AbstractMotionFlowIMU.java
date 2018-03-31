@@ -1011,7 +1011,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
      *
      */
     synchronized public void processGoodEvent() {
-        // Copy the input event to a new output event and add the computed optical flow properties
+        // Copy the input event to a new output event and appendCopy the computed optical flow properties
         eout = (ApsDvsMotionOrientationEvent) outItr.nextOutput();
         eout.copyFrom(e);
         eout.x = (short) (x << subSampleShift);
@@ -1712,7 +1712,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                         gl.glColor4f(rgb[0], rgb[1], rgb[2], .01f);
                         final float s = shift / 4;
                         // draw a blurred square showing motion field direction
-                        // TODO add brightness to show magnitude somehow
+                        // TODO appendCopy brightness to show magnitude somehow
                         for (float dxx = -shift; dxx < shift; dxx += s) {
                             for (float dyy = -shift; dyy < shift; dyy += s) {
                                 gl.glRectf(x - shift + dxx, y - shift + dyy, x + shift + dxx, y + shift + dyy);

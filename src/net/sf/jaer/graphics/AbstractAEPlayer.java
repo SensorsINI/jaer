@@ -222,6 +222,7 @@ public abstract class AbstractAEPlayer {
             }
             setTimesliceUs((int) newTimeSlice);
         }
+        log.info("new time and event slice durations are "+getTimesliceUs()+" us and "+getPacketSizeEvents()+"events");
     }
 
     /**
@@ -248,6 +249,7 @@ public abstract class AbstractAEPlayer {
         if (Math.abs(getTimesliceUs()) < 1) {
             setTimesliceUs((int) Math.signum(getTimesliceUs()));
         }
+        log.info("new time and event slice durations are "+getTimesliceUs()+" us and "+getPacketSizeEvents()+"events");
     }
 
     public void jogForwards() {
