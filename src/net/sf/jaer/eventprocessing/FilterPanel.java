@@ -1959,7 +1959,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      */
     public void highlightProperties(String s) {
         s = s.toLowerCase();
-        System.out.println("\n************** \n searching for " + s + "\n");
+//        System.out.println("\n************** \n searching for " + s + "\n");
         for (MyControl c : highlightedControls) {
             c.setBorder(null);
             c.repaint(300);
@@ -1973,7 +1973,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         for (String propName : propertyControlMap.keySet()) {
             if (propName.toLowerCase().contains(s)) {
                 MyControl c = propertyControlMap.get(propName);
-                System.out.println("highlighted " + propName);
+//                System.out.println("highlighted " + propName);
                 if (c != null) {
                     c.setBorder(new LineBorder(Color.red));
                     c.repaint(300);
