@@ -77,6 +77,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     private float adcVref = getFloat("vreadcVreff", 1.5f);
     private int adcResolutionCounts = getInt("adcResolutionCounts", 1023);
     private boolean useZeroOriginForTemporalNoise = getBoolean("useZeroOriginForTemporalNoise", false);
+    private float lastExposureMs;
 
     public ApsNoiseStatistics(AEChip chip) {
         super(chip);
@@ -390,6 +391,11 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
             resetFilter();
             log.info("statistics reset because of event " + evt.getPropertyName());
         }
+         if (isFilterEnabled() &&   evt.getSource() instanceof AEChip 
+                && evt.getPropertyName() == DavisChip.PROPERTY_MEASURED_EXPOSURE_MS
+                ) {
+             lastExposureMs=(float)evt.getNewValue();
+         }
     }
 
     /**
@@ -456,6 +462,8 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
             MultilineAnnotationTextRenderer.setColor(Color.CYAN);
             MultilineAnnotationTextRenderer.setScale(((float)chip.getSizeX()/240)*.2f); // scaled to fit 240 sensor, scale up for larger sensors
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 0.8f);
+            engFmt.setPrecision(2);
+            MultilineAnnotationTextRenderer.renderMultilineString(String.format("Exposure: %ss",engFmt.format(lastExposureMs*.001f)));
             apsHist.draw(gl);
             temporalNoise.draw(gl);
         }
