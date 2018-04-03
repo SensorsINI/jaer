@@ -84,6 +84,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private boolean addedViewerPropertyChangeListener = false; // need flag because viewer doesn't exist on creation
     private boolean eventRate = getPrefs().getBoolean("Info.eventRate", true);
     private TypedEventRateEstimator eventRateFilter;
+    private XYTypeFilter xyTypeFilter;
     private EngineeringFormat engFmt = new EngineeringFormat();
     private String maxRateString = engFmt.format(eventRateScaleMax);
     private String maxTimeString = "unknown";
@@ -350,9 +351,12 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public Info(AEChip chip) {
         super(chip);
         calendar.setLenient(true); // speed up calendar
+        xyTypeFilter=new XYTypeFilter(chip);
         eventRateFilter = new TypedEventRateEstimator(chip);
         eventRateFilter.addObserver(this);
+        
         FilterChain fc = new FilterChain(chip);
+        fc.add(xyTypeFilter);
         fc.add(eventRateFilter);
         setEnclosedFilterChain(fc);
         setUseLocalTimeZone(useLocalTimeZone);
@@ -446,7 +450,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             }
 
         }
-        eventRateFilter.filterPacket(in);
+        in=getEnclosedFilterChain().filterPacket(in);
         long relativeTimeInFileMs = (in.getLastTimestamp() - dataFileTimestampStartTimeUs) / 1000;
 
         clockTimeMs = computeDisplayTime(relativeTimeInFileMs);
