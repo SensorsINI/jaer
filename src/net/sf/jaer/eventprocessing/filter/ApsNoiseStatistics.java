@@ -33,11 +33,11 @@ import com.jogamp.opengl.GLException;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
+import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
 import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.lang.reflect.Array;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
@@ -383,7 +383,10 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (isFilterEnabled()&&  resetOnBiasChange && evt.getSource() instanceof AEChip && evt.getPropertyName() != DavisChip.PROPERTY_FRAME_RATE_HZ && evt.getPropertyName() != DavisChip.PROPERTY_MEASURED_EXPOSURE_MS) {
+        if (isFilterEnabled()&&  resetOnBiasChange && evt.getSource() instanceof AEChip 
+                && evt.getPropertyName() != DavisChip.PROPERTY_FRAME_RATE_HZ 
+                && evt.getPropertyName() != DavisChip.PROPERTY_MEASURED_EXPOSURE_MS
+                && evt.getPropertyName() != DavisVideoContrastController.AGC_VALUES) {
             resetFilter();
             log.info("statistics reset because of event " + evt.getPropertyName());
         }
