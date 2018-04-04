@@ -33,6 +33,7 @@ import com.jogamp.opengl.GLException;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
+import eu.seebetter.ini.chips.davis.DavisConfig;
 import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
 import java.awt.Color;
 import java.awt.geom.Point2D;
@@ -77,7 +78,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     private float adcVref = getFloat("vreadcVreff", 1.5f);
     private int adcResolutionCounts = getInt("adcResolutionCounts", 1023);
     private boolean useZeroOriginForTemporalNoise = getBoolean("useZeroOriginForTemporalNoise", false);
-    private float lastExposureMs;
+    private float lastMeasuredExposureMs=Float.NaN, lastExposureDelayMs=Float.NaN;
 
     public ApsNoiseStatistics(AEChip chip) {
         super(chip);
@@ -394,7 +395,12 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
          if (isFilterEnabled() &&   evt.getSource() instanceof AEChip 
                 && evt.getPropertyName() == DavisChip.PROPERTY_MEASURED_EXPOSURE_MS
                 ) {
-             lastExposureMs=(float)evt.getNewValue();
+             lastMeasuredExposureMs=(float)evt.getNewValue();
+             if(chip instanceof DavisChip){
+                 DavisChip davisChip=(DavisChip)chip;
+                 DavisConfig davisConfig=(DavisConfig)davisChip.getBiasgen();
+                 lastExposureDelayMs=davisConfig.getExposureDelayMs();
+             }
          }
     }
 
@@ -463,7 +469,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
             MultilineAnnotationTextRenderer.setScale(((float)chip.getSizeX()/240)*.2f); // scaled to fit 240 sensor, scale up for larger sensors
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 0.8f);
             engFmt.setPrecision(2);
-            MultilineAnnotationTextRenderer.renderMultilineString(String.format("Exposure: %ss",engFmt.format(lastExposureMs*.001f)));
+            MultilineAnnotationTextRenderer.renderMultilineString(String.format("Exposure: set=%ss, measured=%ss",engFmt.format(lastExposureDelayMs*.001f),engFmt.format(lastMeasuredExposureMs*.001f)));
             apsHist.draw(gl);
             temporalNoise.draw(gl);
         }
