@@ -866,7 +866,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 renderer.draw3D(toString(), 1,ypos, 0, scale); // TODO fix string n lines
             }
             if (countDVSEventsBetweenExternalPinEvents) {
-                MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);
+                MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .4f);
                 MultilineAnnotationTextRenderer.setScale(.25f);
                 MultilineAnnotationTextRenderer.setColor(Color.yellow);
                 MultilineAnnotationTextRenderer.renderMultilineString(eventCountAfterExternalPinEvents.toString());
