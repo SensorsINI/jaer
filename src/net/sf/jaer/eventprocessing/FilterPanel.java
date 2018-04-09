@@ -51,6 +51,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
 import javax.swing.JTextField;
+import javax.swing.JToggleButton;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
@@ -145,6 +146,16 @@ import net.sf.jaer.util.EngineeringFormat;
  ** </pre> This method will construct a button with label "TurnOnLamp" which,
  * while pressed can turn on something momentarily; the doPressXXX() is called
  * on press and doReleaseXXX() on release
+ * <p>
+ * <p>
+ * To add a toggle button control to a panel, implement a pair of methods
+ * starting with "doToggleOn" and "doToggleOff", e.g.
+ * <pre>
+ *     public void doToggleOnLamp();
+ *     public void doToggleOffLamp();
+ ** </pre> This method will construct a button with label "Lamp" which, while
+ * pressed can turn on something momentarily; the doToggleOnLamp() is called on
+ * press and doToggleOffLamp() on release
  * <p>
  * <strong>
  * Grouping parameters.</strong>
@@ -307,7 +318,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             // these methods, e.g. "void doDisableServo()" do an action.
             // also, a pair of methods doPressXXX and doReleaseXXX will add a button that calls the first method on press and the 2nd on release
             Insets butInsets = new Insets(0, 0, 0, 0);
-            ArrayList<JButton> doButList = new ArrayList();
+            ArrayList<AbstractButton> doButList = new ArrayList();
             for (Method method : methods) {
                 // add a button XXX that calls doPressXXX on press and doReleaseXXX on release of button
                 if (method.getName().startsWith("doPress")
@@ -362,8 +373,52 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         }
                     }
                 }
+                if (method.getName().startsWith("doToggleOn")
+                        && (method.getParameterTypes().length == 0)
+                        && (method.getReturnType() == void.class)) {
+
+                    for (Method toggleOffMethod : methods) {
+                        String suf = method.getName().substring(10);
+                        if (toggleOffMethod.getName().equals("doToggleOff" + suf)
+                                && (toggleOffMethod.getParameterTypes().length == 0)
+                                && (toggleOffMethod.getReturnType() == void.class)) {
+                            //found corresponding release method, add action listeners for toggle on and toggle off
+                            numDoButtons++;
+                            final JToggleButton button = new JToggleButton(method.getName().substring(10));
+                            button.setMargin(butInsets);
+                            button.setFont(button.getFont().deriveFont(9f));
+                            final EventFilter f = filter;
+                            final Method toggleOnMethodFinal = method;
+                            final Method toggleOffMethodFinal = toggleOffMethod;
+                            button.addActionListener(new ActionListener() {
+
+                                @Override
+                                public void actionPerformed(ActionEvent e) {
+                                    try {
+                                        if (button.isSelected()) {
+                                            toggleOnMethodFinal.invoke(f);
+                                        } else {
+                                            toggleOffMethodFinal.invoke(f);
+                                        }
+                                    } catch (IllegalArgumentException ex) {
+                                        ex.printStackTrace();
+                                    } catch (InvocationTargetException ex) {
+                                        ex.printStackTrace();
+                                    } catch (IllegalAccessException ex) {
+                                        ex.printStackTrace();
+                                    }
+                                }
+                            });
+
+                            addTip(f, button);
+                            doButList.add(button);
+                            break; // don't bother with rest of methods
+                        }
+                    }
+                }
                 // add a button that calls a method XXX for method void doXXX()
                 if (method.getName().startsWith("do") && !method.getName().startsWith("doPress") && !method.getName().startsWith("doRelease")
+                        && !method.getName().startsWith("doToggleOn") && !method.getName().startsWith("doToggleOff")
                         && (method.getParameterTypes().length == 0)
                         && (method.getReturnType() == void.class)) {
                     numDoButtons++;
@@ -615,7 +670,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         label.setForeground(Color.BLUE);
     }
 
-    void addTip(EventFilter f, JButton b) {
+    void addTip(EventFilter f, AbstractButton b) {
         String s = f.getPropertyTooltip(b.getText());
         if (s == null) {
             return;
