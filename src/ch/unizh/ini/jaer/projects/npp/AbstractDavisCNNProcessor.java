@@ -302,7 +302,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
 
     public synchronized void doLoadLabels() {
         File file = null;
-        file = openFileDialogAndGetFile("Choose a labels file, one label per line", KEY_LABELS_FILENAME, "","labelsFile.txt", "txt");
+        file = openFileDialogAndGetFile("Choose a labels file, one label per line", KEY_LABELS_FILENAME, "", "labelsFile.txt", "txt");
         if (file == null) {
             return;
         }
@@ -424,7 +424,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
             if (f.exists() && f.isFile()) {
                 loadNetwork(f);
                 if (preferenceExists(KEY_LABELS_FILENAME)) {
-                    File l = new File(getString(KEY_LABELS_FILENAME,""));
+                    File l = new File(getString(KEY_LABELS_FILENAME, ""));
                     if (l.exists() && l.isFile()) {
                         loadLabels(l);
                     }
@@ -480,6 +480,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                 apsDvsNet.setSoftMaxOutput(softMaxOutput); // must set manually since net doesn't know option kept here.
                 apsDvsNet.setZeroPadding(zeroPadding); // must set manually since net doesn't know option kept here.
                 dvsFramer.setFromNetwork(apsDvsNet);
+            } else {
+                log.warning("file " + f + " does not exist");
             }
         } catch (IOException ex) {
             log.warning("Couldn't load the CNN from file " + f + ": got exception " + ex);
