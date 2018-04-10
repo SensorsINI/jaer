@@ -209,10 +209,11 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             case CMD_PROGRESS:
                 try {
                     int progress = Integer.parseInt(tokenizer.nextToken());
-                    if (progressMonitor == null || progress==0) {
+                    if (progressMonitor == null || progressMonitor.isCanceled()) {
                         progressMonitor = new ProgressMonitor(chip.getFilterFrame(), "Training", "note", 0, 100);
                     }
                     progressMonitor.setProgress(progress);
+                    progressMonitor.setNote(String.format("%d%%",progress));
                 } catch (Exception e) {
                     log.warning("exception updating progress monitor: " + e.toString());
                 }
