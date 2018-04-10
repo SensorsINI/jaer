@@ -18,19 +18,18 @@
  */
 package ch.unizh.ini.jaer.projects.npp;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.net.SocketException;
-import java.nio.ByteBuffer;
-import java.nio.channels.DatagramChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.StringTokenizer;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.JFileChooser;
+import javax.swing.ProgressMonitor;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -56,8 +55,9 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     public static final int DEFAULT_LISTENON_PORT = 14335;
     private int portSendTo = getInt("portSendTo", DEFAULT_SENDTO_PORT);
     private int portListenOn = getInt("portListenOn", DEFAULT_LISTENON_PORT);
-    private String CMD_NEW_SYMBOL_AVAILABLE = "newsymbol", CMD_PROGRESS = "progress", CMD_LOAD_NETWORK = "loadnetwork";
+    private static final String CMD_NEW_SYMBOL_AVAILABLE = "newsymbol", CMD_PROGRESS = "progress", CMD_LOAD_NETWORK = "loadnetwork";
     private Thread portListenerThread = null;
+    private ProgressMonitor progressMonitor = null;
 
     public RoShamBoIncremental(AEChip chip) {
         super(chip);
@@ -180,36 +180,81 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         putInt("portListenOn", portListenOn);
     }
 
+    private void parseMessage(String msg) {
+        log.info("parsing message \"" + msg + "\"");
+        if (msg == null) {
+            log.warning("got null message");
+            return;
+        }
+        StringTokenizer tokenizer = new StringTokenizer(msg);
+        switch (tokenizer.nextToken()) {
+            case CMD_NEW_SYMBOL_AVAILABLE:
+                log.warning("learning server should not send this message; it is for us to send");
+                return;
+            case CMD_LOAD_NETWORK:
+                String networkFilename = tokenizer.nextToken();
+                if (networkFilename == null || networkFilename.isEmpty()) {
+                    log.warning("null filename supplied for new network");
+                    return;
+                }
+                synchronized (this) {
+                    try {
+                        log.info("loading new CNN from "+networkFilename);
+                        loadNetwork(new File(networkFilename));
+                    } catch (Exception e) {
+                        log.log(Level.SEVERE, "Exception loading new network", e);
+                    }
+                }
+                break;
+            case CMD_PROGRESS:
+                try {
+                    int progress = Integer.parseInt(tokenizer.nextToken());
+                    if (progressMonitor == null || progress==0) {
+                        progressMonitor = new ProgressMonitor(chip.getFilterFrame(), "Training", "note", 0, 100);
+                    }
+                    progressMonitor.setProgress(progress);
+                } catch (Exception e) {
+                    log.warning("exception updating progress monitor: " + e.toString());
+                }
+
+                break;
+            default:
+                log.warning("unknown token or comamnd in message \"" + msg + "\"");
+        }
+    }
+
     private void sendUDPMessage(String string) {
 
-        if (portListenerThread == null || !portListenerThread.isAlive() || listenOnSocket==null) { // start a thread to get messages from client
+        if (portListenerThread == null || !portListenerThread.isAlive() || listenOnSocket == null) { // start a thread to get messages from client
             log.info("starting thread to listen for UDP datagram messages on port " + portListenOn);
             portListenerThread = new Thread(new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        listenOnSocket=new DatagramSocket(portListenOn);
+                        listenOnSocket = new DatagramSocket(portListenOn);
                     } catch (SocketException ex) {
-                        log.warning("could not open local port for listening for learning server messages on port "+portListenOn+": "+ex.toString());
+                        log.warning("could not open local port for listening for learning server messages on port " + portListenOn + ": " + ex.toString());
                         return;
                     }
                     while (true) {
                         try {
-                            byte[] buf=new byte[1024];
-                            DatagramPacket datagram=new DatagramPacket(buf, buf.length);
+                            byte[] buf = new byte[1024];
+                            DatagramPacket datagram = new DatagramPacket(buf, buf.length);
                             listenOnSocket.receive(datagram);
                             String msg = new String(datagram.getData());
                             log.info("got message:" + msg);
+                            parseMessage(msg);
                         } catch (IOException ex) {
                             log.warning("stopping thread; exception in recieving message: " + ex.toString());
                             break;
                         }
                     }
                 }
+
             }, "RoShamBoIncremental Listener");
             portListenerThread.start();
         }
-        log.info(String.format("sending message to host=%s port=%s string=%s", host, portSendTo, string));
+        log.info(String.format("sending message to host=%s port=%s string=\"%s\"", host, portSendTo, string));
         if (sendToSocket == null) {
             try {
                 log.info("opening socket to send datagrams from");
@@ -222,8 +267,8 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         }
 
         try {
-            byte[] buf=string.getBytes();
-            DatagramPacket datagram=new DatagramPacket(buf,buf.length,client.getAddress(),portSendTo); // construct datagram to send to host/sendToPort
+            byte[] buf = string.getBytes();
+            DatagramPacket datagram = new DatagramPacket(buf, buf.length, client.getAddress(), portSendTo); // construct datagram to send to host/sendToPort
             sendToSocket.send(datagram);
         } catch (IOException ex) {
             log.warning("cannot send message " + ex.toString());
