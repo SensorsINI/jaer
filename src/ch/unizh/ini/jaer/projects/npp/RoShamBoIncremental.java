@@ -55,7 +55,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     public static final int DEFAULT_LISTENON_PORT = 14335;
     private int portSendTo = getInt("portSendTo", DEFAULT_SENDTO_PORT);
     private int portListenOn = getInt("portListenOn", DEFAULT_LISTENON_PORT);
-    private static final String CMD_NEW_SYMBOL_AVAILABLE = "newsymbol", CMD_PROGRESS = "progress", CMD_LOAD_NETWORK = "loadnetwork";
+    private static final String CMD_NEW_SYMBOL_AVAILABLE = "newsymbol", CMD_PROGRESS = "progress", CMD_LOAD_NETWORK = "loadnetwork", CMD_CANCEL="cancel";
     private Thread portListenerThread = null;
     private ProgressMonitor progressMonitor = null;
 
