@@ -19,9 +19,11 @@
 package ch.unizh.ini.jaer.projects.npp;
 
 import java.io.IOException;
+import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.file.Path;
@@ -46,13 +48,15 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 
     private DvsSliceAviWriter aviWriter = null;
     private Path lastSymbolsPath = Paths.get(getString("lastSymbolsPath", ""));
-    private DatagramChannel channel = null;
-    private DatagramSocket socket = null;
+//    private DatagramChannel channel = null;
+    private DatagramSocket sendToSocket = null, listenOnSocket = null;
     private InetSocketAddress client = null;
     private String host = getString("hostname", "localhost");
-    public static final int DEFAULT_PORT = 14334;
-    private int port = getInt("port", DEFAULT_PORT);
-    private String NEW_SYMBOL_AVAILABLE = "newsymbol";
+    public static final int DEFAULT_SENDTO_PORT = 14334;
+    public static final int DEFAULT_LISTENON_PORT = 14335;
+    private int portSendTo = getInt("portSendTo", DEFAULT_SENDTO_PORT);
+    private int portListenOn = getInt("portListenOn", DEFAULT_LISTENON_PORT);
+    private String CMD_NEW_SYMBOL_AVAILABLE = "newsymbol", CMD_PROGRESS = "progress", CMD_LOAD_NETWORK = "loadnetwork";
     private Thread portListenerThread = null;
 
     public RoShamBoIncremental(AEChip chip) {
@@ -66,7 +70,8 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         setPropertyTooltip(learn, "LearnSymbol5", "Toggle collecting symbol data");
         setPropertyTooltip(learn, "ChooseSymbolsFolder", "Choose a folder to store the symbol AVI data files");
         setPropertyTooltip(learn, "hostname", "learning host name (IP or DNS)");
-        setPropertyTooltip(learn, "port", "learning host port number");
+        setPropertyTooltip(learn, "portSendTo", "learning host port number that we send to");
+        setPropertyTooltip(learn, "portListenOn", "local port number we listen on to get message back from learning server");
         aviWriter = new DvsSliceAviWriter(chip);
         aviWriter.setEnclosed(true, this);
         aviWriter.setFrameRate(60);
@@ -94,7 +99,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     private void closeSymbolFileAndSendMessage() {
         log.info("stopping symbol, starting training");
         aviWriter.doCloseFile();
-        sendUDPMessage(NEW_SYMBOL_AVAILABLE + " " + aviWriter.getFile().toPath());
+        sendUDPMessage(CMD_NEW_SYMBOL_AVAILABLE + " " + aviWriter.getFile().toPath());
     }
 
     public void doToggleOnLearnSymbol0() {
@@ -146,63 +151,84 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 //        }
     }
 
-    public int getPort() {
-        return port;
+    public int getPortSendTo() {
+        return portSendTo;
     }
 
     /**
      * You set the port to say which port the packet will be sent to.
      *
-     * @param port the UDP port number.
+     * @param portSendTo the UDP port number.
      */
-    public void setPort(int port) {
-        this.port = port;
-        putInt("port", port);
+    public void setPortSendTo(int portSendTo) {
+        this.portSendTo = portSendTo;
+        putInt("portSendTo", portSendTo);
+    }
+
+    /**
+     * @return the listenOnPort
+     */
+    public int getPortListenOn() {
+        return portListenOn;
+    }
+
+    /**
+     * @param portListenOn the listenOnPort to set
+     */
+    public void setPortListenOn(int portListenOn) {
+        this.portListenOn = portListenOn;
+        putInt("portListenOn", portListenOn);
     }
 
     private void sendUDPMessage(String string) {
-        if (channel == null) {
-            try {
-                channel = DatagramChannel.open();
-                if (portListenerThread == null || !portListenerThread.isAlive()) {
-                    portListenerThread = new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            ByteBuffer udpBuf = ByteBuffer.allocate(1024);
 
-                            InetSocketAddress localSocketAddress = new InetSocketAddress(host, port);
-                            try {
-                                channel.bind(localSocketAddress);
-                            } catch (IOException ex) {
-                                log.warning("couldn't bind local socket address: " + ex.toString());
-                                return;
-                            }
-                            log.info("opened channel on local port " + localSocketAddress + " to receive UDP messages from learning server.");
-                            while (true) {
-                                try {
-                                    channel.receive(udpBuf);
-                                    udpBuf.flip();
-                                    String msg=new String(udpBuf.array());
-                                    log.info("got message:"+msg);
-                                } catch (IOException ex) {
-                                    log.warning("exception in recieving message: " + ex.toString());
-                                }
-                            }
+        if (portListenerThread == null || !portListenerThread.isAlive() || listenOnSocket==null) { // start a thread to get messages from client
+            log.info("starting thread to listen for UDP datagram messages on port " + portListenOn);
+            portListenerThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        listenOnSocket=new DatagramSocket(portListenOn);
+                    } catch (SocketException ex) {
+                        log.warning("could not open local port for listening for learning server messages on port "+portListenOn+": "+ex.toString());
+                        return;
+                    }
+                    while (true) {
+                        try {
+                            byte[] buf=new byte[1024];
+                            DatagramPacket datagram=new DatagramPacket(buf, buf.length);
+                            listenOnSocket.receive(datagram);
+                            String msg = new String(datagram.getData());
+                            log.info("got message:" + msg);
+                        } catch (IOException ex) {
+                            log.warning("stopping thread; exception in recieving message: " + ex.toString());
+                            break;
                         }
-                    }, "RoShamBoIncremental Listener");
+                    }
                 }
-                portListenerThread.start();
+            }, "RoShamBoIncremental Listener");
+            portListenerThread.start();
+        }
+        log.info(String.format("sending message to host=%s port=%s string=%s", host, portSendTo, string));
+        if (sendToSocket == null) {
+            try {
+                log.info("opening socket to send datagrams from");
+                client = new InetSocketAddress(host, portSendTo); // get address for remote client
+                sendToSocket = new DatagramSocket(); // make a local socket using any port, will be used to send datagrams to the host/sendToPort
             } catch (IOException ex) {
-                log.warning("cannot open channel: " + ex.toString());
+                log.warning(String.format("cannot open socket to send to host=%s port=%d, got exception %s", host, portSendTo, ex.toString()));
                 return;
             }
         }
+
         try {
-            Socket socket = new Socket(host, port);
-            ByteBuffer b = ByteBuffer.wrap(string.getBytes());
-            channel.send(b, socket.getRemoteSocketAddress());
+            byte[] buf=string.getBytes();
+            DatagramPacket datagram=new DatagramPacket(buf,buf.length,client.getAddress(),portSendTo); // construct datagram to send to host/sendToPort
+            sendToSocket.send(datagram);
         } catch (IOException ex) {
-            log.warning(String.format("socket exception for host=%s, port=%d: %s", host, port, ex.toString()));
+            log.warning("cannot send message " + ex.toString());
+            return;
         }
+
     }
 }
