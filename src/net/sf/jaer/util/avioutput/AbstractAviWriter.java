@@ -48,6 +48,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     protected AVIOutputStream aviOutputStream = null;
     protected static String DEFAULT_FILENAME = "jAER.avi";
     protected String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
+    protected File lastFile = null;
     protected int framesWritten = 0;
     protected boolean writeTimecodeFile = getBoolean("writeTimecodeFile", true);
     protected static final String TIMECODE_SUFFIX = "-timecode.txt";
@@ -59,10 +60,10 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     protected int maxFrames = getInt("maxFrames", 0);
     protected float compressionQuality = getFloat("compressionQuality", 0.9f);
     private String[] additionalComments = null;
-    private int frameRate=getInt("frameRate",30);
-    private boolean saveFramesAsIndividualImageFiles=getBoolean("saveFramesAsIndividualImageFiles",false);
-    private boolean writeOnlyWhenMousePressed=getBoolean("writeOnlyWhenMousePressed",false);
-    protected volatile boolean writeEnabled=true;
+    private int frameRate = getInt("frameRate", 30);
+    private boolean saveFramesAsIndividualImageFiles = getBoolean("saveFramesAsIndividualImageFiles", false);
+    private boolean writeOnlyWhenMousePressed = getBoolean("writeOnlyWhenMousePressed", false);
+    protected volatile boolean writeEnabled = true;
 
     public AbstractAviWriter(AEChip chip) {
         super(chip);
@@ -115,7 +116,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     private void resizeWindowTo(int w, int h) {
-        if(aviOutputStream!=null){
+        if (aviOutputStream != null) {
             log.warning("resizing disabled during recording to prevent AVI corruption");
             return;
         }
@@ -130,8 +131,8 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             return;
         }
         int ww = c.getWidth(), hh = c.getHeight();
-        int vw=v.getWidth(), vh=v.getHeight();
-        v.setSize(w + (vw-ww), h + (vh-hh));
+        int vw = v.getWidth(), vh = v.getHeight();
+        v.setSize(w + (vw - ww), h + (vh - hh));
         v.revalidate();
         int ww2 = c.getWidth(), hh2 = c.getHeight();
         log.info(String.format("Canvas resized from %d x %d to %d x %d pixels", ww, hh, ww2, hh2));
@@ -181,7 +182,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             c.setSelectedFile(new File(newName));
         }
         lastFileName = c.getSelectedFile().toString();
-        
+
         if (c.getSelectedFile().exists()) {
             int r = JOptionPane.showConfirmDialog(null, "File " + c.getSelectedFile().toString() + " already exists, overwrite it?");
             if (r != JOptionPane.OK_OPTION) {
@@ -227,6 +228,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             aviOutputStream.setFrameRate(frameRate);
             aviOutputStream.setVideoCompressionQuality(compressionQuality);
 //            aviOutputStream.setVideoDimension(chip.getSizeX(), chip.getSizeY());
+            lastFile = f;
             lastFileName = f.toString();
             putString("lastFileName", lastFileName);
             if (writeTimecodeFile) {
@@ -290,7 +292,6 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        
 
     }
 
@@ -351,6 +352,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
 
     /**
      * Set type of video encoding; see VideoFormat
+     *
      * @param format the format to set
      */
     public void setFormat(AVIOutputStream.VideoFormat format) {
@@ -439,13 +441,23 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         return frameRate;
     }
 
+    /** Returns last file written
+     * 
+     * @return the File written
+     */
+    public File getFile() {
+        return lastFile;
+    }
+
     /**
      * @param frameRate the frameRate to set
      */
     public void setFrameRate(int frameRate) {
-        if(frameRate<1)frameRate=1;
+        if (frameRate < 1) {
+            frameRate = 1;
+        }
         this.frameRate = frameRate;
-        putInt("frameRate",frameRate);
+        putInt("frameRate", frameRate);
     }
 
 //    /**
@@ -462,7 +474,6 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
 //        this.saveFramesAsIndividualImageFiles = saveFramesAsIndividualImageFiles;
 //        putBoolean("saveFramesAsIndividualImageFiles",saveFramesAsIndividualImageFiles);
 //    }
-
     /**
      * @return the writeOnlyWhenMousePressed
      */
@@ -475,28 +486,32 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      */
     public void setWriteOnlyWhenMousePressed(boolean writeOnlyWhenMousePressed) {
         this.writeOnlyWhenMousePressed = writeOnlyWhenMousePressed;
-        putBoolean("writeOnlyWhenMousePressed",writeOnlyWhenMousePressed);
+        putBoolean("writeOnlyWhenMousePressed", writeOnlyWhenMousePressed);
     }
 
     @Override
     public void mouseReleased(MouseEvent e) {
-        if(writeOnlyWhenMousePressed) setWriteEnabled(false);
+        if (writeOnlyWhenMousePressed) {
+            setWriteEnabled(false);
+        }
     }
 
     @Override
     public void mousePressed(MouseEvent e) {
-        if(writeOnlyWhenMousePressed) setWriteEnabled(true);
+        if (writeOnlyWhenMousePressed) {
+            setWriteEnabled(true);
+        }
     }
-    
-    public boolean isWriteEnabled(){
+
+    public boolean isWriteEnabled() {
         return writeEnabled;
     }
-    
-    public void setWriteEnabled(boolean yes){
-        boolean old=this.writeEnabled;
-        writeEnabled=yes;
-        getSupport().firePropertyChange("writeEnabled",old, yes);
-        log.info("writeEnabled="+writeEnabled);
+
+    public void setWriteEnabled(boolean yes) {
+        boolean old = this.writeEnabled;
+        writeEnabled = yes;
+        getSupport().firePropertyChange("writeEnabled", old, yes);
+        log.info("writeEnabled=" + writeEnabled);
     }
-    
+
 }
