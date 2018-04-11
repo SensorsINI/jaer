@@ -25,9 +25,11 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
+import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -62,7 +64,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     private static final String CMD_NEW_SYMBOL_AVAILABLE = "newsymbol", CMD_PROGRESS = "progress", CMD_LOAD_NETWORK = "loadnetwork", CMD_CANCEL = "cancel";
     private Thread portListenerThread = null;
     private ProgressMonitor progressMonitor = null;
-    private String lastNewClassName=getString("lastNewClassName","");
+    private String lastNewClassName = getString("lastNewClassName", "");
 
     public RoShamBoIncremental(AEChip chip) {
         super(chip);
@@ -99,21 +101,31 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     private void closeSymbolFileAndSendMessage() {
         log.info("stopping sample recording, starting training");
         aviWriter.doCloseFile(); // saves tmpfile.avi
-        String newname=JOptionPane.showInputDialog(chip.getFilterFrame(), "Class name for this sample (e.g. thumbsup or peace)?", lastNewClassName);
-        if(newname==null){
+        String newname = JOptionPane.showInputDialog(chip.getFilterFrame(), "Class name for this sample (e.g. thumbsup or peace)?", lastNewClassName);
+        if (newname == null) {
             try {
                 // user canceled, delete the file
                 Files.delete(aviWriter.getFile().toPath());
             } catch (IOException ex) {
-                log.warning("could not delete the AVI file "+aviWriter.getFile()+": "+ex.toString());
+                log.warning("could not delete the AVI file " + aviWriter.getFile() + ": " + ex.toString());
             }
             return;
         }
-        Path source=aviWriter.getFile().toPath(), dest=source.resolveSibling(newname+".avi");
+        putString("lastNewClassName",newname);
+        Path source = aviWriter.getFile().toPath(), dest = source.resolveSibling(newname + ".avi");
+
         
+        if(dest.toFile().exists()){
+            int ret=JOptionPane.showConfirmDialog(chip.getFilterFrame(), String.format("destination %s exists, overwrite?",dest.toFile()));
+            if(ret!=JOptionPane.OK_OPTION) {
+                JOptionPane.showMessageDialog(chip.getFilterFrame(), "Learning cancelled");
+                return;
+            }
+        }
         try {
-            Files.move(source, dest);
+            Files.move(source, dest,StandardCopyOption.REPLACE_EXISTING);
             sendUDPMessage(CMD_NEW_SYMBOL_AVAILABLE + " " + dest.toString());
+            lastNewClassName=newname;
         } catch (IOException ex) {
             Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.WARNING, null, ex);
         }
@@ -191,6 +203,10 @@ public class RoShamBoIncremental extends RoShamBoCNN {
                 log.warning("learning server should not send this message; it is for us to send");
                 return;
             case CMD_LOAD_NETWORK:
+                if (!tokenizer.hasMoreTokens()) {
+                    log.warning("Missing network filename; usage is " + CMD_LOAD_NETWORK + " filename.pb [labels.txt]");
+                    return;
+                }
                 String networkFilename = tokenizer.nextToken();
                 if (networkFilename == null || networkFilename.isEmpty()) {
                     log.warning("null filename supplied for new network");
@@ -204,6 +220,24 @@ public class RoShamBoIncremental extends RoShamBoCNN {
                         log.log(Level.SEVERE, "Exception loading new network", e);
                     }
                 }
+                // labels file
+                if (!tokenizer.hasMoreTokens()) {
+                    break;
+                }
+                String labelsFilename = tokenizer.nextToken();
+                if (labelsFilename == null || labelsFilename.isEmpty()) {
+                    log.warning("null filename supplied for labels, not loading any");
+                    return;
+                }
+                synchronized (RoShamBoIncremental.this) { // sync on outter class, not thread we are running in
+                    try {
+                        log.info("loading new class labels from " + labelsFilename);
+                        loadLabels(new File(networkFilename));
+                    } catch (Exception e) {
+                        log.log(Level.SEVERE, "Exception loading new labels", e);
+                    }
+                }
+
                 break;
             case CMD_PROGRESS:
                 try {
@@ -247,7 +281,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
                             byte[] buf = new byte[1024];
                             DatagramPacket datagram = new DatagramPacket(buf, buf.length);
                             listenOnSocket.receive(datagram);
-                            String msg = new String(datagram.getData());
+                            String msg = new String(datagram.getData(), datagram.getOffset(), datagram.getLength());
                             log.info("got message:" + msg);
                             parseMessage(msg);
                         } catch (IOException ex) {
