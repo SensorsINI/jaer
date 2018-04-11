@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import org.tensorflow.DataType;
 import org.tensorflow.Graph;
@@ -197,8 +198,13 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
             }
             msg.append("</ul>");
             log.warning(msg.toString());
-            JOptionPane.showMessageDialog(processor.getChip().getAeViewer(), msg.toString(),
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    JOptionPane.showMessageDialog(processor.getChip().getAeViewer(), msg.toString(),
                     "Error computing network", JOptionPane.WARNING_MESSAGE);
+                }
+            });
             throw new IllegalArgumentException(ex.getCause());
         }
     }
