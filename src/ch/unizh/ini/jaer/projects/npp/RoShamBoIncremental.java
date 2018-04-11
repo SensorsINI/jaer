@@ -61,7 +61,12 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     public static final int DEFAULT_LISTENON_PORT = 14335;
     private int portSendTo = getInt("portSendTo", DEFAULT_SENDTO_PORT);
     private int portListenOn = getInt("portListenOn", DEFAULT_LISTENON_PORT);
-    private static final String CMD_NEW_SYMBOL_AVAILABLE = "newsymbol", CMD_PROGRESS = "progress", CMD_LOAD_NETWORK = "loadnetwork", CMD_CANCEL = "cancel";
+    private static final String CMD_NEW_SYMBOL_AVAILABLE = "newsymbol",
+            CMD_PROGRESS = "progress",
+            CMD_LOAD_NETWORK = "loadnetwork",
+            CMD_CANCEL = "cancel",
+            CMD_PING = "ping",
+            CMD_PONG = "pong";
     private Thread portListenerThread = null;
     private ProgressMonitor progressMonitor = null;
     private String lastNewClassName = getString("lastNewClassName", "");
@@ -74,6 +79,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         setPropertyTooltip(learn, "hostname", "learning host name (IP or DNS)");
         setPropertyTooltip(learn, "portSendTo", "learning host port number that we send to");
         setPropertyTooltip(learn, "portListenOn", "local port number we listen on to get message back from learning server");
+        setPropertyTooltip(learn, "Ping", "Sends \"ping\" to learning server. Pops up confirmation when \"pong\" is returned");
         aviWriter = new DvsSliceAviWriter(chip);
         aviWriter.setEnclosed(true, this);
         aviWriter.setFrameRate(60);
@@ -98,6 +104,11 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 
     }
 
+    public void doPing() {
+        sendUDPMessage(CMD_PING);
+
+    }
+
     private void closeSymbolFileAndSendMessage() {
         log.info("stopping sample recording, starting training");
         aviWriter.doCloseFile(); // saves tmpfile.avi
@@ -111,21 +122,20 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             }
             return;
         }
-        putString("lastNewClassName",newname);
+        putString("lastNewClassName", newname);
         Path source = aviWriter.getFile().toPath(), dest = source.resolveSibling(newname + ".avi");
 
-        
-        if(dest.toFile().exists()){
-            int ret=JOptionPane.showConfirmDialog(chip.getFilterFrame(), String.format("destination %s exists, overwrite?",dest.toFile()));
-            if(ret!=JOptionPane.OK_OPTION) {
+        if (dest.toFile().exists()) {
+            int ret = JOptionPane.showConfirmDialog(chip.getFilterFrame(), String.format("destination %s exists, overwrite?", dest.toFile()));
+            if (ret != JOptionPane.OK_OPTION) {
                 JOptionPane.showMessageDialog(chip.getFilterFrame(), "Learning cancelled");
                 return;
             }
         }
         try {
-            Files.move(source, dest,StandardCopyOption.REPLACE_EXISTING);
+            Files.move(source, dest, StandardCopyOption.REPLACE_EXISTING);
             sendUDPMessage(CMD_NEW_SYMBOL_AVAILABLE + " " + dest.toString());
-            lastNewClassName=newname;
+            lastNewClassName = newname;
         } catch (IOException ex) {
             Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.WARNING, null, ex);
         }
@@ -198,7 +208,14 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             return;
         }
         StringTokenizer tokenizer = new StringTokenizer(msg);
-        switch (tokenizer.nextToken()) {
+        String cmd=tokenizer.nextToken();
+        switch (cmd) {
+            case CMD_PONG:
+                JOptionPane.showMessageDialog(chip.getFilterFrame(), String.format("\"%s\" received from %s",cmd,host));
+                return;
+            case CMD_PING:
+                sendUDPMessage(CMD_PONG);
+                return;
             case CMD_NEW_SYMBOL_AVAILABLE:
                 log.warning("learning server should not send this message; it is for us to send");
                 return;
