@@ -109,7 +109,7 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
 
     @Override
     protected void parseMessage(RosbagFileInputStream.MessageWithIndex message) {
-        String pkg = message.messageType.getPackage();
+        String topic = message.messageIndex.topic;
 
 //        if (chip.getAeInputStream() instanceof RosbagFileInputStream) {
 //            if (!firstTimestampWasRead) {
@@ -117,8 +117,8 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
 //                firstTimestampWasRead = true;
 //            }
 //        }
-        
-        if (pkg.equalsIgnoreCase("sensor_msgs")) {
+       
+        if (topic.equalsIgnoreCase("/davis/left/depth_image_rect")) {
             ByteOrder byteOrder = ByteOrder.LITTLE_ENDIAN;
             try {
                 byteOrder = (message.messageType.<UInt8Type>getField("is_bigendian").getValue() == 0) ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
@@ -136,7 +136,7 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
 //            depthList.add(current_depth_image);
         }
         
-        if (pkg.equalsIgnoreCase("geometry_msgs")) {
+        if (topic.equalsIgnoreCase("/davis/left/pose")) {
 
             try {
                 // Extract position information.

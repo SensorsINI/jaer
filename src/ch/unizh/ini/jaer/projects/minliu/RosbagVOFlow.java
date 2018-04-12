@@ -18,6 +18,7 @@
  */
 package ch.unizh.ini.jaer.projects.minliu;
 
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlowIMU;
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
@@ -42,13 +43,20 @@ import net.sf.jaer.eventio.ros.RosbagVOGTReader;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.ImageDisplay;
+
 import org.apache.commons.lang3.math.IEEE754rUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.util.MathArrays;
 import org.apache.commons.math3.util.MathUtils;
+
 import org.jblas.DoubleMatrix;
 
+import org.opencv.calib3d.Calib3d;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
 /**
  *
  * @author minliu
@@ -64,12 +72,23 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
     private ImageDisplay.Legend sliceDepthmapImageDisplayLegend;
     private static final String LEGEND_SLICES = "Depth image";
     private boolean showDepthmap = getBoolean("showDepthmap", false);; // Display the depth map
+   
+    private JFrame sliceRectImgFrame = null;    
+    private ImageDisplay sliceRectImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+    private ImageDisplay.Legend sliceRectImageDisplayLegend;
+    private static final String RECT_LEGEND_SLICES = "Rect image";
+    private boolean showRectimg = getBoolean("showRectimg", false);; // Display the rectified image
+    
+    private final ApsFrameExtractor apsFrameExtractor;
 
     public RosbagVOFlow(AEChip chip) {
         super(chip);
         FilterChain chain = new FilterChain(chip);
         VOGTReader = new RosbagVOGTReader(chip);
         chain.add(VOGTReader);
+        apsFrameExtractor = new ApsFrameExtractor(chip);
+        apsFrameExtractor.setShowAPSFrameDisplay(false);
+        chain.add(apsFrameExtractor);
         setEnclosedFilterChain(chain);
         
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
@@ -99,7 +118,7 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
         }
         
         float[] depth_image = VOGTReader.getCurrent_depth_image();
-
+        
         
         DoubleMatrix current_pose_se3 = VOGTReader.getCurrentPoseSe3();
         if(showDepthmap && depth_image != null && chip != null) {
@@ -108,7 +127,31 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
             for (int index = 0; index < depth_image.length; index++) {
                 depth_image_reverse[index] = depth_image[(chip.getSizeY() - index/chip.getSizeX() - 1) * chip.getSizeX() + index%chip.getSizeX()]/depth_max;
             }
-            drawSlices(depth_image_reverse);
+            drawDepth(depth_image_reverse);
+        }
+        
+        float[] aps_buffer = apsFrameExtractor.getDisplayBuffer();
+        float[] aps_image = new float[aps_buffer.length];
+        float aps_image_max = IEEE754rUtils.max(aps_buffer);
+        for (int index = 0; index < aps_buffer.length; index++) {
+            aps_image[index] = aps_buffer[(chip.getSizeY() - index/chip.getSizeX() - 1) 
+                    * chip.getSizeX() + index%chip.getSizeX()]/aps_image_max;
+        }
+//        Mat exp_img = Imgcodecs.imread("G:/MVSEC/ApsFrame-2018-04-12T22-29-37+0200.png", 0);
+//        exp_img.convertTo(exp_img, CvType.CV_32FC1);
+        Mat raw_img = new Mat(apsFrameExtractor.width, apsFrameExtractor.height, CvType.CV_32FC1);
+        raw_img.put(0, 0, aps_image);
+        Mat undistorted_img = new Mat();
+        Mat K  = Mat.eye(3, 3, CvType.CV_32FC1);
+        K.put(0, 0, 226.3802, 0, 173.6471, 0, 226.1500, 133.7327, 0, 0, 1);
+//        System.out.println(img.dump());
+        Mat D = Mat.zeros(1, 4, CvType.CV_32FC1);
+        D.put(0, 0, 0, 0, 0, 0);
+        Calib3d.undistortImage(raw_img, undistorted_img, K, D);
+        float[] undistorted_image = new float[(int)(undistorted_img.total() * undistorted_img.channels())];
+        undistorted_img.get(0, 0, undistorted_image);
+        if(showRectimg && undistorted_image != null && chip != null) {
+            drawRectImg(undistorted_image);
         }
         
 //        Se3Info se3Info = se3InfoList.get(se3InfoList.size() - 1);
@@ -186,7 +229,7 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
         }
     }
     
-    private void drawSlices(float[] depth) {
+    private void drawDepth(float[] depth) {
 //        log.info("drawing slices");
         if (sliceDepthMapFrame == null) {
             String windowName = "Depth images";
@@ -240,6 +283,61 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
         this.showDepthmap = showDepthmap;
         getSupport().firePropertyChange("showDepthmap", old, this.showDepthmap);
         putBoolean("showDepthmap", showDepthmap);
+    }    
 
+    private void drawRectImg(float[] rectImg) {
+//        log.info("drawing slices");
+        if (sliceRectImgFrame == null) {
+            String windowName = "Rectified images";
+            sliceRectImgFrame = new JFrame(windowName);
+            sliceRectImgFrame.setLayout(new BoxLayout(sliceRectImgFrame.getContentPane(), BoxLayout.Y_AXIS));
+            sliceRectImgFrame.setPreferredSize(new Dimension(600, 600));
+            JPanel panel = new JPanel();
+            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+            sliceRectImageDisplay = ImageDisplay.createOpenGLCanvas();
+            sliceRectImageDisplay.setBorderSpacePixels(10);
+            sliceRectImageDisplay.setImageSize(sizex, sizey);
+            sliceRectImageDisplay.setSize(200, 200);
+            sliceRectImageDisplay.setGrayValue(0);
+            sliceRectImageDisplayLegend = sliceRectImageDisplay.addLegend(RECT_LEGEND_SLICES, 0, -10);
+            panel.add(sliceRectImageDisplay);
+
+            sliceRectImgFrame.getContentPane().add(panel);
+            sliceRectImgFrame.pack();
+            sliceRectImgFrame.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    setShowRectimg(false);
+                }
+            });
+        }
+        if (!sliceRectImgFrame.isVisible()) {
+            sliceRectImgFrame.setVisible(true);
+        }
+
+        sliceRectImageDisplay.clearImage();
+
+        sliceRectImageDisplay.setPixmapFromGrayArray(rectImg);
+        if (sliceRectImageDisplayLegend != null) {
+            sliceRectImageDisplayLegend.s
+                    = RECT_LEGEND_SLICES;
+        }
+
+        sliceRectImageDisplay.repaint();
     }
+    
+    public boolean isShowRectimg() {
+        return showRectimg;
+    }
+
+    /**
+     * @param showSlices
+     * @param showSlices the option of displaying bitmap
+     */
+    synchronized public void setShowRectimg(boolean showRectimg) {
+        boolean old = this.showRectimg;
+        this.showRectimg = showRectimg;
+        getSupport().firePropertyChange("showRectimg", old, this.showRectimg);
+        putBoolean("showRectimg", showRectimg);
+    }       
 }
