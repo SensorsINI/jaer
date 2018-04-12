@@ -97,7 +97,7 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
         super(chip);
         ArrayList<String> topics = new ArrayList();
         topics.add("/davis/left/pose");
-        topics.add("/davis/left/depth_image_raw");
+        topics.add("/davis/left/depth_image_rect");
         addTopics(topics);
         lastPose_ts = new Timestamp(0);
         currentPose_ts = new Timestamp(0);
