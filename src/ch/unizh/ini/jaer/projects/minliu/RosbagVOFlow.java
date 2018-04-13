@@ -55,6 +55,8 @@ import org.jblas.DoubleMatrix;
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint2f;
+import org.opencv.core.Point;
 import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
@@ -145,7 +147,7 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
         K.put(0, 0, 226.3802, 0, 173.6471, 0, 226.1500, 133.7327, 0, 0, 1);
 //        System.out.println(img.dump());
         Mat D = Mat.zeros(1, 4, CvType.CV_32FC1);
-        D.put(0, 0, -0.0480, 0.01133, -0.0554, 0.0215);
+//        D.put(0, 0, -0.0480, 0.01133, -0.0554, 0.0215);
         Mat newCameraMatrix = Calib3d.getOptimalNewCameraMatrix(K, D, new Size(chip.getSizeX(), chip.getSizeY()), 1);
         Calib3d.undistortImage(raw_img, undistorted_img, K, D, newCameraMatrix, new Size(chip.getSizeX(), chip.getSizeY()));
         float[] undistorted_image = new float[(int)(undistorted_img.total() * undistorted_img.channels())];
@@ -194,11 +196,20 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
             
             DoubleMatrix offsetPixel = new DoubleMatrix();
             if (depth_image != null && current_pose_se3 != null) {
-
-                double Z = depth_image[(ein).x + (chip.getSizeY() - (ein.y) - 1) * chip.getSizeX()];
-                double X = ((ein.x) * Z - cx)/fx;
-                double Y = ((ein.y) * Z - cy)/fy;
+                MatOfPoint2f originPt = new MatOfPoint2f(new Point(x, y));
+                MatOfPoint2f dstPt = new MatOfPoint2f();
+                Calib3d.undistortPoints(originPt, dstPt, K, D);
+                Imgproc.undistortPoints(originPt, dstPt, K, D);
+                double undist_x = dstPt.toList().get(0).x;
+                double undist_y = dstPt.toList().get(0).y;
+                if (undist_x < 0 || undist_x > chip.getSizeX() || undist_y < 0 || undist_y > chip.getSizeY()) {
+                    continue;
+                }
+                double Z = depth_image[(int)(undist_x) + (chip.getSizeY() - (int)(undist_y) - 1) * chip.getSizeX()];
+                double X = (undist_x * Z - cx)/fx;
+                double Y = (undist_y * Z - cy)/fy;
                 
+
                 DoubleMatrix pose2pixelJaccobi = new DoubleMatrix(new double[][]{
                     {fx/Z, 0, -fx*X/Z, -fx*X*Y/(Z*Z), fx + fx*X*X/(Z*Z), -fx*Y/Z},
                     {0, fy/Z, -fy*Y/Z,  -fy - fx*Y*Y/(Z*Z), fy*X*Y/(Z*Z), fy*X/Z}});
