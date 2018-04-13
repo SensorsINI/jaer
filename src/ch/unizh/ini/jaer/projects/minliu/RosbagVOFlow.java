@@ -55,6 +55,7 @@ import org.jblas.DoubleMatrix;
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 /**
@@ -130,24 +131,23 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
             drawDepth(depth_image_reverse);
         }
         
-        float[] aps_buffer = apsFrameExtractor.getDisplayBuffer();
-        float[] aps_image = new float[aps_buffer.length];
-        float aps_image_max = IEEE754rUtils.max(aps_buffer);
-        for (int index = 0; index < aps_buffer.length; index++) {
-            aps_image[index] = aps_buffer[(chip.getSizeY() - index/chip.getSizeX() - 1) 
-                    * chip.getSizeX() + index%chip.getSizeX()]/aps_image_max;
+        float[] aps_image = apsFrameExtractor.getDisplayBuffer();
+        float aps_image_max = IEEE754rUtils.max(aps_image);
+        for (int index = 0; index < aps_image.length; index++) {
+            aps_image[index] = aps_image[index]/aps_image_max;
         }
 //        Mat exp_img = Imgcodecs.imread("G:/MVSEC/ApsFrame-2018-04-12T22-29-37+0200.png", 0);
 //        exp_img.convertTo(exp_img, CvType.CV_32FC1);
-        Mat raw_img = new Mat(apsFrameExtractor.width, apsFrameExtractor.height, CvType.CV_32FC1);
+        Mat raw_img = new Mat(apsFrameExtractor.height, apsFrameExtractor.width, CvType.CV_32FC1);
         raw_img.put(0, 0, aps_image);
         Mat undistorted_img = new Mat();
         Mat K  = Mat.eye(3, 3, CvType.CV_32FC1);
         K.put(0, 0, 226.3802, 0, 173.6471, 0, 226.1500, 133.7327, 0, 0, 1);
 //        System.out.println(img.dump());
         Mat D = Mat.zeros(1, 4, CvType.CV_32FC1);
-        D.put(0, 0, 0, 0, 0, 0);
-        Calib3d.undistortImage(raw_img, undistorted_img, K, D);
+        D.put(0, 0, -0.0480, 0.01133, -0.0554, 0.0215);
+        Mat newCameraMatrix = Calib3d.getOptimalNewCameraMatrix(K, D, new Size(chip.getSizeX(), chip.getSizeY()), 1);
+        Calib3d.undistortImage(raw_img, undistorted_img, K, D, newCameraMatrix, new Size(chip.getSizeX(), chip.getSizeY()));
         float[] undistorted_image = new float[(int)(undistorted_img.total() * undistorted_img.channels())];
         undistorted_img.get(0, 0, undistorted_image);
         if(showRectimg && undistorted_image != null && chip != null) {
