@@ -226,7 +226,8 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
                 DoubleMatrix pose2pixelJaccobi = new DoubleMatrix(new double[][]{
                     {fx/Z, 0, -fx*X/Z, -fx*X*Y/(Z*Z), fx + fx*X*X/(Z*Z), -fx*Y/Z},
                     {0, fy/Z, -fy*Y/Z,  -fy - fx*Y*Y/(Z*Z), fy*X*Y/(Z*Z), fy*X/Z}});
-                
+                current_pose_se3 = DoubleMatrix.zeros(6, 1);
+                current_pose_se3.put(2, -0.1);
                 offsetPixel = pose2pixelJaccobi.mmul(current_pose_se3);
                 double delta_ts = ((current_pose_ts.getTime() - last_pose_ts.getTime())*1e3 
                         + (current_pose_ts.getNanos() - last_pose_ts.getNanos())/1e3)/1e6;
