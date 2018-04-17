@@ -143,20 +143,15 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
         Mat raw_img = new Mat(apsFrameExtractor.height, apsFrameExtractor.width, CvType.CV_32FC1);
         raw_img.put(0, 0, aps_image);
         Mat undistorted_img = new Mat();
-        Mat K  = Mat.eye(3, 3, CvType.CV_32FC1);
-        K.put(0, 0, 226.3802, 0, 173.6471, 0, 226.1500, 133.7327, 0, 0, 1);
+        if (VOGTReader.getCurrentCameraInfo() == null) {
+            return in;
+        }
+        Mat K  = VOGTReader.getCurrentCameraInfo().K;
 //        System.out.println(img.dump());
-        Mat D = Mat.zeros(1, 4, CvType.CV_32FC1);
-        D.put(0, 0, -0.0480, 0.01133, -0.0554, 0.0215);
+        Mat D = VOGTReader.getCurrentCameraInfo().D;
 //        Mat newCameraMatrix = Calib3d.getOptimalNewCameraMatrix(K, D, new Size(chip.getSizeX(), chip.getSizeY()), 1);
-        Mat newCameraMatrix = new Mat(3, 3, CvType.CV_32FC1);
-        newCameraMatrix.put(0, 0, 199.6530,   0,  177.4328,  
-                                      0,   199.6530,   126.8122,
-                                      0,      0,      1);
-        Mat rectify_R = new Mat(3, 3, CvType.CV_32FC1);
-        rectify_R.put(0, 0, 0.9998, 0.01502, -0.0044,
-                            -0.01502, 0.9998, 0.0050,
-                            0.0044, -0.0050, 1);
+        Mat newCameraMatrix = VOGTReader.getCurrentCameraInfo().P.submat(0, 3, 0, 3);
+        Mat rectify_R = VOGTReader.getCurrentCameraInfo().R;
         Mat mapx = new Mat();
         Mat mapy = new Mat();
 //        Calib3d.undistortImage(raw_img, undistorted_img, K, D, newCameraMatrix, new Size(chip.getSizeX(), chip.getSizeY()));
@@ -204,10 +199,10 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
             Timestamp current_pose_ts = VOGTReader.getCurrentPose_ts();
             Timestamp last_pose_ts = VOGTReader.getLastPose_ts();
             
-            double fx = 199.6530;
-            double fy = 199.6530;
-            double cx = 177.4328;
-            double cy = 126.8122;
+            double fx = K.get(0, 0)[0];
+            double fy = K.get(1, 1)[0];
+            double cx = K.get(0, 2)[0];
+            double cy = K.get(1, 2)[0];
             
             DoubleMatrix offsetPixel = new DoubleMatrix();
             if (depth_image != null && current_pose_se3 != null && mapx != null && mapy != null) {
@@ -215,24 +210,26 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
                 MatOfPoint2f dstPt = new MatOfPoint2f();
                 double undist_x = mapx.get(y, x)[0];
                 double undist_y = mapy.get(y, x)[0];
+                undist_x = x;
+                undist_y = y;
                 if (undist_x < 0 || undist_x > chip.getSizeX() || undist_y < 0 || undist_y > chip.getSizeY()) {
                     continue;
                 }
                 double Z = depth_image[(int)(undist_x) + (chip.getSizeY() - (int)(undist_y) - 1) * chip.getSizeX()];
-                double X = (undist_x * Z - cx)/fx;
-                double Y = (undist_y * Z - cy)/fy;
+                double X = (undist_x - cx) * Z/fx;
+                double Y = (undist_y - cy) * Z/fy;
                 
 
                 DoubleMatrix pose2pixelJaccobi = new DoubleMatrix(new double[][]{
                     {fx/Z, 0, -fx*X/Z, -fx*X*Y/(Z*Z), fx + fx*X*X/(Z*Z), -fx*Y/Z},
                     {0, fy/Z, -fy*Y/Z,  -fy - fx*Y*Y/(Z*Z), fy*X*Y/(Z*Z), fy*X/Z}});
-                current_pose_se3 = DoubleMatrix.zeros(6, 1);
-                current_pose_se3.put(2, -0.1);
+//                current_pose_se3 = DoubleMatrix.zeros(6, 1);
+//                current_pose_se3.put(2, -0.1);
                 offsetPixel = pose2pixelJaccobi.mmul(current_pose_se3);
                 double delta_ts = ((current_pose_ts.getTime() - last_pose_ts.getTime())*1e3 
                         + (current_pose_ts.getNanos() - last_pose_ts.getNanos())/1e3)/1e6;
-                vx = (float) offsetPixel.get(0)/(float)delta_ts;
-                vy = (float) offsetPixel.get(1)/(float)delta_ts;
+                vx = (float) -offsetPixel.get(0)/(float)delta_ts;
+                vy = (float) -offsetPixel.get(1)/(float)delta_ts;
                 v = (float) Math.sqrt((vx * vx) + (vy * vy));
                 processGoodEvent();
 //                log.info("Current pose relative timestamp is:  " + (current_pose_ts.getTime()*1000+(long)(current_pose_ts.getNanos()/1000) 
