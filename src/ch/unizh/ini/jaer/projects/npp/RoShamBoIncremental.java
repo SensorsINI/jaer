@@ -18,17 +18,24 @@
  */
 package ch.unizh.ini.jaer.projects.npp;
 
+import com.jogamp.opengl.GLAutoDrawable;
+import java.io.File;
 import java.io.IOException;
+import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.nio.ByteBuffer;
-import java.nio.channels.DatagramChannel;
+import java.net.SocketException;
+import java.nio.file.CopyOption;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.ProgressMonitor;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -46,27 +53,33 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 
     private DvsSliceAviWriter aviWriter = null;
     private Path lastSymbolsPath = Paths.get(getString("lastSymbolsPath", ""));
-    private DatagramChannel channel = null;
-    private DatagramSocket socket = null;
+//    private DatagramChannel channel = null;
+    private DatagramSocket sendToSocket = null, listenOnSocket = null;
     private InetSocketAddress client = null;
     private String host = getString("hostname", "localhost");
-    public static final int DEFAULT_PORT = 14334;
-    private int port = getInt("port", DEFAULT_PORT);
-    private String NEW_SYMBOL_AVAILABLE = "newsymbol";
+    public static final int DEFAULT_SENDTO_PORT = 14334;
+    public static final int DEFAULT_LISTENON_PORT = 14335;
+    private int portSendTo = getInt("portSendTo", DEFAULT_SENDTO_PORT);
+    private int portListenOn = getInt("portListenOn", DEFAULT_LISTENON_PORT);
+    private static final String CMD_NEW_SYMBOL_AVAILABLE = "newsymbol",
+            CMD_PROGRESS = "progress",
+            CMD_LOAD_NETWORK = "loadnetwork",
+            CMD_CANCEL = "cancel",
+            CMD_PING = "ping",
+            CMD_PONG = "pong";
     private Thread portListenerThread = null;
+    private ProgressMonitor progressMonitor = null;
+    private String lastNewClassName = getString("lastNewClassName", "");
 
     public RoShamBoIncremental(AEChip chip) {
         super(chip);
         String learn = "0. Incremental learning";
-        setPropertyTooltip(learn, "LearnSymbol0", "Toggle collecting symbol data");
-        setPropertyTooltip(learn, "LearnSymbol1", "Toggle collecting symbol data");
-        setPropertyTooltip(learn, "LearnSymbol2", "Toggle collecting symbol data");
-        setPropertyTooltip(learn, "LearnSymbol3", "Toggle collecting symbol data");
-        setPropertyTooltip(learn, "LearnSymbol4", "Toggle collecting symbol data");
-        setPropertyTooltip(learn, "LearnSymbol5", "Toggle collecting symbol data");
-        setPropertyTooltip(learn, "ChooseSymbolsFolder", "Choose a folder to store the symbol AVI data files");
+        setPropertyTooltip(learn, "LearnNewClass", "Toggle collecting symbol data");
+        setPropertyTooltip(learn, "ChooseSamplesFolder", "Choose a folder to store the symbol AVI data files");
         setPropertyTooltip(learn, "hostname", "learning host name (IP or DNS)");
-        setPropertyTooltip(learn, "port", "learning host port number");
+        setPropertyTooltip(learn, "portSendTo", "learning host port number that we send to");
+        setPropertyTooltip(learn, "portListenOn", "local port number we listen on to get message back from learning server");
+        setPropertyTooltip(learn, "Ping", "Sends \"ping\" to learning server. Pops up confirmation when \"pong\" is returned");
         aviWriter = new DvsSliceAviWriter(chip);
         aviWriter.setEnclosed(true, this);
         aviWriter.setFrameRate(60);
@@ -75,7 +88,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         getEnclosedFilterChain().add(aviWriter);
     }
 
-    public void doChooseSymbolsFolder() {
+    public void doChooseSamplesFolder() {
         JFileChooser c = new JFileChooser(lastSymbolsPath.toFile());
         c.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         c.setDialogTitle("Choose folder to store symbol AVIs");
@@ -91,15 +104,41 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 
     }
 
-    private void closeSymbolFileAndSendMessage() {
-        log.info("stopping symbol, starting training");
-        aviWriter.doCloseFile();
-        sendUDPMessage(NEW_SYMBOL_AVAILABLE + " " + aviWriter.getFile().toPath());
+    public void doPing() {
+        sendUDPMessage(CMD_PING);
+
     }
 
-    public void doToggleOnLearnSymbol0() {
-        openSymbolFileAndStartRecording("symbol0");
+    private void closeSymbolFileAndSendMessage() {
+        log.info("stopping sample recording, starting training");
+        aviWriter.doCloseFile(); // saves tmpfile.avi
+        String newname = JOptionPane.showInputDialog(chip.getFilterFrame(), "Class name for this sample (e.g. thumbsup or peace)?", lastNewClassName);
+        if (newname == null) {
+            try {
+                // user canceled, delete the file
+                Files.delete(aviWriter.getFile().toPath());
+            } catch (IOException ex) {
+                log.warning("could not delete the AVI file " + aviWriter.getFile() + ": " + ex.toString());
+            }
+            return;
+        }
+        putString("lastNewClassName", newname);
+        Path source = aviWriter.getFile().toPath(), dest = source.resolveSibling(newname + ".avi");
 
+        if (dest.toFile().exists()) {
+            int ret = JOptionPane.showConfirmDialog(chip.getFilterFrame(), String.format("destination %s exists, overwrite?", dest.toFile()));
+            if (ret != JOptionPane.OK_OPTION) {
+                JOptionPane.showMessageDialog(chip.getFilterFrame(), "Learning cancelled");
+                return;
+            }
+        }
+        try {
+            Files.move(source, dest, StandardCopyOption.REPLACE_EXISTING);
+            sendUDPMessage(CMD_NEW_SYMBOL_AVAILABLE + " " + dest.toString());
+            lastNewClassName = newname;
+        } catch (IOException ex) {
+            Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.WARNING, null, ex);
+        }
     }
 
     private void openSymbolFileAndStartRecording(String prefix) {
@@ -107,24 +146,11 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         aviWriter.openAVIOutputStream(lastSymbolsPath.resolve(prefix + ".avi").toFile(), new String[]{"# " + prefix});
     }
 
-    public void doToggleOffLearnSymbol0() {
-        closeSymbolFileAndSendMessage();
+    public void doToggleOnLearnNewClass() {
+        openSymbolFileAndStartRecording("tmpfile");
     }
 
-    public void doToggleOnLearnSymbol1() {
-        openSymbolFileAndStartRecording("symbol1");
-
-    }
-
-    public void doToggleOffLearnSymbol1() {
-        closeSymbolFileAndSendMessage();
-    }
-
-    public void doToggleOnLearnSymbol2() {
-        openSymbolFileAndStartRecording("symbol2");
-    }
-
-    public void doToggleOffLearnSymbol2() {
+    public void doToggleOffLearnNewClass() {
         closeSymbolFileAndSendMessage();
     }
 
@@ -146,63 +172,177 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 //        }
     }
 
-    public int getPort() {
-        return port;
+    public int getPortSendTo() {
+        return portSendTo;
     }
 
     /**
      * You set the port to say which port the packet will be sent to.
      *
-     * @param port the UDP port number.
+     * @param portSendTo the UDP port number.
      */
-    public void setPort(int port) {
-        this.port = port;
-        putInt("port", port);
+    public void setPortSendTo(int portSendTo) {
+        this.portSendTo = portSendTo;
+        putInt("portSendTo", portSendTo);
     }
 
-    private void sendUDPMessage(String string) {
-        if (channel == null) {
-            try {
-                channel = DatagramChannel.open();
-                if (portListenerThread == null || !portListenerThread.isAlive()) {
-                    portListenerThread = new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            ByteBuffer udpBuf = ByteBuffer.allocate(1024);
+    /**
+     * @return the listenOnPort
+     */
+    public int getPortListenOn() {
+        return portListenOn;
+    }
 
-                            InetSocketAddress localSocketAddress = new InetSocketAddress(host, port);
-                            try {
-                                channel.bind(localSocketAddress);
-                            } catch (IOException ex) {
-                                log.warning("couldn't bind local socket address: " + ex.toString());
-                                return;
-                            }
-                            log.info("opened channel on local port " + localSocketAddress + " to receive UDP messages from learning server.");
-                            while (true) {
-                                try {
-                                    channel.receive(udpBuf);
-                                    udpBuf.flip();
-                                    String msg=new String(udpBuf.array());
-                                    log.info("got message:"+msg);
-                                } catch (IOException ex) {
-                                    log.warning("exception in recieving message: " + ex.toString());
-                                }
-                            }
-                        }
-                    }, "RoShamBoIncremental Listener");
+    /**
+     * @param portListenOn the listenOnPort to set
+     */
+    public void setPortListenOn(int portListenOn) {
+        this.portListenOn = portListenOn;
+        putInt("portListenOn", portListenOn);
+    }
+
+    private void parseMessage(String msg) {
+        log.info("parsing message \"" + msg + "\"");
+        if (msg == null) {
+            log.warning("got null message");
+            return;
+        }
+        StringTokenizer tokenizer = new StringTokenizer(msg);
+        String cmd=tokenizer.nextToken();
+        switch (cmd) {
+            case CMD_PONG:
+                JOptionPane.showMessageDialog(chip.getFilterFrame(), String.format("\"%s\" received from %s",cmd,host));
+                return;
+            case CMD_PING:
+                sendUDPMessage(CMD_PONG);
+                return;
+            case CMD_NEW_SYMBOL_AVAILABLE:
+                log.warning("learning server should not send this message; it is for us to send");
+                return;
+            case CMD_LOAD_NETWORK:
+                if (!tokenizer.hasMoreTokens()) {
+                    log.warning("Missing network filename; usage is " + CMD_LOAD_NETWORK + " filename.pb [labels.txt]");
+                    return;
                 }
-                portListenerThread.start();
+                String networkFilename = tokenizer.nextToken();
+                if (networkFilename == null || networkFilename.isEmpty()) {
+                    log.warning("null filename supplied for new network");
+                    return;
+                }
+                synchronized (RoShamBoIncremental.this) { // sync on outter class, not thread we are running in
+                    try {
+                        log.info("loading new CNN from " + networkFilename);
+                        loadNetwork(new File(networkFilename));
+                    } catch (Exception e) {
+                        log.log(Level.SEVERE, "Exception loading new network", e);
+                    }
+                }
+                // labels file
+                if (!tokenizer.hasMoreTokens()) {
+                    break;
+                }
+                String labelsFilename = tokenizer.nextToken();
+                if (labelsFilename == null || labelsFilename.isEmpty()) {
+                    log.warning("null filename supplied for labels, not loading any");
+                    return;
+                }
+                synchronized (RoShamBoIncremental.this) { // sync on outter class, not thread we are running in
+                    try {
+                        log.info("loading new class labels from " + labelsFilename);
+                        loadLabels(new File(networkFilename));
+                    } catch (Exception e) {
+                        log.log(Level.SEVERE, "Exception loading new labels", e);
+                    }
+                }
+
+                break;
+            case CMD_PROGRESS:
+                try {
+                    int progress = Integer.parseInt(tokenizer.nextToken());
+                    if (progressMonitor == null || progressMonitor.isCanceled()) {
+                        progressMonitor = new ProgressMonitor(chip.getFilterFrame(), "Training", "note", 0, 100);
+                    }
+                    progressMonitor.setProgress(progress);
+                    progressMonitor.setNote(String.format("%d%%", progress));
+                    if (progress >= 100) {
+                        synchronized (RoShamBoIncremental.this) {// sync on outter class, not thread we are running in
+                            // we progressMonitor this in annotate (running in EDT thread) to see we should send cancel message
+                            progressMonitor = null;
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warning("exception updating progress monitor: " + e.toString());
+                }
+
+                break;
+            default:
+                log.warning("unknown token or comamnd in message \"" + msg + "\"");
+        }
+    }
+
+    synchronized private void sendUDPMessage(String string) { // sync for thread safety on multiple senders
+
+        if (portListenerThread == null || !portListenerThread.isAlive() || listenOnSocket == null) { // start a thread to get messages from client
+            log.info("starting thread to listen for UDP datagram messages on port " + portListenOn);
+            portListenerThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        listenOnSocket = new DatagramSocket(portListenOn);
+                    } catch (SocketException ex) {
+                        log.warning("could not open local port for listening for learning server messages on port " + portListenOn + ": " + ex.toString());
+                        return;
+                    }
+                    while (true) {
+                        try {
+                            byte[] buf = new byte[1024];
+                            DatagramPacket datagram = new DatagramPacket(buf, buf.length);
+                            listenOnSocket.receive(datagram);
+                            String msg = new String(datagram.getData(), datagram.getOffset(), datagram.getLength());
+                            log.info("got message:" + msg);
+                            parseMessage(msg);
+                        } catch (IOException ex) {
+                            log.warning("stopping thread; exception in recieving message: " + ex.toString());
+                            break;
+                        }
+                    }
+                }
+
+            }, "RoShamBoIncremental Listener");
+            portListenerThread.start();
+        }
+        log.info(String.format("sending message to host=%s port=%s string=\"%s\"", host, portSendTo, string));
+        if (sendToSocket == null) {
+            try {
+                log.info("opening socket to send datagrams from");
+                client = new InetSocketAddress(host, portSendTo); // get address for remote client
+                sendToSocket = new DatagramSocket(); // make a local socket using any port, will be used to send datagrams to the host/sendToPort
             } catch (IOException ex) {
-                log.warning("cannot open channel: " + ex.toString());
+                log.warning(String.format("cannot open socket to send to host=%s port=%d, got exception %s", host, portSendTo, ex.toString()));
                 return;
             }
         }
+
         try {
-            Socket socket = new Socket(host, port);
-            ByteBuffer b = ByteBuffer.wrap(string.getBytes());
-            channel.send(b, socket.getRemoteSocketAddress());
+            byte[] buf = string.getBytes();
+            DatagramPacket datagram = new DatagramPacket(buf, buf.length, client.getAddress(), portSendTo); // construct datagram to send to host/sendToPort
+            sendToSocket.send(datagram);
         } catch (IOException ex) {
-            log.warning(String.format("socket exception for host=%s, port=%d: %s", host, port, ex.toString()));
+            log.warning("cannot send message " + ex.toString());
+            return;
+        }
+
+    }
+
+    @Override
+    public void annotate(GLAutoDrawable drawable) {
+        super.annotate(drawable);
+        synchronized (this) {
+            if (progressMonitor != null && progressMonitor.isCanceled()) {
+                sendUDPMessage(CMD_CANCEL);
+
+            }
         }
     }
+
 }

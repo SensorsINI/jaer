@@ -37,22 +37,24 @@ public class JaerAviWriter extends AbstractAviWriter {
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        if (aviOutputStream == null ) {
+        if (aviOutputStream == null) {
             return;
         }
         GL2 gl = drawable.getGL().getGL2();
-        BufferedImage bi = toImage(gl, drawable.getNativeSurface().getSurfaceWidth(), drawable.getNativeSurface().getSurfaceHeight());
+        if (isWriteEnabled()) {
+            BufferedImage bi = toImage(gl, drawable.getNativeSurface().getSurfaceWidth(), drawable.getNativeSurface().getSurfaceHeight());
 
-        try {
-            aviOutputStream.writeFrame(bi);
-            if (isWriteTimecodeFile()) {
-                writeTimecode(chip.getAeViewer().getAePlayer().getTime());
+            try {
+                aviOutputStream.writeFrame(bi);
+                if (isWriteTimecodeFile()) {
+                    writeTimecode(chip.getAeViewer().getAePlayer().getTime());
+                }
+                incrementFramecountAndMaybeCloseOutput();
+
+            } catch (Exception e) {
+                log.warning("While writing AVI frame, caught exception, closing file: " + e.toString());
+                doCloseFile();
             }
-            incrementFramecountAndMaybeCloseOutput();
-
-        } catch (Exception e) {
-            log.warning("While writing AVI frame, caught exception, closing file: " + e.toString());
-            doCloseFile();
         }
     }
 

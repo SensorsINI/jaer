@@ -2,25 +2,7 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="subprojects/JSpikeStack/src"/>
-	<classpathentry kind="lib" path="jars/javacv/javacpp.jar" sourcepath="jars/javacv/org.bytedeco.javacpp-src-1.1.zip"/>
-	<classpathentry kind="lib" path="jars/javacv/javacv.jar"/>
-	<classpathentry kind="lib" path="jars/swing-layout-1.0.4.jar"/>
 	<classpathentry kind="lib" path="jars/UsbIoJava.jar"/>
-	<classpathentry kind="lib" path="jars/commons-net-3.6.jar">
-		<attributes>
-			<attribute name="javadoc_location" value="http://commons.apache.org/proper/commons-net/apidocs/"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="lib" path="jars/jogl/gluegen-rt.jar"/>
-	<classpathentry kind="lib" path="jars/jogl/jogl-all.jar">
-		<attributes>
-			<attribute name="javadoc_location" value="http://jogamp.org/deployment/jogamp-next/javadoc/jogl/javadoc/"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="lib" path="jars/svgSalamander-tiny-2013-07-13.jar"/>
-	<classpathentry kind="lib" path="jars/phidget21-2.1.8.20130618.jar"/>
-	<classpathentry kind="lib" path="jars/javax.mail-1.5.0.jar"/>
-	<classpathentry kind="lib" path="jars/jlfgr-1.0.jar"/>
 	<classpathentry kind="lib" path="subprojects/JSpikeStack/jars/jcommon-1.0.18.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="http://www.jfree.org/jcommon/api/"/>
@@ -36,36 +18,9 @@
 			<attribute name="javadoc_location" value="http://www.jfree.org/jfreechart/api/javadoc/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="jars/comm.jar"/>
-	<classpathentry kind="lib" path="jars/betterbeansbinding-1.3.0-all.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
-	<classpathentry kind="lib" path="jars/jblas-1.2.4.jar"/>
-	<classpathentry kind="lib" path="jars/JEvtLearn.jar"/>
-	<classpathentry kind="lib" path="jars/uncommons-maths-1.2.3.jar"/>
 	<classpathentry kind="lib" path="jars/USBTransferThread-0.9.6.jar"/>
-	<classpathentry kind="lib" path="jars/usb4java/libusb4java-1.2.0-linux-arm.jar"/>
-	<classpathentry kind="lib" path="jars/usb4java/libusb4java-1.2.0-linux-x86_64.jar"/>
-	<classpathentry kind="lib" path="jars/usb4java/libusb4java-1.2.0-linux-x86.jar"/>
-	<classpathentry kind="lib" path="jars/usb4java/libusb4java-1.2.0-osx-x86_64.jar"/>
-	<classpathentry kind="lib" path="jars/usb4java/libusb4java-1.2.0-osx-x86.jar"/>
-	<classpathentry kind="lib" path="jars/usb4java/libusb4java-1.2.0-windows-x86_64.jar"/>
-	<classpathentry kind="lib" path="jars/usb4java/libusb4java-1.2.0-windows-x86.jar"/>
-	<classpathentry kind="lib" path="jars/usb4java/usb4java-1.2.0.jar"/>
-	<classpathentry kind="lib" path="jars/commons-lang3-3.5.jar"/>
-	<classpathentry kind="lib" path="jars/nrjavaserial-3.12.0.jar"/>
-	<classpathentry kind="lib" path="jars/javacv/opencv-linux-x86_64.jar"/>
-	<classpathentry kind="lib" path="jars/javacv/opencv-linux-x86.jar"/>
-	<classpathentry kind="lib" path="jars/javacv/opencv-macosx-x86_64.jar"/>
-	<classpathentry kind="lib" path="jars/javacv/opencv-windows-x86_64.jar"/>
-	<classpathentry kind="lib" path="jars/javacv/opencv-windows-x86.jar"/>
-	<classpathentry kind="lib" path="jars/javacv/opencv.jar" sourcepath="jars/javacv/org.bytedeco.javacpp-opencv-core-src-1.1.zip"/>
 	<classpathentry kind="lib" path="jars/openni2/org.openni.jar"/>
-	<classpathentry kind="lib" path="jars/opencv/opencv-320.jar"/>
-	<classpathentry kind="lib" path="jars/jmatio.jar"/>
-	<classpathentry kind="lib" path="jars/gson-2.8.0.jar"/>
-	<classpathentry kind="lib" path="jars/matlabcontrol-4.1.0.jar"/>
-	<classpathentry kind="lib" path="jars/commons-math3-3.6.1.jar"/>
-	<classpathentry kind="lib" path="jars/sis-jhdf5/lib/batteries_included/sis-jhdf5-batteries_included.jar"/>
-	<classpathentry kind="lib" path="jars/libtensorflow-1.4.0.jar"/>
+	<classpathentry kind="con" path="org.apache.ivyde.eclipse.cpcontainer.IVYDE_CONTAINER/?project=jAER_1.5&amp;ivyXmlPath=ivy.xml&amp;confs=*&amp;ivySettingsPath=ivysettings.xml&amp;loadSettingsOnDemand=false&amp;ivyUserDir=&amp;propertyFiles="/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

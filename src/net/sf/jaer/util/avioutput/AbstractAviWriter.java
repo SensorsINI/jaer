@@ -214,7 +214,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     /**
-     * Opens AVI output stream and optionally the timecode file.
+     * Opens AVI output stream and optionally the timecode file, and enable writing to this stream.
      *
      * @param f the file
      * @param additionalComments additional comments to be written to timecode
@@ -254,6 +254,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             log.info("Opened AVI output file " + f.toString() + " with format " + format);
             setFramesWritten(0);
             getSupport().firePropertyChange("framesWritten", null, framesWritten);
+            setWriteEnabled(true);
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(null, ex.toString(), "Couldn't create output file stream", JOptionPane.WARNING_MESSAGE, null);
             return;
