@@ -376,6 +376,10 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                     case "sensor_msgs":
                         switch (type) {
                             case "Image": { // http://docs.ros.org/api/sensor_msgs/html/index-msg.html
+                                // Make sure the image is from APS, otherwise some other image topic will be also processed here.
+                                if (!topic.equalsIgnoreCase("/davis/left/image_raw")) {
+                                    continue;
+                                }
                                 hasAps.setTrue();
                                 MessageType messageType = message.messageType;
 //                                List<String> fieldNames = messageType.getFieldNames();

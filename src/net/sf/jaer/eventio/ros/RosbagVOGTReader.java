@@ -85,10 +85,12 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
 //    private ArrayList< float[] > depthList;
     private float[] currentDepth_image;
     private long currentPose_seq_num;
+    private CameraInfo currentCameraInfo;
     private Timestamp currentPose_ts;
     private DoubleMatrix currentPoseSe3;
     private Timestamp currentDepth_ts;
     private Timestamp lastPose_ts;
+    private boolean firstReadCameraInfo = true;   // Make sure we only read the camera info one time instead always.
     
 //    private long firstAbsoluteTs;
 //    private boolean firstTimestampWasRead;
@@ -98,6 +100,7 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
         ArrayList<String> topics = new ArrayList();
         topics.add("/davis/left/pose");
         topics.add("/davis/left/depth_image_rect");
+        topics.add("/davis/left/camera_info");
         addTopics(topics);
         lastPose_ts = new Timestamp(0);
         currentPose_ts = new Timestamp(0);
@@ -117,6 +120,17 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
 //                firstTimestampWasRead = true;
 //            }
 //        }
+        if (topic.equalsIgnoreCase("/davis/left/camera_info")) {
+            if (firstReadCameraInfo) {
+                currentCameraInfo = new CameraInfo();
+                currentCameraInfo.K.put(0, 0, message.messageType.<ArrayType>getField("K").getAsDoubles());
+                currentCameraInfo.D.put(0, 0, message.messageType.<ArrayType>getField("D").getAsDoubles());
+                currentCameraInfo.R.put(0, 0, message.messageType.<ArrayType>getField("R").getAsDoubles());
+                currentCameraInfo.P.put(0, 0, message.messageType.<ArrayType>getField("P").getAsDoubles());    
+                firstReadCameraInfo = false;
+            }
+       
+        }
        
         if (topic.equalsIgnoreCase("/davis/left/depth_image_rect")) {
             ByteOrder byteOrder = ByteOrder.LITTLE_ENDIAN;
@@ -228,6 +242,10 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
         return currentPose_seq_num;
     }
 
+    public CameraInfo getCurrentCameraInfo() {
+        return currentCameraInfo;
+    }
+
     public void setCurrentPose_seq_num(long currentPose_seq_num) {
         this.currentPose_seq_num = currentPose_seq_num;
     }
@@ -291,7 +309,13 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
         DoubleMatrix v = jaccobLieAlg.mmul(trans);
         return new DoubleMatrix(new double[]{v.get(0), v.get(1), v.get(2),ww.get(0), ww.get(1),ww.get(2)});
     }
-    
+    public class CameraInfo {
+        public String distortion_model;
+        public Mat K = new Mat(3, 3, CvType.CV_64FC1);;
+        public Mat D = new Mat(1, 4, CvType.CV_64FC1);;
+        public Mat R = new Mat(3, 3, CvType.CV_64FC1);;
+        public Mat P = new Mat(3, 4, CvType.CV_64FC1);;
+    }
 //    public class Se3Info {
 //        public long pose_seq_num;
 //        public Timestamp se3_ts;
