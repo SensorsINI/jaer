@@ -38,6 +38,7 @@ import java.util.logging.Logger;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.FrameAnnotater;
 
@@ -91,7 +92,7 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
     private Timestamp currentDepth_ts;
     private Timestamp lastPose_ts;
     private boolean firstReadCameraInfo = true;   // Make sure we only read the camera info one time instead always.
-    
+    private AEFileInputStreamInterface oldAeInputStream;
 //    private long firstAbsoluteTs;
 //    private boolean firstTimestampWasRead;
 
@@ -121,13 +122,14 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
 //            }
 //        }
         if (topic.equalsIgnoreCase("/davis/left/camera_info")) {
-            if (firstReadCameraInfo) {
+            if (firstReadCameraInfo || chip.getAeInputStream() !=  oldAeInputStream) {
                 currentCameraInfo = new CameraInfo();
                 currentCameraInfo.K.put(0, 0, message.messageType.<ArrayType>getField("K").getAsDoubles());
                 currentCameraInfo.D.put(0, 0, message.messageType.<ArrayType>getField("D").getAsDoubles());
                 currentCameraInfo.R.put(0, 0, message.messageType.<ArrayType>getField("R").getAsDoubles());
                 currentCameraInfo.P.put(0, 0, message.messageType.<ArrayType>getField("P").getAsDoubles());    
                 firstReadCameraInfo = false;
+                oldAeInputStream = chip.getAeInputStream();
             }
        
         }
