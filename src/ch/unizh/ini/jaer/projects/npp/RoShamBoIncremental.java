@@ -66,7 +66,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     private static final String CMD_NEW_SAMPLES_AVAILABLE = "newsymbol",
             CMD_PROGRESS = "progress",
             CMD_LOAD_NETWORK = "loadnetwork",
-            CMD_CANCEL = "cancel",
+            CMD_CANCEL_TRAINING = "cancel",
             CMD_PING = "ping",
             CMD_PONG = "pong";
     private Thread portListenerThread = null;
@@ -77,7 +77,9 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     public RoShamBoIncremental(AEChip chip) {
         super(chip);
         String learn = "0. Incremental learning";
-        setPropertyTooltip(learn, "LearnNewClass", "Toggle collecting symbol data");
+        setPropertyTooltip(learn, "SampleNewClass", "Toggle collecting sample data for a new class");
+        setPropertyTooltip(learn, "StartTraining", "Starts training on samples");
+        setPropertyTooltip(learn, "CancelTraining", "Cancels ongoing training");
         setPropertyTooltip(learn, "ChooseSamplesFolder", "Choose a folder to store the symbol AVI data files");
         setPropertyTooltip(learn, "hostname", "learning host name (IP or DNS)");
         setPropertyTooltip(learn, "portSendTo", "learning host port number that we send to");
@@ -148,12 +150,32 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         }
         try {
             Files.move(source, dest, StandardCopyOption.REPLACE_EXISTING);
-
-            sendUDPMessage(CMD_NEW_SAMPLES_AVAILABLE + " " + lastSymbolsPath); // inform only of the destination folder; class name is in filename
             lastNewClassName = newname;
         } catch (IOException ex) {
             Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.WARNING, null, ex);
         }
+    }
+
+    public void doStartTraining() {
+        try {
+            sendUDPMessage(CMD_NEW_SAMPLES_AVAILABLE + " " + lastSymbolsPath); // inform only of the destination folder; class name is in filename
+            lastNewClassName = newname;
+        } catch (IOException ex) {
+            Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.WARNING, null, ex);
+            showWarningDialogInSwingThread(ex.toString(), "Exception");
+        }
+
+    }
+    
+    public void doCancelTraining(){
+        try {
+            sendUDPMessage(CMD_CANCEL_TRAINING);
+            lastNewClassName = newname;
+        } catch (IOException ex) {
+            Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.WARNING, null, ex);
+            showWarningDialogInSwingThread(ex.toString(), "Exception");
+        }
+      
     }
 
     private void openSymbolFileAndStartRecording(String prefix) {
@@ -161,11 +183,11 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         aviWriter.openAVIOutputStream(lastSymbolsPath.resolve(prefix + ".avi").toFile(), new String[]{"# " + prefix});
     }
 
-    public void doToggleOnLearnNewClass() {
+    public void doToggleOnSampleNewClass() {
         openSymbolFileAndStartRecording("tmpfile");
     }
 
-    public void doToggleOffLearnNewClass() {
+    public void doToggleOffSampleNewClass() {
         closeSymbolFileAndSendMessage();
     }
 
@@ -224,8 +246,8 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         });
 
     }
-    
-     private void showPlainMessageDialogInSwingThread(String msg, String title) {
+
+    private void showPlainMessageDialogInSwingThread(String msg, String title) {
         SwingUtilities.invokeLater(new Runnable() { // outside swing thread, must do this
             public void run() {
                 JOptionPane.showMessageDialog(chip.getFilterFrame(), msg, title, JOptionPane.PLAIN_MESSAGE);
@@ -319,7 +341,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             default:
                 final String badmsg = "unknown token or comamnd in message \"" + msg + "\"";
                 log.warning(badmsg);
-                showWarningDialogInSwingThread(badmsg,"Unknown message");
+                showWarningDialogInSwingThread(badmsg, "Unknown message");
         }
     }
 
@@ -382,7 +404,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         super.annotate(drawable);
         synchronized (this) {
             if (progressMonitor != null && progressMonitor.isCanceled()) {
-                sendUDPMessage(CMD_CANCEL);
+                sendUDPMessage(CMD_CANCEL_TRAINING);
 
             }
         }
