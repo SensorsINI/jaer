@@ -103,6 +103,7 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
         topics.add("/davis/left/depth_image_rect");
         topics.add("/davis/left/camera_info");
         addTopics(topics);
+        addTopics(topics);
         lastPose_ts = new Timestamp(0);
         currentPose_ts = new Timestamp(0);
         currentDepth_ts = new Timestamp(0);
@@ -132,9 +133,6 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
                 oldAeInputStream = chip.getAeInputStream();
             }
        
-        }
-       
-        if (topic.equalsIgnoreCase("/davis/left/depth_image_rect")) {
             ByteOrder byteOrder = ByteOrder.LITTLE_ENDIAN;
             try {
                 byteOrder = (message.messageType.<UInt8Type>getField("is_bigendian").getValue() == 0) ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;

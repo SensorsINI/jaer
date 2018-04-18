@@ -185,14 +185,6 @@ public class ChipCanvas implements GLEventListener, Observer {
         origin3dy = prefs.getInt("ChipCanvas.origin3dy", 0);
         pheight = prefs.getInt("ChipCanvas.pheight", 512);
         prefs.getInt("borderSpacePixels", 20);
-        try {
-            glut = new GLUT();
-        } catch (final NoClassDefFoundError err) {
-            log.warning("Could not construct GLUT object as the OpenGL utilities helper. There is some problem with your JOGL libraries."
-                    + "It could be that you are trying to run a 64-bit JVM under linux. Try using a 32-bit Java Virtual Machine (JVM) instead, because"
-                    + "the jAER JOGL native libraries are built for 32-bit JVMs.");
-            throw err;
-        }
 
         // GraphicsEnvironment ge=GraphicsEnvironment.getLocalGraphicsEnvironment();
         // GraphicsDevice[] gs=ge.getScreenDevices(); // TODO it could be that remote session doesn't show screen that
@@ -223,8 +215,6 @@ public class ChipCanvas implements GLEventListener, Observer {
          * caps.setGreenBits(8);
          * caps.setBlueBits(8);
          */
-        glu = new GLU();
-
         // make the canvas
         try {
             final GLProfile glp = GLProfile.getDefault(); //getGL2ES1(); // getMaxProgrammable(true);// FixedFunc(true);
@@ -271,6 +261,15 @@ public class ChipCanvas implements GLEventListener, Observer {
             System.err.println("user.dir=" + System.getProperty("user.dir"));
             System.exit(1);
         }
+        try {
+            glut = new GLUT();
+            glu = new GLU();
+        } catch (final NoClassDefFoundError err) {
+            log.warning("Could not construct GLUT object as the OpenGL utilities helper. There is some problem with your JOGL libraries."
+                    + "It could be that you are trying to run a 64-bit JVM under linux. Try using a 32-bit Java Virtual Machine (JVM) instead, because"
+                    + "the jAER JOGL native libraries are built for 32-bit JVMs.");
+            throw err;
+        }
         drawable.setLocale(Locale.US); // to avoid problems with other language support in JOGL
         drawable.setVisible(true);
         // will always getString invalid operation here
@@ -296,15 +295,15 @@ public class ChipCanvas implements GLEventListener, Observer {
             displayMethods.add(chip.getCanvas().getDisplayMethod());
         }
 
-        if (System.getProperty("os.name").startsWith("Windows")) {
-            // TODO tobi added to try to use shared context on windows, to address problems with opening multiple canvases (e.g. multiple AEViewers)
-            // opening 2nd instance, or even creating live file preview in AE file open dialog, often causes JOGL to bomb with
-            // complaints about non availablility of the desired GLProfile.
-            // On Linux systems, using the shared context below with Intel graphics causes an immediate native exception.
-            if (drawable != null && JAERViewer.sharedDrawable != null) {
-                drawable.setSharedAutoDrawable(JAERViewer.sharedDrawable); // drawable might be null if AEChip is created outside of normal context of AEViewer
-            }
-        }
+//        if (System.getProperty("os.name").startsWith("Windows")) {
+//            // TODO tobi added to try to use shared context on windows, to address problems with opening multiple canvases (e.g. multiple AEViewers)
+//            // opening 2nd instance, or even creating live file preview in AE file open dialog, often causes JOGL to bomb with
+//            // complaints about non availablility of the desired GLProfile.
+//            // On Linux systems, using the shared context below with Intel graphics causes an immediate native exception.
+//            if (drawable != null && JAERViewer.sharedDrawable != null) {
+//                drawable.setSharedAutoDrawable(JAERViewer.sharedDrawable); // drawable might be null if AEChip is created outside of normal context of AEViewer
+//            }
+//        }
         // between all viewers and file open dialog
         // previews.
         // TODO we now get under windows this exception:

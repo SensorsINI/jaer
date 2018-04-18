@@ -334,22 +334,6 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
             });
         }
         if (!sliceRectImgFrame.isVisible()) {
-            sliceRectImgFrame.setVisible(true);
-        }
-
-        sliceRectImageDisplay.clearImage();
-
-        sliceRectImageDisplay.setPixmapFromGrayArray(rectImg);
-        if (sliceRectImageDisplayLegend != null) {
-            sliceRectImageDisplayLegend.s
-                    = RECT_LEGEND_SLICES;
-        }
-
-        sliceRectImageDisplay.repaint();
-    }
-    
-    public boolean isShowRectimg() {
-        return showRectimg;
     }
 
     /**
@@ -361,5 +345,4 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
         this.showRectimg = showRectimg;
         getSupport().firePropertyChange("showRectimg", old, this.showRectimg);
         putBoolean("showRectimg", showRectimg);
-    }       
 }
