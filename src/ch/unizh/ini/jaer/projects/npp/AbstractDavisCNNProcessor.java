@@ -426,11 +426,19 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         if (preferenceExists(KEY_NETWORK_FILENAME) && apsDvsNet == null) {
             File f = new File(getString(KEY_NETWORK_FILENAME, ""));
             if (f.exists() && f.isFile()) {
-                loadNetwork(f);
+                try {
+                    loadNetwork(f);
+                } catch (Exception ex) {
+                    Logger.getLogger(AbstractDavisCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
+                }
                 if (preferenceExists(KEY_LABELS_FILENAME)) {
                     File l = new File(getString(KEY_LABELS_FILENAME, ""));
                     if (l.exists() && l.isFile()) {
-                        loadLabels(l);
+                        try {
+                            loadLabels(l);
+                        } catch (IOException ex) {
+                            Logger.getLogger(AbstractDavisCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
+                        }
                     }
                 }
             }
@@ -461,7 +469,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         return ext;
     }
 
-    protected void loadNetwork(File f) {
+    protected void loadNetwork(File f) throws Exception{
         try {
             if (f.exists()) {
                 if (f.isFile()) {
@@ -486,13 +494,14 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                 dvsFramer.setFromNetwork(apsDvsNet);
             } else {
                 log.warning("file " + f + " does not exist");
+                throw new IOException("file " + f + " does not exist");
             }
         } catch (IOException ex) {
-            log.warning("Couldn't load the CNN from file " + f + ": got exception " + ex);
+            throw new IOException("Couldn't load the CNN from file " + f , ex);
         }
     }
 
-    protected void loadLabels(File f) {
+    protected void loadLabels(File f) throws IOException {
         if (apsDvsNet == null) {
             log.warning("first load the network before loading labels");
             return;
@@ -502,7 +511,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                 apsDvsNet.loadLabels(f);
             }
         } catch (IOException ex) {
-            log.warning("Couldn't load the labels from file " + f + ": got exception " + ex);
+            throw new IOException("Couldn't load the labels from file " + f ,ex);
         }
     }
 
