@@ -99,6 +99,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     private int imageHeight = getInt("imageHeight", 64);
     private float imageMean = getFloat("imageMean", 0);
     private float imageScale = getFloat("imageScale", 1);
+    private String lastManuallyLoadedNetwork = getString("lastManuallyLoadedNetwork", ""); // stores filename and path to last successfully loaded network that user loaded via doLoadNetwork
 
     public AbstractDavisCNNProcessor(AEChip chip) {
         super(chip);
@@ -127,6 +128,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         setPropertyTooltip(anal, "zeroPadding", "CNN uses zero padding; must be set properly according to CNN to run CNN");
         setPropertyTooltip(anal, "processingTimeLimitMs", "<html>time limit for processing packet in ms to process OF events (events still accumulate). <br> Set to 0 to disable. <p>Alternative to the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events");
         setPropertyTooltip(tf, "makeRGBFrames", "(TensorFlow only) Tells the CNN to make RGB input from grayscale DVS/APS frames; use it with a network configured for RGB input");
+        setPropertyTooltip(tf, "lastManuallyLoadedNetwork", "last network we manually loaded");
         setPropertyTooltip(tf, "inputLayerName", "(TensorFlow only) Input layer; parse it from loading the network and examining console output for layers for lines starting with ****");
         setPropertyTooltip(tf, "outputLayerName", "(TensorFlow only) Output layer; parse it from loading the network and examining console output for layers for lines starting with ****");
         setPropertyTooltip(tf, "imageMean", "(TensorFlow only, only for APS frames) Input image pixel value mean; the APS frames have this mean value, typically on scale 0-255. The jaer frames typically have mean value in range 0-1.");
@@ -177,6 +179,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         }
         try {
             loadNetwork(file);
+            lastManuallyLoadedNetwork = file.toString(); // store the last manually loaded network as the 
+            putString("lastManuallyLoadedNetwork", getLastManuallyLoadedNetwork());
         } catch (Exception ex) {
             Logger.getLogger(DavisClassifierCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file, caught exception " + ex + ". See console for logging.", "Bad network file", JOptionPane.WARNING_MESSAGE);
@@ -987,6 +991,13 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     public void setImageScale(float imageScale) {
         this.imageScale = imageScale;
         putFloat("imageScale", imageScale);
+    }
+
+    /**
+     * @return the lastManuallyLoadedNetwork
+     */
+    public String getLastManuallyLoadedNetwork() {
+        return lastManuallyLoadedNetwork;
     }
 
 }
