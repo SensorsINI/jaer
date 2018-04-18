@@ -25,17 +25,19 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
-import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.ProgressMonitor;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -61,7 +63,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     public static final int DEFAULT_LISTENON_PORT = 14335;
     private int portSendTo = getInt("portSendTo", DEFAULT_SENDTO_PORT);
     private int portListenOn = getInt("portListenOn", DEFAULT_LISTENON_PORT);
-    private static final String CMD_NEW_SYMBOL_AVAILABLE = "newsymbol",
+    private static final String CMD_NEW_SAMPLES_AVAILABLE = "newsymbol",
             CMD_PROGRESS = "progress",
             CMD_LOAD_NETWORK = "loadnetwork",
             CMD_CANCEL = "cancel",
@@ -71,6 +73,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     private ProgressMonitor progressMonitor = null;
     private String lastNewClassName = getString("lastNewClassName", "");
 
+    // to test, open a terminal, and use netcat -u localhost portSendTo in one panel and network -ul portListenOn in another panel
     public RoShamBoIncremental(AEChip chip) {
         super(chip);
         String learn = "0. Incremental learning";
@@ -80,12 +83,22 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         setPropertyTooltip(learn, "portSendTo", "learning host port number that we send to");
         setPropertyTooltip(learn, "portListenOn", "local port number we listen on to get message back from learning server");
         setPropertyTooltip(learn, "Ping", "Sends \"ping\" to learning server. Pops up confirmation when \"pong\" is returned");
+        setPropertyTooltip(learn, "ResetToBaseNetwork", "Revert network back to last manually-loaded CNN");
         aviWriter = new DvsSliceAviWriter(chip);
         aviWriter.setEnclosed(true, this);
         aviWriter.setFrameRate(60);
         aviWriter.getDvsFrame().setOutputImageHeight(64);
         aviWriter.getDvsFrame().setOutputImageWidth(64);
         getEnclosedFilterChain().add(aviWriter);
+    }
+
+    public void doResetToBaseNetwork() {
+        try {
+            loadNetwork(new File(getLastManuallyLoadedNetwork()));
+        } catch (Exception e) {
+            log.log(Level.SEVERE, e.toString(), e.getCause());
+            JOptionPane.showMessageDialog(chip.getFilterFrame(), "Couldn't load base network: " + e.toString(), "Bad network file", JOptionPane.WARNING_MESSAGE);
+        }
     }
 
     public void doChooseSamplesFolder() {
@@ -112,7 +125,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     private void closeSymbolFileAndSendMessage() {
         log.info("stopping sample recording, starting training");
         aviWriter.doCloseFile(); // saves tmpfile.avi
-        String newname = JOptionPane.showInputDialog(chip.getFilterFrame(), "Class name for this sample (e.g. thumbsup or peace)?", lastNewClassName);
+        String newname = JOptionPane.showInputDialog(chip.getFilterFrame(), "Class name for this sample (e.g. thumbsup or peacesign)?", lastNewClassName);
         if (newname == null) {
             try {
                 // user canceled, delete the file
@@ -122,6 +135,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             }
             return;
         }
+        newname = newname.trim().replaceAll(" +", "-"); // trim leading and trailing spaces, replace others with -
         putString("lastNewClassName", newname);
         Path source = aviWriter.getFile().toPath(), dest = source.resolveSibling(newname + ".avi");
 
@@ -134,7 +148,8 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         }
         try {
             Files.move(source, dest, StandardCopyOption.REPLACE_EXISTING);
-            sendUDPMessage(CMD_NEW_SYMBOL_AVAILABLE + " " + dest.toString());
+
+            sendUDPMessage(CMD_NEW_SAMPLES_AVAILABLE + " " + lastSymbolsPath); // inform only of the destination folder; class name is in filename
             lastNewClassName = newname;
         } catch (IOException ex) {
             Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.WARNING, null, ex);
@@ -201,6 +216,24 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         putInt("portListenOn", portListenOn);
     }
 
+    private void showWarningDialogInSwingThread(String msg, String title) {
+        SwingUtilities.invokeLater(new Runnable() { // outside swing thread, must do this
+            public void run() {
+                JOptionPane.showMessageDialog(chip.getFilterFrame(), msg, title, JOptionPane.WARNING_MESSAGE);
+            }
+        });
+
+    }
+    
+     private void showPlainMessageDialogInSwingThread(String msg, String title) {
+        SwingUtilities.invokeLater(new Runnable() { // outside swing thread, must do this
+            public void run() {
+                JOptionPane.showMessageDialog(chip.getFilterFrame(), msg, title, JOptionPane.PLAIN_MESSAGE);
+            }
+        });
+
+    }
+
     private void parseMessage(String msg) {
         log.info("parsing message \"" + msg + "\"");
         if (msg == null) {
@@ -208,15 +241,15 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             return;
         }
         StringTokenizer tokenizer = new StringTokenizer(msg);
-        String cmd=tokenizer.nextToken();
+        String cmd = tokenizer.nextToken();
         switch (cmd) {
             case CMD_PONG:
-                JOptionPane.showMessageDialog(chip.getFilterFrame(), String.format("\"%s\" received from %s",cmd,host));
+                showPlainMessageDialogInSwingThread(String.format("\"%s\" received from %s", cmd, host), "Pong");
                 return;
             case CMD_PING:
                 sendUDPMessage(CMD_PONG);
                 return;
-            case CMD_NEW_SYMBOL_AVAILABLE:
+            case CMD_NEW_SAMPLES_AVAILABLE:
                 log.warning("learning server should not send this message; it is for us to send");
                 return;
             case CMD_LOAD_NETWORK:
@@ -235,23 +268,31 @@ public class RoShamBoIncremental extends RoShamBoCNN {
                         loadNetwork(new File(networkFilename));
                     } catch (Exception e) {
                         log.log(Level.SEVERE, "Exception loading new network", e);
+                        showWarningDialogInSwingThread("Exception loading new network: " + e.toString(), "Could not load network");
+
+                        break;
                     }
                 }
-                // labels file
+                // labels  for classes; should be one per output unit separated by whitespace, e.g. "loadnetwork xxx.pb rock scissors paper background thumbsup peacesign" for a network trained for 6 classes
                 if (!tokenizer.hasMoreTokens()) {
+                    log.warning("no class labels supplied for this network");
+                    showWarningDialogInSwingThread("no class labels supplied for this network", "No class labels");
                     break;
                 }
-                String labelsFilename = tokenizer.nextToken();
-                if (labelsFilename == null || labelsFilename.isEmpty()) {
-                    log.warning("null filename supplied for labels, not loading any");
-                    return;
+                List<String> labels = new ArrayList();
+                StringBuilder sb = new StringBuilder("new labels:");
+                while (tokenizer.hasMoreTokens()) {
+                    String nextLabel = tokenizer.nextToken();
+                    sb.append(" " + nextLabel);
+                    labels.add(nextLabel);
                 }
                 synchronized (RoShamBoIncremental.this) { // sync on outter class, not thread we are running in
                     try {
-                        log.info("loading new class labels from " + labelsFilename);
-                        loadLabels(new File(networkFilename));
+                        apsDvsNet.setLabels(labels);
+                        log.info(sb.toString());
                     } catch (Exception e) {
-                        log.log(Level.SEVERE, "Exception loading new labels", e);
+                        log.log(Level.SEVERE, "Exception setting new labels", e);
+                        showWarningDialogInSwingThread("Warning: exception setting class labels: " + e.toString(), "Bad class labels");
                     }
                 }
 
@@ -276,7 +317,9 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 
                 break;
             default:
-                log.warning("unknown token or comamnd in message \"" + msg + "\"");
+                final String badmsg = "unknown token or comamnd in message \"" + msg + "\"";
+                log.warning(badmsg);
+                showWarningDialogInSwingThread(badmsg,"Unknown message");
         }
     }
 
