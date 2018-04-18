@@ -120,7 +120,12 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     }
 
     public void doPing() {
-        sendUDPMessage(CMD_PING);
+        try {
+            sendUDPMessage(CMD_PING);
+        } catch (IOException e) {
+            log.warning(e.toString());
+            showWarningDialogInSwingThread("Exception sending ping: "+e.toString(), "Exception");
+        }
 
     }
 
@@ -159,27 +164,25 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     public void doStartTraining() {
         try {
             sendUDPMessage(CMD_NEW_SAMPLES_AVAILABLE + " " + lastSymbolsPath); // inform only of the destination folder; class name is in filename
-            lastNewClassName = newname;
         } catch (IOException ex) {
             Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.WARNING, null, ex);
-            showWarningDialogInSwingThread(ex.toString(), "Exception");
+            showWarningDialogInSwingThread("Exception starting training: "+ex.toString(), "Exception");
         }
 
     }
-    
-    public void doCancelTraining(){
+
+    public void doCancelTraining() {
         try {
             sendUDPMessage(CMD_CANCEL_TRAINING);
-            lastNewClassName = newname;
         } catch (IOException ex) {
             Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.WARNING, null, ex);
-            showWarningDialogInSwingThread(ex.toString(), "Exception");
+            showWarningDialogInSwingThread("Exception cancelling training: "+ex.toString(), "Exception");
         }
-      
+
     }
 
     private void openSymbolFileAndStartRecording(String prefix) {
-        log.info("recording symbol");
+        log.info("recording samples");
         aviWriter.openAVIOutputStream(lastSymbolsPath.resolve(prefix + ".avi").toFile(), new String[]{"# " + prefix});
     }
 
@@ -268,9 +271,15 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             case CMD_PONG:
                 showPlainMessageDialogInSwingThread(String.format("\"%s\" received from %s", cmd, host), "Pong");
                 return;
-            case CMD_PING:
-                sendUDPMessage(CMD_PONG);
-                return;
+            case CMD_PING: {
+                try {
+                    sendUDPMessage(CMD_PONG);
+                } catch (IOException ex) {
+                    Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.SEVERE, null, ex);
+                    showWarningDialogInSwingThread("Exception sending return pong in response to ping: "+ex.toString(), "Exception");
+                }
+            }
+            return;
             case CMD_NEW_SAMPLES_AVAILABLE:
                 log.warning("learning server should not send this message; it is for us to send");
                 return;
@@ -345,7 +354,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         }
     }
 
-    synchronized private void sendUDPMessage(String string) { // sync for thread safety on multiple senders
+    synchronized private void sendUDPMessage(String string) throws IOException { // sync for thread safety on multiple senders
 
         if (portListenerThread == null || !portListenerThread.isAlive() || listenOnSocket == null) { // start a thread to get messages from client
             log.info("starting thread to listen for UDP datagram messages on port " + portListenOn);
@@ -404,7 +413,12 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         super.annotate(drawable);
         synchronized (this) {
             if (progressMonitor != null && progressMonitor.isCanceled()) {
-                sendUDPMessage(CMD_CANCEL_TRAINING);
+                try {
+                    sendUDPMessage(CMD_CANCEL_TRAINING);
+                } catch (IOException ex) {
+                    Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.SEVERE, null, ex);
+                    showWarningDialogInSwingThread(ex.toString(), "Exception");
+                }
 
             }
         }
