@@ -1883,13 +1883,17 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 *
 	 * @return true if blank
 	 */
-	protected boolean isBlankDevice() {
-		if ((deviceDescriptor.idVendor() == CypressFX3.VID_BLANK) && (deviceDescriptor.idProduct() == CypressFX3.PID_BLANK)) {
-			// log.warning("blank CypressFX3 detected");
-			return true;
-		}
-		return false;
-	}
+        protected boolean isBlankDevice() throws HardwareInterfaceException {
+            try {
+                if ((deviceDescriptor.idVendor() == CypressFX3.VID_BLANK) && (deviceDescriptor.idProduct() == CypressFX3.PID_BLANK)) {
+                    // log.warning("blank CypressFX3 detected");
+                    return true;
+                }
+                return false;
+            } catch (java.lang.IllegalStateException ex) {
+                throw new HardwareInterfaceException("exception when checking for blank device ", ex);
+            }
+        }
 
 	@Override
 	public void setShowUsbStatistics(boolean yes) {
