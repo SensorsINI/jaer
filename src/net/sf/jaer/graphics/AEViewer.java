@@ -204,7 +204,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             EVENT_ACCUMULATE_ENABLED = "accumulateEnabled";
 
     public static final String HELP_URL_JAER_HOME = "https://github.com/SensorsINI/jaer";
-    public static final String HELP_URL_USER_GUIDE = "https://inivation.com/support/software/jaer/";
+    public static final String HELP_URL_USER_GUIDE = "https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing";
     public static final String HELP_URL_HELP_FORUM = "https://groups.google.com/forum/#!forum/jaer-users";
     public static final String HELP_USER_GUIDE_URL_FLASHY = "http://inivation.com/support/software/reflashing/";
     public static final String HELP_URL_HARDWARE_USER_GUIDE = "http://www.inivation.com/support/hardware/";
