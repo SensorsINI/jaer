@@ -106,6 +106,7 @@ public class DavisWhatWhereCNNProcessor extends AbstractDavisCNNProcessor {
 
     @Override
     public synchronized void propertyChange(PropertyChangeEvent evt) {
+        if(!isFilterEnabled()) return;
         switch (evt.getPropertyName()) {
             case AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE:
                 break;

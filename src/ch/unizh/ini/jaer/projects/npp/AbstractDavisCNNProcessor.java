@@ -518,6 +518,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     @Override
     public synchronized void propertyChange(PropertyChangeEvent evt) {
         super.propertyChange(evt);
+        if(!isFilterEnabled()) return;
         // new activationsFrame is available, process it
         switch (evt.getPropertyName()) {
             case AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE:

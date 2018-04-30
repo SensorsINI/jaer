@@ -158,6 +158,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             lastNewClassName = newname;
         } catch (IOException ex) {
             Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.WARNING, null, ex);
+            showWarningDialogInSwingThread("Exception renaming file: "+ex.toString(), "Exception");
         }
     }
 
