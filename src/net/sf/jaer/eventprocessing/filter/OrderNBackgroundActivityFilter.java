@@ -19,17 +19,20 @@
 package net.sf.jaer.eventprocessing.filter;
 
 import com.jogamp.opengl.GLAutoDrawable;
+import java.beans.PropertyChangeEvent;
 import java.util.Arrays;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- * Filters noise based on Khodamoradi and Kastner 2018 IEEE emerging topics paper
+ * Filters noise based on Khodamoradi and Kastner 2018 IEEE emerging topics
+ * paper
  *
  * @author Tobi Delbruck
  */
@@ -37,7 +40,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 public class OrderNBackgroundActivityFilter extends EventFilter2D implements FrameAnnotater {
 
-    int dtUs = getInt("dtUs", 10000);
+    private int dtUs = getInt("dtUs", 10000);
     int[] lastRowTs, lastColTs;
     int[] lastXByRow, lastYByCol;
     int sx = 0, sy = 0;
@@ -45,6 +48,7 @@ public class OrderNBackgroundActivityFilter extends EventFilter2D implements Fra
     public OrderNBackgroundActivityFilter(AEChip chip) {
         super(chip);
         setPropertyTooltip("dtUs", "correlation time in us");
+        getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
     }
 
     @Override
@@ -82,16 +86,76 @@ public class OrderNBackgroundActivityFilter extends EventFilter2D implements Fra
     }
 
     private void checkAndFilterEvent(BasicEvent e) {
-        
+
         // check all neighbors to see if there was event around us suffiently recently
-        
+        e.setFilteredOut(true);
         if (e.x <= 0 || e.y <= 0 || e.x >= sx - 1 || e.y >= sy - 1) {
-            e.setFilteredOut(true);
+            saveEvent(e);
             return; // filter out all edge events since we cannot fully check correlation TDOO not really correct
         }
-        for(int x=-1;x<=1;x++){
-            
+        boolean selfCorrelated = false;
+        for (int y = -1; y <= 1; y++) {
+            if (lastRowTs[e.y + y] == 0) {
+                e.setFilteredOut(true);
+                saveEvent(e);
+                return;
+            }
+            if (e.timestamp - lastRowTs[e.y + y] < dtUs
+                    && Math.abs(lastXByRow[e.y + y] - e.x) <= 1) {
+                e.setFilteredOut(false);
+                saveEvent(e);
+                selfCorrelated = y == 0;
+            }
+
         }
+        for (int x = -1; x <= 1; x++) {
+            if (lastColTs[e.x + x] == 0) {
+                e.setFilteredOut(true);
+                saveEvent(e);
+                return;
+            }
+            if (e.timestamp - lastColTs[e.x + x] < dtUs
+                    && Math.abs(lastYByCol[e.x + x] - e.y) <= 1) {
+                e.setFilteredOut(false);
+                saveEvent(e);
+                if (selfCorrelated && x == 0) {
+                    e.setFilteredOut(true);
+                }
+                return;
+            }
+        }
+        saveEvent(e);
+    }
+
+    private void saveEvent(BasicEvent e) {
+        lastXByRow[e.y] = e.x;
+        lastYByCol[e.x] = e.y;
+        lastColTs[e.x] = e.timestamp;
+        lastRowTs[e.y] = e.timestamp;
+    }
+
+    /**
+     * @return the dtUs
+     */
+    public int getDtUs() {
+        return dtUs;
+    }
+
+    /**
+     * @param dtUs the dtUs to set
+     */
+    public void setDtUs(int dtUs) {
+        this.dtUs = dtUs;
+        putInt("dtUs", dtUs);
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        super.propertyChange(evt); //To change body of generated methods, choose Tools | Templates.
+        if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
+            resetFilter();
+        }
+
     }
 
 }
