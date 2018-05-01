@@ -545,7 +545,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                 if (measurePerformance) {
                     startTime = System.nanoTime();
                 }
-                if (processDVSTimeSlices) {
+                if (processDVSTimeSlices  && apsDvsNet!=null) {
                     apsDvsNet.processDvsFrame((DvsFrame) evt.getNewValue()); // generates PropertyChange EVENT_MADE_DECISION
                     if (measurePerformance) {
                         long dt = System.nanoTime() - startTime;
