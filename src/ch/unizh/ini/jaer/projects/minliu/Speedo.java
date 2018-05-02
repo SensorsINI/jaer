@@ -76,7 +76,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
  */
 @Description("Computes optical flow with vector direction using block matching")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class PatchMatchFlow extends AbstractMotionFlow implements Observer, FrameAnnotater {
+public class Speedo extends AbstractMotionFlow implements Observer, FrameAnnotater {
 
     /* LDSP is Large Diamond Search Pattern, and SDSP mens Small Diamond Search Pattern.
        LDSP has 9 points and SDSP consists of 5 points.
@@ -224,7 +224,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     TobiLogger sadValueLogger = new TobiLogger("sadvalues", "sadvalue,scale"); // TODO debug
 
-    public PatchMatchFlow(AEChip chip) {
+    public Speedo(AEChip chip) {
         super(chip);
 
         setSliceDurationUs(getSliceDurationUs());   // 40ms is good for the start of the slice duration adatative since 4ms is too fast and 500ms is too slow.
@@ -291,7 +291,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         getSupport().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
         getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
-        getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWIND, this);
+        getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP, this);
         computeAveragePossibleMatchDistance();
     }
@@ -471,7 +471,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             sliceLastTs = Integer.MAX_VALUE;
 
         }
-        motionFlowStatistics.updatePacket(countIn, countOut);
+        // motionFlowStatistics.updatePacket(countIn, countOut);
         adaptEventSkipping();
 
         return isDisplayRawInput() ? in : dirPacket;
