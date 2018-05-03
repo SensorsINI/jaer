@@ -64,6 +64,8 @@ public class OrderNBackgroundActivityFilter extends EventFilter2D implements Fra
 
     @Override
     public void resetFilter() {
+        if(lastRowTs==null) initFilter();
+        if(sx*sy==0) return;
         Arrays.fill(lastColTs, 0);
         Arrays.fill(lastRowTs, 0);
         Arrays.fill(lastXByRow, -1);
