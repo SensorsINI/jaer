@@ -14,6 +14,7 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 import java.util.LinkedList;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
@@ -428,6 +429,14 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             }
         } catch (Exception e) {
             log.warning(e.getMessage());
+        }
+        // call initFilter on all filters in the chain
+        for(EventFilter f:this){
+            try{
+                f.initFilter();
+            }catch(Exception e){
+                log.log(Level.WARNING,"Exception initializing filter "+f+": "+e.toString(),e);
+            }
         }
     }
 
