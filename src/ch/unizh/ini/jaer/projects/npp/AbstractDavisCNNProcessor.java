@@ -536,7 +536,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                         long dt = System.nanoTime() - startTime;
                         float ms = 1e-6f * dt;
                         float fps = 1e3f / ms;
-                        performanceString = String.format("Frame processing time: %.1fms (%.1f FPS); %s", ms, fps, apsDvsNet.getPerformanceString());
+                        performanceString = String.format("Frame processing time: %.1fms (%.1f FPS)", ms, fps);
                     }
                 }
                 break;
@@ -551,7 +551,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                         long dt = System.nanoTime() - startTime;
                         float ms = 1e-6f * dt;
                         float fps = 1e3f / ms;
-                        performanceString = String.format("Frame processing time: %.1fms (%.1f FPS); %s", ms, fps, apsDvsNet.getPerformanceString());
+                        performanceString = String.format("Frame processing time: %.1fms (%.1f FPS)", ms, fps);
                     }
                 }
         }
