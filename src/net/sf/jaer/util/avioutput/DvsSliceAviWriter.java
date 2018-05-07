@@ -63,6 +63,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     private LowpassFilter lowpassFilter = new LowpassFilter(frameRateEstimatorTimeConstantMs);
     private int lastDvsFrameTimestamp = 0;
     private float avgDvsFrameIntervalMs = 0;
+    private boolean showStatistics=getBoolean("showStatistics", false);
 
     public DvsSliceAviWriter(AEChip chip) {
         super(chip);
@@ -75,6 +76,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         setPropertyTooltip("showOutput", "shows output in JFrame/ImageDisplay");
         setPropertyTooltip("frameRateEstimatorTimeConstantMs", "time constant of lowpass filter that shows average DVS slice frame rate");
         setPropertyTooltip("writeDvsSliceImageOnApsFrame", "<html>write DVS slice image for each APS frame end event (dvsMinEvents ignored).<br>The frame is written at the end of frame APS event.<br><b>Warning: to capture all frames, ensure that playback time slices are slow enough that all frames are rendered</b>");
+        setPropertyTooltip("showStatistics", "shows statistics of DVS frame (most off and on counts, frame rate, sparsity)");
     }
 
     @Override
@@ -138,6 +140,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     @Override
     public void annotate(GLAutoDrawable drawable) {
         if (dvsFrame == null) {
+            return;
+        }
+        if(!isShowStatistics()){
             return;
         }
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);
@@ -568,6 +573,15 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 writer.isShowOutput(), writer.getMaxFrames()));
         System.out.println("Successfully wrote file " + outfile + " with " + writer.getFramesWritten() + " frames");
         System.exit(0);
+    }
+
+    public boolean isShowStatistics() {
+        return showStatistics;
+    }
+    
+    public void setShowStatistics(boolean showStatistics){
+        this.showStatistics=showStatistics;
+        putBoolean("showStatistics", showStatistics);
     }
 
     // stupid static class just to control writing and handle rewind event
