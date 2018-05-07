@@ -139,6 +139,7 @@ abstract public class DvsFramer extends EventFilter2D {
         setPropertyTooltip("frameCutBottom", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
         setPropertyTooltip("frameCutLeft", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
         setPropertyTooltip("frameCutRight", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
+        setPropertyTooltip("normalizeFrame", "normalizes DVS frames according to DvsFramer.DvsFrame.normalizeFrame(), to have zero mean and range 0-1 using 3-sigma values");
     }
 
     /**
