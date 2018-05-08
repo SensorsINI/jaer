@@ -212,12 +212,12 @@ public class AEUnicastOutput implements AEUnicastSettings {
                         if (use4ByteAddrTs) {
                             currentBuf.putInt(addr[i]);
                             if (timestampsEnabled) {
-                                currentBuf.putInt((int) (timestampMultiplierReciprocal * t));
+                                currentBuf.putInt((int) (timestampMultiplierReciprocal * (double)t));
                             }
                         } else {
                             currentBuf.putShort((short) addr[i]);
                             if (timestampsEnabled) {
-                                currentBuf.putInt((int) (timestampMultiplierReciprocal * t));
+                                currentBuf.putInt((int) (timestampMultiplierReciprocal * (double)t));
                             }
                         }
                         //No payload.
@@ -243,22 +243,22 @@ public class AEUnicastOutput implements AEUnicastSettings {
                         if (use4ByteAddrTs) {
                             currentBuf.putInt(swab(addr[i]));
                             if (timestampsEnabled) {
-                                currentBuf.putInt(swab((int) (timestampMultiplierReciprocal * t)));
+                                currentBuf.putInt(swab((int) (timestampMultiplierReciprocal * (double)t)));
                             }
                         } else {
                             currentBuf.putShort((short) swab(addr[i]));
                             if (timestampsEnabled) {
-                                currentBuf.putInt(swab((int) (timestampMultiplierReciprocal * t)));
+                                currentBuf.putInt(swab((int) (timestampMultiplierReciprocal * (double)t)));
                             }
                         }
                     } else if (use4ByteAddrTs) {
                         if (timestampsEnabled) {
-                            currentBuf.putInt(swab((int) (timestampMultiplierReciprocal * t)));
+                            currentBuf.putInt(swab((int) (timestampMultiplierReciprocal * (double)t)));
                         }
                         currentBuf.putInt(swab(addr[i]));
                     } else {
                         if (timestampsEnabled) {
-                            currentBuf.putShort((short) swab((int) (timestampMultiplierReciprocal * t)));
+                            currentBuf.putShort((short) swab((int) (timestampMultiplierReciprocal * (double)t)));
                         }
                         currentBuf.putInt(swab(addr[i]));
                     }
