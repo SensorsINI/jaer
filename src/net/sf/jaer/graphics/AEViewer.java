@@ -101,6 +101,7 @@ import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEFileOutputStream;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.AEMulticastInput;
@@ -1194,6 +1195,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (chip != null) {
                 chip.setHardwareInterface(null);
             }
+            AEFileInputStreamInterface oldAeInputStream=null;
+            if(chip!=null){
+                oldAeInputStream=chip.getAeInputStream(); // save it to assign to new chip in case we have a stream open already
+            }
             // force null interface
 //            nullInterface = true; // setting null true here prevents openHardwareIfNonambiguous to work correctly (tobi)
             Constructor<AEChip> constructor = deviceClass.getConstructor();
@@ -1224,6 +1229,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.warning("null chip, not continuing");
                 return;
             }
+            chip.setAeInputStream(oldAeInputStream);
             aeChipClass = deviceClass;
             setPreferredAEChipClass(aeChipClass);
             // chip constructed above, should have renderer already constructed as well
