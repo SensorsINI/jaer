@@ -287,7 +287,7 @@ public class AEChip extends Chip2D {
      *
      * @param aeInputStream
      */
-    public void setAeInputStream(AEFileInputStream aeInputStream) {
+    public void setAeInputStream(AEFileInputStreamInterface aeInputStream) {
         this.aeInputStream = aeInputStream;
         setChanged();
         notifyObservers(aeInputStream);
