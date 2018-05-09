@@ -18,7 +18,10 @@
  */
 package ch.unizh.ini.jaer.projects.npp;
 
+import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -30,7 +33,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Scanner;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -42,6 +47,8 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.avioutput.DvsSliceAviWriter;
 
 /**
@@ -66,12 +73,16 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     private static final String CMD_NEW_SAMPLES_AVAILABLE = "newsymbol",
             CMD_PROGRESS = "progress",
             CMD_LOAD_NETWORK = "loadnetwork",
+            CMD_LOAD_CLASS_MEANS = "loadclassmeans",
             CMD_CANCEL_TRAINING = "cancel",
             CMD_PING = "ping",
             CMD_PONG = "pong";
     private Thread portListenerThread = null;
     private ProgressMonitor progressMonitor = null;
     private String lastNewClassName = getString("lastNewClassName", "");
+
+    // iCaRL class means
+    private float[][] classMeans; // each row is one class, each class has N components that are mean values of last fully connected layer activations
 
     // to test, open a terminal, and use netcat -u localhost portSendTo in one panel and network -ul portListenOn in another panel
     public RoShamBoIncremental(AEChip chip) {
@@ -92,6 +103,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         aviWriter.getDvsFrame().setOutputImageHeight(64);
         aviWriter.getDvsFrame().setOutputImageWidth(64);
         getEnclosedFilterChain().add(aviWriter);
+        statistics = new Statistics(); // overrides the super's version of Statistics
     }
 
     public void doResetToBaseNetwork() {
@@ -124,7 +136,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             sendUDPMessage(CMD_PING);
         } catch (IOException e) {
             log.warning(e.toString());
-            showWarningDialogInSwingThread("Exception sending ping: "+e.toString(), "Exception");
+            showWarningDialogInSwingThread("Exception sending ping: " + e.toString(), "Exception");
         }
 
     }
@@ -158,7 +170,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             lastNewClassName = newname;
         } catch (IOException ex) {
             Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.WARNING, null, ex);
-            showWarningDialogInSwingThread("Exception renaming file: "+ex.toString(), "Exception");
+            showWarningDialogInSwingThread("Exception renaming file: " + ex.toString(), "Exception");
         }
     }
 
@@ -167,7 +179,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             sendUDPMessage(CMD_NEW_SAMPLES_AVAILABLE + " " + lastSymbolsPath); // inform only of the destination folder; class name is in filename
         } catch (IOException ex) {
             Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.WARNING, null, ex);
-            showWarningDialogInSwingThread("Exception starting training: "+ex.toString(), "Exception");
+            showWarningDialogInSwingThread("Exception starting training: " + ex.toString(), "Exception");
         }
 
     }
@@ -177,7 +189,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             sendUDPMessage(CMD_CANCEL_TRAINING);
         } catch (IOException ex) {
             Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.WARNING, null, ex);
-            showWarningDialogInSwingThread("Exception cancelling training: "+ex.toString(), "Exception");
+            showWarningDialogInSwingThread("Exception cancelling training: " + ex.toString(), "Exception");
         }
 
     }
@@ -260,6 +272,104 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 
     }
 
+    // we override the super's Statistics to compute the dot product winner here
+    protected class Statistics extends RoShamBoCNN.Statistics implements PropertyChangeListener {
+
+        final int INITIAL_NUM_CLASSES = 4;
+        int totalCount;
+        int[] decisionCounts = new int[INITIAL_NUM_CLASSES];
+        float[] lowpassFilteredOutputUnits = new float[INITIAL_NUM_CLASSES];
+        final int HISTORY_LENGTH = 10;
+        int[] decisionHistory = new int[HISTORY_LENGTH];
+        float maxActivation = Float.NEGATIVE_INFINITY;
+        private int symbolDetected = -1;
+        private int symbolOutput = -1;
+        boolean outputChanged = false;
+
+        public Statistics() {
+            reset();
+        }
+
+        protected void computeOutputSymbol() {
+            symbolOutput = symbolDetected;
+        }
+
+        @Override
+        public synchronized void propertyChange(PropertyChangeEvent evt) {
+            if (evt.getPropertyName() == AbstractDavisCNN.EVENT_MADE_DECISION) {
+                int lastOutput = symbolDetected;
+                maxActivation = Float.NEGATIVE_INFINITY;
+                // hack to support both conventional and incremental CNNs. If the number of output units is larger than 4, then we are running iCaRL,
+                // and we need to compute the normalized output vector and dot it against the stored class mean vectors to determine the winning class.
+                // Otherwise, we assume we run old RoshamboCNN and just call the super's method to deal with new decisions.
+
+                AbstractDavisCNN net = (AbstractDavisCNN) evt.getNewValue();
+                if (net.getOutputLayer().getActivations().length == 4) {
+                    super.processDecision(evt);
+                    return;
+                }
+
+                symbolDetected = -1;
+
+                // get output layer and normalize it to unit vector
+                float[] act = net.getOutputLayer().getActivations();
+                float sum = 0, sum2 = 0;
+                for (float f : act) {
+                    sum += f;
+                    sum2 += f * f;
+                }
+                float sqrtsum2 = (float) Math.sqrt(sum2);
+                float[] normact = new float[act.length];
+                for (int i = 0; i < act.length; i++) {
+                    normact[i] = act[i] / sqrtsum2;
+                }
+                // dot it with each mean vector
+                int nclasses = classMeans.length;
+                float[] dots = new float[nclasses];
+                for (int i = 0; i < nclasses; i++) {
+                    for (int j = 0; j < normact.length; j++) {
+                        dots[i] += normact[j] * classMeans[i][j];
+                    }
+                }
+                // update the lowpass-filtered final result vector
+                if(lowpassFilteredOutputUnits==null || lowpassFilteredOutputUnits.length!=nclasses){
+                    lowpassFilteredOutputUnits=new float[nclasses];
+                }
+                for (int i = 0; i < nclasses; i++) {
+                    float output = dots[i];
+                    lowpassFilteredOutputUnits[i] = ((1 - decisionLowPassMixingFactor) * lowpassFilteredOutputUnits[i]) + (output * decisionLowPassMixingFactor);
+
+                    if (lowpassFilteredOutputUnits[i] > maxActivation) {
+                        maxActivation = lowpassFilteredOutputUnits[i];
+                        symbolDetected = i;
+                    }
+                }
+                if (symbolDetected < 0) {
+                    log.warning("negative descision, network must not have run correctly");
+                    return;
+                }
+                if(decisionCounts==null || decisionCounts.length!=nclasses) decisionCounts=new int[nclasses];
+                decisionCounts[symbolDetected]++;
+                totalCount++;
+                if ((symbolDetected != lastOutput)) {
+                    // CNN output changed, respond here
+                    outputChanged = true;
+                } else {
+                    outputChanged = false;
+                }
+                computeOutputSymbol();
+            } else if (evt.getPropertyName() == AEViewer.EVENT_FILEOPEN) {
+                reset();
+            }
+        }
+
+        protected void draw(GL2 gl) {
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(.8f * chip.getSizeY());
+            MultilineAnnotationTextRenderer.renderMultilineString(toString());
+        }
+
+    }
+
     private void parseMessage(String msg) {
         log.info("parsing message \"" + msg + "\"");
         if (msg == null) {
@@ -277,13 +387,62 @@ public class RoShamBoIncremental extends RoShamBoCNN {
                     sendUDPMessage(CMD_PONG);
                 } catch (IOException ex) {
                     Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.SEVERE, null, ex);
-                    showWarningDialogInSwingThread("Exception sending return pong in response to ping: "+ex.toString(), "Exception");
+                    showWarningDialogInSwingThread("Exception sending return pong in response to ping: " + ex.toString(), "Pong Exception");
                 }
             }
             return;
             case CMD_NEW_SAMPLES_AVAILABLE:
                 log.warning("learning server should not send this message; it is for us to send");
                 return;
+            case CMD_LOAD_CLASS_MEANS: {
+                try {
+                    if (!tokenizer.hasMoreTokens()) {
+                        log.warning("Missing class means filename; usage is " + CMD_LOAD_CLASS_MEANS + " filename.txt");
+                        return;
+                    }
+                    String classMeansFilename = tokenizer.nextToken();
+                    if (classMeansFilename == null || classMeansFilename.isEmpty()) {
+                        log.warning("null filename supplied for class means filename");
+                        return;
+                    }
+                    List<String> lines = Files.readAllLines(Paths.get(new File(classMeansFilename).getAbsolutePath()));
+                    if (lines.isEmpty()) {
+                        throw new RuntimeException("empty file " + classMeansFilename);
+                    }
+                    int classNumber = 0;
+                    synchronized (RoShamBoIncremental.this) { // sync on outter class, not thread we are running in
+                        classMeans = new float[lines.size()][];
+                        for (String line : lines) {
+                            Scanner scanner = new Scanner(line);
+                            ArrayList<Float> vals = new ArrayList(256);
+                            while (scanner.hasNextFloat()) {
+                                vals.add(scanner.nextFloat());
+                            }
+                            if (vals.isEmpty()) {
+                                throw new RuntimeException("line of mean vector values is empty: " + line);
+                            }
+                            classMeans[classNumber] = new float[vals.size()];
+                            int i = 0;
+                            for (Float f : vals) {
+                                classMeans[classNumber][i++] = (f != null ? f : Float.NaN); // Or whatever default you want.
+                            }
+                        }
+                        // check all the same length and >0
+                        int firstVectorLength = classMeans[0].length;
+                        for (int i = 1; i < classMeans.length; i++) {
+                            if (classMeans[i].length != firstVectorLength) {
+                                throw new RuntimeException(String.format("line %d of file had different number of components (%d vs %d for first line",
+                                        i, classMeans[i].length, firstVectorLength));
+                            }
+                        }
+                        log.info("loaded " + classMeans.length + " new class mean vectors");
+                    }
+                } catch (IOException ex) {
+                    Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.SEVERE, null, ex);
+                    showWarningDialogInSwingThread(ex.toString(), "Error loading class means");
+                }
+            }
+            break;
             case CMD_LOAD_NETWORK:
                 if (!tokenizer.hasMoreTokens()) {
                     log.warning("Missing network filename; usage is " + CMD_LOAD_NETWORK + " filename.pb [labels.txt]");

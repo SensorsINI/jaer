@@ -64,8 +64,8 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
 
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
     private boolean showSymbol = getBoolean("showSymbol", true);
-    Statistics statistics = new Statistics();
-    private float decisionLowPassMixingFactor = getFloat("decisionLowPassMixingFactor", .2f);
+    protected Statistics statistics = new Statistics();
+    protected float decisionLowPassMixingFactor = getFloat("decisionLowPassMixingFactor", .2f);
     private SpikeSound spikeSound = null;
     // for arduino robot (code in F:\Dropbox\NPP roshambo robot training data\arduino\RoShamBoHandControl)
     NRSerialPort serialPort = null;
@@ -78,7 +78,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     private int playSoundsMinIntervalMs = getInt("playSoundsMinIntervalMs", 1000);
     private float decisionThresholdActivation = getFloat("decisionThresholdActivation", .7f);
     private SoundPlayer soundPlayer = null;
-    private boolean playToWin = getBoolean("playToWin", true);
+    protected boolean playToWin = getBoolean("playToWin", true);
     private boolean addedStatisticsListener = false;
 
     /**
@@ -106,9 +106,9 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     /**
      * output units
      */
-    private static final int DECISION_PAPER = 0, DECISION_SCISSORS = 1, DECISION_ROCK = 2, DECISION_BACKGROUND = 3;
-    private static final String[] DECISION_STRINGS = {"Paper", "Scissors", "Rock", "Background"};
-    private boolean showDecisionStatistics = getBoolean("showDecisionStatistics", true);
+    protected static final int DECISION_PAPER = 0, DECISION_SCISSORS = 1, DECISION_ROCK = 2, DECISION_BACKGROUND = 3;
+    protected static final String[] DECISION_STRINGS = {"Paper", "Scissors", "Rock", "Background"};
+    protected boolean showDecisionStatistics = getBoolean("showDecisionStatistics", true);
 
     /**
      * Symbols
@@ -654,42 +654,27 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         getSupport().firePropertyChange("playSounds", old, this.playSounds); // in case disabled by error loading file
     }
 
-    private class Statistics implements PropertyChangeListener {
+    protected class Statistics implements PropertyChangeListener {
 
-        final int NUM_CLASSES = 4;
-        int totalCount, totalCorrect, totalIncorrect;
-        int[] correct = new int[NUM_CLASSES], incorrect = new int[NUM_CLASSES], count = new int[NUM_CLASSES];
-        int dvsTotalCount, dvsCorrect, dvsIncorrect;
-        int apsTotalCount, apsCorrect, apsIncorrect;
-        int[] decisionCounts = new int[NUM_CLASSES];
-        float[] lowpassFilteredOutputUnits = new float[NUM_CLASSES];
-        final int HISTORY_LENGTH = 10;
-        int[] decisionHistory = new int[HISTORY_LENGTH];
-        float maxActivation = Float.NEGATIVE_INFINITY;
-        private int symbolDetected = -1;
-        private int symbolOutput = -1;
-        boolean outputChanged = false;
+        protected final int INITIAL_NUM_CLASSES = 4;
+        protected int totalCount;
+        protected int[] decisionCounts = new int[INITIAL_NUM_CLASSES];
+        protected float[] lowpassFilteredOutputUnits = new float[INITIAL_NUM_CLASSES];
+        protected final int HISTORY_LENGTH = 10;
+        protected int[] decisionHistory = new int[HISTORY_LENGTH];
+        protected float maxActivation = Float.NEGATIVE_INFINITY;
+        protected int symbolDetected = -1;
+        protected int symbolOutput = -1;
+        protected boolean outputChanged = false;
 
         public Statistics() {
             reset();
         }
 
-        void reset() {
+        protected void reset() {
             totalCount = 0;
-            totalCorrect = 0;
-            totalIncorrect = 0;
-            Arrays.fill(correct, 0);
-            Arrays.fill(incorrect, 0);
-            Arrays.fill(count, 0);
             Arrays.fill(decisionCounts, 0);
             Arrays.fill(lowpassFilteredOutputUnits, 0);
-            dvsTotalCount = 0;
-            dvsCorrect = 0;
-            dvsIncorrect = 0;
-            apsTotalCount = 0;
-            apsCorrect = 0;
-            apsIncorrect = 0;
-
         }
 
         @Override
@@ -699,7 +684,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
             }
             StringBuilder sb = new StringBuilder("Decision statistics: ");
             try {
-                for (int i = 0; i < NUM_CLASSES; i++) {
+                for (int i = 0; i < INITIAL_NUM_CLASSES; i++) {
                     sb.append(String.format("    %s: %d (%.1f%%) \n", DECISION_STRINGS[i], decisionCounts[i], (100 * (float) decisionCounts[i]) / totalCount));
                 }
             } catch (ArrayIndexOutOfBoundsException e) {
@@ -708,7 +693,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
             return sb.toString();
         }
 
-        private void computeOutputSymbol() {
+        protected void computeOutputSymbol() {
             if (!playToWin) {
                 symbolOutput = symbolDetected;
             } else { // beat human
@@ -733,42 +718,46 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         @Override
         public synchronized void propertyChange(PropertyChangeEvent evt) {
             if (evt.getPropertyName() == AbstractDavisCNN.EVENT_MADE_DECISION) {
-                int lastOutput = symbolDetected;
-                AbstractDavisCNN net = (AbstractDavisCNN) evt.getNewValue();
-                maxActivation = Float.NEGATIVE_INFINITY;
-                symbolDetected = -1;
-                try {
-                    for (int i = 0; i < NUM_CLASSES; i++) {
-                        float output = net.getOutputLayer().getActivations()[i];
-                        lowpassFilteredOutputUnits[i] = ((1 - decisionLowPassMixingFactor) * lowpassFilteredOutputUnits[i]) + (output * decisionLowPassMixingFactor);
-                        if (lowpassFilteredOutputUnits[i] > maxActivation) {
-                            maxActivation = lowpassFilteredOutputUnits[i];
-                            symbolDetected = i;
-                        }
-                    }
-                } catch (ArrayIndexOutOfBoundsException e) {
-                    log.warning("Array index out of bounds in rendering output. Did you load a valid CNN with 3 (or more) output units?");
-                    return;
-                }
-                if (symbolDetected < 0) {
-                    log.warning("negative descision, network must not have run correctly");
-                    return;
-                }
-                decisionCounts[symbolDetected]++;
-                totalCount++;
-                if ((symbolDetected != lastOutput)) {
-                    // CNN output changed, respond here
-                    outputChanged = true;
-                } else {
-                    outputChanged = false;
-                }
-                computeOutputSymbol();
+                processDecision(evt);
             } else if (evt.getPropertyName() == AEViewer.EVENT_FILEOPEN) {
                 reset();
             }
         }
 
-        private void draw(GL2 gl) {
+        protected void processDecision(PropertyChangeEvent evt) {
+            int lastOutput = symbolDetected;
+            AbstractDavisCNN net = (AbstractDavisCNN) evt.getNewValue();
+            maxActivation = Float.NEGATIVE_INFINITY;
+            symbolDetected = -1;
+            try {
+                for (int i = 0; i < net.getOutputLayer().getActivations().length; i++) {
+                    float output = net.getOutputLayer().getActivations()[i];
+                    lowpassFilteredOutputUnits[i] = ((1 - decisionLowPassMixingFactor) * lowpassFilteredOutputUnits[i]) + (output * decisionLowPassMixingFactor);
+                    if (lowpassFilteredOutputUnits[i] > maxActivation) {
+                        maxActivation = lowpassFilteredOutputUnits[i];
+                        symbolDetected = i;
+                    }
+                }
+            } catch (ArrayIndexOutOfBoundsException e) {
+                log.warning("Array index out of bounds in rendering output. Did you load a valid CNN with 4 output units?");
+                return;
+            }
+            if (symbolDetected < 0) {
+                log.warning("negative descision, network must not have run correctly");
+                return;
+            }
+            decisionCounts[symbolDetected]++;
+            totalCount++;
+            if ((symbolDetected != lastOutput)) {
+                // CNN output changed, respond here
+                outputChanged = true;
+            } else {
+                outputChanged = false;
+            }
+            computeOutputSymbol();
+        }
+
+        protected void draw(GL2 gl) {
             MultilineAnnotationTextRenderer.resetToYPositionPixels(.8f * chip.getSizeY());
             MultilineAnnotationTextRenderer.renderMultilineString(toString());
         }
