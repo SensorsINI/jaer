@@ -471,7 +471,7 @@ public class Speedo extends AbstractMotionFlow implements Observer, FrameAnnotat
             sliceLastTs = Integer.MAX_VALUE;
 
         }
-        // motionFlowStatistics.updatePacket(countIn, countOut);
+         motionFlowStatistics.updatePacket(countIn, countOut, in.getLastTimestamp());
         adaptEventSkipping();
 
         return isDisplayRawInput() ? in : dirPacket;

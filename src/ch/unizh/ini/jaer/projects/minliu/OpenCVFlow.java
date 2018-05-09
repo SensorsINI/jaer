@@ -201,10 +201,10 @@ public class OpenCVFlow extends AbstractMotionFlow
         }
 
         /* This part is to start logging global motion vector according to user's configurations automatically. */
-        int timeMarker = patchFlow.ts - patchFlow.getChip().getAeInputStream().getFirstTimestamp();
+        int timeMarker = patchFlow.ts - getChip().getAeViewer().getAePlayer().getAEInputStream().getFirstTimestamp();
         int startTime = 500000, endTime = 6000000;
         if (timeMarker >= startTime && timeMarker <= endTime && globalMotionVectorLogger == null) {
-            globalMotionVectorLogger = new TobiLogger(patchFlow.getChip().getAeInputStream().getFile().getName() + patchFlow.getSliceMethod() + patchFlow.getSliceDurationUs(),
+            globalMotionVectorLogger = new TobiLogger(getChip().getAeViewer().getAePlayer().getAEInputStream().getFile().getName() + patchFlow.getSliceMethod() + patchFlow.getSliceDurationUs(),
                     "Global Motion vector for every generated slice");
             globalMotionVectorLogger.setNanotimeEnabled(false);
             globalMotionVectorLogger.setHeaderLine("system_time(ms) relative_timestamp(us) sliceDeltaT(us) method globalVx(pps) globalVy(pps) globalRotation(degree/s) samples");
@@ -495,7 +495,7 @@ public class OpenCVFlow extends AbstractMotionFlow
                 }
                 OFResultDisplay.setPixmapFromGrayArray(new_slice_buff);
                 DateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
-                File folder = new File("EventSlices/" + chip.getAeInputStream().getFile().getName() + patchFlow.getSliceMethod().toString() + "_" + df);
+                File folder = new File("EventSlices/" + getChip().getAeViewer().getAePlayer().getAEInputStream().getFile().getName() + patchFlow.getSliceMethod().toString() + "_" + df);
                 // if the directory does not exist, create it
                 if (!folder.exists()) {
                     folder.mkdir();
