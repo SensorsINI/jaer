@@ -521,8 +521,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /**
      * Returns the main viewer image display panel where the ChipCanvas is
-     * shown. DisplayMethod's can use this getter to appendCopy their own display
- controls.
+     * shown. DisplayMethod's can use this getter to appendCopy their own
+     * display controls.
      *
      * @return the imagePanel
      */
@@ -1175,7 +1175,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * Sets the device class, e.g. DVS127, from the fully qualified class name
      * which is provided by the menu item itself.
      *
-     * @param deviceClass the Class of the AEChip to appendCopy to the AEChip menu
+     * @param deviceClass the Class of the AEChip to appendCopy to the AEChip
+     * menu
      */
     public void setAeChipClass(Class deviceClass) {
         //        log.infox("AEViewer.setAeChipClass("+deviceClass+")");
@@ -1195,9 +1196,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (chip != null) {
                 chip.setHardwareInterface(null);
             }
-            AEFileInputStreamInterface oldAeInputStream=null;
-            if(chip!=null){
-                oldAeInputStream=chip.getAeInputStream(); // save it to assign to new chip in case we have a stream open already
+            AEFileInputStreamInterface oldAeInputStream = null;
+            if (chip != null) {
+                oldAeInputStream = chip.getAeInputStream(); // save it to assign to new chip in case we have a stream open already
             }
             // force null interface
 //            nullInterface = true; // setting null true here prevents openHardwareIfNonambiguous to work correctly (tobi)
@@ -4945,12 +4946,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 newFile = new File(newFile.getCanonicalPath() + AEDataFile.DATA_FILE_EXTENSION);
                             }
                             // we'll rename the logged data file to the selection
+                            lastLoggingFolder = chooser.getCurrentDirectory();
 
                             boolean renamed = loggingFile.renameTo(newFile);
                             if (renamed) {
                                 // if successful, cool, save persistence
                                 savedIt = true;
-                                lastLoggingFolder = chooser.getCurrentDirectory();
                                 prefs.put("AEViewer.lastLoggingFolder", lastLoggingFolder.getCanonicalPath());
                                 recentFiles.addFile(newFile);
                                 loggingFile = newFile; // so that we play it back if it was saved and playback immediately is selected
