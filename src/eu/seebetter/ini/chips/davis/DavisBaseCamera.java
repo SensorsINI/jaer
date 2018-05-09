@@ -69,9 +69,7 @@ import net.sf.jaer.util.histogram.AbstractHistogram;
 abstract public class DavisBaseCamera extends DavisChip implements RemoteControlled {
 
 //    public static final String HELP_URL_HW_USERGUIDES = "http://inilabs.com/support/hardware/";
-   
 //    public static final String USER_GUIDE_URL_DAVIS240 = "http://inilabs.com/support/hardware/davis240/";
-
     // Remote control support
     private final String CMD_EXPOSURE = "exposure";
     private final String CMD_GET_IMU_TEMPERATURE_C = "getImuTemperature";
@@ -96,7 +94,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 //    private JComponent helpMenuItem1 = null;
 //    private JComponent helpMenuItem2 = null;
 //    private JComponent helpMenuItem3 = null;
-
     private JMenu davisMenu = null;
 
     /**
@@ -358,6 +355,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
     /**
      * Constructs the input stream and returns it
+     *
      * @param file the file to open
      * @param progressMonitor to monitor progress and allow canceling operation
      * @return the input stream
@@ -368,7 +366,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     public AEFileInputStreamInterface constuctFileInputStream(final File file, ProgressMonitor progressMonitor) throws IOException, InterruptedException {
         frameCount = 0;
 
-        return (super.constuctFileInputStream(file,progressMonitor));
+        return (super.constuctFileInputStream(file, progressMonitor));
     }
 
     /**
@@ -1051,19 +1049,20 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         private static final int FRAME_COUNTER_BAR_LENGTH_FRAMES = 10;
 
 //        private TextRenderer exposureRenderer = null; // memory hog
-
         public DavisDisplayMethod(final DavisBaseCamera chip) {
             super(chip.getCanvas());
             getCanvas().setBorderSpacePixels(getPrefs().getInt("borderSpacePixels", 70));
         }
 
+        private TextRenderer exposureTextRenderer = null;
+
         @Override
         public void display(final GLAutoDrawable drawable) {
             super.display(drawable);
 
-//            if (exposureRenderer == null) { // recreate every frame, memory hog otherwise
-                final TextRenderer exposureTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, DavisDisplayMethod.FONTSIZE), true, true);
-//            }
+            if (exposureTextRenderer == null) { // recreate every frame, memory hog otherwise
+                exposureTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, DavisDisplayMethod.FONTSIZE), true, true);
+            }
 
             if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
                 final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
@@ -1105,13 +1104,15 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             displayStatusChangeText(drawable);
         }
 
-        
         GLUquadric accelCircle = null;
+        private TextRenderer imuTextRenderer = null;
 
         private void imuRender(final GLAutoDrawable drawable, final IMUSample imuSampleRender) {
             // System.out.println("on rendering: "+imuSample.toString());
             final GL2 gl = drawable.getGL().getGL2();
-            final TextRenderer imuTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36)); // recreate, memory hog if instance variable
+            if (imuTextRenderer == null) {
+                imuTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36)); // recreate, memory hog if instance variable
+            }
             gl.glPushMatrix();
 
             gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
@@ -1371,7 +1372,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     }
 
     /**
-     * Used to appendCopy custom Menu items and keyboard accelerators for DAVIS cameras
+     * Used to appendCopy custom Menu items and keyboard accelerators for DAVIS
+     * cameras
      */
     abstract public class DavisMenuAction extends AbstractAction {
 
