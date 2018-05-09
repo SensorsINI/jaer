@@ -201,9 +201,12 @@ public class OpenCVFlow extends AbstractMotionFlow
         }
 
         /* This part is to start logging global motion vector according to user's configurations automatically. */
-        int timeMarker = patchFlow.ts - getChip().getAeViewer().getAePlayer().getAEInputStream().getFirstTimestamp();
+        int timeMarker = 0;
+        if (getChip().getAeViewer().getAePlayer().getAEInputStream() != null) {
+            timeMarker = patchFlow.ts - getChip().getAeViewer().getAePlayer().getAEInputStream().getFirstTimestamp();
+        }
         int startTime = 500000, endTime = 6000000;
-        if (timeMarker >= startTime && timeMarker <= endTime && globalMotionVectorLogger == null) {
+        if (getChip().getAeViewer().getAePlayer().getAEInputStream().getFile() != null && timeMarker >= startTime && timeMarker <= endTime && globalMotionVectorLogger == null) {
             globalMotionVectorLogger = new TobiLogger(getChip().getAeViewer().getAePlayer().getAEInputStream().getFile().getName() + patchFlow.getSliceMethod() + patchFlow.getSliceDurationUs(),
                     "Global Motion vector for every generated slice");
             globalMotionVectorLogger.setNanotimeEnabled(false);
@@ -494,13 +497,15 @@ public class OpenCVFlow extends AbstractMotionFlow
                     }
                 }
                 OFResultDisplay.setPixmapFromGrayArray(new_slice_buff);
-                DateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
-                File folder = new File("EventSlices/" + getChip().getAeViewer().getAePlayer().getAEInputStream().getFile().getName() + patchFlow.getSliceMethod().toString() + "_" + df);
-                // if the directory does not exist, create it
-                if (!folder.exists()) {
-                    folder.mkdir();
+                if (getChip().getAeViewer().getAePlayer().getAEInputStream().getFile() != null) {
+                    DateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
+                    File folder = new File("EventSlices/" + getChip().getAeViewer().getAePlayer().getAEInputStream().getFile().getName() + patchFlow.getSliceMethod().toString() + "_" + df);
+                    // if the directory does not exist, create it
+                    if (!folder.exists()) {
+                        folder.mkdir();
+                    }
+                    File outputfile = new File(folder, String.format("packet_pid%d_%fms.jpg", this.getId(), patchFlow.sliceDeltaTimeUs(2) / 1000.0));
                 }
-                File outputfile = new File(folder, String.format("packet_pid%d_%fms.jpg", this.getId(), patchFlow.sliceDeltaTimeUs(2) / 1000.0));
                 Core.flip(newFrame, newFrame, 0);
                 // Uncomment this when you want to store the slice's pictures.
 //                try {
