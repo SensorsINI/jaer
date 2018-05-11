@@ -77,6 +77,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             CMD_CANCEL_TRAINING = "cancel",
             CMD_PING = "ping",
             CMD_PONG = "pong";
+    private static String KEY_CLASS_MEANS_FILENAME = "classMeansFilename";
     private Thread portListenerThread = null;
     private ProgressMonitor progressMonitor = null;
     private String lastNewClassName = getString("lastNewClassName", "");
@@ -92,6 +93,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         setPropertyTooltip(learn, "StartTraining", "Starts training on samples");
         setPropertyTooltip(learn, "CancelTraining", "Cancels ongoing training");
         setPropertyTooltip(learn, "ChooseSamplesFolder", "Choose a folder to store the symbol AVI data files");
+        setPropertyTooltip(learn, "LoadClassMeans", "Loads class mean vectors from a file");
         setPropertyTooltip(learn, "hostname", "learning host name (IP or DNS)");
         setPropertyTooltip(learn, "portSendTo", "learning host port number that we send to");
         setPropertyTooltip(learn, "portListenOn", "local port number we listen on to get message back from learning server");
@@ -112,6 +114,20 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         } catch (Exception e) {
             log.log(Level.SEVERE, e.toString(), e.getCause());
             JOptionPane.showMessageDialog(chip.getFilterFrame(), "Couldn't load base network: " + e.toString(), "Bad network file", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    public synchronized void doLoadClassMeanVectors() {
+        File file = null;
+        file = openFileDialogAndGetFile("Choose a class means file, one vector of ascii float values per line", KEY_CLASS_MEANS_FILENAME, "", "classmeans.txt", "txt");
+        if (file == null) {
+            return;
+        }
+        try {
+                loadClassMeans(file);
+        } catch (Exception ex) {
+            Logger.getLogger(DavisClassifierCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
+            JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load class means, caught exception " + ex + ". See console for logging.", "Bad class means file", JOptionPane.WARNING_MESSAGE);
         }
     }
 
@@ -332,8 +348,8 @@ public class RoShamBoIncremental extends RoShamBoCNN {
                     }
                 }
                 // update the lowpass-filtered final result vector
-                if(lowpassFilteredOutputUnits==null || lowpassFilteredOutputUnits.length!=nclasses){
-                    lowpassFilteredOutputUnits=new float[nclasses];
+                if (lowpassFilteredOutputUnits == null || lowpassFilteredOutputUnits.length != nclasses) {
+                    lowpassFilteredOutputUnits = new float[nclasses];
                 }
                 for (int i = 0; i < nclasses; i++) {
                     float output = dots[i];
@@ -348,7 +364,9 @@ public class RoShamBoIncremental extends RoShamBoCNN {
                     log.warning("negative descision, network must not have run correctly");
                     return;
                 }
-                if(decisionCounts==null || decisionCounts.length!=nclasses) decisionCounts=new int[nclasses];
+                if (decisionCounts == null || decisionCounts.length != nclasses) {
+                    decisionCounts = new int[nclasses];
+                }
                 decisionCounts[symbolDetected]++;
                 totalCount++;
                 if ((symbolDetected != lastOutput)) {
@@ -400,43 +418,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
                         log.warning("Missing class means filename; usage is " + CMD_LOAD_CLASS_MEANS + " filename.txt");
                         return;
                     }
-                    String classMeansFilename = tokenizer.nextToken();
-                    if (classMeansFilename == null || classMeansFilename.isEmpty()) {
-                        log.warning("null filename supplied for class means filename");
-                        return;
-                    }
-                    List<String> lines = Files.readAllLines(Paths.get(new File(classMeansFilename).getAbsolutePath()));
-                    if (lines.isEmpty()) {
-                        throw new RuntimeException("empty file " + classMeansFilename);
-                    }
-                    int classNumber = 0;
-                    synchronized (RoShamBoIncremental.this) { // sync on outter class, not thread we are running in
-                        classMeans = new float[lines.size()][];
-                        for (String line : lines) {
-                            Scanner scanner = new Scanner(line);
-                            ArrayList<Float> vals = new ArrayList(256);
-                            while (scanner.hasNextFloat()) {
-                                vals.add(scanner.nextFloat());
-                            }
-                            if (vals.isEmpty()) {
-                                throw new RuntimeException("line of mean vector values is empty: " + line);
-                            }
-                            classMeans[classNumber] = new float[vals.size()];
-                            int i = 0;
-                            for (Float f : vals) {
-                                classMeans[classNumber][i++] = (f != null ? f : Float.NaN); // Or whatever default you want.
-                            }
-                        }
-                        // check all the same length and >0
-                        int firstVectorLength = classMeans[0].length;
-                        for (int i = 1; i < classMeans.length; i++) {
-                            if (classMeans[i].length != firstVectorLength) {
-                                throw new RuntimeException(String.format("line %d of file had different number of components (%d vs %d for first line",
-                                        i, classMeans[i].length, firstVectorLength));
-                            }
-                        }
-                        log.info("loaded " + classMeans.length + " new class mean vectors");
-                    }
+                    loadClassMeans(new File(tokenizer.nextToken()));
                 } catch (IOException ex) {
                     Logger.getLogger(RoShamBoIncremental.class.getName()).log(Level.SEVERE, null, ex);
                     showWarningDialogInSwingThread(ex.toString(), "Error loading class means");
@@ -511,6 +493,51 @@ public class RoShamBoIncremental extends RoShamBoCNN {
                 final String badmsg = "unknown token or comamnd in message \"" + msg + "\"";
                 log.warning(badmsg);
                 showWarningDialogInSwingThread(badmsg, "Unknown message");
+        }
+    }
+    /** loads class means from a file
+     * 
+     * @param file the file
+     * @throws RuntimeException
+     * @throws IOException 
+     */
+
+    private void loadClassMeans(File file) throws RuntimeException, IOException {
+
+        if (file == null) {
+            throw new RuntimeException("null file supplied for class means filename");
+        }
+        List<String> lines = Files.readAllLines(Paths.get(file.getAbsolutePath()));
+        if (lines.isEmpty()) {
+            throw new RuntimeException("empty file " + file);
+        }
+        int classNumber = 0;
+        synchronized (RoShamBoIncremental.this) { // sync on outter class, not thread we are running in
+            classMeans = new float[lines.size()][];
+            for (String line : lines) {
+                Scanner scanner = new Scanner(line);
+                ArrayList<Float> vals = new ArrayList(256);
+                while (scanner.hasNextFloat()) {
+                    vals.add(scanner.nextFloat());
+                }
+                if (vals.isEmpty()) {
+                    throw new RuntimeException("line of mean vector values is empty: " + line);
+                }
+                classMeans[classNumber] = new float[vals.size()];
+                int i = 0;
+                for (Float f : vals) {
+                    classMeans[classNumber][i++] = (f != null ? f : Float.NaN); // Or whatever default you want.
+                }
+            }
+            // check all the same length and >0
+            int firstVectorLength = classMeans[0].length;
+            for (int i = 1; i < classMeans.length; i++) {
+                if (classMeans[i].length != firstVectorLength) {
+                    throw new RuntimeException(String.format("line %d of file had different number of components (%d vs %d for first line",
+                            i, classMeans[i].length, firstVectorLength));
+                }
+            }
+            log.info("loaded " + classMeans.length + " new class mean vectors from "+file);
         }
     }
 

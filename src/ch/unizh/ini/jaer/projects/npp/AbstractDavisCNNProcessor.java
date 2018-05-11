@@ -142,7 +142,16 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         setPropertyTooltip(input, "frameCutTop", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
     }
 
-    private File openFileDialogAndGetFile(String tip, String key, String defaultFile, String type, String... ext) {
+    /** Opens a file using defaults and previous stored preference values
+     * 
+     * @param tip the tooltip shown
+     * @param key a string key to store preference value
+     * @param defaultFile the default filename
+     * @param type The file type string, e.g. "labels"
+     * @param ext the allowed extensions as an array of strings
+     * @return the file, or null if selection was canceled
+     */
+    protected File openFileDialogAndGetFile(String tip, String key, String defaultFile, String type, String... ext) {
         String name = getString(key, defaultFile);
         JFileChooser c = new JFileChooser(name);
         File f = new File(name);
