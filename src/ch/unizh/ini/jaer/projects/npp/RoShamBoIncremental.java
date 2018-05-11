@@ -93,7 +93,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         setPropertyTooltip(learn, "StartTraining", "Starts training on samples");
         setPropertyTooltip(learn, "CancelTraining", "Cancels ongoing training");
         setPropertyTooltip(learn, "ChooseSamplesFolder", "Choose a folder to store the symbol AVI data files");
-        setPropertyTooltip(learn, "LoadClassMeans", "Loads class mean vectors from a file");
+        setPropertyTooltip(learn, "LoadClassMeanVectors", "Loads class mean vectors from a file");
         setPropertyTooltip(learn, "hostname", "learning host name (IP or DNS)");
         setPropertyTooltip(learn, "portSendTo", "learning host port number that we send to");
         setPropertyTooltip(learn, "portListenOn", "local port number we listen on to get message back from learning server");
@@ -119,7 +119,8 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 
     public synchronized void doLoadClassMeanVectors() {
         File file = null;
-        file = openFileDialogAndGetFile("Choose a class means file, one vector of ascii float values per line", KEY_CLASS_MEANS_FILENAME, "", "classmeans.txt", "txt");
+        file = openFileDialogAndGetFile("Choose a class means file, one vector of ascii float values per line", KEY_CLASS_MEANS_FILENAME, "classmeans.txt", "Text file","txt");
+        
         if (file == null) {
             return;
         }
@@ -521,7 +522,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
                     vals.add(scanner.nextFloat());
                 }
                 if (vals.isEmpty()) {
-                    throw new RuntimeException("line of mean vector values is empty: " + line);
+                    throw new RuntimeException("line of mean vector values is empty or does not contain a space-separated list of numeric values: " + line);
                 }
                 classMeans[classNumber] = new float[vals.size()];
                 int i = 0;
