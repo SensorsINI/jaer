@@ -512,14 +512,15 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         if (lines.isEmpty()) {
             throw new RuntimeException("empty file " + file);
         }
-        int classNumber = 0;
         synchronized (RoShamBoIncremental.this) { // sync on outter class, not thread we are running in
             classMeans = new float[lines.size()][];
+            int classNumber = 0;
             for (String line : lines) {
                 Scanner scanner = new Scanner(line);
                 ArrayList<Float> vals = new ArrayList(256);
-                while (scanner.hasNextFloat()) {
-                    vals.add(scanner.nextFloat());
+                while (scanner.hasNext()) {
+                    String word = scanner.next();
+                    vals.add(Float.parseFloat(word));
                 }
                 if (vals.isEmpty()) {
                     throw new RuntimeException("line of mean vector values is empty or does not contain a space-separated list of numeric values: " + line);
@@ -529,6 +530,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
                 for (Float f : vals) {
                     classMeans[classNumber][i++] = (f != null ? f : Float.NaN); // Or whatever default you want.
                 }
+                classNumber = classNumber+1;
             }
             // check all the same length and >0
             int firstVectorLength = classMeans[0].length;
