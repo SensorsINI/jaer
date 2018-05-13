@@ -20,6 +20,9 @@ package ch.unizh.ini.jaer.projects.npp;
 
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.util.awt.TextRenderer;
+import java.awt.Font;
+import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -107,6 +110,20 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         getEnclosedFilterChain().add(aviWriter);
         statistics = new Statistics(); // overrides the super's version of Statistics
 
+    }
+
+    @Override
+    public void initFilter() {
+        super.initFilter();
+        try {
+            if (isPreferenceStored(KEY_CLASS_MEANS_FILENAME)) {
+                File f = new File(getString(KEY_CLASS_MEANS_FILENAME, ""));
+                loadClassMeans(f);
+            }
+        } catch (Exception ex) {
+            Logger.getLogger(DavisClassifierCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
+//            JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load class means, caught exception " + ex + ". See console for logging.", "Bad class means file", JOptionPane.WARNING_MESSAGE);
+        }
     }
 
     @Override
@@ -301,17 +318,6 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     // we override the super's Statistics to compute the dot product winner here
     protected class Statistics extends RoShamBoCNN.Statistics implements PropertyChangeListener {
 
-        final int INITIAL_NUM_CLASSES = 4;
-        int totalCount;
-        int[] decisionCounts = new int[INITIAL_NUM_CLASSES];
-        float[] lowpassFilteredOutputUnits = new float[INITIAL_NUM_CLASSES];
-        final int HISTORY_LENGTH = 10;
-        int[] decisionHistory = new int[HISTORY_LENGTH];
-        float maxActivation = Float.NEGATIVE_INFINITY;
-        private int symbolDetected = -1;
-        private int symbolOutput = -1;
-        boolean outputChanged = false;
-
         public Statistics() {
             reset();
         }
@@ -331,9 +337,11 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 
                 AbstractDavisCNN net = (AbstractDavisCNN) evt.getNewValue();
                 if (net.getOutputLayer().getActivations().length == 4) {
+                    setSoftMaxOutput(true); // override to fix softmax for base network
                     super.processDecision(evt);
                     return;
                 }
+                setSoftMaxOutput(false);
 
                 symbolDetected = -1;
 
@@ -611,6 +619,12 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
+        if (apsDvsNet != null && (isShowTop1Label()) && apsDvsNet.getLabels() != null
+                && apsDvsNet.getLabels().size() > 0) {
+            if (isShowTop1Label()) {
+                drawDecisionOutput(drawable, apsDvsNet);
+            }
+        }
         synchronized (this) {
             if (progressMonitor != null && progressMonitor.isCanceled()) {
                 try {
@@ -622,6 +636,31 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 
             }
         }
+    }
+
+    protected void drawDecisionOutput(GLAutoDrawable drawable, AbstractDavisCNN network) {
+        if (network == null || network.getOutputLayer() == null) {
+            return;
+        }
+        GL2 gl = drawable.getGL().getGL2();
+        int width = drawable.getSurfaceWidth();
+        int height = drawable.getSurfaceHeight();
+        int top1 = statistics.symbolDetected;
+        if (top1 < 0 || top1 >= apsDvsNet.getLabels().size()) {
+            return;
+        }
+        if (textRenderer == null) {
+            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36), true, false);
+        }
+        float top1probability = 1f;
+        top1probability = statistics.maxActivation; // brightness scale
+        textRenderer.setColor(1, 1, 1, 1);
+        textRenderer.beginRendering(width, height);
+        String label = apsDvsNet.getLabels().get(top1);
+        String s = String.format("%s (%%%.1f)", label, top1probability * 100);
+        Rectangle2D r = textRenderer.getBounds(s);
+        textRenderer.draw(s, (width / 2) - ((int) r.getWidth() / 2), height / 2);
+        textRenderer.endRendering();
     }
 
 }

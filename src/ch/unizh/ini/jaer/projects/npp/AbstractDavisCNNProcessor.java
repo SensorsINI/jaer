@@ -99,7 +99,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     private int imageHeight = getInt("imageHeight", 64);
     private float imageMean = getFloat("imageMean", 0);
     private float imageScale = getFloat("imageScale", 1);
-    private String lastManuallyLoadedNetwork = getString("lastManuallyLoadedNetwork", ""); // stores filename and path to last successfully loaded network that user loaded via doLoadNetwork
+    protected String lastManuallyLoadedNetwork = getString("lastManuallyLoadedNetwork", ""); // stores filename and path to last successfully loaded network that user loaded via doLoadNetwork
+    protected TextRenderer textRenderer = null;
 
     public AbstractDavisCNNProcessor(AEChip chip) {
         super(chip);
@@ -142,8 +143,10 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         setPropertyTooltip(input, "frameCutTop", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
     }
 
-    /** Opens a file (do not accept directory) using defaults and previous stored preference values
-     * 
+    /**
+     * Opens a file (do not accept directory) using defaults and previous stored
+     * preference values
+     *
      * @param tip the tooltip shown
      * @param key a string key to store preference value
      * @param defaultFile the default filename
@@ -478,7 +481,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         return ext;
     }
 
-    protected void loadNetwork(File f) throws Exception{
+    protected void loadNetwork(File f) throws Exception {
         try {
             if (f.exists()) {
                 if (f.isFile()) {
@@ -500,13 +503,13 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                 }
                 apsDvsNet.setSoftMaxOutput(softMaxOutput); // must set manually since net doesn't know option kept here.
                 apsDvsNet.setZeroPadding(zeroPadding); // must set manually since net doesn't know option kept here.
-               dvsFramer.setFromNetwork(apsDvsNet);
+                dvsFramer.setFromNetwork(apsDvsNet);
             } else {
                 log.warning("file " + f + " does not exist");
                 throw new IOException("file " + f + " does not exist");
             }
         } catch (IOException ex) {
-            throw new IOException("Couldn't load the CNN from file " + f , ex);
+            throw new IOException("Couldn't load the CNN from file " + f, ex);
         }
     }
 
@@ -520,14 +523,16 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                 apsDvsNet.loadLabels(f);
             }
         } catch (IOException ex) {
-            throw new IOException("Couldn't load the labels from file " + f ,ex);
+            throw new IOException("Couldn't load the labels from file " + f, ex);
         }
     }
 
     @Override
     public synchronized void propertyChange(PropertyChangeEvent evt) {
         super.propertyChange(evt);
-        if(!isFilterEnabled()) return;
+        if (!isFilterEnabled()) {
+            return;
+        }
         // new activationsFrame is available, process it
         switch (evt.getPropertyName()) {
             case AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE:
@@ -554,7 +559,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                 if (measurePerformance) {
                     startTime = System.nanoTime();
                 }
-                if (processDVSTimeSlices  && apsDvsNet!=null) {
+                if (processDVSTimeSlices && apsDvsNet != null) {
                     apsDvsNet.processDvsFrame((DvsFrame) evt.getNewValue()); // generates PropertyChange EVENT_MADE_DECISION
                     if (measurePerformance) {
                         long dt = System.nanoTime() - startTime;
@@ -628,9 +633,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         putBoolean("showTop5Labels", showTop5Labels);
     }
 
-    private TextRenderer textRenderer = null;
-
-    private void drawDecisionOutput(GLAutoDrawable drawable, AbstractDavisCNN network) {
+    protected void drawDecisionOutput(GLAutoDrawable drawable, AbstractDavisCNN network) {
         if (network == null || network.getOutputLayer() == null) {
             return;
         }
@@ -849,12 +852,14 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     }
 
     public void setSoftMaxOutput(boolean softMaxOutput) {
+        boolean old = this.softMaxOutput;
         this.softMaxOutput = softMaxOutput;
         putBoolean("softMaxOutput", softMaxOutput);
         if (apsDvsNet == null) {
             return;
         }
         apsDvsNet.setSoftMaxOutput(softMaxOutput);
+        getSupport().firePropertyChange("softMaxOutput", old, softMaxOutput); //update GUI
     }
 
     /**

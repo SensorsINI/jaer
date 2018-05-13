@@ -404,8 +404,6 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
 
     }
 
-    private TextRenderer textRenderer = null;
-
     private void showRoshamboDescision(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
         if (playSounds && statistics.symbolDetected >= 0 && statistics.symbolDetected < 3 && statistics.maxActivation > decisionThresholdActivation) {
@@ -734,6 +732,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         protected void processDecision(PropertyChangeEvent evt) {
             int lastOutput = symbolDetected;
             AbstractDavisCNN net = (AbstractDavisCNN) evt.getNewValue();
+            if(net.getOutputLayer().getActivations().length!=4) return; // do nothing with this decision since it was from RoshamboIncremental
             maxActivation = Float.NEGATIVE_INFINITY;
             symbolDetected = -1;
             try {
