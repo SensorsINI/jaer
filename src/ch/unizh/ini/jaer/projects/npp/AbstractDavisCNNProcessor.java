@@ -142,7 +142,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         setPropertyTooltip(input, "frameCutTop", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
     }
 
-    /** Opens a file using defaults and previous stored preference values
+    /** Opens a file (do not accept directory) using defaults and previous stored preference values
      * 
      * @param tip the tooltip shown
      * @param key a string key to store preference value
@@ -158,7 +158,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         c.setCurrentDirectory(new File(getString(key, "")));
         c.setToolTipText(tip);
         FileFilter filt = new FileNameExtensionFilter(type, ext);
-        c.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+        c.setFileSelectionMode(JFileChooser.FILES_ONLY);
         c.addChoosableFileFilter(filt);
         c.setFileFilter(filt);
         c.setSelectedFile(f);

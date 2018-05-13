@@ -191,12 +191,14 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
             getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
             return output;
         } catch (IllegalArgumentException ex) {
-            StringBuilder msg = new StringBuilder("<html>Caught exception <p>" + ex.toString() + "<p>Did you set <i>inputLayerName</i> and <i>outputLayerName</i>?</p>");
-            msg.append("<p>The IO layer names could be as follows (the string inside the single quotes):</p> <ul> ");
+            String exhtml=ex.toString().replaceAll("<", "&lt").replaceAll(">","&gt").replaceAll("&","&amp").replaceAll("\n","<br>");
+            StringBuilder msg = new StringBuilder("<html>Caught exception <p>" + exhtml + "</p>");
+            msg.append("<br> Did you set <i>inputLayerName</i> and <i>outputLayerName</i>?");
+            msg.append("<br>The IO layer names could be as follows (the string inside the single quotes): <ul> ");
             for (String s : ioLayers) {
                 msg.append("<li>" + (s.replaceAll("<", "").replaceAll(">", "")) + "</li>");
             }
-            msg.append("</ul>");
+            msg.append("</ul></html>");
             log.warning(msg.toString());
             SwingUtilities.invokeLater(new Runnable() {
                 @Override

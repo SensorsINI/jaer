@@ -65,7 +65,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
     private boolean showSymbol = getBoolean("showSymbol", true);
     protected Statistics statistics = new Statistics();
-    protected float decisionLowPassMixingFactor = getFloat("decisionLowPassMixingFactor", .2f);
+    protected float decisionLowPassMixingFactor = getFloat("decisionLowPassMixingFactor", 1f);
     private SpikeSound spikeSound = null;
     // for arduino robot (code in F:\Dropbox\NPP roshambo robot training data\arduino\RoShamBoHandControl)
     NRSerialPort serialPort = null;
