@@ -106,6 +106,15 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         aviWriter.getDvsFrame().setOutputImageWidth(64);
         getEnclosedFilterChain().add(aviWriter);
         statistics = new Statistics(); // overrides the super's version of Statistics
+
+    }
+
+    @Override
+    protected void loadNetwork(File f) throws Exception {
+        super.loadNetwork(f);
+        if (apsDvsNet != null) {
+            apsDvsNet.getSupport().addPropertyChangeListener(AbstractDavisCNN.EVENT_MADE_DECISION, statistics);
+        }
     }
 
     public void doResetToBaseNetwork() {
@@ -119,13 +128,13 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 
     public synchronized void doLoadClassMeanVectors() {
         File file = null;
-        file = openFileDialogAndGetFile("Choose a class means file, one vector of ascii float values per line", KEY_CLASS_MEANS_FILENAME, "classmeans.txt", "Text file","txt");
-        
+        file = openFileDialogAndGetFile("Choose a class means file, one vector of ascii float values per line", KEY_CLASS_MEANS_FILENAME, "classmeans.txt", "Text file", "txt");
+
         if (file == null) {
             return;
         }
         try {
-                loadClassMeans(file);
+            loadClassMeans(file);
         } catch (Exception ex) {
             Logger.getLogger(DavisClassifierCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load class means, caught exception " + ex + ". See console for logging.", "Bad class means file", JOptionPane.WARNING_MESSAGE);
@@ -496,13 +505,14 @@ public class RoShamBoIncremental extends RoShamBoCNN {
                 showWarningDialogInSwingThread(badmsg, "Unknown message");
         }
     }
-    /** loads class means from a file
-     * 
+
+    /**
+     * loads class means from a file
+     *
      * @param file the file
      * @throws RuntimeException
-     * @throws IOException 
+     * @throws IOException
      */
-
     private void loadClassMeans(File file) throws RuntimeException, IOException {
 
         if (file == null) {
@@ -530,7 +540,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
                 for (Float f : vals) {
                     classMeans[classNumber][i++] = (f != null ? f : Float.NaN); // Or whatever default you want.
                 }
-                classNumber = classNumber+1;
+                classNumber = classNumber + 1;
             }
             // check all the same length and >0
             int firstVectorLength = classMeans[0].length;
@@ -540,7 +550,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
                             i, classMeans[i].length, firstVectorLength));
                 }
             }
-            log.info("loaded " + classMeans.length + " new class mean vectors from "+file);
+            log.info("loaded " + classMeans.length + " new class mean vectors from " + file);
         }
     }
 

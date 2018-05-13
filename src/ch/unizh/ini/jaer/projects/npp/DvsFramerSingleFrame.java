@@ -49,8 +49,8 @@ public class DvsFramerSingleFrame extends DvsFramer {
     public DvsFramerSingleFrame(AEChip chip) {
         super(chip);
         dvsFrame = new DvsFrame();
-        dvsFrame.setWidth(getInt("width", 64));
-        dvsFrame.setHeight(getInt("height", 64));
+        dvsFrame.setWidth(getInt("outputImageWidth", 64));
+        dvsFrame.setHeight(getInt("outputImageHeight", 64));
         dvsFrame.allocateMemory();
     }
 

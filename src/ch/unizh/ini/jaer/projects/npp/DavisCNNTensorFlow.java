@@ -188,10 +188,13 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
 //            long[] shape = imageTensor.shape();
             float[] output = TensorFlow.executeGraph(executionGraph, imageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
             outputLayer = new OutputLayer(output);
+            if (isSoftMaxOutput()) {
+                computeSoftMax();
+            }
             getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
             return output;
         } catch (IllegalArgumentException ex) {
-            String exhtml=ex.toString().replaceAll("<", "&lt").replaceAll(">","&gt").replaceAll("&","&amp").replaceAll("\n","<br>");
+            String exhtml = ex.toString().replaceAll("<", "&lt").replaceAll(">", "&gt").replaceAll("&", "&amp").replaceAll("\n", "<br>");
             StringBuilder msg = new StringBuilder("<html>Caught exception <p>" + exhtml + "</p>");
             msg.append("<br> Did you set <i>inputLayerName</i> and <i>outputLayerName</i>?");
             msg.append("<br>The IO layer names could be as follows (the string inside the single quotes): <ul> ");
@@ -204,10 +207,41 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
                 @Override
                 public void run() {
                     JOptionPane.showMessageDialog(processor.getChip().getAeViewer(), msg.toString(),
-                    "Error computing network", JOptionPane.WARNING_MESSAGE);
+                            "Error computing network", JOptionPane.WARNING_MESSAGE);
                 }
             });
             throw new IllegalArgumentException(ex.getCause());
+        }
+    }
+
+    /**
+     * computes the softmax on the existing activations. * Computes softmax on
+     * its input activations, by o_i= exp(a_i)/sum_k(exp(a_k)) where o_i is the
+     * i'th output and a_k is the k'th input.
+     */
+    private void computeSoftMax() {
+        float[] activations = outputLayer.getActivations();
+        if (activations == null || activations.length == 0) {
+            log.warning("tried to compute softmax on null or empty output layer activations");
+            return;
+        }
+        float sum = 0;
+        for (int k = 0; k < activations.length; k++) { // simply MAC the weight times the input activation
+            float f = (float) Math.exp(activations[k]);
+            if (Float.isInfinite(f)) {
+                f = Float.MAX_VALUE; // handle exponential overflow
+            }
+            sum += f;
+            activations[k] = f;
+        }
+        outputLayer.maxActivation = Float.NEGATIVE_INFINITY;
+        float r = 1 / sum;
+        for (int k = 0; k < activations.length; k++) { // simply MAC the weight times the input activation
+            activations[k] *= r;
+            if (activations[k] > outputLayer.maxActivation) {
+                outputLayer.maxActivatedUnit = k;
+                outputLayer.maxActivation = activations[k];
+            }
         }
     }
 

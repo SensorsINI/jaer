@@ -165,7 +165,7 @@ public class DavisCNNPureJava extends AbstractDavisCNN {
             layers[i].compute(layers[i - 1]);
         }
         outputLayer.compute(layers[nLayers - 1]);
-        if (softMaxOutput) {
+        if (isSoftMaxOutput()) {
             outputLayer.computeSoftMax();
         }
 

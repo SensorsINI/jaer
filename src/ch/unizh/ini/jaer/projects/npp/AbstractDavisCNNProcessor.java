@@ -500,7 +500,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                 }
                 apsDvsNet.setSoftMaxOutput(softMaxOutput); // must set manually since net doesn't know option kept here.
                 apsDvsNet.setZeroPadding(zeroPadding); // must set manually since net doesn't know option kept here.
-                dvsFramer.setFromNetwork(apsDvsNet);
+               dvsFramer.setFromNetwork(apsDvsNet);
             } else {
                 log.warning("file " + f + " does not exist");
                 throw new IOException("file " + f + " does not exist");

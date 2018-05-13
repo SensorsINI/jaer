@@ -39,6 +39,7 @@ import com.jogamp.opengl.util.texture.Texture;
 import com.jogamp.opengl.util.texture.TextureIO;
 
 import gnu.io.NRSerialPort;
+import java.io.File;
 import java.io.InputStream;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -153,6 +154,14 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     }
 
     @Override
+    protected void loadNetwork(File f) throws Exception {
+        super.loadNetwork(f);
+        if (apsDvsNet != null) {
+            apsDvsNet.getSupport().addPropertyChangeListener(AbstractDavisCNN.EVENT_MADE_DECISION, statistics);
+        }
+    }
+
+    @Override
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
         EventPacket out = super.filterPacket(in);
         if (!addedStatisticsListener) {
@@ -240,8 +249,6 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         sendCommandToHand('6');
     }
 
- 
-
     /**
      * commands to physical hand and light box as defined in arduino code
      */
@@ -254,7 +261,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     private final boolean HAND_PROGRAMED_TO_WIN = true;
 
     private void sendDecisionToHand() {
-        
+
         if (!serialPortCommandsEnabled || statistics.maxActivation < decisionThresholdActivation) {
             return;
         }
@@ -296,8 +303,8 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         }
         sendCommandToHand(cmd);
     }
-    
-       private void sendCommandToHand(char cmd) {
+
+    private void sendCommandToHand(char cmd) {
         if (serialPortCommandsEnabled && (serialPortOutputStream != null)) {
             try {
                 serialPortOutputStream.write((byte) cmd);
@@ -835,8 +842,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     }
 
     /**
-     * @param decisionThresholdActivation the decisionThresholdActivation to
- set
+     * @param decisionThresholdActivation the decisionThresholdActivation to set
      */
     public void setDecisionThresholdActivation(float decisionThresholdActivation) {
         if (decisionThresholdActivation > 1) {
