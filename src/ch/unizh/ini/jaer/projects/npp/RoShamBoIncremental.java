@@ -654,8 +654,17 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36), true, false);
         }
         // draw list of all labels with "probabilities" from low passed output of network
-        if(apsDvsNet.getLabels()==null ||  (statistics.lowpassFilteredOutputUnits==null) || statistics.lowpassFilteredOutputUnits.length!=apsDvsNet.getLabels().size()){
-            log.warning("cannot annotate class labels; either labels are null or statistics.lowpassFilteredOutputUnits are null or the number of values is different");
+        if(apsDvsNet.getLabels()==null ){
+            log.warning("cannot annotate class labels; labels are null");
+            return;
+        }
+        if(statistics.lowpassFilteredOutputUnits==null){
+            log.warning("cannot annotate class labels; statistics.lowpassFilteredOutputUnits are null");
+            return;
+        }
+        if(statistics.lowpassFilteredOutputUnits.length!=apsDvsNet.getLabels().size()){
+            log.warning("cannot annotate class labels; number of ouput values ("+statistics.lowpassFilteredOutputUnits.length+") is different"
+                    + "than number of labels ("+apsDvsNet.getLabels().size()+")");
             return;
         }
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()*.45f);
@@ -663,16 +672,16 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         MultilineAnnotationTextRenderer.setScale(0.5f);
         StringBuilder sb=new StringBuilder("Class outputs:\n");
         for(int i=0;i<statistics.lowpassFilteredOutputUnits.length;i++){
-            sb.append(String.format("%-15s %.2f%%\n",apsDvsNet.getLabels().get(i),statistics.lowpassFilteredOutputUnits[i]*100));
+//            sb.append(String.format("%-15s %.2f%%\n",apsDvsNet.getLabels().get(i),statistics.lowpassFilteredOutputUnits[i]*100));
+            sb.append(String.format("%s\n",apsDvsNet.getLabels().get(i)));
         }
         MultilineAnnotationTextRenderer.renderMultilineString(sb.toString());
         // draw top 1 on top of everything
-        float top1probability = 1f;
-        top1probability = statistics.maxActivation; // brightness scale
+//        float top1probability = statistics.maxActivation; // brightness scale
         textRenderer.setColor(1, 1, 1, 1);
         textRenderer.beginRendering(width, height);
-        String label = apsDvsNet.getLabels().get(top1);
-        String s = String.format("%s (%%%.1f)", label, top1probability * 100);
+        String s = apsDvsNet.getLabels().get(top1);
+//        String s = String.format("%s (%%%.1f)", label, top1probability * 100);
         Rectangle2D r = textRenderer.getBounds(s);
         textRenderer.draw(s, (width / 2) - ((int) r.getWidth() / 2), height / 2);
         textRenderer.endRendering();
