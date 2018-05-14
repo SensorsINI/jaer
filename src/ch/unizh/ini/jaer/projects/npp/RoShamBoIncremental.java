@@ -664,7 +664,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         }
         if(statistics.lowpassFilteredOutputUnits.length!=apsDvsNet.getLabels().size()){
             log.warning("cannot annotate class labels; number of ouput values ("+statistics.lowpassFilteredOutputUnits.length+") is different"
-                    + "than number of labels ("+apsDvsNet.getLabels().size()+")");
+                    + " than number of labels ("+apsDvsNet.getLabels().size()+")");
             return;
         }
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()*.45f);
