@@ -21,6 +21,7 @@ package ch.unizh.ini.jaer.projects.npp;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
+import java.awt.Color;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
@@ -652,6 +653,20 @@ public class RoShamBoIncremental extends RoShamBoCNN {
         if (textRenderer == null) {
             textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36), true, false);
         }
+        // draw list of all labels with "probabilities" from low passed output of network
+        if(apsDvsNet.getLabels()==null ||  (statistics.lowpassFilteredOutputUnits==null) || statistics.lowpassFilteredOutputUnits.length!=apsDvsNet.getLabels().size()){
+            log.warning("cannot annotate class labels; either labels are null or statistics.lowpassFilteredOutputUnits are null or the number of values is different");
+            return;
+        }
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()*.45f);
+        MultilineAnnotationTextRenderer.setColor(Color.yellow);
+        MultilineAnnotationTextRenderer.setScale(0.5f);
+        StringBuilder sb=new StringBuilder("Class outputs:\n");
+        for(int i=0;i<statistics.lowpassFilteredOutputUnits.length;i++){
+            sb.append(String.format("%-15s %.2f%%\n",apsDvsNet.getLabels().get(i),statistics.lowpassFilteredOutputUnits[i]*100));
+        }
+        MultilineAnnotationTextRenderer.renderMultilineString(sb.toString());
+        // draw top 1 on top of everything
         float top1probability = 1f;
         top1probability = statistics.maxActivation; // brightness scale
         textRenderer.setColor(1, 1, 1, 1);
