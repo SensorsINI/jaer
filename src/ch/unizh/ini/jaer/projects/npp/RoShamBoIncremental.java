@@ -346,8 +346,26 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 
                 symbolDetected = -1;
 
+                if (classMeans == null) {
+                    showWarningDialogInSwingThread("null class means vector - load one with LoadClassMeanVectors button", "No class means");
+                    throw new RuntimeException("null class means vector - load one with LoadClassMeanVectors button");
+                }
+
                 // get output layer and normalize it to unit vector
                 float[] act = net.getOutputLayer().getActivations();
+                if (act == null) {
+                    showWarningDialogInSwingThread("null activations from CNN", "No CNN output");
+                    throw new RuntimeException("null activations from CNN");
+                }
+                if (classMeans[0].length != act.length) {
+                    String s = String.format("Length of class mean vector (%d) does not match number of network outputs (%d)",
+                            classMeans.length,
+                            act.length);
+                    showWarningDialogInSwingThread(
+                            s,
+                            "No CNN output");
+                    throw new RuntimeException(s);
+                }
                 float sum = 0, sum2 = 0;
                 for (float f : act) {
                     sum += f;
@@ -654,26 +672,26 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36), true, false);
         }
         // draw list of all labels with "probabilities" from low passed output of network
-        if(apsDvsNet.getLabels()==null ){
+        if (apsDvsNet.getLabels() == null) {
             log.warning("cannot annotate class labels; labels are null");
             return;
         }
-        if(statistics.lowpassFilteredOutputUnits==null){
+        if (statistics.lowpassFilteredOutputUnits == null) {
             log.warning("cannot annotate class labels; statistics.lowpassFilteredOutputUnits are null");
             return;
         }
-        if(statistics.lowpassFilteredOutputUnits.length!=apsDvsNet.getLabels().size()){
-            log.warning("cannot annotate class labels; number of ouput values ("+statistics.lowpassFilteredOutputUnits.length+") is different"
-                    + " than number of labels ("+apsDvsNet.getLabels().size()+")");
+        if (statistics.lowpassFilteredOutputUnits.length != apsDvsNet.getLabels().size()) {
+            log.warning("cannot annotate class labels; number of ouput values (" + statistics.lowpassFilteredOutputUnits.length + ") is different"
+                    + " than number of labels (" + apsDvsNet.getLabels().size() + ")");
             return;
         }
-        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()*.45f);
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .45f);
         MultilineAnnotationTextRenderer.setColor(Color.yellow);
         MultilineAnnotationTextRenderer.setScale(0.5f);
-        StringBuilder sb=new StringBuilder("Class outputs:\n");
-        for(int i=0;i<statistics.lowpassFilteredOutputUnits.length;i++){
+        StringBuilder sb = new StringBuilder("Class outputs:\n");
+        for (int i = 0; i < statistics.lowpassFilteredOutputUnits.length; i++) {
 //            sb.append(String.format("%-15s %.2f%%\n",apsDvsNet.getLabels().get(i),statistics.lowpassFilteredOutputUnits[i]*100));
-            sb.append(String.format("%s\n",apsDvsNet.getLabels().get(i)));
+            sb.append(String.format("%s\n", apsDvsNet.getLabels().get(i)));
         }
         MultilineAnnotationTextRenderer.renderMultilineString(sb.toString());
         // draw top 1 on top of everything
