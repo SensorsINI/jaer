@@ -80,7 +80,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             CMD_LOAD_CLASS_MEANS = "loadclassmeans",
             CMD_CANCEL_TRAINING = "cancel",
             CMD_PING = "ping",
-            CMD_PONG = "pong";
+            CMD_PONG = "pong", CMD_RESET_TO_BASE_NETWORK = "reset";
     private static String KEY_CLASS_MEANS_FILENAME = "classMeansFilename";
     private Thread portListenerThread = null;
     private ProgressMonitor progressMonitor = null;
@@ -138,6 +138,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     public void doResetToBaseNetwork() {
         try {
             loadNetwork(new File(getLastManuallyLoadedNetwork()));
+            sendUDPMessage(CMD_RESET_TO_BASE_NETWORK);
         } catch (Exception e) {
             log.log(Level.SEVERE, e.toString(), e.getCause());
             JOptionPane.showMessageDialog(chip.getFilterFrame(), "Couldn't load base network: " + e.toString(), "Bad network file", JOptionPane.WARNING_MESSAGE);
@@ -217,6 +218,12 @@ public class RoShamBoIncremental extends RoShamBoCNN {
             showWarningDialogInSwingThread("Exception renaming file: " + ex.toString(), "Exception");
         }
     }
+
+    @Override
+    public synchronized void doLoadLabels() {
+        super.doLoadLabels(); //To change body of generated methods, choose Tools | Templates.
+    }
+    
 
     public void doStartTraining() {
         try {
@@ -338,6 +345,9 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 
                 AbstractDavisCNN net = (AbstractDavisCNN) evt.getNewValue();
                 if (net.getOutputLayer().getActivations().length == 4) {
+                    if (lowpassFilteredOutputUnits == null || lowpassFilteredOutputUnits.length != 4) {
+                        lowpassFilteredOutputUnits = new float[4];
+                    }
                     setSoftMaxOutput(true); // override to fix softmax for base network
                     super.processDecision(evt);
                     return;

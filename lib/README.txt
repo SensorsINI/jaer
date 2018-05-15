@@ -1,1 +1,0 @@
-This folder is used by ivy to store the downloaded jars.  Normal checkout will result in only this file in the folder.
