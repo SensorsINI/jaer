@@ -99,7 +99,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     private int imageHeight = getInt("imageHeight", 64);
     private float imageMean = getFloat("imageMean", 0);
     private float imageScale = getFloat("imageScale", 1);
-    protected String lastManuallyLoadedNetwork = getString("lastManuallyLoadedNetwork", ""); // stores filename and path to last successfully loaded network that user loaded via doLoadNetwork
+    private String lastManuallyLoadedNetwork = getString("lastManuallyLoadedNetwork", ""); // stores filename and path to last successfully loaded network that user loaded via doLoadNetwork
+    private String lastManuallyLoadedLabels = getString("lastManuallyLoadedLabels", "");
     protected TextRenderer textRenderer = null;
 
     public AbstractDavisCNNProcessor(AEChip chip) {
@@ -191,8 +192,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         }
         try {
             loadNetwork(file);
-            lastManuallyLoadedNetwork = file.toString(); // store the last manually loaded network as the 
-            putString("lastManuallyLoadedNetwork", getLastManuallyLoadedNetwork());
+            setLastManuallyLoadedNetwork(file.toString()); // store the last manually loaded network as the 
+            
         } catch (Exception ex) {
             Logger.getLogger(DavisClassifierCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file, caught exception " + ex + ". See console for logging.", "Bad network file", JOptionPane.WARNING_MESSAGE);
@@ -324,6 +325,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         }
         try {
             loadLabels(file);
+            lastManuallyLoadedLabels = file.toString();
         } catch (Exception ex) {
             Logger.getLogger(DavisClassifierCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file, caught exception " + ex + ". See console for logging.", "Bad network file", JOptionPane.WARNING_MESSAGE);
@@ -1024,4 +1026,28 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         return lastManuallyLoadedNetwork;
     }
 
+    /**
+     * @return the lastManuallyLoadedLabels
+     */
+    public String getLastManuallyLoadedLabels() {
+        return lastManuallyLoadedLabels;
+    }
+
+    /**
+     * @param lastManuallyLoadedLabels the lastManuallyLoadedLabels to set
+     */
+    public void setLastManuallyLoadedLabels(String lastManuallyLoadedLabels) {
+        this.lastManuallyLoadedLabels = lastManuallyLoadedLabels;
+        putString("lastManuallyLoadedLabels", lastManuallyLoadedLabels);
+    }
+
+    /**
+     * @param lastManuallyLoadedNetwork the lastManuallyLoadedNetwork to set
+     */
+    public void setLastManuallyLoadedNetwork(String lastManuallyLoadedNetwork) {
+        this.lastManuallyLoadedNetwork = lastManuallyLoadedNetwork;
+        putString("lastManuallyLoadedNetwork", lastManuallyLoadedNetwork);
+    }
+
+    
 }

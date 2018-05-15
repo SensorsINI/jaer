@@ -164,6 +164,11 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     @Override
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
         EventPacket out = super.filterPacket(in);
+        if(apsDvsNet==null){
+            showWarningDialogInSwingThread("null CNN, load a valid CNN and re-enable filter", "No CNN loaded");
+            setFilterEnabled(false);
+            return in;
+        }
         if (!addedStatisticsListener) {
             apsDvsNet.getSupport().addPropertyChangeListener(AbstractDavisCNN.EVENT_MADE_DECISION, statistics);
             addedStatisticsListener = true;

@@ -138,6 +138,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     public void doResetToBaseNetwork() {
         try {
             loadNetwork(new File(getLastManuallyLoadedNetwork()));
+            loadLabels(new File(getLastManuallyLoadedLabels()));
         } catch (Exception e) {
             log.log(Level.SEVERE, e.toString(), e.getCause());
             JOptionPane.showMessageDialog(chip.getFilterFrame(), "Couldn't load base network: " + e.toString(), "Bad network file", JOptionPane.WARNING_MESSAGE);
@@ -296,24 +297,6 @@ public class RoShamBoIncremental extends RoShamBoCNN {
     public void setPortListenOn(int portListenOn) {
         this.portListenOn = portListenOn;
         putInt("portListenOn", portListenOn);
-    }
-
-    private void showWarningDialogInSwingThread(String msg, String title) {
-        SwingUtilities.invokeLater(new Runnable() { // outside swing thread, must do this
-            public void run() {
-                JOptionPane.showMessageDialog(chip.getFilterFrame(), msg, title, JOptionPane.WARNING_MESSAGE);
-            }
-        });
-
-    }
-
-    private void showPlainMessageDialogInSwingThread(String msg, String title) {
-        SwingUtilities.invokeLater(new Runnable() { // outside swing thread, must do this
-            public void run() {
-                JOptionPane.showMessageDialog(chip.getFilterFrame(), msg, title, JOptionPane.PLAIN_MESSAGE);
-            }
-        });
-
     }
 
     // we override the super's Statistics to compute the dot product winner here
