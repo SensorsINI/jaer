@@ -18,6 +18,8 @@ import java.util.Observable;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
@@ -457,6 +459,38 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      */
     protected boolean preferenceExists(String key) {
         return getPrefs().get(prefsKeyHeader() + key, null) != null;
+    }
+
+    /**
+     * Shows a information-type message dialog in Swing thread; safe to call
+     * from event filter processing thread.
+     *
+     * @param msg the string, can use HTML format for multiline or accenting
+     * @param title the dialog title, should be short
+     */
+    protected void showPlainMessageDialogInSwingThread(String msg, String title) {
+        SwingUtilities.invokeLater(new Runnable() {
+            // outside swing thread, must do this
+            public void run() {
+                JOptionPane.showMessageDialog(chip.getFilterFrame(), msg, title, JOptionPane.PLAIN_MESSAGE);
+            }
+        });
+    }
+
+    /**
+     * Shows a warning-type message dialog in Swing thread; safe to call from
+     * event filter processing thread.
+     *
+     * @param msg the string, can use HTML format for multiline or accenting
+     * @param title the dialog title, should be short
+     */
+    protected void showWarningDialogInSwingThread(String msg, String title) {
+        SwingUtilities.invokeLater(new Runnable() {
+            // outside swing thread, must do this
+            public void run() {
+                JOptionPane.showMessageDialog(chip.getFilterFrame(), msg, title, JOptionPane.WARNING_MESSAGE);
+            }
+        });
     }
 
     /**
