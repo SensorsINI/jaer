@@ -666,7 +666,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         }
         int[] ts = aePacketRawBuffered.getTimestamps();
         int idx = aePacketRawBuffered.getNumEvents() - 1;
-        while (ts[idx] > newEndTime && idx >= 0) {
+        while (idx > 0 && ts[idx] > newEndTime) {
             idx--;
         }
         aePacketRawOutput.clear();
