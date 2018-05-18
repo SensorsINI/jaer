@@ -33,19 +33,19 @@ import net.sf.jaer.util.filter.LowpassFilter;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class MedianTracker extends EventFilter2D implements FrameAnnotater {
 
-    Point2D medianPoint = new Point2D.Float(), stdPoint = new Point2D.Float(), meanPoint = new Point2D.Float();
-    float xmedian = 0f;
-    float ymedian = 0f;
-    float xstd = 0f;
-    float ystd = 0f;
-    float xmean = 0, ymean = 0;
-    int lastts = 0, dt = 0;
-    int prevlastts = 0;
-    LowpassFilter xFilter = new LowpassFilter(), yFilter = new LowpassFilter();
-    LowpassFilter xStdFilter = new LowpassFilter(), yStdFilter = new LowpassFilter();
-    LowpassFilter xMeanFilter = new LowpassFilter(), yMeanFilter = new LowpassFilter();
+    protected Point2D medianPoint = new Point2D.Float(), stdPoint = new Point2D.Float(), meanPoint = new Point2D.Float();
+    protected float xmedian = 0f;
+    protected float ymedian = 0f;
+    protected float xstd = 0f;
+    protected float ystd = 0f;
+    protected float xmean = 0, ymean = 0;
+    protected int lastts = 0, dt = 0;
+    protected int prevlastts = 0;
+    protected LowpassFilter xFilter = new LowpassFilter(), yFilter = new LowpassFilter();
+    protected LowpassFilter xStdFilter = new LowpassFilter(), yStdFilter = new LowpassFilter();
+    protected LowpassFilter xMeanFilter = new LowpassFilter(), yMeanFilter = new LowpassFilter();
     int tauUs =getInt("tauUs", 1000);
-    private float numStdDevsForBoundingBox =getFloat("numStdDevsForBoundingBox", 1f);
+    protected  float numStdDevsForBoundingBox =getFloat("numStdDevsForBoundingBox", 1f);
     float alpha = 1, beta = 0; // alpha is current weighting, beta is past value weighting
 
     /**
