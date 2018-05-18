@@ -109,7 +109,7 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater {
             lastts = in.getLastTimestamp();
             dt = lastts - prevlastts;
             prevlastts = lastts;
-
+            
             int[] xs = new int[n], ys = new int[n];// big enough for all events, including IMU and APS events if there are those too
             int index = 0;
             for (Object o : in) {
