@@ -435,7 +435,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         // TODO if playing backwards, then frame will come out white because B sample comes before A
 
         if (e.isStartOfFrame()) {
-            startFrame(e.timestamp);
+            startFrame(e.timestamp); // clear4sframe buffer contents, must be called first for each frame or contents will be erased
         } else if (e.isResetRead()) {
             final int index = getIndex(e);
             if ((index < 0) || (index >= buf.length)) {
@@ -485,7 +485,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             buf[index + 2] = fval;
             buf[index + 3] = 1;
         } else if (e.isEndOfFrame()) {
-            endFrame(e.timestamp);
+            endFrame(e.timestamp); // copies frame buffer, must be called last or output will only be partial
 
             final SimpleHistogram tmp = currentHist;
             if (computeHistograms) {
