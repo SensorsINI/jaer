@@ -184,8 +184,9 @@ public class Speedo extends AbstractMotionFlow implements Observer, FrameAnnotat
     private int MIN_SPEED_DIVIDEND = 100000;
     private int MAX_SPEED_DIVIDEND = Integer.MAX_VALUE;
     private boolean endOfSpeedFile;
-    private int speedArrayPointer, calculatedFileSliceDuration;
+    private int calculatedFileSliceDuration;
     private float readFileSpeed;
+    private int oldReadTimestamp, timestampPointer;
     private BufferedReader speedReader;
     private int[] timeStamps;
     private float[] speeds;
@@ -721,6 +722,10 @@ public class Speedo extends AbstractMotionFlow implements Observer, FrameAnnotat
                     sb.append(String.format("%d ", c));
                 }
                 textRenderer.draw3D(sb.toString(), 0, (float) (3 * rt.getHeight()) * sc, 0, sc);
+                String s4 = String.format("readSpeed: %f", speeds[timestampPointer]);
+                textRenderer.draw3D(s4, 0, 4 * (float) (rt.getHeight()) * sc, 0, sc);
+                String s5 = String.format("readTime: %d", timeStamps[timestampPointer]);
+                textRenderer.draw3D(s5, 0, 5 * (float) (rt.getHeight()) * sc, 0, sc);
                 textRenderer.end3DRendering();
                 gl.glPopMatrix(); // back to original chip coordinates
 //                log.info(String.format("processed %.1f%% (%d/%d)", 100 * (float) nProcessed / (nSkipped + nProcessed), nProcessed, (nProcessed + nSkipped)));
@@ -2727,39 +2732,58 @@ public class Speedo extends AbstractMotionFlow implements Observer, FrameAnnotat
         return size;
     }
 
+   
     public int getSpeedSliceDuration() {
         if (speeds == null) {
             setSpeedInputFile();
             calculatedFileSliceDuration = this.sliceDurationUs;
         }
-        if (ts > timeStamps[speedArrayPointer]) {
-            speedArrayPointer++;
-            if (speedArrayPointer >= speeds.length) {
-                speedArrayPointer = 0;
+        
+        if (ts > timeStamps[timestampPointer] || ts < oldReadTimestamp) {
+            timestampPointer = binarySearch(timeStamps, ts);
+            readFileSpeed = speeds[timestampPointer];
+            
+            if(timestampPointer!=0){
+                oldReadTimestamp = timeStamps[timestampPointer-1];
+            } else {
+                oldReadTimestamp = timeStamps[0]-this.sliceDurationUs;
             }
-            setSpeedInputTimeStamps(timeStamps[speedArrayPointer]);
-//        }
-            readFileSpeed = speeds[speedArrayPointer];
 
             if (readFileSpeed != 0) {
                 calculatedFileSliceDuration = (int) (speedDividend / readFileSpeed);
             } else {
                 calculatedFileSliceDuration = this.sliceDurationUs;
             }
-            setSliceDurationUs(calculatedFileSliceDuration);
         }
         return calculatedFileSliceDuration;
-//        return 1000;
     }
 
-    public void setSpeedInputTimeStamps(int output) {
-        int old = this.timeStamps[speedArrayPointer];
+    /**
+     * Does a binary search on a sorted array.
+     * Array must be sorted!
+     * @param a: sorted array to be searched in
+     * @param key: key to be searched for in {@param a}
+     * @return the index of {@param key} if it exists in the array,
+     *         otherwise the index of the next bigger element in the array
+     *         or the last index of the array if all elements are smaller than
+     *         the key
+     */
+    private int binarySearch(int[] a, int key) {
+        int low = 0;
+        int high = a.length - 1;
 
-        putInt("SpeedInputTimeStamps", output);
-        getSupport().firePropertyChange("SpeedInputTimeStamps", old, this.timeStamps[speedArrayPointer]);
-    }
+        while (low <= high) {
+            int mid = (low + high) >>> 1;
+            int midVal = a[mid];
 
-    public int getSpeedInputTimeStamps() {
-        return timeStamps[speedArrayPointer];
+            if (midVal < key) {
+                low = mid + 1;
+            } else if (midVal > key) {
+                high = mid - 1;
+            } else {
+                return mid; // key found
+            }
+        }
+        return Math.min(low, a.length-1);  // key not found.
     }
 }
