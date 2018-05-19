@@ -37,6 +37,7 @@ import com.google.common.collect.HashMultimap;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import eu.seebetter.ini.chips.davis.imu.IMUSampleType;
+import java.awt.Point;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
@@ -283,7 +284,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
      * @return timestamp for jAER in us
      */
     private int getTimestampUsRelative(Timestamp timestamp, boolean updateLargestTimestamp) {
-        updateLargestTimestamp = false; // TODO hack before removing
+        updateLargestTimestamp = true; // TODO hack before removing
         long tsNs = timestamp.getNanos(); // gets the fractional seconds in ns
         // https://docs.oracle.com/javase/8/docs/api/java/sql/Timestamp.html "Only integral seconds are stored in the java.util.Date component. The fractional seconds - the nanos - are separate."
         long tsMs = timestamp.getTime(); // the time in ms including ns, i.e. time(s)*1000+ns/1000000. 
@@ -377,7 +378,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                         switch (type) {
                             case "Image": { // http://docs.ros.org/api/sensor_msgs/html/index-msg.html
                                 // Make sure the image is from APS, otherwise some other image topic will be also processed here.
-                                if (!(topic.equalsIgnoreCase("/davis/left/image_raw")||topic.equalsIgnoreCase("/dvs/image_raw"))) {
+                                if (!(topic.equalsIgnoreCase("/davis/left/image_raw") || topic.equalsIgnoreCase("/dvs/image_raw"))) {
                                     continue;
                                 }
                                 hasAps.setTrue();
@@ -385,15 +386,15 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 //                                List<String> fieldNames = messageType.getFieldNames();
                                 MessageType header = messageType.getField("header"); // http://docs.ros.org/api/std_msgs/html/msg/Header.html
                                 ArrayType data = messageType.<ArrayType>getField("data");
-                                int width = (int) (messageType.<UInt32Type>getField("width").getValue()).intValue();
-                                int height = (int) (messageType.<UInt32Type>getField("height").getValue()).intValue();
+//                                int width = (int) (messageType.<UInt32Type>getField("width").getValue()).intValue();
+//                                int height = (int) (messageType.<UInt32Type>getField("height").getValue()).intValue();
                                 Timestamp timestamp = header.<TimeType>getField("stamp").getValue();
                                 int ts = getTimestampUsRelative(timestamp, true); // don't update largest timestamp with frame time
                                 gotEventsOrFrame = true;
                                 byte[] bytes = data.getAsBytes();
-                                int idx = 0;
-                                int sizeY = chip.getSizeY();
-                                // construct frames as events, so that reconstuction as raw packet results in frame again. what a hack...
+                                final int  sizey1=chip.getSizeY()-1, sizex=chip.getSizeX();
+                                // construct frames as events, so that reconstuction as raw packet results in frame again. 
+                                // what a hack...
                                 // start of frame
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.SOF);
                                 e.x = (short) 0;
@@ -406,13 +407,36 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                 e.y = (short) 0;
                                 e.setTimestamp(ts);
                                 apsFifo.pushEvent(e);
+                                Point firstPixel = new Point(0, 0), lastPixel = new Point(chip.getSizeX() - 1, chip.getSizeY() - 1);
+                                if (davisCamera != null) {
+                                    firstPixel.setLocation(davisCamera.getApsFirstPixelReadOut());
+                                    lastPixel.setLocation(davisCamera.getApsLastPixelReadOut());
+                                }
+                                int xinc = firstPixel.x < lastPixel.x ? 1 : -1;
+                                int yinc = firstPixel.y < lastPixel.y ? 1 : -1;
+                                // see AEFrameChipRenderer for putting event streams into textures to be drawn,
+                                //    in particular AEFrameChipRenderer.renderApsDvsEvents 
+                                //    and AEFrameChipRenderer.updateFrameBuffer for how cooked event stream is interpreted
+                                // see ChipRendererDisplayMethodRGBA for OpenGL drawing of textures of frames
+                                // see DavisBaseCamera.DavisEventExtractor for extraction of event stream
+                                // See specific chip classes, e.g. Davis346mini for setup of first and last pixel adddresses for readout order of APS images
+                                // The order is important because in AEFrameChipRenderer the frame buffer is cleared at the first
+                                // pixel and copied to output after the last pixel, so the pixels must be written in correct order
+                                // to the packet...
+                                // Also, y is flipped for the rpg-dvs driver which is based on libcaer where the frame starts at
+                                // upper left corner as in most computer vision, 
+                                // unlike jaer that starts like in cartesian coordinates at lower left.
                                 for (int f = 0; f < 2; f++) { // reset/signal pixels samples
-                                    for (int y = 0; y < height; y++) {
-                                        for (int x = 0; x < width; x++) {
+                                    // now we start at 
+                                    for (int y = firstPixel.y; (yinc > 0 ? y <= lastPixel.y : y >= lastPixel.y); y += yinc) {
+                                        for (int x = firstPixel.x; (xinc > 0 ? x <= lastPixel.x : x >= lastPixel.x); x += xinc) {
+                                            // above x and y are in jAER image space
+                                            final int yrpg=sizey1-y; // flips y to get to rpg from jaer coordinates (jaer uses 0,0 as lower left, rpg-dvs uses 0,0 as upper left)
+                                            final int idx=yrpg*sizex+x;
                                             e.setReadoutType(f == 0 ? ApsDvsEvent.ReadoutType.ResetRead : ApsDvsEvent.ReadoutType.SignalRead);
                                             e.x = (short) x;
-                                            e.y = (short) (sizeY - y - 1);
-                                            e.setAdcSample(f == 0 ? 255 : (255 - (0xff & bytes[idx++])));
+                                            e.y = (short) y; 
+                                            e.setAdcSample(f == 0 ? 255 : (255 - (0xff & bytes[idx])));
                                             if (davisCamera == null) {
                                                 e.setTimestamp(ts);
                                             } else {
@@ -423,6 +447,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                                 }
                                             }
                                             apsFifo.pushEvent(e);
+                                            // debug
+//                                            if(x==firstPixel.x && y==firstPixel.y){
+//                                                log.info("pushed first frame pixel event "+e);
+//                                            }else if(x==lastPixel.x && y==lastPixel.y){
+//                                                log.info("pushed last frame pixel event "+e);
+//                                            }
                                         }
                                     }
                                 }
@@ -513,7 +543,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                     // https://github.com/uzh-rpg/rpg_dvs_ros/tree/master/dvs_msgs/msg]
                                     int x = eventMsg.<UInt16Type>getField("x").getValue();
                                     int y = eventMsg.<UInt16Type>getField("y").getValue();
-                                    boolean pol = eventMsg.<BoolType>getField("polarity").getValue();
+                                    boolean pol = eventMsg.<BoolType>getField("polarity").getValue(); // false==off, true=on
                                     Timestamp timestamp = (Timestamp) eventMsg.<TimeType>getField("ts").getValue();
                                     int ts = getTimestampUsRelative(timestamp, true); // sets nonMonotonicTimestampDetected flag, faster than throwing exception, updates largest timestamp
 //                                    ApsDvsEvent e = outItr.nextOutput();
@@ -521,8 +551,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                     e.timestamp = ts;
                                     e.x = (short) x;
                                     e.y = (short) (sizeY - y - 1);
-                                    e.polarity = pol ? PolarityEvent.Polarity.On : PolarityEvent.Polarity.Off;
-                                    e.type = (byte) (pol ? 1 : 0);
+                                    e.polarity = pol ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
+                                    e.type = (byte) (pol ? 0 : 1);
                                     dvsFifo.pushEvent(e);
                                     eventIdxThisPacket++;
                                 }
@@ -538,7 +568,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         // now pop events in time order from the FIFOs to the output packet and then reconstruct the raw packet
         OutputEventIterator<ApsDvsEvent> outItr = eventPacket.outputIterator();
         ApsDvsEvent ev;
-        while ((ev = getOldestEvent()) != null) {
+        while ((ev = popOldestEvent()) != null) {
             ApsDvsEvent oe = outItr.nextOutput();
             oe.copyFrom(ev);
         }
@@ -549,11 +579,11 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     /**
      * returns the oldest event (earliest in time) from all of the fifos if
-     * there are youner events in all other fifos
+     * there are younger events in all other fifos
      *
-     * @return oldest valid event or null if there is none
+     * @return oldest valid event (and first one pushed to any one particular sub-fifo for identical timestamps) or null if there is none
      */
-    private ApsDvsEvent getOldestEvent() {
+    private ApsDvsEvent popOldestEvent() {
         // find oldest event over all fifos
         ApsDvsEvent ev = null;
         int ts = Integer.MAX_VALUE;
@@ -565,7 +595,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                 numStreamsWithData++;
             }
             int t;
-            if (hasData && !aeFifos[i].isEmpty() && (t = aeFifos[i].peekNextTimestamp()) < ts) {
+            if (hasData && !aeFifos[i].isEmpty() && (t = aeFifos[i].peekNextTimestamp()) <= /* check <= */ ts) {
                 fifoIdx = i;
                 ts = t;
             }
@@ -583,7 +613,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                 }
                 if (hasDvsApsImu[i].isTrue()
                         && (!aeFifos[i].isEmpty()) // if other stream ever has had data but none is available now
-                        && aeFifos[i].getLastTimestamp() < ts // or if last event in other stream data is still older than we are
+                        && aeFifos[i].getLastTimestamp() <= ts // or if last event in other stream data is still older than we are
                         ) {
                     return null;
                 }
@@ -591,10 +621,6 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             ev = aeFifos[fifoIdx].popEvent();
         }
         return ev;
-    }
-
-    private BasicEvent popOldestEvent() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     /**
@@ -1110,7 +1136,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
         @Override
         final public String toString() {
-            return "AEFifo next=" + nextToPopIndex + " holding " + super.toString();
+            return "AEFifo with capacity "+MAX_EVENTS+" nextToPopIndex=" + nextToPopIndex + " holding " + super.toString();
         }
 
     }
