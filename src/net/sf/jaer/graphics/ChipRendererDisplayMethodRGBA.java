@@ -44,6 +44,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 
 	/**
 	 * Creates a new instance of ChipRendererDisplayMethodRGBA
+         * @param chipCanvas
 	 */
 	public ChipRendererDisplayMethodRGBA(final ChipCanvas chipCanvas) {
 		super(chipCanvas);
