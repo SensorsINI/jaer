@@ -10,6 +10,6 @@
 
 java \
 -classpath "dist/jAER.jar:jars/*:lib/*" \
--splash:SplashScreen.gif \
+-splash:images/SplashScreen.gif \
 -Djava.util.logging.config.file=conf/Logging.properties -Dsun.java2d.noddraw=true -Dsun.java2d.opengl=false \
 net.sf.jaer.JAERViewer
