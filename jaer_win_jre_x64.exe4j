@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <exe4j version="6.0" transformSequenceNumber="2">
-  <directoryPresets config="E:/Dropbox (Personal)/GitHub/SensorsINI/jaer/jars" />
+  <directoryPresets config="E:/Dropbox (Personal)/GitHub/SensorsINI/jaer/images" />
   <application name="jaer1.6_win_x64" distributionSourceDir=".">
     <languages>
       <principalLanguage id="en" customLocalizationFile="" />
@@ -10,7 +10,7 @@
     <messageSet />
     <versionInfo include="true" fileVersion="" fileDescription="Launcher for AEViewer for jAER" legalCopyright="jAER Team, 2018" internalName="jAERViewer" productName="" companyName="University of Zurich, inilabs.com, inivation.com" productVersion="1.6.0" />
   </executable>
-  <splashScreen show="true" width="0" height="0" bitmapFile="SplashScreen.gif" textOverlay="false">
+  <splashScreen show="true" width="0" height="0" bitmapFile="images/SplashScreen.gif" textOverlay="false">
     <text>
       <statusLine x="20" y="20" text="" fontSize="8" fontColor="0,0,0" bold="false" />
       <versionLine x="20" y="40" text="version %VERSION%" fontSize="8" fontColor="0,0,0" bold="false" />
