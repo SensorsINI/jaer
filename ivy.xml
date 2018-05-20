@@ -69,7 +69,8 @@ MA 02110-1301  USA
         <dependency org="org.jdesktop" name="beansbinding" rev="1.2.1" />
         
         <!--bag-reader-java-1.9.0 is here to obtain all of its dependencies, but we are using the fork at https://github.com/tobidelbruck/bag-reader-java currently-->
-        <dependency org="com.github.swri-robotics" name="bag-reader-java" rev="1.9.0" />
+        <!--since our fixes were pulled, we can now use bag-reader-java 1.10.x-->
+        <dependency org="com.github.swri-robotics" name="bag-reader-java" rev="1.10.0" />
         <dependency org="org.apache.commons" name="commons-lang3" rev="3.7" />
         <dependency org="org.apache.commons" name="commons-math3" rev="3.6.1" />
         <dependency org="org.webjars.npm" name="semver" rev="5.4.1" />
