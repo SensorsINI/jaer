@@ -261,6 +261,20 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     synchronized private MessageWithIndex getNextMsg() throws BagReaderException, EOFException {
         MessageType msg = null;
+        if (nextMessageNumber == markOut) { // TODO check exceptions here for markOut set before markIn
+            getSupport().firePropertyChange(AEInputStream.EVENT_EOF, null, position());
+            if (isRepeat()) {
+                try {
+                    rewind();
+                } catch (IOException ex) {
+                    Logger.getLogger(RosbagFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
+                    throw new BagReaderException("on reaching markOut, got "+ex);
+                }
+                return getNextMsg();
+            } else {
+                return null;
+            }
+        }
         try {
             msg = bagFile.getMessageFromIndex(msgIndexes, nextMessageNumber);
         } catch (ArrayIndexOutOfBoundsException e) {
@@ -392,7 +406,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                 int ts = getTimestampUsRelative(timestamp, true); // don't update largest timestamp with frame time
                                 gotEventsOrFrame = true;
                                 byte[] bytes = data.getAsBytes();
-                                final int  sizey1=chip.getSizeY()-1, sizex=chip.getSizeX();
+                                final int sizey1 = chip.getSizeY() - 1, sizex = chip.getSizeX();
                                 // construct frames as events, so that reconstuction as raw packet results in frame again. 
                                 // what a hack...
                                 // start of frame
@@ -431,11 +445,11 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                     for (int y = firstPixel.y; (yinc > 0 ? y <= lastPixel.y : y >= lastPixel.y); y += yinc) {
                                         for (int x = firstPixel.x; (xinc > 0 ? x <= lastPixel.x : x >= lastPixel.x); x += xinc) {
                                             // above x and y are in jAER image space
-                                            final int yrpg=sizey1-y; // flips y to get to rpg from jaer coordinates (jaer uses 0,0 as lower left, rpg-dvs uses 0,0 as upper left)
-                                            final int idx=yrpg*sizex+x;
+                                            final int yrpg = sizey1 - y; // flips y to get to rpg from jaer coordinates (jaer uses 0,0 as lower left, rpg-dvs uses 0,0 as upper left)
+                                            final int idx = yrpg * sizex + x;
                                             e.setReadoutType(f == 0 ? ApsDvsEvent.ReadoutType.ResetRead : ApsDvsEvent.ReadoutType.SignalRead);
                                             e.x = (short) x;
-                                            e.y = (short) y; 
+                                            e.y = (short) y;
                                             e.setAdcSample(f == 0 ? 255 : (255 - (0xff & bytes[idx])));
                                             if (davisCamera == null) {
                                                 e.setTimestamp(ts);
@@ -581,7 +595,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
      * returns the oldest event (earliest in time) from all of the fifos if
      * there are younger events in all other fifos
      *
-     * @return oldest valid event (and first one pushed to any one particular sub-fifo for identical timestamps) or null if there is none
+     * @return oldest valid event (and first one pushed to any one particular
+     * sub-fifo for identical timestamps) or null if there is none
      */
     private ApsDvsEvent popOldestEvent() {
         // find oldest event over all fifos
@@ -770,7 +785,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     synchronized public void rewind() throws IOException {
-        nextMessageNumber = 0;
+        nextMessageNumber = (int) (isMarkInSet() ? getMarkInPosition() : 0);
         currentStartTimestamp = (int) firstTimestamp;
         clearAccumulatedEvents();
         rewindFlag = true;
@@ -816,17 +831,24 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     public void clearMarks() {
+        markIn = -1;
+        markOut = -1;
+        getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_CLEARED, null, null);
     }
 
     @Override
     public long setMarkIn() {
+        int old = markIn;
         markIn = nextMessageNumber;
+        getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, old, markIn);
         return markIn;
     }
 
     @Override
     public long setMarkOut() {
+        int old = markOut;
         markOut = nextMessageNumber;
+        getSupport().firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, old, markOut);
         return markOut;
     }
 
@@ -1136,7 +1158,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
         @Override
         final public String toString() {
-            return "AEFifo with capacity "+MAX_EVENTS+" nextToPopIndex=" + nextToPopIndex + " holding " + super.toString();
+            return "AEFifo with capacity " + MAX_EVENTS + " nextToPopIndex=" + nextToPopIndex + " holding " + super.toString();
         }
 
     }
