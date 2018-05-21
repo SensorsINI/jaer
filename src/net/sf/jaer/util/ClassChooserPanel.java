@@ -28,9 +28,9 @@ import javax.swing.DefaultListModel;
 import javax.swing.InputMap;
 import javax.swing.JLabel;
 import javax.swing.JList;
-import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
+import javax.swing.ProgressMonitor;
 import javax.swing.SwingWorker;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
@@ -178,12 +178,26 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         } finally {
             setCursor(Cursor.getDefaultCursor());
         }
+        final ProgressMonitor progressMonitor = new ProgressMonitor(this, "Finding classes", "", 0, 100);
+//        progressMonitor.setMillisToDecideToPopup(200);
+        progressMonitor.setMillisToPopup(200);
         final SubclassFinder.SubclassFinderWorker worker = new SubclassFinder.SubclassFinderWorker(subclassOf, availClassesListModel);
         worker.addPropertyChangeListener(new PropertyChangeListener() {
 
             @Override
             public void propertyChange(PropertyChangeEvent evt) {
 //                System.out.println(evt.getPropertyName() + "  " + evt.getNewValue());
+                if ("progress" == evt.getPropertyName()) {
+                    int progress = (Integer) evt.getNewValue();
+                    progressMonitor.setProgress(progress);
+                    String message = String.format("Completed %d%%.\n", progress);
+                    progressMonitor.setNote(message);
+                    if (progressMonitor.isCanceled() || worker.isDone()) {
+                        if (progressMonitor.isCanceled()) {
+                            worker.cancel(true);
+                        } 
+                    }
+                }
                 if ((evt != null) && evt.getNewValue().equals(SwingWorker.StateValue.DONE)) {
                     try {
                         availAllList = worker.get();
@@ -203,7 +217,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                     } finally {
                         setCursor(Cursor.getDefaultCursor());
                     }
-                } 
+                }
 //                else if ((evt != null) && (evt.getNewValue() instanceof Integer)) {
 //                    int progress = (Integer) evt.getNewValue();
 //                    String s = String.format("Scanning %d/100...", progress);
