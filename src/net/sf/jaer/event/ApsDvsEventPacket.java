@@ -84,10 +84,10 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E> {
 	}
 
 	/**
-	 * This iterator iterates over all events, DVS and APS. Use this one if you want all data.
+	 * This iterator iterates over all events, DVS, APS, and IMU. Use this one if you want all data.
 	 * Returns after initializing the iterator over input events.
 	 *
-	 * @return an iterator that can iterate over all the events, DVS and APS.
+	 * @return an iterator that can iterate over all the events, DVS, APS, and IMU.
 	 */
 	public Iterator<E> fullIterator() {
 		return super.inputIterator();
