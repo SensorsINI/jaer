@@ -40,6 +40,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 import net.sf.jaer.eventio.ros.RosbagVOGTReader;
+import net.sf.jaer.eventio.ros.RosbagVOGTReader.Se3Info;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -155,7 +156,7 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
         Mat mapx = new Mat();
         Mat mapy = new Mat();
 //        Calib3d.undistortImage(raw_img, undistorted_img, K, D, newCameraMatrix, new Size(chip.getSizeX(), chip.getSizeY()));
-        Calib3d.initUndistortRectifyMap(K, D, rectify_R, newCameraMatrix, 
+         Calib3d.initUndistortRectifyMap(K, D, rectify_R, newCameraMatrix, 
                 new Size(chip.getSizeX(), chip.getSizeY()), CvType.CV_32FC1, mapx, mapy);  // For fisheye camera;
 //        Imgproc.initUndistortRectifyMap(K, D, rectify_R, newCameraMatrix, 
 //                new Size(chip.getSizeX(), chip.getSizeY()), CvType.CV_32FC1, mapx, mapy);  // For normal camera;
@@ -165,8 +166,7 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
         if(showRectimg && undistorted_image != null && chip != null) {
             drawRectImg(undistorted_image);
         }
-        
-//        Se3Info se3Info = se3InfoList.get(se3InfoList.size() - 1);
+        ArrayList<Se3Info> se3InfoList = VOGTReader.getCurrentSe3Info();
 //        long current_pose_ts = se3Info.se3_ts.getTime()*1000+(long)(se3Info.se3_ts.getNanos()/1000);
 //        long current_pose_relative_ts = current_pose_ts - firstAbsoluteTs;
 
@@ -193,11 +193,19 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
             }
             
             depth_image = VOGTReader.getCurrent_depth_image();
-            current_pose_se3 = VOGTReader.getCurrentPoseSe3();  
+            int associatedTime = (int) se3InfoList.get(se3InfoList.size() - 1).se3_ts_relative_us;
+            if ( se3InfoList.size() < 2 || Math.abs(ts - associatedTime) >  2000) {
+                continue;
+            }
+            
+            current_pose_se3 = VOGTReader.getCurrentPoseSe3();
+            long current_pose_seq_num = VOGTReader.getCurrentPose_seq_num();
             
             Timestamp current_depth_ts = VOGTReader.getCurrentDepth_ts();            
-            Timestamp current_pose_ts = VOGTReader.getCurrentPose_ts();
-            Timestamp last_pose_ts = VOGTReader.getLastPose_ts();
+            Timestamp current_pose_ts = se3InfoList.get(se3InfoList.size() - 1).se3_ts;
+            Timestamp last_pose_ts = se3InfoList.get(se3InfoList.size() - 2).se3_ts;
+//            current_pose_ts = VOGTReader.getCurrentPose_ts();
+//            last_pose_ts = VOGTReader.getLastPose_ts();
             
             double fx = K.get(0, 0)[0];
             double fy = K.get(1, 1)[0];
@@ -210,8 +218,8 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
                 MatOfPoint2f dstPt = new MatOfPoint2f();
                 double undist_x = mapx.get(y, x)[0];
                 double undist_y = mapy.get(y, x)[0];
-                undist_x = x;
-                undist_y = y;
+//                undist_x = x;
+//                undist_y = y;
                 if (undist_x < 0 || undist_x > chip.getSizeX() || undist_y < 0 || undist_y > chip.getSizeY()) {
                     continue;
                 }
@@ -223,11 +231,11 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
                 DoubleMatrix pose2pixelJaccobi = new DoubleMatrix(new double[][]{
                     {fx/Z, 0, -fx*X/Z, -fx*X*Y/(Z*Z), fx + fx*X*X/(Z*Z), -fx*Y/Z},
                     {0, fy/Z, -fy*Y/Z,  -fy - fx*Y*Y/(Z*Z), fy*X*Y/(Z*Z), fy*X/Z}});
+                current_pose_se3.max();
 //                current_pose_se3 = DoubleMatrix.zeros(6, 1);
-//                current_pose_se3.put(2, -0.1);
+//                current_pose_se3.put(4, 0.1);
                 offsetPixel = pose2pixelJaccobi.mmul(current_pose_se3);
-                double delta_ts = ((current_pose_ts.getTime() - last_pose_ts.getTime())*1e3 
-                        + (current_pose_ts.getNanos() - last_pose_ts.getNanos())/1e3)/1e6;
+                double delta_ts = (current_pose_ts.getNanos() - last_pose_ts.getNanos())/1e3/1e6;
                 vx = (float) -offsetPixel.get(0)/(float)delta_ts;
                 vy = (float) -offsetPixel.get(1)/(float)delta_ts;
                 v = (float) Math.sqrt((vx * vx) + (vy * vy));
