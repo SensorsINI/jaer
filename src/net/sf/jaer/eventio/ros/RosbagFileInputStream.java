@@ -268,7 +268,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                     rewind();
                 } catch (IOException ex) {
                     Logger.getLogger(RosbagFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
-                    throw new BagReaderException("on reaching markOut, got "+ex);
+                    throw new BagReaderException("on reaching markOut, got " + ex);
                 }
                 return getNextMsg();
             } else {
@@ -357,6 +357,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         if (chip instanceof DavisBaseCamera) {
             davisCamera = (DavisBaseCamera) chip;
         }
+        OutputEventIterator<ApsDvsEvent> outItr = eventPacket.outputIterator(); // to hold output events
         ApsDvsEvent e = new ApsDvsEvent();
         try {
             boolean gotEventsOrFrame = false;
@@ -414,13 +415,13 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                 e.x = (short) 0;
                                 e.y = (short) 0;
                                 e.setTimestamp(ts);
-                                apsFifo.pushEvent(e);
+                                maybePushEvent(e, apsFifo, outItr);
                                 // start of exposure
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.SOE);
                                 e.x = (short) 0;
                                 e.y = (short) 0;
                                 e.setTimestamp(ts);
-                                apsFifo.pushEvent(e);
+                                maybePushEvent(e, apsFifo, outItr);
                                 Point firstPixel = new Point(0, 0), lastPixel = new Point(chip.getSizeX() - 1, chip.getSizeY() - 1);
                                 if (davisCamera != null) {
                                     firstPixel.setLocation(davisCamera.getApsFirstPixelReadOut());
@@ -460,7 +461,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                                     e.setTimestamp(ts);
                                                 }
                                             }
-                                            apsFifo.pushEvent(e);
+                                            maybePushEvent(e, apsFifo, outItr);
                                             // debug
 //                                            if(x==firstPixel.x && y==firstPixel.y){
 //                                                log.info("pushed first frame pixel event "+e);
@@ -477,14 +478,14 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                 e.x = (short) 0;
                                 e.y = (short) 0;
                                 e.setTimestamp(ts + lastExposureUs); // TODO should really be end of exposure timestamp, have to get that from last exposure message
-                                apsFifo.pushEvent(e);
+                                maybePushEvent(e, apsFifo, outItr);
                                 // end of frame event
 //                                e = outItr.nextOutput();
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.EOF);
                                 e.x = (short) 0;
                                 e.y = (short) 0;
                                 e.setTimestamp(ts + lastExposureUs);
-                                apsFifo.pushEvent(e);
+                                maybePushEvent(e, apsFifo, outItr);
 
                             }
                             break;
@@ -531,7 +532,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                 IMUSample imuSample = new IMUSample(ts, buf);
                                 e.setImuSample(imuSample);
                                 e.setTimestamp(ts);
-                                imuFifo.pushEvent(e);
+                                maybePushEvent(e, imuFifo, outItr);
                             }
                             break;
                         }
@@ -567,7 +568,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                     e.y = (short) (sizeY - y - 1);
                                     e.polarity = pol ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
                                     e.type = (byte) (pol ? 0 : 1);
-                                    dvsFifo.pushEvent(e);
+                                    maybePushEvent(e, dvsFifo, outItr);
                                     eventIdxThisPacket++;
                                 }
                         }
@@ -579,16 +580,35 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             Logger.getLogger(ExampleRosBagReader.class.getName()).log(Level.SEVERE, null, ex);
             throw new BagReaderException(ex);
         }
-        // now pop events in time order from the FIFOs to the output packet and then reconstruct the raw packet
-        OutputEventIterator<ApsDvsEvent> outItr = eventPacket.outputIterator();
-        ApsDvsEvent ev;
-        while ((ev = popOldestEvent()) != null) {
-            ApsDvsEvent oe = outItr.nextOutput();
-            oe.copyFrom(ev);
+        if (nonMonotonicTimestampExceptionsChecked) {
+            // now pop events in time order from the FIFOs to the output packet and then reconstruct the raw packet
+            ApsDvsEvent ev;
+            while ((ev = popOldestEvent()) != null) {
+                ApsDvsEvent oe = outItr.nextOutput();
+                oe.copyFrom(ev);
+            }
         }
         AEPacketRaw aePacketRawCollecting = chip.getEventExtractor().reconstructRawPacket(eventPacket);
         fireInitPropertyChange();
         return aePacketRawCollecting;
+    }
+
+    /**
+     * Either pushes event to fifo or just directly writes it to output packet,
+     * depending on flag nonMonotonicTimestampExceptionsChecked.
+     *
+     * @param ev the event
+     * @param fifo the fifo to write to
+     * @param outItr the output packet iterator, if events are directly written
+     * to output
+     */
+    private void maybePushEvent(ApsDvsEvent ev, AEFifo fifo, OutputEventIterator<ApsDvsEvent> outItr) {
+        if (nonMonotonicTimestampExceptionsChecked) {
+            fifo.pushEvent(ev);
+        } else {
+            ApsDvsEvent oe = outItr.nextOutput();
+            oe.copyFrom(ev);
+        }
     }
 
     /**
@@ -1100,7 +1120,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
      */
     private final class AEFifo extends ApsDvsEventPacket {
 
-        private final int MAX_EVENTS = 1 << 30;
+        private final int MAX_EVENTS = 1 << 24;
         int nextToPopIndex = 0;
         private boolean full = false;
 
