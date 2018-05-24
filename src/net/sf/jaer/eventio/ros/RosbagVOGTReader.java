@@ -82,7 +82,7 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
             System.err.println("Native code library failed to load.\n" + e);
         }
     }
-//    private ArrayList<Se3Info> se3InfoList;
+    private ArrayList<Se3Info> se3InfoList;
 //    private ArrayList< float[] > depthList;
     private float[] currentDepth_image;
     private long currentPose_seq_num;
@@ -106,7 +106,7 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
         lastPose_ts = new Timestamp(0);
         currentPose_ts = new Timestamp(0);
         currentDepth_ts = new Timestamp(0);
-//        se3InfoList = new ArrayList<Se3Info>();
+        se3InfoList = new ArrayList<Se3Info>();
 //        depthList = new ArrayList<float[]>();
 //        currentSe3Info = new Se3Info();
     }
@@ -171,11 +171,13 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
                         .<Float64Type>getField("z").getValue();  
                 double w_quat = message.messageType.<MessageType>getField("pose").<MessageType>getField("orientation")
                         .<Float64Type>getField("w").getValue();   
-
+                
                 currentPose_seq_num = message.messageType.<MessageType>getField("header").<UInt32Type>getField("seq").getValue();
                 lastPose_ts = currentPose_ts;
                 currentPose_ts = message.messageType.<MessageType>getField("header").<TimeType>getField("stamp").getValue();
-    //            se3Info.se3_ts_relative_us = se3Info.se3_ts.getTime()*1000+(long)(se3Info.se3_ts.getNanos()/1000) - firstAbsoluteTs;
+                Se3Info se3Info = new Se3Info();
+//              se3Info.se3_ts_relative_us = se3Info.se3_ts.getTime()*1000+(long)(se3Info.se3_ts.getNanos()/1000) - firstAbsoluteTs;
+                se3Info.se3_ts_relative_us = currentPose_ts.getTime()*1000 - chip.getAeInputStream().getAbsoluteStartingTimeMs()*1000;
 //                log.info("\nPose: seq: " + currentPose_seq_num + "\n" + "Pose: timestamp: " + currentPose_ts + "\t" + 
 //                        (currentPose_ts.getTime() + currentPose_ts.getNanos()/1.e6 - (int)(currentPose_ts.getNanos()/1.e6)));
 
@@ -202,6 +204,10 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
                 DoubleMatrix trans = current_position.sub(R.mmul(last_position));          
 
                 currentPoseSe3 = SE3Tose3(R, trans);   
+                se3Info.pose_seq_num = currentPose_seq_num;
+                se3Info.se3_data = currentPoseSe3;
+                se3Info.se3_ts = currentPose_ts;
+                se3InfoList.add(se3Info);
 //                log.info("The se3 vector is: " + currentSe3Info.se3_data + "\n");
 
 //                se3InfoList.add(currentSe3Info);
@@ -277,9 +283,9 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
     }   
     
     
-//    public Se3Info getCurrentSe3Info() {
-//        return currentSe3Info;
-//    }    
+    public ArrayList<Se3Info> getCurrentSe3Info() {
+        return se3InfoList;
+    }    
     
     @Override
     public void annotate(GLAutoDrawable drawable) {
@@ -318,18 +324,18 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
         public Mat R = new Mat(3, 3, CvType.CV_64FC1);;
         public Mat P = new Mat(3, 4, CvType.CV_64FC1);;
     }
-//    public class Se3Info {
-//        public long pose_seq_num;
-//        public Timestamp se3_ts;
-//        public DoubleMatrix se3_data;
-//        public long se3_ts_relative_us;
-//
-//        public Se3Info() {
-//            this.se3_ts = new Timestamp(0);
-//            this.se3_data = DoubleMatrix.zeros(1, 6);
-//            this.pose_seq_num = 0;
-//        }
-//        
-//    }
+    public class Se3Info {
+        public long pose_seq_num;
+        public Timestamp se3_ts;
+        public DoubleMatrix se3_data;
+        public long se3_ts_relative_us;
+
+        public Se3Info() {
+            this.se3_ts = new Timestamp(0);
+            this.se3_data = DoubleMatrix.zeros(1, 6);
+            this.pose_seq_num = 0;
+        }
+        
+    }
     
 }
