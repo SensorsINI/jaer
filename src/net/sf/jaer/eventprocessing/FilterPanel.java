@@ -1,4 +1,4 @@
-/*                    
+/*
  * FilterPanel.java
  *
  * Created on October 31, 2005, 8:13 PM
@@ -38,8 +38,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.logging.Logger;
-import javax.swing.AbstractButton;
 
+import javax.swing.AbstractButton;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -60,7 +60,6 @@ import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import javax.swing.plaf.basic.BasicBorders;
 
 import net.sf.jaer.graphics.GlobalViewer;
 import net.sf.jaer.util.EngineeringFormat;
@@ -451,7 +450,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
                 @Override
                 public int compare(AbstractButton o1, AbstractButton o2) {
-                    if (o1 == null || o2 == null || o1.getText() == null || o2.getText() == null) {
+                    if ((o1 == null) || (o2 == null) || (o1.getText() == null) || (o2.getText() == null)) {
                         return 0;
                     }
                     return o1.getText().compareToIgnoreCase(o2.getText());
@@ -630,7 +629,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     } else if ((c != null) && c.isEnum() && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
                         control = new EnumControl(c, getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
                         myadd(control, name, inherited);
-                    } else if ((c != null) && (c == Point2D.Float.class || c == Point2D.Double.class || c == Point2D.class) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
+                    } else if ((c != null) && ((c == Point2D.Float.class) || (c == Point2D.Double.class) || (c == Point2D.class)) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
                         control = new Point2DControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
                         myadd(control, name, inherited);
                     } else {
@@ -691,7 +690,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
     class MyControl extends JPanel {
 
-        public Dimension getMaximumSize() {
+        @Override
+		public Dimension getMaximumSize() {
             Dimension d = getPreferredSize();
             d.setSize(1000, d.getHeight());
             return d;
@@ -948,7 +948,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             ic.addPropertyChangeListener(ic.PROPERTY_VALUE, new PropertyChangeListener() {
                 @Override
                 public void propertyChange(PropertyChangeEvent pce) {
-                    if (pce.getNewValue() == null || !(pce.getNewValue() instanceof Integer)) {
+                    if ((pce.getNewValue() == null) || !(pce.getNewValue() instanceof Integer)) {
                         return;
                     }
                     sliderDontProcess = true;
@@ -1196,7 +1196,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             }
                         }
                     }
-                    if (evt.getKeyCode() == evt.VK_TAB) {
+                    if (evt.getKeyCode() == KeyEvent.VK_TAB) {
                         try {
                             NumberFormat format = NumberFormat.getNumberInstance();
                             int y = format.parse(tf.getText()).intValue();
@@ -1525,7 +1525,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      * <code>support.firePropertyChange("mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled, this.mapEventsToLearnedTopologyEnabled);</code>
      */
     @Override
-    public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
+    public void propertyChange(final PropertyChangeEvent propertyChangeEvent) {
         if (propertyChangeEvent.getSource() == getFilter()) {
             if (propertyChangeEvent.getPropertyName().equals("selected")) {
                 return; // ignore changes to "selected" for filter because these are masked out from GUI building
@@ -1541,7 +1541,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                            propertyChangeEvent.getSource() + " for property=" +
 //                            propertyChangeEvent.getPropertyName() +
 //                            " newValue=" + propertyChangeEvent.getNewValue());
-                    HasSetter setter = setterMap.get(propertyChangeEvent.getPropertyName());
+                	final HasSetter setter = setterMap.get(propertyChangeEvent.getPropertyName());
                     if (setter == null) {
                         if (!printedSetterWarning) {
                             log.warning("in filter " + getFilter() + " there is no setter for property change from property named " + propertyChangeEvent.getPropertyName());
@@ -1607,7 +1607,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         enabledCheckBox.setToolTipText("Enable or disable the filter");
         enabledCheckBox.setMargin(new java.awt.Insets(1, 1, 1, 1));
         enabledCheckBox.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 enabledCheckBoxActionPerformed(evt);
             }
         });
@@ -1618,7 +1619,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         resetButton.setToolTipText("Resets the filter");
         resetButton.setMargin(new java.awt.Insets(1, 5, 1, 5));
         resetButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 resetButtonActionPerformed(evt);
             }
         });
