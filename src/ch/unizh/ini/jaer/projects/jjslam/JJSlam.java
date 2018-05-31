@@ -24,6 +24,8 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.Font;
 import java.awt.geom.Point2D;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.util.Arrays;
 import java.util.Iterator;
 import net.sf.jaer.Description;
@@ -45,14 +47,16 @@ import net.sf.jaer.graphics.FrameAnnotater;
  */
 @Description("Jean-Jaques Slotine SLAM without linearization")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
-public class JJSlam extends EventFilter2D implements FrameAnnotater {
+public class JJSlam extends EventFilter2D implements FrameAnnotater{
 
     private float gainPropertional = getFloat("gainPropertional", 1f);
     private float cameraFocalLengthMm = getFloat("cameraFocalLengthMm", 8);
     private TextRenderer textRenderer = null;
     private CameraPose cameraPose = new CameraPose();
-
+    private CameraAccRotVel cameraAccRotVel = new CameraAccRotVel();
+    private WriteFile writeFile = new WriteFile("C:\\Users\\Robin\\polybox\\JJSLAM_Semester_Thesis\\asdfasdf.txt");
     private ImuMedianTracker tracker = null;
+
 
     public JJSlam(AEChip chip) {
         super(chip);
@@ -74,11 +78,25 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater {
     }
 
     private void updateState(ApsDvsEvent e) {
+        
+        //Update IMU measure object
         IMUSample imuSample = e.getImuSample();
-        float panRateDpsSample = imuSample.getGyroYawY(); // update pan tilt roll state from IMU
+        int t_current = imuSample.getTimestampUs();
+        float accX = imuSample.getAccelX();
+        float accY = imuSample.getAccelY();
+        float accZ = imuSample.getAccelZ();
+        float yawRateDpsSample = imuSample.getGyroYawY(); // update pan tilt roll state from IMU
         float tiltRateDpsSample = imuSample.getGyroTiltX();
         float rollRateDpsSample = imuSample.getGyroRollZ();
-//        log.info(cameraPose.toString());
+        //log.info(cameraAccRotVel.toString());
+        cameraAccRotVel.setRotVel(tiltRateDpsSample, yawRateDpsSample, rollRateDpsSample);
+        cameraAccRotVel.setAcc(accX, accY, accZ );
+        cameraAccRotVel.setTimeUs(t_current);
+        cameraPose.setOrientation(cameraAccRotVel.updateOrientation(cameraPose));
+        //writeFile.writeToFile(cameraAccRotVel.toStringExport());
+        
+        //Calculate the new orientation
+        
     }
 
     @Override
@@ -97,12 +115,23 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater {
         checkBlend(gl);
         int sy = chip.getSizeY(), sx = chip.getSizeX();
         if (textRenderer == null) {
-            textRenderer = new TextRenderer(new Font(Font.SANS_SERIF, Font.PLAIN, 8));
+            textRenderer = new TextRenderer(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
         }
         textRenderer.beginRendering(sx, sy);
         gl.glColor4f(1, 1, 0, .7f);
         textRenderer.draw(cameraPose.toString(), 1, sy / 2);
+        textRenderer.draw(cameraAccRotVel.toString(), 1, (sy/2-10));
         textRenderer.endRendering();
+        
+        //Draw the pitching orientation
+        Point2D front = new Point2D.Float();
+        front.setLocation(10+10*Math.sin(Math.toRadians(cameraPose.getOrientation()[1])), 200+10*Math.sin(Math.toRadians(cameraPose.getOrientation()[1])));
+        Point2D back = new Point2D.Float();
+        back.setLocation(10, 200);
+        gl.glBegin(GL2.GL_LINES);
+        gl.glVertex2d(front.getX() - 10, front.getY());
+        gl.glVertex2d(back.getX() + 10, back.getY());
+        gl.glEnd();
     }
 
     /**
@@ -122,15 +151,129 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater {
 
     private class CameraPose {
 
-        float[] x = new float[3], u = new float[3];
+        float[] x = new float[3], 
+        float[] u = new float[3];
+        float[] phi = new float[3];
+        Matrix3 phiRotMat;
+        
 
         @Override
         public String toString() {
             return String.format("CameraPose: [x,y,z]=[%.2f,%.2f,%.2f], [ux,uy,uz]=[%.2f,%.2f,%.2f]",
                     x[0], x[1], x[2],
-                    u[0], u[1], u[2]);
+                    phi[0], phi[1], phi[2]);
         }
+        public void setOrientation( float[] a) {
+            //Set the angle values
+            phi[0]=a[0];
+            phi[1]=a[1];
+            phi[2]=a[2];
+            //Set rotation matrix
+            
+        }
+        public float[] getOrientation() {
+            float[] a = new float[3];
+            a[0]=phi[0];
+            a[1]=phi[1];
+            a[2]=phi[2];
+            return a;
+                    
+        }
+    }
+    
+    private class WriteFile {
+        private String path;
+        private boolean append_to_file = true;
+        BufferedWriter writer = null;
+    
+        public WriteFile (String file_path) {
+            path = file_path;
+        }
+        
+        public WriteFile (String file_path, boolean append_value) {
+            path = file_path;
+            append_to_file=append_value;
+        }
+        
+        public void writeToFile (String textline) {
+            log.info(String.format("%b", append_to_file));
+            
+            
+            try
+            {
+                writer = new BufferedWriter (new FileWriter(path, append_to_file));
+                writer.write(textline);
+                writer.newLine();
+            }
+            catch(Exception e)
+                {
+                }
+            finally
+            {   try
+                {
+                    if(writer != null)
+                        writer.close();
+                }
+                catch(Exception e)
+                    {
+                    }
+            }
+        }
+    }
+            
+            
+            
+    
+    private class CameraAccRotVel {
 
+        float[] acc = new float[3];
+        float[] rotVel = new float[3];
+        int timeUs_curr = 0;
+        int timeUs_prev = 0;
+        int dTUs=0;
+        int test=0;
+        
+        @Override
+        public String toString() {
+            return String.format("Accelartion: [x,y,z]=[%.2f,%.2f,%.2f], [ux,uy,uz]=[%.2f,%.2f,%.2f], delta time = %d",
+                    acc[0], acc[1], acc[2],
+                    rotVel[0], rotVel[1], rotVel[2],test);
+        }
+        public String toStringExport(){
+            return String.format("%f,%f,%f,%f,%f,%f,%d,%d,%d",acc[0], acc[1], acc[2],rotVel[0], rotVel[1], rotVel[2],timeUs_curr,timeUs_prev, dTUs);
+        }
+        public void setAcc (float a, float b, float c )
+        {
+            acc[0]=a+0.2531f;
+            acc[1]=b+0.9709f;
+            acc[2]=c-0.5161f;
+        }
+        public void setRotVel (float a, float b, float c)
+        {
+            rotVel[0]=a;
+            rotVel[1]=b;
+            rotVel[2]=c;       
+        }
+        public void setTimeUs (int time_current)
+        {
+            timeUs_prev = timeUs_curr;
+            timeUs_curr = time_current;
+            dTUs=timeUs_curr-timeUs_prev;
+            test=test+1;
+        }
+        public float[] updateOrientation(CameraPose pose){
+            float[] current_orientation = new float[3];
+            if ((dTUs>0) && (dTUs<10000)){
+                current_orientation[0]=pose.getOrientation()[0]+rotVel[0]*dTUs*0.000001f;
+                current_orientation[1]=pose.getOrientation()[1]+rotVel[1]*dTUs*0.000001f;
+                current_orientation[2]=pose.getOrientation()[2]+rotVel[2]*dTUs*0.000001f;
+            }
+            else {
+                log.info("corrupted delte time - no update");
+                current_orientation = pose.getOrientation();
+            }
+            return current_orientation;
+        }
     }
 
     class ImuMedianTracker extends MedianTracker {
@@ -230,5 +373,75 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater {
     public void setCameraFocalLengthMm(float cameraFocalLengthMm) {
         this.cameraFocalLengthMm = cameraFocalLengthMm;
         putFloat("cameraFocalLengthMm", cameraFocalLengthMm);
+    }
+    
+    pvrivate class Matrix3 {
+        float e11;
+        float e12;
+        float e13;
+        float e21;
+        float e22;
+        float e23;
+        float e31;
+        float e32;
+        float e33;
+        
+        
+        //Fill colums first
+        public void setValuesIndividual (float a, float b, float c, float d, float e, float f,float g,float h,float i){
+            e11=a;
+            e12=b;
+            e13=c;
+            e21=d;
+            e22=e;
+            e23=f;
+            e31=g;
+            e32=h;
+            e33=i;
+        }
+        public void setValuesArray (float[] a){
+            e11=a[0];
+            e12=a[1];
+            e13=a[2];
+            e21=a[3];
+            e22=a[4];
+            e23=a[5];
+            e31=a[6];
+            e32=a[7];
+            e33=a[8];
+        }
+        public float[] getArray(){
+            float[] a=new float[9];
+            a[0]=e11;
+            a[1]=e12;
+            a[2]=e13;
+            a[3]=e21;
+            a[4]=e22;
+            a[5]=e23;
+            a[6]=e31;
+            a[7]=e32;
+            a[8]=e33;  
+            return a; 
+        }
+        public float[] getTransposedArray (){
+            float[] a=new float[9];
+            a[0]=e11;
+            a[3]=e12;
+            a[6]=e13;
+            a[1]=e21;
+            a[4]=e22;
+            a[7]=e23;
+            a[2]=e31;
+            a[5]=e32;
+            a[8]=e33;  
+            return a; 
+        }
+        public float[] matrixTimesVector(float [] v){
+            float[] a=new float[3];
+            a[0]=e11*v[0]+e12*v[1]+e13*v[2];
+            a[1]=e21*v[0]+e22*v[1]+e23*v[2];
+            a[2]=e31*v[0]+e32*v[1]+e33*v[3];
+            return 0;
+        }
     }
 }
