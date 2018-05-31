@@ -41,6 +41,7 @@ import net.sf.jaer.util.TobiLogger;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.util.HashMap;
 import java.util.Iterator;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
@@ -80,10 +81,12 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private long absoluteStartTimeMs = 0;
     volatile private long clockTimeMs = 0; // volatile because this field accessed by filtering and rendering threads
     volatile private long updateTimeMs = 0; // volatile because this field accessed by filtering and rendering threads
-    volatile private float eventRateMeasured = 0; // volatile, also shared
+//    volatile private float eventRateMeasured = 0; // volatile, also shared
     private boolean addedViewerPropertyChangeListener = false; // need flag because viewer doesn't exist on creation
-    private boolean eventRate = getPrefs().getBoolean("Info.eventRate", true);
-    private TypedEventRateEstimator eventRateFilter;
+    private boolean eventRate = getBoolean("Info.eventRate", true);
+
+    private TypedEventRateEstimator typedEventRateEstimator;
+    private HashMap<EventRateEstimator, RateHistory> rateHistories = new HashMap();
     private XYTypeFilter xyTypeFilter;
     private EngineeringFormat engFmt = new EngineeringFormat();
     private String maxRateString = engFmt.format(eventRateScaleMax);
@@ -140,7 +143,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 } else {
                     s = s + " input during PlayMode=" + chip.getAeViewer().getPlayMode().toString();
                 }
-                s = s + "\n# evenRateFilterTauMs=" + eventRateFilter.getEventRateTauMs();
+                s = s + "\n# evenRateFilterTauMs=" + typedEventRateEstimator.getEventRateTauMs();
                 s = s + "\n#relativeLoggingTimeMs\tabsDataTimeSince1970Ms\teventRateHz";
 
                 if (tobiLogger == null) {
@@ -176,34 +179,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      */
     @Override
     public void update(Observable o, Object arg) {
-        if (!(arg instanceof UpdateMessage)) {
-            return;
-        }
-        UpdateMessage msg = (UpdateMessage) arg;
-        //        System.out.println("dt=" + (msg.timestamp - lastUpdateTime)/1000+" ms");
-        lastUpdateTime = msg.timestamp;
-        // for large files, the relativeTimeInFileMs wraps around after 2G us and then every 4G us
-        long relativeTimeInFileMs = (msg.timestamp - dataFileTimestampStartTimeUs) / 1000;
-        updateTimeMs = computeDisplayTime(relativeTimeInFileMs);
-        long dt = (updateTimeMs - lastUpdateTime);
-        //        if (dt > eventRateFilter.getEventRateTauMs() * 2) {  // TODO hack to get around problem that sometimes the wrap preceeds the actual data
-        //            log.warning("not adding this RateHistory point because dt is too big, indicating a big wrap came too soon");
-        //            return;
-        //        }
-        if (((updateTimeMs < lastUpdateTime) && (warningCount < MAX_WARNINGS_AND_UPDATE_INTERVAL)) || ((warningCount % MAX_WARNINGS_AND_UPDATE_INTERVAL) == 0)) {
-            warningCount++;
-            log.warning("Negative delta time detected; dt=" + dt);
-        }
-        lastUpdateTime = updateTimeMs;
-
-        eventRateMeasured = eventRateFilter.getFilteredEventRate(); // TODO time is wrong here to plot
-        if (showRateTrace) {
-            rateHistory.addSample(updateTimeMs, eventRateMeasured);
-        }
-        if (logStatistics) {
-            String s = String.format("%20d\t%20.2g", updateTimeMs, eventRateFilter.getFilteredEventRate());
-            tobiLogger.log(s);
-        }
 
     }
 
@@ -222,20 +197,22 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         putBoolean("showAccumulatedEventCount", showAccumulatedEventCount);
     }
 
+    // make following global to cover all histories for common scale for plots
+    long rateHistoriesStartTimeMs = Long.MAX_VALUE, rateHistoriesEndTimeMs = Long.MIN_VALUE;
+    float rateHistoriesMinRate = Float.MAX_VALUE, rateHistoriesMaxRate = Float.MIN_VALUE;
+
     private class RateHistory {
 
-        LinkedList<RateSample> rateSamples = new LinkedList();
-        long startTimeMs = Long.MAX_VALUE, endTimeMs = Long.MIN_VALUE;
-        float minRate = Float.MAX_VALUE, maxRate = Float.MIN_VALUE;
+        LinkedList<RateSamples> rateSamples = new LinkedList();
         TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.BOLD, 24));
         long lastTimeAdded = Long.MIN_VALUE;
 
         synchronized void clear() {
             rateSamples.clear();
-            startTimeMs = Long.MAX_VALUE;
-            endTimeMs = Long.MIN_VALUE;
-            minRate = Float.MAX_VALUE;
-            maxRate = Float.MIN_VALUE;
+            rateHistoriesStartTimeMs = Long.MAX_VALUE;
+            rateHistoriesEndTimeMs = Long.MIN_VALUE;
+            rateHistoriesMinRate = Float.MAX_VALUE;
+            rateHistoriesMaxRate = Float.MIN_VALUE;
         }
 
         synchronized void addSample(long time, float rate) {
@@ -244,76 +221,82 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 clear();
             }
             //            System.out.println(String.format("adding RateHistory point at t=%-20d, dt=%-15d",time,(time-lastTimeAdded)));
+//            long dt=time-lastTimeAdded;
+//            log.info(String.format("added new sample with dt=%d ms and rate=%.1f Hz",dt,rate));
             lastTimeAdded = time;
             if (rateSamples.size() >= getMaxSamples()) {
-                RateSample s = rateSamples.get(2);
-                startTimeMs = s.time;
+                RateSamples s = rateSamples.get(2);
+                rateHistoriesEndTimeMs = s.time;
                 rateSamples.removeFirst();
                 return;
             }
-            rateSamples.add(new RateSample(time, rate));
-            if (time < startTimeMs) {
-                startTimeMs = time;
+            rateSamples.add(new RateSamples(time, rate));
+            if (time < rateHistoriesStartTimeMs) {
+                rateHistoriesStartTimeMs = time;
             }
-            if (time > endTimeMs) {
-                endTimeMs = time;
+            if (time > rateHistoriesEndTimeMs) {
+                rateHistoriesEndTimeMs = time;
             }
-            if (rate < minRate) {
-                minRate = rate;
+            if (rate < rateHistoriesMinRate) {
+                rateHistoriesMinRate = rate;
             }
-            if (rate > maxRate) {
-                maxRate = rate;
+            if (rate > rateHistoriesMaxRate) {
+                rateHistoriesMaxRate = rate;
             }
         }
 
-        synchronized private void draw(GLAutoDrawable drawable) {
+        synchronized private void draw(GLAutoDrawable drawable, int sign) {
+            final int sx = chip.getSizeX(), sy = chip.getSizeY();
+            final int yorig = sy / 3, ysize = sy / 4; // where graph starts along y axis of chip
             int n = rateSamples.size();
-            if ((n < 2) || ((endTimeMs - startTimeMs) == 0)) {
+            if ((n < 2) || ((rateHistoriesEndTimeMs - rateHistoriesStartTimeMs) == 0)) {
                 return;
             }
             GL2 gl = drawable.getGL().getGL2();
-            gl.glColor3f(.8f, .8f, .8f);
+            if (sign > 0) {
+                gl.glColor3f(.82f, .8f, .2f);
+            } else {
+                gl.glColor3f(.8f, .2f, .2f);
+            }
             gl.glLineWidth(1.5f);
             // draw xaxis
             gl.glBegin(GL.GL_LINES);
             float x0 = 0;
-            final int ypos = chip.getSizeY() / 3; // where graph starts along y axis of chip
 
-            gl.glVertex2f(x0, ypos);
-            gl.glVertex2f(chip.getSizeX(), ypos);
+            gl.glVertex2f(x0, yorig);
+            gl.glVertex2f(sx, yorig);
             gl.glEnd();
             // draw y axis
             gl.glBegin(GL.GL_LINE_STRIP);
-            gl.glVertex2f(x0, ypos);
-            gl.glVertex2f(x0, ypos + (chip.getSizeY() * .2f));
+            gl.glVertex2f(x0, yorig);
+            gl.glVertex2f(x0, yorig + ysize);
             gl.glEnd();
 
             gl.glPushMatrix();
-            gl.glColor3f(1, 1, .8f);
+//            gl.glColor3f(1, 1, .8f);
             gl.glLineWidth(1.5f);
-            gl.glTranslatef(0.5f, ypos, 0);
+            gl.glTranslatef(0.5f, yorig, 0);
             //            gl.glRotatef(90, 0, 0, 1);
             //            gl.glRotatef(-90, 0, 0, 1);
-            gl.glScalef((float) (chip.getSizeX() - 1) / (endTimeMs - startTimeMs), (chip.getSizeY() * .2f) / (maxRate), 1);
+            gl.glScalef((float) (sx - 1) / (rateHistoriesEndTimeMs - rateHistoriesStartTimeMs), (ysize) / (rateHistoriesMaxRate), 1);
             gl.glBegin(GL.GL_LINE_STRIP);
-            for (RateSample s : rateSamples) {
-                gl.glVertex2f(s.time - startTimeMs, s.rate);
+            for (RateSamples s : rateSamples) {
+                gl.glVertex2f(s.time - rateHistoriesStartTimeMs, s.rate * sign);
             }
             gl.glEnd();
 
             gl.glPopMatrix();
             gl.glPushMatrix();
-            maxRateString = String.format("max %s eps", engFmt.format(maxRate));
-            maxTimeString = String.format("%s s", engFmt.format((endTimeMs - startTimeMs) * .001f));
+            maxRateString = String.format("max %s eps", engFmt.format(rateHistoriesMaxRate));
+            maxTimeString = String.format("%s s", engFmt.format((rateHistoriesEndTimeMs - rateHistoriesStartTimeMs) * .001f));
 
             GLUT glut = chip.getCanvas().getGlut();
             int font = GLUT.BITMAP_9_BY_15;
             ChipCanvas.Borders borders = chip.getCanvas().getBorders();
             float w = drawable.getSurfaceWidth() - (2 * borders.leftRight * chip.getCanvas().getScale());
-            int ntypes = eventRateFilter.getNumCellTypes();
-            final int sx = chip.getSizeX(), sy = chip.getSizeY();
+//            int ntypes = typedEventRateEstimator.getNumCellTypes();
             float sw = (glut.glutBitmapLength(font, maxRateString) / w) * sx;
-            gl.glRasterPos3f(0, sy / 2, 0);
+            gl.glRasterPos3f(0, yorig + ysize * sign, 0);
             glut.glutBitmapString(font, maxRateString);
             sw = (glut.glutBitmapLength(font, maxTimeString) / w) * sx;
             gl.glRasterPos3f(sx - sw, sy * .3f, 0);
@@ -323,25 +306,24 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
 
         synchronized private void initFromAEFileInputStream(AEFileInputStream fis) {
-            startTimeMs = (AEConstants.TICK_DEFAULT_US * fis.getFirstTimestamp()) / 1000;
-            endTimeMs = (AEConstants.TICK_DEFAULT_US * fis.getLastTimestamp()) / 1000;
-            if (endTimeMs < startTimeMs) {
+            rateHistoriesEndTimeMs = (AEConstants.TICK_DEFAULT_US * fis.getFirstTimestamp()) / 1000;
+            rateHistoriesEndTimeMs = (AEConstants.TICK_DEFAULT_US * fis.getLastTimestamp()) / 1000;
+            if (rateHistoriesEndTimeMs < rateHistoriesStartTimeMs) {
                 clear();
             }
         }
     }
 
-    private class RateSample {
+    private class RateSamples {
 
         long time;
         float rate;
 
-        public RateSample(long time, float rate) {
+        public RateSamples(long time, float rate) {
             this.time = time;
             this.rate = rate;
         }
     }
-    private RateHistory rateHistory = new RateHistory();
 
     /**
      * Creates a new instance of Info for the chip
@@ -351,13 +333,13 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public Info(AEChip chip) {
         super(chip);
         calendar.setLenient(true); // speed up calendar
-        xyTypeFilter=new XYTypeFilter(chip);
-        eventRateFilter = new TypedEventRateEstimator(chip);
-        eventRateFilter.addObserver(this);
-        
+        xyTypeFilter = new XYTypeFilter(chip);
+        typedEventRateEstimator = new TypedEventRateEstimator(chip);
+        typedEventRateEstimator.getSupport().addPropertyChangeListener(EventRateEstimator.EVENT_RATE_UPDATE, this);
+
         FilterChain fc = new FilterChain(chip);
         fc.add(xyTypeFilter);
-        fc.add(eventRateFilter);
+        fc.add(typedEventRateEstimator);
         setEnclosedFilterChain(fc);
         setUseLocalTimeZone(useLocalTimeZone);
         setPropertyTooltip("analogClock", "show normal circular clock");
@@ -370,6 +352,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         setPropertyTooltip("eventRateScaleMax", "scale event rates to this maximum");
         setPropertyTooltip("timeScaling", "shows time scaling relative to real time");
         setPropertyTooltip("eventRate", "shows average event rate");
+        setPropertyTooltip("eventRateSigned", "uses signed event rate for ON positive and OFF negative");
         setPropertyTooltip("eventRateTauMs", "lowpass time constant in ms for filtering event rate");
         setPropertyTooltip("showRateTrace", "shows a historical trace of event rate");
         setPropertyTooltip("maxSamples", "maximum number of samples before clearing rate history");
@@ -388,7 +371,11 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             if (evt.getPropertyName().equals(AEInputStream.EVENT_REWOUND)) {
                 log.info("rewind PropertyChangeEvent received by " + this + " from " + evt.getSource());
                 wrappingCorrectionMs = 0;
-                rateHistory.clear();
+                if (rateHistories != null) {
+                    for (RateHistory r : rateHistories.values()) {
+                        r.clear();
+                    }
+                }
                 resetAccumulatedStatistics();
                 setLogStatistics(false);
             } else if (evt.getPropertyName().equals(AEInputStream.EVENT_WRAPPED_TIME)) {
@@ -398,15 +385,53 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             } else if (evt.getPropertyName().equals(AEInputStream.EVENT_INIT)) {
                 log.info("EVENT_INIT recieved, signaling new input stream");
                 AEFileInputStream fis = (AEFileInputStream) (evt.getSource());
-                rateHistory.initFromAEFileInputStream(fis);
+                for (RateHistory r : rateHistories.values()) {
+                    r.initFromAEFileInputStream(fis);
+                }
             } else if (evt.getPropertyName().equals(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP)) {
                 //                rateHistory.clear();
             }
         } else if (evt.getSource() instanceof AEViewer) {
             if (evt.getPropertyName().equals(AEViewer.EVENT_FILEOPEN)) { // TODO don't getString this because AEViewer doesn't refire event from AEPlayer and we don't getString this on initial fileopen because this filter has not yet been run so we have not added ourselves to the viewer
-                rateHistory.clear();
+                for (RateHistory r : rateHistories.values()) {
+                    r.clear();
+                }
             } else if (evt.getPropertyName().equals(AEViewer.EVENT_ACCUMULATE_ENABLED)) {
                 resetAccumulatedStatistics();
+            }
+        } else if (evt.getSource() instanceof EventRateEstimator) {
+            if (evt.getPropertyName().equals(EventRateEstimator.EVENT_RATE_UPDATE)) {
+                UpdateMessage msg = (UpdateMessage) evt.getNewValue();
+                //        System.out.println("dt=" + (msg.timestamp - lastUpdateTime)/1000+" ms");
+                // for large files, the relativeTimeInFileMs wraps around after 2G us and then every 4G us
+                long relativeTimeInFileMs = (msg.timestamp - dataFileTimestampStartTimeUs) / 1000;
+                updateTimeMs = computeDisplayTime(relativeTimeInFileMs);
+                long dt = (updateTimeMs - lastUpdateTime);
+                //        if (dt > eventRateFilter.getEventRateTauMs() * 2) {  // TODO hack to get around problem that sometimes the wrap preceeds the actual data
+                //            log.warning("not adding this RateHistory point because dt is too big, indicating a big wrap came too soon");
+                //            return;
+                //        }
+                if (((updateTimeMs < lastUpdateTime) && (warningCount < MAX_WARNINGS_AND_UPDATE_INTERVAL)) || ((warningCount % MAX_WARNINGS_AND_UPDATE_INTERVAL) == 0)) {
+                    warningCount++;
+                    log.warning("Negative delta time detected; dt=" + dt);
+                }
+                lastUpdateTime = updateTimeMs;
+
+                if (showRateTrace) {
+                    if (rateHistories == null || typedEventRateEstimator.getNumCellTypes() != rateHistories.values().size()) {
+                        rateHistories.clear();
+                        EventRateEstimator[] r = typedEventRateEstimator.getEventRateEstimators();
+                        for (int i = 0; i < r.length; i++) {
+                            RateHistory h = new RateHistory();
+                            rateHistories.put(r[i], h);
+                        }
+                    }
+                    rateHistories.get(msg.source).addSample(updateTimeMs, ((EventRateEstimator) msg.source).getFilteredEventRate());
+                }
+                if (logStatistics) {
+                    String s = String.format("%20d\t%20.2g", updateTimeMs, typedEventRateEstimator.getFilteredEventRate());
+                    tobiLogger.log(s);
+                }
             }
         }
     }
@@ -450,7 +475,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             }
 
         }
-        in=getEnclosedFilterChain().filterPacket(in);
+        in = getEnclosedFilterChain().filterPacket(in);
         long relativeTimeInFileMs = (in.getLastTimestamp() - dataFileTimestampStartTimeUs) / 1000;
 
         clockTimeMs = computeDisplayTime(relativeTimeInFileMs);
@@ -493,8 +518,12 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     @Override
     synchronized public void resetFilter() {
-        eventRateFilter.resetFilter();
-        rateHistory.clear();
+        typedEventRateEstimator.resetFilter();
+        if (rateHistories != null) {
+            for (RateHistory r : rateHistories.values()) {
+                r.clear();
+            }
+        }
         resetAccumulatedStatistics();
     }
 
@@ -611,7 +640,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
         // get screen width in screen pixels, subtract borders in screen pixels to find width of drawn chip area in screen pixels
         float /*h = drawable.getHeight(), */ w = drawable.getSurfaceWidth() - (2 * borders.leftRight * chip.getCanvas().getScale());
-        int ntypes = eventRateFilter.getNumCellTypes();
+        int ntypes = typedEventRateEstimator.getNumCellTypes();
         final int sx = chip.getSizeX(), sy = chip.getSizeY();
         final float yorig = .9f * sy, xpos = 0, ystep = Math.max(.03f * sy, 6), barh = .03f * sy;
 
@@ -621,13 +650,13 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         gl.glColor3f(1, 1, 1);
         int font = GLUT.BITMAP_9_BY_15;
         GLUT glut = chip.getCanvas().getGlut();
-        int nbars = eventRateFilter.isMeasureIndividualTypesEnabled() ? ntypes : 1;
+        int nbars = typedEventRateEstimator.isMeasureIndividualTypesEnabled() ? ntypes : 1;
         for (int i = 0; i < nbars; i++) {
-            final float rate = eventRateFilter.getFilteredEventRate(i);
+            final float rate = typedEventRateEstimator.getFilteredEventRate(i);
             float bary = yorig - (ystep * i);
             gl.glRasterPos3f(xpos, bary, 0);
             String s = null;
-            if (eventRateFilter.isMeasureIndividualTypesEnabled()) {
+            if (typedEventRateEstimator.isMeasureIndividualTypesEnabled()) {
                 s = String.format("Type %d: %10s", i, engFmt.format(rate) + " Hz");
             } else {
                 s = String.format("All %d types: %10s", ntypes, engFmt.format(rate) + " Hz");
@@ -653,7 +682,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         final float yorig = .7f * sy, xpos = 0;
         GLUT glut = chip.getCanvas().getGlut();
         gl.glRasterPos3f(xpos, yorig, 0);
-        int n=chip.getNumPixels();
+        int n = chip.getNumPixels();
         float cDvs = (float) accumulatedDVSEventCount;
         float cDvsOn = (float) accumulatedDVSOnEventCount;
         float cDvsOff = (float) accumulatedDVSOffEventCount;
@@ -662,9 +691,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         float t = 1e-6f * (float) accumulateTimeUs;
         String s = String.format("In %ss:\n%s DVS events (%seps, %seps/pix)\n  %s DVS ON events (%seps, %seps/pix)\n  %s DVS OFF events (%seps, %seps/pix)\n%s APS samples (%ssps)\n%s IMU samples (%ssps)",
                 engFmt.format(t),
-                engFmt.format(accumulatedDVSEventCount), engFmt.format(cDvs / t), engFmt.format(cDvs/t/n),
-                engFmt.format(accumulatedDVSOnEventCount), engFmt.format(cDvsOn / t), engFmt.format(cDvsOn/t/n),
-                engFmt.format(accumulatedDVSOffEventCount), engFmt.format(cDvsOff / t), engFmt.format(cDvsOff/t/n),
+                engFmt.format(accumulatedDVSEventCount), engFmt.format(cDvs / t), engFmt.format(cDvs / t / n),
+                engFmt.format(accumulatedDVSOnEventCount), engFmt.format(cDvsOn / t), engFmt.format(cDvsOn / t / n),
+                engFmt.format(accumulatedDVSOffEventCount), engFmt.format(cDvsOff / t), engFmt.format(cDvsOff / t / n),
                 engFmt.format(accumulatedAPSSampleCount / 2), engFmt.format(cAps / 2 / t), // divide by two for reset/signal reads
                 engFmt.format(accumulatedIMUSampleCount), engFmt.format(cImu / t));
         MultilineAnnotationTextRenderer.setScale(.2f);
@@ -677,8 +706,16 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         if (!showRateTrace) {
             return;
         }
+        if (rateHistories == null) {
+            return;
+        }
+
         synchronized (this) {
-            rateHistory.draw(drawable);
+            int i = 0;
+            for (RateHistory r : rateHistories.values()) {
+                r.draw(drawable, (int) Math.signum((i % 2) - .5f)); // alternate -1, +1
+                i++;
+            }
         }
     }
 
@@ -874,4 +911,5 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         putInt("maxSamples", maxSamples);
         getSupport().firePropertyChange("maxSamples", old, maxSamples);
     }
+
 }

@@ -111,7 +111,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * The offset of the marked position in events, to allow users to mark a
      * position before they hit the mark button
      */
-    public int MARK_OFFSET_EVENTS = 30000;
+    public int MARK_OFFSET_EVENTS = 0;
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     static Logger log = Logger.getLogger("net.sf.jaer.eventio");
