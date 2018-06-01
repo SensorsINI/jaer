@@ -83,9 +83,9 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
         IMUSample imuSample = e.getImuSample();
         int t_current = imuSample.getTimestampUs();
         float accX = imuSample.getAccelX();
-        float accY = imuSample.getAccelY();
+        float accY = -imuSample.getAccelY();
         float accZ = imuSample.getAccelZ();
-        float yawRateDpsSample = imuSample.getGyroYawY(); // update pan tilt roll state from IMU
+        float yawRateDpsSample = -imuSample.getGyroYawY(); // update pan tilt roll state from IMU
         float tiltRateDpsSample = imuSample.getGyroTiltX();
         float rollRateDpsSample = imuSample.getGyroRollZ();
         //log.info(cameraAccRotVel.toString());
@@ -151,10 +151,10 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
 
     private class CameraPose {
 
-        float[] x = new float[3], 
+        float[] x = new float[3]; 
         float[] u = new float[3];
         float[] phi = new float[3];
-        Matrix3 phiRotMat;
+        Matrix3 phiRotMat = new Matrix3();
         
 
         @Override
@@ -170,6 +170,20 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
             phi[2]=a[2];
             //Set rotation matrix
             
+            float[] b=new float[9];
+            double alpha=Math.toRadians(phi[2]); //alpha belons to the z-axis
+            double beta=Math.toRadians(phi[1]); //beta belongs to the y-axis
+            double gamma=Math.toRadians(phi[0]); //beta belongs to the x-axis
+            b[0]=(float)(Math.cos(alpha)*Math.cos(beta));
+            b[1]=(float)((Math.cos(alpha)*Math.sin(beta)*Math.sin(gamma))-(Math.sin(alpha)*Math.cos(gamma)));
+            b[2]=(float)((Math.cos(alpha)*Math.sin(beta)*Math.cos(gamma))+(Math.sin(alpha)*Math.sin(gamma)));
+            b[3]=(float)(Math.sin(alpha)*Math.cos(beta));
+            b[4]=(float)((Math.sin(alpha)*Math.sin(beta)*Math.sin(gamma))+(Math.cos(alpha)*Math.cos(gamma)));
+            b[5]=(float)((Math.sin(alpha)*Math.sin(beta)*Math.cos(gamma))-(Math.cos(alpha)*Math.sin(gamma)));
+            b[6]=(float)(-Math.sin(beta));
+            b[7]=(float)(Math.cos(beta)*Math.sin(gamma));
+            b[8]=(float)(Math.cos(beta)*Math.cos(gamma));
+            phiRotMat.setValuesArray(b);  
         }
         public float[] getOrientation() {
             float[] a = new float[3];
@@ -375,7 +389,7 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
         putFloat("cameraFocalLengthMm", cameraFocalLengthMm);
     }
     
-    pvrivate class Matrix3 {
+    private class Matrix3 {
         float e11;
         float e12;
         float e13;
@@ -441,7 +455,7 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
             a[0]=e11*v[0]+e12*v[1]+e13*v[2];
             a[1]=e21*v[0]+e22*v[1]+e23*v[2];
             a[2]=e31*v[0]+e32*v[1]+e33*v[3];
-            return 0;
+            return a;
         }
     }
 }
