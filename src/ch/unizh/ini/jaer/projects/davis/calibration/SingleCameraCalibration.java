@@ -34,8 +34,6 @@ import com.jogamp.opengl.GLAutoDrawable;
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
 import java.awt.Cursor;
-import javax.swing.JFrame;
-import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -49,6 +47,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.TextRendererScale;
+
 import nu.pattern.OpenCV;
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
@@ -284,12 +283,17 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             return src;
         }
         // FloatPointer ip = new FloatPointer(src);
-        Mat input = new Mat();
+        Mat input = new Mat(1, src.length, CvType.CV_32F);
         input.put(0, 0, src);
         input.convertTo(input, CvType.CV_8U, 255, 0);
         Mat img = input.reshape(0, sy);
         Mat undistortedImg = new Mat();
-        Imgproc.undistort(img, undistortedImg, cameraMatrix, distortionCoefs);
+        try {
+            Imgproc.undistort(img, undistortedImg, cameraMatrix, distortionCoefs);            
+        } catch(RuntimeException e) {
+            log.warning(e.toString());
+            return src;
+        }
         Mat imgOut8u = new Mat(sy, sx, CvType.CV_8UC3);
         Imgproc.cvtColor(undistortedImg, imgOut8u, Imgproc.COLOR_GRAY2RGB);
         Mat outImgF = new Mat(sy, sx, CvType.CV_32F);
@@ -363,7 +367,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                     y = h * rectangleHeightMm;
                     for (int w = 0; w < patternWidth; w++) {
                         x = w * rectangleWidthMm;
-                        objectPoints.put(3 * ((patternWidth * h) + w), 0, x, y, 0); // z=0 for object points
+                        objectPoints.put((patternWidth * h) + w, 0, x, y, 0); // z=0 for object points
                     }
                 }
                 allObjectPoints.add(objectPoints);
@@ -377,7 +381,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 //                for (int n = 0; n < imageCounter; n++) {
 //                    System.out.println("n=" + n + " " + allImagePoints.get(n).toString());
 //                    for (int i = 0; i < corners.rows(); i++) {
-//                        System.out.println(allImagePoints.get(n).getFloatBuffer().get(2 * i) + " " + allImagePoints.get(n).getFloatBuffer().get(2 * i + 1)+" | "+allObjectPoints.get(n).getFloatBuffer().get(3 * i) + " " + allObjectPoints.get(n).getFloatBuffer().get(3 * i + 1) + " " + allObjectPoints.get(n).getFloatBuffer().get(3 * i + 2));
+//                        System.out.println(allImagePoints.get(n).get(i,0)[0] + " " + allImagePoints.get(n).get(i,0)[1]+" | "+ allObjectPoints.get(n).get(i,0)[0] + " " + allObjectPoints.get(n).get(i,0)[1] + " " + allObjectPoints.get(n).get(i,0)[2]);
 //                    }
 //                }
             } else {
@@ -622,8 +626,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         } finally {
             setCursor(Cursor.getDefaultCursor());
         }
-        calibrated = true;
         synchronized (this) {
+            calibrated = true;
             this.cameraMatrix = cameraMtx;
             this.distortionCoefs = distCoefs;
             this.rotationVectors = rotationVecs;
