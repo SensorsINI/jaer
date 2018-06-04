@@ -168,9 +168,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public void doStopLogging() {
         setLogStatistics(false);
     }
-    private long lastUpdateTime = 0;
-    private final int MAX_WARNINGS_AND_UPDATE_INTERVAL = 100;
-    private int warningCount = 0;
+//    private long lastUpdateTime = 0;
+//    private final int MAX_WARNINGS_AND_UPDATE_INTERVAL = 100;
+//    private int warningCount = 0;
 
     /**
      * make event rate statistics be computed throughout a large package which
@@ -198,14 +198,14 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     }
 
     // make following global to cover all histories for common scale for plots
-    long rateHistoriesStartTimeMs = Long.MAX_VALUE, rateHistoriesEndTimeMs = Long.MIN_VALUE;
-    float rateHistoriesMinRate = Float.MAX_VALUE, rateHistoriesMaxRate = Float.MIN_VALUE;
+    private long rateHistoriesStartTimeMs = Long.MAX_VALUE, rateHistoriesEndTimeMs = Long.MIN_VALUE;
+    private float rateHistoriesMinRate = Float.MAX_VALUE, rateHistoriesMaxRate = Float.MIN_VALUE;
 
     private class RateHistory {
 
-        LinkedList<RateSamples> rateSamples = new LinkedList();
-        TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.BOLD, 24));
-        long lastTimeAdded = Long.MIN_VALUE;
+        private LinkedList<RateSamples> rateSamples = new LinkedList();
+        private TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.BOLD, 24));
+        private long lastTimeAdded = Long.MIN_VALUE;
 
         synchronized void clear() {
             rateSamples.clear();
@@ -213,6 +213,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             rateHistoriesEndTimeMs = Long.MIN_VALUE;
             rateHistoriesMinRate = Float.MAX_VALUE;
             rateHistoriesMaxRate = Float.MIN_VALUE;
+            lastTimeAdded = Long.MIN_VALUE;
         }
 
         synchronized void addSample(long time, float rate) {
@@ -406,16 +407,16 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 // for large files, the relativeTimeInFileMs wraps around after 2G us and then every 4G us
                 long relativeTimeInFileMs = (msg.timestamp - dataFileTimestampStartTimeUs) / 1000;
                 updateTimeMs = computeDisplayTime(relativeTimeInFileMs);
-                long dt = (updateTimeMs - lastUpdateTime);
+//                long dt = (updateTimeMs - lastUpdateTime);
                 //        if (dt > eventRateFilter.getEventRateTauMs() * 2) {  // TODO hack to get around problem that sometimes the wrap preceeds the actual data
                 //            log.warning("not adding this RateHistory point because dt is too big, indicating a big wrap came too soon");
                 //            return;
                 //        }
-                if (((updateTimeMs < lastUpdateTime) && (warningCount < MAX_WARNINGS_AND_UPDATE_INTERVAL)) || ((warningCount % MAX_WARNINGS_AND_UPDATE_INTERVAL) == 0)) {
-                    warningCount++;
-                    log.warning("Negative delta time detected; dt=" + dt);
-                }
-                lastUpdateTime = updateTimeMs;
+//                if (((updateTimeMs < lastUpdateTime) && (warningCount < MAX_WARNINGS_AND_UPDATE_INTERVAL)) || ((warningCount % MAX_WARNINGS_AND_UPDATE_INTERVAL) == 0)) {
+//                    warningCount++;
+//                    log.warning("Negative delta time detected; dt=" + dt);
+//                }
+//                lastUpdateTime = updateTimeMs;
 
                 if (showRateTrace) {
                     if (rateHistories == null || typedEventRateEstimator.getNumCellTypes() != rateHistories.values().size()) {
