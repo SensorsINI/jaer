@@ -120,9 +120,11 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
         textRenderer.beginRendering(sx, sy);
         gl.glColor4f(1, 1, 0, .7f);
         textRenderer.draw(cameraPose.toString(), 1, sy / 2);
-        textRenderer.draw(cameraAccRotVel.toString(), 1, (sy/2-10));
+        //stextRenderer.draw(cameraAccRotVel.toString(), 1, (sy/2-10));
         textRenderer.endRendering();
         
+        
+        /*
         //Draw the pitching orientation
         Point2D front = new Point2D.Float();
         front.setLocation(10+10*Math.sin(Math.toRadians(cameraPose.getOrientation()[1])), 200+10*Math.sin(Math.toRadians(cameraPose.getOrientation()[1])));
@@ -131,7 +133,8 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
         gl.glBegin(GL2.GL_LINES);
         gl.glVertex2d(front.getX() - 10, front.getY());
         gl.glVertex2d(back.getX() + 10, back.getY());
-        gl.glEnd();
+        gl.glEnd
+        */
     }
 
     /**
@@ -159,8 +162,7 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
 
         @Override
         public String toString() {
-            return String.format("CameraPose: [x,y,z]=[%.2f,%.2f,%.2f], [ux,uy,uz]=[%.2f,%.2f,%.2f]",
-                    x[0], x[1], x[2],
+            return String.format("CameraPose: [orientation]=[%.2f,%.2f,%.2f]",
                     phi[0], phi[1], phi[2]);
         }
         public void setOrientation( float[] a) {
@@ -169,7 +171,9 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
             phi[1]=a[1];
             phi[2]=a[2];
             //Set rotation matrix
-            
+            //This transformation matrix takes a vector from the body frame (which
+            //is rotated with alpha, beta, gamma) and gives back its representation
+            //in the fixed world frame. 
             float[] b=new float[9];
             double alpha=Math.toRadians(phi[2]); //alpha belons to the z-axis
             double beta=Math.toRadians(phi[1]); //beta belongs to the y-axis
