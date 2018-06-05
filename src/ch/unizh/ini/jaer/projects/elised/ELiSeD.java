@@ -215,9 +215,9 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
     @Override
     synchronized public void resetFilter() {
         renderer = (AEChipRenderer) chip.getRenderer();
-//        if (renderer != null) { // might be null on startup, if initFilter is called from AEChip constructor
+        if (renderer != null) { // might be null on startup, if initFilter is called from AEChip constructor
             renderer.setExternalRenderer(false);
-//        }
+        }
         setAnnotateAlpha(annotateAlpha);
 
         if (filterChain != null) {
