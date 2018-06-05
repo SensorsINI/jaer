@@ -1,7 +1,6 @@
 package ch.unizh.ini.jaer.projects.elised;
 
 // authors: much copy-paste from Jonas Strubels' c++ code; Susi; Christian
-
 import ch.unizh.ini.jaer.projects.elised.dynamicBuffer.RemovalFunction;
 import ch.unizh.ini.jaer.projects.elised.dynamicBuffer.BufferSizeEstimator;
 import ch.unizh.ini.jaer.projects.elised.dynamicBuffer.ResizeableRingbuffer;
@@ -56,8 +55,7 @@ to do at cleanup:
         but a few more pixels with gradient.
     - same for "orAddIfDensityIncreases" -- always switch on
         
-*/
-
+ */
 @Description("Event based line segment detection at described in [1] C. Brandli, J. Strubel, S. Keller, D. Scaramuzza, and T. Delbruck, “ELiSeD – An Event-Based Line Segment Detector,” in IEEE Conf. on Event Based Communication, Control and Signal Processing 2016 (EBCCSP2016), Krakow, Poland, 2016, p. (accepted). ")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class ELiSeD extends EventFilter2D implements FrameAnnotater {
@@ -65,26 +63,26 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
     //=== GLOBAL VARIABLES ===
     private int sx, sy;                         //width and heigth of the dvs, as well as of the pixelmap and timestampMap
     private int sobelWidth;
-    int[] onTimestampMap;   
+    int[] onTimestampMap;
     int[] offTimestampMap;
     private float[] eventrateMap;     // first index: to which resolution the map belongs; second index: the actual map
     //private float[][] offEventrateMap;
     private int[] filterX, filterY;     //sobel filters: small or big
-    
+
     private long lineSegmentID;
     private long eventCountLogging;
     private long eventCountDecay;
     private long latestTS;
 
     //private HashMap<LineSupport, HashSet<LevelLinePixel>> lineSupport;
-    private HashSet<LineSupport> lineSupportRegions;             
+    private HashSet<LineSupport> lineSupportRegions;
     private HashSet<LineSupport> splitCandidates;
-    
+
     private ResizeableRingbuffer<Integer> indexbuffer;
     private RemovalFunction<Integer> removalFun;        //called at resize for every invalidated pixel
     //private TrailingRingBuffer<Integer> indexbuffer;
     private LevelLinePixel[] pixelmap;                   // "LevelLinePixel[i][x][y]" = LevelLinePixel_i[x+sx*y]; use  mapIndex(int x, int y)
-    
+
     public ATanHelper atanHelper;
     private FilterChain filterChain;
     private final BackgroundActivityFilter backgroundFilter;
@@ -98,7 +96,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
     //private static int maxAge = 100000;   //only used together with the timestamp gradient; maximum time interval between current event and event in 3x3/5x5 neighbourhood for the latter to be used in gradient calculations
     private static final float KERNEL_SCALING_FACTOR3 = 1.0f / 8.0f;   //assuming a 3^2 sobel filter; no theory behind this (yet)
     private static final float KERNEL_SCALING_FACTOR5 = 1.0f / 96.0f;
-    
+
     //filter kernels
     public static int[] sobel3X = {1, 0, -1, 2, 0, -2, 1, 0, -1};
     public static int[] sobel3Y = {1, 2, 1, 0, 0, 0, -1, -2, -1};
@@ -125,30 +123,34 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
     private boolean useWideSobelKernel = getBoolean("useWideSobelKernel", true);
     private boolean useTimestampGradient = getBoolean("useTimestampGradient", true);
     private boolean predictTimestamps = getBoolean("predictTimestamps", true);
-    
+
     private boolean blockEvents = getBoolean("blockEvents", false);
     private boolean annotateAngles = getBoolean("annotateAngles", false);
     private boolean annotateWidth = getBoolean("annotateWidth", false);
     private boolean annotateLineSegments = getBoolean("annotateLineSegments", true);
-    private RenderingSource renderSource = RenderingSource.valueOf(getString("renderSource","SEGMENTS"));
-    private RenderingColor renderColor = RenderingColor.valueOf(getString("renderColor","ID")); 
-    private float annotateAlpha = getFloat("annotateAlpha",0.5f);
+    private RenderingSource renderSource = RenderingSource.valueOf(getString("renderSource", "SEGMENTS"));
+    private RenderingColor renderColor = RenderingColor.valueOf(getString("renderColor", "ID"));
+    private float annotateAlpha = getFloat("annotateAlpha", 0.5f);
 
     private boolean loggingEnabled = getBoolean("logingEnabled", false);
     private int loggingEventCount = getInt("loggingEventCount", 5000);
     private boolean timestampIncludedInEachLog = getBoolean("timestampIncludedInEachLog", false);
-    private boolean dynamicBuffer = getBoolean("dynamicBuffer", false);    
+    private boolean dynamicBuffer = getBoolean("dynamicBuffer", false);
     private final int mapDecayEventCount = getInt("mapDecayEventCount", 200);
 
+    public static enum RenderingSource {
+        BUFFER, ARRAY, SUPPORT, SEGMENTS, NONE
+    };
 
-    public static enum RenderingSource{BUFFER, ARRAY, SUPPORT, SEGMENTS, NONE};
-    public static enum RenderingColor{ORIENTATION, ID};
-    
+    public static enum RenderingColor {
+        ORIENTATION, ID
+    };
+
     public ELiSeD(AEChip chip) {
         super(chip);
         this.chip = chip;
         renderer = (AEChipRenderer) chip.getRenderer();
-        
+
         filterChain = new FilterChain(chip);
         backgroundFilter = new BackgroundActivityFilter(chip);
         bufferSizeEstimator = new BufferSizeEstimator(this.chip);
@@ -156,7 +158,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         filterChain.add(bufferSizeEstimator);
         setEnclosedFilterChain(filterChain);
         initFilter();
-        
+
         setPropertyTooltip("basic", "mapDecayEventCount", "The number of events processed between \n"
                 + "two times of decay of the gradient maps.");
         setPropertyTooltip("basic", "minLineSupport", "All line segments with a support bigger than this will"
@@ -180,27 +182,27 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip("annotation", "renderColor", "Determines the method by which the pixels are colored");
         setPropertyTooltip("annotation", "renderSource", "Determines which pixels should be rendered");
         setPropertyTooltip("annotation", "annotateAlpha", "Sets the transparency for the annotated pixels. Does not work for DVS128");
-        
+
         setPropertyTooltip("merging / splitting", "splittingActive", "Split segments that are no real segments; e.g. when two support regions merge where they"
                 + " shouldn't. Iterates over all segments once per packet.");
         setPropertyTooltip("merging / splitting", "widthToSplit", "If the ellipse fit through a support region is wider than this, split the segment.");
         setPropertyTooltip("merging / splitting", "mergeOnlyIfLinesAligned", "If the distance between the center of the smaller segment and the line "
                 + "through the bigger segment is bigger than maxDistance, don't merge the segments.");
         setPropertyTooltip("merging / splitting", "maxDistance", "Only important if mergeOnlyIfLinesAligned is true.");
-        
+
         setPropertyTooltip("extras", "addOnlyIfDensityHigh", "If pixel density per ellipse area would "
-                 + "be below minDensity afterwards, the pixel will not be added.");
+                + "be below minDensity afterwards, the pixel will not be added.");
         setPropertyTooltip("extras", "minDensity", "Only important if addOnlyIfDensityHigh is true.");
         setPropertyTooltip("extras", "minSupportForDensityTest", "Density criterion is considered only if a segment is bigger than this.");
         setPropertyTooltip("extras", "dynamicBuffer", "Resizes the buffed according to the spatial contrast");
         setPropertyTooltip("extras", "decayFactor", "For calculating the rate gradient. 0.95 to 0.96 seem ok.");
         setPropertyTooltip("extras", "useTimestampGradient", "Use a pixel gradient calculated on timestamp values. Otherwise: Gradient on nr of recent events.");
-        
+
         setPropertyTooltip("logging", "loggingEnabled", "Enables logging of the line segments for analysis in Matlab");
         setPropertyTooltip("logging", "loggingEventCount", "Sets the logging frequency. After given number of events, the segments are logged");
         setPropertyTooltip("logging", "timestampIncludedInEachLog", "All logged rows have the same format, except for header. Good for use with R.");
         setPropertyTooltip("logging", "doLogNow", "Manually trigger the log of the present line segments");
-    
+
         setPropertyTooltip("experimenting", "predictTimestamps", "if one timestamp doesn't exist yet, take the "
                 + "timestamp from the opposite site.");
         setPropertyTooltip("experimenting", "orAddIfDensityIncreases", "add pixel also if density is not high enough anymore but would increase");
@@ -213,42 +215,49 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
     @Override
     synchronized public void resetFilter() {
         renderer = (AEChipRenderer) chip.getRenderer();
-        renderer.setExternalRenderer(false);
+//        if (renderer != null) { // might be null on startup, if initFilter is called from AEChip constructor
+            renderer.setExternalRenderer(false);
+//        }
         setAnnotateAlpha(annotateAlpha);
-        
-        filterChain.reset();
+
+        if (filterChain != null) {
+            filterChain.reset();
+        }
 
         sx = chip.getSizeX();
         sy = chip.getSizeY();
-        
+
         lineSegmentID = 0;
         eventCountLogging = 0;
         eventCountDecay = 0;
         latestTS = 0;
         indexbuffer = new ResizeableRingbuffer(Integer.class, bufferSizeEstimator.getMaxSize(), bufferSize);
         //indexbuffer = new TrailingRingBuffer(Integer.class,bufferSize);
-        if(useTimestampGradient){
-            onTimestampMap = new int[sx*sy];        
-            offTimestampMap = new int[sx*sy];}
-        else{
-            eventrateMap = new float[sx*sy];}
-            //offEventrateMap = new float[resolutions.length][];
-        pixelmap = new LevelLinePixel[sx*sy];
-        for(int y = 0; y<sy; y++){
-                for(int x = 0; x<sx; x++){
-                    int idx = x + sx * y;
-                    pixelmap[idx] = new LevelLinePixel(x,y);
-                }
+        if (useTimestampGradient) {
+            onTimestampMap = new int[sx * sy];
+            offTimestampMap = new int[sx * sy];
+        } else {
+            eventrateMap = new float[sx * sy];
+        }
+        //offEventrateMap = new float[resolutions.length][];
+        pixelmap = new LevelLinePixel[sx * sy];
+        for (int y = 0; y < sy; y++) {
+            for (int x = 0; x < sx; x++) {
+                int idx = x + sx * y;
+                pixelmap[idx] = new LevelLinePixel(x, y);
             }
-        
-        if (!(lineSupportRegions==null))
+        }
+
+        if (!(lineSupportRegions == null)) {
             lineSupportRegions.clear();
-        
-        removalFun = new RemovalFunction<Integer>(){
-                @Override
-                public void remove(Integer index) {
-                   removeEvent(index);}
-            };
+        }
+
+        removalFun = new RemovalFunction<Integer>() {
+            @Override
+            public void remove(Integer index) {
+                removeEvent(index);
+            }
+        };
 
         if (useWideSobelKernel) {
             filterX = sobel5X;
@@ -269,24 +278,25 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
 //        lineSupport = new HashMap();
         lineSupportRegions = new HashSet();
         splitCandidates = new HashSet();
-        
+
         resetFilter();
-        
+
         try {
             setupLogging();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-    
+
     public void setupLogging() throws IOException {
-        if(loggingEnabled){
+        if (loggingEnabled) {
             logger.setEnabled(true);
             logger.setAbsoluteTimeEnabled(true);
-            if(timestampIncludedInEachLog)
-                {logger.setHeaderLine(" ts + ID + creation + cX + cY + mas + length + width + orientation + eX1 + eY1 + eX2 + eY2");}
-            else{
-                logger.setHeaderLine(" ID + creation + cX + cY + mas + length + width + orientation + eX1 + eY1 + eX2 + eY2");}
+            if (timestampIncludedInEachLog) {
+                logger.setHeaderLine(" ts + ID + creation + cX + cY + mas + length + width + orientation + eX1 + eY1 + eX2 + eY2");
+            } else {
+                logger.setHeaderLine(" ID + creation + cX + cY + mas + length + width + orientation + eX1 + eY1 + eX2 + eY2");
+            }
         }
     }
 
@@ -295,7 +305,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         if (!isFilterEnabled()) {
             return in;
         }
-        
+
         if (getEnclosedFilter() != null) {
             in = getEnclosedFilter().filterPacket(in);
         }
@@ -303,15 +313,16 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
             in = getEnclosedFilterChain().filterPacket(in);
         }
 
-        if(dynamicBuffer){
+        if (dynamicBuffer) {
             int newBufferSize = bufferSizeEstimator.getBufferSizeEstimate(bufferSize);
-            if (newBufferSize != getBufferSize())
+            if (newBufferSize != getBufferSize()) {
                 setBufferSize(newBufferSize);
+            }
         }
-        
+
         for (BasicEvent e : in) {
             PolarityEvent ev = (PolarityEvent) e;
-            if (e.isSpecial() || e.isFilteredOut() || e.x<0 || e.x >= sx || e.y<0|| e.y >= sy) {
+            if (e.isSpecial() || e.isFilteredOut() || e.x < 0 || e.x >= sx || e.y < 0 || e.y >= sy) {
                 continue;
             }
             latestTS = ev.timestamp;
@@ -319,68 +330,72 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
             if (blockEvents) {
                 e.setFilteredOut(true);
             }
-            if(eventCountDecay >= mapDecayEventCount){
-                if(!useTimestampGradient){
-                    decayMap(eventrateMap, getDecayFactor());}
+            if (eventCountDecay >= mapDecayEventCount) {
+                if (!useTimestampGradient) {
+                    decayMap(eventrateMap, getDecayFactor());
+                }
                 //decayMap(offEventrateMap[i], getDecayFactor());
                 eventCountDecay = 0;
             }
             eventCountDecay++;
-            
-            if(loggingEnabled){
-                if(eventCountLogging >= loggingEventCount){ // :)
-                    if(timestampIncludedInEachLog)
+
+            if (loggingEnabled) {
+                if (eventCountLogging >= loggingEventCount) { // :)
+                    if (timestampIncludedInEachLog) {
                         writeRLog(logger, ev.timestamp);
-                    else
+                    } else {
                         writeLog(logger, ev.timestamp);
+                    }
                     eventCountLogging = 0;
                 }
                 eventCountLogging++;
             }
         }
-        if(splittingActive)checkSupport();
+        if (splittingActive) {
+            checkSupport();
+        }
 
         drawPixels();
         //if(loggingEnabled)writeLog(in.getLastTimestamp());
         return in;
     }
-    
-    public void writeLog(TobiLogger logr, long ts){
-        logr.addComment("*packetTS: "+ts);
+
+    public void writeLog(TobiLogger logr, long ts) {
+        logr.addComment("*packetTS: " + ts);
         for (LineSupport ls : lineSupportRegions) {
             if (ls == null || !ls.isLineSegment()) {
                 continue;
             }
-             logSupport(logr, ls);
+            logSupport(logr, ls);
         }
     }
-    
-    public void logSupport(TobiLogger logr, LineSupport ls){
+
+    public void logSupport(TobiLogger logr, LineSupport ls) {
         ls.updateEndpoints();
-        String msgR = ls.getId()+" "+ ls.getCreationTime() + " " +ls.getCenterX() + " " 
-                + ls.getCenterY() + " " + ls.getMass() + " " + ls.getLength() + " " + ls.getWidth() + " "+ ls.getOrientation()
-                +" "+ls.getEndpointX1()+" "+ls.getEndpointY1()+" "+ls.getEndpointX2()+" "+ls.getEndpointY2()+"\n";
-        logr.log(msgR);       
+        String msgR = ls.getId() + " " + ls.getCreationTime() + " " + ls.getCenterX() + " "
+                + ls.getCenterY() + " " + ls.getMass() + " " + ls.getLength() + " " + ls.getWidth() + " " + ls.getOrientation()
+                + " " + ls.getEndpointX1() + " " + ls.getEndpointY1() + " " + ls.getEndpointX2() + " " + ls.getEndpointY2() + "\n";
+        logr.log(msgR);
     }
-    
+
     // For reading out with R; R doesn't stomach well single lines with timestamps.
-    public void writeRLog(TobiLogger logr, long ts){
+    public void writeRLog(TobiLogger logr, long ts) {
         for (LineSupport ls : lineSupportRegions) {
             if (ls == null || !ls.isLineSegment()) {
                 continue;
             }
             ls.updateEndpoints();
-            String msgR = ts+" "+ls.getId()+" "+ ls.getCreationTime() + " " +ls.getCenterX() + " " 
-                + ls.getCenterY() + " " + ls.getMass() + " " + ls.getLength() + " " + ls.getWidth() + " "+ ls.getOrientation()
-                +" "+ls.getEndpointX1()+" "+ls.getEndpointY1()+" "+ls.getEndpointX2()+" "+ls.getEndpointY2()+"\n";
-            logr.log(msgR); 
+            String msgR = ts + " " + ls.getId() + " " + ls.getCreationTime() + " " + ls.getCenterX() + " "
+                    + ls.getCenterY() + " " + ls.getMass() + " " + ls.getLength() + " " + ls.getWidth() + " " + ls.getOrientation()
+                    + " " + ls.getEndpointX1() + " " + ls.getEndpointY1() + " " + ls.getEndpointX2() + " " + ls.getEndpointY2() + "\n";
+            logr.log(msgR);
         }
     }
-    
-    
+
     public void stopLogging(TobiLogger logr) {
-        logr.setEnabled(false);}
-        
+        logr.setEnabled(false);
+    }
+
     private void checkSupport() {
         splitCandidates.clear();
         for (LineSupport ls : lineSupportRegions) {
@@ -394,23 +409,27 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
             split(ls);
         }
     }
-    
-    private void decayMap(float[] arr, float factor){
-        for(int j = 0; j < arr.length; j++){
-            arr[j] = arr[j]*factor;
+
+    private void decayMap(float[] arr, float factor) {
+        for (int j = 0; j < arr.length; j++) {
+            arr[j] = arr[j] * factor;
         }
     }
 
     public <c extends PolarityEvent> boolean addEvent(c e) {
-        if(useTimestampGradient){
-            if (e.getType() == 0){offTimestampMap[mapIndex(e.x, e.y)] = e.timestamp;}
-            else{onTimestampMap[mapIndex(e.x, e.y)] = e.timestamp;}}
-        else{
-             //if (e.getType() == 0) {   //off
-            eventrateMap[mapIndex(e.x, e.y)] += (float)e.getPolaritySignum();}
-            //} else {
-            //        onEventrateMap[i][mapIndex(e.x, e.y)] += 1.0f;
-            //}
+        if (useTimestampGradient) {
+            if (e.getType() == 0) {
+                offTimestampMap[mapIndex(e.x, e.y)] = e.timestamp;
+            } else {
+                onTimestampMap[mapIndex(e.x, e.y)] = e.timestamp;
+            }
+        } else {
+            //if (e.getType() == 0) {   //off
+            eventrateMap[mapIndex(e.x, e.y)] += (float) e.getPolaritySignum();
+        }
+        //} else {
+        //        onEventrateMap[i][mapIndex(e.x, e.y)] += 1.0f;
+        //}
         LevelLinePixel llp;
         llp = bufferEvent(e);
         assignSupportRegion(llp);
@@ -426,12 +445,11 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
      The oldest pixel is the one that came in indexbuffer.size events before.
     
      Current possible level line angles: )-180°,180°]
-    */
-    
+     */
     public LevelLinePixel bufferEvent(PolarityEvent e) {
         int radius = sobelWidth / 2;
         // removes all references to the oldest buffered pixel; llp is overwritten later on
-        if(indexbuffer.isFull()){
+        if (indexbuffer.isFull()) {
             //int idx = (int) indexbuffer.get();
             int idx = (int) indexbuffer.take();
             removeEvent(idx);
@@ -442,7 +460,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         llp.addEvent(e);
         if (!isBoundaryPixel(sx, sy, e.x, e.y, radius)) {
             // calculate gradient and delete llp from its old support, if the angle doesn't fit anymore
-            if(llp.assigned()){
+            if (llp.assigned()) {
 //                LineSupport oldSup = llp.getSupport();
                 removePixelFromSupport(llp);
                 assignGradient(llp, e.getType(), e.timestamp, e.x, e.y);
@@ -456,11 +474,10 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
 //                         // do addPixelToSupport(llp,oldSup);
 //                    }
 //                    }
-            } else{
+            } else {
                 assignGradient(llp, e.getType(), e.timestamp, e.x, e.y);
             }
-        }
-        else {
+        } else {
             //stops here and returns pixel without orientation (llp is boundary pixel and can't have a support)
         }
         return llp;
@@ -501,7 +518,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
                                 || ((!distinguishOpposingGradients) && (angleDiff % 180 < getToleranceAngle() || angleDiff % 180 > 180 - getToleranceAngle()))) {
                             candidates[nrCandidates] = neighbor;
                             nrCandidates++;
-                            if(neighbor.assigned()){
+                            if (neighbor.assigned()) {
                                 if (bestFit == null) {
                                     bestFit = neighbor.getSupport();
                                 } else if (bestFit.getCreationTime() > neighbor.getSupport().getCreationTime()) {
@@ -513,117 +530,125 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
                 }
             }
         }
-        if(nrCandidates == 0){
+        if (nrCandidates == 0) {
             //if there is not at least one candidate in the neighborhood of the pixel, no line segment should be created
             return;
         }
-        if(bestFit == null){
+        if (bestFit == null) {
             //if none of the neighboring pixels is the best, the pixel becomes the bestFit
-            if(pixel.assigned()){
+            if (pixel.assigned()) {
                 bestFit = pixel.getSupport();
-            }else{
-                if(minNeighbors <= nrCandidates){
+            } else {
+                if (minNeighbors <= nrCandidates) {
                     bestFit = newSupport(pixel);
-                }else{
+                } else {
                     return;
                 }
             }
-        }else{
+        } else {
             //assign pixel to bestFit
-            if(pixel.assigned()){
+            if (pixel.assigned()) {
                 LineSupport other = pixel.getSupport();
                 float newDen = bestFit.getDensityCombined(pixel.getSupport());
-                if(!(mergeOnlyIfLinesAligned && distanceSegmentToSegment(bestFit, pixel.getSupport()) > maxDistance)){
-                    if (!addOnlyIfDensityHigh || Math.max(bestFit.getMass(), other.getMass()) < minSupportForDensityTest 
-                            || newDen > minDensity || (orAddIfDensityIncreases && newDen > Math.max(bestFit.getDensity(), other.getDensity())) ){
+                if (!(mergeOnlyIfLinesAligned && distanceSegmentToSegment(bestFit, pixel.getSupport()) > maxDistance)) {
+                    if (!addOnlyIfDensityHigh || Math.max(bestFit.getMass(), other.getMass()) < minSupportForDensityTest
+                            || newDen > minDensity || (orAddIfDensityIncreases && newDen > Math.max(bestFit.getDensity(), other.getDensity()))) {
                         merge(bestFit, pixel.getSupport());
                     }
                 }
-            }else{
+            } else {
                 float newDen = bestFit.getDensityAdded(pixel);
-                if((!addOnlyIfDensityHigh) || !(bestFit.getMass() >= minSupportForDensityTest) || 
-                        newDen >= minDensity || (orAddIfDensityIncreases && newDen > bestFit.getDensity()) )
+                if ((!addOnlyIfDensityHigh) || !(bestFit.getMass() >= minSupportForDensityTest)
+                        || newDen >= minDensity || (orAddIfDensityIncreases && newDen > bestFit.getDensity())) {
                     addPixelToSupport(pixel, bestFit);
+                }
             }
         }
-        
+
         //iterate over all candidates and assign segment
         for (int i = 0; i < nrCandidates; i++) {
-            if(bestFit != candidates[i].getSupport()){
+            if (bestFit != candidates[i].getSupport()) {
                 if (candidates[i].assigned()) {
                     //merge two support regions
                     LineSupport other = candidates[i].getSupport();
                     float newDen = bestFit.getDensityCombined(candidates[i].getSupport());
-                    if(!(mergeOnlyIfLinesAligned && distanceSegmentToSegment(bestFit, candidates[i].getSupport()) > maxDistance)){
-                        if (!addOnlyIfDensityHigh || Math.max(bestFit.getMass(), other.getMass()) < minSupportForDensityTest 
-                            || newDen > minDensity || (orAddIfDensityIncreases && newDen > Math.max(bestFit.getDensity(), other.getDensity())) )
+                    if (!(mergeOnlyIfLinesAligned && distanceSegmentToSegment(bestFit, candidates[i].getSupport()) > maxDistance)) {
+                        if (!addOnlyIfDensityHigh || Math.max(bestFit.getMass(), other.getMass()) < minSupportForDensityTest
+                                || newDen > minDensity || (orAddIfDensityIncreases && newDen > Math.max(bestFit.getDensity(), other.getDensity()))) {
                             merge(bestFit, candidates[i].getSupport());
+                        }
                     }
-                    
+
                 } else {
                     float newDen = bestFit.getDensityAdded(candidates[i]);
-                    if((!addOnlyIfDensityHigh) || !(bestFit.getMass() >= minSupportForDensityTest) || 
-                        newDen >= minDensity || (orAddIfDensityIncreases && newDen > bestFit.getDensity()))
+                    if ((!addOnlyIfDensityHigh) || !(bestFit.getMass() >= minSupportForDensityTest)
+                            || newDen >= minDensity || (orAddIfDensityIncreases && newDen > bestFit.getDensity())) {
                         addPixelToSupport(candidates[i], bestFit);
+                    }
                 }
             }
         }
     }
-    
-        /* Calculate and assign a gradient to llp.
-            Changed: angle, angle90 and magnitude of llp. */ 
-            //timestamp only used if timestamp gradient is in use
-    public void assignGradient(LevelLinePixel llp, int eventPolarity, int timestamp, int x, int y){
+
+    /* Calculate and assign a gradient to llp.
+            Changed: angle, angle90 and magnitude of llp. */
+    //timestamp only used if timestamp gradient is in use
+    public void assignGradient(LevelLinePixel llp, int eventPolarity, int timestamp, int x, int y) {
         int radius = sobelWidth / 2;
         float sumAbsSobelXFieldsUsed = 0.01f;  //mustn't be zero, else if nothing is
         float sumAbsSobelYFieldsUsed = 0.01f;  //added later, divide by zero
         float gx = 0.0f;
         float gy = 0.0f;
-        
-        if(useTimestampGradient){
+
+        if (useTimestampGradient) {
             int neighbourTime;
             int[] mapForGradientCalc;
             int deltaT;
-            if (eventPolarity == 1){mapForGradientCalc = onTimestampMap;}
-            else{mapForGradientCalc = offTimestampMap;}
+            if (eventPolarity == 1) {
+                mapForGradientCalc = onTimestampMap;
+            } else {
+                mapForGradientCalc = offTimestampMap;
+            }
             for (int h = 0; h < sobelWidth; h++) {
                 for (int w = 0; w < sobelWidth; w++) {
                     neighbourTime = mapForGradientCalc[mapIndex((x - radius + w), (y - radius + h))];
-                    if(neighbourTime == 0 || Math.abs(timestamp-neighbourTime) > getMaxAge()){
-                        if(predictTimestamps){
+                    if (neighbourTime == 0 || Math.abs(timestamp - neighbourTime) > getMaxAge()) {
+                        if (predictTimestamps) {
                             neighbourTime = mapForGradientCalc[(x + radius - w) + sx * (y + radius - h)];
-                            if (neighbourTime == 0 || Math.abs(timestamp-neighbourTime) > getMaxAge()){
+                            if (neighbourTime == 0 || Math.abs(timestamp - neighbourTime) > getMaxAge()) {
                                 deltaT = 0;
                             } else {
                                 deltaT = timestamp - neighbourTime;
                                 sumAbsSobelXFieldsUsed += Math.abs(filterX[w + h * sobelWidth]);
                                 sumAbsSobelYFieldsUsed += Math.abs(filterY[w + h * sobelWidth]);
                             }
-                        }else deltaT = 0;
+                        } else {
+                            deltaT = 0;
+                        }
                     } else {
                         deltaT = neighbourTime - timestamp;
                         sumAbsSobelXFieldsUsed += Math.abs(filterX[w + h * sobelWidth]);
                         sumAbsSobelYFieldsUsed += Math.abs(filterY[w + h * sobelWidth]);
-                    }    
+                    }
                     gx += deltaT * (float) filterX[w + h * sobelWidth];
                     gy += deltaT * (float) filterY[w + h * sobelWidth];
                 }
             }
-        }
-        else{        
-            if (sobelWidth==3){
+        } else {
+            if (sobelWidth == 3) {
                 sumAbsSobelXFieldsUsed = 8.0f;
-                sumAbsSobelYFieldsUsed = 8.0f;}
-            else{
+                sumAbsSobelYFieldsUsed = 8.0f;
+            } else {
                 sumAbsSobelXFieldsUsed = 96.0f;
-                sumAbsSobelYFieldsUsed = 96.0f;}
+                sumAbsSobelYFieldsUsed = 96.0f;
+            }
             float neighbourRate;
             //if (eventPolarity == 1) {
             float[] mapForGradientCalc;
             mapForGradientCalc = eventrateMap;
-    //        } else {
-    //            rateMap = offEventrateMap[resIdx];
-    //        }
+            //        } else {
+            //            rateMap = offEventrateMap[resIdx];
+            //        }
             for (int h = 0; h < sobelWidth; h++) {
                 for (int w = 0; w < sobelWidth; w++) {
                     neighbourRate = mapForGradientCalc[mapIndex((x - radius + w), (y - radius + h))];
@@ -649,25 +674,24 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         float vy = gx;
         //float theta = (float) Math.toDegrees(Math.atan(vy/vx)); // atan2 would also take into account in which quadrant (x,y) lies, but it is too expensive.  
         float theta = atanHelper.atan2(vx, vy);
-        float mag = Math.abs(gx)+Math.abs(gy);
-        llp.setLevelLine(mag,theta);
-        
+        float mag = Math.abs(gx) + Math.abs(gy);
+        llp.setLevelLine(mag, theta);
+
     }
-    
-    
-        //resIdx: resolution index
-    public void merge(LineSupport supA, LineSupport supB){
-        if(supA==supB || !lineSupportRegions.contains(supA) || !lineSupportRegions.contains(supA)){
+
+    //resIdx: resolution index
+    public void merge(LineSupport supA, LineSupport supB) {
+        if (supA == supB || !lineSupportRegions.contains(supA) || !lineSupportRegions.contains(supA)) {
             return;
         }
-        if(supA.getCreationTime()<supB.getCreationTime()){
+        if (supA.getCreationTime() < supB.getCreationTime()) {
             supA.merge(supB);
             lineSupportRegions.remove(supB);
-        }else{
+        } else {
             supB.merge(supA);
             lineSupportRegions.remove(supA);
         }
-        
+
     }
 
     /*  Delete line, but try growing at each of the old support pixels. If a 
@@ -681,14 +705,16 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
             assignSupportRegion(p);
         }
     }
-    
+
     // called whenever a pixel is removed from the ringbuffer
     public void removeEvent(int i) {
         LevelLinePixel llp = pixelmap[i];
         llp.removeEvent();
-        if(!llp.isBuffered() && llp.assigned())removePixelFromSupport(llp);
+        if (!llp.isBuffered() && llp.assigned()) {
+            removePixelFromSupport(llp);
+        }
     }
-        
+
     private LineSupport newSupport(LevelLinePixel pixel) {
         LineSupport newSupport = new LineSupport(lineSegmentID, this);
         lineSegmentID++;
@@ -696,31 +722,33 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         addPixelToSupport(pixel, newSupport);
         return newSupport;
     }
-    
-    private void addPixelToSupport(LevelLinePixel llp, LineSupport sup){
-        if(!lineSupportRegions.contains(sup)) return;
-        if(!llp.hasLevelLine()){
-            System.out.println("cannot add pixel at  x: "+llp.getX()+", y: "+llp.getY()+" to support id: "+sup.getId());
+
+    private void addPixelToSupport(LevelLinePixel llp, LineSupport sup) {
+        if (!lineSupportRegions.contains(sup)) {
+            return;
         }
-        if(llp.assigned()){
+        if (!llp.hasLevelLine()) {
+            System.out.println("cannot add pixel at  x: " + llp.getX() + ", y: " + llp.getY() + " to support id: " + sup.getId());
+        }
+        if (llp.assigned()) {
             //dereference before reassign
             LineSupport oldSup = llp.getSupport();
             oldSup.remove(llp);
         }
         sup.add(llp);
     }
-    
-    private void removePixelFromSupport(LevelLinePixel llp){
+
+    private void removePixelFromSupport(LevelLinePixel llp) {
         LineSupport sup = llp.getSupport();
-        if(!llp.assigned()){
+        if (!llp.assigned()) {
             System.out.println("cannot remove pixel from Null support");
         }
         sup.remove(llp);
-        if(sup.getSupportSize()==0){
+        if (sup.getSupportSize() == 0) {
             lineSupportRegions.remove(sup);
         }
     }
-    
+
     // calculates the distance of the center of the segment with smaller support from the line through the other segment
     private float distanceSegmentToSegment(LineSupport first, LineSupport second) {
         LineSupport smaller, bigger;
@@ -743,21 +771,24 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         float alpha = ls.getOrientation() - atanHelper.atan(dy / dx);
         return (float) Math.sin(alpha) * (Math.abs(dx) + Math.abs(dy));
     }
-    
+
     // field is ranging from coordinates (0,0) to coordinates (w-1,h-1) if I am not mistaken.
     public boolean isBoundaryPixel(int w, int h, int x, int y, int margin) {
         return !(x >= margin && y >= margin && x < w - margin && y < h - margin);
     }
-    
+
     public int mapIndex(int x, int y) {
-        if(x >= sx || y >= sy){
+        if (x >= sx || y >= sy) {
             return 0;
-        } 
+        }
         return x + sx * y;
     }
-    
-    /** Resets the filter
-     * @param yes true to reset */
+
+    /**
+     * Resets the filter
+     *
+     * @param yes true to reset
+     */
     @Override
     synchronized public void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
@@ -779,16 +810,16 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         }
         drawLineSegments(drawable);
     }
-    
-    public void drawPixels(){
-        switch(renderSource){
+
+    public void drawPixels() {
+        switch (renderSource) {
             case BUFFER:
                 drawBuffer();
                 break;
-            case ARRAY: 
-                drawArray();      
+            case ARRAY:
+                drawArray();
                 break;
-            case SUPPORT: 
+            case SUPPORT:
                 drawLineSupport();
                 break;
             case SEGMENTS:
@@ -821,14 +852,14 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
                         }
                         break;
                     case ID:
-                        colors = ls.getColor();   
+                        colors = ls.getColor();
                         break;
                 }
                 renderer.setAnnotateColorRGB(p.getX(), p.getY(), colors);
             }
         }
     }
-    
+
     public void drawLineSegments(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2(); // when we getString this we are already set up with updateShape 1=1 pixel, at LL corner
         GLUT cGLUT = chip.getCanvas().getGlut();
@@ -866,35 +897,35 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
             }
         }
     }
-    
+
     public void drawLineSegmentSupport() {
         renderer.setExternalRenderer(true);
         renderer.resetAnnotationFrame(0.0f);
-    float[] colors = new float[3];
+        float[] colors = new float[3];
         for (LineSupport ls : lineSupportRegions) {
             if (ls == null || !ls.isLineSegment()) {
                 continue;
             }
-            switch(renderColor){
+            switch (renderColor) {
                 case ORIENTATION:
                     float hue = (float) (ls.getLLAngle() + 180.0f) / 60.0f;
-                    colors = ColorHelper.HSVtoRGB(hue, 1.0f, 1.0f);                
+                    colors = ColorHelper.HSVtoRGB(hue, 1.0f, 1.0f);
                     break;
                 case ID:
                     colors = ls.getColor();
                     break;
             }
             for (LevelLinePixel p : ls.getSupportPixels()) {
-                if(!p.assigned()){
+                if (!p.assigned()) {
                     float[] c = new float[3];
-                    if(!p.assigned()){
+                    if (!p.assigned()) {
                         c[0] = colors[0] / 2.0f;
                         c[1] = colors[1] / 2.0f;
                         c[2] = colors[2] / 2.0f;
                     }
                     renderer.setAnnotateColorRGB(p.getX(), p.getY(), c);
                     //System.out.println("Strange");
-                }else{
+                } else {
                     renderer.setAnnotateColorRGB(p.getX(), p.getY(), colors);
                 }
             }
@@ -908,37 +939,37 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         LevelLinePixel llp;
         for (int x = 0; x < sx; x++) {
             for (int y = 0; y < sy; y++) {
-                llp = pixelmap[mapIndex(x,y)];
+                llp = pixelmap[mapIndex(x, y)];
                 if (!llp.isBuffered()) {
                     float[] c = {0.4f, 0.4f, 0.4f};
                     colors = c;
                 }
-                switch(renderColor){
+                switch (renderColor) {
                     case ORIENTATION:
-                        if(llp.hasLevelLine()){
+                        if (llp.hasLevelLine()) {
                             float hue = (float) (llp.getAngle() + 180.0f) / 60.0f;
                             colors = ColorHelper.HSVtoRGB(hue, 1.0f, 1.0f);
-                        }else if(llp.assigned()){
+                        } else if (llp.assigned()) {
                             float[] c = {0.6f, 0.6f, 0.6f};
                             colors = c;
-                        }else if(llp.isBuffered()){
+                        } else if (llp.isBuffered()) {
                             float[] c = {0.3f, 0.3f, 0.3f};
                             colors = c;
                         }
                         break;
                     case ID:
-                        if(llp.assigned()){
+                        if (llp.assigned()) {
                             colors = llp.getSupport().getColor();
-                        }else if(llp.isBuffered()){
+                        } else if (llp.isBuffered()) {
                             float[] c = {0.4f, 0.4f, 0.4f};
                             colors = c;
-                        }else{
+                        } else {
                             float[] c = {0.2f, 0.2f, 0.2f};
                             colors = c;
                         }
                         break;
                 }
-                if(!llp.assigned()){
+                if (!llp.assigned()) {
                     colors[0] = colors[0] / 2.0f;
                     colors[1] = colors[1] / 2.0f;
                     colors[2] = colors[2] / 2.0f;
@@ -948,34 +979,34 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         }
 
     }
-    
+
     public void drawBuffer() {
         renderer.setExternalRenderer(true);
         renderer.resetAnnotationFrame(0.0f);
         float[] colors = new float[3];
         LevelLinePixel llp;
-        for(int i = 0; i<sx*sy; i++) {
+        for (int i = 0; i < sx * sy; i++) {
             llp = pixelmap[i];
             if (!llp.isBuffered()) {
                 continue;
             }
-            switch(renderColor){
+            switch (renderColor) {
                 case ORIENTATION:
-                    if(llp.hasLevelLine()){
+                    if (llp.hasLevelLine()) {
                         float hue = (float) (llp.getAngle() + 180.0f) / 60.0f;
                         colors = ColorHelper.HSVtoRGB(hue, 1.0f, 1.0f);
-                    }else{
+                    } else {
                         float[] c = {0.0f, 0.0f, 0.0f};
-                        colors = c;     
+                        colors = c;
                     }
                     break;
                 case ID:
-                    if(llp.assigned()){
+                    if (llp.assigned()) {
                         colors = llp.getSupport().getColor();
                     }
                     break;
             }
-            if(!llp.assigned()){
+            if (!llp.assigned()) {
                 colors[0] = colors[0] / 2.0f;
                 colors[1] = colors[1] / 2.0f;
                 colors[2] = colors[2] / 2.0f;
@@ -1013,7 +1044,6 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         this.toleranceAngle = toleranceAngle;
         putFloat("toleranceAngle", toleranceAngle);
     }
-
 
     /**
      * @return the annotateAngles
@@ -1075,8 +1105,8 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         this.annotateWidth = annotateWidth;
         putBoolean("annotateWidth", annotateWidth);
     }
-    
-        /**
+
+    /**
      * @return the annotateAlpha
      */
     public float getAnnotateAlpha() {
@@ -1087,10 +1117,14 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
      * @param annotateAlpha the annotateAlpha to set
      */
     public void setAnnotateAlpha(float annotateAlpha) {
-        if(annotateAlpha > 1.0) annotateAlpha = 1.0f;
-        if(annotateAlpha < 0.0) annotateAlpha = 0.0f;
+        if (annotateAlpha > 1.0) {
+            annotateAlpha = 1.0f;
+        }
+        if (annotateAlpha < 0.0) {
+            annotateAlpha = 0.0f;
+        }
         this.annotateAlpha = annotateAlpha;
-        if(renderer instanceof AEFrameChipRenderer){
+        if (renderer != null && renderer instanceof AEFrameChipRenderer) {
             AEFrameChipRenderer frameRenderer = (AEFrameChipRenderer) renderer;
             frameRenderer.setAnnotateAlpha(annotateAlpha);
         }
@@ -1140,8 +1174,8 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         this.splittingActive = splittingActive;
         putBoolean("splittingActive", splittingActive);
     }
-    
-        /**
+
+    /**
      * @return the addOnlyIfDensityHigh
      */
     public boolean isAddOnlyIfDensityHigh() {
@@ -1156,7 +1190,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         putBoolean("addOnlyIfDensityHigh", addOnlyIfDensityHigh);
     }
 
-        /**
+    /**
      * @return the minDensity
      */
     public float getMinDensity() {
@@ -1171,7 +1205,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         putFloat("minDensity", minDensity);
     }
 
-     /**
+    /**
      * @return the minSupportForDensityTest
      */
     public int getMinSupportForDensityTest() {
@@ -1186,7 +1220,6 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         putInt("minSupportForDensityTest", minSupportForDensityTest);
     }
 
-    
     /**
      * @return the currentBufferSize
      */
@@ -1214,18 +1247,14 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
 //        indexbuffer = (TrailingRingBuffer)indexbuffer.resizeCopy(currentBufferSize);
 //        resetFilter();
 //    }
-    
     public synchronized void setBufferSize(int currentBufferSize) {
         int old = this.bufferSize;
         this.bufferSize = currentBufferSize;
         putInt("bufferSize", currentBufferSize);
         support.firePropertyChange("bufferSize", old, this.bufferSize);
-        
+
         indexbuffer.resize(currentBufferSize, removalFun);
     }
-
-    
-    
 
     /**
      * @return the widthToSplit
@@ -1271,8 +1300,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         this.annotateLineSegments = annotateLineSegments;
         putBoolean("annotateLineSegments", annotateLineSegments);
     }
-    
-    
+
     /**
      * @return the renderColor
      */
@@ -1331,7 +1359,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
      */
     public void setDynamicBuffer(boolean dynamicBuffer) {
         this.dynamicBuffer = dynamicBuffer;
-        putBoolean("dynamicBuffer",dynamicBuffer);
+        putBoolean("dynamicBuffer", dynamicBuffer);
     }
 
     /**
@@ -1346,18 +1374,18 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
      */
     public void setLoggingEnabled(boolean loggingEnabled) {
         this.loggingEnabled = loggingEnabled;
-        if(loggingEnabled){
+        if (loggingEnabled) {
             try {
                 setupLogging();
             } catch (IOException ex) {
                 Logger.getLogger(ELiSeD.class.getName()).log(Level.SEVERE, null, ex);
             }
-        }else{
+        } else {
             stopLogging(logger);
         }
-        putBoolean("loggingEnabled",loggingEnabled);
+        putBoolean("loggingEnabled", loggingEnabled);
     }
-    
+
     /**
      * @return the minNeighbors
      */
@@ -1370,10 +1398,10 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
      */
     public void setMinNeighbors(int minNeighbors) {
         this.minNeighbors = minNeighbors;
-        putInt("minNeighbors",minNeighbors);
+        putInt("minNeighbors", minNeighbors);
     }
 
-        /**
+    /**
      * @return the decayFactor
      */
     public float getDecayFactor() {
@@ -1385,9 +1413,9 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
      */
     public void setDecayFactor(float decayFactor) {
         this.decayFactor = decayFactor;
-        putFloat("decayFactor",decayFactor);
+        putFloat("decayFactor", decayFactor);
     }
-    
+
     /**
      * @param logLines the logLines to set
      */
@@ -1400,8 +1428,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         stopLogging(logr);
         getSupport().firePropertyChange("logCurrentLines", null, null);
     }
-    
-    
+
     /**
      * @return the loggingEventCount
      */
@@ -1414,10 +1441,9 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
      */
     public void setLoggingEventCount(int loggingEventCount) {
         this.loggingEventCount = loggingEventCount;
-        putInt("loggingEventCount",loggingEventCount);
+        putInt("loggingEventCount", loggingEventCount);
     }
-    
-    
+
     /**
      * @return the timestampIncludedInEachLog
      */
@@ -1438,8 +1464,8 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
             e.printStackTrace();
         }
     }
-    
-     /**
+
+    /**
      * @return the useTimestampGradient
      */
     public boolean isUseTimestampGradient() {
@@ -1454,7 +1480,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         putBoolean("useTimestampGradient", useTimestampGradient);
         resetFilter();
     }
-    
+
     /**
      * @return the predictTimestamps
      */
@@ -1469,8 +1495,8 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         this.predictTimestamps = predictTimestamps;
         putBoolean("predictTimestamps", predictTimestamps);
     }
-    
-        /**
+
+    /**
      * @return the orAddIfDensityIncreases
      */
     public boolean isOrAddIfDensityIncreases() {
@@ -1484,8 +1510,8 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         this.orAddIfDensityIncreases = orAddIfDensityIncreases;
         putBoolean("orAddIfDensityIncreases", orAddIfDensityIncreases);
     }
-    
-        /**
+
+    /**
      * @return the maxAge
      */
     public int getMaxAge() {
@@ -1499,9 +1525,5 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         maxAgeGradientCalculation = aMaxAge;
         putInt("maxAge", aMaxAge);
     }
-    
-    
-    
-    
-    
-} 
+
+}

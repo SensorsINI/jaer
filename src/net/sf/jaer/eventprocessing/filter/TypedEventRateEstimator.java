@@ -4,6 +4,7 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
+import java.beans.PropertyChangeListener;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -20,37 +21,41 @@ public class TypedEventRateEstimator extends EventRateEstimator {
 
     private int numCellTypes = 0;
     private EventPacket<? extends BasicEvent>[] typedEventPackets = null;
-    private EventRateEstimator[] eventRateEstimators = null;
-    protected boolean measureIndividualTypesEnabled=getBoolean("measureIndividualTypesEnabled", true);
+    protected EventRateEstimator[] eventRateEstimators = null;
+    protected boolean measureIndividualTypesEnabled = getBoolean("measureIndividualTypesEnabled", true);
 
     public TypedEventRateEstimator(AEChip chip) {
         super(chip);
         setPropertyTooltip("measureIndividualTypesEnabled", "measures cells types individually rather than lumping all types into one overall rate measure");
     }
 
-    public int getNumCellTypes(){
+    public int getNumCellTypes() {
         return numCellTypes;
     }
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-        super.filterPacket(in); // measure overall event rate and send updates to observers that listen for these updates
-        if(!isMeasureIndividualTypesEnabled()) {
-			return in;
-		}
+        if (!measureIndividualTypesEnabled) {
+            super.filterPacket(in); // measure overall event rate and send updates to observers that listen for these updates
+            return in;
+        }
         checkOutputPacketEventType(in);
         if (numCellTypes != in.getNumCellTypes()) {                     // build tmp packets to hold different types of events
             numCellTypes = in.getNumCellTypes();
             typedEventPackets = new EventPacket[numCellTypes];
-            eventRateEstimators=new EventRateEstimator[numCellTypes];
+            eventRateEstimators = new EventRateEstimator[numCellTypes];
             for (int i = 0; i < numCellTypes; i++) {
                 typedEventPackets[i] = in.constructNewPacket();
                 eventRateEstimators[i] = new EventRateEstimator(chip);
                 eventRateEstimators[i].setEventRateTauMs(getEventRateTauMs());
                 eventRateEstimators[i].setMaxRate(getMaxRate());
+                PropertyChangeListener[] pcls = getSupport().getPropertyChangeListeners(EVENT_RATE_UPDATE);
+                for (PropertyChangeListener p : pcls) {
+                    eventRateEstimators[i].getSupport().addPropertyChangeListener(p);
+                }
             }
         }
-        numCellTypes=in.getNumCellTypes(); // do it again in case option measureIndividualTypesEnabled was changed
+        numCellTypes = in.getNumCellTypes(); // do it again in case option measureIndividualTypesEnabled was changed
         OutputEventIterator[] outItrs = new OutputEventIterator[numCellTypes];
         for (int i = 0; i < numCellTypes; i++) {                            // get the iterators to fill these packets
             outItrs[i] = typedEventPackets[i].outputIterator(); // reset tmp packets
@@ -100,9 +105,9 @@ public class TypedEventRateEstimator extends EventRateEstimator {
     }
 
     public float getFilteredEventRate(int i) {
-        if(!measureIndividualTypesEnabled) {
-			return super.getFilteredEventRate();
-		}
+        if (!measureIndividualTypesEnabled) {
+            return super.getFilteredEventRate();
+        }
         if ((i < 0) || (i >= numCellTypes)) {
             return Float.NaN;
         } else {
@@ -162,12 +167,19 @@ public class TypedEventRateEstimator extends EventRateEstimator {
     }
 
     /**
-     * @param measureIndividualTypesEnabled the measureIndividualTypesEnabled to set
+     * @param measureIndividualTypesEnabled the measureIndividualTypesEnabled to
+     * set
      */
     public void setMeasureIndividualTypesEnabled(boolean measureIndividualTypesEnabled) {
         this.measureIndividualTypesEnabled = measureIndividualTypesEnabled;
         putBoolean("measureIndividualTypesEnabled", measureIndividualTypesEnabled);
     }
 
+    /**
+     * @return the eventRateEstimators
+     */
+    public EventRateEstimator[] getEventRateEstimators() {
+        return eventRateEstimators;
+    }
 
 }
