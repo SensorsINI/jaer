@@ -203,12 +203,17 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
                 DoubleMatrix R = current_rotation.mmul(last_rotation.transpose());
                 DoubleMatrix trans = current_position.sub(R.mmul(last_position));          
 
-                currentPoseSe3 = SE3Tose3(R, trans);   
+                DoubleMatrix realse3 = SE3Tose3(current_rotation, current_position).sub(SE3Tose3(last_rotation, last_position));
+//                currentPoseSe3 = SE3Tose3(R, trans);  
+                currentPoseSe3 = realse3;
                 se3Info.pose_seq_num = currentPose_seq_num;
                 se3Info.se3_data = currentPoseSe3;
                 se3Info.se3_ts = currentPose_ts;
                 se3InfoList.add(se3Info);
-//                log.info("The se3 vector is: " + currentSe3Info.se3_data + "\n");
+//                log.info("The first se3 is: " + SE3Tose3(last_rotation, last_position));
+//                log.info("The second se3 is: " + SE3Tose3(current_rotation, current_position));
+//                log.info("The real se3 vector is: " + realse3 + "\n");
+//                log.info("The se3 vector is: " + currentPoseSe3 + "\n");
 
 //                se3InfoList.add(currentSe3Info);
                 /* 
@@ -308,13 +313,18 @@ public class RosbagVOGTReader extends RosbagMessageDisplayer implements FrameAnn
                                                          {ww.get(2), 0, -ww.get(0)}, 
                                                          {-ww.get(1), ww.get(0), 0}});
 
-        DoubleMatrix jaccobLieAlg = DoubleMatrix.eye(3);   // Translational part of lie algebra
+        DoubleMatrix inverseJacobianLieAlg = DoubleMatrix.eye(3);   // Translational part of lie algebra
+        /* Here, jaccob matrix is
+        // eye(3)-(1/2)*W+(1/(theta^2))*(1-(1/2 * theta * A))*(W*W);
+        // where A = (1 + cos(theta))/sin(theta);
+        // Refer to barfoot's book "state estimation" equation 7.37 for Jocabian caculation.
+        // Replace the unit vector as the original vector
+        */
         if (theta != 0) {
-            double A = Math.sin(theta)/theta;
-            double B = (1 - Math.cos(theta))/(theta * theta);
-            jaccobLieAlg = DoubleMatrix.eye(3).sub(W.mul(0.5)).add(W.mmul(W).mul(1/(theta*theta) * (1 - (0.5*A/B))));
+            double A = (1 + Math.cos(theta))/Math.sin(theta);
+            inverseJacobianLieAlg = DoubleMatrix.eye(3).sub(W.mul(0.5)).add(W.mmul(W).mul(1/(theta*theta) * (1 - (0.5 * theta * A))));
         }
-        DoubleMatrix v = jaccobLieAlg.mmul(trans);
+        DoubleMatrix v = inverseJacobianLieAlg.mmul(trans);
         return new DoubleMatrix(new double[]{v.get(0), v.get(1), v.get(2),ww.get(0), ww.get(1),ww.get(2)});
     }
     public class CameraInfo {
