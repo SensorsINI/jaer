@@ -2,6 +2,7 @@ package net.sf.jaer.graphics;
 
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Cursor;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeEvent;
@@ -12,20 +13,17 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import javax.swing.JFileChooser;
-import javax.swing.filechooser.FileFilter;
-
-import com.jogamp.opengl.GLException;
-import java.awt.Cursor;
-import java.util.concurrent.TimeUnit;
 import javax.swing.JOptionPane;
 import javax.swing.ProgressMonitor;
 import javax.swing.SwingWorker;
+import javax.swing.filechooser.FileFilter;
+
+import com.jogamp.opengl.GLException;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
-import static net.sf.jaer.graphics.AbstractAEPlayer.log;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.IndexFileFilter;
@@ -294,7 +292,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
      * @param file the File to play.
      */
     @Override
-    public synchronized void startPlayback(File file) throws IOException, InterruptedException {
+    public synchronized void startPlayback(final File file) throws IOException, InterruptedException {
         log.info("starting playback with file=" + file);
         inputFile = file;
         if ((file == null) || !file.isFile()) {
@@ -329,7 +327,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         final ProgressMonitor progressMonitor = new ProgressMonitor(viewer, "Opening " + file, "Generating or loading cache of message indexes", 0, 100);
         progressMonitor.setMillisToPopup(300);
         progressMonitor.setMillisToDecideToPopup(300);
-        SwingWorker<Void, Void> worker = new SwingWorker() {
+        final SwingWorker<Void, Void> worker = new SwingWorker() {
             Exception exception = null;
 
             @Override

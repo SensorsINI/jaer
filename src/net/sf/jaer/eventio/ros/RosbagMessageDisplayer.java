@@ -18,21 +18,21 @@
  */
 package net.sf.jaer.eventio.ros;
 
-import com.github.swrirobotics.bags.reader.exceptions.BagReaderException;
-import com.github.swrirobotics.bags.reader.messages.serialization.MessageType;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+
 import javax.swing.ProgressMonitor;
 import javax.swing.SwingWorker;
+
+import com.github.swrirobotics.bags.reader.exceptions.BagReaderException;
+import com.github.swrirobotics.bags.reader.messages.serialization.MessageType;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventio.AEFileInputStreamInterface;
-import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream.MessageWithIndex;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.AEViewer;
@@ -110,7 +110,7 @@ abstract public class RosbagMessageDisplayer extends EventFilter2D {
             return;
         }
         final ProgressMonitor progressMonitor = new ProgressMonitor(getChip().getFilterFrame(), "Add subscriptions", "", 0, 100);
-        SwingWorker<Void, Void> worker = new SwingWorker() {
+        final SwingWorker<Void, Void> worker = new SwingWorker() {
             @Override
             protected Object doInBackground() throws Exception {
                 try {

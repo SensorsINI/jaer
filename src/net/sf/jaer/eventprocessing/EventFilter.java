@@ -3,9 +3,6 @@
  * Created on October 30, 2005, 4:58 PM */
 package net.sf.jaer.eventprocessing;
 
-import com.jogamp.opengl.GL;
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLException;
 import java.awt.Cursor;
 import java.awt.Desktop;
 import java.beans.PropertyChangeSupport;
@@ -18,8 +15,13 @@ import java.util.Observable;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
+
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLException;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
@@ -157,8 +159,8 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     abstract public void resetFilter();
 
     /**
-     * Can be used for lazy allocation and initialization of memory. It is called when the base class EventFilter2D gets 
-     * a PropertyChangeEvent AEChip.EVENT_SIZE_SET, and after the EventFilter is added to the chip's FilterChain via the 
+     * Can be used for lazy allocation and initialization of memory. It is called when the base class EventFilter2D gets
+     * a PropertyChangeEvent AEChip.EVENT_SIZE_SET, and after the EventFilter is added to the chip's FilterChain via the
      * ClassChooserDialog, when filterChain.contructPreferredFilters() is called.
      */
     abstract public void initFilter();
@@ -418,7 +420,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @param cursor
      */
     protected void setCursor(Cursor cursor) {
-        if (chip != null && chip.getAeViewer() != null) {
+        if ((chip != null) && (chip.getAeViewer() != null)) {
             chip.getAeViewer().setCursor(cursor);
         }
     }
@@ -468,10 +470,11 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @param msg the string, can use HTML format for multiline or accenting
      * @param title the dialog title, should be short
      */
-    protected void showPlainMessageDialogInSwingThread(String msg, String title) {
+    protected void showPlainMessageDialogInSwingThread(final String msg, final String title) {
         SwingUtilities.invokeLater(new Runnable() {
             // outside swing thread, must do this
-            public void run() {
+            @Override
+			public void run() {
                 JOptionPane.showMessageDialog(chip.getFilterFrame(), msg, title, JOptionPane.PLAIN_MESSAGE);
             }
         });
@@ -484,10 +487,11 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @param msg the string, can use HTML format for multiline or accenting
      * @param title the dialog title, should be short
      */
-    protected void showWarningDialogInSwingThread(String msg, String title) {
+    protected void showWarningDialogInSwingThread(final String msg, final String title) {
         SwingUtilities.invokeLater(new Runnable() {
             // outside swing thread, must do this
-            public void run() {
+            @Override
+			public void run() {
                 JOptionPane.showMessageDialog(chip.getFilterFrame(), msg, title, JOptionPane.WARNING_MESSAGE);
             }
         });
@@ -668,12 +672,12 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * there that is not the default one.
      */
     public boolean putInitialPreferenceValue(String key, Object value) {
-        if (key == null || value == null) {
+        if ((key == null) || (value == null)) {
             log.warning("null key or value, doing nothing");
             return false;
         }
         if (value instanceof String) {
-            if (!getString(key, (String) value).equals((String) value)) {
+            if (!getString(key, (String) value).equals(value)) {
                 putString(key, (String) value);
                 return true;
             } else {

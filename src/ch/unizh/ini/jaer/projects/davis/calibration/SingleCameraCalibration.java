@@ -5,14 +5,6 @@
  */
 package ch.unizh.ini.jaer.projects.davis.calibration;
 
-import static org.bytedeco.javacpp.opencv_core.CV_32FC2;
-import static org.bytedeco.javacpp.opencv_core.CV_64FC3;
-import static org.bytedeco.javacpp.opencv_core.CV_8U;
-import static org.bytedeco.javacpp.opencv_core.CV_8UC3;
-import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_EPS;
-import static org.bytedeco.javacpp.opencv_core.CV_TERMCRIT_ITER;
-import static org.bytedeco.javacpp.opencv_imgproc.CV_GRAY2RGB;
-
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -20,7 +12,6 @@ import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
-import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -32,15 +23,6 @@ import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 
-import org.bytedeco.javacpp.FloatPointer;
-import org.bytedeco.javacpp.opencv_calib3d;
-import org.bytedeco.javacpp.opencv_core;
-import org.bytedeco.javacpp.opencv_core.Mat;
-import org.bytedeco.javacpp.opencv_core.MatVector;
-import org.bytedeco.javacpp.opencv_core.Size;
-import org.bytedeco.javacpp.opencv_imgproc;
-import org.bytedeco.javacpp.indexer.DoubleBufferIndexer;
-import org.bytedeco.javacpp.indexer.DoubleIndexer;
 import org.openni.Device;
 import org.openni.DeviceInfo;
 import org.openni.OpenNI;
@@ -52,8 +34,6 @@ import com.jogamp.opengl.GLAutoDrawable;
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
 import java.awt.Cursor;
-import javax.swing.JFrame;
-import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -67,7 +47,17 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.TextRendererScale;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+
+import nu.pattern.OpenCV;
+import org.opencv.calib3d.Calib3d;
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
+import org.opencv.core.MatOfPoint2f;
+import org.opencv.core.Size;
+import org.opencv.core.TermCriteria;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
+import org.opencv.core.Mat;
 
 /**
  * Calibrates a single camera using DAVIS frames and OpenCV calibration methods.
@@ -76,9 +66,21 @@ import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
  */
 @Description("Calibrates a single camera using DAVIS frames and OpenCV calibration methods")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-@SuppressWarnings( "deprecation" ) // tobi added for getFloatBuffer
 public class SingleCameraCalibration extends EventFilter2D implements FrameAnnotater, Observer /* observes this to get informed about our size */ {
+    
+    static {
+        String jvmVersion = System.getProperty("sun.arch.data.model");
 
+        try {
+            OpenCV.loadShared();   // search opencv native library with nu.pattern package.
+            System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+            // System.loadLibrary("opencv_ffmpeg320_" + jvmVersion);   // Notice, cannot put the file type extension (.dll) here, it will appendCopy it automatically. 
+        } catch (UnsatisfiedLinkError e) {
+            System.err.println("Native code library failed to load.\n" + e);
+            // System.exit(1);
+        }
+    }
+    
     private int sx; // set to chip.getSizeX()
     private int sy; // chip.getSizeY()
     private int lastTimestamp = 0;
@@ -106,13 +108,13 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private String fileBaseName = "";
 
     //opencv matrices
-    private Mat corners;  // TODO change to OpenCV java, not bytedeco http://docs.opencv.org/2.4/doc/tutorials/introduction/desktop_java/java_dev_intro.html
-    private MatVector allImagePoints;
-    private MatVector allObjectPoints;
+    private MatOfPoint2f corners;  
+    private ArrayList<Mat> allImagePoints;
+    private ArrayList<Mat> allObjectPoints;
     private Mat cameraMatrix;
     private Mat distortionCoefs;
-    private MatVector rotationVectors;
-    private MatVector translationVectors;
+    private ArrayList<Mat> rotationVectors;
+    private ArrayList<Mat> translationVectors;
     private Mat imgIn, imgOut;
 
     private short[] undistortedAddressLUT = null; // stores undistortion LUT for event addresses. values are stored by idx = 2 * (y + sy * x);
@@ -243,7 +245,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             //store last timestamp
             lastTimestamp = e.timestamp;
             if (calibrated && undistortDVSevents && ((ApsDvsEvent) e).isDVSEvent()) {
-                undistortEvent(e);
+                // undistortEvent(e);
             }
         }
 
@@ -280,37 +282,45 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         if (!calibrated) {
             return src;
         }
-        FloatPointer ip = new FloatPointer(src);
-        Mat input = new Mat(ip);
-        input.convertTo(input, CV_8U, 255, 0);
+        // FloatPointer ip = new FloatPointer(src);
+        Mat input = new Mat(1, src.length, CvType.CV_32F);
+        input.put(0, 0, src);
+        input.convertTo(input, CvType.CV_8U, 255, 0);
         Mat img = input.reshape(0, sy);
         Mat undistortedImg = new Mat();
-        opencv_imgproc.undistort(img, undistortedImg, cameraMatrix, distortionCoefs);
-        Mat imgOut8u = new Mat(sy, sx, CV_8UC3);
-        cvtColor(undistortedImg, imgOut8u, CV_GRAY2RGB);
-        Mat outImgF = new Mat(sy, sx, opencv_core.CV_32F);
-        imgOut8u.convertTo(outImgF, opencv_core.CV_32F, 1.0 / 255, 0);
+        try {
+            Imgproc.undistort(img, undistortedImg, cameraMatrix, distortionCoefs);            
+        } catch(RuntimeException e) {
+            log.warning(e.toString());
+            return src;
+        }
+        Mat imgOut8u = new Mat(sy, sx, CvType.CV_8UC3);
+        Imgproc.cvtColor(undistortedImg, imgOut8u, Imgproc.COLOR_GRAY2RGB);
+        Mat outImgF = new Mat(sy, sx, CvType.CV_32F);
+        imgOut8u.convertTo(outImgF, CvType.CV_32F, 1.0 / 255, 0);
         if (outFrame == null) {
             outFrame = new float[sy * sx * 3];
         }
-        outImgF.getFloatBuffer().get(outFrame);
+        // outImgF.getFloatBuffer().get(outFrame);
+        outImgF.get(0, 0, outFrame);
         return outFrame;
     }
 
     public boolean findCurrentCorners(boolean drawAndSave) {
         Size patternSize = new Size(patternWidth, patternHeight);
-        corners = new Mat();
-        FloatPointer ip = new FloatPointer(lastFrame);
-        Mat input = new Mat(ip);
-        input.convertTo(input, CV_8U, 255, 0);
+        corners = new MatOfPoint2f();
+        // FloatPointer ip = new FloatPointer(lastFrame);
+        Mat input = new Mat(1, lastFrame.length, CvType.CV_32F);
+        input.put(0, 0, lastFrame);
+        input.convertTo(input, CvType.CV_8U, 255, 0);
         imgIn = input.reshape(0, sy);
-        imgOut = new Mat(sy, sx, CV_8UC3);
-        cvtColor(imgIn, imgOut, CV_GRAY2RGB);
+        imgOut = new Mat(sy, sx, CvType.CV_8UC3);
+        Imgproc.cvtColor(imgIn, imgOut, Imgproc.COLOR_GRAY2RGB);
         //opencv_highgui.imshow("test", imgIn);
         //opencv_highgui.waitKey(1);
         boolean locPatternFound;
         try {
-            locPatternFound = opencv_calib3d.findChessboardCorners(imgIn, patternSize, corners);
+            locPatternFound = Calib3d.findChessboardCorners(imgIn, patternSize, corners);
         } catch (RuntimeException e) {
             log.warning(e.toString());
             return false;
@@ -318,22 +328,22 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         if (drawAndSave) {
             //render frame
             if (locPatternFound && cornerSubPixRefinement) {
-                opencv_core.TermCriteria tc = new opencv_core.TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1);
-                opencv_imgproc.cornerSubPix(imgIn, corners, new Size(3, 3), new Size(-1, -1), tc);
+                TermCriteria tc = new TermCriteria(TermCriteria.EPS + TermCriteria.MAX_ITER, 30, 0.1);
+                Imgproc.cornerSubPix(imgIn, corners, new Size(3, 3), new Size(-1, -1), tc);
             }
-            opencv_calib3d.drawChessboardCorners(imgOut, patternSize, corners, locPatternFound);
-            Mat outImgF = new Mat(sy, sx, CV_64FC3);
-            imgOut.convertTo(outImgF, CV_64FC3, 1.0 / 255, 0);
+            Calib3d.drawChessboardCorners(imgOut, patternSize, corners, locPatternFound);
+            Mat outImgF = new Mat(sy, sx, CvType.CV_64FC3);
+            imgOut.convertTo(outImgF, CvType.CV_32FC3, 1.0 / 255, 0);
             float[] outFrame = new float[sy * sx * 3];
-            outImgF.getFloatBuffer().get(outFrame);
+            outImgF.get(0, 0, outFrame);
             frameExtractor.setDisplayFrameRGB(outFrame);
             //save image
             if (locPatternFound) {
-                Mat imgSave = new Mat(sy, sx, CV_8U);
-                opencv_core.flip(imgIn, imgSave, 0);
+                Mat imgSave = new Mat(sy, sx, CvType.CV_8U);
+                Core.flip(imgIn, imgSave, 0);
                 String filename = chip.getName() + "-" + fileBaseName + "-" + String.format("%03d", imageCounter) + ".jpg";
-                String fullFilePath = dirPath + "\\" + filename;
-                org.bytedeco.javacpp.opencv_imgcodecs.imwrite(fullFilePath, imgSave);
+                String fullFilePath = dirPath + File.separator + filename ;                
+                Imgcodecs.imwrite(fullFilePath, imgSave);
                 log.info("wrote " + fullFilePath);
                 //save depth sensor image if enabled
                 if (depthViewerThread != null) {
@@ -345,24 +355,22 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 }
                 //store image points
                 if (imageCounter == 0 || allObjectPoints == null || allImagePoints == null) {
-                    allImagePoints = new MatVector(100);
-                    allObjectPoints = new MatVector(100);
+                    allImagePoints = new ArrayList<Mat>(); 
+                    allObjectPoints = new ArrayList<Mat>(); 
                 }
-                allImagePoints.put(imageCounter, corners);
+                allImagePoints.add(corners);
                 //create and store object points, which are just coordinates in mm of corners of pattern as we know they are drawn on the
                 // calibration target
-                Mat objectPoints = new Mat(corners.rows(), 1, opencv_core.CV_32FC3);
+                Mat objectPoints = new Mat(corners.rows(), 1, CvType.CV_32FC3);
                 float x, y;
                 for (int h = 0; h < patternHeight; h++) {
                     y = h * rectangleHeightMm;
                     for (int w = 0; w < patternWidth; w++) {
                         x = w * rectangleWidthMm;
-                        objectPoints.getFloatBuffer().put(3 * ((patternWidth * h) + w), x);
-                        objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 1, y);
-                        objectPoints.getFloatBuffer().put((3 * ((patternWidth * h) + w)) + 2, 0); // z=0 for object points
+                        objectPoints.put((patternWidth * h) + w, 0, x, y, 0); // z=0 for object points
                     }
                 }
-                allObjectPoints.put(imageCounter, objectPoints);
+                allObjectPoints.add(objectPoints);
                 //iterate image counter
                 log.info(String.format("added corner points from image %d", imageCounter));
                 imageCounter++;
@@ -373,7 +381,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 //                for (int n = 0; n < imageCounter; n++) {
 //                    System.out.println("n=" + n + " " + allImagePoints.get(n).toString());
 //                    for (int i = 0; i < corners.rows(); i++) {
-//                        System.out.println(allImagePoints.get(n).getFloatBuffer().get(2 * i) + " " + allImagePoints.get(n).getFloatBuffer().get(2 * i + 1)+" | "+allObjectPoints.get(n).getFloatBuffer().get(3 * i) + " " + allObjectPoints.get(n).getFloatBuffer().get(3 * i + 1) + " " + allObjectPoints.get(n).getFloatBuffer().get(3 * i + 2));
+//                        System.out.println(allImagePoints.get(n).get(i,0)[0] + " " + allImagePoints.get(n).get(i,0)[1]+" | "+ allObjectPoints.get(n).get(i,0)[0] + " " + allObjectPoints.get(n).get(i,0)[1] + " " + allObjectPoints.get(n).get(i,0)[2]);
 //                    }
 //                }
             } else {
@@ -400,19 +408,27 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             //log.info("width="+w+" height="+h);
             gl.glBegin(GL.GL_LINES);
             for (int i = 0; i < h; i++) {
-                float y0 = corners.getFloatBuffer().get(2 * w * i);
-                float y1 = corners.getFloatBuffer().get((2 * w * (i + 1)) - 2);
-                float x0 = corners.getFloatBuffer().get((2 * w * i) + 1);
-                float x1 = corners.getFloatBuffer().get((2 * w * (i + 1)) - 1);
+                float y0 =  (float) corners.toList().get(w * i).x;
+                float y1 =  (float) corners.toList().get(w * (i + 1) - 1).x;
+                float x0 =  (float) corners.toList().get(w * i).y;
+                float x1 =  (float) corners.toList().get(w * (i + 1) - 1).y;
+//                float y0 = corners.getFloatBuffer().get(2 * w * i);
+//                float y1 = corners.getFloatBuffer().get((2 * w * (i + 1)) - 2);
+//                float x0 = corners.getFloatBuffer().get((2 * w * i) + 1);
+//                float x1 = corners.getFloatBuffer().get((2 * w * (i + 1)) - 1);
                 //log.info("i="+i+" x="+x+" y="+y);
                 gl.glVertex2f(y0, x0);
                 gl.glVertex2f(y1, x1);
             }
             for (int i = 0; i < w; i++) {
-                float y0 = corners.getFloatBuffer().get(2 * i);
-                float y1 = corners.getFloatBuffer().get(2 * ((w * (h - 1)) + i));
-                float x0 = corners.getFloatBuffer().get((2 * i) + 1);
-                float x1 = corners.getFloatBuffer().get((2 * ((w * (h - 1)) + i)) + 1);
+                float y0 =  (float) corners.toList().get(i).x;
+                float y1 =  (float) corners.toList().get((w * (h - 1)) + i).x;
+                float x0 =  (float) corners.toList().get(i).y;
+                float x1 =  (float) corners.toList().get((w * (h - 1)) + i).y;                
+//                float y0 = corners.getFloatBuffer().get(2 * i);
+//                float y1 = corners.getFloatBuffer().get(2 * ((w * (h - 1)) + i));
+//                float x0 = corners.getFloatBuffer().get((2 * i) + 1);
+//                float x1 = corners.getFloatBuffer().get((2 * ((w * (h - 1)) + i)) + 1);
                 //log.info("i="+i+" x="+x+" y="+y);
                 gl.glVertex2f(y0, x0);
                 gl.glVertex2f(y1, x1);
@@ -423,8 +439,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             gl.glColor3f(1, 1, 0);
             gl.glBegin(GL.GL_LINES);
             for (int i = 0; i < n; i++) {
-                float y = corners.getFloatBuffer().get(2 * i);
-                float x = corners.getFloatBuffer().get((2 * i) + 1);
+                float y = (float) corners.toList().get(i).x;
+                float x = (float) corners.toList().get(i).y;
                 //log.info("i="+i+" x="+x+" y="+y);
                 gl.glVertex2f(y, x - c);
                 gl.glVertex2f(y, x + c);
@@ -586,40 +602,36 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         //init
         Size imgSize = new Size(sx, sy);
         // make local references to hold results while thread is processing
-        Mat cameraMatrix;
-        Mat distortionCoefs;
-        MatVector rotationVectors;
-        MatVector translationVectors;
-        cameraMatrix = new Mat();
-        distortionCoefs = new Mat();
-        rotationVectors = new MatVector();
-        translationVectors = new MatVector();
+        Mat cameraMtx;
+        Mat distCoefs;
+        ArrayList<Mat> rotationVecs;
+        ArrayList<Mat> translationVecs;
+        cameraMtx = new Mat();
+        distCoefs = new Mat();
+        rotationVecs = new ArrayList<Mat>();
+        translationVecs = new ArrayList<Mat>();
 
-        allImagePoints.resize(imageCounter);
-        allObjectPoints.resize(imageCounter); // resize has side effect that lists cannot hold any more data
-        log.info(String.format("calibrating based on %d images sized %d x %d", allObjectPoints.size(), imgSize.width(), imgSize.height()));
+        log.info(String.format("calibrating based on %d images sized %d x %d", allObjectPoints.size(), (int) imgSize.width, (int) imgSize.height));
         //calibrate
         try {
             setCursor(new Cursor(Cursor.WAIT_CURSOR));
-            opencv_calib3d.calibrateCamera(allObjectPoints, allImagePoints, imgSize, cameraMatrix, distortionCoefs, rotationVectors, translationVectors);
+            Calib3d.calibrateCamera(allObjectPoints, allImagePoints, imgSize, cameraMtx, distCoefs, rotationVecs, translationVecs);
             generateCalibrationString();
             log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html \n"
-                    + "\nCamera matrix: " + cameraMatrix.toString() + "\n" + printMatD(cameraMatrix)
-                    + "\nDistortion coefficients k_1 k_2 p_1 p_2 k_3 ...: " + distortionCoefs.toString() + "\n" + printMatD(distortionCoefs)
+                    + "\nCamera matrix: " + cameraMtx.toString() + "\n" + printMatD(cameraMtx)
+                    + "\nDistortion coefficients k_1 k_2 p_1 p_2 k_3 ...: " + distCoefs.toString() + "\n" + printMatD(distCoefs)
                     + calibrationString);
         } catch (RuntimeException e) {
             log.warning("calibration failed with exception " + e + "See https://adventuresandwhathaveyou.wordpress.com/2014/03/14/opencv-error-messages-suck/");
         } finally {
-            allImagePoints.resize(100);
-            allObjectPoints.resize(100);
             setCursor(Cursor.getDefaultCursor());
         }
-        calibrated = true;
         synchronized (this) {
-            this.cameraMatrix = cameraMatrix;
-            this.distortionCoefs = distortionCoefs;
-            this.rotationVectors = rotationVectors;
-            this.translationVectors = translationVectors;
+            calibrated = true;
+            this.cameraMatrix = cameraMtx;
+            this.distortionCoefs = distCoefs;
+            this.rotationVectors = rotationVecs;
+            this.translationVectors = translationVecs;
         }
         getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
     }
@@ -639,32 +651,32 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         if ((sx == 0) || (sy == 0)) {
             return; // not set yet
         }
-        FloatPointer fp = new FloatPointer(2 * sx * sy);
+//        FloatPointer fp = new FloatPointer(2 * sx * sy);
+        Mat fp = new Mat(1, sx * sy, CvType.CV_32FC2);
         int idx = 0;
         for (int x = 0; x < sx; x++) {
             for (int y = 0; y < sy; y++) {
-                fp.put(idx++, x);
-                fp.put(idx++, y);
+                fp.put(0, idx++, x, y);
             }
         }
-        Mat dst = new Mat();
-        Mat pixelArray = new Mat(1, sx * sy, CV_32FC2, fp); // make wide 2 channel matrix of source event x,y
-        opencv_imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
+        MatOfPoint2f dst = new MatOfPoint2f();
+        MatOfPoint2f pixelArray = new MatOfPoint2f(fp); // make wide 2 channel matrix of source event x,y
+         Imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
         isUndistortedAddressLUTgenerated = true;
         // get the camera matrix elements (focal lengths and principal point)
-        DoubleIndexer k = getCameraMatrix().createIndexer();
+//        DoubleIndexer k = getCameraMatrix().createIndexer();
         float fx, fy, cx, cy;
-        fx = (float) k.get(0, 0);
-        fy = (float) k.get(1, 1);
-        cx = (float) k.get(0, 2);
-        cy = (float) k.get(1, 2);
+        fx = (float) getCameraMatrix().get(0, 0)[0];
+        fy = (float) getCameraMatrix().get(1, 1)[0];
+        cx = (float) getCameraMatrix().get(0, 2)[0];
+        cy = (float) getCameraMatrix().get(1, 2)[0];
         undistortedAddressLUT = new short[2 * sx * sy];
 
         for (int x = 0; x < sx; x++) {
             for (int y = 0; y < sy; y++) {
                 idx = 2 * (y + (sy * x));
-                undistortedAddressLUT[idx] = (short) Math.round((dst.getFloatBuffer().get(idx) * fx) + cx);
-                undistortedAddressLUT[idx + 1] = (short) Math.round((dst.getFloatBuffer().get(idx + 1) * fy) + cy);
+                undistortedAddressLUT[idx] = (short) Math.round((dst.get(0, idx)[0] * fx) + cx);
+                undistortedAddressLUT[idx + 1] = (short) Math.round((dst.get(0, idx + 1)[0] * fy) + cy);
             }
         }
     }
@@ -674,21 +686,21 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     private void generateCalibrationString() {
-        if ((cameraMatrix == null) || cameraMatrix.isNull() || cameraMatrix.empty()) {
+        if ((cameraMatrix == null) || cameraMatrix.empty()) {
             calibrationString = SINGLE_CAMERA_CALIBRATION_UNCALIBRATED;
             calibrated = false;
             return;
         }
 
-        DoubleBufferIndexer cameraMatrixIndexer = cameraMatrix.createIndexer();
+//        DoubleBufferIndexer cameraMatrixIndexer = cameraMatrix.createIndexer();
 
         // Average focal lengths for X and Y axis (fx, fy).
-        focalLengthPixels = (float) (cameraMatrixIndexer.get(0, 0) + cameraMatrixIndexer.get(1, 1)) / 2;
+        focalLengthPixels = (float) (cameraMatrix.get(0, 0)[0] + cameraMatrix.get(1, 1)[0]) / 2;
 
         // Go from pixels to millimeters, by multiplying by pixel size (in mm).
         focalLengthMm = chip.getPixelWidthUm() * 1e-3f * focalLengthPixels;
 
-        principlePoint = new Point2D.Float((float) cameraMatrixIndexer.get(0, 2), (float) cameraMatrixIndexer.get(1, 2));
+        principlePoint = new Point2D.Float((float) cameraMatrix.get(0, 2)[0], (float) cameraMatrix.get(1, 2)[0]);
         StringBuilder sb = new StringBuilder();
         if (imageCounter > 0) {
             sb.append(String.format("Using %d images", imageCounter));
@@ -807,8 +819,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     synchronized public void doClearImages() {
         imageCounter = 0;
-        allImagePoints.setNull();
-        allObjectPoints.setNull();
+        allImagePoints.clear();
+        allObjectPoints.clear();
         generateCalibrationString();
     }
 
@@ -835,23 +847,23 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      * @param name base name of file
      * @param sMat the Mat to write
      */
-    public void serializeMat(String dir, String name, opencv_core.Mat sMat) {
+    public void serializeMat(String dir, String name, Mat sMat) {
         String fn = dir + File.separator + name + ".xml";
 
-        opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.WRITE);
-        opencv_core.write(storage, name, sMat);
-        storage.release();
+//        opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.WRITE);
+//        opencv_core.write(storage, name, sMat);
+//        storage.release();
 
         log.info("saved in " + fn);
     }
 
-    public opencv_core.Mat deserializeMat(String dir, String name) {
+    public Mat deserializeMat(String dir, String name) {
         String fn = dirPath + File.separator + name + ".xml";
-        opencv_core.Mat mat = new opencv_core.Mat();
+        Mat mat = new Mat();
 
-        opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.READ);
-        opencv_core.read(storage.get(name), mat);
-        storage.release();
+//        opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.READ);
+//        opencv_core.read(storage.get(name), mat);
+//        storage.release();
 
         if (mat.empty()) {
             return null;
@@ -875,7 +887,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         int c = 0;
         for (int i = 0; i < M.rows(); i++) {
             for (int j = 0; j < M.cols(); j++) {
-                sb.append(String.format("%10.5f\t", M.getDoubleBuffer().get(c)));
+                sb.append(String.format("%10.5f\t", M.get(i,j)[0]));
                 c++;
             }
             sb.append("\n");
@@ -1088,27 +1100,28 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         if (!isCalibrated()) {
             log.warning("not calibrated, doing nothing");
         }
-        FloatPointer fp = new FloatPointer(2 * points.size());
+//        FloatPointer fp = new FloatPointer(2 * points.size());
+        Mat fp = new Mat(1, 2 * points.size(), CvType.CV_32FC2);
         int idx = 0;
         for (Point2D.Float p : points) {
-            fp.put(idx++, p.x);
-            fp.put(idx++, p.y);
+            fp.put(0, idx++, p.x);
+            fp.put(0, idx++, p.y);
         }
-        Mat dst = new Mat();
-        Mat pixelArray = new Mat(1, 2 * points.size(), CV_32FC2, fp); // make wide 2 channel matrix of source event x,y
-        opencv_imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
+        MatOfPoint2f dst = new MatOfPoint2f();
+        MatOfPoint2f pixelArray = new MatOfPoint2f(fp); // make wide 2 channel matrix of source event x,y
+        Imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
         // get the camera matrix elements (focal lengths and principal point)
-        DoubleIndexer k = getCameraMatrix().createIndexer();
+//        DoubleIndexer k = getCameraMatrix().createIndexer();
         float fx, fy, cx, cy;
-        fx = (float) k.get(0, 0);
-        fy = (float) k.get(1, 1);
-        cx = (float) k.get(0, 2);
-        cy = (float) k.get(1, 2);
+        fx = (float) getCameraMatrix().get(0, 0)[0];
+        fy = (float) getCameraMatrix().get(1, 1)[0];
+        cx = (float) getCameraMatrix().get(0, 2)[0];
+        cy = (float) getCameraMatrix().get(1, 2)[0];
         idx = 0;
-        FloatBuffer b = dst.getFloatBuffer();
+//        FloatBuffer b = dst.getFloatBuffer();
         for (Point2D.Float p : points) {
-            p.x = ((b.get(idx++) * fx) + cx);
-            p.y = ((b.get(idx++) * fy) + cy);
+            p.x = (float) ((dst.get(0, idx++)[0] * fx) + cx);
+            p.y = (float) ((dst.get(0, idx++)[0] * fy) + cy);
         }
     }
 

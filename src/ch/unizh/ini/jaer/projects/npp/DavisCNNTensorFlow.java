@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2017 Tobi.
  *
  * This library is free software; you can redistribute it and/or
@@ -18,8 +18,6 @@
  */
 package ch.unizh.ini.jaer.projects.npp;
 
-import ch.unizh.ini.jaer.projects.npp.TensorFlow.GraphBuilder;
-import com.jogamp.opengl.GL2;
 import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
@@ -28,10 +26,11 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Iterator;
+
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+
 import org.tensorflow.DataType;
 import org.tensorflow.Graph;
 import org.tensorflow.Operation;
@@ -39,6 +38,11 @@ import org.tensorflow.Output;
 import org.tensorflow.SavedModelBundle;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
+
+import com.jogamp.opengl.GL2;
+
+import ch.unizh.ini.jaer.projects.npp.TensorFlow.GraphBuilder;
+import net.sf.jaer.graphics.AEFrameChipRenderer;
 
 /**
  * Runs a CNN using tensorflow
@@ -110,7 +114,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
         for (int y = 0; y < sy; y++) {
             for (int x = 0; x < sx; x++) {
                 for (int c = 0; c < numChannels; c++) {
-                    final int newIdx = c + numChannels * (x + (sx * (sy - y - 1)));
+                    final int newIdx = c + (numChannels * (x + (sx * (sy - y - 1))));
                     fb.put(newIdx, rgb[c] * frame.getApsGrayValueAtPixel(x, y));
                 }
             }
@@ -174,9 +178,9 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
         }
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                final int origIdx = x + width * y;
+                final int origIdx = x + (width * y);
                 for (int c = 0; c < numChannels; c++) {
-                    final int newIdx = c + numChannels * (x + (width * (height - y - 1)));
+                    final int newIdx = c + (numChannels * (x + (width * (height - y - 1))));
                     flippedarray[newIdx] = ((origarray[origIdx] * rgb[c]));
                 }
             }
@@ -195,7 +199,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
             return output;
         } catch (IllegalArgumentException ex) {
             String exhtml = ex.toString().replaceAll("<", "&lt").replaceAll(">", "&gt").replaceAll("&", "&amp").replaceAll("\n", "<br>");
-            StringBuilder msg = new StringBuilder("<html>Caught exception <p>" + exhtml + "</p>");
+            final StringBuilder msg = new StringBuilder("<html>Caught exception <p>" + exhtml + "</p>");
             msg.append("<br> Did you set <i>inputLayerName</i> and <i>outputLayerName</i>?");
             msg.append("<br>The IO layer names could be as follows (the string inside the single quotes): <ul> ");
             for (String s : ioLayers) {
@@ -221,7 +225,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
      */
     private void computeSoftMax() {
         float[] activations = outputLayer.getActivations();
-        if (activations == null || activations.length == 0) {
+        if ((activations == null) || (activations.length == 0)) {
             log.warning("tried to compute softmax on null or empty output layer activations");
             return;
         }
