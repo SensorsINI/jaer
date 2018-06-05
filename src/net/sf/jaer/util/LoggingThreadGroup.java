@@ -29,11 +29,14 @@ public class LoggingThreadGroup extends ThreadGroup {
             logger.addHandler(handler);
         }
         try {
-            logger.log(Level.WARNING, thread == null ? "(null thread supplied)" : thread.toString(), throwable == null ? "(null exception)" : throwable.toString());
+            logger.log(Level.WARNING, thread == null ? "(null thread supplied)" : thread.toString(), throwable == null ? "(null exception)" : throwable);
         } catch (RuntimeException rte) {
             System.out.println((thread == null ? "(null thread supplied)" : thread.toString()) + ": " + (throwable == null ? "(null exception)" : throwable.toString()));
             if (throwable != null) {
                 throwable.printStackTrace();
+                if (throwable.getCause() != null) {
+                    throwable.getCause().printStackTrace();
+                }
             }
         }
         StringWriter sw = new StringWriter();
@@ -51,6 +54,9 @@ public class LoggingThreadGroup extends ThreadGroup {
         }
         if (throwable != null) {
             throwable.printStackTrace(pw);
+            if (throwable.getCause() != null) {
+                throwable.getCause().printStackTrace(pw);
+            }
         } else {
             sw.write("(null exception, cannot provide stack trace)");
         }
