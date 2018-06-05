@@ -20,6 +20,9 @@ public class LoggingThreadGroup extends ThreadGroup {
     /**
      * Thread and Throwable passed in here are passed to a Logger named
      * "UncaughtExceptionLogger" which has the handler LoggingWindowHandler.
+     * 
+     * @param thread the thread that threw the exception
+     * @param throwable the Throwable that caused the exception
      */
     public void uncaughtException(Thread thread, Throwable throwable) {
         // Initialize logger once
