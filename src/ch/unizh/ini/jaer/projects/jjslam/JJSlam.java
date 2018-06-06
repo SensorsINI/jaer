@@ -56,6 +56,7 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
     private CameraAccRotVel cameraAccRotVel = new CameraAccRotVel();
     private WriteFile writeFile = new WriteFile("C:\\Users\\Robin\\polybox\\JJSLAM_Semester_Thesis\\asdfasdf.txt");
     private ImuMedianTracker tracker = null;
+    private landmark landmark1 = new landmark();
 
 
     public JJSlam(AEChip chip) {
@@ -92,7 +93,13 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
         cameraAccRotVel.setRotVel(tiltRateDpsSample, yawRateDpsSample, rollRateDpsSample);
         cameraAccRotVel.setAcc(accX, accY, accZ );
         cameraAccRotVel.setTimeUs(t_current);
-        cameraPose.setOrientation(cameraAccRotVel.updateOrientation(cameraPose));
+        cameraPose.setTimeUs(t_current);
+        float[] orientation=cameraAccRotVel.updateOrientation(cameraPose);
+        cameraPose.setOrientation(orientation);
+        float[] velocity=cameraAccRotVel.updateVelocityWorld(cameraPose);
+        cameraPose.setVelocity(velocity);
+        landmark1.estimatePose(cameraAccRotVel, cameraPose);
+       
         //writeFile.writeToFile(cameraAccRotVel.toStringExport());
         
         //Calculate the new orientation
@@ -119,8 +126,13 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
         }
         textRenderer.beginRendering(sx, sy);
         gl.glColor4f(1, 1, 0, .7f);
-        textRenderer.draw(cameraPose.toString(), 1, sy / 2);
-        //stextRenderer.draw(cameraAccRotVel.toString(), 1, (sy/2-10));
+        textRenderer.draw(cameraPose.toStringRotMatLine1(),1, (sy / 2+60));
+        textRenderer.draw(cameraPose.toStringRotMatLine2(),1, (sy / 2+40));
+        textRenderer.draw(cameraPose.toStringRotMatLine3(),1, (sy / 2+20));
+        textRenderer.draw(cameraPose.toStringOrientation(), 1, sy / 2);
+        textRenderer.draw(cameraPose.toStringVelocity(),1, (sy / 2-20));
+        textRenderer.draw(cameraAccRotVel.toStringAccelerationWorld(),1, (sy / 2-40));
+        textRenderer.draw(cameraAccRotVel.toStringRotVelRaw(),1, (sy/2 -60));
         textRenderer.endRendering();
         
         
@@ -154,16 +166,33 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
 
     private class CameraPose {
 
+        int t_current;
         float[] x = new float[3]; 
         float[] u = new float[3];
         float[] phi = new float[3];
         Matrix3 phiRotMat = new Matrix3();
         
 
-        @Override
-        public String toString() {
+       
+        public String toStringOrientation() {
             return String.format("CameraPose: [orientation]=[%.2f,%.2f,%.2f]",
                     phi[0], phi[1], phi[2]);
+        }
+        public String toStringVelocity(){
+            return String.format("CameraVelocity: [ux,uy,uz]=[%.2f,%.2f,%.2f]", 
+                    u[0],u[1], u[2]);
+        }
+        public String toStringRotMatLine1 () {
+            return String.format("RotMat Line 1: %.2f %.2f %.2f",
+                    phiRotMat.getArray()[0], phiRotMat.getArray()[1], phiRotMat.getArray()[2]);
+        }
+        public String toStringRotMatLine2 () {
+            return String.format("RotMat Line 2: %.2f %.2f %.2f",
+                    phiRotMat.getArray()[3], phiRotMat.getArray()[4], phiRotMat.getArray()[5]);
+        }
+        public String toStringRotMatLine3 () {
+            return String.format("RotMat Line 3: %.2f %.2f %.2f",
+                    phiRotMat.getArray()[6], phiRotMat.getArray()[7], phiRotMat.getArray()[8]);
         }
         public void setOrientation( float[] a) {
             //Set the angle values
@@ -189,6 +218,14 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
             b[8]=(float)(Math.cos(beta)*Math.cos(gamma));
             phiRotMat.setValuesArray(b);  
         }
+        public void setVelocity (float[] a){
+            u[0]=a[0];
+            u[1]=a[1];
+            u[2]=a[2];
+        }
+        public void setTimeUs(int a){
+            t_current=a;
+        }
         public float[] getOrientation() {
             float[] a = new float[3];
             a[0]=phi[0];
@@ -196,6 +233,16 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
             a[2]=phi[2];
             return a;
                     
+        }
+        public float[] getVelocity(){
+            float[] a = new float[3];
+            a[0]=u[0];
+            a[1]=u[1];
+            a[2]=u[2];
+            return a;
+        }
+        public Matrix3 getPhiRotMa(){
+            return phiRotMat;
         }
     }
     
@@ -239,38 +286,72 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
         }
     }
             
+    private class landmark {
+        private Matrix3 P;
+        private Matrix3 Rinv;
+        private Matrix3 Q;
+        private Matrix3 Omega;
+        
+        public void estimatePose(CameraAccRotVel aAccRotVel, CameraPose cameraPose) {
+            float valuesRinv[]={0,0,0,0,0,0,0,0,0};
+            float valuesQ[]={0,0,0,0,0,0,0,0,0};
+            Rinv.setValuesArray(valuesRinv);
+            Q.setValuesArray(valuesQ);
+            //Fill Omega with the information of rotVel and Vel (different coordinate system!!)
             
+            //Fill H with the information of the tracker (different coordinate System)
+            
+            //Calculate a local u with changes coordinate system. 
+            
+            //Next Step is to update the postition estimation
+            
+            //Calculate x in the normal frame and use it as return value
+            
+            
+            
+        }
+        
+    }        
             
     
     private class CameraAccRotVel {
 
-        float[] acc = new float[3];
+        float[] accBody = new float[3];
+        float[] accWorld = new float[3];
         float[] rotVel = new float[3];
         int timeUs_curr = 0;
         int timeUs_prev = 0;
         int dTUs=0;
         int test=0;
         
-        @Override
-        public String toString() {
-            return String.format("Accelartion: [x,y,z]=[%.2f,%.2f,%.2f], [ux,uy,uz]=[%.2f,%.2f,%.2f], delta time = %d",
-                    acc[0], acc[1], acc[2],
-                    rotVel[0], rotVel[1], rotVel[2],test);
+  
+        public String toStringAccelerationBody() {
+            return String.format("Accelartion Body: [x,y,z]=[%.2f,%.2f,%.2f]",
+                    accBody[0], accBody[1], accBody[2]);
+        }
+        public String toStringAccelerationWorld() {
+            return String.format("Accelartion World: [x,y,z]=[%.2f,%.2f,%.2f]",
+                    accWorld[0], accWorld[1], accWorld[2]);
+        }
+        public String toStringRotVelRaw() {
+            return String.format("RotVel: [x,y,z]=[%.2f,%.2f,%.2f]",
+                    rotVel[0], rotVel[1], rotVel[2]);
         }
         public String toStringExport(){
-            return String.format("%f,%f,%f,%f,%f,%f,%d,%d,%d",acc[0], acc[1], acc[2],rotVel[0], rotVel[1], rotVel[2],timeUs_curr,timeUs_prev, dTUs);
+            return String.format("%f,%f,%f,%f,%f,%f,%d,%d,%d",accBody[0], accBody[1], accBody[2],rotVel[0], rotVel[1], rotVel[2],timeUs_curr,timeUs_prev, dTUs);
         }
         public void setAcc (float a, float b, float c )
         {
-            acc[0]=a+0.2531f;
-            acc[1]=b+0.9709f;
-            acc[2]=c-0.5161f;
+            accBody[0]=a;
+            accBody[1]=b;
+            accBody[2]=c;
         }
         public void setRotVel (float a, float b, float c)
         {
-            rotVel[0]=a;
-            rotVel[1]=b;
-            rotVel[2]=c;       
+            rotVel[0]=a+0.2531f;
+            //attention: the mean for the y value has a changed sign
+            rotVel[1]=b-0.9709f;
+            rotVel[2]=c-0.5161f;     
         }
         public void setTimeUs (int time_current)
         {
@@ -287,11 +368,42 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
                 current_orientation[2]=pose.getOrientation()[2]+rotVel[2]*dTUs*0.000001f;
             }
             else {
-                log.info("corrupted delte time - no update");
+                log.info("corrupted delta time - no orientation update");
                 current_orientation = pose.getOrientation();
             }
             return current_orientation;
         }
+        public float[] updateVelocityWorld(CameraPose pose){
+            float[] velocityWorld = new float[3];
+            Matrix3 phiRotMat=pose.getPhiRotMa();
+            if ((dTUs>0) && (dTUs<10000)){
+                accWorld=phiRotMat.matrixTimesVector(this.accBody);
+                //subract the drifts
+                /* Values for No Movement Dataset
+                accWorld[0]=accWorld[0]-0.0043f;
+                accWorld[1]=accWorld[1]+0.9890f;
+                accWorld[2]=accWorld[2]-0.0731f;
+                */
+                accWorld[0]=accWorld[0]-0.015f;
+                accWorld[1]=accWorld[1]+0.9890f;
+                accWorld[2]=accWorld[2]-0.0731f;
+                //Scale the accelartion to real values
+                accWorld[0]=9.81f*accWorld[0];
+                accWorld[1]=9.81f*accWorld[1];
+                accWorld[2]=9.81f*accWorld[2];
+                //Integrate the values
+                velocityWorld[0]=pose.getVelocity()[0]+accWorld[0]*dTUs*0.000001f;
+                velocityWorld[1]=pose.getVelocity()[1]+accWorld[1]*dTUs*0.000001f;
+                velocityWorld[2]=pose.getVelocity()[2]+accWorld[2]*dTUs*0.000001f;
+            }
+            else {
+                log.info("corrupted delte time - no velocity update");
+                velocityWorld=pose.getVelocity();
+            }
+            return velocityWorld;
+        }
+        
+        
     }
 
     class ImuMedianTracker extends MedianTracker {
@@ -330,7 +442,7 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
             }
             return in;
         }
-
+this
         private void processEvents(int[] xs, int[] ys, int count) {
             if (count < 1) {
                 return;
@@ -458,7 +570,7 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
             float[] a=new float[3];
             a[0]=e11*v[0]+e12*v[1]+e13*v[2];
             a[1]=e21*v[0]+e22*v[1]+e23*v[2];
-            a[2]=e31*v[0]+e32*v[1]+e33*v[3];
+            a[2]=e31*v[0]+e32*v[1]+e33*v[2];
             return a;
         }
     }
