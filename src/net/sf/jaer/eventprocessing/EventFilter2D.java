@@ -276,7 +276,7 @@ abstract public class EventFilter2D extends EventFilter implements PropertyChang
         /**
          * The source EventFilter2D.
          */
-        EventFilter2D source;
+        public EventFilter2D source;
 
         /**
          * When a filter calls for an update of listeners it supplies this

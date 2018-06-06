@@ -19,25 +19,31 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * @author tobi
  *
  * This is part of jAER <a
- * href="http://jaerproject.net/">jaerproject.net</a>,
- * licensed under the LGPL (<a
+ * href="http://jaerproject.net/">jaerproject.net</a>, licensed under the LGPL (<a
  * href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 @Description("Estimates event rate from the input event packets")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class EventRateEstimator extends EventFilter2D {
 
-    private LowpassFilter filter = new LowpassFilter();
+    /**
+     * The filter generates PropertyChangeEvent when the rate is updated
+     * internally (at least every eventRateTauMs). Listeners can add a property
+     * change listener to get these events
+     */
+    public static final String EVENT_RATE_UPDATE = "EVENT_RATE_UPDATE";
+
+    protected LowpassFilter filter = new LowpassFilter();
     private int lastComputeTimestamp = 0;
     private float maxRate = getFloat("maxRate", 10e6f);
     private float filteredRate = 0, instantaneousRate = 0;
     private float eventRateTauMs = getFloat("eventRateTauMs", 100);
     private int eventRateTauUs = (int) (eventRateTauMs * 1000);
     /* Event rate estimates are sent to observers this many times per tau */
-    protected int UPDATE_RATE_TAU_DIVIDER = 1;  
+    protected int UPDATE_RATE_TAU_DIVIDER = 1;
     private boolean initialized = false;
     private int numEventsSinceLastUpdate = 0;
-    private int numEventsInLastPacket=0;
+    private int numEventsInLastPacket = 0;
 
     public EventRateEstimator(AEChip chip) {
         super(chip);
@@ -51,33 +57,49 @@ public class EventRateEstimator extends EventFilter2D {
         if (in == null || in.getSize() == 0) {
             return in; // if there are no events, don't touch values since we don't have a new update time
         }
-        numEventsInLastPacket=0;
+        numEventsInLastPacket = 0;
         for (BasicEvent e : in) {
-            if(e.isSpecial()) continue;
-            numEventsInLastPacket++;
-            int dt = e.timestamp - lastComputeTimestamp;
-            if (!initialized || dt < 0) {
-                numEventsSinceLastUpdate = 0;
-                lastComputeTimestamp = e.timestamp;
-                initialized = true;
-                return in;
-            }
-            numEventsSinceLastUpdate++;
-            if (dt > eventRateTauUs / UPDATE_RATE_TAU_DIVIDER) {
-//                System.out.println("            rate update dt="+dt/1000+" ms");
-                lastComputeTimestamp = e.timestamp;
-                if (dt == 0) {
-                    instantaneousRate = maxRate; // if the time interval is zero, use the max rate
-                } else {
-                    instantaneousRate = 1e6f * (float) numEventsSinceLastUpdate / (dt * AEConstants.TICK_DEFAULT_US);
-                }
-                numEventsSinceLastUpdate = 0;
-                filteredRate = filter.filter(instantaneousRate, e.timestamp);
-                setChanged();
-                notifyObservers(new UpdateMessage(this, in, e.timestamp));
-            }
+            addEvent(e, in);
         }
         return in;
+    }
+
+    /**
+     * Processes event
+     *
+     * @param e
+     * @param in
+     * @return true if event updated rate, false otherwise
+     */
+    protected boolean addEvent(BasicEvent e, EventPacket<?> in) {
+        if (e.isSpecial()) {
+            return false;
+        }
+        numEventsInLastPacket++;
+        int dt = e.timestamp - lastComputeTimestamp;
+        if (!initialized) {
+            numEventsSinceLastUpdate = 0;
+            lastComputeTimestamp = e.timestamp;
+            initialized = true;
+            return false;
+        }
+        if (dt < 0) {
+            // nonmonotonic timestamp; reset initialized to false and continue after memorizing this timestamp
+            initialized = false;
+            return false; // just ignore this event entirely
+        }
+        numEventsSinceLastUpdate++;
+        if (dt >= eventRateTauUs / UPDATE_RATE_TAU_DIVIDER) {
+//                System.out.println("            rate update dt="+dt/1000+" ms");
+            lastComputeTimestamp = e.timestamp;
+            instantaneousRate = 1e6f * (float) numEventsSinceLastUpdate / (dt * AEConstants.TICK_DEFAULT_US);
+            numEventsSinceLastUpdate = 0;
+//            float oldRate=filteredRate;
+            filteredRate = instantaneousRate; // already uses time windows to count events // filter.filter(instantaneousRate, e.timestamp);
+            UpdateMessage msg = new UpdateMessage(this, in, e.timestamp);
+            getSupport().firePropertyChange(EVENT_RATE_UPDATE, null, msg);
+        }
+        return true;
     }
 
     @Override
@@ -120,8 +142,7 @@ public class EventRateEstimator extends EventFilter2D {
     public float getInstantaneousEventRate() {
         return instantaneousRate;
     }
-    
-    
+
     /**
      * Returns measured event rate
      *
@@ -150,6 +171,7 @@ public class EventRateEstimator extends EventFilter2D {
 
     /**
      * Returns the number of events in last input packet.
+     *
      * @return the numEventsInLastPacket
      */
     public int getNumEventsInLastPacket() {

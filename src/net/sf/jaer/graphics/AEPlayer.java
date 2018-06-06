@@ -526,32 +526,31 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         AEPacketRaw aeRaw = null;
 
         try {
-            if(!jogOccuring || (jogOccuring && (jogPacketsLeft==0))){
+            if (!jogOccuring || (jogOccuring && jogPacketsLeft == 0)) {
                 if (!viewer.aePlayer.isFlexTimeEnabled()) {
                     aeRaw = aeFileInputStream.readPacketByTime(viewer.getAePlayer().getTimesliceUs());
                 } else {
                     aeRaw = aeFileInputStream.readPacketByNumber(viewer.getAePlayer().getPacketSizeEvents());
                 }
+            } else {
+                while (jogPacketsLeft != 0) {
+                    setDirectionForwards(jogPacketsLeft >= 0);
+                    if (!viewer.aePlayer.isFlexTimeEnabled()) {
+                        aeRaw = aeFileInputStream.readPacketByTime(viewer.getAePlayer().getTimesliceUs());
+                    } else {
+                        aeRaw = aeFileInputStream.readPacketByNumber(viewer.getAePlayer().getPacketSizeEvents());
+                    }
+                    if (jogPacketsLeft < 0) {
+                        jogPacketsLeft++;
+                    } else if (jogPacketsLeft > 0) {
+                        jogPacketsLeft--;
+                    }
+                }
             }
-			else {
-				while (jogPacketsLeft != 0) {
-				    setDirectionForwards(jogPacketsLeft >= 0);
-				    if (!viewer.aePlayer.isFlexTimeEnabled()) {
-				        aeRaw = aeFileInputStream.readPacketByTime(viewer.getAePlayer().getTimesliceUs());
-				    } else {
-				        aeRaw = aeFileInputStream.readPacketByNumber(viewer.getAePlayer().getPacketSizeEvents());
-				    }
-				    if (jogPacketsLeft < 0) {
-				        jogPacketsLeft++;
-				    } else if (jogPacketsLeft > 0) {
-				        jogPacketsLeft--;
-				    }
-				}
-			}
-            if(jogOccuring && (jogPacketsLeft==0)){
-                jogOccuring=false;
+            if (jogOccuring && jogPacketsLeft == 0) {
+                jogOccuring = false;
+                setDirectionForwards(true);
             }
-            setDirectionForwards(true);
             return aeRaw;
         } catch (EOFException e) {
             cancelJog();
