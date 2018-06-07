@@ -288,22 +288,50 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
             
     private class landmark {
         private Matrix3 P;
-        private Matrix3 Rinv;
         private Matrix3 Q;
         private Matrix3 Omega;
+        private Matrix3 HRH;
+        //Rinv and H are filled as follow: H[0]=h11, H[1]=h12,...
+        float Rinv[]={0, 0, 0, 0};
+        float H[]= new float[6];
         
-        public void estimatePose(CameraAccRotVel aAccRotVel, CameraPose cameraPose) {
-            float valuesRinv[]={0,0,0,0,0,0,0,0,0};
+        public void estimatePose(CameraAccRotVel AccRotVel, CameraPose cameraPose) {
+            //Set the constants
             float valuesQ[]={0,0,0,0,0,0,0,0,0};
-            Rinv.setValuesArray(valuesRinv);
             Q.setValuesArray(valuesQ);
-            //Fill Omega with the information of rotVel and Vel (different coordinate system!!)
-            
+            //Change the directions of the linear velocity
+            float velocityWorld[]=cameraPose.getVelocity();
+            float velocityJJ[] = new float[3];
+            velocityJJ[0]=velocityWorld[0];
+            velocityJJ[1]=-velocityWorld[1];
+            velocityJJ[2]=velocityWorld[2];
+            //Change the values of the rotational velocity
+            float rotVelBody[]=AccRotVel.getRotVel();
+            float rotVelJJ[] = new float[3];
+            rotVelJJ[0]=rotVelBody[0];
+            rotVelJJ[1]=-rotVelBody[1];
+            rotVelJJ[2]=rotVelBody[2];
+            //Update the omega matrix (Corrdinate System!)
+            Omega.setValuesIndividual(0f, -rotVelJJ[2], rotVelJJ[1], rotVelJJ[2], 0f, -rotVelJJ[0], -rotVelJJ[1], rotVelJJ[0], 0f);
             //Fill H with the information of the tracker (different coordinate System)
             
-            //Calculate a local u with changes coordinate system. 
+            //Caclate HRH
+            float hrhvalues[]=new float[9];
+            hrhvalues[0]=H[0]*H[0]*Rinv[0];
+            hrhvalues[1]=H[0]*H[4]*Rinv[1];
+            hrhvalues[2]=H[0]*H[2]*Rinv[0]+H[5]*H[0]*Rinv[1];
+            hrhvalues[3]=H[4]*H[0]*Rinv[2];
+            hrhvalues[4]=H[4]*H[4]*Rinv[3];
+            hrhvalues[5]=H[4]*H[2]*Rinv[2]+H[5]*H[4]*Rinv[3];
+            hrhvalues[6]=H[0]*H[2]*Rinv[0]+H[0]*H[6]*Rinv[2];
+            hrhvalues[7]=H[4]*H[2]*Rinv[1]+H[4]*H[6]*Rinv[3];
+            hrhvalues[8]=H[2]*H[2]*Rinv[0]+H[2]*H[5]*Rinv[1]+H[6]*H[2]*Rinv[2]+H[6]*H[5]*Rinv[3];
+            HRH.setValuesArray(hrhvalues);
+            //Covariance Update
+            
             
             //Next Step is to update the postition estimation
+           
             
             //Calculate x in the normal frame and use it as return value
             
@@ -352,6 +380,13 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
             //attention: the mean for the y value has a changed sign
             rotVel[1]=b-0.9709f;
             rotVel[2]=c-0.5161f;     
+        }
+        public float[] getRotVel (){
+            float[] a = new float[3];
+            a[0]=rotVel[0];
+            a[1]=rotVel[1];
+            a[2]=rotVel[2];
+            return a;
         }
         public void setTimeUs (int time_current)
         {
@@ -571,6 +606,45 @@ this
             a[0]=e11*v[0]+e12*v[1]+e13*v[2];
             a[1]=e21*v[0]+e22*v[1]+e23*v[2];
             a[2]=e31*v[0]+e32*v[1]+e33*v[2];
+            return a;
+        }
+        public float[] matrixTimesMatrix(float[] m){
+            float[] a=new float[9];
+            a[0]=m[0]*e11+m[3]*e12+m[6]*e13;
+            a[1]=m[1]*e11+m[4]*e12+m[7]*e13;
+            a[2]=m[2]*e11+m[5]*e12+m[8]*e13;
+            a[3]=m[0]*e21+m[3]*e22+m[6]*e23;
+            a[4]=m[1]*e21+m[4]*e22+m[7]*e23;
+            a[5]=m[2]*e21+m[5]*e22+m[8]*e23;
+            a[6]=m[0]*e31+m[3]*e32+m[6]*e33;
+            a[7]=m[1]*e31+m[4]*e32+m[7]*e33;
+            a[8]=m[2]*e31+m[5]*e32+m[8]*e33;
+            return a;
+        }
+        public float[] matrixPlusInpMatrix(float[] p){
+            float[] a=new float[9];
+            a[0]=p[0]+e11;
+            a[1]=p[1]+e12;
+            a[2]=p[2]+e13;
+            a[3]=p[3]+e21;
+            a[4]=p[4]+e22;
+            a[5]=p[5]+e23;
+            a[6]=p[6]+e31;
+            a[7]=p[7]+e32;
+            a[8]=p[8]+e33;
+            return a;
+        }
+        public float[] matrixMinusInpMatrix(float[] p){
+            float[] a=new float[9];
+            a[0]=e11-p[0];
+            a[1]=e12-p[1];
+            a[2]=e13-p[2];
+            a[3]=e21-p[3];
+            a[4]=e22-p[4];
+            a[5]=e23-p[5];
+            a[6]=e31-p[6];
+            a[7]=e32-p[7];
+            a[8]=e33-p[8];
             return a;
         }
     }
