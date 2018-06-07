@@ -159,7 +159,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
 
     @Override
     public synchronized void doStartRecordingAndSaveAVIAs() {
-        String[] s = {"dvsSubsampler.getWidth()=" + dvsFrame.getOutputImageWidth(), "dvsSubsampler.getHeight()=" + dvsFrame.getOutputImageHeight(), "grayScale=" + dvsFrame.getDvsGrayScale(), "dvsMinEvents=" + dvsFrame.getDvsEventsPerFrame(), "format=" + format.toString(), "compressionQuality=" + compressionQuality};
+        String[] s = {"width=" + dvsFrame.getOutputImageWidth(), "height=" + dvsFrame.getOutputImageHeight(), "grayScale=" + dvsFrame.getDvsGrayScale(), "dvsMinEvents=" + dvsFrame.getDvsEventsPerFrame(), "format=" + format.toString(), "compressionQuality=" + compressionQuality};
         setAdditionalComments(s);
         super.doStartRecordingAndSaveAVIAs(); //To change body of generated methods, choose Tools | Templates.
     }
@@ -306,7 +306,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
 
 
     public static final String USAGE = "java DvsSliceAviWriter [-aechip=aechipclassname (fully qualified class name, e.g. eu.seebetter.ini.chips.davis.DAVIS240C)] "
-            + "[-dvsSubsampler.getWidth()=36] [-dvsSubsampler.getHeight()=36] [-quality=.9] [-format=PNG|JPG|RLE|RAW] [-framerate=30] [-grayscale=200] "
+            + "[-width=36] [-height=36] [-quality=.9] [-format=PNG|JPG|RLE|RAW] [-framerate=30] [-grayscale=200] "
             + "[-writedvssliceonapsframe=false] [-writetimecodefile=true] "
             + "[-numevents=2000] [-rectify=false] [-normalize=true] [-showoutput=true]  [-maxframes=0] "
             + "inputFile.aedat [outputfile.avi]"
@@ -321,8 +321,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         // java DvsSliceAviWriter inputFile.aedat outputfile.avi
         Options opt = new Options(args, 1, 2);
         opt.getSet().addOption("aechip", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("dvsSubsampler.getWidth()", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("dvsSubsampler.getHeight()", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("width", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("height", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("quality", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("format", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("framerate", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
@@ -387,22 +387,22 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         writer.setCloseOnRewind(false);
         writer.getSupport().addPropertyChangeListener(writer);
         // handle options
-        if (opt.getSet().isSet("dimx")) {
+        if (opt.getSet().isSet("width")) {
             try {
-                int n = Integer.parseInt(opt.getSet().getOption("dvsSubsampler.getWidth()").getResultValue(0));
+                int n = Integer.parseInt(opt.getSet().getOption("width").getResultValue(0));
                 writer.getDvsFrame().setOutputImageWidth(n);
             } catch (NumberFormatException e) {
-                System.err.println("Bad dvsSubsampler.getWidth() argument: " + e.toString());
+                System.err.println("Bad width argument: " + e.toString());
                 System.exit(1);
             }
         }
 
-        if (opt.getSet().isSet("dimy")) {
+        if (opt.getSet().isSet("height")) {
             try {
-                int n = Integer.parseInt(opt.getSet().getOption("dvsSubsampler.getHeight()").getResultValue(0));
+                int n = Integer.parseInt(opt.getSet().getOption("height").getResultValue(0));
                 writer.getDvsFrame().setOutputImageHeight(n);
             } catch (NumberFormatException e) {
-                System.err.println("Bad dvsSubsampler.getHeight() argument: " + e.toString());
+                System.err.println("Bad height argument: " + e.toString());
                 System.exit(1);
             }
         }
@@ -562,7 +562,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         writer.setShowOutput(false);
         writer.setCloseOnRewind(oldCloseOnRewind);
         writer.doCloseFile();
-        System.out.println(String.format("Settings: aechip=%s\ndvsSubsampler.getWidth()=%d dvsSubsampler.getHeight()=%d quality=%f format=%s framerate=%d grayscale=%d\n"
+        System.out.println(String.format("Settings: aechip=%s\nwidth=%d height=%d quality=%f format=%s framerate=%d grayscale=%d\n"
                 + "writedvssliceonapsframe=%s writetimecodefile=%s\n"
                 + "numevents=%d rectify=%s normalize=%s showoutput=%s maxframes=%d",
                 chipname, writer.getDvsFrame().getOutputImageWidth(), writer.getDvsFrame().getOutputImageHeight(),
