@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<exe4j version="5.1" transformSequenceNumber="2">
+<exe4j version="6.0" transformSequenceNumber="2">
   <directoryPresets config="./jars/win32" />
   <application name="dvs-slice-avi-writer" distributionSourceDir=".">
     <languages>
@@ -10,13 +10,13 @@
     <messageSet />
     <versionInfo include="true" fileVersion="" fileDescription="Launcher for AEViewer for jAER" legalCopyright="jAER Team, 2014" internalName="jAERViewer" productName="" companyName="iniLabs.com" productVersion="1.5.0" />
   </executable>
-  <splashScreen show="false" width="0" height="0" bitmapFile="SplashScreen.gif" windowsNative="false" textOverlay="false">
+  <splashScreen show="false" width="0" height="0" bitmapFile="SplashScreen.gif" textOverlay="false">
     <text>
       <statusLine x="20" y="20" text="" fontSize="8" fontColor="0,0,0" bold="false" />
       <versionLine x="20" y="40" text="version %VERSION%" fontSize="8" fontColor="0,0,0" bold="false" />
     </text>
   </splashScreen>
-  <java mainClass="net.sf.jaer.util.avioutput.DvsSliceAviWriter" vmParameters="-Djava.util.logging.config.file=conf/Logging.properties -Dsun.java2d.noddraw=true -Dsun.java2d.opengl=false" arguments="" allowVMPassthroughParameters="true" preferredVM="" bundleRuntime="true" minVersion="1.7" maxVersion="" allowBetaVM="true" jdkOnly="false">
+  <java mainClass="net.sf.jaer.util.avioutput.DvsSliceAviWriter" mainMode="1" vmParameters="-Djava.util.logging.config.file=conf/Logging.properties -Dsun.java2d.noddraw=true -Dsun.java2d.opengl=false" arguments="" allowVMPassthroughParameters="true" preferredVM="" bundleRuntime="true" minVersion="1.8" maxVersion="" allowBetaVM="true" jdkOnly="false">
     <searchSequence>
       <registry />
       <envVar name="JAVA_HOME" />
@@ -28,7 +28,9 @@
       <scanDirectory location="./jars/javacv" failOnError="false" />
       <scanDirectory location="./jars/jogl" failOnError="false" />
       <scanDirectory location="./jars/usb4java" failOnError="false" />
+      <scanDirectory location="./lib" failOnError="false" />
     </classPath>
+    <modulePath />
     <nativeLibraryDirectories>
       <directory name="./jars/win32" />
     </nativeLibraryDirectories>
