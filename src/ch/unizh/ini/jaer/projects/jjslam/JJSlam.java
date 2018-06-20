@@ -53,9 +53,7 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
     private float sum_i_y=0;
     private float sum_i_z=0;
     private int tempCurrentTime=0;
-    private float xRotVelInitalSum=0;
-    private float yRotVelInitalSum=0;
-    private float zRotVelInitalSum=0;
+   
     private float gainPropertional = getFloat("gainPropertional", 1f);
     private float cameraFocalLengthMm = getFloat("cameraFocalLengthMm", 8);
     private TextRenderer textRenderer = null;
@@ -106,13 +104,13 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
         cameraPose.setTimeUs(t_current);
         float[] orientation=cameraAccRotVel.updateOrientation(cameraPose);
         cameraPose.setOrientation(orientation);
-        float[] velocity=cameraAccRotVel.updateVelocityWorld(cameraPose);
+        float[] velocity=cameraAccRotVel.updateVelocityWorldIIR(cameraPose);
         cameraPose.setVelocity(velocity);
         i=i+1;
         tempCurrentTime=t_current;
         //landmark1.estimatePose(cameraAccRotVel, cameraPose);
-    
-        //writeFile.writeToFile(cameraAccRotVel.toStringExport());
+        //writeFile.writeToFile(String.format("%f,%f,%f", tempValueX, tempValueY, tempValueZ));
+        writeFile.writeToFile(cameraPose.writeFileStringVelocity());
         
         //Calculate the new orientation
         
@@ -181,17 +179,22 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
 
     private class CameraPose {
 
-        int t_current;
+        int t_curr;
         float[] x = new float[3]; 
         float[] u = new float[3];
         float[] phi = new float[3];
         Matrix3 phiRotMat = new Matrix3();
         
-
-       
         public String toStringOrientation() {
             return String.format("CameraPose: [orientation]=[%.2f,%.2f,%.2f]",
                     phi[0], phi[1], phi[2]);
+        }
+        public String writeFileSringOrientation(){
+            return String.format("%.2f,%.2f,%.2f, %d",
+                    phi[0], phi[1], phi[2],t_curr);
+        }
+        public String writeFileStringVelocity(){
+            return String.format("%.2f,%.2f,%.2f",u[0],u[1], u[2]);
         }
         public String toStringVelocity(){
             return String.format("CameraVelocity: [ux,uy,uz]=[%.2f,%.2f,%.2f]", 
@@ -242,7 +245,7 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
             u[2]=a[2];
         }
         public void setTimeUs(int a){
-            t_current=a;
+            t_curr=a;
         }
         public float[] getOrientation() {
             float[] a = new float[3];
@@ -372,19 +375,26 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
         int test=0;
         
         //Variables for storing previous values for the orientation averaging filters
-        float[] buffer_x_orientation_complementary = new float[200];
-        float[] buffer_z_orientation_complementary = new float[200];
+        int movAvSize=150;
+        float[] buffer_x_orientation_complementary = new float[movAvSize];
+        float[] buffer_z_orientation_complementary = new float[movAvSize];
         float previous_x_orientation_complementary=0;
         float previous_z_orientation_complementary=0;
+        private float xRotVelInitalSum=0;
+        private float yRotVelInitalSum=0;
+        private float zRotVelInitalSum=0;
+        private float xCompInitial=0;
+        private float zCompInitial=0;
         
         //Variables for storing the values of the acceleration averaging filters
         int filterSizeAcc=3000;
-        int filterSizeVel=3000;
+        int filterSizeVel=10000;
         float[] xAccWorldBuffer = new float[filterSizeAcc];
         float[] yAccWorldBuffer = new float[filterSizeAcc];
         float[] zAccWorldBuffer = new float[filterSizeAcc];
         float[] AccWorldPrevious = new float[3];
         float[] AccWorldConstBias = new float[3];
+        float[] VelWorldUnfilteredPrevious = new float[3];
         
         //Variable for storing the values of the velocity averaging filters
         float[] xVelWorldBuffer = new float[filterSizeVel];
@@ -392,6 +402,12 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
         float[] zVelWorldBuffer = new float[filterSizeVel];
         float[] VelWorldPrevious = new float[3];
         float[] VelWorldConstBias = new float[3];
+        
+        //Variable for the IIR Filter
+        float[] prevRawVel =new float[3];
+        float[] prevPrevRawVel =new float [3];
+        float[] prevFilteredVel = new float[3];
+        float[] prevprevFilteredVel =new float[3];
   
         public String toStringAccelerationBody() {
             return String.format("Accelartion Body: [x,y,z]=[%.2f,%.2f,%.2f]",
@@ -407,6 +423,11 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
         }
         public String toStringExport(){
             return String.format("%f,%f,%f,%f,%f,%f,%d,%d,%d",accBody[0], accBody[1], accBody[2],rotVelBody[0], rotVelBody[1], rotVelBody[2],timeUs_curr,timeUs_prev, dTUs);
+        }
+        public String toStringExportComplete(CameraPose pose){
+            float[] accWorldLocal = new float[3];
+            accWorldLocal=pose.getPhiRotMa().matrixTimesVector(accBody);
+            return String.format("%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d",accBody[0], accBody[1], accBody[2],accWorldLocal[0], accWorldLocal[1], accWorldLocal[2],pose.getOrientation()[0],pose.getOrientation()[1],pose.getOrientation()[2],timeUs_curr, dTUs);
         }
         public void setAcc (float a, float b, float c )
         {
@@ -449,20 +470,17 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
             float filtered_z_orientation_complementary=0;
             float movAvSumX=0;
             float movAvSumZ=0;
-            
-            
+            float fusionConstant=0.8f;
             if ((dTUs>0) && (dTUs<100000)){
                 current_orientation_integration[0]=pose.getOrientation()[0]+(rotVelBody[0]-(xRotVelInitalSum/3000f))*(360f/344f)*dTUs*0.000001f;
                 current_orientation_integration[1]=pose.getOrientation()[1]+(rotVelBody[1]-(yRotVelInitalSum/3000f))*(360f/348f)*dTUs*0.000001f;
                 current_orientation_integration[2]=pose.getOrientation()[2]+(rotVelBody[2]-(zRotVelInitalSum/3000f))*(360f/323f)*dTUs*0.000001f;
                 
-                
-                
                 current_x_orientation_complementary=(float)-Math.atan2((accBody[2]), (Math.signum(accBody[1])*(Math.sqrt((accBody[0]*accBody[0])+(accBody[1]*accBody[1])))));
                 current_z_orientation_complementary=(float)-Math.atan2((-accBody[0]),accBody[1]);
                
                 
-                if(i<200)
+                if(i<movAvSize)
                 {
                     buffer_x_orientation_complementary[i]=current_x_orientation_complementary;
                     buffer_z_orientation_complementary[i]=current_z_orientation_complementary;
@@ -475,22 +493,22 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
                 }
                 else
                 {
-                    filtered_x_orientation_complementary=previous_x_orientation_complementary+((current_x_orientation_complementary-buffer_x_orientation_complementary[0])/200f);
-                    filtered_z_orientation_complementary=previous_z_orientation_complementary+((current_z_orientation_complementary-buffer_z_orientation_complementary[0])/200f);
-                    for(int j=0; j<199;j++){
+                    filtered_x_orientation_complementary=previous_x_orientation_complementary+((current_x_orientation_complementary-buffer_x_orientation_complementary[0])/(float)movAvSize);
+                    filtered_z_orientation_complementary=previous_z_orientation_complementary+((current_z_orientation_complementary-buffer_z_orientation_complementary[0])/(float)movAvSize);
+                    for(int j=0; j<(movAvSize-1);j++){
                         buffer_x_orientation_complementary[j]=buffer_x_orientation_complementary[j+1];
                         buffer_z_orientation_complementary[j]=buffer_z_orientation_complementary[j+1];
                     }
-                    buffer_x_orientation_complementary[199]=current_x_orientation_complementary;
-                    buffer_z_orientation_complementary[199]=current_z_orientation_complementary;
+                    buffer_x_orientation_complementary[movAvSize-1]=current_x_orientation_complementary;
+                    buffer_z_orientation_complementary[movAvSize-1]=current_z_orientation_complementary;
                 }
                 
                 previous_x_orientation_complementary=filtered_x_orientation_complementary;
                 previous_z_orientation_complementary=filtered_z_orientation_complementary;
                 
-                fused_orientation_integration[0]=0.5f*(filtered_x_orientation_complementary*180.0f/((float)(Math.PI))-4.91f)+0.5f*current_orientation_integration[0];
+                fused_orientation_integration[0]=(1-fusionConstant)*((filtered_x_orientation_complementary-(xCompInitial/3000f))*180.0f/((float)(Math.PI)))+fusionConstant*current_orientation_integration[0];
                 fused_orientation_integration[1]=current_orientation_integration[1];
-                fused_orientation_integration[2]=0.5f*(filtered_z_orientation_complementary*180.0f/((float)(Math.PI))+0.4863f)+0.5f*current_orientation_integration[2];
+                fused_orientation_integration[2]=(1-fusionConstant)*((filtered_z_orientation_complementary-(zCompInitial/3000f))*180.0f/((float)(Math.PI)))+fusionConstant*current_orientation_integration[2];
                 
             }
             
@@ -503,12 +521,15 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
                 xRotVelInitalSum=xRotVelInitalSum+rotVelBody[0];
                 yRotVelInitalSum=yRotVelInitalSum+rotVelBody[1];
                 zRotVelInitalSum=zRotVelInitalSum+rotVelBody[2];
+                xCompInitial=xCompInitial+filtered_x_orientation_complementary;
+                zCompInitial=zCompInitial+filtered_z_orientation_complementary;
                 fused_orientation_integration=pose.getOrientation();
                 log.info("Estimating constant bias of rotational velocity");
             }
+             
             return fused_orientation_integration;
         }
-        public float[] updateVelocityWorld(CameraPose pose){
+        public float[] updateVelocityWorldMAF(CameraPose pose){
             float[] velocityWorld = new float[3];
             Matrix3 phiRotMat=pose.getPhiRotMa();
             float[] AccWorldFiltered = new float[3];
@@ -521,7 +542,7 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
                 accWorld[0]=accWorld[0];
                 accWorld[1]=accWorld[1]-1f;
                 accWorld[2]=accWorld[2];
-
+                
                 if(i<(filterSizeAcc)){
                     xAccWorldBuffer[i]=accWorld[0];
                     yAccWorldBuffer[i]=accWorld[1];
@@ -555,11 +576,14 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
                     yAccWorldBuffer[filterSizeAcc-1]=accWorld[1];
                     zAccWorldBuffer[filterSizeAcc-1]=accWorld[2];
                     //Integrate the values
+                    velocityWorld[0]=VelWorldUnfilteredPrevious[0]+(accWorld[0]-AccWorldFiltered[0])*dTUs*9.81f*0.000001f;
+                    velocityWorld[1]=VelWorldUnfilteredPrevious[1]+(accWorld[1]-AccWorldFiltered[1])*dTUs*9.81f*0.000001f;
+                    velocityWorld[2]=VelWorldUnfilteredPrevious[2]+(accWorld[2]-AccWorldFiltered[2])*dTUs*9.81f*0.000001f; 
                     
-                    velocityWorld[0]=pose.getVelocity()[0]+(accWorld[0]-AccWorldFiltered[0])*dTUs*9.81f*0.000001f;
-                    velocityWorld[1]=pose.getVelocity()[1]+(accWorld[1]-AccWorldFiltered[1])*dTUs*9.81f*0.000001f;
-                    velocityWorld[2]=pose.getVelocity()[2]+(accWorld[2]-AccWorldFiltered[2])*dTUs*9.81f*0.000001f; 
-                  
+                    
+                    VelWorldUnfilteredPrevious[0]=velocityWorld[0];
+                    VelWorldUnfilteredPrevious[1]=velocityWorld[1];
+                    VelWorldUnfilteredPrevious[2]=velocityWorld[2];
                 }
                 
                 //Do the velocity bias estimation
@@ -572,6 +596,8 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
                     VelWorldConstBias[1]=velocityWorld[1]/((float)filterSizeVel)+VelWorldConstBias[1];
                     VelWorldConstBias[2]=velocityWorld[2]/((float)filterSizeVel)+VelWorldConstBias[2];
                     
+                    
+                    
                     VelWorldPrevious[0]=VelWorldConstBias[0];
                     VelWorldPrevious[1]=VelWorldConstBias[1];
                     VelWorldPrevious[2]=VelWorldConstBias[2];
@@ -580,6 +606,16 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
                     VelWorldFiltered[0]=VelWorldPrevious[0]+(velocityWorld[0]-xVelWorldBuffer[0])/((float)filterSizeVel);
                     VelWorldFiltered[1]=VelWorldPrevious[1]+(velocityWorld[1]-yVelWorldBuffer[0])/((float)filterSizeVel);
                     VelWorldFiltered[2]=VelWorldPrevious[2]+(velocityWorld[2]-zVelWorldBuffer[0])/((float)filterSizeVel);
+                     
+                     
+                    //Velocity World is not zero
+                    //Velocity WorldPrevious is also not
+                    //Velocity WorldBuffer[0] is also not zero
+                    //Veolocity Filtered is also not zero
+                    tempValueX=velocityWorld[0];
+                    tempValueY=VelWorldPrevious[0];
+                    tempValueZ=xVelWorldBuffer[0];
+                    
                     
                     VelWorldPrevious[0]=VelWorldFiltered[0];
                     VelWorldPrevious[1]=VelWorldFiltered[1];
@@ -593,22 +629,64 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
                     xVelWorldBuffer[filterSizeVel-1]=velocityWorld[0];
                     yVelWorldBuffer[filterSizeVel-1]=velocityWorld[1];
                     zVelWorldBuffer[filterSizeVel-1]=velocityWorld[2];
-                    /*
+                    
+                    
+                    
                     velocityWorld[0]=velocityWorld[0]-VelWorldFiltered[0];
                     velocityWorld[1]=velocityWorld[1]-VelWorldFiltered[1];
                     velocityWorld[2]=velocityWorld[2]-VelWorldFiltered[2]; 
-                    */
-                    tempValueX=VelWorldFiltered[0];
-                    tempValueY=VelWorldFiltered[1];
-                    tempValueZ=VelWorldFiltered[2];  
+                   
+                    
                 }   
             }
             else{
                 log.info("corrupted delta time - no velocity update");
                 velocityWorld=pose.getVelocity();
             }
+            
             return velocityWorld;         
         }  
+        public float[] updateVelocityWorldIIR(CameraPose pose){
+            float[] velocityWorld = new float[3];
+            Matrix3 phiRotMat=pose.getPhiRotMa();
+            if ((dTUs>0) && (dTUs<100000)){
+                accWorld=phiRotMat.matrixTimesVector(accBody);
+                
+                /*
+                float[] prevRawValue =new float[3];
+        float[] prevPrevRawValue =new float [3];
+        float[] prevFilteredValue = new float[3];
+        float[] prevprevFilteredValue =new float[3];
+                */
+                                
+                if(i<(filterSizeAcc)){
+                    
+                    AccWorldConstBias[0]=accWorld[0]/((float)filterSizeAcc)+AccWorldConstBias[0];
+                    AccWorldConstBias[1]=accWorld[1]/((float)filterSizeAcc)+AccWorldConstBias[1];
+                    AccWorldConstBias[2]=accWorld[2]/((float)filterSizeAcc)+AccWorldConstBias[2];
+                    
+                    //prevRawVel=
+                    //prevPrevRawVel=
+                   
+                    velocityWorld=pose.getVelocity();
+                }
+                else
+                {   
+                    velocityWorld=pose.getVelocity();
+                    tempValueX=accWorld[0];
+                    tempValueY=accWorld[1];
+                    tempValueZ=accWorld[2];
+                    velocityWorld[0]=velocityWorld[0]+(accWorld[0]-AccWorldConstBias[0])*((float)dTUs)*9.81f*0.000001f;
+                    velocityWorld[1]=velocityWorld[1]+(accWorld[1]-AccWorldConstBias[1])*((float)dTUs)*9.81f*0.000001f;
+                    velocityWorld[2]=velocityWorld[2]+(accWorld[2]-AccWorldConstBias[2])*((float)dTUs)*9.81f*0.000001f; 
+                }
+            }
+            else{
+            log.info("corrupted delta time - no velocity update");
+            velocityWorld=pose.getVelocity();
+            }
+            return velocityWorld;  
+        }
     }
 
     class ImuMedianTracker extends MedianTracker {
@@ -695,6 +773,15 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
 
     }
 
+    /**
+     * @return the cameraFocalLengthMm
+     */
+    /**
+     * @return the cameraFocalLengthMm
+     */
+    /**
+     * @return the cameraFocalLengthMm
+     */
     /**
      * @return the cameraFocalLengthMm
      */
@@ -818,4 +905,4 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
             return a;
         }
     }
-}
+    }
