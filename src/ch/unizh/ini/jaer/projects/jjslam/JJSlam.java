@@ -110,7 +110,7 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
         tempCurrentTime=t_current;
         //landmark1.estimatePose(cameraAccRotVel, cameraPose);
         //writeFile.writeToFile(String.format("%f,%f,%f", tempValueX, tempValueY, tempValueZ));
-        writeFile.writeToFile(cameraPose.writeFileStringVelocity());
+        //writeFile.writeToFile(cameraPose.writeFileStringVelocity());
         
         //Calculate the new orientation
         
@@ -132,34 +132,48 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
         checkBlend(gl);
         int sy = chip.getSizeY(), sx = chip.getSizeX();
         if (textRenderer == null) {
-            textRenderer = new TextRenderer(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+            textRenderer = new TextRenderer(new Font(Font.SANS_SERIF, Font.PLAIN, 10));
         }
         textRenderer.beginRendering(sx, sy);
         gl.glColor4f(1, 1, 0, .7f);
-        textRenderer.draw(String.format("%d %d",i, tempCurrentTime), 1 ,(sy / 2+80));
-        textRenderer.draw(cameraPose.toStringRotMatLine1(),1, (sy / 2+60));
-        textRenderer.draw(cameraPose.toStringRotMatLine2(),1, (sy / 2+40));
-        textRenderer.draw(cameraPose.toStringRotMatLine3(),1, (sy / 2+20));
+        //textRenderer.draw(String.format("%d %d",i, tempCurrentTime), 1 ,(sy / 2+80));
+        //textRenderer.draw(cameraPose.toStringRotMatLine1(),1, (sy / 2+60));
+        //textRenderer.draw(cameraPose.toStringRotMatLine2(),1, (sy / 2+40));
+        //textRenderer.draw(cameraPose.toStringRotMatLine3(),1, (sy / 2+20));
         textRenderer.draw(cameraPose.toStringOrientation(), 1, sy / 2);
         textRenderer.draw(cameraPose.toStringVelocity(),1, (sy / 2-20));
-        textRenderer.draw(cameraAccRotVel.toStringAccelerationBody(),1, (sy / 2-40));
-        textRenderer.draw(cameraAccRotVel.toStringAccelerationWorld(),1, (sy / 2-60));
-        textRenderer.draw(cameraAccRotVel.toStringRotVelRaw(),1, (sy/2 -80));
-        textRenderer.draw(String.format("%f %f %f",tempValueX,tempValueY,tempValueZ), 1 ,(sy/2-100));
+        //textRenderer.draw(cameraAccRotVel.toStringAccelerationBody(),1, (sy / 2-40));
+        //textRenderer.draw(cameraAccRotVel.toStringAccelerationWorld(),1, (sy / 2-60));
+        //textRenderer.draw(cameraAccRotVel.toStringRotVelRaw(),1, (sy/2 -80));
+        //textRenderer.draw(String.format("%f %f %f",tempValueX,tempValueY,tempValueZ), 1 ,(sy/2-100));
+        
+        //textRenderer.draw(String.format(), sx+10, sy/2+75);
         textRenderer.endRendering();
-        
-        
-        /*
-        //Draw the pitching orientation
-        Point2D front = new Point2D.Float();
-        front.setLocation(10+10*Math.sin(Math.toRadians(cameraPose.getOrientation()[1])), 200+10*Math.sin(Math.toRadians(cameraPose.getOrientation()[1])));
-        Point2D back = new Point2D.Float();
-        back.setLocation(10, 200);
+        textRenderer.beginRendering(sx, sy);
+        gl.glColor4f(0, 1, 0, .7f);
+        textRenderer.draw("Velocity x,y",sx-70, sy/2+95);
+        textRenderer.endRendering();
+        //Draw the velocity
+        int decide=1; //Set to one for velocity like the tracked objects, set to -1 for velocity of the DVS in world frame
+        float Xvel=decide*cameraPose.getVelocity()[0];
+        float Yvel=decide*cameraPose.getVelocity()[1];
+        float arrowFactor=50.0f/0.3f;
+        float edgelenth=50*((float)Math.sqrt(Xvel*Xvel+Yvel*Yvel));
+        float angle1=(float)(Math.toRadians(45.0)+Math.atan2(Yvel, Xvel));
+        float angle2=(float)(Math.atan2(Yvel,Xvel)-Math.toRadians(45));
+        Point2D arrowStart = new Point2D.Float();
+        arrowStart.setLocation(sx+75,sy/2+20);
+        Point2D head = new Point2D.Float();
+        head.setLocation(arrowStart.getX()-arrowFactor*Xvel, arrowStart.getY()+arrowFactor*Yvel);
         gl.glBegin(GL2.GL_LINES);
-        gl.glVertex2d(front.getX() - 10, front.getY());
-        gl.glVertex2d(back.getX() + 10, back.getY());
-        gl.glEnd
-        */
+        gl.glColor3f(0, 1, 0);
+        gl.glVertex2d(arrowStart.getX(), arrowStart.getY());
+        gl.glVertex2d(head.getX(), head.getY());
+        gl.glVertex2d(head.getX(), head.getY());
+        gl.glVertex2d(head.getX()+Math.sin(angle1)*edgelenth, head.getY()+Math.cos(angle1)*edgelenth);
+        gl.glVertex2d(head.getX(), head.getY());
+        gl.glVertex2d(head.getX()-Math.sin(angle2)*edgelenth, head.getY()-Math.cos(angle2)*edgelenth);
+        gl.glEnd();
     }
 
     /**
@@ -194,7 +208,7 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
                     phi[0], phi[1], phi[2],t_curr);
         }
         public String writeFileStringVelocity(){
-            return String.format("%.2f,%.2f,%.2f",u[0],u[1], u[2]);
+            return String.format("%f,%f,%f",u[0],u[1], u[2]);
         }
         public String toStringVelocity(){
             return String.format("CameraVelocity: [ux,uy,uz]=[%.2f,%.2f,%.2f]", 
@@ -404,10 +418,10 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
         float[] VelWorldConstBias = new float[3];
         
         //Variable for the IIR Filter
-        float[] prevRawVel =new float[3];
-        float[] prevPrevRawVel =new float [3];
-        float[] prevFilteredVel = new float[3];
-        float[] prevprevFilteredVel =new float[3];
+        double[] prevRawVel =new double[3];
+        double[] prevPrevRawVel =new double [3];
+        double[] prevFilteredVel = new double[3];
+        double[] prevprevFilteredVel =new double[3];
   
         public String toStringAccelerationBody() {
             return String.format("Accelartion Body: [x,y,z]=[%.2f,%.2f,%.2f]",
@@ -648,37 +662,59 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
         }  
         public float[] updateVelocityWorldIIR(CameraPose pose){
             float[] velocityWorld = new float[3];
+            double[] currFilteredValue = new double[3];
+            double[] currRawValue = new double[3];
             Matrix3 phiRotMat=pose.getPhiRotMa();
             if ((dTUs>0) && (dTUs<100000)){
                 accWorld=phiRotMat.matrixTimesVector(accBody);
+                //Filter Coefficients
+                double a1=1f;
+                double a2=-1.990361789279116f;
+                double a3=0.990515645026782f;
+                double b1=0.704561349441701f;
+                double b2=-1.409122698883402f;
+                double b3=0.704561349441701f;
                 
-                /*
-                float[] prevRawValue =new float[3];
-        float[] prevPrevRawValue =new float [3];
-        float[] prevFilteredValue = new float[3];
-        float[] prevprevFilteredValue =new float[3];
-                */
-                                
+                
                 if(i<(filterSizeAcc)){
                     
                     AccWorldConstBias[0]=accWorld[0]/((float)filterSizeAcc)+AccWorldConstBias[0];
                     AccWorldConstBias[1]=accWorld[1]/((float)filterSizeAcc)+AccWorldConstBias[1];
                     AccWorldConstBias[2]=accWorld[2]/((float)filterSizeAcc)+AccWorldConstBias[2];
                     
-                    //prevRawVel=
-                    //prevPrevRawVel=
-                   
+                    //Prepare the raw value variables
+                    /*
+                    prevPrevRawVel=prevRawVel;
+                    prevRawVel[0]=accWorld[0]-AccWorldConstBias[0];
+                    prevRawVel[1]=accWorld[1]-AccWorldConstBias[1];
+                    prevRawVel[2]=accWorld[2]-AccWorldConstBias[2];
+                    //No velocity update
                     velocityWorld=pose.getVelocity();
+                    */
                 }
                 else
                 {   
-                    velocityWorld=pose.getVelocity();
-                    tempValueX=accWorld[0];
-                    tempValueY=accWorld[1];
-                    tempValueZ=accWorld[2];
-                    velocityWorld[0]=velocityWorld[0]+(accWorld[0]-AccWorldConstBias[0])*((float)dTUs)*9.81f*0.000001f;
-                    velocityWorld[1]=velocityWorld[1]+(accWorld[1]-AccWorldConstBias[1])*((float)dTUs)*9.81f*0.000001f;
-                    velocityWorld[2]=velocityWorld[2]+(accWorld[2]-AccWorldConstBias[2])*((float)dTUs)*9.81f*0.000001f; 
+                    //Calculate the current raw value
+                    
+                    currRawValue[0]=prevRawVel[0]+(accWorld[0]-AccWorldConstBias[0])*((double)dTUs)*9.81*0.000001;
+                    currRawValue[1]=prevRawVel[1]+(accWorld[1]-AccWorldConstBias[1])*((double)dTUs)*9.81*0.000001;
+                    currRawValue[2]=prevRawVel[2]+(accWorld[2]-AccWorldConstBias[2])*((double)dTUs)*9.81*0.000001; 
+                    
+                    //Do the filtering
+                    currFilteredValue[0]=(b1*currRawValue[0]+b2*prevRawVel[0]+b3*prevPrevRawVel[0]-a2*prevFilteredVel[0]-a3*prevprevFilteredVel[0])/a1;
+                    currFilteredValue[1]=(b1*currRawValue[1]+b2*prevRawVel[1]+b3*prevPrevRawVel[1]-a2*prevFilteredVel[1]-a3*prevprevFilteredVel[1])/a1;
+                    currFilteredValue[2]=(b1*currRawValue[2]+b2*prevRawVel[2]+b3*prevPrevRawVel[2]-a2*prevFilteredVel[2]-a3*prevprevFilteredVel[2])/a1;
+                    
+                    //Store the result in the velocityWorld variable
+                    velocityWorld[0]=(float)currFilteredValue[0];
+                    velocityWorld[1]=(float)currFilteredValue[1];
+                    velocityWorld[2]=(float)currFilteredValue[2];
+                    
+                    //Do the update of the storage variables
+                    prevprevFilteredVel=prevFilteredVel;
+                    prevFilteredVel=currFilteredValue;
+                    prevPrevRawVel=prevRawVel;
+                    prevRawVel=currRawValue;
                 }
             }
             else{
