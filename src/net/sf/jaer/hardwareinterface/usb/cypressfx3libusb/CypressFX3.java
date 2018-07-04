@@ -1587,7 +1587,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	}
 
 	@Override
-	public short getVID() {
+	public short getVID_THESYCON_FX2_CPLD() {
 		if (deviceDescriptor == null) {
 			CypressFX3.log.warning("USBAEMonitor: getVID called but device has not been opened");
 			return 0;

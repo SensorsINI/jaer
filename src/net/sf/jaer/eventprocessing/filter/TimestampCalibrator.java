@@ -249,7 +249,7 @@ public class TimestampCalibrator extends EventFilter2D implements FrameAnnotater
             fn = fn + JSON_EXT;
         }
         USBInterface usbInterface = (USBInterface) chip.getHardwareInterface();
-        TimestampCalibration tsc = new TimestampCalibration(ppmTimestampTooFastError, usbInterface.getVID(), usbInterface.getPID(), usbInterface.getDID());
+        TimestampCalibration tsc = new TimestampCalibration(ppmTimestampTooFastError, usbInterface.getVID_THESYCON_FX2_CPLD(), usbInterface.getPID(), usbInterface.getDID());
         try (Writer writer = new FileWriter(fn)) {
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             gson.toJson(tsc, writer);
@@ -285,7 +285,7 @@ public class TimestampCalibrator extends EventFilter2D implements FrameAnnotater
             }
             setPpmTimestampTooFastError(tsc.ppmTimestampTooFastError);
             USBInterface usbInterface = (USBInterface) chip.getHardwareInterface();
-            if (usbInterface.getVID() != tsc.vid
+            if (usbInterface.getVID_THESYCON_FX2_CPLD() != tsc.vid
                     || usbInterface.getPID() != tsc.pid
                     || usbInterface.getDID() != tsc.did) {
                 JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Current device VID/PID/DID does not match that in saved calibration");

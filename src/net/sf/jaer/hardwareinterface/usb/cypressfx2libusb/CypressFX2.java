@@ -106,7 +106,8 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * All the devices here have vendor ID VID which has been allocated to jAER
 	 * by Thesycon
 	 */
-	static public final short VID = USBInterface.VID_THESYCON;
+	static public final short VID_THESYCON_FX2_CPLD = USBInterface.VID_THESYCON;
+	static public final short VID_DVS128_ORIG_FX2_ONLY = 0x0547; // very first Tmpdiff128 with only FX2 and counter chip for timestamps
 	static public final short PID_DVS128_REV0 = (short) 0x8400;
 	/** For CochleaAMS devices */
 	static public final short PID_COCHLEAAMS = (short) 0x8406; //WAS 8405, changed by Damir to 8406 to match the actual lsusb cochleaAMS1c PID
@@ -1723,7 +1724,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	}
 
 	@Override
-	public short getVID() {
+	public short getVID_THESYCON_FX2_CPLD() {
 		if (deviceDescriptor == null) {
 			CypressFX2.log.warning("USBAEMonitor: getVID called but device has not been opened");
 			return 0;

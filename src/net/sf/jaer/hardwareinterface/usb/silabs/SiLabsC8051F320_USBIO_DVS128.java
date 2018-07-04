@@ -278,7 +278,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
     }
 
     @Override
-	public short getVID() {
+	public short getVID_THESYCON_FX2_CPLD() {
         return VID;
     }
 

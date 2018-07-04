@@ -37,13 +37,14 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 		// HardwareInterfaces.
 		// addDeviceToMap(CypressFX2.VID, CypressFX2.PID_USB2AERmapper,
 		// CypressFX2Mapper.class);
-		addDeviceToMap(CypressFX2.VID, CypressFX2.PID_DVS128_REV0, CypressFX2DVS128HardwareInterface.class);
-		addDeviceToMap(CypressFX2.VID, CypressFX2.PID_TMPDIFF128_RETINA, CypressFX2TmpdiffRetinaHardwareInterface.class);
-		addDeviceToMap(CypressFX2.VID, CypressFX2.PID_COCHLEAAMS, CochleaAMS1cHardwareInterface.class);
+		addDeviceToMap(CypressFX2.VID_THESYCON_FX2_CPLD, CypressFX2.PID_DVS128_REV0, CypressFX2DVS128HardwareInterface.class);
+		addDeviceToMap(CypressFX2.VID_THESYCON_FX2_CPLD, CypressFX2.PID_TMPDIFF128_RETINA, CypressFX2TmpdiffRetinaHardwareInterface.class);
+		addDeviceToMap(CypressFX2.VID_DVS128_ORIG_FX2_ONLY, CypressFX2.PID_TMPDIFF128_RETINA, CypressFX2TmpdiffRetinaHardwareInterface.class);
+		addDeviceToMap(CypressFX2.VID_THESYCON_FX2_CPLD, CypressFX2.PID_COCHLEAAMS, CochleaAMS1cHardwareInterface.class);
 
 		// Linux Drivers for PAER retina.
 		if (System.getProperty("os.name").startsWith("Linux")) {
-			addDeviceToMap(CypressFX2.VID, SiLabsC8051F320_LibUsb_PAER.PID_PAER, SiLabsC8051F320_LibUsb_PAER.class);
+			addDeviceToMap(CypressFX2.VID_THESYCON_FX2_CPLD, SiLabsC8051F320_LibUsb_PAER.PID_PAER, SiLabsC8051F320_LibUsb_PAER.class);
 		}
 
 		// Add blank device for flashing.

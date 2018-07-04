@@ -422,7 +422,7 @@ public abstract class SiLabsC8051F320_LibUsb implements
     }
 
     @Override
-    public short getVID() {
+    public short getVID_THESYCON_FX2_CPLD() {
         if (deviceDescriptor == null) {
             SiLabsC8051F320_LibUsb.log.warning("USBAEMonitor: getVIDPID called but device has not been opened");
             return 0;

@@ -43,7 +43,7 @@ public interface USBInterface extends HardwareInterface {
     public String[] getStringDescriptors();
 
     /**@return PID (vendor ID) */
-    public short getVID();
+    public short getVID_THESYCON_FX2_CPLD();
 
     /**@return PID (product ID) */
     public short getPID();

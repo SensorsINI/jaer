@@ -118,10 +118,10 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                 deviceString0.setText("null");
             }
 //            cypress.open(); // don't open it, because CypressFX2 already has VID/PID from minimal open
-            VID = cypress.getVID();
+            VID = cypress.getVID_THESYCON_FX2_CPLD();
             PID = cypress.getPID();
             DID = cypress.getDID();
-            VIDtextField.setText(HexString.toString(cypress.getVID()));
+            VIDtextField.setText(HexString.toString(cypress.getVID_THESYCON_FX2_CPLD()));
             PIDtextField.setText(HexString.toString(cypress.getPID()));
             DIDtextField.setText(HexString.toString(cypress.getDID()));
             if (cypress.getNumberOfStringDescriptors() > 2) {
