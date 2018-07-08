@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.lang.reflect.Constructor;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BoxLayout;
@@ -42,7 +43,6 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.avioutput.AVIOutputStream.VideoFormat;
-import static net.sf.jaer.util.avioutput.AbstractAviWriter.TIMECODE_SUFFIX;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
@@ -404,22 +404,29 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         putFloat("frameRateEstimatorTimeConstantMs", frameRateEstimatorTimeConstantMs);
     }
 
-    public static final String USAGE = "java DvsSliceAviWriter [-aechip=aechipclassname (fully qualified class name, e.g. eu.seebetter.ini.chips.davis.DAVIS240C)] "
-            + "[-width=36] [-height=36] [-quality=.9] [-format=PNG|JPG|RLE|RAW] [-framerate=30] [-grayscale=200] "
-            + "[-writedvssliceonapsframe=false] [-writetimecodefile=true] \n"
-            + "[-writeapsframes=false] [-writedvsframes=true] \n"
-            + "[-writedvseventstotextfile=false] \n"
-            + "[-timeslicemethod=EventCount|TimeIntervalUs] [-numevents=2000] [-framedurationus=10000]\n"
-            + " [-rectify=false] [-normalize=true] [-showoutput=true]  [-maxframes=0] "
-            + "inputFile.aedat [outputfile.avi]"
+    public static final String USAGE = "java DvsSliceAviWriter \n"
+            + "     [-aechip=aechipclassname (either shortcut dvs128, davis240c or davis346mini, or fully qualified class name, e.g. eu.seebetter.ini.chips.davis.DAVIS240C)] "
+            + "     [-width=36] [-height=36] [-quality=.9] [-format=PNG|JPG|RLE|RAW] [-framerate=30] [-grayscale=200] "
+            + "     [-writedvssliceonapsframe=false] \n"
+            + "     [-writetimecodefile=true] \n"
+            + "     [-writeapsframes=false] [-writedvsframes=true] \n"
+            + "     [-writedvseventstotextfile=false] \n"
+            + "     [-timeslicemethod=EventCount|TimeIntervalUs] [-numevents=2000] [-framedurationus=10000]\n"
+            + "     [-rectify=false] [-normalize=true] [-showoutput=true]  [-maxframes=0] "
+            + "         inputFile.aedat [outputfile.avi]"
             + "\n"
-            + "numevents and framedurationus are exclusively possible"
-            + "\n"
-            + "Note arguments values are assigned with =, not space"
-            + "\n"
+            + "numevents and framedurationus are exclusively possible\n"
+            + "Arguments values are assigned with =, not space\n"
             + "If outputfile is not provided its name is generated from the input file with appended .avi";
+    
+    public static final HashMap<String,String> chipClassesMap=new HashMap();
 
     public static void main(String[] args) {
+        // make hashmap of common chip classes
+        chipClassesMap.put("dvs128", "ch.unizh.ini.jaer.chip.retina.DVS128");
+        chipClassesMap.put("davis240c", "eu.seebetter.ini.chips.davis.DAVIS240C");
+        chipClassesMap.put("davis346mini", "eu.seebetter.ini.chips.davis.Davis346mini");
+        
         // command line
         // uses last settings of everything
         // java DvsSliceAviWriter inputFile.aedat outputfile.avi
@@ -477,8 +484,14 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             chipname = prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
         }
         try {
-            System.out.println("constructing AEChip " + chipname);
-            Class chipClass = Class.forName(chipname);
+            String className=chipClassesMap.get(chipname.toLowerCase());
+            if(className==null) {
+                className=chipname;
+            }else{
+                System.out.println("from "+chipname+" found fully qualified class name "+className);
+            }
+            System.out.println("constructing AEChip " + className);
+            Class chipClass = Class.forName(className);
             Constructor<AEChip> constructor = chipClass.getConstructor();
             chip = constructor.newInstance((java.lang.Object[]) null);
         } catch (Exception ex) {
