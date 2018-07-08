@@ -178,7 +178,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      *
      * @return true if filter is enabled
      */
-    synchronized public boolean isFilterEnabled() {
+    public boolean isFilterEnabled() {
         return filterEnabled;
     }
 

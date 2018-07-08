@@ -85,7 +85,7 @@ public class DvsFramerSingleFrame extends DvsFramer {
         if (srcHeight != dvsFrame.getHeight()) {
             y = (int) Math.floor(((float) y / (srcHeight - (frameCutBottom + frameCutTop))) * dvsFrame.getHeight());
         }
-        dvsFrame.addEvent(x, y, e.polarity);
+        dvsFrame.addEvent(x, y, e.polarity, e.timestamp);
 
     }
 

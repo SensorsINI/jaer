@@ -149,7 +149,7 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
                     }
 
                     int locx = (e.x - roi.xLeft) >> s, locy = (e.y - roi.yBot) >> s;
-                    roi.addEvent(locx, locy, e.polarity);
+                    roi.addEvent(locx, locy, e.polarity, e.timestamp);
 //                    if (roi.getAccumulatedEventCount() > dvsEventsPerFrame * (1 << (2 * roi.scale))) {
 //                        getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILABLE, null, roi);
 //                    }

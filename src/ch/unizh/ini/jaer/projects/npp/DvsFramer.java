@@ -22,7 +22,9 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import eu.visualize.ini.convnet.DeepLearnCnnNetwork_HJ;
 import java.awt.Dimension;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
@@ -75,10 +77,18 @@ abstract public class DvsFramer extends EventFilter2D {
     public final float GRAY_LEVEL = 0.5f;
     protected boolean rectifyPolarities = getBoolean("rectifyPolarities", true); // true by default to make RoShamBo CNN work properly out of the box
     protected int dvsEventsPerFrame = getInt("dvsEventsPerFrame", 2000);
+    private int timeDurationUsPerFrame = getInt("timeDurationUsPerFrame", 10000);
     protected int dvsGrayScale = getInt("dvsGrayScale", 100); // 1/dvsColorScale is amount each event color the timeslice in subsampled timeslice input
-    private boolean normalizeDVSForZsNullhop = getBoolean("normalizeDVSForZsNullhop", true); // uses DvsFramer normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1
+    private boolean normalizeFrame = getBoolean("normalizeFrame", true);
+    private boolean normalizeDVSForZsNullhop = getBoolean("normalizeDVSForZsNullhop", false); // uses DvsFramer normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1
     protected float dvsGrayScaleRecip;
     protected int warningsBadEvent = 0;
+
+    public enum TimeSliceMethod {
+        EventCount, TimeIntervalUs
+    }
+
+    private TimeSliceMethod timeSliceMethod = null; // init in construction with try catch
 
     /**
      * Global flag to show that the entire DvsFramer has been cleared
@@ -128,11 +138,18 @@ abstract public class DvsFramer extends EventFilter2D {
     public DvsFramer(AEChip chip) {
         super(chip);
         dvsGrayScaleRecip = 1f / dvsGrayScale;
-        setPropertyTooltip("dvsEventsPerFrame", "num DVS events accumulated to subsampled ROI to fill the frame");
+        try {
+            timeSliceMethod = TimeSliceMethod.valueOf(getString("timeSliceMethod", TimeSliceMethod.EventCount.toString()));
+        } catch (IllegalArgumentException e) {
+            log.warning("Unknown preference for timeSliceMethod; reverting to default Eventcount: "+e.toString());
+            timeSliceMethod=TimeSliceMethod.EventCount;
+        }
+        setPropertyTooltip("dvsEventsPerFrame", "Used with timeSliceMethod TimeInterval: number of DVS events accumulated to subsampled ROI to fill the frame");
         setPropertyTooltip("showFrames", "shows the fully exposed (accumulated with events) frames in a separate window");
         setPropertyTooltip("dvsGrayScale", "sets the full scale value for the DVS frame rendering");
         setPropertyTooltip("rectifyPolarities", "whether DVS events have their polarity ignored.");
-        setPropertyTooltip("normalizeDVSForZsNullhop", "uses DvsSubsamplerToFrame normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1\n");
+        setPropertyTooltip("normalizeDVSForZsNullhop", "uses DvsSubsamplerToFrame normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1");
+        setPropertyTooltip("doNotNormalize", "Supresses post-accumulation 3-sigma normalization so that gray levels are simply accumulated using +/-1/dvsGrayScale per event");
         setPropertyTooltip("outputImageHeight", "height of output image");
         setPropertyTooltip("outputImageWidth", "width of output image");
         setPropertyTooltip("frameCutTop", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
@@ -140,6 +157,8 @@ abstract public class DvsFramer extends EventFilter2D {
         setPropertyTooltip("frameCutLeft", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
         setPropertyTooltip("frameCutRight", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
         setPropertyTooltip("normalizeFrame", "normalizes DVS frames according to DvsFramer.DvsFrame.normalizeFrame(), to have zero mean and range 0-1 using 3-sigma values");
+        setPropertyTooltip("timeSliceMethod", "Either EventCount or TimeInterval can be chosen to expose DVS frames");
+        setPropertyTooltip("timeDurationUsPerFrame", "Used with timeSliceMethod TimeInterval: time interval for DVS frames");
     }
 
     /**
@@ -202,6 +221,7 @@ abstract public class DvsFramer extends EventFilter2D {
      * @param dvsGrayScale the dvsGrayScale to set
      */
     public void setDvsGrayScale(int dvsGrayScale) {
+        if(dvsGrayScale<1) dvsGrayScale=1;
         this.dvsGrayScale = dvsGrayScale;
         dvsGrayScaleRecip = 1f / dvsGrayScale;
         putInt("dvsGrayScale", dvsGrayScale);
@@ -304,6 +324,22 @@ abstract public class DvsFramer extends EventFilter2D {
     public boolean isNormalizeDVSForZsNullhop() {
         return normalizeDVSForZsNullhop;
     }
+    
+        /**
+     * @return the normalizeFrame
+     */
+    public boolean isNormalizeFrame() {
+        return normalizeFrame;
+    }
+
+    /**
+     * @param normalizeFrame the normalizeFrame to set
+     */
+    public void setNormalizeFrame(boolean normalizeFrame) {
+        this.normalizeFrame = normalizeFrame;
+        putBoolean("normalizeFrame", normalizeFrame);
+    }
+
 
     /**
      * @param normalizeDVSForZsNullhop the normalizeDVSForZsNullhop to set
@@ -403,6 +439,7 @@ abstract public class DvsFramer extends EventFilter2D {
         int old = this.frameCutTop;
         this.frameCutTop = frameCutTop;
         getSupport().firePropertyChange("frameCutTop", old, frameCutTop);
+
     }
 
 //    @Override
@@ -429,6 +466,7 @@ abstract public class DvsFramer extends EventFilter2D {
         private int mostOffCount = Integer.MAX_VALUE, mostOnCount = Integer.MIN_VALUE;
         private float sparsity = 1;  // computed when frame is normalized
         private boolean filled = false; // set true by accumulating dvsEventsPerFrame, cleared by clear()
+        private int firstTimestampUs, lastTimestampUs, durationUs;
 
         @Override
         public String toString() {
@@ -463,12 +501,14 @@ abstract public class DvsFramer extends EventFilter2D {
          * @param x x location in frame
          * @param y y location in frame
          * @param p polarity (On/Off) of event.
+         * @param timestampUs the timestamp of this event in us
          * @see #normalizeFrame()
          * @see #EVENT_NEW_FRAME_AVAILABLE
          */
-        public void addEvent(int x, int y, Polarity p) {
+        public void addEvent(int x, int y, Polarity p, int timestampUs) {
             if (filled) {
                 clear();
+                this.firstTimestampUs = timestampUs;
             }
             int k = getIndex(x, y);
             if (((k < 0) || (k >= eventSum.length))) {
@@ -513,8 +553,21 @@ abstract public class DvsFramer extends EventFilter2D {
             // the pixmap value set here is the one that is returned (and typically used for rendering image) 
             pixmap[k] = pmv;
             accumulatedEventCount++;
-            if (getAccumulatedEventCount() >= dvsEventsPerFrame) {
-                filled = true;
+            lastTimestampUs = timestampUs;
+            durationUs = lastTimestampUs - firstTimestampUs;
+            switch (timeSliceMethod) {
+                case EventCount:
+                    if (getAccumulatedEventCount() >= dvsEventsPerFrame) {
+                        filled = true;
+                    }
+                    break;
+                case TimeIntervalUs:
+                    if (durationUs<0 || durationUs >= getTimeDurationUsPerFrame()) {
+                        filled = true;
+                    }
+                    break;
+            }
+            if (filled) {
                 normalizeFrame();
                 lastDvsFrame = this;
                 if (showFrames) { // 
@@ -526,7 +579,13 @@ abstract public class DvsFramer extends EventFilter2D {
                             }
                         }
                     };
-                    SwingUtilities.invokeLater(doShowImage);
+                    try {
+                        SwingUtilities.invokeAndWait(doShowImage);
+                    } catch (InterruptedException ex) {
+                        log.info("showing frame interruped");
+                    } catch (InvocationTargetException ex) {
+                        Logger.getLogger(DvsFramer.class.getName()).log(Level.SEVERE, null, ex);
+                    }
                 }
                 getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILABLE, null, this); // TODO check if duplicated event fired
             }
@@ -657,6 +716,7 @@ abstract public class DvsFramer extends EventFilter2D {
          * range 0-1 using 3-sigma values, as is used in CNNNetwork.
          */
         public void normalizeFrame() {
+            if(!normalizeFrame) return;
             final float zeroValue = getZeroCountPixelValue(), fullscale = 1 - zeroValue;
             // net trained gets 0-1 range inputs, so make our input so
             int n = eventSum.length;
@@ -827,6 +887,10 @@ abstract public class DvsFramer extends EventFilter2D {
             this.filled = filled;
         }
 
+        private int getDurationUs() {
+            return durationUs;
+        }
+
     }
 
     /**
@@ -845,4 +909,35 @@ abstract public class DvsFramer extends EventFilter2D {
         }
         this.showFrames = showFrames;
     }
+
+    /**
+     * @return the timeSliceMethod
+     */
+    public TimeSliceMethod getTimeSliceMethod() {
+        return timeSliceMethod;
+    }
+
+    /**
+     * @param timeSliceMethod the timeSliceMethod to set
+     */
+    public void setTimeSliceMethod(TimeSliceMethod timeSliceMethod) {
+        this.timeSliceMethod = timeSliceMethod;
+        putString("timeSliceMethod", timeSliceMethod.toString());
+    }
+
+    /**
+     * @return the timeDurationUsPerFrame
+     */
+    public int getTimeDurationUsPerFrame() {
+        return timeDurationUsPerFrame;
+    }
+
+    /**
+     * @param timeDurationUsPerFrame the timeDurationUsPerFrame to set
+     */
+    public void setTimeDurationUsPerFrame(int timeDurationUsPerFrame) {
+        this.timeDurationUsPerFrame = timeDurationUsPerFrame;
+        putInt("timeDurationUsPerFrame", timeDurationUsPerFrame);
+    }
+
 }
