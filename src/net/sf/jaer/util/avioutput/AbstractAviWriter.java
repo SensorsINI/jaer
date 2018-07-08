@@ -28,6 +28,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -54,7 +55,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     protected static final String TIMECODE_SUFFIX = "-timecode.txt";
     protected File timecodeFile = null;
     protected FileWriter timecodeWriter = null;
-    protected boolean closeOnRewind = getBoolean("closeOnRewind", true);
+     protected boolean closeOnRewind = getBoolean("closeOnRewind", true);
     private boolean chipPropertyChangeListenerAdded = false;
     protected AVIOutputStream.VideoFormat format = AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
     protected int maxFrames = getInt("maxFrames", 0);
@@ -202,7 +203,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
                     log.info("Closed timecode file " + timecodeFile.toString());
                     timecodeWriter = null;
                 }
-                setWriteEnabled(false);
+                 setWriteEnabled(false);
                 log.info("Closed " + lastFileName + " in format " + format + " with " + framesWritten + " frames");
             } catch (Exception ex) {
                 log.warning(ex.toString());
@@ -333,6 +334,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         }
     }
 
+ 
     protected void incrementFramecountAndMaybeCloseOutput() {
         if (++framesWritten % LOG_EVERY_THIS_MANY_FRAMES == 0) {
             log.info(String.format("wrote %d frames", framesWritten));

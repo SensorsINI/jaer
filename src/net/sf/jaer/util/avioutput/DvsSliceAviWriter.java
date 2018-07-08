@@ -12,7 +12,11 @@ import ch.unizh.ini.jaer.projects.npp.DvsFramerSingleFrame;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.io.FileWriter;
 import java.lang.reflect.Constructor;
+import java.util.Date;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -38,6 +42,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.avioutput.AVIOutputStream.VideoFormat;
+import static net.sf.jaer.util.avioutput.AbstractAviWriter.TIMECODE_SUFFIX;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
@@ -55,9 +60,15 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     private JFrame frame = null;
     public ImageDisplay display;
     private boolean showOutput;
-    private volatile boolean newFrameAvailable = false;
+    private volatile boolean newApsFrameAvailable = false;
     private int endOfFrameTimestamp = 0, lastTimestamp = 0;
     protected boolean writeDvsSliceImageOnApsFrame = getBoolean("writeDvsSliceImageOnApsFrame", false);
+    private boolean writeDvsFrames = getBoolean("writeDvsFrames", true);
+    private boolean writeApsFrames = getBoolean("writeApsFrames", false);
+    private boolean writeDvsEventsToTextFile = getBoolean("writeDvsEventsToTextFile", false);
+    protected static final String EVENTS__SUFFIX = "-events.txt";
+    protected FileWriter eventsWriter = null;
+    protected File eventsFile = null;
     private boolean rendererPropertyChangeListenerAdded = false;
     private AEFrameChipRenderer renderer = null;
     private LowpassFilter lowpassFilter = new LowpassFilter(frameRateEstimatorTimeConstantMs);
@@ -76,6 +87,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         setPropertyTooltip("showOutput", "shows output in JFrame/ImageDisplay");
         setPropertyTooltip("frameRateEstimatorTimeConstantMs", "time constant of lowpass filter that shows average DVS slice frame rate");
         setPropertyTooltip("writeDvsSliceImageOnApsFrame", "<html>write DVS slice image for each APS frame end event (dvsMinEvents ignored).<br>The frame is written at the end of frame APS event.<br><b>Warning: to capture all frames, ensure that playback time slices are slow enough that all frames are rendered</b>");
+        setPropertyTooltip("writeApsFrames", "<html>write APS frames to file<br><b>Warning: to capture all frames, ensure that playback time slices are slow enough that all frames are rendered</b>");
+        setPropertyTooltip("writeDvsFrames", "<html>write DVS frames to file<br>");
+        setPropertyTooltip("writeDvsEventsToTextFile", "<html>write DVS events to text file, one event per line, timestamp, x, y, pol<br>");
         setPropertyTooltip("showStatistics", "shows statistics of DVS frame (most off and on counts, frame rate, sparsity)");
     }
 
@@ -97,15 +111,21 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             PolarityEvent p = (PolarityEvent) e;
             lastTimestamp = e.timestamp;
             dvsFrame.addEvent(p);
-            if ((writeDvsSliceImageOnApsFrame && newFrameAvailable && e.timestamp >= endOfFrameTimestamp)
+            try {
+                writeEvent(p);
+            } catch (IOException ex) {
+                Logger.getLogger(DvsSliceAviWriter.class.getName()).log(Level.SEVERE, null, ex);
+                doCloseFile();
+            }
+            if ((writeDvsSliceImageOnApsFrame && newApsFrameAvailable && e.timestamp >= endOfFrameTimestamp)
                     || (!writeDvsSliceImageOnApsFrame && dvsFrame.getDvsFrame().isFilled())
                     && (chip.getAeViewer() == null || !chip.getAeViewer().isPaused())) { // added check for nonnull aeviewer in case filter is called from separate program
                 if (writeDvsSliceImageOnApsFrame) {
-                    newFrameAvailable = false;
+                    newApsFrameAvailable = false;
                 }
                 dvsFrame.normalizeFrame();
                 maybeShowOutput(dvsFrame);
-                if (aviOutputStream != null && isWriteEnabled()) {
+                if (writeDvsFrames && aviOutputStream != null && isWriteEnabled()) {
                     BufferedImage bi = toImage(dvsFrame);
                     try {
                         writeTimecode(e.timestamp);
@@ -157,21 +177,104 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
 
     @Override
     public synchronized void doStartRecordingAndSaveAVIAs() {
-        String[] s = {"width=" + dvsFrame.getOutputImageWidth(), "height=" + dvsFrame.getOutputImageHeight(), "grayScale=" + dvsFrame.getDvsGrayScale(), "dvsMinEvents=" + dvsFrame.getDvsEventsPerFrame(), "format=" + format.toString(), "compressionQuality=" + compressionQuality};
+        String[] s = {
+            "width=" + dvsFrame.getOutputImageWidth(), 
+            "height=" + dvsFrame.getOutputImageHeight(), 
+            "timeslicemethod=" + dvsFrame.getTimeSliceMethod().toString(), 
+            "grayScale=" + dvsFrame.getDvsGrayScale(), 
+            "normalize="+dvsFrame.isNormalizeFrame(),
+            "normalizeDVSForZsNullhop="+dvsFrame.isNormalizeDVSForZsNullhop(),
+            "dvsMinEvents=" + dvsFrame.getDvsEventsPerFrame(), 
+            "timeDurationUsPerFrame="+dvsFrame.getTimeDurationUsPerFrame(),
+            "format=" + format.toString(), 
+            "compressionQuality=" + compressionQuality
+        };
         setAdditionalComments(s);
         super.doStartRecordingAndSaveAVIAs(); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    protected void writeEvent(PolarityEvent e) throws IOException {
+        if (eventsWriter != null) {
+            eventsWriter.write(String.format("%d,%d,%d,%d\n", e.timestamp, e.x, e.y, e.getPolaritySignum()));
+        }
+    }
+
+    @Override
+    public void openAVIOutputStream(File f, String[] additionalComments) {
+        super.openAVIOutputStream(f, additionalComments);
+        if (writeDvsEventsToTextFile) {
+            try {
+                String s = f.toString().subSequence(0, f.toString().lastIndexOf(".")).toString() + EVENTS__SUFFIX;
+                eventsFile = new File(s);
+                eventsWriter = new FileWriter(eventsFile);
+                eventsWriter.write(String.format("# events file\n"));
+                eventsWriter.write(String.format("# written %s\n", new Date().toString()));
+                if (additionalComments != null) {
+                    for (String st : additionalComments) {
+                        if (!st.startsWith("#")) {
+                            st = "# " + st;
+                        }
+                        if (!st.endsWith("\n")) {
+                            st = st + "\n";
+                        }
+                        eventsWriter.write(st);
+                    }
+                }
+                eventsWriter.write(String.format("# timestamp,x,y,pol\n"));
+                log.info("Opened events file " + eventsFile.toString());
+            } catch (IOException ex) {
+                Logger.getLogger(DvsSliceAviWriter.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+
+    }
+
+    @Override
+    public synchronized void doCloseFile() {
+        super.doCloseFile();
+        if (eventsWriter != null) {
+            try {
+                eventsWriter.close();
+                log.info("Closed events file " + eventsFile.toString());
+                eventsWriter = null;
+            } catch (IOException ex) {
+                Logger.getLogger(DvsSliceAviWriter.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
     }
 
     private void checkSubsampler() {
     }
 
-    private BufferedImage toImage(DvsFramerSingleFrame subSampler) {
+    private BufferedImage toImage(DvsFramerSingleFrame dvsFramer) {
         BufferedImage bi = new BufferedImage(dvsFrame.getOutputImageWidth(), dvsFrame.getOutputImageHeight(), BufferedImage.TYPE_INT_BGR);
         int[] bd = ((DataBufferInt) bi.getRaster().getDataBuffer()).getData();
 
         for (int y = 0; y < dvsFrame.getOutputImageHeight(); y++) {
             for (int x = 0; x < dvsFrame.getOutputImageWidth(); x++) {
-                int b = (int) (255 * subSampler.getValueAtPixel(x, y));
+                int b = (int) (255 * dvsFramer.getValueAtPixel(x, y));
+                int g = b;
+                int r = b;
+                int idx = (dvsFrame.getOutputImageHeight() - y - 1) * dvsFrame.getOutputImageWidth() + x;
+                if (idx >= bd.length) {
+                    throw new RuntimeException(String.format("index %d out of bounds for x=%d y=%d", idx, x, y));
+                }
+                bd[idx] = (b << 16) | (g << 8) | r | 0xFF000000;
+            }
+        }
+
+        return bi;
+
+    }
+
+    private BufferedImage toImage(AEFrameChipRenderer renderer) {
+        BufferedImage bi = new BufferedImage(dvsFrame.getOutputImageWidth(), dvsFrame.getOutputImageHeight(), BufferedImage.TYPE_INT_BGR);
+        int[] bd = ((DataBufferInt) bi.getRaster().getDataBuffer()).getData();
+        int srcwidth = chip.getSizeX(), srcheight = chip.getSizeY(), targetwidth = dvsFrame.getOutputImageWidth(), targetheight = dvsFrame.getOutputImageHeight();
+        for (int y = 0; y < dvsFrame.getOutputImageHeight(); y++) {
+            for (int x = 0; x < dvsFrame.getOutputImageWidth(); x++) {
+                int xsrc = (int) Math.floor(x * (float) srcwidth / targetwidth), ysrc = (int) Math.floor(y * (float) srcheight / targetheight);
+                int b = (int) (255 * renderer.getApsGrayValueAtPixel(xsrc, ysrc)); // TODO simplest possible downsampling, can do better with linear or bilinear interpolation but code more complex
                 int g = b;
                 int r = b;
                 int idx = (dvsFrame.getOutputImageHeight() - y - 1) * dvsFrame.getOutputImageWidth() + x;
@@ -264,7 +367,21 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if ((evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)) {
             AEFrameChipRenderer renderer = (AEFrameChipRenderer) evt.getNewValue();
             endOfFrameTimestamp = renderer.getTimestampFrameEnd();
-            newFrameAvailable = true;
+            newApsFrameAvailable = true;
+            if (writeApsFrames && aviOutputStream != null && isWriteEnabled()
+                    && (chip.getAeViewer() == null || !chip.getAeViewer().isPaused())) {
+                BufferedImage bi = toImage(renderer);
+                try {
+                    writeTimecode(endOfFrameTimestamp);
+                    aviOutputStream.writeFrame(bi);
+                    incrementFramecountAndMaybeCloseOutput();
+                } catch (IOException ex) {
+                    log.warning(ex.toString());
+                    ex.printStackTrace();
+                    setFilterEnabled(false);
+                }
+            }
+
         } else if (isCloseOnRewind() && evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             doCloseFile();
         }
@@ -289,8 +406,10 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
 
     public static final String USAGE = "java DvsSliceAviWriter [-aechip=aechipclassname (fully qualified class name, e.g. eu.seebetter.ini.chips.davis.DAVIS240C)] "
             + "[-width=36] [-height=36] [-quality=.9] [-format=PNG|JPG|RLE|RAW] [-framerate=30] [-grayscale=200] "
-            + "[-writedvssliceonapsframe=false] [-writetimecodefile=true] "
-            + "[-timeslicemethod=EventCount|TimeIntervalUs] [-numevents=2000] [-framedurationus=10000]"
+            + "[-writedvssliceonapsframe=false] [-writetimecodefile=true] \n"
+            + "[-writeapsframes=false] [-writedvsframes=true] \n"
+            + "[-writedvseventstotextfile=false] \n"
+            + "[-timeslicemethod=EventCount|TimeIntervalUs] [-numevents=2000] [-framedurationus=10000]\n"
             + " [-rectify=false] [-normalize=true] [-showoutput=true]  [-maxframes=0] "
             + "inputFile.aedat [outputfile.avi]"
             + "\n"
@@ -313,6 +432,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         opt.getSet().addOption("framerate", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("grayscale", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("writedvssliceonapsframe", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("writedvsframes", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("writeapsframes", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("writedvseventstotextfile", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("writetimecodefile", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("numevents", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("framedurationus", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
@@ -445,6 +567,16 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             writer.setWriteDvsSliceImageOnApsFrame(b);
         }
 
+        if (opt.getSet().isSet("writedvsframes")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writedvsframes").getResultValue(0));
+            writer.setWriteDvsFrames(b);
+        }
+
+        if (opt.getSet().isSet("writeapsframes")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writeapsframes").getResultValue(0));
+            writer.setWriteApsFrames(b);
+        }
+
         if (opt.getSet().isSet("numevents")) {
             try {
                 int n = Integer.parseInt(opt.getSet().getOption("numevents").getResultValue(0));
@@ -483,7 +615,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             boolean b = Boolean.parseBoolean(opt.getSet().getOption("normalize").getResultValue(0));
             writer.getDvsFrame().setNormalizeFrame(b);
         }
-        
+
         if (opt.getSet().isSet("nullhopnormalize")) {
             boolean b = Boolean.parseBoolean(opt.getSet().getOption("nullhopnormalize").getResultValue(0));
             writer.getDvsFrame().setNormalizeDVSForZsNullhop(b);
@@ -608,6 +740,51 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         void end() {
             writing = false;
         }
+    }
+
+    /**
+     * @return the writeDvsFrames
+     */
+    public boolean isWriteDvsFrames() {
+        return writeDvsFrames;
+    }
+
+    /**
+     * @param writeDvsFrames the writeDvsFrames to set
+     */
+    public void setWriteDvsFrames(boolean writeDvsFrames) {
+        this.writeDvsFrames = writeDvsFrames;
+        putBoolean("writeDvsFrames", writeDvsFrames);
+    }
+
+    /**
+     * @return the writeApsFrames
+     */
+    public boolean isWriteApsFrames() {
+        return writeApsFrames;
+    }
+
+    /**
+     * @param writeApsFrames the writeApsFrames to set
+     */
+    public void setWriteApsFrames(boolean writeApsFrames) {
+        this.writeApsFrames = writeApsFrames;
+        putBoolean("writeApsFrames", writeApsFrames);
+    }
+
+    /**
+     * @return the writeDvsEventsToTextFile
+     */
+    public boolean isWriteDvsEventsToTextFile() {
+        return writeDvsEventsToTextFile;
+    }
+
+    /**
+     * @param writeDvsEventsToTextFile the writeDvsEventsToTextFile to set
+     */
+    public void setWriteDvsEventsToTextFile(boolean writeDvsEventsToTextFile) {
+        this.writeDvsEventsToTextFile = writeDvsEventsToTextFile;
+        putBoolean("writeDvsEventsToTextFile", writeDvsEventsToTextFile);
     }
 
 }
