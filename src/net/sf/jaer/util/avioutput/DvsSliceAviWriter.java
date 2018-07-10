@@ -1,5 +1,6 @@
 package net.sf.jaer.util.avioutput;
 
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.npp.DvsFramer.TimeSliceMethod;
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
@@ -9,6 +10,7 @@ import java.awt.image.DataBufferInt;
 import java.io.IOException;
 import com.jogamp.opengl.GLAutoDrawable;
 import ch.unizh.ini.jaer.projects.npp.DvsFramerSingleFrame;
+import eu.seebetter.ini.chips.DavisChip;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -56,6 +58,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
 public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotater {
 
     private DvsFramerSingleFrame dvsFrame = null;
+    private ApsFrameExtractor frameExtractor=null;
     private float frameRateEstimatorTimeConstantMs = getFloat("frameRateEstimatorTimeConstantMs", 10f);
     private JFrame frame = null;
     public ImageDisplay display;
@@ -70,7 +73,6 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     protected FileWriter eventsWriter = null;
     protected File eventsFile = null;
     private boolean rendererPropertyChangeListenerAdded = false;
-    private AEFrameChipRenderer renderer = null;
     private LowpassFilter lowpassFilter = new LowpassFilter(frameRateEstimatorTimeConstantMs);
     private int lastDvsFrameTimestamp = 0;
     private float avgDvsFrameIntervalMs = 0;
@@ -79,6 +81,11 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     public DvsSliceAviWriter(AEChip chip) {
         super(chip);
         FilterChain chain = new FilterChain(chip);
+        if(chip instanceof DavisChip){
+            frameExtractor=new ApsFrameExtractor(chip);
+            chain.add(frameExtractor);
+            frameExtractor.getSupport().addPropertyChangeListener(this);
+        }
         dvsFrame = new DvsFramerSingleFrame(chip);
         chain.add(dvsFrame);
         setEnclosedFilterChain(chain);
@@ -98,11 +105,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
 //        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsNet on each frame in PropertyChangeListener
         // send DVS timeslice to convnet
         super.filterPacket(in);
-        if (!rendererPropertyChangeListenerAdded) {
-            rendererPropertyChangeListenerAdded = true;
-            renderer = (AEFrameChipRenderer) chip.getRenderer();
-            renderer.getSupport().addPropertyChangeListener(this);
-        }
+        frameExtractor.filterPacket(in);
+       
         checkSubsampler();
         for (BasicEvent e : in) {
             if (e.isSpecial() || e.isFilteredOut()) {
@@ -267,14 +271,15 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
 
     }
 
-    private BufferedImage toImage(AEFrameChipRenderer renderer) {
+    private BufferedImage toImage(ApsFrameExtractor frameExtractor) {
         BufferedImage bi = new BufferedImage(dvsFrame.getOutputImageWidth(), dvsFrame.getOutputImageHeight(), BufferedImage.TYPE_INT_BGR);
         int[] bd = ((DataBufferInt) bi.getRaster().getDataBuffer()).getData();
         int srcwidth = chip.getSizeX(), srcheight = chip.getSizeY(), targetwidth = dvsFrame.getOutputImageWidth(), targetheight = dvsFrame.getOutputImageHeight();
+        float[] frame=frameExtractor.getNewFrame();
         for (int y = 0; y < dvsFrame.getOutputImageHeight(); y++) {
             for (int x = 0; x < dvsFrame.getOutputImageWidth(); x++) {
                 int xsrc = (int) Math.floor(x * (float) srcwidth / targetwidth), ysrc = (int) Math.floor(y * (float) srcheight / targetheight);
-                int b = (int) (255 * renderer.getApsGrayValueAtPixel(xsrc, ysrc)); // TODO simplest possible downsampling, can do better with linear or bilinear interpolation but code more complex
+                int b = (int) (255 * frame[frameExtractor.getIndex(xsrc, ysrc)]); // TODO simplest possible downsampling, can do better with linear or bilinear interpolation but code more complex
                 int g = b;
                 int r = b;
                 int idx = (dvsFrame.getOutputImageHeight() - y - 1) * dvsFrame.getOutputImageWidth() + x;
@@ -364,13 +369,12 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         super.propertyChange(evt);
-        if ((evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)) {
-            AEFrameChipRenderer renderer = (AEFrameChipRenderer) evt.getNewValue();
-            endOfFrameTimestamp = renderer.getTimestampFrameEnd();
+        if ((evt.getPropertyName() == ApsFrameExtractor.EVENT_NEW_FRAME)) {
+            endOfFrameTimestamp = frameExtractor.getLastFrameTimestamp();
             newApsFrameAvailable = true;
             if (writeApsFrames && aviOutputStream != null && isWriteEnabled()
                     && (chip.getAeViewer() == null || !chip.getAeViewer().isPaused())) {
-                BufferedImage bi = toImage(renderer);
+                BufferedImage bi = toImage(frameExtractor);
                 try {
                     writeTimecode(endOfFrameTimestamp);
                     aviOutputStream.writeFrame(bi);
@@ -452,7 +456,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         opt.getSet().addOption("showoutput", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("maxframes", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         if (!opt.check()) {
-            System.out.println(USAGE);
+            System.err.println(opt.getCheckErrors());
+            System.err.println(USAGE);
             System.exit(1);
         }
         if (opt.getSet().getData().isEmpty()) {
