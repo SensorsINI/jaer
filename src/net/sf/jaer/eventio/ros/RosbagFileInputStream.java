@@ -137,6 +137,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private AEFifo dvsFifo = new AEFifo(), apsFifo = new AEFifo(), imuFifo = new AEFifo();
     private MutableBoolean[] hasDvsApsImu = {hasDvs, hasAps, hasImu};
     private AEFifo[] aeFifos = {dvsFifo, apsFifo, imuFifo};
+    private int MAX_RAW_EVENTS_BUFFER_SIZE=1000000;
 
     private enum RosbagFileType {
         RPG(RPG_TOPIC_HEADER), MVSEC(MVSEC_TOPIC_HEADER), Unknown("???");
@@ -711,7 +712,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         int newEndTime = currentStartTimestamp + dt; // problem is that time advances even when the data time might not.
         while (aePacketRawBuffered.isEmpty()
                 || (aePacketRawBuffered.getLastTimestamp() < newEndTime
-                && aePacketRawBuffered.getNumEvents() < AEPacketRaw.MAX_PACKET_SIZE_EVENTS)) {
+                && aePacketRawBuffered.getNumEvents() < MAX_RAW_EVENTS_BUFFER_SIZE)) {
             try {
                 aePacketRawBuffered.append(getNextRawPacket()); // reaching EOF here will throw EOFException
             } catch (EOFException ex) {
