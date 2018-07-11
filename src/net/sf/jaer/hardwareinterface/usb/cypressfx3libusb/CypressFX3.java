@@ -1430,15 +1430,23 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 				"number of configurations=" + deviceDescriptor.bNumConfigurations() + " is not 1 like it should be");
 		}
 
-		final IntBuffer activeConfig = BufferUtils.allocateIntBuffer();
-		LibUsb.getConfiguration(deviceHandle, activeConfig);
-
+                final IntBuffer activeConfig = BufferUtils.allocateIntBuffer();
+                try {
+                    LibUsb.getConfiguration(deviceHandle, activeConfig);
+                } catch (IllegalStateException e) {
+                    log.log(Level.SEVERE, "Exception try to LibUsb.getConfiguration: "+ e.toString(), e);
+                    return;
+                }
 		if (activeConfig.get() != 1) {
 			LibUsb.setConfiguration(deviceHandle, 1);
 		}
 
-		LibUsb.claimInterface(deviceHandle, 0);
-
+            try {
+                LibUsb.claimInterface(deviceHandle, 0);
+            } catch (Exception e) {
+                log.log(Level.SEVERE, "Exception try to LibUsb.claimInterface: " + e.toString(), e);
+                return;
+            }
 		populateDescriptors();
 
 		isOpened = true;
