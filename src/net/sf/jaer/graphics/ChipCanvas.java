@@ -67,6 +67,7 @@ import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.lang.reflect.Field;
+import java.util.logging.Level;
 
 /**
  * Superclass for classes that paint rendered AE data to graphics devices.
@@ -217,7 +218,11 @@ public class ChipCanvas implements GLEventListener, Observer {
          */
         // make the canvas
         try {
-            final GLProfile glp = GLProfile.getDefault(); //getGL2ES1(); // getMaxProgrammable(true);// FixedFunc(true);
+//            final GLProfile glp = GLProfile.getMaxProgrammable(true);//GLProfile.getDefault(); //getGL2ES1(); // getMaxProgrammable(true);// FixedFunc(true);
+//            final GLProfile glp = GLProfile.getGL2ES1(); // getMaxProgrammable(true);// FixedFunc(true);
+//            final GLProfile glp = GLProfile.get(GLProfile.GL2); // getMaxProgrammable(true);// FixedFunc(true);
+//            final GLProfile glp = GLProfile.get(GLProfile.GL3bc); // getMaxProgrammable(true);// FixedFunc(true);
+            final GLProfile glp = GLProfile.getDefault();
             final GLCapabilities caps = new GLCapabilities(glp);
             drawable = new GLCanvas(caps);
 //            if (SystemUtils.IS_OS_WINDOWS) {
@@ -310,7 +315,6 @@ public class ChipCanvas implements GLEventListener, Observer {
         // com.jogamp.opengl.GLException: AWT-EventQueue-0: WindowsWGLContex.createContextImpl ctx !ARB but ARB is
         // used, profile > GL2 requested (OpenGL >= 3.0.1). Requested: GLProfile[GL4bc/GL4bc.hw], current: 1.1 (Compat
         // profile, hardware) - 1.1.0
-
         if (drawable != null) {
             log.info("GLCanvas=" + drawable.toString());
             if (drawable.getContext() != null) {
@@ -721,7 +725,13 @@ public class ChipCanvas implements GLEventListener, Observer {
     public void init(final GLAutoDrawable drawable) {
         // drawable.setGL(new DebugGL(drawable.getGL()));
         drawable.setAutoSwapBufferMode(true);
-        final GL2 gl = drawable.getGL().getGL2();
+        GL2 gl=null;
+        try {
+            gl = drawable.getGL().getGL2();
+        } catch (com.jogamp.opengl.GLException e) {
+            log.log(Level.SEVERE,"Cannot make a frame that is GL2 capable; you might need to update your graphics driver",e);
+            return;
+        }
 
         log.info("OpenGL implementation is: " + gl.getClass().getName() + "\nGL_VENDOR: "
                 + gl.glGetString(GL.GL_VENDOR) + "\nGL_RENDERER: " + gl.glGetString(GL.GL_RENDERER) + "\nGL_VERSION: "

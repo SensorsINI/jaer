@@ -10,12 +10,15 @@ import java.awt.image.DataBufferInt;
 import java.io.IOException;
 import com.jogamp.opengl.GLAutoDrawable;
 import ch.unizh.ini.jaer.projects.npp.DvsFramerSingleFrame;
+import ch.unizh.ini.jaer.projects.npp.TargetLabeler;
+import ch.unizh.ini.jaer.projects.npp.TargetLabeler.TargetLocation;
 import eu.seebetter.ini.chips.DavisChip;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileWriter;
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.logging.Level;
@@ -38,7 +41,6 @@ import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
 import static net.sf.jaer.graphics.AEViewer.DEFAULT_CHIP_CLASS;
 import static net.sf.jaer.graphics.AEViewer.prefs;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -58,7 +60,8 @@ import net.sf.jaer.util.filter.LowpassFilter;
 public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotater {
 
     private DvsFramerSingleFrame dvsFrame = null;
-    private ApsFrameExtractor frameExtractor=null;
+    private ApsFrameExtractor frameExtractor = null;
+    private TargetLabeler targetLabeler = null;
     private float frameRateEstimatorTimeConstantMs = getFloat("frameRateEstimatorTimeConstantMs", 10f);
     private JFrame frame = null;
     public ImageDisplay display;
@@ -68,24 +71,30 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     protected boolean writeDvsSliceImageOnApsFrame = getBoolean("writeDvsSliceImageOnApsFrame", false);
     private boolean writeDvsFrames = getBoolean("writeDvsFrames", true);
     private boolean writeApsFrames = getBoolean("writeApsFrames", false);
+    private boolean writeTargetLocations = getBoolean("writeTargetLocations", true);
     private boolean writeDvsEventsToTextFile = getBoolean("writeDvsEventsToTextFile", false);
     protected static final String EVENTS__SUFFIX = "-events.txt";
     protected FileWriter eventsWriter = null;
     protected File eventsFile = null;
+    protected File targetLocationsFile = null;
+    private FileWriter targetLocationsWriter = null;
     private boolean rendererPropertyChangeListenerAdded = false;
     private LowpassFilter lowpassFilter = new LowpassFilter(frameRateEstimatorTimeConstantMs);
     private int lastDvsFrameTimestamp = 0;
     private float avgDvsFrameIntervalMs = 0;
     private boolean showStatistics = getBoolean("showStatistics", false);
+    private String TARGETS_LOCATIONS_SUFFIX = "-targetLocations.txt";
 
     public DvsSliceAviWriter(AEChip chip) {
         super(chip);
         FilterChain chain = new FilterChain(chip);
-        if(chip instanceof DavisChip){
-            frameExtractor=new ApsFrameExtractor(chip);
+        if (chip instanceof DavisChip) {
+            frameExtractor = new ApsFrameExtractor(chip);
             chain.add(frameExtractor);
             frameExtractor.getSupport().addPropertyChangeListener(this);
         }
+        targetLabeler = new TargetLabeler(chip);
+        chain.add(targetLabeler);
         dvsFrame = new DvsFramerSingleFrame(chip);
         chain.add(dvsFrame);
         setEnclosedFilterChain(chain);
@@ -96,6 +105,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         setPropertyTooltip("writeDvsSliceImageOnApsFrame", "<html>write DVS slice image for each APS frame end event (dvsMinEvents ignored).<br>The frame is written at the end of frame APS event.<br><b>Warning: to capture all frames, ensure that playback time slices are slow enough that all frames are rendered</b>");
         setPropertyTooltip("writeApsFrames", "<html>write APS frames to file<br><b>Warning: to capture all frames, ensure that playback time slices are slow enough that all frames are rendered</b>");
         setPropertyTooltip("writeDvsFrames", "<html>write DVS frames to file<br>");
+        setPropertyTooltip("writeTargetLocations", "<html>If TargetLabeler has locations, write them to a file named XXX-targetlocations.txt<br>");
         setPropertyTooltip("writeDvsEventsToTextFile", "<html>write DVS events to text file, one event per line, timestamp, x, y, pol<br>");
         setPropertyTooltip("showStatistics", "shows statistics of DVS frame (most off and on counts, frame rate, sparsity)");
     }
@@ -105,8 +115,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
 //        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsNet on each frame in PropertyChangeListener
         // send DVS timeslice to convnet
         super.filterPacket(in);
-        frameExtractor.filterPacket(in);
-       
+        frameExtractor.filterPacket(in); // process frame extractor, target labeler and dvsframer
+        targetLabeler.filterPacket(in);
+
         checkSubsampler();
         for (BasicEvent e : in) {
             if (e.isSpecial() || e.isFilteredOut()) {
@@ -133,6 +144,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                     BufferedImage bi = toImage(dvsFrame);
                     try {
                         writeTimecode(e.timestamp);
+                        writeTargetLocation(e.timestamp, framesWritten);
                         aviOutputStream.writeFrame(bi);
                         incrementFramecountAndMaybeCloseOutput();
                     } catch (IOException ex) {
@@ -182,15 +194,15 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     @Override
     public synchronized void doStartRecordingAndSaveAVIAs() {
         String[] s = {
-            "width=" + dvsFrame.getOutputImageWidth(), 
-            "height=" + dvsFrame.getOutputImageHeight(), 
-            "timeslicemethod=" + dvsFrame.getTimeSliceMethod().toString(), 
-            "grayScale=" + dvsFrame.getDvsGrayScale(), 
-            "normalize="+dvsFrame.isNormalizeFrame(),
-            "normalizeDVSForZsNullhop="+dvsFrame.isNormalizeDVSForZsNullhop(),
-            "dvsMinEvents=" + dvsFrame.getDvsEventsPerFrame(), 
-            "timeDurationUsPerFrame="+dvsFrame.getTimeDurationUsPerFrame(),
-            "format=" + format.toString(), 
+            "width=" + dvsFrame.getOutputImageWidth(),
+            "height=" + dvsFrame.getOutputImageHeight(),
+            "timeslicemethod=" + dvsFrame.getTimeSliceMethod().toString(),
+            "grayScale=" + dvsFrame.getDvsGrayScale(),
+            "normalize=" + dvsFrame.isNormalizeFrame(),
+            "normalizeDVSForZsNullhop=" + dvsFrame.isNormalizeDVSForZsNullhop(),
+            "dvsMinEvents=" + dvsFrame.getDvsEventsPerFrame(),
+            "timeDurationUsPerFrame=" + dvsFrame.getTimeDurationUsPerFrame(),
+            "format=" + format.toString(),
             "compressionQuality=" + compressionQuality
         };
         setAdditionalComments(s);
@@ -229,6 +241,32 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             } catch (IOException ex) {
                 Logger.getLogger(DvsSliceAviWriter.class.getName()).log(Level.SEVERE, null, ex);
             }
+
+        }
+        if (writeTargetLocations) {
+            try {
+                String s = f.toString().subSequence(0, f.toString().lastIndexOf(".")).toString() + TARGETS_LOCATIONS_SUFFIX;
+                targetLocationsFile = new File(s);
+                targetLocationsWriter = new FileWriter(targetLocationsFile);
+                targetLocationsWriter.write(String.format("# labeled target locations file\n"));
+                targetLocationsWriter.write(String.format("# written %s\n", new Date().toString()));
+                if (additionalComments != null) {
+                    for (String st : additionalComments) {
+                        if (!st.startsWith("#")) {
+                            st = "# " + st;
+                        }
+                        if (!st.endsWith("\n")) {
+                            st = st + "\n";
+                        }
+                        targetLocationsWriter.write(st);
+                    }
+                }
+                targetLocationsWriter.write(String.format("# frameNumber timestamp x y targetTypeID width height\n"));
+                log.info("Opened labeled target locations file " + targetLocationsFile.toString());
+            } catch (IOException ex) {
+                Logger.getLogger(DvsSliceAviWriter.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
         }
 
     }
@@ -241,6 +279,15 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 eventsWriter.close();
                 log.info("Closed events file " + eventsFile.toString());
                 eventsWriter = null;
+            } catch (IOException ex) {
+                Logger.getLogger(DvsSliceAviWriter.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        if (targetLocationsWriter != null) {
+            try {
+                targetLocationsWriter.close();
+                log.info("Closed target locations file " + targetLocationsFile.toString());
+                targetLocationsWriter = null;
             } catch (IOException ex) {
                 Logger.getLogger(DvsSliceAviWriter.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -275,7 +322,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         BufferedImage bi = new BufferedImage(dvsFrame.getOutputImageWidth(), dvsFrame.getOutputImageHeight(), BufferedImage.TYPE_INT_BGR);
         int[] bd = ((DataBufferInt) bi.getRaster().getDataBuffer()).getData();
         int srcwidth = chip.getSizeX(), srcheight = chip.getSizeY(), targetwidth = dvsFrame.getOutputImageWidth(), targetheight = dvsFrame.getOutputImageHeight();
-        float[] frame=frameExtractor.getNewFrame();
+        float[] frame = frameExtractor.getNewFrame();
         for (int y = 0; y < dvsFrame.getOutputImageHeight(); y++) {
             for (int x = 0; x < dvsFrame.getOutputImageWidth(); x++) {
                 int xsrc = (int) Math.floor(x * (float) srcwidth / targetwidth), ysrc = (int) Math.floor(y * (float) srcheight / targetheight);
@@ -377,6 +424,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 BufferedImage bi = toImage(frameExtractor);
                 try {
                     writeTimecode(endOfFrameTimestamp);
+                    writeTargetLocation(endOfFrameTimestamp, framesWritten);
                     aviOutputStream.writeFrame(bi);
                     incrementFramecountAndMaybeCloseOutput();
                 } catch (IOException ex) {
@@ -413,8 +461,10 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             + "     [-width=36] [-height=36] [-quality=.9] [-format=PNG|JPG|RLE|RAW] [-framerate=30] [-grayscale=200] "
             + "     [-writedvssliceonapsframe=false] \n"
             + "     [-writetimecodefile=true] \n"
-            + "     [-writeapsframes=false] [-writedvsframes=true] \n"
+            + "     [-writeapsframes=false] \n"
+            + "     [-writedvsframes=true] \n"
             + "     [-writedvseventstotextfile=false] \n"
+            + "     [-writetargetlocations=false] \n"
             + "     [-timeslicemethod=EventCount|TimeIntervalUs] [-numevents=2000] [-framedurationus=10000]\n"
             + "     [-rectify=false] [-normalize=true] [-showoutput=true]  [-maxframes=0] "
             + "         inputFile.aedat [outputfile.avi]"
@@ -422,15 +472,15 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             + "numevents and framedurationus are exclusively possible\n"
             + "Arguments values are assigned with =, not space\n"
             + "If outputfile is not provided its name is generated from the input file with appended .avi";
-    
-    public static final HashMap<String,String> chipClassesMap=new HashMap();
+
+    public static final HashMap<String, String> chipClassesMap = new HashMap();
 
     public static void main(String[] args) {
         // make hashmap of common chip classes
         chipClassesMap.put("dvs128", "ch.unizh.ini.jaer.chip.retina.DVS128");
         chipClassesMap.put("davis240c", "eu.seebetter.ini.chips.davis.DAVIS240C");
         chipClassesMap.put("davis346mini", "eu.seebetter.ini.chips.davis.Davis346mini");
-        
+
         // command line
         // uses last settings of everything
         // java DvsSliceAviWriter inputFile.aedat outputfile.avi
@@ -455,6 +505,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         opt.getSet().addOption("nullhopnormalize", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("showoutput", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("maxframes", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("writetargetlocations", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         if (!opt.check()) {
             System.err.println(opt.getCheckErrors());
             System.err.println(USAGE);
@@ -489,11 +540,11 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             chipname = prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
         }
         try {
-            String className=chipClassesMap.get(chipname.toLowerCase());
-            if(className==null) {
-                className=chipname;
-            }else{
-                System.out.println("from "+chipname+" found fully qualified class name "+className);
+            String className = chipClassesMap.get(chipname.toLowerCase());
+            if (className == null) {
+                className = chipname;
+            } else {
+                System.out.println("from " + chipname + " found fully qualified class name " + className);
             }
             System.out.println("constructing AEChip " + className);
             Class chipClass = Class.forName(className);
@@ -593,6 +644,11 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if (opt.getSet().isSet("writeapsframes")) {
             boolean b = Boolean.parseBoolean(opt.getSet().getOption("writeapsframes").getResultValue(0));
             writer.setWriteApsFrames(b);
+        }
+
+        if (opt.getSet().isSet("writetargetlocations")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writetargetlocations").getResultValue(0));
+            writer.setWriteTargetLocations(b);
         }
 
         if (opt.getSet().isSet("numevents")) {
@@ -750,6 +806,25 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         putBoolean("showStatistics", showStatistics);
     }
 
+    /**
+     * Writes the targets just before the timestamp to the target locations
+     * file, if writeTargetLocation is true
+     *
+     * @param timestamp to search for targets just before timestamp
+     * @throws IOException
+     */
+    private void writeTargetLocation(int timestamp, int frameNumber) throws IOException {
+        if (!writeTargetLocations) {
+            return;
+        }
+        if (targetLabeler.hasLocations()) {
+            ArrayList<TargetLabeler.TargetLocation> targets = targetLabeler.findTargetsBeforeTimestamp(timestamp);
+            for (TargetLocation l : targets) {
+                l.write(targetLocationsWriter, frameNumber);
+            }
+        }
+    }
+
     // stupid static class just to control writing and handle rewind event
     static class WriterControl {
 
@@ -803,6 +878,21 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     public void setWriteDvsEventsToTextFile(boolean writeDvsEventsToTextFile) {
         this.writeDvsEventsToTextFile = writeDvsEventsToTextFile;
         putBoolean("writeDvsEventsToTextFile", writeDvsEventsToTextFile);
+    }
+
+    /**
+     * @return the writeTargetLocations
+     */
+    public boolean isWriteTargetLocations() {
+        return writeTargetLocations;
+    }
+
+    /**
+     * @param writeTargetLocations the writeTargetLocations to set
+     */
+    public void setWriteTargetLocations(boolean writeTargetLocations) {
+        this.writeTargetLocations = writeTargetLocations;
+        putBoolean("writeTargetLocations", writeTargetLocations);
     }
 
 }
