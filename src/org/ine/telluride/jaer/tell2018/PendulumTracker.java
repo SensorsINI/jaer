@@ -225,6 +225,7 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
         private float peakPosX=Float.NEGATIVE_INFINITY, peakNegX=Float.POSITIVE_INFINITY;
         private float prevX=0, prevPrevX=0;
         private int lastPeakTimestamp=0, lastValleyTimestamp=0;
+        boolean justFoundPeak=false, justFoundValley=false;
 
         public Pendulum(int startingTimestamp) {
             fulcrumX = getFloat("fulcrumX", chip.getSizeX() / 2); // sizes not correct since chip size is not set yet
@@ -252,8 +253,10 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
             }
             
             if(prevPrevX<prevX && curX<prevX){ // peak
+                log.info("peak found");
                 lastPeakTimestamp=timestamp;
             }else if(prevPrevX>prevX && curX>prevX){ // peak
+                log.info("valley found");
                 lastValleyTimestamp=timestamp;
                 if(lastPeakTimestamp!=0){
                     float lastHalfPeriodS=1e-6f*(lastValleyTimestamp-lastPeakTimestamp);
