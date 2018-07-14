@@ -27,17 +27,14 @@ import redis.clients.jedis.Jedis;
 @Description("tracker that sends cluster info to remote host about tracked clusters")
 public class RectangularClusterTrackerWithRedisClusterOutput extends RectangularClusterTracker {
 
-    protected String host = "localhost";
+    protected String host = "10.162.177.1";
     protected int port = getInt("port", 6379);
     Jedis jedis;
     long jedisTime;
  
     public RectangularClusterTrackerWithRedisClusterOutput(AEChip chip) {
         super(chip);
-        String s="  remote host";
-        setPropertyTooltip(s, "port", "port to send to on remote host");
-        setPropertyTooltip(s, "host", "host to send to");
-        jedis = new Jedis(host, port); 
+        jedis = new Jedis(host); 
         System.out.println("Connection to server sucessfully"); 
         jedisTime = System.currentTimeMillis();
   }
@@ -49,6 +46,7 @@ public class RectangularClusterTrackerWithRedisClusterOutput extends Rectangular
             for (Cluster c : getVisibleClusters()) {
                 sendData(c);
             }
+            jedisTime = System.currentTimeMillis();
         }
 
     }
