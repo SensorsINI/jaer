@@ -87,6 +87,16 @@ public final class DrawGL {
         gl.glEnd();
     }
     
+    /**
+     * Draws ellipse. Set the line width before drawing, and push and pop matrix
+     * @param gl
+     * @param centerX
+     * @param centerY
+     * @param radiusX
+     * @param radiusY
+     * @param angle
+     * @param N number of segments used to draw ellipse
+     */
     public static void drawEllipse(GL2 gl, float centerX, float centerY, float radiusX, float radiusY, float angle, int N) {
         final float r2d = (float) (180 / Math.PI);
         
@@ -106,16 +116,33 @@ public final class DrawGL {
         gl.glEnd();
     }
     
+    /** Draws a circle. Set the line width before drawing, and push and pop matrix
+     * 
+     * @param gl
+     * @param centerX
+     * @param centerY
+     * @param radius
+     * @param N number of segments used to draw ellipse
+     */
     public static void drawCircle(GL2 gl, float centerX, float centerY, float radius, int N) {
         drawEllipse(gl,centerX,centerY,radius,radius,0,N);
     }
     
-    public static void drawLine(GL2 gl, float centerX, float centerY, float x, float y, float scale) {
-        gl.glTranslatef(centerX, centerY, 0);
+    /** Draws a line. Set the line width before drawing, and push and pop matrix.
+     * 
+     * @param gl
+     * @param startX
+     * @param startY
+     * @param lengthX
+     * @param lengthY
+     * @param scale  scales the line length by this factor
+     */
+    public static void drawLine(GL2 gl, float startX, float startY, float lengthX, float lengthY, float scale) {
+        gl.glTranslatef(startX, startY, 0);
         
         gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0,0);
-            gl.glVertex2f(x*scale,y*scale);
+            gl.glVertex2f(lengthX*scale,lengthY*scale);
         gl.glEnd();
     }
 }
