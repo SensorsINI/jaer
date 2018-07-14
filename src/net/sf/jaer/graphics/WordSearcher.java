@@ -15,8 +15,8 @@ import javax.swing.text.LayeredHighlighter;
 import javax.swing.text.Position;
 import javax.swing.text.View;
 
-// a document and highlights occurrences of that word
-class WordSearcher {
+/** Takes a document and highlights occurrences of that word */
+public class WordSearcher {
 
     int lastOffset = 0;
     private String word = null;
@@ -27,9 +27,11 @@ class WordSearcher {
                 Color.red);
     }
 
-    // Search for a word and return the offset of the
-    // first occurrence. Highlights are added for all
-    // occurrences found.
+   /** Search for a word and return the offset of the
+    first occurrence. Highlights are added for all
+     occurrences found.
+     * @param word
+    */
     public int search(String word) {
         int firstOffset = -1;
         Highlighter highlighter = comp.getHighlighter();
