@@ -31,6 +31,8 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.DrawGL;
 
 /**
  * Live pendulum modeling for studying satellite tracking.
@@ -47,12 +49,12 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
     // pendulum
     private float freqHz = getFloat("freqHz", 1);
     private float amplDeg = getFloat("amplDeg", 1);
-    private float phaseDeg = 0;
-    private float fulcrumX = 0; // sizes not correct since chip size is not set yet
-    private float fulcrumY = 0;
-    private float length = 0;
+    private int timeZeroOffsetUs = 0;
+    private float fulcrumX = getFloat("fulcrumX", chip.getSizeX() / 2); // sizes not correct since chip size is not set yet
+    private float fulcrumY = getFloat("fulcrumY", chip.getSizeY() * 10);
+    private float length = getFloat("length", chip.getSizeY() + 10 + chip.getSizeY() / 2);
     private float mixingFactor = getFloat("mixingFactor", .01f);
-    private float peakHysteresisPixels = getFloat("peakHysteresisPixels", 10);
+    private float peakHysteresisPixels = getFloat("peakHysteresisPixels", 20);
     private boolean enableModelUpdates = false;
     int lastTimestamp = 0;
 
@@ -64,6 +66,16 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
         chain.add(tracker);
         tracker.getSupport().addPropertyChangeListener(this);
         setEnclosedFilterChain(chain);
+        // update GUI by property changes so initial view is correct
+        float v = fulcrumX;
+        setFulcrumX(0);
+        setFulcrumX(v);
+        v = fulcrumY;
+        setFulcrumY(0);
+        setFulcrumY(v);
+        v = length;
+        setLength(0);
+        setLength(v);
     }
 
     @Override
@@ -139,19 +151,19 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
     }
 
     /**
-     * @return the phaseDeg
+     * @return the timeZeroOffsetUs
      */
-    public float getPhaseDeg() {
-        return phaseDeg;
+    public int getTimeZeroOffsetUs() {
+        return timeZeroOffsetUs;
     }
 
     /**
-     * @param phaseDeg the phaseDeg to set
+     * @param timeZeroOffsetUs the timeZeroOffsetUs to set
      */
-    public void setPhaseDeg(float phaseDeg) {
-        float old = this.phaseDeg;
-        this.phaseDeg = phaseDeg;
-        getSupport().firePropertyChange("phaseDeg", old, amplDeg);
+    public void setTimeZeroOffsetUs(int timeZeroOffsetUs) {
+        int old = this.timeZeroOffsetUs;
+        this.timeZeroOffsetUs = timeZeroOffsetUs;
+        getSupport().firePropertyChange("timeZeroOffsetUs", old, timeZeroOffsetUs);
     }
 
     /**
@@ -224,9 +236,10 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
 
         private float angleDeg = 0, posX = 0, posY = 0; // angle is zero vertically and positive to right, pos are in chip image coordinates, 0,0 at lower left
         private int startingTimestamp = 0;
-        private float peakPosX = Float.NEGATIVE_INFINITY, valleyPosX = Float.POSITIVE_INFINITY;
+        private float peakPosX = Float.POSITIVE_INFINITY, valleyPosX = Float.NEGATIVE_INFINITY;
         private float prevX = 0, prevPrevX = 0;
         private int lastPeakTimestamp = 0, lastValleyTimestamp = 0;
+        float lastPeriodS = 0;
 
         public Pendulum(int startingTimestamp) {
             fulcrumX = getFloat("fulcrumX", chip.getSizeX() / 2); // sizes not correct since chip size is not set yet
@@ -237,11 +250,12 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
         }
 
         public void updateState(int timestamp) {
-            int tUs = timestamp - startingTimestamp;
+            int tUs = timestamp - startingTimestamp - timeZeroOffsetUs;
             double tS = 1e-6 * tUs;
-            angleDeg = amplDeg * (float) Math.cos(2 * Math.PI * freqHz * tS + phaseDeg / Math.PI);
-            posX = fulcrumX + length * (float) Math.sin(angleDeg / Math.PI);
-            posY = fulcrumY - length * (float) Math.cos(angleDeg / Math.PI);
+            angleDeg = amplDeg * (float) Math.cos(2 * Math.PI * freqHz * tS);
+            final double angleRad = angleDeg * Math.PI / 180;
+            posX = fulcrumX + length * (float) Math.sin(angleRad);
+            posY = fulcrumY - length * (float) Math.cos(angleRad);
         }
 
         private boolean foundValleyBefore = false;
@@ -262,13 +276,13 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
                 return;
             }
 
-            if (prevPrevX < prevX && curX < prevX) { // peak
-                log.info("peak found");
+            if (prevPrevX < prevX && curX < prevX && prevX > valleyPosX + peakHysteresisPixels) { // peak
+//                log.info("peak found");
                 lastPeakTimestamp = timestamp;
                 peakPosX = prevX;
                 justFoundPeak = true;
-            } else if (prevPrevX > prevX && curX > prevX) { // peak
-                log.info("valley found");
+            } else if (prevPrevX > prevX && curX > prevX && prevX < peakPosX - peakHysteresisPixels) { // valley
+//                log.info("valley found");
                 lastValleyTimestamp = timestamp;
                 valleyPosX = prevX;
                 foundValleyBefore = true;
@@ -278,15 +292,21 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
                 final float m1 = (1 - mixingFactor);
                 foundValleyBefore = false;  // one update per cycle
                 float halfPeriodS = 1e-6f * (lastPeakTimestamp - lastValleyTimestamp);
+                lastPeriodS = 2 * halfPeriodS;
                 if (halfPeriodS < 0) {
                     return;
                 }
                 float newFreq = 1 / (2 * halfPeriodS);
                 setFreqHz(m1 * freqHz + mixingFactor * newFreq);
-                float newAmplDeg = 180 * (float) Math.PI * 0.5f * (peakPosX - valleyPosX) / length;
+                float newAmplDeg = (float) (180 / Math.PI * Math.atan2(0.5f * (peakPosX - valleyPosX), length));
                 setAmplDeg(m1 * amplDeg + newAmplDeg * mixingFactor);
-                // peak positive angle occurs at phase 90deg, so push phaseDeg so that 
-//                phaseDeg= m1*
+                // peak positive angle occurs at phase 90deg, so push timeZeroOffsetUs so that this happens 
+                // at this moment we are at peak, so 2 * Math.PI * freqHz * tS= multiple of 2*pi,
+                //    where tUs = timestamp - startingTimestamp-timeZeroOffsetUs;
+                // therefore, 
+                double remainderCycles = freqHz * 1e-6 * (timestamp - startingTimestamp) % 1;
+                int newTimeZeroOffsetUs = (int) (1000000 * (remainderCycles/freqHz));
+                setTimeZeroOffsetUs(Math.round(m1 * timeZeroOffsetUs + mixingFactor * newTimeZeroOffsetUs));
             }
 
             prevPrevX = prevX;
@@ -294,12 +314,31 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
         }
 
         private void draw(GL2 gl) {
+            // draw pendulum string
             gl.glColor3f(.3f, .3f, 1f);
             gl.glLineWidth(4);
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(fulcrumX, fulcrumY);
             gl.glVertex2f(posX, posY);
             gl.glEnd();
+            // draw tip
+            gl.glPushMatrix();
+            DrawGL.drawCircle(gl, posX, posY, 4, 32);
+            gl.glPopMatrix();
+            // draw last peak and valley positions to check if it's working
+            final int l = 20;
+            gl.glPushMatrix();
+            final int h2 = chip.getSizeY() / 2;
+            DrawGL.drawLine(gl, peakPosX, h2 - l, 0, 2 * l, 1);
+            gl.glPopMatrix();
+            gl.glPushMatrix();
+            DrawGL.drawLine(gl, valleyPosX, h2 - l, 0, 2 * l, 1);
+            gl.glPopMatrix();
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 0.9f);
+            MultilineAnnotationTextRenderer.setScale(.2f);
+            MultilineAnnotationTextRenderer.renderMultilineString(
+                    String.format("lastPeriod: %.2fs (Freq: %.3fHz)", lastPeriodS, 1 / lastPeriodS)
+            );
         }
 
     }
