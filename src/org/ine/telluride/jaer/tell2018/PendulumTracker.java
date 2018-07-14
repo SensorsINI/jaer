@@ -46,15 +46,15 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
 
     // pendulum
     private float freqHz = getFloat("freqHz", 1);
-    private float amplDeg = getFloat("amplDeg", 10);
+    private float amplDeg = getFloat("amplDeg", 1);
     private float phaseDeg = 0;
     private float fulcrumX = 0; // sizes not correct since chip size is not set yet
     private float fulcrumY = 0;
     private float length = 0;
     private float mixingFactor = getFloat("mixingFactor", .01f);
-    private float peakHysteresisPixels=getFloat("peakHysteresisPixels",10);
-    private boolean enableModelUpdates=false;
-    int lastTimestamp=0;
+    private float peakHysteresisPixels = getFloat("peakHysteresisPixels", 10);
+    private boolean enableModelUpdates = false;
+    int lastTimestamp = 0;
 
     public PendulumTracker(AEChip chip) {
         super(chip);
@@ -71,11 +71,13 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
         if (pendulum == null) {
             pendulum = new Pendulum(in.getLastTimestamp());
         }
-        if(!in.isEmpty()) lastTimestamp=in.getLastTimestamp();
+        if (!in.isEmpty()) {
+            lastTimestamp = in.getLastTimestamp();
+        }
         in = getEnclosedFilterChain().filterPacket(in);
         pendulum.updateState(in.getLastTimestamp());
-        if(enableModelUpdates && tracker.getVisibleClusters().size()>0){
-            Cluster c=tracker.getVisibleClusters().getFirst();
+        if (enableModelUpdates && tracker.getVisibleClusters().size() > 0) {
+            Cluster c = tracker.getVisibleClusters().getFirst();
             pendulum.updateModel(c, in.getLastTimestamp());
         }
         return in;
@@ -84,8 +86,8 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
     @Override
     public void resetFilter() {
         tracker.resetFilter();
-        if(pendulum!=null) {
-            pendulum.startingTimestamp=lastTimestamp;
+        if (pendulum != null) {
+            pendulum.startingTimestamp = lastTimestamp;
         }
     }
 
@@ -222,9 +224,9 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
 
         private float angleDeg = 0, posX = 0, posY = 0; // angle is zero vertically and positive to right, pos are in chip image coordinates, 0,0 at lower left
         private int startingTimestamp = 0;
-        private float peakPosX=Float.NEGATIVE_INFINITY, peakNegX=Float.POSITIVE_INFINITY;
-        private float prevX=0, prevPrevX=0;
-        private int lastPeakTimestamp=0, lastValleyTimestamp=0;
+        private float peakPosX = Float.NEGATIVE_INFINITY, valleyPosX = Float.POSITIVE_INFINITY;
+        private float prevX = 0, prevPrevX = 0;
+        private int lastPeakTimestamp = 0, lastValleyTimestamp = 0;
 
         public Pendulum(int startingTimestamp) {
             fulcrumX = getFloat("fulcrumX", chip.getSizeX() / 2); // sizes not correct since chip size is not set yet
@@ -237,35 +239,58 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
         public void updateState(int timestamp) {
             int tUs = timestamp - startingTimestamp;
             double tS = 1e-6 * tUs;
-            angleDeg = amplDeg * (float) Math.sin(2 * Math.PI * freqHz * tS + phaseDeg / Math.PI);
+            angleDeg = amplDeg * (float) Math.cos(2 * Math.PI * freqHz * tS + phaseDeg / Math.PI);
             posX = fulcrumX + length * (float) Math.sin(angleDeg / Math.PI);
             posY = fulcrumY - length * (float) Math.cos(angleDeg / Math.PI);
         }
 
+        private boolean foundValleyBefore = false;
+
         public void updateModel(Cluster c, int timestamp) {
-            Point2D.Float l=c.getLocation();
-            float curX=l.x;
-            // detect pos peak or neg peak
-            if(timestamp<lastTimestamp){
-                lastTimestamp=timestamp; // rewind
+            if (!isEnableModelUpdates()) {
                 return;
             }
-            
-            if(prevPrevX<prevX && curX<prevX){ // peak
-                lastPeakTimestamp=timestamp;
-            }else if(prevPrevX>prevX && curX>prevX){ // peak
-                lastValleyTimestamp=timestamp;
-                if(lastPeakTimestamp!=0){
-                    float lastHalfPeriodS=1e-6f*(lastValleyTimestamp-lastPeakTimestamp);
-                }
+            Point2D.Float l = c.getLocation();
+            if (l == null) {
+                return;
             }
-            
-            if(l.x>peakPosX){
-                peakPosX=l.x;
-            }else if(l.x<peakNegX){
-                peakNegX=l.x;
+            float curX = l.x;
+            boolean justFoundPeak = false, justFoundValley = false;
+            // detect pos peak or neg peak
+            if (timestamp < lastTimestamp) {
+                lastTimestamp = timestamp; // rewind
+                return;
             }
 
+            if (prevPrevX < prevX && curX < prevX) { // peak
+                log.info("peak found");
+                lastPeakTimestamp = timestamp;
+                peakPosX = prevX;
+                justFoundPeak = true;
+            } else if (prevPrevX > prevX && curX > prevX) { // peak
+                log.info("valley found");
+                lastValleyTimestamp = timestamp;
+                valleyPosX = prevX;
+                foundValleyBefore = true;
+            }
+
+            if (justFoundPeak && foundValleyBefore) {
+                final float m1 = (1 - mixingFactor);
+                foundValleyBefore = false;  // one update per cycle
+                float halfPeriodS = 1e-6f * (lastPeakTimestamp - lastValleyTimestamp);
+                if (halfPeriodS < 0) {
+                    return;
+                }
+                float newFreq = 1 / (2 * halfPeriodS);
+                setFreqHz(m1 * freqHz + mixingFactor * newFreq);
+                float newAmplDeg = 180 * (float) Math.PI * 0.5f * (peakPosX - valleyPosX) / length;
+                setAmplDeg(m1 * amplDeg + newAmplDeg * mixingFactor);
+                // peak positive angle occurs at phase 90deg, so push phaseDeg so that 
+//                phaseDeg= m1*
+            }
+
+            prevPrevX = prevX;
+            prevX = curX;
         }
 
         private void draw(GL2 gl) {
@@ -291,7 +316,31 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
      */
     public void setPeakHysteresisPixels(float peakHysteresisPixels) {
         this.peakHysteresisPixels = peakHysteresisPixels;
-        putFloat("peakHysteresisPixels",peakHysteresisPixels);
+        putFloat("peakHysteresisPixels", peakHysteresisPixels);
+    }
+
+    public void doToggleOnEnableModelUpdates() {
+        setEnableModelUpdates(true);
+    }
+
+    public void doToggleOffEnableModelUpdates() {
+        setEnableModelUpdates(false);
+    }
+
+    /**
+     * @return the enableModelUpdates
+     */
+    public boolean isEnableModelUpdates() {
+        return enableModelUpdates;
+    }
+
+    /**
+     * @param enableModelUpdates the enableModelUpdates to set
+     */
+    public void setEnableModelUpdates(boolean enableModelUpdates) {
+        boolean old = this.enableModelUpdates;
+        this.enableModelUpdates = enableModelUpdates;
+        getSupport().firePropertyChange("enableModelUpdates", old, enableModelUpdates);
     }
 
 }
