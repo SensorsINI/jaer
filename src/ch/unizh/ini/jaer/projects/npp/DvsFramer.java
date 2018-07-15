@@ -368,11 +368,13 @@ abstract public class DvsFramer extends EventFilter2D {
     }
 
     synchronized public void setOutputImageWidth(int width) {
+        if(width>chip.getSizeX()) width=chip.getSizeX();
         this.outputImageWidth = width;
         putInt("outputImageWidth", width);
     }
 
     synchronized public void setOutputImageHeight(int height) {
+        if(height>chip.getSizeY()) height=chip.getSizeY();
         this.outputImageHeight = height;
         putInt("outputImageHeight", height);
     }
