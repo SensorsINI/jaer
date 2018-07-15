@@ -433,10 +433,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                     setFilterEnabled(false);
                 }
             }
-
-        } else if (isCloseOnRewind() && evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
-            doCloseFile();
-        }
+        } 
     }
 
     /**
@@ -819,6 +816,10 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         }
         if (targetLabeler.hasLocations()) {
             ArrayList<TargetLabeler.TargetLocation> targets = targetLabeler.findTargetsBeforeTimestamp(timestamp);
+            if(targets==null){
+                log.warning(String.format("null labeled target locations for timestamp=%d, frameNumber=%d",timestamp,frameNumber));
+                return;
+            }
             for (TargetLocation l : targets) {
                 l.write(targetLocationsWriter, frameNumber);
             }
