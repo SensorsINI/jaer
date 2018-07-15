@@ -55,7 +55,9 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     protected static final String TIMECODE_SUFFIX = "-timecode.txt";
     protected File timecodeFile = null;
     protected FileWriter timecodeWriter = null;
-     protected boolean closeOnRewind = getBoolean("closeOnRewind", true);
+    protected boolean closeOnRewind = getBoolean("closeOnRewind", true);
+    private boolean rewindBeforeRecording = getBoolean("rewindBeforeRecording", true);
+    private boolean ignoreRewinwdEventFlag=false; // used to signal to igmore first rewind event for closing file on rewind if rewindBeforeRecording=true
     private boolean chipPropertyChangeListenerAdded = false;
     protected AVIOutputStream.VideoFormat format = AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
     protected int maxFrames = getInt("maxFrames", 0);
@@ -72,6 +74,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         setPropertyTooltip("closeFile", "Closes the output file if it is open.");
         setPropertyTooltip("writeTimecodeFile", "writes a file alongside AVI file (with suffix " + TIMECODE_SUFFIX + ") that maps from AVI frame to AER timestamp for that frame (the frame end timestamp)");
         setPropertyTooltip("closeOnRewind", "closes recording on rewind event, to allow unattended operation");
+        setPropertyTooltip("rewindBeforeRecording", "rewinds file before recording");
         setPropertyTooltip("resizeWindowTo16To9Format", "resizes AEViewer window to 19:9 format");
         setPropertyTooltip("resizeWindowTo4To3Format", "resizes AEViewer window to 4:3 format");
         setPropertyTooltip("format", "video file is writtent to this output format (note that RLE will throw exception because OpenGL frames are not 4 or 8 bit images)");
@@ -191,6 +194,10 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             }
         }
         openAVIOutputStream(c.getSelectedFile(), additionalComments);
+        if(rewindBeforeRecording){
+            ignoreRewinwdEventFlag=true;
+            chip.getAeViewer().getAePlayer().rewind();
+        }
     }
 
     synchronized public void doCloseFile() {
@@ -203,7 +210,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
                     log.info("Closed timecode file " + timecodeFile.toString());
                     timecodeWriter = null;
                 }
-                 setWriteEnabled(false);
+                setWriteEnabled(false);
                 log.info("Closed " + lastFileName + " in format " + format + " with " + framesWritten + " frames");
             } catch (Exception ex) {
                 log.warning(ex.toString());
@@ -215,7 +222,8 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     /**
-     * Opens AVI output stream and optionally the timecode file, and enable writing to this stream.
+     * Opens AVI output stream and optionally the timecode file, and enable
+     * writing to this stream.
      *
      * @param f the file
      * @param additionalComments additional comments to be written to timecode
@@ -292,6 +300,21 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         putBoolean("closeOnRewind", closeOnRewind);
     }
 
+    /**
+     * @return the rewindBeforeRecording
+     */
+    public boolean isRewindBeforeRecording() {
+        return rewindBeforeRecording;
+    }
+
+    /**
+     * @param rewindBeforeRecording the rewindBeforeRecording to set
+     */
+    public void setRewindBeforeRecording(boolean rewindBeforeRecording) {
+        this.rewindBeforeRecording = rewindBeforeRecording;
+        putBoolean("rewindBeforeRecording", closeOnRewind);
+    }
+
     @Override
     public void annotate(GLAutoDrawable drawable) {
 
@@ -334,7 +357,6 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         }
     }
 
- 
     protected void incrementFramecountAndMaybeCloseOutput() {
         if (++framesWritten % LOG_EVERY_THIS_MANY_FRAMES == 0) {
             log.info(String.format("wrote %d frames", framesWritten));
@@ -416,9 +438,10 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (closeOnRewind && evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
+        if (!ignoreRewinwdEventFlag && closeOnRewind && evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             doCloseFile();
         }
+        ignoreRewinwdEventFlag=false;
     }
 
     /**
@@ -444,8 +467,9 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         return frameRate;
     }
 
-    /** Returns last file written
-     * 
+    /**
+     * Returns last file written
+     *
      * @return the File written
      */
     public File getFile() {
