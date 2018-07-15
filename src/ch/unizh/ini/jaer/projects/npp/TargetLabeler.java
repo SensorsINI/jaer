@@ -1254,7 +1254,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 fixLabeledFraction();
                 warnSave = true;
                 if (evt.getNewValue() instanceof AEFileInputStream) {
-                    File f = ((AEFileInputStream) evt.getNewValue()).getFile();
+                    AEFileInputStream is=(AEFileInputStream)evt.getNewValue();
+                    is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_POSITION, this);
+                    File f = is.getFile();
                     lastDataFilename = f.getPath();
                     lastDataFileFolder = f.getParentFile();
                 }
