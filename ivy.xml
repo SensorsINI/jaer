@@ -137,7 +137,9 @@ MA 02110-1301  USA
         <!--mathematics, linear algebra and optimisation java library-->
         <dependency org="org.ojalgo" name="ojalgo" rev="44.0.0" />      
         
-        <dependency org="org.jblas" name="jblas" rev="1.2.4" />        
+        <dependency org="org.jblas" name="jblas" rev="1.2.4" />    
+        <!--used in telluride for communicating to foosball-->    
+        <dependency org="redis.clients" name="jedis" rev="2.9.0" />
   
     </dependencies>
 </ivy-module>
