@@ -126,6 +126,11 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      * is not related to the event times of the events in the packet.
      */
     public long systemModificationTimeNs = 0;
+    
+    /** Used to store last timestamp for this packet so that calling getLastTimestamp() can return it instead of 0.
+     * 
+     */
+    protected int lastTimestamp=0;
 
 //    /**
 //     * Resets the time limiter for input iteration. After the timer times out
@@ -289,21 +294,18 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     }
 
     /**
-     * @return last timestamp in packet. If packet is empty, returns zero -
-     * which could be important if this time is used for e.g. filtering
-     * operations!
+     * @return last timestamp in packet. If packet is empty, 
+     * returns stored value of previous read of getLastTimestamp()
      */
     public int getLastTimestamp() {
-        // if(size==0) return 0;
-        //// if(events==null) return 0; else return events[numEvents-1].timestamp;
-        // return elementData[size-1].timestamp;
-        //// return eventList.get(size-1).timestamp;
+       
         final int s = size;
         if (s == 0) {
-            log.warning("called getLastTimestamp on empty packet, returning 0");
-            return 0;
+            log.warning("called getLastTimestamp on empty packet, returning previous getLastTimestamp() value");
+            return lastTimestamp;
         }
-        return elementData[s - 1].timestamp;
+        lastTimestamp=elementData[s - 1].timestamp;
+        return lastTimestamp;
     }
 
     /**
