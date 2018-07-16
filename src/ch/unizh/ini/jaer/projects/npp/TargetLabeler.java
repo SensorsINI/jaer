@@ -926,11 +926,11 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
          * @param writer
          * @throws IOException
          */
-        public void write(FileWriter writer, int outputFileFrameNumber) throws IOException {
+        public void write(FileWriter writer, int aviFileFrameNumber) throws IOException {
             if (location != null) {
-                writer.write(String.format("%d %d %d %d %d %d %d %d\n", outputFileFrameNumber, frameNumber, timestamp, location.x, location.y, targetClassID, width, height));
+                writer.write(String.format("%d %d %d %d %d %d %d %d\n", aviFileFrameNumber, frameNumber, timestamp, location.x, location.y, targetClassID, width, height));
             } else {
-                writer.write(String.format("%d %d %d -1 -1 -1 -1 -1\n", outputFileFrameNumber, frameNumber, timestamp));
+                writer.write(String.format("%d %d %d -1 -1 -1 -1 -1\n", aviFileFrameNumber, frameNumber, timestamp));
             }
 
         }
@@ -945,11 +945,16 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private void saveLocations(File f) {
         try {
             FileWriter writer = new FileWriter(f);
-            writer.write(String.format("#!TargetLocations-2.0\n"));
+            writer.write(String.format("#!TargetLocations-3.0\n"));
             writer.write(String.format("# target locations\n"));
             writer.write(String.format("# written %s\n", new Date().toString()));
+            if(chip.getAeViewer().getAePlayer().getAEInputStream()!=null){
+                File srcFile=chip.getAeViewer().getAePlayer().getAEInputStream().getFile();
+                writer.write(String.format("# File: %s\n", srcFile.toString()));
+            }
 //            writer.write("# maxTargets=" + maxTargets+"\n");
-            writer.write(String.format("# frameNumber timestamp x y targetTypeID width height\n"));
+            writer.write(String.format("# AviFrameNumber SrcFrameNumber timestamp x y targetTypeID width height\n"));
+            writer.write(String.format("# AviFrameNumber only valid for DvsSliceAviWriter\n"));
             for (Map.Entry<Integer, SimultaneouTargetLocations> entry : targetLocations.entrySet()) {
                 for (TargetLocation l : entry.getValue()) {
                     l.write(writer,-1);
