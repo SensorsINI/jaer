@@ -24,8 +24,11 @@ import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BoxLayout;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.filechooser.FileFilter;
 import ml.options.Options;
 import ml.options.Options.Multiplicity;
 import ml.options.Options.Separator;
@@ -71,9 +74,11 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     protected boolean writeDvsSliceImageOnApsFrame = getBoolean("writeDvsSliceImageOnApsFrame", false);
     private boolean writeDvsFrames = getBoolean("writeDvsFrames", true);
     private boolean writeApsFrames = getBoolean("writeApsFrames", false);
+    private boolean writeSeparateDvsAndApsFiles = getBoolean("writeSeparateDvsAndApsFiles", false);
+    protected AVIOutputStream aviOutputStreamAps = null, aviOutputStreamDvs = null;  // used for separate DVS & APS stream when enabled
     private boolean writeTargetLocations = getBoolean("writeTargetLocations", true);
     private boolean writeDvsEventsToTextFile = getBoolean("writeDvsEventsToTextFile", false);
-    protected static final String EVENTS__SUFFIX = "-events.txt";
+    protected static final String EVENTS_SUFFIX = "-events.txt";
     protected FileWriter eventsWriter = null;
     protected File eventsFile = null;
     protected File targetLocationsFile = null;
@@ -84,6 +89,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     private float avgDvsFrameIntervalMs = 0;
     private boolean showStatistics = getBoolean("showStatistics", false);
     private String TARGETS_LOCATIONS_SUFFIX = "-targetLocations.txt";
+    private String APS_OUTPUT_SUFFIX = "-aps.avi";
+    private String DVS_OUTPUT_SUFFIX = "-dvs.avi"; // used for separate output option
 
     public DvsSliceAviWriter(AEChip chip) {
         super(chip);
@@ -105,6 +112,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         setPropertyTooltip("writeDvsSliceImageOnApsFrame", "<html>write DVS slice image for each APS frame end event (dvsMinEvents ignored).<br>The frame is written at the end of frame APS event.<br><b>Warning: to capture all frames, ensure that playback time slices are slow enough that all frames are rendered</b>");
         setPropertyTooltip("writeApsFrames", "<html>write APS frames to file<br><b>Warning: to capture all frames, ensure that playback time slices are slow enough that all frames are rendered</b>");
         setPropertyTooltip("writeDvsFrames", "<html>write DVS frames to file<br>");
+        setPropertyTooltip("writeSeparateDvsAndApsFiles", "<html>writes separate files for APS and DVS frames.<br> If option is selected and both writeDvsFrames and writeApsFrames are enabled,<br> "
+                + "then two files with suffixes -dvs.avi and -aps.avi are written");
         setPropertyTooltip("writeTargetLocations", "<html>If TargetLabeler has locations, write them to a file named XXX-targetlocations.txt<br>");
         setPropertyTooltip("writeDvsEventsToTextFile", "<html>write DVS events to text file, one event per line, timestamp, x, y, pol<br>");
         setPropertyTooltip("showStatistics", "shows statistics of DVS frame (most off and on counts, frame rate, sparsity)");
@@ -140,12 +149,16 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 }
                 dvsFrame.normalizeFrame();
                 maybeShowOutput(dvsFrame);
-                if (writeDvsFrames && aviOutputStream != null && isWriteEnabled()) {
+                if (writeDvsFrames && getAviOutputStream() != null && isWriteEnabled()) {
                     BufferedImage bi = toImage(dvsFrame);
                     try {
                         writeTimecode(e.timestamp);
                         writeTargetLocation(e.timestamp, framesWritten);
-                        aviOutputStream.writeFrame(bi);
+                        if (!writeSeparateDvsAndApsFiles) {
+                            getAviOutputStream().writeFrame(bi);
+                        } else {
+                            aviOutputStreamDvs.writeFrame(bi);
+                        }
                         incrementFramecountAndMaybeCloseOutput();
                     } catch (IOException ex) {
                         log.warning(ex.toString());
@@ -206,7 +219,77 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             "compressionQuality=" + compressionQuality
         };
         setAdditionalComments(s);
-        super.doStartRecordingAndSaveAVIAs(); //To change body of generated methods, choose Tools | Templates.
+        if (getAviOutputStream() != null) {
+            JOptionPane.showMessageDialog(null, "AVI output stream is already opened");
+            return;
+        }
+        JFileChooser c = new JFileChooser(lastFileName);
+        c.setFileFilter(new FileFilter() {
+
+            @Override
+            public boolean accept(File f) {
+                return f.isDirectory() || f.getName().toLowerCase().endsWith(".avi");
+            }
+
+            @Override
+            public String getDescription() {
+                return "AVI (Audio Video Interleave) Microsoft video file";
+            }
+        });
+        c.setSelectedFile(new File(lastFileName));
+        int ret = c.showSaveDialog(null);
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        // above chooses base filename. Now we need to see if we just write to this file, or make two files for separate DVS and APS outputs
+        if (!writeSeparateDvsAndApsFiles) {
+            if (!c.getSelectedFile().getName().toLowerCase().endsWith(".avi")) {
+                String newName = c.getSelectedFile().toString() + ".avi";
+                c.setSelectedFile(new File(newName));
+            }
+            lastFileName = c.getSelectedFile().toString();
+
+            if (c.getSelectedFile().exists()) {
+                int r = JOptionPane.showConfirmDialog(null, "File " + c.getSelectedFile().toString() + " already exists, overwrite it?");
+                if (r != JOptionPane.OK_OPTION) {
+                    return;
+                }
+            }
+            setAviOutputStream(openAVIOutputStream(c.getSelectedFile(), getAdditionalComments()));
+            openEventsTextFile(c.getSelectedFile(), getAdditionalComments());
+            openTargetLabelsFile(c.getSelectedFile(), getAdditionalComments());
+        } else { // separate outputs
+            // find base name from chosen file
+            String chosenName = c.getSelectedFile().getName();
+            if (chosenName.endsWith(APS_OUTPUT_SUFFIX)) {
+                chosenName = chosenName.substring(0, chosenName.indexOf(APS_OUTPUT_SUFFIX));
+            } else if (chosenName.endsWith(DVS_OUTPUT_SUFFIX)) {
+                chosenName = chosenName.substring(0, chosenName.indexOf(DVS_OUTPUT_SUFFIX));
+            } else if (chosenName.toLowerCase().endsWith(".avi")) {
+                chosenName = chosenName.substring(0, chosenName.toLowerCase().indexOf(".avi"));
+            }
+            lastFileName = chosenName;
+            String apsName = null, dvsName = null;
+            dvsName = chosenName + DVS_OUTPUT_SUFFIX;
+            apsName = chosenName + APS_OUTPUT_SUFFIX;
+            File dvsFile = new File(dvsName), apsFile = new File(apsName);
+            if (dvsFile.exists() || apsFile.exists()) {
+                int r = JOptionPane.showConfirmDialog(null, String.format("%s or %s already exist, overwrite them?", dvsName, apsName));
+                if (r != JOptionPane.OK_OPTION) {
+                    return;
+                }
+
+            }
+            aviOutputStreamDvs = openAVIOutputStream(dvsFile, getAdditionalComments());
+            aviOutputStreamAps = openAVIOutputStream(apsFile, getAdditionalComments());
+            File baseFile = new File(chosenName);
+            openEventsTextFile(baseFile, getAdditionalComments());
+            openTargetLabelsFile(baseFile, getAdditionalComments());
+        }
+        if (isRewindBeforeRecording()) {
+            ignoreRewinwdEventFlag = true;
+            chip.getAeViewer().getAePlayer().rewind();
+        }
     }
 
     protected void writeEvent(PolarityEvent e) throws IOException {
@@ -215,37 +298,15 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         }
     }
 
-    @Override
-    public void openAVIOutputStream(File f, String[] additionalComments) {
-        super.openAVIOutputStream(f, additionalComments);
-        if (writeDvsEventsToTextFile) {
-            try {
-                String s = f.toString().subSequence(0, f.toString().lastIndexOf(".")).toString() + EVENTS__SUFFIX;
-                eventsFile = new File(s);
-                eventsWriter = new FileWriter(eventsFile);
-                eventsWriter.write(String.format("# events file\n"));
-                eventsWriter.write(String.format("# written %s\n", new Date().toString()));
-                if (additionalComments != null) {
-                    for (String st : additionalComments) {
-                        if (!st.startsWith("#")) {
-                            st = "# " + st;
-                        }
-                        if (!st.endsWith("\n")) {
-                            st = st + "\n";
-                        }
-                        eventsWriter.write(st);
-                    }
-                }
-                eventsWriter.write(String.format("# timestamp,x,y,pol\n"));
-                log.info("Opened events file " + eventsFile.toString());
-            } catch (IOException ex) {
-                Logger.getLogger(DvsSliceAviWriter.class.getName()).log(Level.SEVERE, null, ex);
-            }
-
-        }
+    private void openTargetLabelsFile(File f, String[] additionalComments) {
         if (writeTargetLocations) {
             try {
-                String s = f.toString().subSequence(0, f.toString().lastIndexOf(".")).toString() + TARGETS_LOCATIONS_SUFFIX;
+                String s = null;
+                if (f.toString().lastIndexOf(".") == -1) {
+                    s = f.toString() + TARGETS_LOCATIONS_SUFFIX;
+                } else {
+                    s = f.toString().subSequence(0, f.toString().lastIndexOf(".")).toString() + TARGETS_LOCATIONS_SUFFIX;
+                }
                 targetLocationsFile = new File(s);
                 targetLocationsWriter = new FileWriter(targetLocationsFile);
                 targetLocationsWriter.write(String.format("# labeled target locations file\n"));
@@ -268,12 +329,44 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             }
 
         }
+    }
 
+    private void openEventsTextFile(File f, String[] additionalComments) {
+        if (writeDvsEventsToTextFile) {
+            try {
+                String s = null;
+                if (f.toString().lastIndexOf(".") == -1) {
+                    s = f.toString() + EVENTS_SUFFIX;
+                } else {
+                    s = f.toString().subSequence(0, f.toString().lastIndexOf(".")).toString() + EVENTS_SUFFIX;
+                }
+                eventsFile = new File(s);
+                eventsWriter = new FileWriter(eventsFile);
+                eventsWriter.write(String.format("# events file\n"));
+                eventsWriter.write(String.format("# written %s\n", new Date().toString()));
+                if (additionalComments != null) {
+                    for (String st : additionalComments) {
+                        if (!st.startsWith("#")) {
+                            st = "# " + st;
+                        }
+                        if (!st.endsWith("\n")) {
+                            st = st + "\n";
+                        }
+                        eventsWriter.write(st);
+                    }
+                }
+                eventsWriter.write(String.format("# timestamp,x,y,pol\n"));
+                log.info("Opened events file " + eventsFile.toString());
+            } catch (IOException ex) {
+                Logger.getLogger(DvsSliceAviWriter.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+        }
     }
 
     @Override
     public synchronized void doCloseFile() {
-        super.doCloseFile();
+        setWriteEnabled(false);
         if (eventsWriter != null) {
             try {
                 eventsWriter.close();
@@ -290,6 +383,48 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 targetLocationsWriter = null;
             } catch (IOException ex) {
                 Logger.getLogger(DvsSliceAviWriter.class.getName()).log(Level.SEVERE, null, ex);
+            } finally {
+                targetLocationsWriter = null;
+            }
+        }
+        if (timecodeWriter != null) {
+            try {
+                timecodeWriter.close();
+                log.info("Closed timecode file " + timecodeFile.toString());
+            } catch (IOException ex) {
+                Logger.getLogger(DvsSliceAviWriter.class.getName()).log(Level.SEVERE, null, ex);
+            } finally {
+                timecodeWriter = null;
+            }
+        }
+        if (!writeSeparateDvsAndApsFiles) {
+            super.doCloseFile();
+        } else {
+            if (aviOutputStreamDvs != null) {
+                try {
+                    aviOutputStreamDvs.close();
+                    aviOutputStreamDvs = null;
+                    log.info("Closed DVS avi file");
+                } catch (Exception ex) {
+                    log.warning(ex.toString());
+                    ex.printStackTrace();
+
+                } finally {
+                    aviOutputStreamDvs = null;
+                }
+            }
+            if (aviOutputStreamAps != null) {
+                try {
+                    aviOutputStreamAps.close();
+                    aviOutputStreamAps = null;
+                    log.info("Closed APS avi file");
+                } catch (Exception ex) {
+                    log.warning(ex.toString());
+                    ex.printStackTrace();
+
+                } finally {
+                    aviOutputStreamAps = null;
+                }
             }
         }
     }
@@ -419,13 +554,17 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if ((evt.getPropertyName() == ApsFrameExtractor.EVENT_NEW_FRAME)) {
             endOfFrameTimestamp = frameExtractor.getLastFrameTimestamp();
             newApsFrameAvailable = true;
-            if (writeApsFrames && aviOutputStream != null && isWriteEnabled()
+            if (writeApsFrames && getAviOutputStream() != null && isWriteEnabled()
                     && (chip.getAeViewer() == null || !chip.getAeViewer().isPaused())) {
                 BufferedImage bi = toImage(frameExtractor);
                 try {
                     writeTimecode(endOfFrameTimestamp);
                     writeTargetLocation(endOfFrameTimestamp, framesWritten);
-                    aviOutputStream.writeFrame(bi);
+                    if (!writeSeparateDvsAndApsFiles) {
+                        getAviOutputStream().writeFrame(bi);
+                    } else {
+                        aviOutputStreamAps.writeFrame(bi);
+                    }
                     incrementFramecountAndMaybeCloseOutput();
                 } catch (IOException ex) {
                     log.warning(ex.toString());
@@ -433,7 +572,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                     setFilterEnabled(false);
                 }
             }
-        } 
+        }
     }
 
     /**
@@ -816,8 +955,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         }
         if (targetLabeler.hasLocations()) {
             ArrayList<TargetLabeler.TargetLocation> targets = targetLabeler.findTargetsBeforeTimestamp(timestamp);
-            if(targets==null){
-                log.warning(String.format("null labeled target locations for timestamp=%d, frameNumber=%d",timestamp,frameNumber));
+            if (targets == null) {
+                log.warning(String.format("null labeled target locations for timestamp=%d, frameNumber=%d", timestamp, frameNumber));
                 return;
             }
             for (TargetLocation l : targets) {
@@ -849,6 +988,21 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     public void setWriteDvsFrames(boolean writeDvsFrames) {
         this.writeDvsFrames = writeDvsFrames;
         putBoolean("writeDvsFrames", writeDvsFrames);
+    }
+
+    /**
+     * @return the writeSeparateDvsAndApsFiles
+     */
+    public boolean isWriteSeparateDvsAndApsFiles() {
+        return writeSeparateDvsAndApsFiles;
+    }
+
+    /**
+     * @param writeSeparateDvsAndApsFiles the writeSeparateDvsAndApsFiles to set
+     */
+    public void setWriteSeparateDvsAndApsFiles(boolean writeSeparateDvsAndApsFiles) {
+        this.writeSeparateDvsAndApsFiles = writeSeparateDvsAndApsFiles;
+        putBoolean("writeSeparateDvsAndApsFiles", writeSeparateDvsAndApsFiles);
     }
 
     /**
