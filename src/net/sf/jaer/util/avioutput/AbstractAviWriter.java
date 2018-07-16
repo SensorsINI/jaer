@@ -58,7 +58,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     protected FileWriter timecodeWriter = null;
     protected boolean closeOnRewind = getBoolean("closeOnRewind", true);
     private boolean rewindBeforeRecording = getBoolean("rewindBeforeRecording", true);
-    protected boolean ignoreRewinwdEventFlag=false; // used to signal to igmore first rewind event for closing file on rewind if rewindBeforeRecording=true
+    protected boolean ignoreRewinwdEventFlag = false; // used to signal to igmore first rewind event for closing file on rewind if rewindBeforeRecording=true
     private boolean chipPropertyChangeListenerAdded = false;
     protected AVIOutputStream.VideoFormat format = AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
     protected int maxFrames = getInt("maxFrames", 0);
@@ -150,7 +150,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         }
         try {
             Desktop desktop = Desktop.getDesktop();
-            File f = lastFile!=null?lastFile:new File(lastFileName);
+            File f = lastFile != null ? lastFile : new File(lastFileName);
             if (f.exists()) {
                 desktop.open(f.getParentFile());
             }
@@ -195,8 +195,8 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             }
         }
         setAviOutputStream(openAVIOutputStream(c.getSelectedFile(), additionalComments));
-        if(rewindBeforeRecording){
-            ignoreRewinwdEventFlag=true;
+        if (rewindBeforeRecording) {
+            ignoreRewinwdEventFlag = true;
             chip.getAeViewer().getAePlayer().rewind();
         }
     }
@@ -443,8 +443,8 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     public void propertyChange(PropertyChangeEvent evt) {
         if (!ignoreRewinwdEventFlag && closeOnRewind && evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             doCloseFile();
+            ignoreRewinwdEventFlag = false;
         }
-        ignoreRewinwdEventFlag=false;
     }
 
     /**
