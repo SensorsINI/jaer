@@ -441,9 +441,11 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (!ignoreRewinwdEventFlag && closeOnRewind && evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
-            doCloseFile();
-            ignoreRewinwdEventFlag = false;
+        if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
+            if (!ignoreRewinwdEventFlag && closeOnRewind) {
+                doCloseFile();
+            }
+            ignoreRewinwdEventFlag=false;
         }
     }
 
