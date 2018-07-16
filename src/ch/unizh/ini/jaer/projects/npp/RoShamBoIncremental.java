@@ -37,7 +37,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 import java.util.StringTokenizer;
@@ -46,13 +45,13 @@ import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.ProgressMonitor;
-import javax.swing.SwingUtilities;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.avioutput.AVIOutputStream;
 import net.sf.jaer.util.avioutput.DvsSliceAviWriter;
 
 /**
@@ -248,7 +247,8 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 
     private void openSymbolFileAndStartRecording(String prefix) {
         log.info("recording samples");
-        aviWriter.openAVIOutputStream(lastSymbolsPath.resolve(prefix + ".avi").toFile(), new String[]{"# " + prefix});
+        AVIOutputStream os=aviWriter.openAVIOutputStream(lastSymbolsPath.resolve(prefix + ".avi").toFile(), new String[]{"# " + prefix});
+        aviWriter.setAviOutputStream(os);
     }
 
     public void doToggleOnSampleNewClass() {

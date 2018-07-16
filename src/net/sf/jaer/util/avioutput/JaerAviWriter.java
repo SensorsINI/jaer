@@ -37,7 +37,7 @@ public class JaerAviWriter extends AbstractAviWriter {
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        if (aviOutputStream == null) {
+        if (getAviOutputStream() == null) {
             return;
         }
         GL2 gl = drawable.getGL().getGL2();
@@ -45,7 +45,7 @@ public class JaerAviWriter extends AbstractAviWriter {
             BufferedImage bi = toImage(gl, drawable.getNativeSurface().getSurfaceWidth(), drawable.getNativeSurface().getSurfaceHeight());
 
             try {
-                aviOutputStream.writeFrame(bi);
+                getAviOutputStream().writeFrame(bi);
                 if (isWriteTimecodeFile()) {
                     writeTimecode(chip.getAeViewer().getAePlayer().getTime());
                 }

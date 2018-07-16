@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Paths;
 import java.util.Date;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -46,7 +47,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements FrameAnnotater, PropertyChangeListener {
 
     protected final int LOG_EVERY_THIS_MANY_FRAMES = 100; // for logging concole messages
-    protected AVIOutputStream aviOutputStream = null;
+    private AVIOutputStream aviOutputStream = null;
     protected static String DEFAULT_FILENAME = "jAER.avi";
     protected String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
     protected File lastFile = null;
@@ -57,7 +58,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     protected FileWriter timecodeWriter = null;
     protected boolean closeOnRewind = getBoolean("closeOnRewind", true);
     private boolean rewindBeforeRecording = getBoolean("rewindBeforeRecording", true);
-    private boolean ignoreRewinwdEventFlag=false; // used to signal to igmore first rewind event for closing file on rewind if rewindBeforeRecording=true
+    protected boolean ignoreRewinwdEventFlag=false; // used to signal to igmore first rewind event for closing file on rewind if rewindBeforeRecording=true
     private boolean chipPropertyChangeListenerAdded = false;
     protected AVIOutputStream.VideoFormat format = AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
     protected int maxFrames = getInt("maxFrames", 0);
@@ -120,7 +121,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     private void resizeWindowTo(int w, int h) {
-        if (aviOutputStream != null) {
+        if (getAviOutputStream() != null) {
             log.warning("resizing disabled during recording to prevent AVI corruption");
             return;
         }
@@ -149,7 +150,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         }
         try {
             Desktop desktop = Desktop.getDesktop();
-            File f = new File(lastFileName);
+            File f = lastFile!=null?lastFile:new File(lastFileName);
             if (f.exists()) {
                 desktop.open(f.getParentFile());
             }
@@ -159,7 +160,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     synchronized public void doStartRecordingAndSaveAVIAs() {
-        if (aviOutputStream != null) {
+        if (getAviOutputStream() != null) {
             JOptionPane.showMessageDialog(null, "AVI output stream is already opened");
             return;
         }
@@ -193,7 +194,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
                 return;
             }
         }
-        openAVIOutputStream(c.getSelectedFile(), additionalComments);
+        setAviOutputStream(openAVIOutputStream(c.getSelectedFile(), additionalComments));
         if(rewindBeforeRecording){
             ignoreRewinwdEventFlag=true;
             chip.getAeViewer().getAePlayer().rewind();
@@ -201,10 +202,10 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     synchronized public void doCloseFile() {
-        if (aviOutputStream != null) {
+        if (getAviOutputStream() != null) {
             try {
-                aviOutputStream.close();
-                aviOutputStream = null;
+                getAviOutputStream().close();
+                setAviOutputStream(null);
                 if (timecodeWriter != null) {
                     timecodeWriter.close();
                     log.info("Closed timecode file " + timecodeFile.toString());
@@ -215,7 +216,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             } catch (Exception ex) {
                 log.warning(ex.toString());
                 ex.printStackTrace();
-                aviOutputStream = null;
+                setAviOutputStream(null);
             }
         }
 
@@ -228,14 +229,15 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      * @param f the file
      * @param additionalComments additional comments to be written to timecode
      * file, Comment header characters are added if not supplied.
+     * @return the stream, or null if IOException occurs
      *
      */
-    public void openAVIOutputStream(File f, String[] additionalComments) {
+    public AVIOutputStream openAVIOutputStream(File f, String[] additionalComments) {
         try {
-            aviOutputStream = new AVIOutputStream(f, format);
+            AVIOutputStream os = new AVIOutputStream(f, format);
 //            aviOutputStream.setFrameRate(chip.getAeViewer().getFrameRate());
-            aviOutputStream.setFrameRate(frameRate);
-            aviOutputStream.setVideoCompressionQuality(compressionQuality);
+            os.setFrameRate(frameRate);
+            os.setVideoCompressionQuality(compressionQuality);
 //            aviOutputStream.setVideoDimension(chip.getSizeX(), chip.getSizeY());
             lastFile = f;
             lastFileName = f.toString();
@@ -264,9 +266,10 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             setFramesWritten(0);
             getSupport().firePropertyChange("framesWritten", null, framesWritten);
             setWriteEnabled(true);
+            return os;
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(null, ex.toString(), "Couldn't create output file stream", JOptionPane.WARNING_MESSAGE, null);
-            return;
+            return null;
         }
     }
 
@@ -539,6 +542,20 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         writeEnabled = yes;
         getSupport().firePropertyChange("writeEnabled", old, yes);
         log.info("writeEnabled=" + writeEnabled);
+    }
+
+    /**
+     * @return the aviOutputStream
+     */
+    public AVIOutputStream getAviOutputStream() {
+        return aviOutputStream;
+    }
+
+    /**
+     * @param aviOutputStream the aviOutputStream to set
+     */
+    public void setAviOutputStream(AVIOutputStream aviOutputStream) {
+        this.aviOutputStream = aviOutputStream;
     }
 
 }
