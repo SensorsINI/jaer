@@ -71,6 +71,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
