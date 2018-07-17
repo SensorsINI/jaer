@@ -89,8 +89,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     private String TARGETS_LOCATIONS_SUFFIX = "-targetLocations.txt";
     private String APS_OUTPUT_SUFFIX = "-aps.avi";
     private String DVS_OUTPUT_SUFFIX = "-dvs.avi"; // used for separate output option
-    private   BufferedImage aviOutputImage = null; // holds either dvs or aps or both iamges
- 
+    private BufferedImage aviOutputImage = null; // holds either dvs or aps or both iamges
+
     public DvsSliceAviWriter(AEChip chip) {
         super(chip);
         FilterChain chain = new FilterChain(chip);
@@ -247,7 +247,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 return;
             }
         }
-        lastFile=c.getSelectedFile();
+        lastFile = c.getSelectedFile();
         setAviOutputStream(openAVIOutputStream(c.getSelectedFile(), getAdditionalComments()));
         openEventsTextFile(c.getSelectedFile(), getAdditionalComments());
         openTargetLabelsFile(c.getSelectedFile(), getAdditionalComments());
@@ -256,17 +256,17 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             chip.getAeViewer().getAePlayer().rewind();
             ignoreRewinwdEventFlag = true;
         }
-       aviOutputImage = new BufferedImage(getOutputImageWidth(), 
+        aviOutputImage = new BufferedImage(getOutputImageWidth(),
                 dvsFrame.getOutputImageHeight(), BufferedImage.TYPE_INT_BGR);
-        
+
     }
-    
-    private int getOutputImageWidth(){
-        return (writeApsFrames&&writeDvsFrames)?dvsFrame.getOutputImageWidth()*2:dvsFrame.getOutputImageWidth();
+
+    private int getOutputImageWidth() {
+        return (writeApsFrames && writeDvsFrames) ? dvsFrame.getOutputImageWidth() * 2 : dvsFrame.getOutputImageWidth();
     }
-    
-    private int getDvsStartingX(){
-        return (writeApsFrames&&writeDvsFrames)?dvsFrame.getOutputImageWidth():0;
+
+    private int getDvsStartingX() {
+        return (writeApsFrames && writeDvsFrames) ? dvsFrame.getOutputImageWidth() : 0;
     }
 
     protected void writeEvent(PolarityEvent e) throws IOException {
@@ -388,7 +388,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 int b = (int) (255 * dvsFramer.getValueAtPixel(x, y));
                 int g = b;
                 int r = b;
-                int idx = (dvsFrame.getOutputImageHeight() - y - 1) * getOutputImageWidth() + x+getDvsStartingX(); // DVS image is right half
+                int idx = (dvsFrame.getOutputImageHeight() - y - 1) * getOutputImageWidth() + x + getDvsStartingX(); // DVS image is right half
                 if (idx >= bd.length) {
                     throw new RuntimeException(String.format("index %d out of bounds for x=%d y=%d", idx, x, y));
                 }
@@ -410,7 +410,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 int b = (int) (255 * frame[frameExtractor.getIndex(xsrc, ysrc)]); // TODO simplest possible downsampling, can do better with linear or bilinear interpolation but code more complex
                 int g = b;
                 int r = b;
-                int idx = (dvsFrame.getOutputImageHeight() - y - 1) * getOutputImageWidth() + x+0; // aps image is left half if combined
+                int idx = (dvsFrame.getOutputImageHeight() - y - 1) * getOutputImageWidth() + x + 0; // aps image is left half if combined
                 if (idx >= bd.length) {
                     throw new RuntimeException(String.format("index %d out of bounds for x=%d y=%d", idx, x, y));
                 }
@@ -897,12 +897,23 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         }
         if (targetLabeler.hasLocations()) {
             ArrayList<TargetLabeler.TargetLocation> targets = targetLabeler.findTargetsBeforeTimestamp(timestamp);
+
             if (targets == null) {
-                log.warning(String.format("null labeled target locations for timestamp=%d, frameNumber=%d", timestamp, frameNumber));
-                return;
-            }
-            for (TargetLocation l : targets) {
-                l.write(targetLocationsWriter, frameNumber);
+//                log.warning(String.format("null labeled target locations for timestamp=%d, frameNumber=%d", timestamp, frameNumber));
+                targetLocationsWriter.write(String.format("%d %d %d -1 -1 -1 -1 -1\n", framesWritten, 0, timestamp));
+
+            } else {
+                for (TargetLocation l : targets) {
+                    if (l != null) {
+                        // scale locations and size to AVI output resolution
+                        float scaleX=(float)dvsFrame.getOutputImageWidth()/chip.getSizeX();
+                        float scaleY=(float)dvsFrame.getOutputImageHeight()/chip.getSizeY();
+                        targetLocationsWriter.write(String.format("%d %d %d %d %d %d %d %d\n", framesWritten, 0, timestamp, Math.round(scaleX*l.location.x), Math.round(scaleY*l.location.y), l.targetClassID, l.width, l.height));
+                    } else {
+                        targetLocationsWriter.write(String.format("%d %d %d -1 -1 -1 -1 -1\n", framesWritten, 0, timestamp));
+                    }
+                    break; // skip rest of labels, write only 1 per frame
+                }
             }
         }
     }
