@@ -56,6 +56,8 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
     private float mixingFactor = getFloat("mixingFactor", .01f);
     private float peakHysteresisPixels = getFloat("peakHysteresisPixels", 20);
     private boolean enableModelUpdates = false;
+    private boolean freezeFreq = getBoolean("freezeFreq", false);
+    private boolean freezePhase = getBoolean("freezePhase", false);
     int lastTimestamp = 0;
 
     public PendulumTracker(AEChip chip) {
@@ -297,7 +299,9 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
                     return;
                 }
                 float newFreq = 1 / (2 * halfPeriodS);
-                setFreqHz(m1 * freqHz + mixingFactor * newFreq);
+                if (!freezeFreq) {
+                    setFreqHz(m1 * freqHz + mixingFactor * newFreq);
+                }
                 float newAmplDeg = (float) (180 / Math.PI * Math.atan2(0.5f * (peakPosX - valleyPosX), length));
                 setAmplDeg(m1 * amplDeg + newAmplDeg * mixingFactor);
                 // peak positive angle occurs at phase 90deg, so push timeZeroOffsetUs so that this happens 
@@ -305,8 +309,10 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
                 //    where tUs = timestamp - startingTimestamp-timeZeroOffsetUs;
                 // therefore, 
                 double remainderCycles = freqHz * 1e-6 * (timestamp - startingTimestamp) % 1;
-                int newTimeZeroOffsetUs = (int) (1000000 * (remainderCycles/freqHz));
-                setTimeZeroOffsetUs(Math.round(m1 * timeZeroOffsetUs + mixingFactor * newTimeZeroOffsetUs));
+                int newTimeZeroOffsetUs = (int) (-1000000 * (remainderCycles / freqHz));
+                if (!freezePhase) {
+                    setTimeZeroOffsetUs(Math.round(m1 * timeZeroOffsetUs + mixingFactor * newTimeZeroOffsetUs));
+                }
             }
 
             prevPrevX = prevX;
@@ -380,6 +386,36 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
         boolean old = this.enableModelUpdates;
         this.enableModelUpdates = enableModelUpdates;
         getSupport().firePropertyChange("enableModelUpdates", old, enableModelUpdates);
+    }
+
+    /**
+     * @return the freezeFreq
+     */
+    public boolean isFreezeFreq() {
+        return freezeFreq;
+    }
+
+    /**
+     * @param freezeFreq the freezeFreq to set
+     */
+    public void setFreezeFreq(boolean freezeFreq) {
+        this.freezeFreq = freezeFreq;
+        putBoolean("freezeFreq", freezeFreq);
+    }
+
+    /**
+     * @return the freezePhase
+     */
+    public boolean isFreezePhase() {
+        return freezePhase;
+    }
+
+    /**
+     * @param freezePhase the freezePhase to set
+     */
+    public void setFreezePhase(boolean freezePhase) {
+        this.freezePhase = freezePhase;
+        putBoolean("freezePhase", freezePhase);
     }
 
 }
