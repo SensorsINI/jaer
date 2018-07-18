@@ -19,6 +19,7 @@
 package ch.unizh.ini.jaer.projects.npp;
 
 
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
@@ -34,8 +35,6 @@ import javax.swing.JPanel;
 import com.jogamp.opengl.GL2;
 import ch.unizh.ini.jaer.projects.npp.DvsFramer.DvsFrame;
 import eu.visualize.ini.convnet.EasyXMLReader;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -122,7 +121,7 @@ public class DavisCNNPureJava extends AbstractDavisCNN {
      * @return the vector of output values
      * @see #getActivations
      */
-    public float[] processAPSFrame(AEFrameChipRenderer frame) {
+    public float[] processAPSFrame(ApsFrameExtractor frame) {
         if (inputLayer == null) {
             return null;
         }
@@ -287,6 +286,11 @@ public class DavisCNNPureJava extends AbstractDavisCNN {
         return outputLayer;
     }
 
+    @Override
+    public float[] processAPSDVSFrame(APSDVSFrame frame) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
  
 
     abstract public class Layer extends AbstractDavisCNN.Layer {
@@ -338,18 +342,18 @@ public class DavisCNNPureJava extends AbstractDavisCNN {
         /**
          * Computes the output from input frame.
          *
-         * @param renderer the image comes from this image displayed in AEViewer
+         * @param frameExtractor the image comes from this frame extractor
          * @return the vector of input layer activations
          */
-        public float[] processDownsampledFrame(AEFrameChipRenderer renderer) {
+        public float[] processDownsampledFrame(ApsFrameExtractor frameExtractor) {
 //            if (frame == null || frameWidth == 0 || (frame.length / type.samplesPerPixel()) % frameWidth != 0) {
 //                throw new IllegalArgumentException("input frame is null or frame array length is not a multiple of width=" + frameWidth);
 //            }
             if (activations == null) {
                 activations = new float[nUnits];
             }
-            int frameHeight = renderer.getChip().getSizeY();
-            int frameWidth = renderer.getChip().getSizeX();
+            int frameHeight = frameExtractor.getChip().getSizeY();
+            int frameWidth = frameExtractor.getChip().getSizeX();
             // subsample input activationsFrame to width height
             // activationsFrame has width*height pixels
             // for first pass we just downsample every width/dimx pixel in x and every height/dimy pixel in y
@@ -368,7 +372,7 @@ public class DavisCNNPureJava extends AbstractDavisCNN {
                     float v = 0;
                     final int xfloor = (int) Math.floor(x);
                     final int yfloor = (int) Math.floor(y);
-                    v = renderer.getApsGrayValueAtPixel(xfloor, yfloor);
+                    v = frameExtractor.getNewFrame()[frameExtractor.getIndex(xfloor, yfloor)];
                     v = debugNet(v, xo, yo);  // TODO remove only for debug
                     final int o = o(xo, height - yo - 1);
 //                    System.out.println(String.format("x=%9.3f y=%9.3f xfloor=%9d yfloor=%9d xo=%6d yo=%6d",x,y,xfloor,yfloor,xo,yo));

@@ -18,6 +18,7 @@
  */
 package ch.unizh.ini.jaer.projects.npp;
 
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GL2ES3;
@@ -43,7 +44,10 @@ import net.sf.jaer.util.EngineeringFormat;
  */
 public abstract class AbstractDavisCNN {
 
-    /** Handle to enclosing EventFilter2D that processes the CNN; useful for accessing the fields */
+    /**
+     * Handle to enclosing EventFilter2D that processes the CNN; useful for
+     * accessing the fields
+     */
     protected AbstractDavisCNNProcessor processor = null;
 
     /**
@@ -84,7 +88,7 @@ public abstract class AbstractDavisCNN {
     protected long processingTimeNs;
 
     public AbstractDavisCNN(AbstractDavisCNNProcessor processor) {
-        this.processor=processor;
+        this.processor = processor;
     }
 
     /**
@@ -102,7 +106,17 @@ public abstract class AbstractDavisCNN {
      * @return the vector of output values
      * @see #getActivations
      */
-    abstract public float[] processAPSFrame(AEFrameChipRenderer frame);
+    abstract public float[] processAPSFrame(ApsFrameExtractor frame);
+
+    /**
+     * Computes the output of the network from an input for a 2-channel APS-DVS
+     * frame
+     *
+     * @param frame the 2-channel APS-DVS frame
+     * @return the vector of output values
+     * @see #getActivations
+     */
+    abstract public float[] processAPSDVSFrame(APSDVSFrame frame);
 
     /**
      * Computes the output of the network from an input activationsFrame
@@ -255,7 +269,7 @@ public abstract class AbstractDavisCNN {
     }
 
     /**
-     * Loads the network from a protobuf binary file 
+     * Loads the network from a protobuf binary file
      *
      * @param f
      * @throws IOException
@@ -309,6 +323,50 @@ public abstract class AbstractDavisCNN {
      */
     public void setPrintWeights(boolean printWeights) {
         this.printWeights = printWeights;
+    }
+
+    public static class APSDVSFrame {
+
+        final int NUM_CHANNELS = 2;
+        private final int width;
+        private final int height;
+        final float[] values;
+
+        public APSDVSFrame(int width, int height) {
+            this.width = width;
+            this.height = height;
+            values = new float[NUM_CHANNELS * width * height];
+        }
+
+        private int getIndex(int channel, int x, int y) {
+            int idx = x * channel + y * (NUM_CHANNELS * getWidth()) + y;
+            if (idx < 0 || idx >= values.length) {
+                throw new java.lang.ArrayIndexOutOfBoundsException(String.format("index channel=%, x=%d, y=%d is out of bounds of frame which has channels=%d, width=%d, height=%d", channel, x, y, NUM_CHANNELS, getWidth(), getHeight()));
+            }
+            return idx;
+        }
+
+        /**
+         * @return the width
+         */
+        public int getWidth() {
+            return width;
+        }
+
+        /**
+         * @return the height
+         */
+        public int getHeight() {
+            return height;
+        }
+
+        public void setValue(int channel, int x, int y, float v) {
+            values[getIndex(channel, x, y)] = v;
+        }
+
+        public float getValue(int channel, int x, int y) {
+            return values[getIndex(channel, x, y)];
+        }
     }
 
     abstract public class Layer {

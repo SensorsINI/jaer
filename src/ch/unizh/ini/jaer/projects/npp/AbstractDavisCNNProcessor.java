@@ -18,12 +18,14 @@
  */
 package ch.unizh.ini.jaer.projects.npp;
 
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import ch.unizh.ini.jaer.projects.npp.DvsFramer.DvsFrame;
 import com.esotericsoftware.yamlbeans.YamlException;
 import com.esotericsoftware.yamlbeans.YamlReader;
 import com.jogamp.opengl.util.awt.TextRenderer;
+import eu.seebetter.ini.chips.DavisChip;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Font;
@@ -51,6 +53,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.TimeLimiter;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -69,6 +72,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
 
     protected AbstractDavisCNN apsDvsNet = null; // new DavisCNNPureJava(); //, dvsNet = new DavisCNNPureJava();
     protected DvsFramer dvsFramer = null;
+    private ApsFrameExtractor frameExtractor = null;
     protected final String KEY_NETWORK_FILENAME = "lastNetworkFilename", KEY_LABELS_FILENAME = "lastLabelsFilename", KEY_INPUTSPECIFICATION_FILENAME = "lastNetworkSpecificationFilename";
     protected String lastLabelsFilename = getString("lastLabelsFilename", "");
     protected boolean showActivations = getBoolean("showActivations", false);
@@ -81,6 +85,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     protected boolean processAPSFrames = getBoolean("processAPSFrames", true);
     //    protected boolean processAPSDVSTogetherInAPSNet = true; // getBoolean("processAPSDVSTogetherInAPSNet", true);
     protected boolean processDVSTimeSlices = getBoolean("processDVSTimeSlices", true);
+    private boolean processAPSDVSFrames = getBoolean("processAPSDVSFrames", false);
     protected boolean addedPropertyChangeListener = false; // must do lazy add of us as listener to chip because renderer is not there yet when this is constructed
     protected JFrame imageDisplayFrame = null;
     public ImageDisplay inputImageDisplay;
@@ -102,9 +107,17 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     private String lastManuallyLoadedNetwork = getString("lastManuallyLoadedNetwork", ""); // stores filename and path to last successfully loaded network that user loaded via doLoadNetwork
     private String lastManuallyLoadedLabels = getString("lastManuallyLoadedLabels", "");
     protected TextRenderer textRenderer = null;
+    private AbstractDavisCNN.APSDVSFrame apsDvsFrame = null;
 
     public AbstractDavisCNNProcessor(AEChip chip) {
         super(chip);
+        FilterChain chain = new FilterChain(chip);
+        if (chip instanceof DavisChip) {
+            frameExtractor = new ApsFrameExtractor(chip);
+            chain.add(frameExtractor);
+            frameExtractor.getSupport().addPropertyChangeListener(this);
+        }
+        setEnclosedFilterChain(chain);
         String deb = "5. Debug", disp = "2. Display", anal = "3. Analysis", tf = "0. Tensorflow", input = "1. Input";
         setPropertyTooltip("loadNetwork", "Load an XML or PB file containing a CNN");
         setPropertyTooltip("loadLabels", "Load labels for output units");
@@ -126,6 +139,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         setPropertyTooltip(anal, "softMaxOutput", "normalizes the final outputs using softmax; use for ReLu final layer to display output in 0-1 range");
         setPropertyTooltip(anal, "processAPSFrames", "sends APS frames to convnet");
         setPropertyTooltip(anal, "processDVSTimeSlices", "sends DVS time slices to convnet");
+        setPropertyTooltip(anal, "processAPSDVSFrames", "sends 2-channel APS and DVS frame input to CNN to process each time either APS or DVS frame is updated");
         setPropertyTooltip(anal, "processAPSDVSTogetherInAPSNet", "sends APS frames and DVS time slices to single convnet");
         setPropertyTooltip(anal, "zeroPadding", "CNN uses zero padding; must be set properly according to CNN to run CNN");
         setPropertyTooltip(anal, "processingTimeLimitMs", "<html>time limit for processing packet in ms to process OF events (events still accumulate). <br> Set to 0 to disable. <p>Alternative to the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events");
@@ -142,6 +156,10 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         setPropertyTooltip(input, "frameCutLeft", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
         setPropertyTooltip(input, "frameCutBottom", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
         setPropertyTooltip(input, "frameCutTop", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
+        if (processAPSDVSFrames) { // make sure other options not set
+            setProcessAPSFrames(false);
+            setProcessDVSTimeSlices(false);
+        }
     }
 
     /**
@@ -193,7 +211,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         try {
             loadNetwork(file);
             setLastManuallyLoadedNetwork(file.toString()); // store the last manually loaded network as the 
-            
+
         } catch (Exception ex) {
             Logger.getLogger(DavisClassifierCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file, caught exception " + ex + ". See console for logging.", "Bad network file", JOptionPane.WARNING_MESSAGE);
@@ -326,6 +344,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         try {
             loadLabels(file);
             lastManuallyLoadedLabels = file.toString();
+            putString("lastManuallyLoadedLabels", lastManuallyLoadedLabels);
         } catch (Exception ex) {
             Logger.getLogger(DavisClassifierCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file, caught exception " + ex + ". See console for logging.", "Bad network file", JOptionPane.WARNING_MESSAGE);
@@ -389,7 +408,6 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     @Override
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!addedPropertyChangeListener) {
-            ((AEFrameChipRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
             if (dvsFramer == null) {
                 throw new RuntimeException("Null dvsSubsampler; this should not occur");
             } else {
@@ -537,17 +555,35 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         }
         // new activationsFrame is available, process it
         switch (evt.getPropertyName()) {
-            case AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE:
+            case ApsFrameExtractor.EVENT_NEW_FRAME:
                 if (timeLimiter.isTimedOut()) {
-                    log.warning("skipped this frame because " + timeLimiter.toString());
+                    log.warning("skipped this APS frame because " + timeLimiter.toString());
                     return; // don't process this frame
                 }
-                if (isFilterEnabled() && (apsDvsNet != null) && (processAPSFrames)) {
+                if (isFilterEnabled() && (apsDvsNet != null) && (processAPSDVSFrames)) {
                     long startTime = 0;
                     if (measurePerformance) {
                         startTime = System.nanoTime();
                     }
-                    float[] outputs = apsDvsNet.processAPSFrame((AEFrameChipRenderer) (chip.getRenderer()));
+
+                    try{
+                    updateAPSDVSFrame(frameExtractor);
+                    float[] outputs = apsDvsNet.processAPSDVSFrame(apsDvsFrame);  // TODO replace with ApsFrameExtractor
+                    if (measurePerformance) {
+                        long dt = System.nanoTime() - startTime;
+                        float ms = 1e-6f * dt;
+                        float fps = 1e3f / ms;
+                        performanceString = String.format("Frame processing time: %.1fms (%.1f FPS)", ms, fps);
+                    }
+                    }catch(Exception e){
+                        log.log(Level.SEVERE,e.toString(),e); // TODO debug
+                    }
+                } else if (isFilterEnabled() && (apsDvsNet != null) && (processAPSFrames)) {
+                    long startTime = 0;
+                    if (measurePerformance) {
+                        startTime = System.nanoTime();
+                    }
+                    float[] outputs = apsDvsNet.processAPSFrame(frameExtractor);  // TODO replace with ApsFrameExtractor
                     if (measurePerformance) {
                         long dt = System.nanoTime() - startTime;
                         float ms = 1e-6f * dt;
@@ -561,7 +597,20 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                 if (measurePerformance) {
                     startTime = System.nanoTime();
                 }
-                if (processDVSTimeSlices && apsDvsNet != null) {
+                if (processAPSDVSFrames && apsDvsNet != null) {
+                     try{  // TODO debug
+                   updateApsDvsFrame((DvsFrame) evt.getNewValue());
+                    apsDvsNet.processAPSDVSFrame(apsDvsFrame); // generates PropertyChange EVENT_MADE_DECISION
+                    }catch(Exception e){
+                        log.log(Level.SEVERE,e.toString(),e); // TODO debug
+                    }
+                    if (measurePerformance) {
+                        long dt = System.nanoTime() - startTime;
+                        float ms = 1e-6f * dt;
+                        float fps = 1e3f / ms;
+                        performanceString = String.format("Frame processing time: %.1fms (%.1f FPS)", ms, fps);
+                    }
+                } else if (processDVSTimeSlices && apsDvsNet != null) {
                     apsDvsNet.processDvsFrame((DvsFrame) evt.getNewValue()); // generates PropertyChange EVENT_MADE_DECISION
                     if (measurePerformance) {
                         long dt = System.nanoTime() - startTime;
@@ -799,6 +848,9 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         this.processDVSTimeSlices = processDVSTimeSlices;
         putBoolean("processDVSTimeSlices", processDVSTimeSlices);
         getSupport().firePropertyChange("processDVSTimeSlices", old, processDVSTimeSlices);
+        if (processDVSTimeSlices) {
+            setProcessAPSDVSFrames(false);
+        }
     }
 
     /**
@@ -816,6 +868,34 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         this.processAPSFrames = processAPSFrames;
         putBoolean("processAPSFrames", processAPSFrames);
         getSupport().firePropertyChange("processAPSFrames", old, processAPSFrames);
+        if (processAPSFrames) {
+            setProcessAPSDVSFrames(false);
+        }
+    }
+
+    /**
+     * @return the processAPSDVSFrames
+     */
+    public boolean isProcessAPSDVSFrames() {
+        return processAPSDVSFrames;
+    }
+
+    /**
+     * @param processAPSDVSFrames the processAPSDVSFrames to set
+     */
+    public void setProcessAPSDVSFrames(boolean processAPSDVSFrames) {
+        boolean old = this.processAPSDVSFrames;
+        this.processAPSDVSFrames = processAPSDVSFrames;
+        putBoolean("processAPSDVSFrames", processAPSDVSFrames);
+        getSupport().firePropertyChange("processAPSDVSFrames", old, processAPSDVSFrames);
+        if (processAPSDVSFrames) {
+            if (isProcessAPSFrames()) {
+                setProcessAPSFrames(false);
+            }
+            if (isProcessDVSTimeSlices()) {
+                setProcessDVSTimeSlices(false);
+            }
+        }
     }
 
     public boolean isPrintActivations() {
@@ -1027,21 +1107,6 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     }
 
     /**
-     * @return the lastManuallyLoadedLabels
-     */
-    public String getLastManuallyLoadedLabels() {
-        return lastManuallyLoadedLabels;
-    }
-
-    /**
-     * @param lastManuallyLoadedLabels the lastManuallyLoadedLabels to set
-     */
-    public void setLastManuallyLoadedLabels(String lastManuallyLoadedLabels) {
-        this.lastManuallyLoadedLabels = lastManuallyLoadedLabels;
-        putString("lastManuallyLoadedLabels", lastManuallyLoadedLabels);
-    }
-
-    /**
      * @param lastManuallyLoadedNetwork the lastManuallyLoadedNetwork to set
      */
     public void setLastManuallyLoadedNetwork(String lastManuallyLoadedNetwork) {
@@ -1049,5 +1114,41 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         putString("lastManuallyLoadedNetwork", lastManuallyLoadedNetwork);
     }
 
-    
+    private void updateAPSDVSFrame(ApsFrameExtractor frameExtractor) {
+        checkApsDvsFrame();
+        int srcwidth = chip.getSizeX(), srcheight = chip.getSizeY(), targetwidth = dvsFramer.getOutputImageWidth(), targetheight = dvsFramer.getOutputImageHeight();
+        float[] frame = frameExtractor.getNewFrame();
+        for (int y = 0; y < targetheight; y++) {
+            for (int x = 0; x < targetwidth; x++) {
+                int xsrc = (int) Math.floor(x * (float) srcwidth / targetwidth), ysrc = (int) Math.floor(y * (float) srcheight / targetheight);
+                float v = frame[frameExtractor.getIndex(xsrc, ysrc)];
+                apsDvsFrame.setValue(0, x, y, v);
+            }
+        }
+    }
+
+    private void updateApsDvsFrame(DvsFrame dvsFrame) {
+        checkApsDvsFrame();
+        int targetwidth = dvsFramer.getOutputImageWidth(), targetheight = dvsFramer.getOutputImageHeight();
+        for (int y = 0; y < targetheight; y++) {
+            for (int x = 0; x < targetwidth; x++) {
+                float v = dvsFrame.getValueAtPixel(x, y);
+                apsDvsFrame.setValue(1, x, y, v);
+            }
+        }
+    }
+
+    private void checkApsDvsFrame() {
+        if (apsDvsFrame == null || apsDvsFrame.getHeight() != dvsFramer.getOutputImageHeight() || apsDvsFrame.getWidth() != dvsFramer.getOutputImageWidth()) {
+            apsDvsFrame = new AbstractDavisCNN.APSDVSFrame(dvsFramer.getOutputImageWidth(), dvsFramer.getOutputImageHeight());
+        }
+    }
+
+    /**
+     * @return the lastManuallyLoadedLabels
+     */
+    public String getLastManuallyLoadedLabels() {
+        return lastManuallyLoadedLabels;
+    }
+
 }

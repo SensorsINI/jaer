@@ -18,6 +18,7 @@
  */
 package ch.unizh.ini.jaer.projects.npp;
 
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
@@ -69,6 +70,33 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
     }
 
     @Override
+    public float[] processAPSDVSFrame(APSDVSFrame frame) {
+        final int numChannels = frame.NUM_CHANNELS;
+      final int sx = frame.getWidth(), sy = frame.getHeight();
+        FloatBuffer fb = FloatBuffer.allocate(sx * sy * numChannels);
+        for (int y = 0; y < sy; y++) {
+            for (int x = 0; x < sx; x++) {
+                for (int c = 0; c < numChannels; c++) {
+                    final int newIdx = c + (numChannels * (x + (sx * (sy - y - 1))));
+                    fb.put(newIdx, frame.getValue(c,x, y));
+                }
+            }
+        }
+        fb.rewind();
+        Tensor<Float> inputImageTensor = Tensor.create(new long[]{1, sy, sx, numChannels}, fb);
+        float[] results = null;
+        if (savedModelBundle == null) {
+            results = TensorFlow.executeGraph(executionGraph, inputImageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
+        } else {
+            results = TensorFlow.executeSession(savedModelBundle, inputImageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
+        }
+        outputLayer = new OutputLayer(results);
+        getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
+        return results;
+        
+    }
+
+    @Override
     public float[] processDvsFrame(DvsFramer.DvsFrame frame) {
         FloatBuffer b = FloatBuffer.wrap(frame.getImage());
         float[] results = executeDvsFrameGraph(b, frame.getWidth(), frame.getHeight());
@@ -78,7 +106,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
     private Output<Float> normalizedImageOutput = null; // used to reference the graph
 
     @Override
-    public float[] processAPSFrame(AEFrameChipRenderer frame) {
+    public float[] processAPSFrame(ApsFrameExtractor frameExtractor) {
         final int numChannels = processor.isMakeRGBFrames() ? 3 : 1;
         float mean = processor.getImageMean(), scale = processor.getImageScale();
         int width = processor.getImageWidth(), height = processor.getImageHeight();
@@ -102,7 +130,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
                             scalePH);
             inputNormalizationGraph = g;
         }
-        final int sx = frame.getWidthInPixels(), sy = frame.getHeightInPixels();
+        final int sx = frameExtractor.getWidth(), sy = frameExtractor.getHeight();
         FloatBuffer fb = FloatBuffer.allocate(sx * sy * numChannels);
         float[] rgb = null;
         if (processor.isMakeRGBFrames()) {
@@ -115,7 +143,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
             for (int x = 0; x < sx; x++) {
                 for (int c = 0; c < numChannels; c++) {
                     final int newIdx = c + (numChannels * (x + (sx * (sy - y - 1))));
-                    fb.put(newIdx, rgb[c] * frame.getApsGrayValueAtPixel(x, y));
+                    fb.put(newIdx, rgb[c] * frameExtractor.getNewFrame()[frameExtractor.getIndex(x, y)]);
                 }
             }
         }

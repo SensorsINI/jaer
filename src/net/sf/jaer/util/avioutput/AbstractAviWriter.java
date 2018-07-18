@@ -368,6 +368,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         if (maxFrames > 0 && framesWritten >= maxFrames) {
             log.info("wrote maxFrames=" + maxFrames + " frames; closing AVI file");
             doCloseFile();
+            JOptionPane.showMessageDialog(chip.getAeViewer(), "Closed file " + lastFileName + " after " + framesWritten + " maxFrames frames were written");
         }
     }
 
@@ -444,8 +445,9 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             if (!ignoreRewinwdEventFlag && closeOnRewind) {
                 doCloseFile();
+                JOptionPane.showMessageDialog(chip.getAeViewer(), "Closed file" + lastFileName + " on Rewind event after " + framesWritten + " frames were written");
             }
-            ignoreRewinwdEventFlag=false;
+            ignoreRewinwdEventFlag = false;
         }
     }
 

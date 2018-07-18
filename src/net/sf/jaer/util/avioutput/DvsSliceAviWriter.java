@@ -154,6 +154,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                         getAviOutputStream().writeFrame(bi);
                         incrementFramecountAndMaybeCloseOutput();
                     } catch (IOException ex) {
+                        doCloseFile();
                         log.warning(ex.toString());
                         ex.printStackTrace();
                         setFilterEnabled(false);
@@ -903,16 +904,20 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 targetLocationsWriter.write(String.format("%d %d %d -1 -1 -1 -1 -1\n", framesWritten, 0, timestamp));
 
             } else {
-                for (TargetLocation l : targets) {
-                    if (l != null) {
-                        // scale locations and size to AVI output resolution
-                        float scaleX=(float)dvsFrame.getOutputImageWidth()/chip.getSizeX();
-                        float scaleY=(float)dvsFrame.getOutputImageHeight()/chip.getSizeY();
-                        targetLocationsWriter.write(String.format("%d %d %d %d %d %d %d %d\n", framesWritten, 0, timestamp, Math.round(scaleX*l.location.x), Math.round(scaleY*l.location.y), l.targetClassID, l.width, l.height));
-                    } else {
-                        targetLocationsWriter.write(String.format("%d %d %d -1 -1 -1 -1 -1\n", framesWritten, 0, timestamp));
+                try { // TODO debug
+                    for (TargetLocation l : targets) {
+                        if (l != null && l.location != null) {
+                            // scale locations and size to AVI output resolution
+                            float scaleX = (float) dvsFrame.getOutputImageWidth() / chip.getSizeX();
+                            float scaleY = (float) dvsFrame.getOutputImageHeight() / chip.getSizeY();
+                            targetLocationsWriter.write(String.format("%d %d %d %d %d %d %d %d\n", framesWritten, 0, timestamp, Math.round(scaleX * l.location.x), Math.round(scaleY * l.location.y), l.targetClassID, l.width, l.height));
+                        } else {
+                            targetLocationsWriter.write(String.format("%d %d %d -1 -1 -1 -1 -1\n", framesWritten, 0, timestamp));
+                        }
+                        break; // skip rest of labels, write only 1 per frame
                     }
-                    break; // skip rest of labels, write only 1 per frame
+                } catch (NullPointerException e) {
+                    log.warning("null pointer " + e);
                 }
             }
         }

@@ -51,9 +51,8 @@ public class DavisWhatWhereCNNProcessor extends AbstractDavisCNNProcessor {
         String deb = "3. Debug", disp = "1. Display", anal = "2. Analysis";
 
         dvsFramer = new DvsFramerROIGenerator(chip);
-        FilterChain chain = new FilterChain(chip);
-        chain.add(dvsFramer); // only for control, we iterate with it here using the events we recieve
-        setEnclosedFilterChain(chain);
+        getEnclosedFilterChain().add(dvsFramer); // only for control, we iterate with it here using the events we recieve
+        setEnclosedFilterChain(getEnclosedFilterChain());
         setPropertyTooltip(disp, "alpha", "how opaque the overlay of ROI processing results is drawn");
         initFilter();
 
