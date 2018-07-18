@@ -86,7 +86,7 @@ public class FoosballCNNBallTracker extends DavisClassifierCNNProcessor implemen
     @Override
     synchronized public void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
-        if (!yes) {
+        if (!yes && renderer!=null) {
             renderer.setExternalRenderer(false);
         }
     }
