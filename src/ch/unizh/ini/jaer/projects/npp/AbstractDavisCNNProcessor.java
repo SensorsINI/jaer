@@ -417,12 +417,13 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         }
         if (apsDvsNet == null) {
             log.warning("null CNN; load one with the LoadApsDvsNetworkFromXML button");
-            return in;
+//            return in;
         }
         // send DVS timeslice to convnet
         resetTimeLimiter();
         //            final int sizeX = chip.getSizeX();
         //            final int sizeY = chip.getSizeY();
+        frameExtractor.filterPacket(in);
         for (BasicEvent e : in) {
             lastProcessedEventTimestamp = e.getTimestamp();
             PolarityEvent p = (PolarityEvent) e;
