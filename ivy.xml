@@ -129,7 +129,7 @@ MA 02110-1301  USA
         <dependency org="org.bytedeco" name="javacv" rev="1.0" />
         
         <!--tensorflow has native libraries, but handled fine with this dependeny-->
-        <dependency org="org.tensorflow" name="tensorflow" rev="1.5.0" />
+        <dependency org="org.tensorflow" name="tensorflow" rev="1.9.0" />
 
         <!--for reading yaml files that store the input format for tensorflow graphs, e.g. cnns-->
         <dependency org="com.esotericsoftware.yamlbeans" name="yamlbeans" rev="1.13" />

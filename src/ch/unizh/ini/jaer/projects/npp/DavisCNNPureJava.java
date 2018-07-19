@@ -38,6 +38,7 @@ import eu.visualize.ini.convnet.EasyXMLReader;
 
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
+import org.tensorflow.Tensor;
 
 /**
  * Simple convolutional neural network (CNN) data structure to hold CNN from
@@ -287,7 +288,7 @@ public class DavisCNNPureJava extends AbstractDavisCNN {
     }
 
     @Override
-    public float[] processAPSDVSFrame(APSDVSFrame frame) {
+    public Tensor processAPSDVSFrame(APSDVSFrame frame) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 

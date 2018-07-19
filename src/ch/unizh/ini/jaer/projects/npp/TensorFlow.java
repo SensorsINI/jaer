@@ -112,9 +112,9 @@ public class TensorFlow {
 //        }
     }
 
-    static Tensor executeSessionAndReturnTensor(SavedModelBundle savedModelBundle, Tensor<Float> inputImageTensor, String inputLayerName, String outputLayerName) {
-        try (Session s = savedModelBundle.session();
-                Tensor<Float> result = s.runner().feed(inputLayerName, inputImageTensor).fetch(outputLayerName).run().get(0).expect(Float.class)) {
+    static Tensor executeGraphAndReturnTensor(Graph graph, Tensor<Float> image, String inputLayerName, String outputLayerName) {
+        try (Session s = new Session(graph);
+                Tensor<Float> result = s.runner().feed(inputLayerName, image).fetch(outputLayerName).run().get(0).expect(Float.class)) {
 
             return result;
         }
