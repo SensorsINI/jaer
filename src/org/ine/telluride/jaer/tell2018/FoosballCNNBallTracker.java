@@ -19,6 +19,7 @@
 package org.ine.telluride.jaer.tell2018;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
+import ch.unizh.ini.jaer.projects.npp.AbstractDavisCNN;
 import ch.unizh.ini.jaer.projects.npp.DavisClassifierCNNProcessor;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -30,6 +31,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
@@ -49,6 +51,17 @@ public class FoosballCNNBallTracker extends DavisClassifierCNNProcessor implemen
         setPropertyTooltip("annotation", "annotateAlpha", "Sets the transparency for the heatmap display. ");
     }
 
+    @Override
+    public synchronized void propertyChange(PropertyChangeEvent evt) {
+        super.propertyChange(evt); 
+             if (evt.getPropertyName() == AbstractDavisCNN.EVENT_MADE_DECISION) {
+                processDecision(evt);
+            } else if (evt.getPropertyName() == AEViewer.EVENT_FILEOPEN) {
+                resetFilter();
+            }       
+    }
+
+    
     @Override
     public void annotate(GLAutoDrawable drawable) {
         AEChipRenderer renderer = (AEChipRenderer) chip.getRenderer();
@@ -117,6 +130,12 @@ public class FoosballCNNBallTracker extends DavisClassifierCNNProcessor implemen
         if (renderer != null && renderer instanceof AEFrameChipRenderer) {
             AEFrameChipRenderer frameRenderer = (AEFrameChipRenderer) renderer;
             frameRenderer.setAnnotateAlpha(annotateAlpha);
+        }
+    }
+
+    private void processDecision(PropertyChangeEvent evt) {
+        if(output!=null){
+            log.info(output.toString());
         }
     }
 

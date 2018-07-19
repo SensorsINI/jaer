@@ -35,6 +35,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.util.EngineeringFormat;
+import org.tensorflow.Tensor;
 
 /**
  * Supertype for CNNs. Subclasses override methods for loading and running the
@@ -116,7 +117,7 @@ public abstract class AbstractDavisCNN {
      * @return the vector of output values
      * @see #getActivations
      */
-    abstract public float[] processAPSDVSFrame(APSDVSFrame frame);
+    abstract public Tensor processAPSDVSFrame(APSDVSFrame frame);
 
     /**
      * Computes the output of the network from an input activationsFrame

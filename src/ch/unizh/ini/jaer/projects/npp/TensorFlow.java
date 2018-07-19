@@ -112,6 +112,15 @@ public class TensorFlow {
 //        }
     }
 
+    static Tensor executeSessionAndReturnTensor(SavedModelBundle savedModelBundle, Tensor<Float> inputImageTensor, String inputLayerName, String outputLayerName) {
+        try (Session s = savedModelBundle.session();
+                Tensor<Float> result = s.runner().feed(inputLayerName, inputImageTensor).fetch(outputLayerName).run().get(0).expect(Float.class)) {
+
+            return result;
+        }
+
+    }
+
     // In the fullness of time, equivalents of the methods of this class should be auto-generated from
     // the OpDefs linked into libtensorflow_jni.so. That would match what is done in other languages
     // like Python, C++ and Go.

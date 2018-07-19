@@ -55,10 +55,10 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.TimeLimiter;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import org.tensorflow.Tensor;
 
 /**
  * Top level CNN class that holds general methods. Subclasses define a
@@ -108,6 +108,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     private String lastManuallyLoadedLabels = getString("lastManuallyLoadedLabels", "");
     protected TextRenderer textRenderer = null;
     private AbstractDavisCNN.APSDVSFrame apsDvsFrame = null;
+    protected Tensor output=null;
 
     public AbstractDavisCNNProcessor(AEChip chip) {
         super(chip);
@@ -569,7 +570,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
 
                     try{
                     updateAPSDVSFrame(frameExtractor);
-                    float[] outputs = apsDvsNet.processAPSDVSFrame(apsDvsFrame);  // TODO replace with ApsFrameExtractor
+                    output = apsDvsNet.processAPSDVSFrame(apsDvsFrame);  // TODO replace with ApsFrameExtractor
                     if (measurePerformance) {
                         long dt = System.nanoTime() - startTime;
                         float ms = 1e-6f * dt;
@@ -601,7 +602,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                 if (processAPSDVSFrames && apsDvsNet != null) {
                      try{  // TODO debug
                    updateApsDvsFrame((DvsFrame) evt.getNewValue());
-                    apsDvsNet.processAPSDVSFrame(apsDvsFrame); // generates PropertyChange EVENT_MADE_DECISION
+                    output = apsDvsNet.processAPSDVSFrame(apsDvsFrame); // generates PropertyChange EVENT_MADE_DECISION
                     }catch(Exception e){
                         log.log(Level.SEVERE,e.toString(),e); // TODO debug
                     }

@@ -27,7 +27,7 @@ import redis.clients.jedis.Jedis;
 @Description("tracker that sends cluster info to remote host about tracked clusters")
 public class RectangularClusterTrackerWithRedisClusterOutput extends RectangularClusterTracker {
 
-    protected String host = "10.162.177.1";
+    protected String host = "localhost"; //10.162.177.1";
     protected int port = getInt("port", 6379);
     Jedis jedis;
     long jedisTime;

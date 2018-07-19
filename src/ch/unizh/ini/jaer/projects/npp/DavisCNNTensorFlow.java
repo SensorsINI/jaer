@@ -70,7 +70,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
     }
 
     @Override
-    public float[] processAPSDVSFrame(APSDVSFrame frame) {
+    public Tensor processAPSDVSFrame(APSDVSFrame frame) {
         final int numChannels = frame.NUM_CHANNELS;
       final int sx = frame.getWidth(), sy = frame.getHeight();
         FloatBuffer fb = FloatBuffer.allocate(sx * sy * numChannels);
@@ -84,13 +84,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
         }
         fb.rewind();
         Tensor<Float> inputImageTensor = Tensor.create(new long[]{1, sy, sx, numChannels}, fb);
-        float[] results = null;
-        if (savedModelBundle == null) {
-            results = TensorFlow.executeGraph(executionGraph, inputImageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
-        } else {
-            results = TensorFlow.executeSession(savedModelBundle, inputImageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
-        }
-        outputLayer = new OutputLayer(results);
+        Tensor results = TensorFlow.executeSessionAndReturnTensor(savedModelBundle, inputImageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
         getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
         return results;
         
