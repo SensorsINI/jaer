@@ -71,20 +71,26 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
 
     @Override
     public Tensor processAPSDVSFrame(APSDVSFrame frame) {
-        final int numChannels = frame.NUM_CHANNELS;
+        final int numChannels = 3;//frame.NUM_CHANNELS;
       final int sx = frame.getWidth(), sy = frame.getHeight();
         FloatBuffer fb = FloatBuffer.allocate(sx * sy * numChannels);
         for (int y = 0; y < sy; y++) {
             for (int x = 0; x < sx; x++) {
                 for (int c = 0; c < numChannels; c++) {
                     final int newIdx = c + (numChannels * (x + (sx * (sy - y - 1))));
-                    fb.put(newIdx, frame.getValue(c,x, y));
+                    if (c == 2){
+                        fb.put(newIdx, 0);
+                    }
+                    else{
+                        fb.put(newIdx, frame.getValue(c,x, y));
+                    }
                 }
             }
         }
         fb.rewind();
         Tensor<Float> inputImageTensor = Tensor.create(new long[]{1, sy, sx, numChannels}, fb);
-        Tensor results = TensorFlow.executeSessionAndReturnTensor(savedModelBundle, inputImageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
+        //executionGraph.opBuilder("MaxPoolWithArgmax", "MyMaxPoolWithArgmax").setAttr("dtype", inputImageTensor.dataType()).setAttr("value", inputImageTensor).build();
+        Tensor results = TensorFlow.executeGraphAndReturnTensor(executionGraph, inputImageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
         getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
         return results;
         
