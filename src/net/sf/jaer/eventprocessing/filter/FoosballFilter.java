@@ -50,7 +50,7 @@ public class FoosballFilter extends EventFilter2D implements Observer {
     private int sx;
     private int sy;
     // gap between player for each bar : DEF ATT MID MID ATT DEF
-    int[] arrGap = {63, 36, 26, 26, 46, 62};
+    int[] arrGap = {63, 44, 26, 26, 42, 62};
     
     // position of each bar
     int[] arrPos = {40, 72, 105, 138, 172, 201};
