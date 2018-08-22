@@ -29,32 +29,58 @@ import net.sf.jaer.graphics.FrameAnnotater;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnnotater {
 
+    public enum Method {
+        EventCount, TimeInterval
+    }
+
+    private Method method = Method.valueOf(getString("method", Method.EventCount.toString()));
+
     private int numDvsEventsToResetAccumulation = getInt("numDvsEventsToResetAccumulation", 5000);
+    private int timeIntervalToResetAccumulationUs = getInt("timeIntervalToResetAccumulationUs", 100000);
     private boolean showEventsAccumulatedBar = getBoolean("showEventsAccumulatedBar", true);
     private boolean showTimeElapsedText = getBoolean("showTimeElapsedText", true);
 
     public AccumulateAndResetFilter(AEChip chip) {
         super(chip);
         setPropertyTooltip("numDvsEventsToResetAccumulation", "sets number of dvs events to reset accumulation of image");
+        setPropertyTooltip("timeIntervalToResetAccumulationUs", "sets time interval in us to reset accumulation of image");
         setPropertyTooltip("showEventsAccumulatedBar", "shows a bar for num events accumulated");
         setPropertyTooltip("showTimeElapsedText", "shows text for time elapsed since last accumulation resst");
+        setPropertyTooltip("method", "method to reset accumulation");
     }
 
-    int numEventsAccumulated = 0;
-    int lastResetTimestampUs = 0, currentTimestamp = 0;
+    private int numEventsAccumulated = 0;
+    private int lastResetTimestampUs = 0, currentTimestamp = 0;
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         AEChipRenderer renderer = chip.getRenderer();
-        if (numEventsAccumulated >= getNumDvsEventsToResetAccumulation()) {
-            renderer.resetFrame(renderer.getGrayValue());
-            numEventsAccumulated = 0;
-            lastResetTimestampUs = in.getFirstTimestamp();
-        }
-        for(Object o:in){
-            BasicEvent e=(BasicEvent)o;
-            if(e.isFilteredOut() || e.isSpecial()) continue;
+
+        for (Object o : in) {
+            BasicEvent e = (BasicEvent) o;
+            if (e.isFilteredOut() || e.isSpecial()) {
+                continue;
+            }
             numEventsAccumulated++;
+            currentTimestamp=e.timestamp;
+            switch (method) {
+                case EventCount:
+                    if (numEventsAccumulated >= numDvsEventsToResetAccumulation) {
+                        renderer.resetFrame(renderer.getGrayValue());
+                        numEventsAccumulated = 0;
+                        lastResetTimestampUs = currentTimestamp;
+                    }
+                    break;
+                case TimeInterval:
+                    if (currentTimestamp-lastResetTimestampUs >= timeIntervalToResetAccumulationUs
+                            || lastResetTimestampUs==0) {
+                        renderer.resetFrame(renderer.getGrayValue());
+                        numEventsAccumulated = 0;
+                        lastResetTimestampUs = currentTimestamp;
+                    }
+                    break;
+
+            }
         }
         currentTimestamp = in.getLastTimestamp();
         return in;
@@ -63,6 +89,7 @@ public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnno
     @Override
     public void resetFilter() {
         numEventsAccumulated = getNumDvsEventsToResetAccumulation();
+        lastResetTimestampUs=0;
     }
 
     @Override
@@ -103,6 +130,7 @@ public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnno
      */
     public void setShowEventsAccumulatedBar(boolean showEventsAccumulatedBar) {
         this.showEventsAccumulatedBar = showEventsAccumulatedBar;
+        putBoolean("showEventsAccumulatedBar", showEventsAccumulatedBar);
     }
 
     /**
@@ -117,6 +145,7 @@ public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnno
      */
     public void setShowTimeElapsedText(boolean showTimeElapsedText) {
         this.showTimeElapsedText = showTimeElapsedText;
+        putBoolean("showTimeElapsedText", showTimeElapsedText);
     }
 
     @Override
@@ -131,13 +160,13 @@ public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnno
         if (showEventsAccumulatedBar) {
             gl.glLineWidth(10);
             gl.glBegin(GL.GL_LINES);
-            float x1=.9f * chip.getSizeX() * (float) numEventsAccumulated / numDvsEventsToResetAccumulation;
-            float y1=.9f * chip.getSizeY();
+            float x1 = .9f * chip.getSizeX() * (float) numEventsAccumulated / numDvsEventsToResetAccumulation;
+            float y1 = .9f * chip.getSizeY();
             gl.glVertex2f(.1f * chip.getSizeX(), y1);
             gl.glVertex2f(x1, y1);
             gl.glEnd();
             renderer.begin3DRendering();
-            renderer.draw3D(String.format("%.1f kev",1e-3f*numEventsAccumulated), x1, y1, 0, 1f);
+            renderer.draw3D(String.format("%.1f kev", 1e-3f * numEventsAccumulated), x1, y1, 0, 1f);
             renderer.end3DRendering();
         }
         if (showTimeElapsedText) {
@@ -146,6 +175,35 @@ public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnno
             renderer.draw3D(s, .1f * chip.getSizeX(), .8f * chip.getSizeY(), 0, 1f);
             renderer.end3DRendering();
         }
+    }
+
+    /**
+     * @return the method
+     */
+    public Method getMethod() {
+        return method;
+    }
+
+    /**
+     * @param method the method to set
+     */
+    public void setMethod(Method method) {
+        this.method = method;
+        putString("method", method.toString());
+    }
+
+    /**
+     * @return the timeIntervalToResetAccumulationUs
+     */
+    public int getTimeIntervalToResetAccumulationUs() {
+        return timeIntervalToResetAccumulationUs;
+    }
+
+    /**
+     * @param timeIntervalToResetAccumulationUs the timeIntervalToResetAccumulationUs to set
+     */
+    public void setTimeIntervalToResetAccumulationUs(int timeIntervalToResetAccumulationUs) {
+        this.timeIntervalToResetAccumulationUs = timeIntervalToResetAccumulationUs;
     }
 
 }
