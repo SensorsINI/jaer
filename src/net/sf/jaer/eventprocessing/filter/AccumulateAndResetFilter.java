@@ -63,6 +63,7 @@ public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnno
             }
             numEventsAccumulated++;
             currentTimestamp=e.timestamp;
+            if(currentTimestamp<lastResetTimestampUs) lastResetTimestampUs=currentTimestamp; // handle wrapping/rewind
             switch (method) {
                 case EventCount:
                     if (numEventsAccumulated >= numDvsEventsToResetAccumulation) {
@@ -204,6 +205,7 @@ public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnno
      */
     public void setTimeIntervalToResetAccumulationUs(int timeIntervalToResetAccumulationUs) {
         this.timeIntervalToResetAccumulationUs = timeIntervalToResetAccumulationUs;
+        putInt("timeIntervalToResetAccumulationUs",timeIntervalToResetAccumulationUs);
     }
 
 }
