@@ -167,7 +167,7 @@ public class AEInputStream implements Closeable {
  <li>EVENT_REPOSITIONED the input stream has been repositioned (e.g. by using slider in AEPlayer) to a new position
  </ul>
      */
-    EVENT_REWOUND="rewound",
+    EVENT_REWOUND="rewound", // replaces EVENT_REWIND to be called after the rewind is finished, to avoid non-monotonic timestamp
 
     /**
      * Property change event.Listeners should check for events using these static String objects.
