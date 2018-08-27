@@ -278,9 +278,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     protected AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
     private String stringDescription = "CypressFX2"; // default which is modified by opening
 
-       private USBPacketStatistics usbPacketStatistics=new USBPacketStatistics();
+    private USBPacketStatistics usbPacketStatistics = new USBPacketStatistics();
 
-       /**
+    /**
      * Populates the device descriptor and the string descriptors and builds the
      * String for toString().
      *
@@ -1280,8 +1280,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     }
 
     /**
-     * // stop endpoint sending events by sending vendor request 0xb4 to control
-     * endpoint 0 // these requests are documented in firmware file
+     * // stop endpoint sending events by sending vendor request 0xb4 to
+     * control endpoint 0 // these requests are documented in firmware file
      * FX2_to_extFIFO.c
      */
     protected synchronized void disableINEndpoint() {
@@ -1494,7 +1494,6 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         private final int RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT = 10;
         private final int RESET_TIMESTAMPS_WARNING_INTERVAL = 100000;
         CypressFX2 monitor = null;
-        
 
         public AEReader(CypressFX2 m) throws HardwareInterfaceException {
             super();
@@ -1570,7 +1569,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         @Override
         public void processData(UsbIoBuf Buf) {
             cycleCounter++;
-            
+
             usbPacketStatistics.addSample(Buf);
 
 ////             instrument cycle times
@@ -1591,7 +1590,6 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //                    ex.printStackTrace();
 //                }
 //            }
-
             if (!((Buf.Status == USBIO_ERR_SUCCESS) || (Buf.Status == USBIO_ERR_CANCELED))) {
                 log.warning("cycleCounter=" + cycleCounter + " Bytes transferred=" + Buf.BytesTransferred + "  Status: " + UsbIo.errorText(Buf.Status));
                 monitor.close(); // TODO we own hardware interface, but we also own the AEPackerRawPool, which may be owned by AEMonitor, which could be waiting for it. Therefore we can get deadlock here if we do this close inside the aePacketRawPool synchronized block below (tobi)
@@ -1623,10 +1621,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //                    //                pop.play();
 
                         if ((chip != null) && (chip.getFilterChain() != null) && (chip.getFilterChain().getProcessingMode() == FilterChain.ProcessingMode.ACQUISITION)) {
-                        // here we do the realTimeFiltering. We finished capturing this buffer's worth of events, now process them
+                            // here we do the realTimeFiltering. We finished capturing this buffer's worth of events, now process them
                             // apply realtime filters and realtime (packet level) mapping
 
-                        // synchronize here so that rendering thread doesn't swap the buffer out from under us while we process these events
+                            // synchronize here so that rendering thread doesn't swap the buffer out from under us while we process these events
                             // aePacketRawPool.writeBuffer is also synchronized so we getString the same lock twice which is ok
                             AEPacketRaw buffer = aePacketRawPool.writeBuffer();
                             int[] addresses = buffer.getAddresses();
@@ -1643,7 +1641,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 }
             }
         }
-        
+
         final int WRAP_START = 0; //(int)(0xFFFFFFFFL&(2147483648L-0x400000L)); // set high to test big wrap 1<<30;
         /**
          * wrapAdd is the time to appendCopy to short timestamp to unwrap it
@@ -1799,7 +1797,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                     f.setFilterEnabled(false);
                 }
             }
-        // we don't do following because the results are an AEPacketRaw that still needs to be written to addresses/timestamps
+            // we don't do following because the results are an AEPacketRaw that still needs to be written to addresses/timestamps
             // and this is not done yet. at present results of realtime filtering are just not rendered at all.
             // that means that user will see raw events, e.g. if BackgroundActivityFilter is used, then user will still see all
             // events because the filters are not applied for normal rendering. (If they were applied, then the filters would
@@ -2383,7 +2381,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 //              log.info("firmare length: " + len);
                 fwBuffer = new byte[firmwareFileStream.available()];
                 int numBytesRead = firmwareFileStream.read(fwBuffer);
-  //              log.info("bytes read: "+ numBytesRead);
+                //              log.info("bytes read: "+ numBytesRead);
 
                 int ki = 1;
                 int maxtries = 5;
@@ -2890,7 +2888,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     private static final byte XSDR = (byte) 3;
     private static final byte XRUNTEST = (byte) 4;
     /* Reserved              5 */
-    /* Reserved              6 */
+ /* Reserved              6 */
     private static final byte XREPEAT = (byte) 7;
     private static final byte XSDRSIZE = (byte) 8;
     private static final byte XSDRTDO = (byte) 9;
@@ -2900,17 +2898,24 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     private static final byte XSDRTDOB = (byte) 15;
     private static final byte XSDRTDOC = (byte) 16;
     private static final byte XSDRTDOE = (byte) 17;
-    private static final byte XSTATE = (byte) 18;        /* 4.00 */
+    private static final byte XSTATE = (byte) 18;
+    /* 4.00 */
 
-    private static final byte XENDIR = (byte) 19;         /* 4.04 */
+    private static final byte XENDIR = (byte) 19;
+    /* 4.04 */
 
-    private static final byte XENDDR = (byte) 20;         /* 4.04 */
+    private static final byte XENDDR = (byte) 20;
+    /* 4.04 */
 
-    private static final byte XSIR2 = (byte) 21;         /* 4.10 */
+    private static final byte XSIR2 = (byte) 21;
+    /* 4.10 */
 
-    private static final byte XCOMMENT = (byte) 22;         /* 4.14 */
+    private static final byte XCOMMENT = (byte) 22;
+    /* 4.14 */
 
-    private static final byte XWAIT = (byte) 23;         /* 5.00 */
+    private static final byte XWAIT = (byte) 23;
+
+    /* 5.00 */
 
 
     /**
@@ -2962,7 +2967,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                     break;
                 case XSDRSIZE:
                     commandlength = 5;
-                    length = ((bytearray[index + 1] << 24) | (bytearray[index + 2] << 16) | (bytearray[index + 3] << 8) | ((bytearray[index + 4]) + 7)) / 8;
+                    length = (((bytearray[index + 1] & 0xFF) << 24) | ((bytearray[index + 2] & 0xFF) << 16) | ((bytearray[index + 3] & 0xFF) << 8) | (((bytearray[index + 4]) & 0xFF) + 7)) / 8;
                     break;
                 case XSDRTDO:
                     commandlength = (2 * length) + 1;
@@ -3206,6 +3211,5 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     public boolean isPrintUsbStatistics() {
         return usbPacketStatistics.isPrintUsbStatistics();
     }
-    
-    
+
 }

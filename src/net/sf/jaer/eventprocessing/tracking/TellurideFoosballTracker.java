@@ -120,7 +120,7 @@ public class TellurideFoosballTracker extends EventFilter2D
 	int[] yinc = { 0, -1, -2, -2, -3, -3, -4, -4, -4, -4, -4, -3, -3, -2, -2, -1, 0, 1, 2, 2, 3, 3, 4, 4, 4, 4, 4, 3, 3, 2, 2, 1 };
 	int[] barX = { 25, 55, 88, 121, 152, 180, 209 };// track3.aedat
 	//static int barX[BAR_NUM] = { 22, 51, 80, 112, 144, 176, 207, 236 };	// test_07_12movingplayer
-	static int[] boundX = { 0, 240 };	// track3.aedat
+	static int[] boundX = { 0, 225 };	// track3.aedat
 	//static int boundX[2] = { 10, 240 };	// test_07_12movingplayer
 	//static int[] boundY = { 26, 170 };	// track3.aedat
 	static int[] boundY = { 15, 160 };	// track3.aedat
@@ -144,8 +144,8 @@ public class TellurideFoosballTracker extends EventFilter2D
 	int vLimit = 150, vTh = 50;
 	//int lineLimit = 15, lineTh = 5;
 	float lineLimit = 6, lineTh = 2;
-	int ageLimit = 750, ageTh = 250;
-    float shapeLimit = 50, shapeTh = 10, shapeYLimit = 80, shapeYTh = 50;
+	int ageLimit = 500, ageTh = 200;
+    float shapeLimit = 50, shapeTh = 20, shapeYLimit = 70, shapeYTh = 50;
     float rangeDecayRate = 0.02f;//0.999f;//0.02f;
     /*float[][] shapeProbMap = {
         {A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A},
@@ -211,7 +211,8 @@ public class TellurideFoosballTracker extends EventFilter2D
 	private ByteBuffer udpBuffer = ByteBuffer.allocateDirect(UDP_BUFFER_SIZE);
 	private boolean printedFirstUdpMessage = false;
 	long lastUdpMsgTime = 0;
-	int MIN_UPD_PACKET_INTERVAL_MS = 10;
+	int MIN_UPD_PACKET_INTERVAL_MS = 100;
+    int udpSequenceCnt = 0;
 	
 	public TellurideFoosballTracker(AEChip chip) {
 		super(chip);
@@ -272,8 +273,8 @@ public class TellurideFoosballTracker extends EventFilter2D
                 jedisTime = System.currentTimeMillis();
             }
             else{                
-                jedis.set("pos", Float.toString(-1) + ';' + Float.toString(-1));
-                jedis.set("vel", Float.toString(-1) + ';' + Float.toString(-1));
+                jedis.set("pos", Float.toString(300) + ';' + Float.toString(300));
+                jedis.set("vel", Float.toString(300) + ';' + Float.toString(300));
                 jedisTime = System.currentTimeMillis();
             }
         }		// send udp messages
@@ -293,10 +294,10 @@ public class TellurideFoosballTracker extends EventFilter2D
 //            try {
 //                udpBuffer.clear();
 //                if (ballIx < MAX_CLUSTER){
-//                    udpMsg = String.format("%.3f;%.3f;%.3f;%.3f",clusterList[ballIx].x,clusterList[ballIx].y,clusterList[ballIx].vX,clusterList[ballIx].vY);
+//                    udpMsg = String.format("%d;%.3f;%.3f;%.3f;%.3f",udpSequenceCnt++, clusterList[ballIx].x,clusterList[ballIx].y,clusterList[ballIx].vX,clusterList[ballIx].vY);
 //                }
 //                else{
-//                    udpMsg = String.format("%.3f;%.3f;%.3f;%.3f",-1f,-1f,-1f,-1f);
+//                    udpMsg = String.format("%d;%.3f;%.3f;%.3f;%.3f",udpSequenceCnt++,300f,300f,300f,300f);
 //                }
 //                //String udpMsg = String.format("%.3f;%.3f",0.1f,0.1f);
 //                udpBuffer.put(udpMsg.getBytes());
@@ -1051,6 +1052,7 @@ public class TellurideFoosballTracker extends EventFilter2D
         ballIx = MAX_CLUSTER;
         findBallFlag = 0;
         lastUdpMsgTime = 0;
+        udpSequenceCnt = 0;
         
         
         for (i = 0; i < MAX_X; i++){
