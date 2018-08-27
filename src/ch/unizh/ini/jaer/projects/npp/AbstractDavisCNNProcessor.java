@@ -109,6 +109,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     protected TextRenderer textRenderer = null;
     private AbstractDavisCNN.APSDVSFrame apsDvsFrame = null;
     protected Tensor output=null;
+    public long[][][] resHeatMap = new long[1][90][120];
 
     public AbstractDavisCNNProcessor(AEChip chip) {
         super(chip);
@@ -193,6 +194,16 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         putString(key, name);
         File file = c.getSelectedFile();
         return file;
+    }
+    
+    /*
+        Put output Tensorflow Tensor into a 4D array
+        1 * 90 * 120 * 2
+        Corresponding to heatmap labels to track the ball on Foosball table
+    
+    */
+    public synchronized void tensor2Array(float[][][][] arr){
+        output.copyTo(arr);
     }
 
     /**
@@ -570,7 +581,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
 
                     try{
                     updateAPSDVSFrame(frameExtractor);
-                    output = apsDvsNet.processAPSDVSFrame(apsDvsFrame);  // TODO replace with ApsFrameExtractor
+                    //output = apsDvsNet.processAPSDVSFrame(apsDvsFrame);  // TODO replace with ApsFrameExtractor
+                    apsDvsNet.processAPSDVSFrameArray(apsDvsFrame, resHeatMap);
                     if (measurePerformance) {
                         long dt = System.nanoTime() - startTime;
                         float ms = 1e-6f * dt;
@@ -601,8 +613,9 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                 }
                 if (processAPSDVSFrames && apsDvsNet != null) {
                      try{  // TODO debug
-                   updateApsDvsFrame((DvsFrame) evt.getNewValue());
-                    output = apsDvsNet.processAPSDVSFrame(apsDvsFrame); // generates PropertyChange EVENT_MADE_DECISION
+                    updateApsDvsFrame((DvsFrame) evt.getNewValue());
+                    //output = apsDvsNet.processAPSDVSFrame(apsDvsFrame); // generates PropertyChange EVENT_MADE_DECISION
+                    //apsDvsNet.processAPSDVSFrameArray(apsDvsFrame, resHeatMap);
                     }catch(Exception e){
                         log.log(Level.SEVERE,e.toString(),e); // TODO debug
                     }
