@@ -118,6 +118,17 @@ public abstract class AbstractDavisCNN {
      * @see #getActivations
      */
     abstract public Tensor processAPSDVSFrame(APSDVSFrame frame);
+    
+    /**
+     * Computes the output of the network from an input for a 3-channel (APS-DVS
+     * - 0 padding)
+     * frame
+     *
+     * @param frame the 2-channel APS-DVS frame
+     * @param array the output array containing output 4D tensor 1*90*120*1
+     * @see #getActivations*
+     */
+    abstract public void processAPSDVSFrameArray(APSDVSFrame frame, long[][][] array);
 
     /**
      * Computes the output of the network from an input activationsFrame
