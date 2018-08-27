@@ -20,12 +20,19 @@ package org.ine.telluride.jaer.tell2018;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.npp.AbstractDavisCNN;
+import ch.unizh.ini.jaer.projects.npp.DavisCNNPureJava;
 import ch.unizh.ini.jaer.projects.npp.DavisClassifierCNNProcessor;
+import ch.unizh.ini.jaer.projects.npp.TensorFlow;
+import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import eu.seebetter.ini.chips.DavisChip;
 import java.awt.Color;
 import java.beans.PropertyChangeEvent;
+import java.io.File;
+import javax.swing.BoxLayout;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -33,6 +40,7 @@ import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
@@ -45,6 +53,12 @@ public class FoosballCNNBallTracker extends DavisClassifierCNNProcessor implemen
 
     private float annotateAlpha = getFloat("annotateAlpha", 0.5f);
     AEChipRenderer renderer = null;
+    float xTarget = Float.NaN;
+    float nbTarget = 0;
+    float yTarget = Float.NaN;
+    long heatMapCNN[][][][] = new long[1][90][120][1];
+    private ImageDisplay imageDisplay;
+    private JFrame activationsFrame = null;
 
     public FoosballCNNBallTracker(AEChip chip) {
         super(chip);
@@ -52,16 +66,26 @@ public class FoosballCNNBallTracker extends DavisClassifierCNNProcessor implemen
     }
 
     @Override
-    public synchronized void propertyChange(PropertyChangeEvent evt) {
-        super.propertyChange(evt); 
-             if (evt.getPropertyName() == AbstractDavisCNN.EVENT_MADE_DECISION) {
-                processDecision(evt);
-            } else if (evt.getPropertyName() == AEViewer.EVENT_FILEOPEN) {
-                resetFilter();
-            }       
+    protected void loadNetwork(File f) throws Exception {
+        super.loadNetwork(f);
+        if (apsDvsNet != null) {
+            apsDvsNet.getSupport().addPropertyChangeListener(AbstractDavisCNN.EVENT_MADE_DECISION, this);
+        }
     }
 
-    
+    @Override
+    public synchronized void propertyChange(PropertyChangeEvent evt) {
+        super.propertyChange(evt);
+        processDecision(evt);
+
+        if (evt.getPropertyName() == AbstractDavisCNN.EVENT_MADE_DECISION) {
+            processDecision(evt);
+        } else if (evt.getPropertyName() == AEViewer.EVENT_FILEOPEN) {
+            resetFilter();
+        }
+
+    }
+
     @Override
     public void annotate(GLAutoDrawable drawable) {
         AEChipRenderer renderer = (AEChipRenderer) chip.getRenderer();
@@ -75,10 +99,36 @@ public class FoosballCNNBallTracker extends DavisClassifierCNNProcessor implemen
                 lastPerformanceString = performanceString;
             }
         }
-
+        
+        nbTarget =0;
+        xTarget= 0;
+        yTarget = 0;
+        gl.glColor3f(0, 0, 1);
+        gl.glPointSize(8);
+        gl.glBegin(GL.GL_POINTS);
+        for (int i = 0; i < 90; i++) {
+            for (int j = 0; j < 120; j++) {
+                if (resHeatMap[0][i][j] == 1 ) {
+                    nbTarget++;
+                    xTarget += j;
+                    yTarget += i;
+                     gl.glVertex2f(j*2, i*2);
+                }
+            }
+        }
+        gl.glEnd();
+        
+        gl.glLineWidth(4);
+        gl.glColor3f(1, 0, 0);
+        gl.glBegin(GL.GL_LINE_LOOP);
+            gl.glVertex2f(xTarget-5, yTarget-5);
+            gl.glVertex2f(xTarget-5, yTarget+5);
+            gl.glVertex2f(xTarget+5, yTarget+5);
+            gl.glVertex2f(xTarget+5, yTarget-5);
+        gl.glEnd();
         // output is heat map
-        renderer.resetAnnotationFrame(0.0f);
-        float[] output = apsDvsNet.getOutputLayer().getActivations();
+        //renderer.resetAnnotationFrame(0.0f);
+        //float[] output = apsDvsNet.getOutputLayer().getActivations();
 
     }
 
@@ -99,7 +149,7 @@ public class FoosballCNNBallTracker extends DavisClassifierCNNProcessor implemen
     @Override
     synchronized public void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
-        if (!yes && renderer!=null) {
+        if (!yes && renderer != null) {
             renderer.setExternalRenderer(false);
         }
     }
@@ -134,9 +184,24 @@ public class FoosballCNNBallTracker extends DavisClassifierCNNProcessor implemen
     }
 
     private void processDecision(PropertyChangeEvent evt) {
-        if(output!=null){
-            log.info(output.toString());
+         
+        if (resHeatMap != null) {
+            
+            if(nbTarget > 0){
+                xTarget /= nbTarget ;
+                yTarget /= nbTarget ;
+            }
+            else{
+                xTarget = -1;
+                yTarget = -1;                
+            }
+            xTarget *= 2;
+            yTarget *= 2;
+            //System.out.println("xTarget = " + Float.toString(xTarget) + " , yTarget = " + Float.toString(yTarget));
+            //log.info(String.format("x : %f, y : %f", xTarget, yTarget));
+
         }
+
     }
 
 }
