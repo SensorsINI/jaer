@@ -120,6 +120,35 @@ public class TensorFlow {
         }
 
     }
+    
+    //public static long heatMapPrev[][][] = new long[1][90][120];
+
+    static Tensor executeGraphAndReturnTensorWithBoolean(Graph graph, Tensor<Float> image, String inputLayerName, Tensor<Boolean> inputBool, String inputBoolName, String outputLayerName) {
+        try (Session s = new Session(graph);
+            Tensor<Float> result = s.runner().feed(inputLayerName, image).feed(inputBoolName, inputBool).fetch(outputLayerName).run().get(0).expect(Float.class)) {
+            //result.copyTo(heatMap);
+            return result;
+        }
+
+    }
+    
+    static void executeGraphAndReturnTensorWithBooleanArray(long[][][] array, Graph graph, Tensor<Float> image, String inputLayerName, Tensor<Boolean> inputBool, String inputBoolName, String outputLayerName) {
+        try (Session s = new Session(graph);
+            Tensor<Long> result = s.runner().feed(inputLayerName, image).feed(inputBoolName, inputBool).fetch(outputLayerName).run().get(0).expect(Long.class)) {
+            //result.copyTo(heatMap);
+            if(array != null){
+                result.copyTo(array);
+                /*
+                for (int i = 0; i < 90; i++) {
+                    for (int j = 0; j < 120; j++) {       
+                            if (array[0][i][j] == 1)
+                                System.out.println(" Ball : " + Float.toString(array[0][i][j]));
+                    }
+                }
+                */
+            }
+        }
+    }
 
     // In the fullness of time, equivalents of the methods of this class should be auto-generated from
     // the OpDefs linked into libtensorflow_jni.so. That would match what is done in other languages
