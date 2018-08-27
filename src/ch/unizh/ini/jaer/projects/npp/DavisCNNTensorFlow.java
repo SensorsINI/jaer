@@ -121,6 +121,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
                     }
                 }
                 //nbNulPix+=buf[0][y][x][0];
+                
             }
         }
         System.out.println(Float.toString(nbNulPix/(90*120)));
