@@ -39,6 +39,7 @@ import org.tensorflow.Output;
 import org.tensorflow.SavedModelBundle;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
+import net.sf.jaer.graphics.ImageDisplay;
 
 import com.jogamp.opengl.GL2;
 
@@ -64,6 +65,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
     private Graph inputNormalizationGraph = null;
     private ArrayList<String> ioLayers = new ArrayList();
     SavedModelBundle savedModelBundle = null;
+    private ImageDisplay imageDisplay;
 
     public DavisCNNTensorFlow(AbstractDavisCNNProcessor processor) {
         super(processor);
@@ -71,7 +73,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
 
     @Override
     public Tensor processAPSDVSFrame(APSDVSFrame frame) {
-        final int numChannels = 3;//frame.NUM_CHANNELS;
+        final int numChannels = 3; //frame.NUM_CHANNELS;
       final int sx = frame.getWidth(), sy = frame.getHeight();
         FloatBuffer fb = FloatBuffer.allocate(sx * sy * numChannels);
         for (int y = 0; y < sy; y++) {
@@ -89,11 +91,48 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
         }
         fb.rewind();
         Tensor<Float> inputImageTensor = Tensor.create(new long[]{1, sy, sx, numChannels}, fb);
+        Boolean b = false;
+        Tensor<Boolean> t = Tensor.create(b, Boolean.class);
         //executionGraph.opBuilder("MaxPoolWithArgmax", "MyMaxPoolWithArgmax").setAttr("dtype", inputImageTensor.dataType()).setAttr("value", inputImageTensor).build();
-        Tensor results = TensorFlow.executeGraphAndReturnTensor(executionGraph, inputImageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
+        //Tensor results = TensorFlow.executeGraphAndReturnTensor(executionGraph, inputImageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
+        Tensor results= TensorFlow.executeGraphAndReturnTensorWithBoolean(executionGraph, inputImageTensor, processor.getInputLayerName(),t,"phase_train", processor.getOutputLayerName());
         getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
-        return results;
-        
+        return results;   
+    }
+    
+    @Override
+    public void processAPSDVSFrameArray(APSDVSFrame frame, long[][][] array) {
+      final int numChannels = 3; //frame.NUM_CHANNELS;
+      final int sx = frame.getWidth(), sy = frame.getHeight();
+        FloatBuffer fb = FloatBuffer.allocate(sx * sy * numChannels);
+        float[][][][] buf = new float[1][90][120][3];
+        float nbNulPix = 0;
+        for (int y = 0; y < sy; y++) {
+            for (int x = 0; x < sx; x++) {
+                for (int c = 0; c < numChannels; c++) {
+                    if (c == 2){
+                        buf[0][y][x][c] = 0;
+                    }
+                    else{
+                        buf[0][y][x][c] = frame.getValue(c,x,y)*255;
+                        //if( c==1 && frame.getValue(c,x,y)== 0)
+                           //nbNulPix++;
+                            
+                    }
+                }
+                //nbNulPix+=buf[0][y][x][0];
+            }
+        }
+        System.out.println(Float.toString(nbNulPix/(90*120)));
+        fb.rewind();
+        //Tensor<Float> inputImageTensor = Tensor.create(new long[]{1, sy, sx, numChannels}, fb);
+        Tensor<Float> inputImageTensor = Tensor.create(buf,  Float.class);
+        Boolean b = false;
+        Tensor<Boolean> t = Tensor.create(b, Boolean.class);
+        //executionGraph.opBuilder("MaxPoolWithArgmax", "MyMaxPoolWithArgmax").setAttr("dtype", inputImageTensor.dataType()).setAttr("value", inputImageTensor).build();
+        //Tensor results = TensorFlow.executeGraphAndReturnTensor(executionGraph, inputImageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
+        TensorFlow.executeGraphAndReturnTensorWithBooleanArray(array, executionGraph, inputImageTensor, processor.getInputLayerName(),t,"phase_train", processor.getOutputLayerName());
+        getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);  
     }
 
     @Override
@@ -344,8 +383,9 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
                         || s.contains("output")
                         || s.contains("prediction")) {  // find input placeholder & output
 //                    int numOutputs = o.numOutputs();
-                    b.append("********** ");
-                    ioLayers.add(s);
+//                    if(! s.contains("output_shape") && !s.contains("conv2d_transpos")){
+                        b.append("********** ");
+                        ioLayers.add(s);
 //                    for (int onum = 0; onum < numOutputs; onum++) {
 //                        Output output = o.output(onum);
 //                        Shape shape = output.shape();
@@ -355,7 +395,8 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
 //                        }
 //                    }
 //                    int inputLength=o.inputListLength("");
-                    b.append(opnum++ + ": " + o.toString() + "\n");
+                        b.append(opnum++ + ": " + o.toString() + "\n");
+//                    }
                 }
             }
             log.info(b.toString());
