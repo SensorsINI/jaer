@@ -72,8 +72,8 @@ import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 
 /**
  * Extends Shih-Chii Liu's AMS cochlea AER chip to
- appendCopy bias generator interface,
- to be used when using the on-chip bias generator and the on-board DACs.
+ * add bias generator interface,
+ * to be used when using the on-chip bias generator and the on-board DACs.
  * This board also includes off-chip ADC for reading microphone inputs and scanned cochlea outputs.
  * The board also includes for the first time a shift-register based CPLD configuration register to configure CPLD functions.
  * Also implements ConfigBits, Scanner, and Equalizer configuration.
@@ -100,7 +100,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
         getCanvas().addDisplayMethod(new CochleaAMS1cRollingCochleagramADCDisplayMethod(getCanvas()));
         for (DisplayMethod m : getCanvas().getDisplayMethods()) {
             if ((m instanceof ChipRendererDisplayMethod) || (m instanceof SpaceTimeEventDisplayMethod)) {
-                // appendCopy labels on frame of chip for these xy chip displays
+                // add labels on frame of chip for these xy chip displays
                 m.addAnnotator(new FrameAnnotater() {
 
                     @Override
@@ -147,7 +147,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
                         gl.glPopMatrix();
                     }
                 });
-                // appendCopy basic ADC samples drawing
+                // add basic ADC samples drawing
 //                m.addAnnotator(new FrameAnnotater() {
 //
 //                    @Override
@@ -428,8 +428,9 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
         private CypressFX2 cypress = null;
         // config bits/values
         // portA
-        private PortBit hostResetTimestamps = new PortBit("a7", "hostResetTimestamps", "High to reset timestamps", false),
-                runAERComm = new PortBit("a3", "runAERComm", "High to run CPLD state machine (send events)- also controls CPLDLED2", true);
+        private PortBit hostResetTimestamps = new PortBit("a7", "hostResetTimestamps", "High to reset timestamps", false);
+        private PortBit runAERComm = new PortBit("a3", "runAERComm", "High to run CPLD state machine (send events)- also controls CPLDLED2", true);
+        private PortBit enableCPLDAERAck = new PortBit("a0", "enableCPLDAERAck", "Set to enable the CPLD sending AER Ack signal. Clear when using external readout device on the CAVIAR connector", true);
         private PortBit timestampMasterExternalInputEventsEnabled = new PortBit("a1", "timestampMasterExternalInputEventsEnabled", "High makes this device a timestamp master and enables external input events on the sync IN pin low-going edges. Low makes this device a timestamp slave device.", true);
         // portC
         private PortBit runAdc = new PortBit("c0", "runAdc", "High to run ADC", true);
@@ -1388,6 +1389,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
                 }
                 bitmask = 1 << Integer.valueOf(s.substring(1, 2));
                 portbit = (short) (0xffff & ((port << 8) + (0xff & bitmask)));
+                hasPreferencesList.add(this);
                 portBits.add(this);
                 config.add(this);
             }
@@ -1503,7 +1505,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
                 this.def = def;
                 loadPreference();
                 getPrefs().addPreferenceChangeListener(this);
-//                hasPreferencesList.appendCopy(this);
+//                hasPreferencesList.add(this);
             }
 
             @Override
@@ -1561,7 +1563,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
                 hiZKey = "CochleaAMS1c.Biasgen.TriStateableCPLDBit." + name + ".hiZEnabled";
                 loadPreference();
                 getPrefs().addPreferenceChangeListener(this);
-//                hasPreferencesList.appendCopy(this);
+//                hasPreferencesList.add(this);
             }
 
             /**
@@ -1616,7 +1618,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
                 key = "CochleaAMS1c.Biasgen.CPLDInt." + name;
                 loadPreference();
                 getPrefs().addPreferenceChangeListener(this);
-//                hasPreferencesList.appendCopy(this);
+//                hasPreferencesList.add(this);
             }
 
             @Override
