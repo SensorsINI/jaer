@@ -41,6 +41,10 @@ import net.sf.jaer.util.TobiLogger;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Iterator;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -61,9 +65,13 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class Info extends EventFilter2D implements FrameAnnotater, PropertyChangeListener, Observer {
 
-    private final DateFormat timeFormat = new SimpleDateFormat("k:mm:ss.S"); //DateFormat.getTimeInstance();
-    private final DateFormat dateFormat = DateFormat.getDateInstance();
-    private final Calendar calendar = Calendar.getInstance();
+    private AEFileInputStreamInterface aeFileInputStream = null; // current recorded file input stream
+    private DateTimeFormatter dateTimeFormatter=DateTimeFormatter.ISO_DATE_TIME;
+    private DateTimeFormatter timeFormat=DateTimeFormatter.ISO_TIME;
+    private DateTimeFormatter dateFormat=DateTimeFormatter.ISO_DATE;
+//    private final DateFormat timeFormat = new SimpleDateFormat("k:mm:ss.SZ"); //DateFormat.getTimeInstance();
+//    private final DateFormat dateFormat = DateFormat.getDateInstance();
+//    private final Calendar calendar = Calendar.getInstance();
     private boolean analogClock = getPrefs().getBoolean("Info.analogClock", true);
     private boolean digitalClock = getPrefs().getBoolean("Info.digitalClock", true);
     private boolean date = getPrefs().getBoolean("Info.date", true);
@@ -340,7 +348,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             gl.glPopMatrix();
         }
 
-        synchronized private void initFromAEFileInputStream(AEFileInputStream fis) {
+        synchronized private void initFromAEFileInputStream(AEFileInputStreamInterface fis) {
+            aeFileInputStream = fis;
             endTimeMs = (AEConstants.TICK_DEFAULT_US * fis.getFirstTimestamp()) / 1000;
             endTimeMs = (AEConstants.TICK_DEFAULT_US * fis.getLastTimestamp()) / 1000;
             if (endTimeMs < startTimeMs) {
@@ -367,7 +376,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      */
     public Info(AEChip chip) {
         super(chip);
-        calendar.setLenient(true); // speed up calendar
         xyTypeFilter = new XYTypeFilter(chip);
         typedEventRateEstimator = new TypedEventRateEstimator(chip);
         typedEventRateEstimator.getSupport().addPropertyChangeListener(EventRateEstimator.EVENT_RATE_UPDATE, this);
@@ -415,15 +423,18 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 log.info("timestamp wrap event received by " + this + " from " + evt.getSource() + " oldValue=" + evt.getOldValue() + " newValue=" + evt.getNewValue() + ", wrappingCorrectionMs will increase on next packet");
             } else if (evt.getPropertyName().equals(AEInputStream.EVENT_INIT)) {
                 log.info("EVENT_INIT recieved, signaling new input stream");
-                AEFileInputStream fis = (AEFileInputStream) (evt.getSource());
+                aeFileInputStream = (AEFileInputStream) (evt.getSource());
                 for (RateHistory r : rateHistories.values()) {
-                    r.initFromAEFileInputStream(fis);
+                    r.initFromAEFileInputStream(aeFileInputStream);
                 }
             } else if (evt.getPropertyName().equals(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP)) {
                 //                rateHistory.clear();
             }
         } else if (evt.getSource() instanceof AEViewer) {
-            if (evt.getPropertyName().equals(AEViewer.EVENT_FILEOPEN)) { // TODO don't getString this because AEViewer doesn't refire event from AEPlayer and we don't getString this on initial fileopen because this filter has not yet been run so we have not added ourselves to the viewer
+            if (evt.getPropertyName().equals(AEViewer.EVENT_FILEOPEN)) { // TODO don't get this because AEViewer doesn't refire event from AEPlayer and we don't get this on initial fileopen because this filter has not yet been run so we have not added ourselves to the viewer
+                // new value is file name
+                aeFileInputStream=chip.getAeViewer().getAePlayer().getAEInputStream();
+                getAbsoluteStartingTimeMsFromFile();
                 for (RateHistory r : rateHistories.values()) {
                     r.clear();
                 }
@@ -481,9 +492,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         if (player != null) {
             AEFileInputStreamInterface in = (player.getAEInputStream());
             if (in != null) {
+                log.info("added ourselves for PropertyChangeEvents from " + in);
                 in.getSupport().addPropertyChangeListener(this);
                 dataFileTimestampStartTimeUs = in.getFirstTimestamp();
-                log.info("added ourselves for PropertyChangeEvents from " + in);
                 absoluteStartTimeMs = in.getAbsoluteStartingTimeMs();
             }
         }
@@ -574,9 +585,15 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     private void drawClock(GL2 gl, long t) {
         final int radius = 20, hourLen = 10, minLen = 18, secLen = 7, msLen = 19;
-        calendar.setTimeInMillis(t);
-        final int hour = calendar.get(Calendar.HOUR);
-        final int hourofday = calendar.get(Calendar.HOUR_OF_DAY);
+        Instant instant=Instant.ofEpochMilli(t);
+        ZonedDateTime zdt=null;
+        if(aeFileInputStream!=null && aeFileInputStream.getZoneId()!=null){
+            zdt=ZonedDateTime.ofInstant(instant, aeFileInputStream.getZoneId());
+        }else{
+            zdt=ZonedDateTime.ofInstant(instant, ZoneId.systemDefault());
+        }
+        final int hour = zdt.getHour()%12;
+        final int hourofday = zdt.getHour();
 
         if ((hourofday > 18) || (hourofday < 6)) {
             gl.glColor3f(.5f, .5f, 1);
@@ -605,7 +622,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 gl.glLineWidth(1f);
                 gl.glBegin(GL.GL_LINES);
                 gl.glVertex2f(0, 0);
-                double a = (2 * Math.PI * calendar.get(Calendar.MILLISECOND)) / 1000;
+                double a = (2 * Math.PI * zdt.getNano()/100000) / 1000;
                 float x = msLen * (float) Math.sin(a);
                 float y = msLen * (float) Math.cos(a);
                 gl.glVertex2f(x, y);
@@ -615,7 +632,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 gl.glLineWidth(2f);
                 gl.glBegin(GL.GL_LINES);
                 gl.glVertex2f(0, 0);
-                a = (2 * Math.PI * calendar.get(Calendar.SECOND)) / 60;
+                a = (2 * Math.PI * zdt.getSecond()) / 60;
                 x = secLen * (float) Math.sin(a);
                 y = secLen * (float) Math.cos(a);
                 gl.glVertex2f(x, y);
@@ -625,7 +642,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 gl.glLineWidth(4f);
                 gl.glBegin(GL.GL_LINES);
                 gl.glVertex2f(0, 0);
-                int minute = calendar.get(Calendar.MINUTE);
+                int minute = zdt.getMinute();
                 a = (2 * Math.PI * minute) / 60;
                 x = minLen * (float) Math.sin(a);
                 y = minLen * (float) Math.cos(a); // y= + when min=0, pointing at noon/midnight on clock
@@ -649,9 +666,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             gl.glPushMatrix();
             gl.glRasterPos3f(0, 0, 0);
             GLUT glut = chip.getCanvas().getGlut();
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, timeFormat.format(calendar.getTime()) + " ");
             if (date) {
-                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, dateFormat.format(calendar.getTime()));
+                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, dateTimeFormatter.format(zdt));
+            }else{
+                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, timeFormat.format(zdt));
             }
             gl.glPopMatrix();
         }
@@ -846,14 +864,14 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public void setUseLocalTimeZone(boolean useLocalTimeZone) {
         this.useLocalTimeZone = useLocalTimeZone;
         getPrefs().putBoolean("Info.useLocalTimeZone", useLocalTimeZone);
-        if (!useLocalTimeZone) {
-            TimeZone tz = TimeZone.getTimeZone("GMT");
-            calendar.setTimeZone(tz);
-            timeFormat.setTimeZone(tz);
-        } else {
-            calendar.setTimeZone(TimeZone.getDefault());
-            timeFormat.setTimeZone(TimeZone.getDefault()); // don't know why we have to this too
-        }
+//        if (!useLocalTimeZone) {
+//            TimeZone tz = TimeZone.getTimeZone("GMT");
+//            calendar.setTimeZone(tz);
+//            timeFormat.setTimeZone(tz);
+//        } else {
+//            calendar.setTimeZone(TimeZone.getDefault());
+//            timeFormat.setTimeZone(TimeZone.getDefault()); // don't know why we have to this too
+//        }
     }
 
     public int getTimeOffsetMs() {
