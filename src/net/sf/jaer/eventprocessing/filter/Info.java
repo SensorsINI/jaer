@@ -68,15 +68,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private AEFileInputStreamInterface aeFileInputStream = null; // current recorded file input stream
     private DateTimeFormatter dateTimeFormatter=DateTimeFormatter.ISO_DATE_TIME;
     private DateTimeFormatter timeFormat=DateTimeFormatter.ISO_TIME;
-    private DateTimeFormatter dateFormat=DateTimeFormatter.ISO_DATE;
-//    private final DateFormat timeFormat = new SimpleDateFormat("k:mm:ss.SZ"); //DateFormat.getTimeInstance();
-//    private final DateFormat dateFormat = DateFormat.getDateInstance();
-//    private final Calendar calendar = Calendar.getInstance();
     private boolean analogClock = getPrefs().getBoolean("Info.analogClock", true);
     private boolean digitalClock = getPrefs().getBoolean("Info.digitalClock", true);
     private boolean date = getPrefs().getBoolean("Info.date", true);
     private boolean absoluteTime = getPrefs().getBoolean("Info.absoluteTime", true);
-    private boolean useLocalTimeZone = getPrefs().getBoolean("Info.useLocalTimeZone", true);
     private int timeOffsetMs = getPrefs().getInt("Info.timeOffsetMs", 0);
     private float timestampScaleFactor = getPrefs().getFloat("Info.timestampScaleFactor", 1);
     private float eventRateScaleMax = getPrefs().getFloat("Info.eventRateScaleMax", 1e5f);
@@ -384,12 +379,11 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         fc.add(xyTypeFilter);
         fc.add(typedEventRateEstimator);
         setEnclosedFilterChain(fc);
-        setUseLocalTimeZone(useLocalTimeZone);
         setPropertyTooltip("analogClock", "show normal circular clock");
-        setPropertyTooltip("digitalClock", "show digital clock");
+        setPropertyTooltip("digitalClock", "show digital clock; includes timezone as last component of time (e.g. -0800) if availble from file or local computer");
         setPropertyTooltip("date", "show date");
         setPropertyTooltip("absoluteTime", "enable to show absolute time, disable to show timestmp time (usually relative to start of recording");
-        setPropertyTooltip("useLocalTimeZone", "if enabled, time will be displayed in your timezone, e.g. +1 hour in Zurich relative to GMT; if disabled, time will be displayed in GMT");
+        setPropertyTooltip("showTimeAsEventTimestamp", "if enabled, time will be displayed in your timezone, e.g. +1 hour in Zurich relative to GMT; if disabled, time will be displayed in GMT");
         setPropertyTooltip("timeOffsetMs", "add this time in ms to the displayed time");
         setPropertyTooltip("timestampScaleFactor", "scale timestamps by this factor to account for crystal offset");
         setPropertyTooltip("eventRateScaleMax", "scale event rates to this maximum");
@@ -855,23 +849,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      */
     public void doResetTime() {
         resetTimeEnabled = true;
-    }
-
-    public boolean isUseLocalTimeZone() {
-        return useLocalTimeZone;
-    }
-
-    public void setUseLocalTimeZone(boolean useLocalTimeZone) {
-        this.useLocalTimeZone = useLocalTimeZone;
-        getPrefs().putBoolean("Info.useLocalTimeZone", useLocalTimeZone);
-//        if (!useLocalTimeZone) {
-//            TimeZone tz = TimeZone.getTimeZone("GMT");
-//            calendar.setTimeZone(tz);
-//            timeFormat.setTimeZone(tz);
-//        } else {
-//            calendar.setTimeZone(TimeZone.getDefault());
-//            timeFormat.setTimeZone(TimeZone.getDefault()); // don't know why we have to this too
-//        }
     }
 
     public int getTimeOffsetMs() {
