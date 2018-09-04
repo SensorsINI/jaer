@@ -292,6 +292,11 @@ public class DavisCNNPureJava extends AbstractDavisCNN {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
+    @Override
+    public void processAPSDVSFrameArray(APSDVSFrame frame, long[][][] array) {
+        throw new UnsupportedOperationException("Not supported for pure java CNN engine."); 
+    }
+
  
 
     abstract public class Layer extends AbstractDavisCNN.Layer {
