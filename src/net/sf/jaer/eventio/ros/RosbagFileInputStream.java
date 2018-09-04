@@ -113,7 +113,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private int nextMessageNumber = 0, numMessages = 0;
 
     private long absoluteStartingTimeMs = 0; // in system time since 1970 in ms
-   /** The ZoneID of this file as parsed from the filename */
+   /** The ZoneID of this file; for ROS bag files there is no recorded time zone so the zoneId is systemDefault() */
     private ZoneId zoneId=ZoneId.systemDefault();
     private FileChannel channel = null;
 
@@ -773,6 +773,10 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         nonMonotonicTimestampExceptionsChecked = yes;
     }
 
+    /** Returns starting time of file since epoch, in UTC time 
+     * 
+     * @return the time in ms since epoch (1970)
+     */
     @Override
     public long getAbsoluteStartingTimeMs() {
         return bagFile.getStartTime().getTime();
