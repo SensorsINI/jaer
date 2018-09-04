@@ -28,6 +28,7 @@ import javax.swing.DefaultListModel;
 import javax.swing.InputMap;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.ProgressMonitor;
@@ -123,8 +124,10 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 return;
             }
             if (containsClass(chosenClassesListModel, o)) {
-                log.warning("In adding class to chosen class list, chosen classes already contains " + o.toString() + "; ignoring");
-                return;
+                boolean addIt = checkIfAddDuplicate(o);
+                if (!addIt) {
+                    return;
+                }
             }
             int last = chosenClassesListModel.getSize() - 1;
             chosenClassesListModel.add(last + 1, o);
@@ -195,7 +198,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                     if (progressMonitor.isCanceled() || worker.isDone()) {
                         if (progressMonitor.isCanceled()) {
                             worker.cancel(true);
-                        } 
+                        }
                     }
                 }
                 if ((evt != null) && evt.getNewValue().equals(SwingWorker.StateValue.DONE)) {
@@ -956,13 +959,22 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             return;
         }
         if (containsClass(chosenClassesListModel, o)) {
-            log.warning("list already contains " + o.toString() + "; ignoring");
-            return;
+            boolean addIt = checkIfAddDuplicate(o);
+            if (!addIt) {
+                return;
+            }
         }
         int last = chosenClassesListModel.getSize() - 1;
         chosenClassesListModel.add(last + 1, o);
         classJList.setSelectedIndex(last + 1);
     }//GEN-LAST:event_addClassButtonActionPerformed
+
+    private boolean checkIfAddDuplicate(Object o) {
+        int retVal = JOptionPane.showOptionDialog(this,
+                "List already contains " + o.toString() + "; add it anyway?", "Confirm addition",
+                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, new String[]{"Yes", "No"}, "Yes");
+        return retVal == JOptionPane.YES_OPTION;
+    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JScrollPane ClassDescSP;
