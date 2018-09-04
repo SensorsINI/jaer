@@ -4826,7 +4826,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         dataFileVersionNum = "2.0";
 
         String dateString
-                = AEDataFile.DATE_FORMAT.format(new Date());
+                = AEDataFile.DATE_FORMAT.format(new Date()); // uses local time zone on this computer (must be set correctly to be able to find true local time of recording later)
         String className
                 = chip.getClass().getSimpleName();
         int suffixNumber = 0;
