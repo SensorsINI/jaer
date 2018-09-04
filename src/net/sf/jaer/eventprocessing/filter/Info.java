@@ -434,6 +434,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 }
             } else if (evt.getPropertyName().equals(AEViewer.EVENT_ACCUMULATE_ENABLED)) {
                 resetAccumulatedStatistics();
+            }else if (evt.getPropertyName().equals(AEViewer.EVENT_PLAYMODE)) {
+                if(AEViewer.PlayMode.valueOf((String)evt.getNewValue())==AEViewer.PlayMode.LIVE){
+                    aeFileInputStream=null; // TODO not best coding; forces local timezone for live playback
+                }
             }
         } else if (evt.getSource() instanceof EventRateEstimator) {
             if (evt.getPropertyName().equals(EventRateEstimator.EVENT_RATE_UPDATE)) {
