@@ -41,8 +41,10 @@ public interface AEDataFile {
     public static final String DATA_FILE_FORMAT_HEADER = "!AER-DAT";
     /** The most recent format version number string */
     public static final String DATA_FILE_VERSION_NUMBER = "2.0";
+    /** The date/time/timezone format for filenames */
+    static final String YYYY_M_MDD_TH_HMMSS_Z = "yyyy-MM-dd'T'HH-mm-ssZ";
     /** Format used for log file names */
-    public static DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ"); //e.g. Tmpdiff128-   2007-04-04T11-32-21-0700    -0 ants molting swarming.dat
+    public static DateFormat DATE_FORMAT = new SimpleDateFormat(YYYY_M_MDD_TH_HMMSS_Z); //e.g. Tmpdiff128-   2007-04-04T11-32-21-0700    -0 ants molting swarming.dat
     /** end of line (EOL) ending (the "windows type") used in data files */
     public static final byte[] EOL = new byte[]{'\r','\n'};
 }

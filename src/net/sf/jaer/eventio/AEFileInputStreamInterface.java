@@ -12,6 +12,7 @@ import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
+import java.time.ZoneId;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 
@@ -72,7 +73,12 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
      *
      * @return the time logging was started in ms since 1970
      */
-    long getAbsoluteStartingTimeMs();
+    public long getAbsoluteStartingTimeMs();
+
+    /**
+     * Returns the time zone ZoneID of this file
+     */
+    public ZoneId getZoneId();
 
     /**
      * @return the duration of the file in us.
@@ -94,15 +100,17 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
      * certain events such as "rewind".
      */
     PropertyChangeSupport getSupport();
-    
+
     /**
      * Adds a listener for property changes
+     *
      * @param listener the listener
      */
     public void addPropertyChangeListener(PropertyChangeListener listener);
 
     /**
      * Removes a listener
+     *
      * @param listener the listener
      */
     public void removePropertyChangeListener(PropertyChangeListener listener);
