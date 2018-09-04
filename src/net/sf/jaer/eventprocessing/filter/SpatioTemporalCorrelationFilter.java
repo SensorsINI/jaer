@@ -6,6 +6,7 @@ package net.sf.jaer.eventprocessing.filter;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.beans.PropertyChangeEvent;
 import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
@@ -16,6 +17,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
@@ -64,7 +66,7 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
     private int subsampleBy = getInt("subsampleBy", 0);
 
     int[][] lastTimesMap;
-    private int ts = 0; // used to reset filter
+    private int ts = 0, lastTimestamp = DEFAULT_TIMESTAMP; // used to reset filter
 
     public SpatioTemporalCorrelationFilter(AEChip chip) {
         super(chip);
@@ -80,7 +82,8 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         setPropertyTooltip(adap, "entropyReductionLowLimit", "if entropy reduction from filtering is below this limit, decrease dt");
         setPropertyTooltip(adap, "entropyReductionHighLimit", "if entropy reduction from filtering is above this limit, increase dt");
         setPropertyTooltip(adap, "dtChangeFraction", "fraction by which dt is increased/decreased per packet if entropyReduction is too low/high");
-    }
+         getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
+   }
 
     /**
      * filters in to out. if filtering is enabled, the number of out may be less
@@ -113,7 +116,10 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
             }
             totalEventCount++;
             int ts = e.timestamp;
-
+            if(ts<lastTimestamp){
+                resetFilter(); // handle rewind TODO check if this breaks with nonmonotonic timestamps
+            }
+            lastTimestamp=ts;
             final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy);
             if ((x < 0) || (x >= sx) || (y < 0) || (y >= sy)) {
                 e.setFilteredOut(true);
@@ -188,7 +194,7 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         nBinsTotal = nBinsX * nBinsY;
         activityHistInput = new int[nBinsX + 1][nBinsY + 1];
         activityHistFiltered = new int[nBinsX + 1][nBinsY + 1];
-
+        lastTimestamp = DEFAULT_TIMESTAMP;
     }
 
     public Object getFilterState() {
@@ -380,6 +386,16 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         }
     }
 
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        super.propertyChange(evt); 
+        if(evt.getPropertyName()==AEInputStream.EVENT_REWOUND){
+            resetFilter();
+        }
+    }
+    
+    
+
     private void resetActivityHistograms() {
         for (int[] i : activityHistInput) {
             Arrays.fill(i, 0);
@@ -405,7 +421,7 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         if (old != activityBinDimBits) {
             allocateMaps(chip);
         }
-        putInt("activityBinDimBits",activityBinDimBits);
+        putInt("activityBinDimBits", activityBinDimBits);
     }
 
     /**
