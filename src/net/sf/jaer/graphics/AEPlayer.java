@@ -19,6 +19,7 @@ import javax.swing.SwingWorker;
 import javax.swing.filechooser.FileFilter;
 
 import com.jogamp.opengl.GLException;
+import java.time.ZoneId;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEDataFile;
@@ -200,6 +201,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     @Override
     public void setCurrentStartTimestamp(int currentStartTimestamp) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public ZoneId getZoneId() {
+        if(aeFileInputStream!=null) return aeFileInputStream.getZoneId(); else return ZoneId.systemDefault();
     }
 
     public class FileDeleter extends KeyAdapter implements PropertyChangeListener {
