@@ -52,6 +52,7 @@ import java.io.ObjectOutputStream;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.FileChannel;
 import java.sql.Timestamp;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -112,6 +113,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private int nextMessageNumber = 0, numMessages = 0;
 
     private long absoluteStartingTimeMs = 0; // in system time since 1970 in ms
+   /** The ZoneID of this file as parsed from the filename */
+    private ZoneId zoneId=ZoneId.systemDefault();
     private FileChannel channel = null;
 
 //    private static final String[] TOPICS = {"/dvs/events"};\
@@ -138,6 +141,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private MutableBoolean[] hasDvsApsImu = {hasDvs, hasAps, hasImu};
     private AEFifo[] aeFifos = {dvsFifo, apsFifo, imuFifo};
     private int MAX_RAW_EVENTS_BUFFER_SIZE=1000000;
+
 
     private enum RosbagFileType {
         RPG(RPG_TOPIC_HEADER), MVSEC(MVSEC_TOPIC_HEADER), Unknown("???");
@@ -772,6 +776,11 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     @Override
     public long getAbsoluteStartingTimeMs() {
         return bagFile.getStartTime().getTime();
+    }
+
+    @Override
+    public ZoneId getZoneId() {
+        return zoneId; // TODO implement setting time zone from file
     }
 
     @Override
