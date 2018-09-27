@@ -122,6 +122,7 @@ MA 02110-1301  USA
             <artifact name="opencv" type="jar" ext="jar" m:classifier="linux-x86_64"/>
             <artifact name="opencv" type="jar" ext="jar" m:classifier="linux-x86"/>
         </dependency>
+        <!--following is for the official org.opencv.core classes from nu.pattern-->
         <dependency org="org.openpnp" name="opencv" rev="3.2.0-1" />
         <!--<dependency org="org.openpnp" name="opencv" rev="2.4.13-0" />-->
         <!--<dependency org="org.bytedeco.javacpp-presets" name="opencv" rev="3.4.0-1.4" />-->
@@ -140,7 +141,7 @@ MA 02110-1301  USA
         <dependency org="org.jblas" name="jblas" rev="1.2.4" />    
         <!--used in telluride for communicating to foosball-->    
         <dependency org="redis.clients" name="jedis" rev="2.9.0" />
-  
+        
     </dependencies>
 </ivy-module>
 
