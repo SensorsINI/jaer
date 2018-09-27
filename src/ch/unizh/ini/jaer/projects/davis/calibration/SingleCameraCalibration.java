@@ -33,7 +33,11 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
+import com.esotericsoftware.yamlbeans.YamlWriter;
 import java.awt.Cursor;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.logging.Logger;
 import javax.swing.SwingWorker;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -49,6 +53,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.TextRendererScale;
 
 import nu.pattern.OpenCV;
+import org.bytedeco.javacpp.opencv_core;
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
@@ -58,6 +63,7 @@ import org.opencv.core.TermCriteria;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.core.Mat;
+import org.opencv.core.Point;
 
 /**
  * Calibrates a single camera using DAVIS frames and OpenCV calibration methods.
@@ -67,7 +73,7 @@ import org.opencv.core.Mat;
 @Description("Calibrates a single camera using DAVIS frames and OpenCV calibration methods")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class SingleCameraCalibration extends EventFilter2D implements FrameAnnotater, Observer /* observes this to get informed about our size */ {
-    
+
     static {
         String jvmVersion = System.getProperty("sun.arch.data.model");
 
@@ -80,7 +86,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             // System.exit(1);
         }
     }
-    
+
     private int sx; // set to chip.getSizeX()
     private int sy; // chip.getSizeY()
     private int lastTimestamp = 0;
@@ -108,7 +114,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private String fileBaseName = "";
 
     //opencv matrices
-    private MatOfPoint2f corners;  
+    private MatOfPoint2f corners;
     private ArrayList<Mat> allImagePoints;
     private ArrayList<Mat> allObjectPoints;
     private Mat cameraMatrix;
@@ -289,8 +295,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         Mat img = input.reshape(0, sy);
         Mat undistortedImg = new Mat();
         try {
-            Imgproc.undistort(img, undistortedImg, cameraMatrix, distortionCoefs);            
-        } catch(RuntimeException e) {
+            Imgproc.undistort(img, undistortedImg, cameraMatrix, distortionCoefs);
+        } catch (RuntimeException e) {
             log.warning(e.toString());
             return src;
         }
@@ -342,7 +348,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 Mat imgSave = new Mat(sy, sx, CvType.CV_8U);
                 Core.flip(imgIn, imgSave, 0);
                 String filename = chip.getName() + "-" + fileBaseName + "-" + String.format("%03d", imageCounter) + ".jpg";
-                String fullFilePath = dirPath + File.separator + filename ;                
+                String fullFilePath = dirPath + File.separator + filename;
                 Imgcodecs.imwrite(fullFilePath, imgSave);
                 log.info("wrote " + fullFilePath);
                 //save depth sensor image if enabled
@@ -355,8 +361,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 }
                 //store image points
                 if (imageCounter == 0 || allObjectPoints == null || allImagePoints == null) {
-                    allImagePoints = new ArrayList<Mat>(); 
-                    allObjectPoints = new ArrayList<Mat>(); 
+                    allImagePoints = new ArrayList<Mat>();
+                    allObjectPoints = new ArrayList<Mat>();
                 }
                 allImagePoints.add(corners);
                 //create and store object points, which are just coordinates in mm of corners of pattern as we know they are drawn on the
@@ -398,56 +404,62 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
         if (patternFound && realtimePatternDetectionEnabled) {
             int n = corners.rows();
-            int c = 3;
-            int w = patternWidth;
-            int h = patternHeight;
-            //log.info(corners.toString()+" rows="+n+" cols="+corners.cols());
-            //draw lines
-            gl.glLineWidth(2f);
-            gl.glColor3f(0, 0, 1);
-            //log.info("width="+w+" height="+h);
-            gl.glBegin(GL.GL_LINES);
-            for (int i = 0; i < h; i++) {
-                float y0 =  (float) corners.toList().get(w * i).x;
-                float y1 =  (float) corners.toList().get(w * (i + 1) - 1).x;
-                float x0 =  (float) corners.toList().get(w * i).y;
-                float x1 =  (float) corners.toList().get(w * (i + 1) - 1).y;
+            if (n < 1) {
+                log.warning("no data found to show corners");
+
+            } else {
+                int c = 3;
+                int w = patternWidth;
+                int h = patternHeight;
+                //log.info(corners.toString()+" rows="+n+" cols="+corners.cols());
+                //draw lines
+                gl.glLineWidth(2f);
+                gl.glColor3f(0, 0, 1);
+                final List<Point> toList = corners.toList();
+                //log.info("width="+w+" height="+h);                
+                gl.glBegin(GL.GL_LINES);
+                for (int i = 0; i < h; i++) {
+                    float y0 = (float) toList.get(w * i).x;
+                    float y1 = (float) toList.get(w * (i + 1) - 1).x;
+                    float x0 = (float) toList.get(w * i).y;
+                    float x1 = (float) toList.get(w * (i + 1) - 1).y;
 //                float y0 = corners.getFloatBuffer().get(2 * w * i);
 //                float y1 = corners.getFloatBuffer().get((2 * w * (i + 1)) - 2);
 //                float x0 = corners.getFloatBuffer().get((2 * w * i) + 1);
 //                float x1 = corners.getFloatBuffer().get((2 * w * (i + 1)) - 1);
-                //log.info("i="+i+" x="+x+" y="+y);
-                gl.glVertex2f(y0, x0);
-                gl.glVertex2f(y1, x1);
-            }
-            for (int i = 0; i < w; i++) {
-                float y0 =  (float) corners.toList().get(i).x;
-                float y1 =  (float) corners.toList().get((w * (h - 1)) + i).x;
-                float x0 =  (float) corners.toList().get(i).y;
-                float x1 =  (float) corners.toList().get((w * (h - 1)) + i).y;                
+                    //log.info("i="+i+" x="+x+" y="+y);
+                    gl.glVertex2f(y0, x0);
+                    gl.glVertex2f(y1, x1);
+                }
+                for (int i = 0; i < w; i++) {
+                    float y0 = (float) toList.get(i).x;
+                    float y1 = (float) toList.get((w * (h - 1)) + i).x;
+                    float x0 = (float) toList.get(i).y;
+                    float x1 = (float) toList.get((w * (h - 1)) + i).y;
 //                float y0 = corners.getFloatBuffer().get(2 * i);
 //                float y1 = corners.getFloatBuffer().get(2 * ((w * (h - 1)) + i));
 //                float x0 = corners.getFloatBuffer().get((2 * i) + 1);
 //                float x1 = corners.getFloatBuffer().get((2 * ((w * (h - 1)) + i)) + 1);
-                //log.info("i="+i+" x="+x+" y="+y);
-                gl.glVertex2f(y0, x0);
-                gl.glVertex2f(y1, x1);
+                    //log.info("i="+i+" x="+x+" y="+y);
+                    gl.glVertex2f(y0, x0);
+                    gl.glVertex2f(y1, x1);
+                }
+                gl.glEnd();
+                //draw corners
+                gl.glLineWidth(2f);
+                gl.glColor3f(1, 1, 0);
+                gl.glBegin(GL.GL_LINES);
+                for (int i = 0; i < n; i++) {
+                    float y = (float) toList.get(i).x;
+                    float x = (float) toList.get(i).y;
+                    //log.info("i="+i+" x="+x+" y="+y);
+                    gl.glVertex2f(y, x - c);
+                    gl.glVertex2f(y, x + c);
+                    gl.glVertex2f(y - c, x);
+                    gl.glVertex2f(y + c, x);
+                }
+                gl.glEnd();
             }
-            gl.glEnd();
-            //draw corners
-            gl.glLineWidth(2f);
-            gl.glColor3f(1, 1, 0);
-            gl.glBegin(GL.GL_LINES);
-            for (int i = 0; i < n; i++) {
-                float y = (float) corners.toList().get(i).x;
-                float x = (float) corners.toList().get(i).y;
-                //log.info("i="+i+" x="+x+" y="+y);
-                gl.glVertex2f(y, x - c);
-                gl.glVertex2f(y, x + c);
-                gl.glVertex2f(y - c, x);
-                gl.glVertex2f(y + c, x);
-            }
-            gl.glEnd();
         }
         /**
          * The geometry and mathematics of the pinhole camera[edit]
@@ -661,7 +673,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         }
         MatOfPoint2f dst = new MatOfPoint2f();
         MatOfPoint2f pixelArray = new MatOfPoint2f(fp); // make wide 2 channel matrix of source event x,y
-         Imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
+        Imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
         isUndistortedAddressLUTgenerated = true;
         // get the camera matrix elements (focal lengths and principal point)
 //        DoubleIndexer k = getCameraMatrix().createIndexer();
@@ -693,7 +705,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         }
 
 //        DoubleBufferIndexer cameraMatrixIndexer = cameraMatrix.createIndexer();
-
         // Average focal lengths for X and Y axis (fx, fy).
         focalLengthPixels = (float) (cameraMatrix.get(0, 0)[0] + cameraMatrix.get(1, 1)[0]) / 2;
 
@@ -848,26 +859,33 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      * @param sMat the Mat to write
      */
     public void serializeMat(String dir, String name, Mat sMat) {
-        String fn = dir + File.separator + name + ".xml";
+        try {
+            String fn = dir + File.separator + name + ".xml";
 
-//        opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.WRITE);
-//        opencv_core.write(storage, name, sMat);
-//        storage.release();
+            // convert org.opencv.core.Mat to opencv_core.Mat to use FileStorage class; see https://github.com/bytedeco/javacpp/issues/38
+            opencv_core.Mat bdMat = new opencv_core.Mat() { { address = sMat.getNativeObjAddr(); } };
+            opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.WRITE);
+            storage.write(name, bdMat);
+            storage.release();
 
-        log.info("saved in " + fn);
+            log.info("saved calibration as yaml in " + fn);
+        } catch (Exception ex) {
+            Logger.getLogger(SingleCameraCalibration.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     public Mat deserializeMat(String dir, String name) {
         String fn = dirPath + File.separator + name + ".xml";
-        Mat mat = new Mat();
+        opencv_core.Mat bdMat = new opencv_core.Mat();
 
-//        opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.READ);
-//        opencv_core.read(storage.get(name), mat);
-//        storage.release();
-
-        if (mat.empty()) {
+        opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.READ);
+        opencv_core.read(storage.get(name), bdMat);
+        storage.release();
+        if (bdMat.empty()) {
             return null;
         }
+        // convert to org.opencv.core.Mat to return; see https://github.com/bytedeco/javacpp/issues/38
+        org.opencv.core.Mat mat=new org.opencv.core.Mat(bdMat.address());
         return mat;
     }
 
@@ -887,7 +905,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         int c = 0;
         for (int i = 0; i < M.rows(); i++) {
             for (int j = 0; j < M.cols(); j++) {
-                sb.append(String.format("%10.5f\t", M.get(i,j)[0]));
+                sb.append(String.format("%10.5f\t", M.get(i, j)[0]));
                 c++;
             }
             sb.append("\n");
@@ -1076,8 +1094,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             generateUndistortedAddressLUT();
         }
         int uidx = 2 * (e.y + (sy * e.x));
-        if(uidx>undistortedAddressLUT.length-1){
-            log.warning("bad DVS address, outside of LUT table, filtering out; event ="+e);
+        if (uidx > undistortedAddressLUT.length - 1) {
+            log.warning("bad DVS address, outside of LUT table, filtering out; event =" + e);
             e.setFilteredOut(true);
             return false;
         }
