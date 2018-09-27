@@ -541,7 +541,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         filterChain.reset();
         patternFound = false;
         imageCounter = 0;
-        principlePoint = null;
         autocaptureCalibrationFramesEnabled = false;
         nAcqFrames = 0;
     }
@@ -1177,7 +1176,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             if (chip.getNumPixels() > 0) {
                 sx = chip.getSizeX();
                 sy = chip.getSizeY(); // might not yet have been set in constructor
-                loadCalibration();
+                if(!calibrated) loadCalibration();
             }
         }
     }
