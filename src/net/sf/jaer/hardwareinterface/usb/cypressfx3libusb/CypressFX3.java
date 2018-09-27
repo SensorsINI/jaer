@@ -5,7 +5,6 @@
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx3libusb;
 
-import ch.unizh.ini.jaer.projects.npp.HelloTF;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeSupport;
 import java.nio.ByteBuffer;
@@ -526,7 +525,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	}
 
 	/**
-	 * Check the firmware and logic versions against required ones and display an error if not met.
+	 * Check the firmware and logic versions against exact required ones and display an error if not met.
 	 */
 	protected void checkFirmwareLogic(final int requiredFirmwareVersion, final int requiredLogicRevision)
 		throws HardwareInterfaceException {
@@ -534,14 +533,14 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		// Verify device firmware version and logic revision.
 		final int usbFWVersion = getDID() & 0x00FF;
-		if (usbFWVersion < requiredFirmwareVersion) {
+		if (usbFWVersion != requiredFirmwareVersion) {
 			updateStringBuilder
 				.append(String.format("Device firmware version too old. You have version %d; but at least version %d is required.\n",
 					usbFWVersion, requiredFirmwareVersion));
 		}
 
 		final int logicRevision = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 0);
-		if (logicRevision < requiredLogicRevision) {
+		if (logicRevision != requiredLogicRevision) {
 			updateStringBuilder
 				.append(String.format("Device logic revision too old. You have revision %d; but at least revision %d is required.\n",
 					logicRevision, requiredLogicRevision));

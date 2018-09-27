@@ -101,8 +101,8 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
 
-			checkFirmwareLogic(CochleaFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION_FX3,
-				CochleaFX3HardwareInterface.REQUIRED_LOGIC_REVISION_FX3);
+			//checkFirmwareLogic(CochleaFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION_FX3,
+			//	CochleaFX3HardwareInterface.REQUIRED_LOGIC_REVISION_FX3);
 
 			chipID = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 1);
 
