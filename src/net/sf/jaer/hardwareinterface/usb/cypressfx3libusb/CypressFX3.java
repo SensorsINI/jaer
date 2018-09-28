@@ -535,20 +535,20 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		final int usbFWVersion = getDID() & 0x00FF;
 		if (usbFWVersion != requiredFirmwareVersion) {
 			updateStringBuilder
-				.append(String.format("Device firmware version too old. You have version %d; but at least version %d is required.\n",
+				.append(String.format("Device firmware version incorrect. You have version %d; but version %d is required.\n",
 					usbFWVersion, requiredFirmwareVersion));
 		}
 
 		final int logicRevision = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 0);
 		if (logicRevision != requiredLogicRevision) {
 			updateStringBuilder
-				.append(String.format("Device logic revision too old. You have revision %d; but at least revision %d is required.\n",
+				.append(String.format("Device logic version incorrect. You have version %d; but version %d is required.\n",
 					logicRevision, requiredLogicRevision));
 		}
 
 		if (updateStringBuilder.length() > 0) {
 			updateStringBuilder
-				.append("Please update by following the Flashy upgrade documentation at "+AEViewer.HELP_USER_GUIDE_URL_FLASHY);
+				.append("Please update by following the Flashy documentation at " + AEViewer.HELP_USER_GUIDE_URL_FLASHY);
 
 			final String updateString = updateStringBuilder.toString();
 
