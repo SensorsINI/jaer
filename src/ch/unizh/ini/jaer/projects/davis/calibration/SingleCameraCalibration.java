@@ -8,6 +8,7 @@ package ch.unizh.ini.jaer.projects.davis.calibration;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Cursor;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -18,11 +19,24 @@ import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.SwingWorker;
 
+import org.bytedeco.javacpp.opencv_core;
+import org.opencv.calib3d.Calib3d;
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint2f;
+import org.opencv.core.Point;
+import org.opencv.core.Size;
+import org.opencv.core.TermCriteria;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
 import org.openni.Device;
 import org.openni.DeviceInfo;
 import org.openni.OpenNI;
@@ -33,12 +47,6 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
-import com.esotericsoftware.yamlbeans.YamlWriter;
-import java.awt.Cursor;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.logging.Logger;
-import javax.swing.SwingWorker;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -51,19 +59,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.TextRendererScale;
-
 import nu.pattern.OpenCV;
-import org.bytedeco.javacpp.opencv_core;
-import org.opencv.calib3d.Calib3d;
-import org.opencv.core.Core;
-import org.opencv.core.CvType;
-import org.opencv.core.MatOfPoint2f;
-import org.opencv.core.Size;
-import org.opencv.core.TermCriteria;
-import org.opencv.imgcodecs.Imgcodecs;
-import org.opencv.imgproc.Imgproc;
-import org.opencv.core.Mat;
-import org.opencv.core.Point;
 
 /**
  * Calibrates a single camera using DAVIS frames and OpenCV calibration methods.
@@ -80,7 +76,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         try {
             OpenCV.loadShared();   // search opencv native library with nu.pattern package.
             System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-            // System.loadLibrary("opencv_ffmpeg320_" + jvmVersion);   // Notice, cannot put the file type extension (.dll) here, it will appendCopy it automatically. 
+            // System.loadLibrary("opencv_ffmpeg320_" + jvmVersion);   // Notice, cannot put the file type extension (.dll) here, it will appendCopy it automatically.
         } catch (UnsatisfiedLinkError e) {
             System.err.println("Native code library failed to load.\n" + e);
             // System.exit(1);
@@ -218,8 +214,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 if (patternFound
                         && (captureTriggered
                         || (autocaptureCalibrationFramesEnabled
-                        && System.currentTimeMillis() - lastAutocaptureTimeMs > autocaptureCalibrationFrameDelayMs
-                        && nAcqFrames < numAutoCaptureFrames))) {
+                        && ((System.currentTimeMillis() - lastAutocaptureTimeMs) > autocaptureCalibrationFrameDelayMs)
+                        && (nAcqFrames < numAutoCaptureFrames)))) {
                     nAcqFrames++;
                     findCurrentCorners(true); // true again find the corner points and saves them
                     captureTriggered = false;
@@ -360,7 +356,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                     }
                 }
                 //store image points
-                if (imageCounter == 0 || allObjectPoints == null || allImagePoints == null) {
+                if ((imageCounter == 0) || (allObjectPoints == null) || (allImagePoints == null)) {
                     allImagePoints = new ArrayList<Mat>();
                     allObjectPoints = new ArrayList<Mat>();
                 }
@@ -416,13 +412,13 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 gl.glLineWidth(2f);
                 gl.glColor3f(0, 0, 1);
                 final List<Point> toList = corners.toList();
-                //log.info("width="+w+" height="+h);                
+                //log.info("width="+w+" height="+h);
                 gl.glBegin(GL.GL_LINES);
                 for (int i = 0; i < h; i++) {
                     float y0 = (float) toList.get(w * i).x;
-                    float y1 = (float) toList.get(w * (i + 1) - 1).x;
+                    float y1 = (float) toList.get((w * (i + 1)) - 1).x;
                     float x0 = (float) toList.get(w * i).y;
-                    float x1 = (float) toList.get(w * (i + 1) - 1).y;
+                    float x1 = (float) toList.get((w * (i + 1)) - 1).y;
 //                float y0 = corners.getFloatBuffer().get(2 * w * i);
 //                float y1 = corners.getFloatBuffer().get((2 * w * (i + 1)) - 2);
 //                float x0 = corners.getFloatBuffer().get((2 * w * i) + 1);
@@ -606,7 +602,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      *
      */
     public void doCalibrate() {
-        if (allImagePoints == null || allObjectPoints == null) {
+        if ((allImagePoints == null) || (allObjectPoints == null)) {
             log.warning("allImagePoints==null || allObjectPoints==null, cannot calibrate. Collect some images first.");
             return;
         }
@@ -857,7 +853,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      * @param name base name of file
      * @param sMat the Mat to write
      */
-    public void serializeMat(String dir, String name, Mat sMat) {
+    public void serializeMat(final String dir, final String name, final Mat sMat) {
         try {
             String fn = dir + File.separator + name + ".xml";
 
@@ -1093,7 +1089,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             generateUndistortedAddressLUT();
         }
         int uidx = 2 * (e.y + (sy * e.x));
-        if (uidx > undistortedAddressLUT.length - 1) {
+        if (uidx > (undistortedAddressLUT.length - 1)) {
             log.warning("bad DVS address, outside of LUT table, filtering out; event =" + e);
             e.setFilteredOut(true);
             return false;
@@ -1176,7 +1172,9 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             if (chip.getNumPixels() > 0) {
                 sx = chip.getSizeX();
                 sy = chip.getSizeY(); // might not yet have been set in constructor
-                if(!calibrated) loadCalibration();
+                if(!calibrated) {
+					loadCalibration();
+				}
             }
         }
     }
