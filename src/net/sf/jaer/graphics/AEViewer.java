@@ -5985,7 +5985,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     protected AEChipRenderer getRenderer() {
         if (chip == null) {
-            throw new NullPointerException("chip instance is null; this should not happen. Something probably went wrong in the constructor. You can try to clear the preferences.");
+            throw new NullPointerException("chip instance is null; this should not happen. Something probably went wrong in the constructor. You can try to clear the preferences. To see earlier exceptions, run the launcher from a shell.");
         }
         return chip.getRenderer();
     }
