@@ -114,6 +114,7 @@ MA 02110-1301  USA
             <artifact name="libusb4java" type="jar" ext="jar" m:classifier="linux-x86"/>
         </dependency>
         <!--TODO sort out opencv and javacv - seems to be multiple versions used in jaer-->
+        <!--TODO the bytedeco wrapper on opencv (opencv_core) is needed in a few places -->
         <dependency org="org.bytedeco.javacpp-presets" name="opencv" rev="3.2.0-1.3" >
             <artifact name="opencv" type="jar" ext="jar"/>
             <artifact name="opencv" type="jar" ext="jar" m:classifier="macosx-x86_64"/>
