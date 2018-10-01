@@ -443,7 +443,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
-            if (!ignoreRewinwdEventFlag && closeOnRewind) {
+            if (!ignoreRewinwdEventFlag && closeOnRewind && getAviOutputStream()!=null) {
                 doCloseFile();
                 JOptionPane.showMessageDialog(chip.getAeViewer(), "Closed file" + lastFileName + " on Rewind event after " + framesWritten + " frames were written");
             }
