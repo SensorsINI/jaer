@@ -45,14 +45,13 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	static public final short PID_FX2 = (short) 0x841B;
 	static public final int REQUIRED_FIRMWARE_VERSION_FX3 = 4;
 	static public final int REQUIRED_FIRMWARE_VERSION_FX2 = 4;
-	static public final int REQUIRED_LOGIC_REVISION_FX3 = 9912;
-	static public final int REQUIRED_LOGIC_REVISION_FX2 = 9912;
+	static public final int REQUIRED_LOGIC_REVISION_FX3 = 16;
+	static public final int REQUIRED_LOGIC_REVISION_FX2 = 16;
 
-	static public final float FX2_USB_CLOCK_FREQ = 30.0f;
-	static public final float FX3_CLOCK_CORRECTION = 1.008f;
-	static public final float FX3_USB_CLOCK_FREQ = 80.0f * FX3_CLOCK_CORRECTION;
-
+	private boolean updatedRealClockValues = false;
+	public float logicClockFreq = 90.0f;
 	public float adcClockFreq = 30.0f;
+	public float usbClockFreq = 30.0f;
 
 	/**
 	 * Starts reader buffer pool thread and enables in endpoints for AEs. This
@@ -64,38 +63,50 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		setAeReader(new RetinaAEReader(this));
 		allocateAEBuffers();
 
-		// Update ADC clock frequency information.
-		if (getPID() == PID_FX2) {
-			adcClockFreq = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 4);
-		}
-		else {
-			adcClockFreq = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 4) * FX3_CLOCK_CORRECTION;
-		}
-
 		getAeReader().startThread(); // arg is number of errors before giving up
 		HardwareInterfaceException.clearException();
 	}
 
+	private void getRealClockValues() {
+		try {
+			final int logicFreq = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 3);
+			final int adcFreq = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 4);
+			final int usbFreq = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 5);
+			final int clockDeviation = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 6);
+
+			logicClockFreq = (float) (logicFreq * (clockDeviation / 1000.0));
+			adcClockFreq = (float) (adcFreq * (clockDeviation / 1000.0));
+			usbClockFreq = (float) (usbFreq * (clockDeviation / 1000.0));
+		}
+		catch (final HardwareInterfaceException e) {
+			// No clock update on failure.
+		}
+
+		CypressFX3.log
+			.info(String.format("Device clock frequencies - Logic: %f, ADC: %f, USB: %f.", logicClockFreq, adcClockFreq, usbClockFreq));
+	}
+
 	@Override
-	protected int adjustHWParam(final short moduleAddr, final short paramAddr, int param) {
-		if ((moduleAddr == FPGA_APS) && (paramAddr == 13)) {
+	protected int adjustHWParam(final short moduleAddr, final short paramAddr, final int param) {
+		if (!updatedRealClockValues) {
+			getRealClockValues();
+			updatedRealClockValues = true;
+		}
+
+		if ((moduleAddr == CypressFX3.FPGA_APS) && (paramAddr == 12)) {
 			// Exposure multiplied by clock.
 			return (int) (param * adcClockFreq);
 		}
 
-		if ((moduleAddr == FPGA_APS) && (paramAddr == 14)) {
-			// FrameDelay multiplied by clock.
+		if ((moduleAddr == CypressFX3.FPGA_APS) && (paramAddr == 13)) {
+			// FrameInterval multiplied by clock.
 			return (int) (param * adcClockFreq);
 		}
 
-		if ((moduleAddr == FPGA_USB) && (paramAddr == 1)) {
+		if ((moduleAddr == CypressFX3.FPGA_USB) && (paramAddr == 1)) {
 			// Early packet delay is 125µs slices on host, but in cycles
 			// @ USB_CLOCK_FREQ on FPGA, so we must multiply here.
-			if (getPID() == PID_FX2) {
-				return (int) (param * (125.0f * FX2_USB_CLOCK_FREQ));
-			}
-
-			return (int) (param * (125.0f * FX3_USB_CLOCK_FREQ));
+			return (int) (param * (125.0f * usbClockFreq));
 		}
 
 		// No change by default.
@@ -125,7 +136,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private int currentTimestamp;
 
 		private int dvsLastY;
-		private boolean dvsGotY;
 		private final boolean dvsInvertXY;
 		private final int dvsSizeX;
 		private final int dvsSizeY;
@@ -133,7 +143,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private static final int APS_READOUT_TYPES_NUM = 2;
 		private static final int APS_READOUT_RESET = 0;
 		private static final int APS_READOUT_SIGNAL = 1;
-		private boolean apsResetRead;
 		private int apsCurrentReadoutType;
 		private int apsRGBPixelOffset;
 		private boolean apsRGBPixelOffsetDirection;
@@ -146,17 +155,21 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private final int apsSizeY;
 
 		private static final int IMU_DATA_LENGTH = 7;
+		private static final int IMU_TYPE_TEMP = 0x01;
+		private static final int IMU_TYPE_GYRO = 0x02;
+		private static final int IMU_TYPE_ACCEL = 0x04;
 		private final short[] imuEvents;
 		private final boolean imuFlipX;
 		private final boolean imuFlipY;
 		private final boolean imuFlipZ;
+		private int imuType;
 		private int imuCount;
 		private byte imuTmpData;
 
 		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
 
-			if (getPID() == PID_FX2) {
+			if (getPID() == DAViSFX3HardwareInterface.PID_FX2) {
 				// FX2 firmware now emulates the same interface as FX3 firmware, so we support it here too.
 				checkFirmwareLogic(DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION_FX2,
 					DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION_FX2);
@@ -188,7 +201,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 			dvsInvertXY = (spiConfigReceive(CypressFX3.FPGA_DVS, (short) 2) & 0x04) != 0;
 
-			final int imuOrientation = spiConfigReceive(CypressFX3.FPGA_IMU, (short) 10);
+			final int imuOrientation = spiConfigReceive(CypressFX3.FPGA_IMU, (short) 1);
 			imuFlipX = (imuOrientation & 0x04) != 0;
 			imuFlipY = (imuOrientation & 0x02) != 0;
 			imuFlipZ = (imuOrientation & 0x01) != 0;
@@ -291,13 +304,14 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										CypressFX3.log.fine("IMU6 Start event received.");
 
 										imuCount = 0;
+										imuType = 0;
 
 										break;
 
 									case 7: // IMU End
 										CypressFX3.log.fine("IMU End event received.");
 
-										if (imuCount == ((2 * RetinaAEReader.IMU_DATA_LENGTH) + 1)) {
+										if (imuCount == (2 * RetinaAEReader.IMU_DATA_LENGTH)) {
 											if (ensureCapacity(buffer, eventCounter + IMUSample.SIZE_EVENTS)) {
 												// Check for buffer space is also done inside writeToPacket().
 												final IMUSample imuSample = new IMUSample(currentTimestamp, imuEvents);
@@ -312,7 +326,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 8: // APS Global Shutter Frame Start
 										CypressFX3.log.fine("APS GS Frame Start event received.");
-										apsResetRead = true;
 
 										initFrame();
 
@@ -320,7 +333,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 9: // APS Rolling Shutter Frame Start
 										CypressFX3.log.fine("APS RS Frame Start event received.");
-										apsResetRead = true;
 
 										initFrame();
 
@@ -330,15 +342,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										CypressFX3.log.fine("APS Frame End event received.");
 
 										for (int j = 0; j < RetinaAEReader.APS_READOUT_TYPES_NUM; j++) {
-											int checkValue = apsSizeX;
-
-											// Check reset read against zero if
-											// disabled.
-											if ((j == RetinaAEReader.APS_READOUT_RESET) && !apsResetRead) {
-												checkValue = 0;
-											}
-
-											if (apsCountX[j] != checkValue) {
+											if (apsCountX[j] != apsSizeX) {
 												CypressFX3.log.severe("APS Frame End: wrong column count [" + j + " - " + apsCountX[j]
 													+ "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
 											}
@@ -381,68 +385,20 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 										break;
 
-									case 14: // APS Global Shutter Frame Start with no Reset Read
-										CypressFX3.log.fine("APS GS NORST Frame Start event received.");
-										apsResetRead = false;
-
-										initFrame();
-
+									case 14: // APS Exposure Start
+										// Ignore, exposure is calculated from frame timings.
 										break;
 
-									case 15: // APS Rolling Shutter Frame Start with no Reset Read
-										CypressFX3.log.fine("APS RS NORST Frame Start event received.");
-										apsResetRead = false;
-
-										initFrame();
-
+									case 15: // APS Exposure End
+										// Ignore, exposure is calculated from frame timings.
 										break;
 
-									case 16:
-									case 17:
-									case 18:
-									case 19:
-									case 20:
-									case 21:
-									case 22:
-									case 23:
-									case 24:
-									case 25:
-									case 26:
-									case 27:
-									case 28:
-									case 29:
-									case 30:
-									case 31:
-										CypressFX3.log.fine("IMU Scale Config event (" + data + ") received.");
-
-										// At this point the IMU event count should be zero (reset by start).
-										if (imuCount != 0) {
-											CypressFX3.log.info("IMU Scale Config: previous IMU start event missed, attempting recovery.");
-										}
-
-										// Increase IMU count by one, to a total of one (0+1=1).
-										// This way we can recover from the above error of missing start, and we can
-										// later discover if the IMU Scale Config event actually arrived itself.
-										imuCount = 1;
-
+									case 16: // External generator (falling edge)
+										// Ignore, not supported.
 										break;
 
-									case 32:
-									case 33:
-									case 34:
-									case 35:
-										// TODO: ROI OFF not exposed, so just ignore events.
-										break;
-
-									case 48:
-										// TODO: APS Exposure Information, ignore for now.
-										break;
-
-									case 49:
-									case 50:
-									case 51:
-									case 52:
-										// TODO: ROI ON not exposed, so just ignore events.
+									case 17: // External generator (rising edge)
+										// Ignore, not supported.
 										break;
 
 									default:
@@ -458,18 +414,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									break; // Skip invalid Y address (don't update lastY).
 								}
 
-								if (dvsGotY) {
-									// Check that the buffer has space for this event. Enlarge if needed.
-									if (ensureCapacity(buffer, eventCounter + 1)) {
-										buffer.getAddresses()[eventCounter] = ((dvsLastY << DavisChip.YSHIFT) & DavisChip.YMASK);
-										buffer.getTimestamps()[eventCounter++] = currentTimestamp;
-									}
-
-									CypressFX3.log.fine("DVS: row-only event received for address Y=" + dvsLastY + ".");
-								}
-
 								dvsLastY = data;
-								dvsGotY = true;
 
 								break;
 
@@ -494,31 +439,31 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									// Invert polarity for PixelParade high gain pixels (DavisSense), because of
 									// negative gain from pre-amplifier.
 									final byte polarity = ((chipID == DAViSFX3HardwareInterface.CHIP_DAVIS208) && (data < 192))
-										? ((byte) (~code)) : (code);
+										? ((byte) (~code))
+										: (code);
 
 									if (dvsInvertXY) {
-										buffer.getAddresses()[eventCounter] = (((dvsSizeX - 1 - data) << DavisChip.YSHIFT) & DavisChip.YMASK)
-											| (((dvsSizeY - 1 - dvsLastY) << DavisChip.XSHIFT) & DavisChip.XMASK)
-											| (((polarity & 0x01) << DavisChip.POLSHIFT) & DavisChip.POLMASK);
+										buffer
+											.getAddresses()[eventCounter] = (((dvsSizeX - 1 - data) << DavisChip.YSHIFT) & DavisChip.YMASK)
+												| (((dvsSizeY - 1 - dvsLastY) << DavisChip.XSHIFT) & DavisChip.XMASK)
+												| (((polarity & 0x01) << DavisChip.POLSHIFT) & DavisChip.POLMASK);
 									}
 									else {
-										buffer.getAddresses()[eventCounter] = (((dvsSizeY - 1 - dvsLastY) << DavisChip.YSHIFT) & DavisChip.YMASK)
-											| (((dvsSizeX - 1 - data) << DavisChip.XSHIFT) & DavisChip.XMASK)
+										buffer.getAddresses()[eventCounter] = (((dvsSizeY - 1 - dvsLastY) << DavisChip.YSHIFT)
+											& DavisChip.YMASK) | (((dvsSizeX - 1 - data) << DavisChip.XSHIFT) & DavisChip.XMASK)
 											| (((polarity & 0x01) << DavisChip.POLSHIFT) & DavisChip.POLMASK);
 									}
 
 									buffer.getTimestamps()[eventCounter++] = currentTimestamp;
 								}
 
-								dvsGotY = false;
-
 								break;
 
 							case 4: // APS ADC sample
 								// Let's check that apsCountY is not above the maximum. This could happen
 								// if start/end of column events are discarded (no wait on transfer stall).
-								if (apsCountY[apsCurrentReadoutType] >= apsSizeY) {
-									CypressFX3.log.fine("APS ADC sample: row count is at maximum, discarding further samples.");
+								if ((apsCountY[apsCurrentReadoutType] >= apsSizeY) || (apsCountX[apsCurrentReadoutType] >= apsSizeX)) {
+									CypressFX3.log.fine("APS ADC sample: row or column count is at maximum, discarding further samples.");
 									break;
 								}
 
@@ -587,70 +532,76 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 								switch (misc8Code) {
 									case 0:
-										// Detect missing IMU end events.
-										if (imuCount >= ((2 * RetinaAEReader.IMU_DATA_LENGTH) + 1)) {
-											CypressFX3.log.info("IMU data: IMU samples count is at maximum, discarding further samples.");
-											break;
-										}
-
 										// IMU data event.
 										switch (imuCount) {
 											case 0:
-												CypressFX3.log.severe(
-													"IMU data: missing IMU Scale Config event. Parsing of IMU events will still be attempted, but be aware that Accel/Gyro scale conversions may be inaccurate.");
-												imuCount = 1;
-												// Fall through to next case, as if imuCount was equal to 1.
-
-											case 1:
-											case 3:
-											case 5:
-											case 7:
-											case 9:
-											case 11:
-											case 13:
+											case 2:
+											case 4:
+											case 6:
+											case 8:
+											case 10:
+											case 12:
 												imuTmpData = misc8Data;
 												break;
 
-											case 2: // Accel X
+											case 1: // Accel X
 												imuEvents[0] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
 												if (imuFlipX) {
 													imuEvents[0] = (short) -imuEvents[0];
 												}
 												break;
 
-											case 4: // Accel Y
+											case 3: // Accel Y
 												imuEvents[1] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
 												if (imuFlipY) {
 													imuEvents[1] = (short) -imuEvents[1];
 												}
 												break;
 
-											case 6: // Accel Z
+											case 5: // Accel Z
 												imuEvents[2] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
 												if (imuFlipZ) {
 													imuEvents[2] = (short) -imuEvents[2];
 												}
+
+												// IMU parser count depends on which data is present.
+												if ((imuType & RetinaAEReader.IMU_TYPE_TEMP) == 0) {
+													if ((imuType & RetinaAEReader.IMU_TYPE_GYRO) != 0) {
+														// No temperature, but gyro.
+														imuCount += 2;
+													}
+													else {
+														// No others enabled.
+														imuCount += 8;
+													}
+												}
 												break;
 
-											case 8: // Temperature
+											case 7: // Temperature
 												imuEvents[3] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
+
+												// IMU parser count depends on which data is present.
+												if ((imuType & RetinaAEReader.IMU_TYPE_GYRO) == 0) {
+													// No others enabled.
+													imuCount += 6;
+												}
 												break;
 
-											case 10: // Gyro X
+											case 9: // Gyro X
 												imuEvents[4] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
 												if (imuFlipX) {
 													imuEvents[4] = (short) -imuEvents[4];
 												}
 												break;
 
-											case 12: // Gyro Y
+											case 11: // Gyro Y
 												imuEvents[5] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
 												if (imuFlipY) {
 													imuEvents[5] = (short) -imuEvents[5];
 												}
 												break;
 
-											case 14: // Gyro Z
+											case 13: // Gyro Z
 												imuEvents[6] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
 												if (imuFlipZ) {
 													imuEvents[6] = (short) -imuEvents[6];
@@ -662,9 +613,34 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 										break;
 
-									case 1:
-									case 2:
-										// Ignore ROI events.
+									case 1: // APS ROI Size Part 1 (bits 15-8).
+									case 2: // APS ROI Size Part 2 (bits 7-0).
+										// Ignore ROI events, not supported.
+										break;
+
+									case 3:
+										// Scale for accel/gyro come from its configuration directly.
+										// Set expected type of data to come from IMU (accel, gyro, temp).
+										imuType = (data >> 5) & 0x07;
+
+										// IMU parser start count depends on which data is present.
+										if ((imuType & RetinaAEReader.IMU_TYPE_ACCEL) != 0) {
+											// Accelerometer.
+											imuCount = 0;
+										}
+										else if ((imuType & RetinaAEReader.IMU_TYPE_TEMP) != 0) {
+											// Temperature
+											imuCount = 6;
+										}
+										else if ((imuType & RetinaAEReader.IMU_TYPE_GYRO) != 0) {
+											// Gyroscope.
+											imuCount = 8;
+										}
+										else {
+											// Nothing, should never happen.
+											imuCount = 14;
+										}
+
 										break;
 
 									default:
@@ -676,11 +652,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 							case 6: // Misc 10bit data.
 								final byte misc10Code = (byte) ((data & 0x0C00) >>> 10);
-								final short misc10Data = (short) (data & 0x03FF);
 
 								switch (misc10Code) {
 									case 0:
-										// TODO: APS Exposure Information, ignore for now.
+										// APS Exposure Information, ignore for now.
 										break;
 
 									default:
