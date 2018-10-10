@@ -8,12 +8,12 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
-@Description("DAVIS346 346x260 pixel APS-DVS DAVIS sensor (miniaturized version)")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class Davis346mini extends Davis346BaseCamera {
-	public Davis346mini() {
-		setName("Davis346mini");
-		setDefaultPreferencesFile("biasgenSettings/Davis346b/DAVIS346mini.xml");
+@Description("DAVIS346 346x260 pixel APS-DVS DAVIS USB 3.0 sensor (blue case)")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
+public class Davis346blue extends Davis346BaseCamera {
+	public Davis346blue() {
+		setName("Davis346blue");
+		setDefaultPreferencesFile("biasgenSettings/Davis346b/DAVIS346blue.xml");
 
 		davisRenderer = new AEFrameChipRenderer(this);
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
@@ -24,7 +24,7 @@ public class Davis346mini extends Davis346BaseCamera {
 		setApsLastPixelReadOut(new Point(0, getSizeY() - 1));
 	}
 
-	public Davis346mini(final HardwareInterface hardwareInterface) {
+	public Davis346blue(final HardwareInterface hardwareInterface) {
 		this();
 		setHardwareInterface(hardwareInterface);
 	}

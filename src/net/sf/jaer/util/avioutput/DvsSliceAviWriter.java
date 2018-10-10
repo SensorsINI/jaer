@@ -1,34 +1,40 @@
 package net.sf.jaer.util.avioutput;
 
-import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
-import ch.unizh.ini.jaer.projects.npp.DvsFramer.TimeSliceMethod;
+import static net.sf.jaer.graphics.AEViewer.DEFAULT_CHIP_CLASS;
+import static net.sf.jaer.graphics.AEViewer.prefs;
+
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
-import java.io.IOException;
-import com.jogamp.opengl.GLAutoDrawable;
-import ch.unizh.ini.jaer.projects.npp.DvsFramerSingleFrame;
-import ch.unizh.ini.jaer.projects.npp.TargetLabeler;
-import ch.unizh.ini.jaer.projects.npp.TargetLabeler.TargetLocation;
-import eu.seebetter.ini.chips.DavisChip;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.swing.BoxLayout;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.filechooser.FileFilter;
+
+import com.jogamp.opengl.GLAutoDrawable;
+
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
+import ch.unizh.ini.jaer.projects.npp.DvsFramer.TimeSliceMethod;
+import ch.unizh.ini.jaer.projects.npp.DvsFramerSingleFrame;
+import ch.unizh.ini.jaer.projects.npp.TargetLabeler;
+import ch.unizh.ini.jaer.projects.npp.TargetLabeler.TargetLocation;
+import eu.seebetter.ini.chips.DavisChip;
 import ml.options.Options;
 import ml.options.Options.Multiplicity;
 import ml.options.Options.Separator;
@@ -42,10 +48,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
-import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.FilterChain;
-import static net.sf.jaer.graphics.AEViewer.DEFAULT_CHIP_CLASS;
-import static net.sf.jaer.graphics.AEViewer.prefs;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
@@ -138,15 +141,15 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 Logger.getLogger(DvsSliceAviWriter.class.getName()).log(Level.SEVERE, null, ex);
                 doCloseFile();
             }
-            if ((writeDvsSliceImageOnApsFrame && newApsFrameAvailable && e.timestamp >= endOfFrameTimestamp)
-                    || (!writeDvsSliceImageOnApsFrame && dvsFrame.getDvsFrame().isFilled())
-                    && (chip.getAeViewer() == null || !chip.getAeViewer().isPaused())) { // added check for nonnull aeviewer in case filter is called from separate program
+            if ((writeDvsSliceImageOnApsFrame && newApsFrameAvailable && (e.timestamp >= endOfFrameTimestamp))
+                    || ((!writeDvsSliceImageOnApsFrame && dvsFrame.getDvsFrame().isFilled())
+                    && ((chip.getAeViewer() == null) || !chip.getAeViewer().isPaused()))) { // added check for nonnull aeviewer in case filter is called from separate program
                 if (writeDvsSliceImageOnApsFrame) {
                     newApsFrameAvailable = false;
                 }
                 dvsFrame.normalizeFrame();
                 maybeShowOutput(dvsFrame);
-                if (writeDvsFrames && getAviOutputStream() != null && isWriteEnabled()) {
+                if (writeDvsFrames && (getAviOutputStream() != null) && isWriteEnabled()) {
                     BufferedImage bi = toImage(dvsFrame);
                     try {
                         writeTimecode(e.timestamp);
@@ -168,7 +171,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 lastDvsFrameTimestamp = lastTimestamp;
             }
         }
-        if (writeDvsSliceImageOnApsFrame && lastTimestamp - endOfFrameTimestamp > 1000000) {
+        if (writeDvsSliceImageOnApsFrame && ((lastTimestamp - endOfFrameTimestamp) > 1000000)) {
             log.warning("last frame event was received more than 1s ago; maybe you need to enable Display Frames in the User Control Panel?");
         }
         return in;
@@ -389,7 +392,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 int b = (int) (255 * dvsFramer.getValueAtPixel(x, y));
                 int g = b;
                 int r = b;
-                int idx = (dvsFrame.getOutputImageHeight() - y - 1) * getOutputImageWidth() + x + getDvsStartingX(); // DVS image is right half
+                int idx = ((dvsFrame.getOutputImageHeight() - y - 1) * getOutputImageWidth()) + x + getDvsStartingX(); // DVS image is right half
                 if (idx >= bd.length) {
                     throw new RuntimeException(String.format("index %d out of bounds for x=%d y=%d", idx, x, y));
                 }
@@ -407,11 +410,11 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         float[] frame = frameExtractor.getNewFrame();
         for (int y = 0; y < dvsFrame.getOutputImageHeight(); y++) {
             for (int x = 0; x < dvsFrame.getOutputImageWidth(); x++) {
-                int xsrc = (int) Math.floor(x * (float) srcwidth / targetwidth), ysrc = (int) Math.floor(y * (float) srcheight / targetheight);
+                int xsrc = (int) Math.floor((x * (float) srcwidth) / targetwidth), ysrc = (int) Math.floor((y * (float) srcheight) / targetheight);
                 int b = (int) (255 * frame[frameExtractor.getIndex(xsrc, ysrc)]); // TODO simplest possible downsampling, can do better with linear or bilinear interpolation but code more complex
                 int g = b;
                 int r = b;
-                int idx = (dvsFrame.getOutputImageHeight() - y - 1) * getOutputImageWidth() + x + 0; // aps image is left half if combined
+                int idx = ((dvsFrame.getOutputImageHeight() - y - 1) * getOutputImageWidth()) + x + 0; // aps image is left half if combined
                 if (idx >= bd.length) {
                     throw new RuntimeException(String.format("index %d out of bounds for x=%d y=%d", idx, x, y));
                 }
@@ -443,7 +446,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             frame.getContentPane().add(panel);
             frame.pack();
             frame.addWindowListener(new WindowAdapter() {
-                public void windowClosing(WindowEvent e) {
+                @Override
+				public void windowClosing(WindowEvent e) {
                     setShowOutput(false);
                 }
             });
@@ -451,7 +455,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if (!frame.isVisible()) {
             frame.setVisible(true);
         }
-        if (display.getWidth() != dvsFrame.getOutputImageWidth() || display.getHeight() != dvsFrame.getOutputImageHeight()) {
+        if ((display.getWidth() != dvsFrame.getOutputImageWidth()) || (display.getHeight() != dvsFrame.getOutputImageHeight())) {
             display.setImageSize(dvsFrame.getOutputImageWidth(), dvsFrame.getOutputImageHeight());
         }
         for (int x = 0; x < dvsFrame.getOutputImageWidth(); x++) {
@@ -501,8 +505,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if ((evt.getPropertyName() == ApsFrameExtractor.EVENT_NEW_FRAME)) {
             endOfFrameTimestamp = frameExtractor.getLastFrameTimestamp();
             newApsFrameAvailable = true;
-            if (writeApsFrames && getAviOutputStream() != null && isWriteEnabled()
-                    && (chip.getAeViewer() == null || !chip.getAeViewer().isPaused())) {
+            if (writeApsFrames && (getAviOutputStream() != null) && isWriteEnabled()
+                    && ((chip.getAeViewer() == null) || !chip.getAeViewer().isPaused())) {
                 BufferedImage bi = toImage(frameExtractor);
                 try {
                     writeTimecode(endOfFrameTimestamp);
@@ -558,7 +562,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         // make hashmap of common chip classes
         chipClassesMap.put("dvs128", "ch.unizh.ini.jaer.chip.retina.DVS128");
         chipClassesMap.put("davis240c", "eu.seebetter.ini.chips.davis.DAVIS240C");
-        chipClassesMap.put("davis346mini", "eu.seebetter.ini.chips.davis.Davis346mini");
+        chipClassesMap.put("davis346blue", "eu.seebetter.ini.chips.davis.Davis346blue");
+        chipClassesMap.put("davis346red", "eu.seebetter.ini.chips.davis.Davis346red");
 
         // command line
         // uses last settings of everything
@@ -805,8 +810,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         EventExtractor2D extractor = chip.getEventExtractor();
         System.out.println(String.format("Frames written: "));
 
-        // need an object here to register as propertychange listener for the rewind event 
-        // generated when reading the file and getting to the end, 
+        // need an object here to register as propertychange listener for the rewind event
+        // generated when reading the file and getting to the end,
         // since the AEFileInputStream will not generate end of file exceptions
         final WriterControl writerControl = new WriterControl();
         PropertyChangeListener rewindListener = new PropertyChangeListener() {
@@ -825,11 +830,11 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 EventPacket cooked = extractor.extractPacket(aeRaw);
                 writer.filterPacket(cooked);
                 int numFramesWritten = writer.getFramesWritten();
-                if (numFramesWritten >= lastNumFramesWritten + 500) {
+                if (numFramesWritten >= (lastNumFramesWritten + 500)) {
                     lastNumFramesWritten = numFramesWritten;
                     System.out.println(String.format("%d frames", numFramesWritten));
                 }
-                if (writer.getMaxFrames() > 0 && writer.getFramesWritten() >= writer.getMaxFrames()) {
+                if ((writer.getMaxFrames() > 0) && (writer.getFramesWritten() >= writer.getMaxFrames())) {
                     break;
                 }
             } catch (IOException e) {
@@ -906,7 +911,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             } else {
                 try { // TODO debug
                     for (TargetLocation l : targets) {
-                        if (l != null && l.location != null) {
+                        if ((l != null) && (l.location != null)) {
                             // scale locations and size to AVI output resolution
                             float scaleX = (float) dvsFrame.getOutputImageWidth() / chip.getSizeX();
                             float scaleY = (float) dvsFrame.getOutputImageHeight() / chip.getSizeY();
