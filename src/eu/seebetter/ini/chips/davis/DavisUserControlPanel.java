@@ -583,7 +583,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
 		jLabel1.setText("Frame Rate (Hz)");
 
-		fdSp.setModel(new javax.swing.SpinnerNumberModel(Float.valueOf(0.125f), Float.valueOf(200.0f), null, Float.valueOf(0.1f)));
+		fdSp.setModel(new javax.swing.SpinnerNumberModel(Float.valueOf(20.0f), Float.valueOf(0.125f), Float.valueOf(200.0f), Float.valueOf(0.1f)));
 		fdSp.setToolTipText("Number of frames to capture per second (best-effort)");
 		fdSp.addChangeListener(new javax.swing.event.ChangeListener() {
 			@Override
@@ -594,7 +594,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
 		jLabel2.setText("Exposure delay (ms)");
 
-		edSp.setModel(new javax.swing.SpinnerNumberModel(Float.valueOf(0.0f), Float.valueOf(4000.0f), null, Float.valueOf(1.0f)));
+		edSp.setModel(new javax.swing.SpinnerNumberModel(Float.valueOf(4.0f), Float.valueOf(0.0f), Float.valueOf(4000.0f), Float.valueOf(1.0f)));
 		edSp.setToolTipText("The exposure delay; affects actual exposure time");
 		edSp.addChangeListener(new javax.swing.event.ChangeListener() {
 			@Override
