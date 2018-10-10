@@ -19,7 +19,6 @@ public class Davis346red extends Davis346BaseCamera {
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(davisRenderer);
 
-		// Inverted with respect to other 346 cameras.
 		setApsFirstPixelReadOut(new Point(0, getSizeY() - 1));
 		setApsLastPixelReadOut(new Point(getSizeX() - 1, 0));
 	}
