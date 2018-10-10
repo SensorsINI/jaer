@@ -73,7 +73,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 	// these pots for DVSTweaks
 	protected AddressedIPotCF diffOn, diffOff, refr, pr, sf, diff;
 	protected SPIConfigBit globalShutter, apsRun, dvsRun;
-	protected SPIConfigInt apsExposure, apsFrameDelay;
+	protected SPIConfigInt apsExposure, apsFrameInterval;
 
 	// subclasses for controlling aspects of camera
 	protected DavisConfig.VideoControl videoControl;
@@ -136,16 +136,12 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		ssBiases[1] = ssn;
 
 		// Multiplexer module
-		muxControl.add(new SPIConfigBit("Mux.ForceChipBiasEnable", "Force the chip's bias generator to be always ON.", CypressFX3.FPGA_MUX,
-			(short) 3, false, this));
-		muxControl.add(new SPIConfigBit("Mux.DropDVSOnTransferStall", "Drop DVS events when USB FIFO is full.", CypressFX3.FPGA_MUX,
-			(short) 4, true, this));
-		muxControl.add(new SPIConfigBit("Mux.DropAPSOnTransferStall", "Drop APS events when USB FIFO is full.", CypressFX3.FPGA_MUX,
-			(short) 5, false, this));
-		muxControl.add(new SPIConfigBit("Mux.DropIMUOnTransferStall", "Drop IMU events when USB FIFO is full.", CypressFX3.FPGA_MUX,
-			(short) 6, false, this));
+		muxControl.add(new SPIConfigBit("Mux.RunChip", "Enable the chip's bias generator, powering it up.", CypressFX3.FPGA_MUX,
+			(short) 3, true, this));
 		muxControl.add(new SPIConfigBit("Mux.DropExtInputOnTransferStall", "Drop External Input events when USB FIFO is full.",
-			CypressFX3.FPGA_MUX, (short) 7, true, this));
+			CypressFX3.FPGA_MUX, (short) 4, true, this));
+		muxControl.add(new SPIConfigBit("Mux.DropDVSOnTransferStall", "Drop DVS events when USB FIFO is full.", CypressFX3.FPGA_MUX,
+			(short) 5, true, this));
 
 		muxControl.add(new SPIConfigInt("USB.EarlyPacketDelay", "Ensure a USB packet is committed at least every N x 125µs timesteps.",
 			CypressFX3.FPGA_USB, (short) 1, 13, 8, this));
@@ -158,27 +154,33 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		// DVS module
 		dvsRun = new SPIConfigBit("DVS.Run", "Enable DVS.", CypressFX3.FPGA_DVS, (short) 3, false, this);
 		dvsControl.add(dvsRun);
-		dvsControl
-			.add(new SPIConfigInt("DVS.AckDelayRow", "Delay Row AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 4, 4, 4, this));
-		dvsControl.add(new SPIConfigInt("DVS.AckDelayColumn", "Delay Column AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 5,
-			4, 0, this));
-		dvsControl.add(
-			new SPIConfigInt("DVS.AckExtensionRow", "Extend Row AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 6, 4, 1, this));
-		dvsControl.add(new SPIConfigInt("DVS.AckExtensionColumn", "Extend Column AER ACK by this many cycles.", CypressFX3.FPGA_DVS,
-			(short) 7, 4, 0, this));
 		dvsControl.add(new SPIConfigBit("DVS.WaitOnTransferStall",
-			"On event FIFO full, wait to ACK until again empty if true, or just continue ACKing if false.", CypressFX3.FPGA_DVS, (short) 8,
+			"On event FIFO full, wait to ACK until again empty if true, or just continue ACKing if false.", CypressFX3.FPGA_DVS, (short) 4,
 			false, this));
-		dvsControl.add(new SPIConfigBit("DVS.FilterRowOnlyEvents", "Filter out row-only events (y,y,y,...).", CypressFX3.FPGA_DVS,
-			(short) 9, true, this));
 		dvsControl.add(new SPIConfigBit("DVS.ExternalAERControl", "Don't drive AER ACK pin from FPGA (also must disable Event Capture).",
-			CypressFX3.FPGA_DVS, (short) 10, false, this));
+			CypressFX3.FPGA_DVS, (short) 5, false, this));
 
 		// TODO: new boards only.
-		dvsControl.add(new SPIConfigBit("DVS.FilterBackgroundActivity", "Filter background events using hardware filter. Only does something on cameras with large FPGA, such as the experimental large PCBs hosting Davis346 / Davis640 / CDAVIS development kits",
-			CypressFX3.FPGA_DVS, (short) 29, false, this));
-		dvsControl.add(new SPIConfigInt("DVS.FilterBackgroundActivityDeltaTime", "Hardware background events filter delta time (in µs). Only does something on cameras with large FPGA, such as the experimental large PCBs hosting Davis346 / Davis640 / CDAVIS development kits",
-			CypressFX3.FPGA_DVS, (short) 30, 16, 20000, this));
+		dvsControl.add(new SPIConfigBit("DVS.FilterBackgroundActivity", "Filter background events (uncorrelated noise) using hardware filter. Only available on DAVIS dev-kits and BLUE/RED editions.",
+			CypressFX3.FPGA_DVS, (short) 31, true, this));
+		dvsControl.add(new SPIConfigInt("DVS.FilterBackgroundActivityDeltaTime", "Hardware background events filter delta time (in 250 µs units). Only available on DAVIS dev-kits and BLUE/RED editions.",
+			CypressFX3.FPGA_DVS, (short) 32, 12, 80, this));
+		dvsControl.add(new SPIConfigBit("DVS.FilterRefractoryPeriod", "Hardware refractory period filter, inhibits events from firing in a given time window. Only available on DAVIS dev-kits and BLUE/RED editions.",
+			CypressFX3.FPGA_DVS, (short) 33, false, this));
+		dvsControl.add(new SPIConfigInt("DVS.FilterRefractoryPeriodTime", "Hardware refractory period time (in 250 µs units). Only available on DAVIS dev-kits and BLUE/RED editions.",
+			CypressFX3.FPGA_DVS, (short) 34, 12, 2, this));
+
+		dvsControl.add(new SPIConfigBit("DVS.FilterSkipEvents", "Drop one event every N. Only available on DAVIS 240C, dev-kits and BLUE/RED editions.",
+			CypressFX3.FPGA_DVS, (short) 51, false, this));
+		dvsControl.add(new SPIConfigInt("DVS.FilterSkipEventsEvery", "Number of events to pass before dropping one. Only available on DAVIS 240C, dev-kits and BLUE/RED editions.",
+			CypressFX3.FPGA_DVS, (short) 52, 8, 1, this));
+
+		dvsControl.add(new SPIConfigBit("DVS.FilterPolarityFlatten", "Flatten all events to one polarity only (OFF). Only available on DAVIS 240C, dev-kits and BLUE/RED editions.",
+			CypressFX3.FPGA_DVS, (short) 61, false, this));
+		dvsControl.add(new SPIConfigBit("DVS.FilterPolaritySuppress", "Suppress one polarity type. Only available on DAVIS 240C, dev-kits and BLUE/RED editions.",
+			CypressFX3.FPGA_DVS, (short) 62, false, this));
+		dvsControl.add(new SPIConfigBit("DVS.FilterPolaritySuppressType", "Type of polarity to suppress (false=OFF, true=ON). Only available on DAVIS 240C, dev-kits and BLUE/RED editions.",
+			CypressFX3.FPGA_DVS, (short) 63, false, this));
 
 		for (final SPIConfigValue cfgVal : dvsControl) {
 			cfgVal.addObserver(this);
@@ -188,26 +190,17 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		// APS module
 		apsRun = new SPIConfigBit("APS.Run", "Enable APS.", CypressFX3.FPGA_APS, (short) 4, false, this);
 		apsControl.add(apsRun);
-		apsControl.add(new SPIConfigBit("APS.ResetRead", "Do the reset read in addition to the signal read.", CypressFX3.FPGA_APS,
-			(short) 5, true, this));
 		apsControl.add(new SPIConfigBit("APS.WaitOnTransferStall",
-			"On event FIFO full, pause and wait for free space. This ensures no APS pixels are dropped.", CypressFX3.FPGA_APS, (short) 6,
+			"On event FIFO full, pause and wait for free space. This ensures no APS pixels are dropped.", CypressFX3.FPGA_APS, (short) 5,
 			true, this));
 		globalShutter = new SPIConfigBit("APS.GlobalShutter", "Enable global shutter versus rolling shutter.", CypressFX3.FPGA_APS,
-			(short) 8, true, this);
+			(short) 7, true, this);
 		apsControl.add(globalShutter);
-		apsExposure = new SPIConfigInt("APS.Exposure", "Set exposure time (in µs).", CypressFX3.FPGA_APS, (short) 13, 20, 4000, this);
+		apsExposure = new SPIConfigInt("APS.Exposure", "Set exposure time (in µs).", CypressFX3.FPGA_APS, (short) 12, 22, 4000, this);
 		apsControl.add(apsExposure);
-		apsFrameDelay = new SPIConfigInt("APS.FrameDelay", "Set delay time between frames (in µs).", CypressFX3.FPGA_APS, (short) 14, 20,
-			1000, this);
-		apsControl.add(apsFrameDelay);
-		apsControl
-			.add(new SPIConfigInt("APS.ResetSettle", "Set reset settle time (in cycles).", CypressFX3.FPGA_APS, (short) 15, 5, 10, this));
-		apsControl
-			.add(new SPIConfigInt("APS.ColumnSettle", "Set column settle time (in cycles).", CypressFX3.FPGA_APS, (short) 16, 6, 30, this));
-		apsControl.add(new SPIConfigInt("APS.RowSettle", "Set row settle time (in cycles).", CypressFX3.FPGA_APS, (short) 17, 5, 10, this));
-		apsControl
-			.add(new SPIConfigInt("APS.NullSettle", "Set null settle time (in cycles).", CypressFX3.FPGA_APS, (short) 18, 5, 3, this));
+		apsFrameInterval = new SPIConfigInt("APS.FrameInterval", "Set time between frames (in µs).", CypressFX3.FPGA_APS, (short) 13, 23,
+			50000, this);
+		apsControl.add(apsFrameInterval);
 
 		for (final SPIConfigValue cfgVal : apsControl) {
 			cfgVal.addObserver(this);
@@ -234,19 +227,16 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 		});
 
 		// IMU module
-		imuControl.add(new SPIConfigBit("IMU.Run", "Enable IMU.", CypressFX3.FPGA_IMU, (short) 0, false, this));
-		imuControl
-			.add(new SPIConfigBit("IMU.TempStandby", "Disable temperature measurement.", CypressFX3.FPGA_IMU, (short) 1, false, this));
-		// imuControl.add(new SPIConfigInt("IMU.AccelStandby", ".", CypressFX3.FPGA_IMU, (short) 2, 3, 0, this));
-		// imuControl.add(new SPIConfigInt("IMU.GyroStandby", ".", CypressFX3.FPGA_IMU, (short) 3, 3, 0, this));
-		imuControl.add(new SPIConfigBit("IMU.LPCycle", "Low-power cycle.", CypressFX3.FPGA_IMU, (short) 4, false, this));
-		imuControl.add(new SPIConfigInt("IMU.LPWakeup", "Low-power wakeup mode.", CypressFX3.FPGA_IMU, (short) 5, 2, 1, this));
-		imuControl.add(new SPIConfigInt("IMU.SampleRateDivider", "Sample-rate divider value.", CypressFX3.FPGA_IMU, (short) 6, 8, 0, this));
+		imuControl.add(new SPIConfigBit("IMU.RunAccel", "Enable IMU accelerometer.", CypressFX3.FPGA_IMU, (short) 2, false, this));
+		imuControl.add(new SPIConfigBit("IMU.RunGyro", "Enable IMU gyroscope.", CypressFX3.FPGA_IMU, (short) 3, false, this));
+		imuControl.add(new SPIConfigBit("IMU.RunTemp", "Enable IMU temperature sensor.", CypressFX3.FPGA_IMU, (short) 4, false, this));
+
+		imuControl.add(new SPIConfigInt("IMU.SampleRateDivider", "Sample-rate divider value.", CypressFX3.FPGA_IMU, (short) 5, 8, 0, this));
 		imuControl.add(new SPIConfigInt("IMU.DigitalLowPassFilter", "Digital low-pass filter configuration.", CypressFX3.FPGA_IMU,
-			(short) 7, 3, 1, this));
+			(short) 6, 3, 1, this));
 		imuControl
-			.add(new SPIConfigInt("IMU.AccelFullScale", "Accellerometer scale configuration.", CypressFX3.FPGA_IMU, (short) 8, 2, 2, this));
-		imuControl.add(new SPIConfigInt("IMU.GyroFullScale", "Gyroscope scale configuration.", CypressFX3.FPGA_IMU, (short) 9, 2, 2, this));
+			.add(new SPIConfigInt("IMU.AccelFullScale", "Accellerometer scale configuration.", CypressFX3.FPGA_IMU, (short) 7, 2, 2, this));
+		imuControl.add(new SPIConfigInt("IMU.GyroFullScale", "Gyroscope scale configuration.", CypressFX3.FPGA_IMU, (short) 10, 2, 2, this));
 
 		for (final SPIConfigValue cfgVal : imuControl) {
 			cfgVal.addObserver(this);
@@ -266,52 +256,6 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 			(short) 4, true, this));
 		extInControl.add(new SPIConfigInt("ExtInput.DetectPulseLength", "Minimal length of the pulse to be detected.",
 			CypressFX3.FPGA_EXTINPUT, (short) 5, 27, 60, this));
-
-		// TODO: new boards only.
-		extInControl.add(new SPIConfigBit("ExtInput.RunGenerator", "Enable signal generator (PWM-like).", CypressFX3.FPGA_EXTINPUT,
-			(short) 7, false, this));
-		extInControl.add(new SPIConfigBit("ExtInput.GenerateUseCustomSignal",
-			"Use custom FPGA-internal signal, instead of PWM-like generator output.", CypressFX3.FPGA_EXTINPUT, (short) 8, false, this));
-		extInControl.add(new SPIConfigBit("ExtInput.GeneratePulsePolarity", "Polarity of the generated pulse.", CypressFX3.FPGA_EXTINPUT,
-			(short) 9, false, this));
-
-		final SPIConfigInt extOutPulseInterval = new SPIConfigInt("ExtInput.GeneratePulseInterval",
-			"Time interval between consecutive pulses.", CypressFX3.FPGA_EXTINPUT, (short) 10, 27, 60, this);
-		extInControl.add(extOutPulseInterval);
-
-		final SPIConfigInt extOutPulseLength = new SPIConfigInt("ExtInput.GeneratePulseLength", "Time length of a pulse.",
-			CypressFX3.FPGA_EXTINPUT, (short) 11, 27, 30, this);
-		extInControl.add(extOutPulseLength);
-
-		final SPIConfigInt extOutPulseFrequency = new SPIConfigInt("ExtInput.GeneratePulseFrequency",
-			"Frequency (in Hz) of the pulse to be generated.", CypressFX3.FPGA_EXTINPUT, (short) 255, 27, 1_000_000, this);
-		extInControl.add(extOutPulseFrequency);
-
-		final SPIConfigInt extOutPulseDutyCycle = new SPIConfigInt("ExtInput.GeneratePulseDutyCycle",
-			"Duty cycle % of the pulse to be generated.", CypressFX3.FPGA_EXTINPUT, (short) 255, 27, 50, this);
-		extInControl.add(extOutPulseDutyCycle);
-
-		extOutPulseFrequency.addObserver(new Observer() {
-			@Override
-			public void update(final Observable o, final Object arg) {
-				final int expectedExtOutPulseInterval = (60 * 1_000_000) / extOutPulseFrequency.get();
-
-				if (extOutPulseInterval.get() != expectedExtOutPulseInterval) {
-					extOutPulseInterval.set(expectedExtOutPulseInterval);
-				}
-			}
-		});
-
-		extOutPulseDutyCycle.addObserver(new Observer() {
-			@Override
-			public void update(final Observable o, final Object arg) {
-				final int expectedExtOutPulseLength = (extOutPulseDutyCycle.get() * extOutPulseInterval.get()) / 100;
-
-				if (extOutPulseLength.get() != expectedExtOutPulseLength) {
-					extOutPulseLength.set(expectedExtOutPulseLength);
-				}
-			}
-		});
 
 		for (final SPIConfigValue cfgVal : extInControl) {
 			cfgVal.addObserver(this);
@@ -388,10 +332,10 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 				getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_EXPOSURE_DELAY_US, null, ((SPIConfigInt) o).get());
 			}
 		});
-		apsFrameDelay.addObserver(new Observer() {
+		apsFrameInterval.addObserver(new Observer() {
 			@Override
 			public void update(final Observable o, final Object arg) {
-				getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_FRAME_DELAY_US, null, ((SPIConfigInt) o).get());
+				getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_FRAME_INTERVAL_US, null, ((SPIConfigInt) o).get());
 			}
 		});
 
@@ -734,13 +678,13 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
          * @return value of exposure delay. It is quantized by apsExposure to be a multiple of 1us.
          * @see #getExposureFrameDelayQuantizationMs()
          */
-	public void setFrameDelayMs(final float ms) {
+	public void setFrameIntervalMs(final float ms) {
 		final int fdUs = Math.round (ms * 1000);
-		apsFrameDelay.set(fdUs);
+		apsFrameInterval.set(fdUs);
 	}
 
-	public float getFrameDelayMs() {
-		return apsFrameDelay.get() * .001f;
+	public float getFrameIntervalMs() {
+		return apsFrameInterval.get() * .001f;
 
 	}
 
@@ -1165,8 +1109,8 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 	/**
 	 * @return the frameDelayControlRegister
 	 */
-	public SPIConfigInt getFrameDelayControlRegister() {
-		return apsFrameDelay;
+	public SPIConfigInt getFrameIntervalControlRegister() {
+		return apsFrameInterval;
 	}
 
 	@Override

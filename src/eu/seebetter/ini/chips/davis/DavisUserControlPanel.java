@@ -55,7 +55,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 		}
 
 		histCB.setSelected(this.chip.isShowImageHistogram());
-		fdSp.setValue(getConfig().getFrameDelayMs());
+		fdSp.setValue(1000.0f / getConfig().getFrameIntervalMs());
 		edSp.setValue(getConfig().getExposureDelayMs());
 		glShutterCB.setSelected(((DavisBaseCamera) chip).getDavisConfig().isGlobalShutter());
 		displayEventsCheckBox.setSelected(getConfig().isDisplayEvents());
@@ -334,8 +334,8 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 					edSp.setValue((Integer) evt.getNewValue() * .001f);
 				}
 					break;
-				case DavisDisplayConfigInterface.PROPERTY_FRAME_DELAY_US: {
-					fdSp.setValue((Integer) evt.getNewValue() * .001f);
+				case DavisDisplayConfigInterface.PROPERTY_FRAME_INTERVAL_US: {
+					fdSp.setValue(1000.0f / ((Integer) evt.getNewValue() * .001f));
 				}
 					break;
 				case DavisDisplayConfigInterface.PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED: {
@@ -581,10 +581,10 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 				javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 1, 11))); // NOI18N
 		apsPanel.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
 
-		jLabel1.setText("Frame Delay (ms)");
+		jLabel1.setText("Frame Rate (Hz)");
 
-		fdSp.setModel(new javax.swing.SpinnerNumberModel(Float.valueOf(0.0f), Float.valueOf(0.0f), null, Float.valueOf(1.0f)));
-		fdSp.setToolTipText("Delay of starting new frame capture after last frame");
+		fdSp.setModel(new javax.swing.SpinnerNumberModel(Float.valueOf(0.125f), Float.valueOf(200.0f), null, Float.valueOf(0.1f)));
+		fdSp.setToolTipText("Number of frames to capture per second (best-effort)");
 		fdSp.addChangeListener(new javax.swing.event.ChangeListener() {
 			@Override
 			public void stateChanged(final javax.swing.event.ChangeEvent evt) {
@@ -594,7 +594,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
 		jLabel2.setText("Exposure delay (ms)");
 
-		edSp.setModel(new javax.swing.SpinnerNumberModel(Float.valueOf(0.0f), null, null, Float.valueOf(1.0f)));
+		edSp.setModel(new javax.swing.SpinnerNumberModel(Float.valueOf(0.0f), Float.valueOf(4000.0f), null, Float.valueOf(1.0f)));
 		edSp.setToolTipText("The exposure delay; affects actual exposure time");
 		edSp.addChangeListener(new javax.swing.event.ChangeListener() {
 			@Override
@@ -914,7 +914,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
 	private void fdSpStateChanged(final javax.swing.event.ChangeEvent evt) {// GEN-FIRST:event_fdSpStateChanged
 		try {
-			getConfig().setFrameDelayMs((float) fdSp.getValue());
+			getConfig().setFrameIntervalMs(1000.0f / (float) fdSp.getValue());
 			fdSp.setBackground(Color.WHITE);
 		}
 		catch (final Exception e) {
@@ -1067,8 +1067,8 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 		if (o == ((DavisBaseCamera) chip).getDavisConfig().getExposureControlRegister()) {
 			edSp.setValue(getConfig().getExposureDelayMs());
 		}
-		else if (o == ((DavisBaseCamera) chip).getDavisConfig().getFrameDelayControlRegister()) {
-			fdSp.setValue(getConfig().getFrameDelayMs());
+		else if (o == ((DavisBaseCamera) chip).getDavisConfig().getFrameIntervalControlRegister()) {
+			fdSp.setValue(1000.0f / getConfig().getFrameIntervalMs());
 		}
 		else if (o == videoControl) {
 			displayFramesCheckBox.setSelected(getConfig().isDisplayFrames());

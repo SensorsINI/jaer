@@ -50,11 +50,17 @@ public class ImuControl extends Observable implements HasPropertyTooltips, Biasg
 	}
 
 	public boolean isImuEnabled() {
-		return ((SPIConfigBit) DavisConfig.getConfigValueByName(imuControl, "IMU.Run")).isSet();
+		final boolean isAccelEnabled = ((SPIConfigBit) DavisConfig.getConfigValueByName(imuControl, "IMU.RunAccel")).isSet();
+		final boolean isGyroEnabled = ((SPIConfigBit) DavisConfig.getConfigValueByName(imuControl, "IMU.RunGyro")).isSet();
+		final boolean isTempEnabled = ((SPIConfigBit) DavisConfig.getConfigValueByName(imuControl, "IMU.RunTemp")).isSet();
+
+		return (isAccelEnabled && isGyroEnabled && isTempEnabled);
 	}
 
 	public void setImuEnabled(final boolean yes) {
-		((SPIConfigBit) DavisConfig.getConfigValueByName(imuControl, "IMU.Run")).set(yes);
+		((SPIConfigBit) DavisConfig.getConfigValueByName(imuControl, "IMU.RunAccel")).set(yes);
+		((SPIConfigBit) DavisConfig.getConfigValueByName(imuControl, "IMU.RunGyro")).set(yes);
+		((SPIConfigBit) DavisConfig.getConfigValueByName(imuControl, "IMU.RunTemp")).set(yes);
 
 		davisConfig.getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_IMU_ENABLED, null, yes);
 	}
