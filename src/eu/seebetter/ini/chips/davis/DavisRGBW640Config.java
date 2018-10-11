@@ -78,12 +78,12 @@ public class DavisRGBW640Config extends DavisTowerBaseConfig {
 		final List<SPIConfigValue> apsControlLocal = new ArrayList<>();
 
 		apsControlLocal
-			.add(new SPIConfigInt("APS.Transfer_D", "Transfer time counter (3 in GS, 1 in RS).", CypressFX3.FPGA_APS, (short) 50, 16, 0, this));
-		apsControlLocal.add(new SPIConfigInt("APS.RSFDSettle_D", "RS counter 0.", CypressFX3.FPGA_APS, (short) 51, 12, 0, this));
-		apsControlLocal.add(new SPIConfigInt("APS.GSPDReset_D", "GS counter 0.", CypressFX3.FPGA_APS, (short) 52, 12, 0, this));
-		apsControlLocal.add(new SPIConfigInt("APS.GSResetFall_D", "GS counter 1.", CypressFX3.FPGA_APS, (short) 53, 12, 0, this));
-		apsControlLocal.add(new SPIConfigInt("APS.GSTXFall_D", "GS counter 2.", CypressFX3.FPGA_APS, (short) 54, 12, 0, this));
-		apsControlLocal.add(new SPIConfigInt("APS.GSFDReset_D", "GS counter 3.", CypressFX3.FPGA_APS, (short) 55, 12, 0, this));
+			.add(new SPIConfigInt("APS.Transfer_D", "Transfer time counter (3 in GS, 1 in RS).", CypressFX3.FPGA_APS, (short) 14, 16, 0, this));
+		apsControlLocal.add(new SPIConfigInt("APS.RSFDSettle_D", "RS counter 0.", CypressFX3.FPGA_APS, (short) 15, 12, 0, this));
+		apsControlLocal.add(new SPIConfigInt("APS.GSPDReset_D", "GS counter 0.", CypressFX3.FPGA_APS, (short) 16, 12, 0, this));
+		apsControlLocal.add(new SPIConfigInt("APS.GSResetFall_D", "GS counter 1.", CypressFX3.FPGA_APS, (short) 17, 12, 0, this));
+		apsControlLocal.add(new SPIConfigInt("APS.GSTXFall_D", "GS counter 2.", CypressFX3.FPGA_APS, (short) 18, 12, 0, this));
+		apsControlLocal.add(new SPIConfigInt("APS.GSFDReset_D", "GS counter 3.", CypressFX3.FPGA_APS, (short) 19, 12, 0, this));
 
 		for (final SPIConfigValue cfgVal : apsControlLocal) {
 			cfgVal.addObserver(this);

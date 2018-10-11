@@ -811,10 +811,12 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		final SPIConfigSequence configSequence = new SPIConfigSequence();
 
-		configSequence.addConfig(CypressFX3.FPGA_USB, (short) 0, 1);
+		configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 3, 1); // Enable biasgen.
 
-		configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 1, 1);
-		configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 0, 1);
+		configSequence.addConfig(CypressFX3.FPGA_USB, (short) 0, 1); // Enable USB.
+
+		configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 1, 1); // Enable timestamps.
+		configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 0, 1); // Enable mux.
 
 		configSequence.sendConfigSequence();
 
@@ -830,14 +832,19 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		try {
 			final SPIConfigSequence configSequence = new SPIConfigSequence();
 
-			configSequence.addConfig(CypressFX3.FPGA_EXTINPUT, (short) 0, 0);
-			configSequence.addConfig(CypressFX3.FPGA_IMU, (short) 0, 0);
-			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 4, 0);
-			configSequence.addConfig(CypressFX3.FPGA_DVS, (short) 3, 0);
+			configSequence.addConfig(CypressFX3.FPGA_EXTINPUT, (short) 0, 0); // Disable ext detector.
+			configSequence.addConfig(CypressFX3.FPGA_IMU, (short) 2, 0); // Disable IMU accel.
+			configSequence.addConfig(CypressFX3.FPGA_IMU, (short) 3, 0); // Disable IMU gyro.
+			configSequence.addConfig(CypressFX3.FPGA_IMU, (short) 4, 0); // Disable IMU temp.
+			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 4, 0); // Disable APS.
+			configSequence.addConfig(CypressFX3.FPGA_DVS, (short) 3, 0); // Disable DVS.
 
-			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 1, 0); // Turn off timestamp too.
-			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 0, 0);
-			configSequence.addConfig(CypressFX3.FPGA_USB, (short) 0, 0);
+			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 1, 0); // Disable timestamps.
+			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 0, 0); // Disable mux.
+
+			configSequence.addConfig(CypressFX3.FPGA_USB, (short) 0, 0); // Disable USB.
+
+			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 3, 0); // Disable biasgen.
 
 			configSequence.sendConfigSequence();
 		}

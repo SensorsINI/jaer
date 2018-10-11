@@ -11,7 +11,6 @@ import java.util.Observable;
 import java.util.logging.Level;
 
 import ch.unizh.ini.jaer.config.spi.SPIConfigBit;
-import ch.unizh.ini.jaer.config.spi.SPIConfigInt;
 import ch.unizh.ini.jaer.config.spi.SPIConfigValue;
 import net.sf.jaer.biasgen.AddressedIPotArray;
 import net.sf.jaer.biasgen.Biasgen;
@@ -69,29 +68,6 @@ public class DavisTowerBaseConfig extends DavisConfig {
 		// ShiftedSource biases (only set new address!)
 		ssp.setAddress(35);
 		ssn.setAddress(36);
-
-		// Internal ADC only on new chips.
-		final List<SPIConfigValue> apsControlLocal = new ArrayList<>();
-
-		apsControlLocal.add(new SPIConfigBit("APS.UseInternalADC", "Use the on-chip ADC instead of the external TI ADC.",
-			CypressFX3.FPGA_APS, (short) 34, true, this));
-		apsControlLocal
-			.add(new SPIConfigBit("APS.SampleEnable", "Enable Sample&Hold circuitry.", CypressFX3.FPGA_APS, (short) 35, true, this));
-		apsControlLocal
-			.add(new SPIConfigInt("APS.SampleSettle", "Sample hold time (in cycles).", CypressFX3.FPGA_APS, (short) 36, 6, 30, this));
-		apsControlLocal
-			.add(new SPIConfigInt("APS.RampReset", "Ramp reset time (in cycles).", CypressFX3.FPGA_APS, (short) 37, 6, 10, this));
-		apsControlLocal.add(new SPIConfigBit("APS.RampShortReset", "Only go through half the ramp for reset read.", CypressFX3.FPGA_APS,
-			(short) 38, false, this));
-		apsControlLocal.add(new SPIConfigBit("APS.ADCTestMode", "Put all APS pixels in permanent reset for ADC testing.",
-			CypressFX3.FPGA_APS, (short) 39, false, this));
-
-		for (final SPIConfigValue cfgVal : apsControlLocal) {
-			cfgVal.addObserver(this);
-			allPreferencesList.add(cfgVal);
-		}
-
-		apsControl.addAll(apsControlLocal);
 
 		// Additional chip control bits.
 		final List<SPIConfigValue> chipControlLocal = new ArrayList<>();

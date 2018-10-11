@@ -19,7 +19,7 @@
                 <entry key="DavisRGBW640.VideoControl.displayFrames" value="true"/>
                 <entry key="DavisRGBW640.VideoControl.displayEvents" value="true"/>
                 <entry key="DavisRGBW640.VideoControl.separateAPSByColor" value="false"/>
-                <entry key="DavisRGBW640.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="DavisRGBW640.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="DavisRGBW640.VideoControl.colorCorrection" value="true"/>
                 <entry key="VideoControl.displayFrames" value="true"/>
                 <entry key="VideoControl.displayEvents" value="true"/>
@@ -1636,7 +1636,7 @@
                 <entry key="Davis128.typeNCalib" value="false"/>
                 <entry key="Davis128.useAout" value="false"/>
                 <entry key="DavisFrameAviWriter.filterEnabled" value="false"/>
-                <entry key="VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="DAVIS240B.GlobalShutter" value="true"/>
                 <entry key="DAVIS240C.AERnArow" value="false"/>
                 <entry key="DAVIS240C.GlobalShutter" value="true"/>
@@ -2107,7 +2107,7 @@
                 <entry key="Davis346B.VideoControl.displayFrames" value="false"/>
                 <entry key="Davis346B.VideoControl.displayEvents" value="true"/>
                 <entry key="Davis346B.VideoControl.separateAPSByColor" value="false"/>
-                <entry key="Davis346B.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="Davis346B.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="Davis346B.VideoControl.colorCorrection" value="true"/>
                 <entry key="Davis346B.APS.ColumnSettle" value="30"/>
                 <entry key="Davis346B.APS.Exposure" value="5000"/>
@@ -2318,7 +2318,7 @@
                 <entry key="DAVIS240C.VideoControl.displayFrames" value="false"/>
                 <entry key="DAVIS240C.VideoControl.displayEvents" value="true"/>
                 <entry key="DAVIS240C.VideoControl.separateAPSByColor" value="false"/>
-                <entry key="DAVIS240C.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="DAVIS240C.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="DAVIS240C.VideoControl.colorCorrection" value="true"/>
                 <entry key="DAVIS240C.Mux.ForceChipBiasEnable" value="false"/>
                 <entry key="DAVIS240C.Mux.DropDVSOnTransferStall" value="true"/>
@@ -2541,7 +2541,7 @@
                 <entry key="DAVIS240B.VideoControl.displayFrames" value="true"/>
                 <entry key="DAVIS240B.VideoControl.displayEvents" value="true"/>
                 <entry key="DAVIS240B.VideoControl.separateAPSByColor" value="false"/>
-                <entry key="DAVIS240B.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="DAVIS240B.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="DAVIS240B.VideoControl.colorCorrection" value="true"/>
                 <entry key="class eu.seebetter.ini.chips.davis.Davis640.preferredDisplayMethod" value="net.sf.jaer.graphics.ChipRendererDisplayMethod"/>
                 <entry key="LucasKanadeFlow.measureGlobalMotion" value="false"/>
@@ -2565,7 +2565,7 @@
                 <entry key="DAVIS240A.VideoControl.displayFrames" value="true"/>
                 <entry key="DAVIS240A.VideoControl.displayEvents" value="true"/>
                 <entry key="DAVIS240A.VideoControl.separateAPSByColor" value="false"/>
-                <entry key="DAVIS240A.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="DAVIS240A.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="DAVIS240A.VideoControl.colorCorrection" value="true"/>
                 <entry key="Steadicam.centerOfRotationX" value="120"/>
                 <entry key="Steadicam.centerOfRotationY" value="90"/>
@@ -2800,7 +2800,7 @@
                 <entry key="Davis346cBSI.VideoControl.displayFrames" value="true"/>
                 <entry key="Davis346cBSI.VideoControl.displayEvents" value="false"/>
                 <entry key="Davis346cBSI.VideoControl.separateAPSByColor" value="false"/>
-                <entry key="Davis346cBSI.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="Davis346cBSI.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="Davis346cBSI.VideoControl.colorCorrection" value="true"/>
                 <entry key="Davis346cBSI.VDACBias.ADC_RefHigh.BufBitValue" value="7"/>
                 <entry key="Davis346cBSI.VDACBias.ADC_RefHigh.VdacBitValue" value="33"/>
@@ -3533,12 +3533,12 @@
                 <entry key="Davis208PixelParade.VDACBias.ResetHpxBv.VdacBitValue" value="63"/>
                 <entry key="Davis208PixelParade.VDACBias.apsOverflowLevel.BufBitValue" value="6"/>
                 <entry key="Davis208PixelParade.VDACBias.apsOverflowLevel.VdacBitValue" value="27"/>
-                <entry key="Davis208PixelParade.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="Davis208PixelParade.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="Davis208PixelParade.VideoControl.colorCorrection" value="true"/>
                 <entry key="Davis208PixelParade.VideoControl.displayEvents" value="true"/>
                 <entry key="Davis208PixelParade.VideoControl.displayFrames" value="true"/>
                 <entry key="Davis208PixelParade.VideoControl.separateAPSByColor" value="false"/>
-                <entry key="Davis208PixelParadeColor.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="Davis208PixelParadeColor.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="Davis208PixelParadeColor.VideoControl.colorCorrection" value="true"/>
                 <entry key="Davis208PixelParadeColor.VideoControl.displayEvents" value="false"/>
                 <entry key="Davis208PixelParadeColor.VideoControl.displayFrames" value="false"/>
@@ -3666,11 +3666,11 @@
                 <entry key="VisualiseSteeringConvNet.softMaxOutput" value="true"/>
                 <entry key="YuhuangBoundingboxDisplay.GTFilename" value="C:\Users\tobi\Desktop\vot-gt\basketball-groundtruth.txt"/>
                 <entry key="YuhuangBoundingboxDisplay.filterEnabled" value="false"/>
-                <entry key="Davis346mini.VideoControl.displayFrames" value="false"/>
-                <entry key="Davis346mini.VideoControl.displayEvents" value="true"/>
-                <entry key="Davis346mini.VideoControl.separateAPSByColor" value="false"/>
-                <entry key="Davis346mini.VideoControl.autoWhiteBalance" value="true"/>
-                <entry key="Davis346mini.VideoControl.colorCorrection" value="true"/>
+                <entry key="Davis346blue.VideoControl.displayFrames" value="false"/>
+                <entry key="Davis346blue.VideoControl.displayEvents" value="true"/>
+                <entry key="Davis346blue.VideoControl.separateAPSByColor" value="false"/>
+                <entry key="Davis346blue.VideoControl.autoWhiteBalance" value="false"/>
+                <entry key="Davis346blue.VideoControl.colorCorrection" value="true"/>
                 <entry key="PatchMatchFlow.motionFieldMixingFactor" value="1.0"/>
                 <entry key="PatchMatchFlow.preProcessEnable" value="true"/>
                 <entry key="PatchMatchFlow.removeCameraMotion" value="false"/>
@@ -3685,225 +3685,225 @@
                 <entry key="PatchMatchFlow.showRawInputEnabled" value="true"/>
                 <entry key="PatchMatchFlow.motionFieldMaxAgeUs" value="110249"/>
                 <entry key="PatchMatchFlow.weightDistance" value="0.9"/>
-                <entry key="Davis346mini.APS.ColumnSettle" value="30"/>
-                <entry key="Davis346mini.APS.Exposure" value="5000"/>
-                <entry key="Davis346mini.APS.FrameDelay" value="1000"/>
-                <entry key="Davis346mini.APS.GlobalShutter" value="true"/>
-                <entry key="Davis346mini.APS.NullSettle" value="3"/>
-                <entry key="Davis346mini.APS.RampReset" value="10"/>
-                <entry key="Davis346mini.APS.RampShortReset" value="false"/>
-                <entry key="Davis346mini.APS.ResetRead" value="true"/>
-                <entry key="Davis346mini.APS.ResetSettle" value="10"/>
-                <entry key="Davis346mini.APS.RowSettle" value="10"/>
-                <entry key="Davis346mini.APS.Run" value="false"/>
-                <entry key="Davis346mini.APS.SampleEnable" value="true"/>
-                <entry key="Davis346mini.APS.SampleSettle" value="30"/>
-                <entry key="Davis346mini.APS.UseInternalADC" value="true"/>
-                <entry key="Davis346mini.APS.WaitOnTransferStall" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.ADCcompBp.BitValueCoarse" value="2"/>
-                <entry key="Davis346mini.AddressedIPotCF.ADCcompBp.BitValueFine" value="20"/>
-                <entry key="Davis346mini.AddressedIPotCF.ADCcompBp.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.ADCcompBp.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.ADCcompBp.Sex" value="P"/>
-                <entry key="Davis346mini.AddressedIPotCF.ADCcompBp.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPdBn.BitValueCoarse" value="1"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPdBn.BitValueFine" value="91"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPdBn.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPdBn.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPdBn.Sex" value="N"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPdBn.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPuXBp.BitValueCoarse" value="3"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPuXBp.BitValueFine" value="80"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPuXBp.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPuXBp.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPuXBp.Sex" value="P"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPuXBp.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPuYBp.BitValueCoarse" value="0"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPuYBp.BitValueFine" value="152"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPuYBp.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPuYBp.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPuYBp.Sex" value="P"/>
-                <entry key="Davis346mini.AddressedIPotCF.AEPuYBp.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.ApsROSFBn.BitValueCoarse" value="1"/>
-                <entry key="Davis346mini.AddressedIPotCF.ApsROSFBn.BitValueFine" value="219"/>
-                <entry key="Davis346mini.AddressedIPotCF.ApsROSFBn.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.ApsROSFBn.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.ApsROSFBn.Sex" value="N"/>
-                <entry key="Davis346mini.AddressedIPotCF.ApsROSFBn.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.ColSelLowBn.BitValueCoarse" value="7"/>
-                <entry key="Davis346mini.AddressedIPotCF.ColSelLowBn.BitValueFine" value="1"/>
-                <entry key="Davis346mini.AddressedIPotCF.ColSelLowBn.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.ColSelLowBn.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.ColSelLowBn.Sex" value="N"/>
-                <entry key="Davis346mini.AddressedIPotCF.ColSelLowBn.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.DACBufBp.BitValueCoarse" value="1"/>
-                <entry key="Davis346mini.AddressedIPotCF.DACBufBp.BitValueFine" value="60"/>
-                <entry key="Davis346mini.AddressedIPotCF.DACBufBp.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.DACBufBp.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.DACBufBp.Sex" value="P"/>
-                <entry key="Davis346mini.AddressedIPotCF.DACBufBp.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.DiffBn.BitValueCoarse" value="3"/>
-                <entry key="Davis346mini.AddressedIPotCF.DiffBn.BitValueFine" value="109"/>
-                <entry key="Davis346mini.AddressedIPotCF.DiffBn.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.DiffBn.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.DiffBn.Sex" value="N"/>
-                <entry key="Davis346mini.AddressedIPotCF.DiffBn.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.IFRefrBn.BitValueCoarse" value="2"/>
-                <entry key="Davis346mini.AddressedIPotCF.IFRefrBn.BitValueFine" value="255"/>
-                <entry key="Davis346mini.AddressedIPotCF.IFRefrBn.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.IFRefrBn.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.IFRefrBn.Sex" value="N"/>
-                <entry key="Davis346mini.AddressedIPotCF.IFRefrBn.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.IFThrBn.BitValueCoarse" value="2"/>
-                <entry key="Davis346mini.AddressedIPotCF.IFThrBn.BitValueFine" value="255"/>
-                <entry key="Davis346mini.AddressedIPotCF.IFThrBn.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.IFThrBn.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.IFThrBn.Sex" value="N"/>
-                <entry key="Davis346mini.AddressedIPotCF.IFThrBn.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.LcolTimeoutBn.BitValueCoarse" value="2"/>
-                <entry key="Davis346mini.AddressedIPotCF.LcolTimeoutBn.BitValueFine" value="49"/>
-                <entry key="Davis346mini.AddressedIPotCF.LcolTimeoutBn.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.LcolTimeoutBn.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.LcolTimeoutBn.Sex" value="N"/>
-                <entry key="Davis346mini.AddressedIPotCF.LcolTimeoutBn.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.LocalBufBn.BitValueCoarse" value="2"/>
-                <entry key="Davis346mini.AddressedIPotCF.LocalBufBn.BitValueFine" value="164"/>
-                <entry key="Davis346mini.AddressedIPotCF.LocalBufBn.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.LocalBufBn.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.LocalBufBn.Sex" value="N"/>
-                <entry key="Davis346mini.AddressedIPotCF.LocalBufBn.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.OffBn.BitValueCoarse" value="4"/>
-                <entry key="Davis346mini.AddressedIPotCF.OffBn.BitValueFine" value="43"/>
-                <entry key="Davis346mini.AddressedIPotCF.OffBn.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.OffBn.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.OffBn.Sex" value="N"/>
-                <entry key="Davis346mini.AddressedIPotCF.OffBn.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.OnBn.BitValueCoarse" value="2"/>
-                <entry key="Davis346mini.AddressedIPotCF.OnBn.BitValueFine" value="202"/>
-                <entry key="Davis346mini.AddressedIPotCF.OnBn.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.OnBn.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.OnBn.Sex" value="N"/>
-                <entry key="Davis346mini.AddressedIPotCF.OnBn.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.PadFollBn.BitValueCoarse" value="0"/>
-                <entry key="Davis346mini.AddressedIPotCF.PadFollBn.BitValueFine" value="215"/>
-                <entry key="Davis346mini.AddressedIPotCF.PadFollBn.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.PadFollBn.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.PadFollBn.Sex" value="N"/>
-                <entry key="Davis346mini.AddressedIPotCF.PadFollBn.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.PixInvBn.BitValueCoarse" value="2"/>
-                <entry key="Davis346mini.AddressedIPotCF.PixInvBn.BitValueFine" value="129"/>
-                <entry key="Davis346mini.AddressedIPotCF.PixInvBn.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.PixInvBn.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.PixInvBn.Sex" value="N"/>
-                <entry key="Davis346mini.AddressedIPotCF.PixInvBn.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.PrBp.BitValueCoarse" value="6"/>
-                <entry key="Davis346mini.AddressedIPotCF.PrBp.BitValueFine" value="43"/>
-                <entry key="Davis346mini.AddressedIPotCF.PrBp.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.PrBp.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.PrBp.Sex" value="P"/>
-                <entry key="Davis346mini.AddressedIPotCF.PrBp.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.PrSFBp.BitValueCoarse" value="6"/>
-                <entry key="Davis346mini.AddressedIPotCF.PrSFBp.BitValueFine" value="16"/>
-                <entry key="Davis346mini.AddressedIPotCF.PrSFBp.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.PrSFBp.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.PrSFBp.Sex" value="P"/>
-                <entry key="Davis346mini.AddressedIPotCF.PrSFBp.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.ReadoutBufBP.BitValueCoarse" value="1"/>
-                <entry key="Davis346mini.AddressedIPotCF.ReadoutBufBP.BitValueFine" value="20"/>
-                <entry key="Davis346mini.AddressedIPotCF.ReadoutBufBP.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.ReadoutBufBP.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.ReadoutBufBP.Sex" value="P"/>
-                <entry key="Davis346mini.AddressedIPotCF.ReadoutBufBP.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.RefrBp.BitValueCoarse" value="3"/>
-                <entry key="Davis346mini.AddressedIPotCF.RefrBp.BitValueFine" value="25"/>
-                <entry key="Davis346mini.AddressedIPotCF.RefrBp.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.RefrBp.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.RefrBp.Sex" value="P"/>
-                <entry key="Davis346mini.AddressedIPotCF.RefrBp.Type" value="NORMAL"/>
-                <entry key="Davis346mini.AddressedIPotCF.biasBuffer.BitValueCoarse" value="2"/>
-                <entry key="Davis346mini.AddressedIPotCF.biasBuffer.BitValueFine" value="254"/>
-                <entry key="Davis346mini.AddressedIPotCF.biasBuffer.Enabled" value="true"/>
-                <entry key="Davis346mini.AddressedIPotCF.biasBuffer.LowCurrent" value="false"/>
-                <entry key="Davis346mini.AddressedIPotCF.biasBuffer.Sex" value="N"/>
-                <entry key="Davis346mini.AddressedIPotCF.biasBuffer.Type" value="NORMAL"/>
-                <entry key="Davis346mini.Chip.AERnArow" value="false"/>
-                <entry key="Davis346mini.Chip.AnalogMux0" value="0"/>
-                <entry key="Davis346mini.Chip.AnalogMux1" value="0"/>
-                <entry key="Davis346mini.Chip.AnalogMux2" value="0"/>
-                <entry key="Davis346mini.Chip.BiasMux0" value="0"/>
-                <entry key="Davis346mini.Chip.DigitalMux0" value="0"/>
-                <entry key="Davis346mini.Chip.DigitalMux1" value="0"/>
-                <entry key="Davis346mini.Chip.DigitalMux2" value="0"/>
-                <entry key="Davis346mini.Chip.DigitalMux3" value="0"/>
-                <entry key="Davis346mini.Chip.ResetCalibNeuron" value="true"/>
-                <entry key="Davis346mini.Chip.ResetTestPixel" value="true"/>
-                <entry key="Davis346mini.Chip.SelectGrayCounter" value="true"/>
-                <entry key="Davis346mini.Chip.TestADC" value="false"/>
-                <entry key="Davis346mini.Chip.TypeNCalibNeuron" value="false"/>
-                <entry key="Davis346mini.Chip.UseAOut" value="false"/>
-                <entry key="Davis346mini.DVS.AckDelayColumn" value="0"/>
-                <entry key="Davis346mini.DVS.AckDelayRow" value="4"/>
-                <entry key="Davis346mini.DVS.AckExtensionColumn" value="0"/>
-                <entry key="Davis346mini.DVS.AckExtensionRow" value="1"/>
-                <entry key="Davis346mini.DVS.ExternalAERControl" value="false"/>
-                <entry key="Davis346mini.DVS.FilterBackgroundActivity" value="false"/>
-                <entry key="Davis346mini.DVS.FilterBackgroundActivityDeltaTime" value="20000"/>
-                <entry key="Davis346mini.DVS.FilterRowOnlyEvents" value="true"/>
-                <entry key="Davis346mini.DVS.Run" value="true"/>
-                <entry key="Davis346mini.DVS.WaitOnTransferStall" value="false"/>
-                <entry key="Davis346mini.ExtInput.DetectFallingEdges" value="false"/>
-                <entry key="Davis346mini.ExtInput.DetectPulseLength" value="120"/>
-                <entry key="Davis346mini.ExtInput.DetectPulsePolarity" value="true"/>
-                <entry key="Davis346mini.ExtInput.DetectPulses" value="true"/>
-                <entry key="Davis346mini.ExtInput.DetectRisingEdges" value="false"/>
-                <entry key="Davis346mini.ExtInput.GeneratePulseInterval" value="60"/>
-                <entry key="Davis346mini.ExtInput.GeneratePulseLength" value="30"/>
-                <entry key="Davis346mini.ExtInput.GeneratePulsePolarity" value="false"/>
-                <entry key="Davis346mini.ExtInput.GenerateUseCustomSignal" value="false"/>
-                <entry key="Davis346mini.ExtInput.RunDetector" value="false"/>
-                <entry key="Davis346mini.ExtInput.RunGenerator" value="false"/>
-                <entry key="Davis346mini.IMU.AccelFullScale" value="2"/>
-                <entry key="Davis346mini.IMU.AccelScale" value="ImuAccelScaleG8"/>
-                <entry key="Davis346mini.IMU.DigitalLowPassFilter" value="1"/>
-                <entry key="Davis346mini.IMU.GyroFullScale" value="2"/>
-                <entry key="Davis346mini.IMU.GyroScale" value="GyroFullScaleDegPerSec1000"/>
-                <entry key="Davis346mini.IMU.LPCycle" value="false"/>
-                <entry key="Davis346mini.IMU.LPWakeup" value="1"/>
-                <entry key="Davis346mini.IMU.Run" value="true"/>
-                <entry key="Davis346mini.IMU.SampleRateDivider" value="0"/>
-                <entry key="Davis346mini.IMU.TempStandby" value="false"/>
-                <entry key="Davis346mini.IMU.displayEnabled" value="true"/>
-                <entry key="Davis346mini.Masterbias.internalResistorUsed" value="false"/>
-                <entry key="Davis346mini.Masterbias.rint" value="46000.0"/>
-                <entry key="Davis346mini.Masterbias.rx" value="8200.0"/>
-                <entry key="Davis346mini.Mux.DropAPSOnTransferStall" value="false"/>
-                <entry key="Davis346mini.Mux.DropDVSOnTransferStall" value="true"/>
-                <entry key="Davis346mini.Mux.DropExtInputOnTransferStall" value="true"/>
-                <entry key="Davis346mini.Mux.DropIMUOnTransferStall" value="false"/>
-                <entry key="Davis346mini.Mux.ForceChipBiasEnable" value="false"/>
-                <entry key="Davis346mini.ShiftedSourceBias.SSN.OperatingMode" value="ShiftedSource"/>
-                <entry key="Davis346mini.ShiftedSourceBias.SSN.RefValue" value="1"/>
-                <entry key="Davis346mini.ShiftedSourceBias.SSN.RegBitValue" value="33"/>
-                <entry key="Davis346mini.ShiftedSourceBias.SSN.VoltageLevel" value="SplitGate"/>
-                <entry key="Davis346mini.ShiftedSourceBias.SSP.OperatingMode" value="ShiftedSource"/>
-                <entry key="Davis346mini.ShiftedSourceBias.SSP.RefValue" value="1"/>
-                <entry key="Davis346mini.ShiftedSourceBias.SSP.RegBitValue" value="33"/>
-                <entry key="Davis346mini.ShiftedSourceBias.SSP.VoltageLevel" value="SplitGate"/>
-                <entry key="Davis346mini.USB.EarlyPacketDelay" value="8"/>
-                <entry key="Davis346mini.VDACBias.ADC_RefHigh.BufBitValue" value="7"/>
-                <entry key="Davis346mini.VDACBias.ADC_RefHigh.VdacBitValue" value="30"/>
-                <entry key="Davis346mini.VDACBias.ADC_RefLow.BufBitValue" value="7"/>
-                <entry key="Davis346mini.VDACBias.ADC_RefLow.VdacBitValue" value="1"/>
-                <entry key="Davis346mini.VDACBias.AdcTestVoltage.BufBitValue" value="7"/>
-                <entry key="Davis346mini.VDACBias.AdcTestVoltage.VdacBitValue" value="21"/>
-                <entry key="Davis346mini.VDACBias.ApsCas.BufBitValue" value="6"/>
-                <entry key="Davis346mini.VDACBias.ApsCas.VdacBitValue" value="21"/>
-                <entry key="Davis346mini.VDACBias.apsOverflowLevel.BufBitValue" value="6"/>
-                <entry key="Davis346mini.VDACBias.apsOverflowLevel.VdacBitValue" value="27"/>
-                <entry key="Davis346mini.ExtInput.GeneratePulseFrequency" value="1000000"/>
-                <entry key="Davis346mini.ExtInput.GeneratePulseDutyCycle" value="50"/>
-                <entry key="Davis346mini.APS.ADCTestMode" value="false"/>
-                <entry key="class eu.seebetter.ini.chips.davis.Davis346mini.preferredDisplayMethod" value="eu.seebetter.ini.chips.davis.DavisBaseCamera$DavisDisplayMethod"/>
+                <entry key="Davis346blue.APS.ColumnSettle" value="30"/>
+                <entry key="Davis346blue.APS.Exposure" value="5000"/>
+                <entry key="Davis346blue.APS.FrameDelay" value="1000"/>
+                <entry key="Davis346blue.APS.GlobalShutter" value="true"/>
+                <entry key="Davis346blue.APS.NullSettle" value="3"/>
+                <entry key="Davis346blue.APS.RampReset" value="10"/>
+                <entry key="Davis346blue.APS.RampShortReset" value="false"/>
+                <entry key="Davis346blue.APS.ResetRead" value="true"/>
+                <entry key="Davis346blue.APS.ResetSettle" value="10"/>
+                <entry key="Davis346blue.APS.RowSettle" value="10"/>
+                <entry key="Davis346blue.APS.Run" value="false"/>
+                <entry key="Davis346blue.APS.SampleEnable" value="true"/>
+                <entry key="Davis346blue.APS.SampleSettle" value="30"/>
+                <entry key="Davis346blue.APS.UseInternalADC" value="true"/>
+                <entry key="Davis346blue.APS.WaitOnTransferStall" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.ADCcompBp.BitValueCoarse" value="2"/>
+                <entry key="Davis346blue.AddressedIPotCF.ADCcompBp.BitValueFine" value="20"/>
+                <entry key="Davis346blue.AddressedIPotCF.ADCcompBp.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.ADCcompBp.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.ADCcompBp.Sex" value="P"/>
+                <entry key="Davis346blue.AddressedIPotCF.ADCcompBp.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPdBn.BitValueCoarse" value="1"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPdBn.BitValueFine" value="91"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPdBn.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPdBn.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPdBn.Sex" value="N"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPdBn.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPuXBp.BitValueCoarse" value="3"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPuXBp.BitValueFine" value="80"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPuXBp.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPuXBp.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPuXBp.Sex" value="P"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPuXBp.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPuYBp.BitValueCoarse" value="0"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPuYBp.BitValueFine" value="152"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPuYBp.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPuYBp.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPuYBp.Sex" value="P"/>
+                <entry key="Davis346blue.AddressedIPotCF.AEPuYBp.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.ApsROSFBn.BitValueCoarse" value="1"/>
+                <entry key="Davis346blue.AddressedIPotCF.ApsROSFBn.BitValueFine" value="219"/>
+                <entry key="Davis346blue.AddressedIPotCF.ApsROSFBn.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.ApsROSFBn.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.ApsROSFBn.Sex" value="N"/>
+                <entry key="Davis346blue.AddressedIPotCF.ApsROSFBn.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.ColSelLowBn.BitValueCoarse" value="7"/>
+                <entry key="Davis346blue.AddressedIPotCF.ColSelLowBn.BitValueFine" value="1"/>
+                <entry key="Davis346blue.AddressedIPotCF.ColSelLowBn.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.ColSelLowBn.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.ColSelLowBn.Sex" value="N"/>
+                <entry key="Davis346blue.AddressedIPotCF.ColSelLowBn.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.DACBufBp.BitValueCoarse" value="1"/>
+                <entry key="Davis346blue.AddressedIPotCF.DACBufBp.BitValueFine" value="60"/>
+                <entry key="Davis346blue.AddressedIPotCF.DACBufBp.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.DACBufBp.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.DACBufBp.Sex" value="P"/>
+                <entry key="Davis346blue.AddressedIPotCF.DACBufBp.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.DiffBn.BitValueCoarse" value="3"/>
+                <entry key="Davis346blue.AddressedIPotCF.DiffBn.BitValueFine" value="109"/>
+                <entry key="Davis346blue.AddressedIPotCF.DiffBn.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.DiffBn.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.DiffBn.Sex" value="N"/>
+                <entry key="Davis346blue.AddressedIPotCF.DiffBn.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.IFRefrBn.BitValueCoarse" value="2"/>
+                <entry key="Davis346blue.AddressedIPotCF.IFRefrBn.BitValueFine" value="255"/>
+                <entry key="Davis346blue.AddressedIPotCF.IFRefrBn.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.IFRefrBn.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.IFRefrBn.Sex" value="N"/>
+                <entry key="Davis346blue.AddressedIPotCF.IFRefrBn.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.IFThrBn.BitValueCoarse" value="2"/>
+                <entry key="Davis346blue.AddressedIPotCF.IFThrBn.BitValueFine" value="255"/>
+                <entry key="Davis346blue.AddressedIPotCF.IFThrBn.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.IFThrBn.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.IFThrBn.Sex" value="N"/>
+                <entry key="Davis346blue.AddressedIPotCF.IFThrBn.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.LcolTimeoutBn.BitValueCoarse" value="2"/>
+                <entry key="Davis346blue.AddressedIPotCF.LcolTimeoutBn.BitValueFine" value="49"/>
+                <entry key="Davis346blue.AddressedIPotCF.LcolTimeoutBn.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.LcolTimeoutBn.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.LcolTimeoutBn.Sex" value="N"/>
+                <entry key="Davis346blue.AddressedIPotCF.LcolTimeoutBn.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.LocalBufBn.BitValueCoarse" value="2"/>
+                <entry key="Davis346blue.AddressedIPotCF.LocalBufBn.BitValueFine" value="164"/>
+                <entry key="Davis346blue.AddressedIPotCF.LocalBufBn.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.LocalBufBn.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.LocalBufBn.Sex" value="N"/>
+                <entry key="Davis346blue.AddressedIPotCF.LocalBufBn.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.OffBn.BitValueCoarse" value="4"/>
+                <entry key="Davis346blue.AddressedIPotCF.OffBn.BitValueFine" value="43"/>
+                <entry key="Davis346blue.AddressedIPotCF.OffBn.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.OffBn.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.OffBn.Sex" value="N"/>
+                <entry key="Davis346blue.AddressedIPotCF.OffBn.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.OnBn.BitValueCoarse" value="2"/>
+                <entry key="Davis346blue.AddressedIPotCF.OnBn.BitValueFine" value="202"/>
+                <entry key="Davis346blue.AddressedIPotCF.OnBn.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.OnBn.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.OnBn.Sex" value="N"/>
+                <entry key="Davis346blue.AddressedIPotCF.OnBn.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.PadFollBn.BitValueCoarse" value="0"/>
+                <entry key="Davis346blue.AddressedIPotCF.PadFollBn.BitValueFine" value="215"/>
+                <entry key="Davis346blue.AddressedIPotCF.PadFollBn.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.PadFollBn.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.PadFollBn.Sex" value="N"/>
+                <entry key="Davis346blue.AddressedIPotCF.PadFollBn.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.PixInvBn.BitValueCoarse" value="2"/>
+                <entry key="Davis346blue.AddressedIPotCF.PixInvBn.BitValueFine" value="129"/>
+                <entry key="Davis346blue.AddressedIPotCF.PixInvBn.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.PixInvBn.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.PixInvBn.Sex" value="N"/>
+                <entry key="Davis346blue.AddressedIPotCF.PixInvBn.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.PrBp.BitValueCoarse" value="6"/>
+                <entry key="Davis346blue.AddressedIPotCF.PrBp.BitValueFine" value="43"/>
+                <entry key="Davis346blue.AddressedIPotCF.PrBp.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.PrBp.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.PrBp.Sex" value="P"/>
+                <entry key="Davis346blue.AddressedIPotCF.PrBp.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.PrSFBp.BitValueCoarse" value="6"/>
+                <entry key="Davis346blue.AddressedIPotCF.PrSFBp.BitValueFine" value="16"/>
+                <entry key="Davis346blue.AddressedIPotCF.PrSFBp.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.PrSFBp.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.PrSFBp.Sex" value="P"/>
+                <entry key="Davis346blue.AddressedIPotCF.PrSFBp.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.ReadoutBufBP.BitValueCoarse" value="1"/>
+                <entry key="Davis346blue.AddressedIPotCF.ReadoutBufBP.BitValueFine" value="20"/>
+                <entry key="Davis346blue.AddressedIPotCF.ReadoutBufBP.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.ReadoutBufBP.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.ReadoutBufBP.Sex" value="P"/>
+                <entry key="Davis346blue.AddressedIPotCF.ReadoutBufBP.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.RefrBp.BitValueCoarse" value="3"/>
+                <entry key="Davis346blue.AddressedIPotCF.RefrBp.BitValueFine" value="25"/>
+                <entry key="Davis346blue.AddressedIPotCF.RefrBp.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.RefrBp.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.RefrBp.Sex" value="P"/>
+                <entry key="Davis346blue.AddressedIPotCF.RefrBp.Type" value="NORMAL"/>
+                <entry key="Davis346blue.AddressedIPotCF.biasBuffer.BitValueCoarse" value="2"/>
+                <entry key="Davis346blue.AddressedIPotCF.biasBuffer.BitValueFine" value="254"/>
+                <entry key="Davis346blue.AddressedIPotCF.biasBuffer.Enabled" value="true"/>
+                <entry key="Davis346blue.AddressedIPotCF.biasBuffer.LowCurrent" value="false"/>
+                <entry key="Davis346blue.AddressedIPotCF.biasBuffer.Sex" value="N"/>
+                <entry key="Davis346blue.AddressedIPotCF.biasBuffer.Type" value="NORMAL"/>
+                <entry key="Davis346blue.Chip.AERnArow" value="false"/>
+                <entry key="Davis346blue.Chip.AnalogMux0" value="0"/>
+                <entry key="Davis346blue.Chip.AnalogMux1" value="0"/>
+                <entry key="Davis346blue.Chip.AnalogMux2" value="0"/>
+                <entry key="Davis346blue.Chip.BiasMux0" value="0"/>
+                <entry key="Davis346blue.Chip.DigitalMux0" value="0"/>
+                <entry key="Davis346blue.Chip.DigitalMux1" value="0"/>
+                <entry key="Davis346blue.Chip.DigitalMux2" value="0"/>
+                <entry key="Davis346blue.Chip.DigitalMux3" value="0"/>
+                <entry key="Davis346blue.Chip.ResetCalibNeuron" value="true"/>
+                <entry key="Davis346blue.Chip.ResetTestPixel" value="true"/>
+                <entry key="Davis346blue.Chip.SelectGrayCounter" value="true"/>
+                <entry key="Davis346blue.Chip.TestADC" value="false"/>
+                <entry key="Davis346blue.Chip.TypeNCalibNeuron" value="false"/>
+                <entry key="Davis346blue.Chip.UseAOut" value="false"/>
+                <entry key="Davis346blue.DVS.AckDelayColumn" value="0"/>
+                <entry key="Davis346blue.DVS.AckDelayRow" value="4"/>
+                <entry key="Davis346blue.DVS.AckExtensionColumn" value="0"/>
+                <entry key="Davis346blue.DVS.AckExtensionRow" value="1"/>
+                <entry key="Davis346blue.DVS.ExternalAERControl" value="false"/>
+                <entry key="Davis346blue.DVS.FilterBackgroundActivity" value="false"/>
+                <entry key="Davis346blue.DVS.FilterBackgroundActivityDeltaTime" value="20000"/>
+                <entry key="Davis346blue.DVS.FilterRowOnlyEvents" value="true"/>
+                <entry key="Davis346blue.DVS.Run" value="true"/>
+                <entry key="Davis346blue.DVS.WaitOnTransferStall" value="false"/>
+                <entry key="Davis346blue.ExtInput.DetectFallingEdges" value="false"/>
+                <entry key="Davis346blue.ExtInput.DetectPulseLength" value="120"/>
+                <entry key="Davis346blue.ExtInput.DetectPulsePolarity" value="true"/>
+                <entry key="Davis346blue.ExtInput.DetectPulses" value="true"/>
+                <entry key="Davis346blue.ExtInput.DetectRisingEdges" value="false"/>
+                <entry key="Davis346blue.ExtInput.GeneratePulseInterval" value="60"/>
+                <entry key="Davis346blue.ExtInput.GeneratePulseLength" value="30"/>
+                <entry key="Davis346blue.ExtInput.GeneratePulsePolarity" value="false"/>
+                <entry key="Davis346blue.ExtInput.GenerateUseCustomSignal" value="false"/>
+                <entry key="Davis346blue.ExtInput.RunDetector" value="false"/>
+                <entry key="Davis346blue.ExtInput.RunGenerator" value="false"/>
+                <entry key="Davis346blue.IMU.AccelFullScale" value="2"/>
+                <entry key="Davis346blue.IMU.AccelScale" value="ImuAccelScaleG8"/>
+                <entry key="Davis346blue.IMU.DigitalLowPassFilter" value="1"/>
+                <entry key="Davis346blue.IMU.GyroFullScale" value="2"/>
+                <entry key="Davis346blue.IMU.GyroScale" value="GyroFullScaleDegPerSec1000"/>
+                <entry key="Davis346blue.IMU.LPCycle" value="false"/>
+                <entry key="Davis346blue.IMU.LPWakeup" value="1"/>
+                <entry key="Davis346blue.IMU.Run" value="true"/>
+                <entry key="Davis346blue.IMU.SampleRateDivider" value="0"/>
+                <entry key="Davis346blue.IMU.TempStandby" value="false"/>
+                <entry key="Davis346blue.IMU.displayEnabled" value="true"/>
+                <entry key="Davis346blue.Masterbias.internalResistorUsed" value="false"/>
+                <entry key="Davis346blue.Masterbias.rint" value="46000.0"/>
+                <entry key="Davis346blue.Masterbias.rx" value="8200.0"/>
+                <entry key="Davis346blue.Mux.DropAPSOnTransferStall" value="false"/>
+                <entry key="Davis346blue.Mux.DropDVSOnTransferStall" value="true"/>
+                <entry key="Davis346blue.Mux.DropExtInputOnTransferStall" value="true"/>
+                <entry key="Davis346blue.Mux.DropIMUOnTransferStall" value="false"/>
+                <entry key="Davis346blue.Mux.ForceChipBiasEnable" value="false"/>
+                <entry key="Davis346blue.ShiftedSourceBias.SSN.OperatingMode" value="ShiftedSource"/>
+                <entry key="Davis346blue.ShiftedSourceBias.SSN.RefValue" value="1"/>
+                <entry key="Davis346blue.ShiftedSourceBias.SSN.RegBitValue" value="33"/>
+                <entry key="Davis346blue.ShiftedSourceBias.SSN.VoltageLevel" value="SplitGate"/>
+                <entry key="Davis346blue.ShiftedSourceBias.SSP.OperatingMode" value="ShiftedSource"/>
+                <entry key="Davis346blue.ShiftedSourceBias.SSP.RefValue" value="1"/>
+                <entry key="Davis346blue.ShiftedSourceBias.SSP.RegBitValue" value="33"/>
+                <entry key="Davis346blue.ShiftedSourceBias.SSP.VoltageLevel" value="SplitGate"/>
+                <entry key="Davis346blue.USB.EarlyPacketDelay" value="8"/>
+                <entry key="Davis346blue.VDACBias.ADC_RefHigh.BufBitValue" value="7"/>
+                <entry key="Davis346blue.VDACBias.ADC_RefHigh.VdacBitValue" value="30"/>
+                <entry key="Davis346blue.VDACBias.ADC_RefLow.BufBitValue" value="7"/>
+                <entry key="Davis346blue.VDACBias.ADC_RefLow.VdacBitValue" value="1"/>
+                <entry key="Davis346blue.VDACBias.AdcTestVoltage.BufBitValue" value="7"/>
+                <entry key="Davis346blue.VDACBias.AdcTestVoltage.VdacBitValue" value="21"/>
+                <entry key="Davis346blue.VDACBias.ApsCas.BufBitValue" value="6"/>
+                <entry key="Davis346blue.VDACBias.ApsCas.VdacBitValue" value="21"/>
+                <entry key="Davis346blue.VDACBias.apsOverflowLevel.BufBitValue" value="6"/>
+                <entry key="Davis346blue.VDACBias.apsOverflowLevel.VdacBitValue" value="27"/>
+                <entry key="Davis346blue.ExtInput.GeneratePulseFrequency" value="1000000"/>
+                <entry key="Davis346blue.ExtInput.GeneratePulseDutyCycle" value="50"/>
+                <entry key="Davis346blue.APS.ADCTestMode" value="false"/>
+                <entry key="class eu.seebetter.ini.chips.davis.Davis346blue.preferredDisplayMethod" value="eu.seebetter.ini.chips.davis.DavisBaseCamera$DavisDisplayMethod"/>
               </map>
             </node>
           </node>

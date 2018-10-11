@@ -19,11 +19,11 @@ import java.util.logging.Level;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
-import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JSeparator;
 import javax.swing.KeyStroke;
+import javax.swing.ProgressMonitor;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -34,7 +34,6 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
-import javax.swing.ProgressMonitor;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
@@ -1580,7 +1579,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         public DecreaseFrameRateAction() {
             super("Decrease APS frame rate",
-                    "<html>Decreases APS rate by increasing frame delay<p>See <i>User-Friendly Controls</i> tab in HW configuration panel for more control",
+                    "<html>Decreases APS rate by increasing frame interval<p>See <i>User-Friendly Controls</i> tab in HW configuration panel for more control",
                     "DecreaseFrameRate");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, java.awt.event.InputEvent.SHIFT_MASK));
         }
@@ -1588,15 +1587,15 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         @Override
         public void actionPerformed(ActionEvent e) {
             try {
-                float d = getDavisConfig().getFrameDelayMs() * exposureChangeFactor;
-                if (d < .1f) {
-                    d = .1f;
+                float fRate = (1000.0f / getDavisConfig().getFrameIntervalMs());
+                fRate /= exposureChangeFactor;
+                if (fRate < 0.125f) {
+                	fRate = 0.125f;
                 }
-                getDavisConfig().setFrameDelayMs(d);
+                getDavisConfig().setFrameIntervalMs(1000.0f / fRate);
             } catch (IllegalArgumentException ex) {
-
             }
-            final String s = "set frame delay = " + getDavisConfig().getFrameDelayMs() + " ms";
+            final String s = "set frame interval = " + getDavisConfig().getFrameIntervalMs() + " ms";
             log.info(s);
             davisDisplayMethod.showStatusChangeText(s);
             putValue(Action.SELECTED_KEY, true);
@@ -1610,7 +1609,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         public IncreaseFrameRateAction() {
             super("Increase APS frame rate",
-                    "<html>Increases APS rate by descrasing frame delay<p>See <i>User-Friendly Controls</i> tab in HW configuration panel for more control",
+                    "<html>Increases APS rate by decreasing frame interval<p>See <i>User-Friendly Controls</i> tab in HW configuration panel for more control",
                     "IncreaseFrameRate");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, java.awt.event.InputEvent.SHIFT_MASK));
         }
@@ -1618,10 +1617,15 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         @Override
         public void actionPerformed(ActionEvent e) {
             try {
-                getDavisConfig().setFrameDelayMs(getDavisConfig().getFrameDelayMs() / exposureChangeFactor);
+            	float fRate = (1000.0f / getDavisConfig().getFrameIntervalMs());
+                fRate *= exposureChangeFactor;
+                if (fRate > 200.0f) {
+                	fRate = 200.0f;
+                }
+                getDavisConfig().setFrameIntervalMs(1000.0f / fRate);
             } catch (IllegalArgumentException ex) {
             }
-            final String s = "set frame delay = " + getDavisConfig().getFrameDelayMs() + " ms";
+            final String s = "set frame interval = " + getDavisConfig().getFrameIntervalMs() + " ms";
             log.info(s);
             davisDisplayMethod.showStatusChangeText(s);
             putValue(Action.SELECTED_KEY, true);

@@ -5,9 +5,12 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.Preferences;
 
@@ -18,9 +21,6 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 
 import ch.unizh.ini.jaer.config.ConfigInt;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
-import java.awt.event.MouseWheelListener;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.chip.AEChip;
 
@@ -82,7 +82,14 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 
 	@Override
 	public void loadPreference() {
-		set(sprefs.getInt(getPreferencesKey(), defaultValue));
+		// Ensure preferences loaded from config are put back in valid ranges.
+		int prefValue = sprefs.getInt(getPreferencesKey(), defaultValue);
+
+		if ((prefValue < 0) || (prefValue >= (1 << getNumBits()))) {
+			prefValue = defaultValue;
+		}
+
+		set(prefValue);
 	}
 
 	@Override
