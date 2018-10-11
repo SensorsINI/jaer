@@ -19,12 +19,12 @@
                 <entry key="Davis346B.VideoControl.displayFrames" value="true"/>
                 <entry key="Davis346B.VideoControl.displayEvents" value="true"/>
                 <entry key="Davis346B.VideoControl.separateAPSByColor" value="false"/>
-                <entry key="Davis346B.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="Davis346B.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="Davis346B.VideoControl.colorCorrection" value="true"/>
                 <entry key="DAVIS240C.VideoControl.displayFrames" value="false"/>
                 <entry key="DAVIS240C.VideoControl.displayEvents" value="true"/>
                 <entry key="DAVIS240C.VideoControl.separateAPSByColor" value="false"/>
-                <entry key="DAVIS240C.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="DAVIS240C.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="DAVIS240C.VideoControl.colorCorrection" value="true"/>
                 <entry key="VideoControl.displayFrames" value="true"/>
                 <entry key="VideoControl.displayEvents" value="true"/>
@@ -1589,7 +1589,7 @@
                 <entry key="VisualiseSteeringDistNetVisualizer.filterEnabled" value="false"/>
                 <entry key="VisualiseSteeringDistNetVisualizer.lastAPSNetXMLFilename" value="C:\Users\tobi\Dropbox\Share Visualise INI\Tobi_SteeringDistNet\cnnweights-3-1-aps_dvs-1e1n.xml"/>
                 <entry key="DavisAutoShooter.filterEnabled" value="true"/>
-                <entry key="VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="ApsDvsEventFilter.filterIMUSamples" value="false"/>
                 <entry key="ApsDvsEventFilter.filterFrameTransientEvents" value="true"/>
                 <entry key="Steadicam.showGrid" value="true"/>
@@ -2127,7 +2127,7 @@
                 <entry key="DavisRGBW640.VideoControl.displayFrames" value="true"/>
                 <entry key="DavisRGBW640.VideoControl.displayEvents" value="true"/>
                 <entry key="DavisRGBW640.VideoControl.separateAPSByColor" value="false"/>
-                <entry key="DavisRGBW640.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="DavisRGBW640.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="DavisRGBW640.VideoControl.colorCorrection" value="true"/>
                 <entry key="CdavisFrameBlobDetector.filterEnabled" value="false"/>
                 <entry key="VisualiseSteeringConvNet.renderingCyclesDecision" value="0"/>
@@ -2149,7 +2149,7 @@
                 <entry key="Davis208PixelParade.VideoControl.displayFrames" value="true"/>
                 <entry key="Davis208PixelParade.VideoControl.displayEvents" value="true"/>
                 <entry key="Davis208PixelParade.VideoControl.separateAPSByColor" value="false"/>
-                <entry key="Davis208PixelParade.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="Davis208PixelParade.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="Davis208PixelParade.VideoControl.colorCorrection" value="true"/>
                 <entry key="FaceDetectorConvNet.softMaxOutput" value="true"/>
                 <entry key="FaceDetectorConvNet.dvsMinEvents" value="7462"/>
@@ -2281,7 +2281,7 @@
                 <entry key="DAVIS240B.VideoControl.displayFrames" value="true"/>
                 <entry key="DAVIS240B.VideoControl.displayEvents" value="true"/>
                 <entry key="DAVIS240B.VideoControl.separateAPSByColor" value="false"/>
-                <entry key="DAVIS240B.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="DAVIS240B.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="DAVIS240B.VideoControl.colorCorrection" value="true"/>
                 <entry key="VisualiseSteeringConvNet.networkWithDistance" value="true"/>
                 <entry key="VisualiseSteeringConvNet.LCRNstep" value="0.5846796"/>
@@ -2305,7 +2305,7 @@
                 <entry key="Davis346blue.VideoControl.displayFrames" value="false"/>
                 <entry key="Davis346blue.VideoControl.displayEvents" value="true"/>
                 <entry key="Davis346blue.VideoControl.separateAPSByColor" value="false"/>
-                <entry key="Davis346blue.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="Davis346blue.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="Davis346blue.VideoControl.colorCorrection" value="true"/>
                 <entry key="Davis346blue.APS.ColumnSettle" value="30"/>
                 <entry key="Davis346blue.APS.Exposure" value="5270"/>
@@ -2529,7 +2529,7 @@
                 <entry key="Davis640.VideoControl.displayFrames" value="true"/>
                 <entry key="Davis640.VideoControl.displayEvents" value="true"/>
                 <entry key="Davis640.VideoControl.separateAPSByColor" value="false"/>
-                <entry key="Davis640.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="Davis640.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="Davis640.VideoControl.colorCorrection" value="true"/>
                 <entry key="ApproachCell.showApproachCell" value="true"/>
                 <entry key="ApproachCell.showOutputCell" value="true"/>
@@ -2542,7 +2542,7 @@
                 <entry key="CellStatsProber.rateTauMs" value="520.3931"/>
                 <entry key="CellStatsProber.showLatencyHistogramToExternalInputEvents" value="false"/>
                 <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="..\..\devices\firmware\CypressFX2\firmware_FX2LP_DAViS_FX2V4\SBret10.bix"/>
-                <entry key="DAVIS240A.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="DAVIS240A.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="DAVIS240A.VideoControl.colorCorrection" value="true"/>
                 <entry key="DAVIS240A.VideoControl.displayEvents" value="true"/>
                 <entry key="DAVIS240A.VideoControl.displayFrames" value="true"/>
@@ -2922,7 +2922,7 @@
                 <entry key="Davis208PixelParade.VDACBias.ResetHpxBv.VdacBitValue" value="63"/>
                 <entry key="Davis208PixelParade.VDACBias.apsOverflowLevel.BufBitValue" value="6"/>
                 <entry key="Davis208PixelParade.VDACBias.apsOverflowLevel.VdacBitValue" value="27"/>
-                <entry key="Davis208PixelParadeColor.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="Davis208PixelParadeColor.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="Davis208PixelParadeColor.VideoControl.colorCorrection" value="true"/>
                 <entry key="Davis208PixelParadeColor.VideoControl.displayEvents" value="false"/>
                 <entry key="Davis208PixelParadeColor.VideoControl.displayFrames" value="false"/>
@@ -3927,7 +3927,7 @@
                 <entry key="Davis346cBSI.VDACBias.ApsCas.VdacBitValue" value="21"/>
                 <entry key="Davis346cBSI.VDACBias.apsOverflowLevel.BufBitValue" value="6"/>
                 <entry key="Davis346cBSI.VDACBias.apsOverflowLevel.VdacBitValue" value="27"/>
-                <entry key="Davis346cBSI.VideoControl.autoWhiteBalance" value="true"/>
+                <entry key="Davis346cBSI.VideoControl.autoWhiteBalance" value="false"/>
                 <entry key="Davis346cBSI.VideoControl.colorCorrection" value="true"/>
                 <entry key="Davis346cBSI.VideoControl.displayEvents" value="true"/>
                 <entry key="Davis346cBSI.VideoControl.displayFrames" value="true"/>
