@@ -435,7 +435,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         resetTimeLimiter();
         //            final int sizeX = chip.getSizeX();
         //            final int sizeY = chip.getSizeY();
-        frameExtractor.filterPacket(in);
+        if(frameExtractor!=null && processAPSFrames) frameExtractor.filterPacket(in);
         for (BasicEvent e : in) {
             lastProcessedEventTimestamp = e.getTimestamp();
             PolarityEvent p = (PolarityEvent) e;
