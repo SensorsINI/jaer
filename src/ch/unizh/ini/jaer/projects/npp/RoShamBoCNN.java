@@ -164,7 +164,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     @Override
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
         EventPacket out = super.filterPacket(in);
-        if(apsDvsNet==null){
+        if (apsDvsNet == null) {
             showWarningDialogInSwingThread("null CNN, load a valid CNN and re-enable filter", "No CNN loaded");
             setFilterEnabled(false);
             return in;
@@ -589,10 +589,14 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         if (serialPort != null) {
             closeSerial();
         }
-        StringBuilder sb = new StringBuilder("serial ports: ");
+        StringBuilder sb = new StringBuilder("List of all available serial ports: ");
         final Set<String> availableSerialPorts = NRSerialPort.getAvailableSerialPorts();
-        for (String s : availableSerialPorts) {
-            sb.append(s).append(" ");
+        if (availableSerialPorts.isEmpty()) {
+            sb.append("\nNo ports found, sorry.  If you are on linux, serial port support may suffer");
+        } else {
+            for (String s : availableSerialPorts) {
+                sb.append(s).append(" ");
+            }
         }
         log.info(sb.toString());
         if (!availableSerialPorts.contains(serialPortName)) {
@@ -737,7 +741,9 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         protected void processDecision(PropertyChangeEvent evt) {
             int lastOutput = symbolDetected;
             AbstractDavisCNN net = (AbstractDavisCNN) evt.getNewValue();
-            if(net.getOutputLayer().getActivations().length!=4) return; // do nothing with this decision since it was from RoshamboIncremental
+            if (net.getOutputLayer().getActivations().length != 4) {
+                return; // do nothing with this decision since it was from RoshamboIncremental
+            }
             maxActivation = Float.NEGATIVE_INFINITY;
             symbolDetected = -1;
             try {
