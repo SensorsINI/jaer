@@ -52,10 +52,10 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 	}
 
 	@Override
-	public void set(final int value) {
+	public void set(int value) {
 		if ((value < 0) || (value >= (1 << getNumBits()))) {
-			throw new IllegalArgumentException("Attempted to store value=" + value
-				+ ", which is larger than the maximum permitted value of " + (1 << getNumBits()) + " or negative, in " + this);
+			// Recover from out-of-range conditions automatically.
+			value = defaultValue;
 		}
 
 		if (this.value != value) {
@@ -83,12 +83,7 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 	@Override
 	public void loadPreference() {
 		// Ensure preferences loaded from config are put back in valid ranges.
-		int prefValue = sprefs.getInt(getPreferencesKey(), defaultValue);
-
-		if ((prefValue < 0) || (prefValue >= (1 << getNumBits()))) {
-			prefValue = defaultValue;
-		}
-
+		final int prefValue = sprefs.getInt(getPreferencesKey(), defaultValue);
 		set(prefValue);
 	}
 
@@ -120,17 +115,17 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 
 		final JTextField tf = new JTextField();
 		tf.setText(Integer.toString(get()));
-		tf.setPreferredSize(prefDimensions);
-		tf.setMaximumSize(maxDimensions);
-		SPIConfigIntActions actionListeners = new SPIConfigIntActions(this);
+		tf.setPreferredSize(SPIConfigInt.prefDimensions);
+		tf.setMaximumSize(SPIConfigInt.maxDimensions);
+		final SPIConfigIntActions actionListeners = new SPIConfigIntActions(this);
 		tf.addActionListener(actionListeners);
 		tf.addFocusListener(actionListeners);
 		tf.addKeyListener(actionListeners);
 		tf.addMouseWheelListener(actionListeners);
 		pan.add(tf);
 		setControl(tf);
-		addObserver(biasgen);	// This observer is responsible for sending data to hardware
-		addObserver(this);		// This observer is responsible for GUI update. It calls the updateControl() method
+		addObserver(biasgen); // This observer is responsible for sending data to hardware
+		addObserver(this); // This observer is responsible for GUI update. It calls the updateControl() method
 		return pan;
 	}
 
@@ -149,8 +144,8 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 			intConfig = intCfg;
 		}
 
-		private void setValueAndUpdateGUI(int val) {
-			JTextField tf = (JTextField) intConfig.control;
+		private void setValueAndUpdateGUI(final int val) {
+			final JTextField tf = (JTextField) intConfig.control;
 			try {
 				intConfig.set(val);
 				intConfig.setFileModified();
@@ -159,7 +154,7 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 			catch (final Exception ex) {
 				tf.selectAll();
 				tf.setBackground(Color.red);
-				log.warning(ex.toString());
+				SPIConfigValue.log.warning(ex.toString());
 			}
 		}
 
@@ -181,7 +176,8 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 
 		// FocusListener interface
 		@Override
-		public void focusGained(final FocusEvent e) {}
+		public void focusGained(final FocusEvent e) {
+		}
 
 		@Override
 		public void focusLost(final FocusEvent e) {
