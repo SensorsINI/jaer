@@ -25,7 +25,7 @@ import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
-import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -61,8 +61,8 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
     private boolean apsFrames = getBoolean("apsFrames", false);
     private boolean imuSamples = getBoolean("imuSamples", false);
     protected final int LOG_EVERY_THIS_MANY_EVENTS = 1000; // for logging concole messages
-    private ArrayList<FileWriter> fileWriters = new ArrayList();
-    private FileWriter dvsWriter = null, imuWriter = null, apsWriter = null, timecodeWriter = null;
+    private ArrayList<PrintWriter> writers = new ArrayList();
+    private PrintWriter dvsWriter = null, imuWriter = null, apsWriter = null, timecodeWriter = null;
     protected static String DEFAULT_FILENAME = "jAER.txt";
     protected String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
     protected File lastFile = null;
@@ -84,7 +84,7 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
         setPropertyTooltip("closeFiles", "Closes the output file if it is open.");
         setPropertyTooltip("closeOnRewind", "closes recording on rewind event, to allow unattended operation");
         setPropertyTooltip("rewindBeforeRecording", "rewinds file before recording");
-        setPropertyTooltip("maxEvents", "file is automatically closed after this many events have been written; set to 0 to disable");
+        setPropertyTooltip("maxEvents", "file is automatically closed after this many events (in total, of any type) have been written; set to 0 to disable");
         setPropertyTooltip("eventsWritten", "READONLY, shows number of events written");
         setPropertyTooltip("showFolderInDesktop", "Opens the folder containging the last-written file");
         setPropertyTooltip("writeOnlyWhenMousePressed", "If selected, then the events are are saved only when the mouse is pressed in the AEViewer window");
@@ -115,36 +115,43 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
         if (!isWriteEnabled() || (!dvsEvents && !imuSamples && !apsFrames)) {
             return in;
         }
-        try {
-            Iterator itr = null;
-            if (in instanceof ApsDvsEventPacket) {
-                itr = ((ApsDvsEventPacket) in).fullIterator();
-            } else {
-                itr = in.inputIterator();
+//        try {
+        Iterator itr = null;
+        if (in instanceof ApsDvsEventPacket) {
+            itr = ((ApsDvsEventPacket) in).fullIterator();
+        } else {
+            itr = in.inputIterator();
+        }
+        while (itr.hasNext()) {
+            Object o = itr.next();
+            if (dvsEvents && dvsWriter != null) {
+                PolarityEvent pe = (PolarityEvent) o;
+                // One event per line (timestamp x y polarity) as in RPG events.txt
+                dvsWriter.println(String.format("%d %d %d %d", pe.timestamp, pe.x, pe.y, pe.type));
+                incrementCountAndMaybeCloseOutput();
             }
-            while (itr.hasNext()) {
-                Object o = itr.next();
-                if (dvsEvents && dvsWriter != null) {
-                    PolarityEvent pe = (PolarityEvent) o;
-                    // One event per line (timestamp x y polarity) as in RPG events.txt
-                    dvsWriter.write(String.format("%d %d %d %d\n", pe.timestamp, pe.x, pe.y, pe.type));
+            if (imuSamples && imuWriter != null && o instanceof ApsDvsEvent) {
+                ApsDvsEvent ae = (ApsDvsEvent) o;
+                if (ae.isImuSample()) {
+                    IMUSample i = ae.getImuSample();
+                    imuWriter.println(String.format("%d %f %f %f %f %f %f", ae.timestamp,
+                            i.getAccelX(), i.getAccelY(), i.getAccelZ(),
+                            i.getGyroTiltX(), i.getGyroYawY(), i.getGyroRollZ()));
                     incrementCountAndMaybeCloseOutput();
                 }
-                if (imuSamples && imuWriter != null && o instanceof ApsDvsEvent) {
-                    ApsDvsEvent ae = (ApsDvsEvent) o;
-                    if (ae.isImuSample()) {
-                        IMUSample i = ae.getImuSample();
-                        imuWriter.write(String.format("%d %f %f %f %f %f %f\n", ae.timestamp,
-                                i.getAccelX(), i.getAccelY(), i.getAccelZ(),
-                                i.getGyroTiltX(), i.getGyroYawY(), i.getGyroRollZ()));
-                        incrementCountAndMaybeCloseOutput();
-                    }
-                }
             }
-        } catch (IOException ex) {
-            Logger.getLogger(DavisTextOutputWriter.class.getName()).log(Level.SEVERE, null, ex);
-            showWarningDialogInSwingThread(ex.toString(), "Error writing");
-            doCloseFiles();
+        }
+//        } catch (IOException ex) {
+//            Logger.getLogger(DavisTextOutputWriter.class.getName()).log(Level.SEVERE, null, ex);
+//            showWarningDialogInSwingThread(ex.toString(), "Error writing");
+//            doCloseFiles();
+//        }
+        for (PrintWriter p : writers) {
+            if (p.checkError()) {
+                log.warning("Eror occured writing to file, closing all files");
+                showWarningDialogInSwingThread("Eror occured writing to file, closing all files", "Error writing");
+                doCloseFiles();
+            }
         }
         return in;
     }
@@ -159,20 +166,20 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
      * @return the stream, or null if IOException occurs
      *
      */
-    public FileWriter openFileWriter(File f) throws IOException {
-        FileWriter fileWriter = new FileWriter(f);
+    public PrintWriter openWriter(File f) throws IOException {
+        PrintWriter writer = new PrintWriter(f);
         lastFile = f;
         setEventsWritten(0);
         if (additionalComments != null) {
             for (String s : additionalComments) {
-                fileWriter.write("# " + s + "\n");
+                writer.println("# " + s);
             }
         }
-        fileWriter.write("# created " + new Date().toString() + Character.LINE_SEPARATOR);
-        fileWriter.write("# source-file: " + (chip.getAeInputStream() != null ? chip.getAeInputStream().getFile().toString() : "(live input)") + Character.LINE_SEPARATOR);
+        writer.println("# created " + new Date().toString());
+        writer.println("# source-file: " + (chip.getAeInputStream() != null ? chip.getAeInputStream().getFile().toString() : "(live input)"));
         log.info("Opened text output file " + f.toString() + " with text format");
-        fileWriters.add(fileWriter);
-        return fileWriter;
+        writers.add(writer);
+        return writer;
     }
 
     /**
@@ -201,8 +208,9 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
      * @param apsFrames the apsFrames to set
      */
     public void setApsFrames(boolean apsFrames) {
-        this.apsFrames = apsFrames;
-        putBoolean("apsFrames", apsFrames);
+        throw new UnsupportedOperationException("not yet implemented");
+//        this.apsFrames = apsFrames;
+//        putBoolean("apsFrames", apsFrames);
     }
 
     /**
@@ -238,8 +246,12 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
 
     synchronized public void doStartRecordingAndSaveAs() {
         if (isFilesOpen()) {
-            JOptionPane.showMessageDialog(null, "writers are already opened; close them first");
+            JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "writers are already opened; close them first");
             return;
+        }
+        if(!dvsEvents && !imuSamples && !apsFrames){
+              JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "First select at least one of dvsEvents, imuSamples, apsFrames");
+              return;
         }
         JFileChooser c = new JFileChooser(lastFileName);
         c.setFileFilter(new FileFilter() {
@@ -270,16 +282,16 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
             if (dvsEvents) {
                 String fn = basename + "-events.txt";
                 if (checkFileExists(fn)) {
-                    dvsWriter = openFileWriter(new File(fn));
-                    dvsWriter.write("# dvs-events: One event per line:  timestamp(us) x y polarity(0=off,1=on)" + Character.LINE_SEPARATOR);
+                    dvsWriter = openWriter(new File(fn));
+                    dvsWriter.println("# dvs-events: One event per line:  timestamp(us) x y polarity(0=off,1=on)");
 
                 }
             }
             if (imuSamples) {
                 String fn = basename + "-imu.txt";
                 if (checkFileExists(fn)) {
-                    imuWriter = openFileWriter(new File(fn));
-                    imuWriter.write("# dvs-events: One measurement per line: timestamp(us) ax(g) ay(g) az(g) gx(d/s) gy(d/s) gz(d/s)" + Character.LINE_SEPARATOR);
+                    imuWriter = openWriter(new File(fn));
+                    imuWriter.println("# dvs-events: One measurement per line: timestamp(us) ax(g) ay(g) az(g) gx(d/s) gy(d/s) gz(d/s)");
                 }
             }
 
@@ -302,7 +314,7 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
             return;
         }
         try {
-            for (FileWriter f : getFileWriters()) {
+            for (PrintWriter f : getFileWriters()) {
                 f.close();
             }
             getFileWriters().clear();
@@ -366,7 +378,7 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
 //    }
     protected void writeTimecode(int timestamp) throws IOException {
         if (timecodeWriter != null) {
-            timecodeWriter.write(String.format("%d %d\n", eventsWritten, timestamp));
+            timecodeWriter.println(String.format("%d %d", eventsWritten, timestamp));
         }
     }
 
@@ -383,7 +395,7 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
     }
 
     private boolean isFilesOpen() {
-        return !fileWriters.isEmpty();
+        return !writers.isEmpty();
     }
 
     /**
@@ -511,8 +523,8 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
     /**
      * @return the list of fileOutputStream
      */
-    public ArrayList<FileWriter> getFileWriters() {
-        return fileWriters;
+    public ArrayList<PrintWriter> getFileWriters() {
+        return writers;
     }
 
     /**
