@@ -29,6 +29,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
@@ -38,6 +39,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
@@ -114,22 +116,30 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
             return in;
         }
         try {
-            for (BasicEvent e : in) {
-                PolarityEvent pe = (PolarityEvent) e;
+            Iterator itr = null;
+            if (in instanceof ApsDvsEventPacket) {
+                itr = ((ApsDvsEventPacket) in).fullIterator();
+            } else {
+                itr = in.inputIterator();
+            }
+            while (itr.hasNext()) {
+                Object o = itr.next();
                 if (dvsEvents && dvsWriter != null) {
+                    PolarityEvent pe = (PolarityEvent) o;
                     // One event per line (timestamp x y polarity) as in RPG events.txt
-                    dvsWriter.write(String.format("%d %d %d %d\n", e.timestamp, e.x, e.y, pe.type));
+                    dvsWriter.write(String.format("%d %d %d %d\n", pe.timestamp, pe.x, pe.y, pe.type));
+                    incrementCountAndMaybeCloseOutput();
                 }
-                if (imuSamples && imuWriter != null && e instanceof ApsDvsEvent) {
-                    ApsDvsEvent ae = (ApsDvsEvent) e;
+                if (imuSamples && imuWriter != null && o instanceof ApsDvsEvent) {
+                    ApsDvsEvent ae = (ApsDvsEvent) o;
                     if (ae.isImuSample()) {
                         IMUSample i = ae.getImuSample();
-                        imuWriter.write(String.format("%d %f %f %f %f %f %f\n", e.timestamp,
+                        imuWriter.write(String.format("%d %f %f %f %f %f %f\n", ae.timestamp,
                                 i.getAccelX(), i.getAccelY(), i.getAccelZ(),
                                 i.getGyroTiltX(), i.getGyroYawY(), i.getGyroRollZ()));
+                        incrementCountAndMaybeCloseOutput();
                     }
                 }
-                incrementCountAndMaybeCloseOutput();
             }
         } catch (IOException ex) {
             Logger.getLogger(DavisTextOutputWriter.class.getName()).log(Level.SEVERE, null, ex);
@@ -158,8 +168,8 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
                 fileWriter.write("# " + s + "\n");
             }
         }
-        fileWriter.write("# created " + new Date().toString()+Character.LINE_SEPARATOR);
-        fileWriter.write("# source-file: " + (chip.getAeInputStream() != null ? chip.getAeInputStream().getFile().toString() : "(live input)")+Character.LINE_SEPARATOR);
+        fileWriter.write("# created " + new Date().toString() + Character.LINE_SEPARATOR);
+        fileWriter.write("# source-file: " + (chip.getAeInputStream() != null ? chip.getAeInputStream().getFile().toString() : "(live input)") + Character.LINE_SEPARATOR);
         log.info("Opened text output file " + f.toString() + " with text format");
         fileWriters.add(fileWriter);
         return fileWriter;
@@ -261,7 +271,7 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
                 String fn = basename + "-events.txt";
                 if (checkFileExists(fn)) {
                     dvsWriter = openFileWriter(new File(fn));
-                    dvsWriter.write("# dvs-events: One event per line:  timestamp(us) x y polarity(0=off,1=on)"+Character.LINE_SEPARATOR);
+                    dvsWriter.write("# dvs-events: One event per line:  timestamp(us) x y polarity(0=off,1=on)" + Character.LINE_SEPARATOR);
 
                 }
             }
@@ -269,7 +279,7 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
                 String fn = basename + "-imu.txt";
                 if (checkFileExists(fn)) {
                     imuWriter = openFileWriter(new File(fn));
-                    imuWriter.write("# dvs-events: One measurement per line: timestamp(us) ax(g) ay(g) az(g) gx(d/s) gy(d/s) gz(d/s)"+Character.LINE_SEPARATOR);
+                    imuWriter.write("# dvs-events: One measurement per line: timestamp(us) ax(g) ay(g) az(g) gx(d/s) gy(d/s) gz(d/s)" + Character.LINE_SEPARATOR);
                 }
             }
 
@@ -296,7 +306,9 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
                 f.close();
             }
             getFileWriters().clear();
-            dvsWriter=null; imuWriter=null; apsWriter=null;
+            dvsWriter = null;
+            imuWriter = null;
+            apsWriter = null;
             log.info("total " + eventsWritten + " events were written to files " + lastFileName + "-XXX.txt");
             showPlainMessageDialogInSwingThread("Closed files " + lastFileName + " after " + eventsWritten + " events were written", "Files closed");
             setEventsWritten(0);
@@ -321,7 +333,6 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
         this.rewindBeforeRecording = rewindBeforeRecording;
         putBoolean("rewindBeforeRecording", rewindBeforeRecording);
     }
-
 
 //    /**
 //     * Turns gl to BufferedImage with fixed format
