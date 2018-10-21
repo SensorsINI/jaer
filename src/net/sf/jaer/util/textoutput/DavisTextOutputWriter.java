@@ -53,12 +53,12 @@ import net.sf.jaer.graphics.FrameAnnotater;
  *
  * @author tobid
  */
-@Description("Writes out text format files with data from DAVIS cameras")
+@Description("Writes out text format files with data from DAVIS cameras. Previous filtering affects the output.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements PropertyChangeListener {
 
     private boolean dvsEvents = getBoolean("dvsEvents", true);
-    private boolean apsFrames = getBoolean("apsFrames", false);
+//    private boolean apsFrames = getBoolean("apsFrames", false);
     private boolean imuSamples = getBoolean("imuSamples", false);
     protected final int LOG_EVERY_THIS_MANY_EVENTS = 1000; // for logging concole messages
     private ArrayList<PrintWriter> writers = new ArrayList();
@@ -90,8 +90,8 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
         setPropertyTooltip("writeOnlyWhenMousePressed", "If selected, then the events are are saved only when the mouse is pressed in the AEViewer window");
         setPropertyTooltip("writeEnabled", "Selects if writing events is enabled. Use this to temporarily disable output, or in conjunction with writeOnlyWhenMousePressed");
         chip.getSupport().addPropertyChangeListener(this);
-        setPropertyTooltip("dvsEvents", "write dvs events as one per line with format timestamp(us) x y polarity(0=off,1=on)");
-        setPropertyTooltip("imuSamples", "write IMU samples as one per line with format TBD");
+        setPropertyTooltip("dvsEvents", "write dvs events as one per line with format one per line timestamp(us) x y polarity(0=off,1=on)");
+        setPropertyTooltip("imuSamples", "write IMU samples as one per line with format one measurement per line: timestamp(us) ax(g) ay(g) az(g) gx(d/s) gy(d/s) gz(d/s)");
         setPropertyTooltip("apsFrames", "write APS frames with format TBD");
 
         additionalComments.add("jAER DAVIS/DVS camera text file output");
@@ -112,7 +112,7 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
                 chipPropertyChangeListenerAdded = true;
             }
         }
-        if (!isWriteEnabled() || (!dvsEvents && !imuSamples && !apsFrames)) {
+        if (!isWriteEnabled() || (!dvsEvents && !imuSamples /*&& !apsFrames*/)) {
             return in;
         }
 //        try {
@@ -122,8 +122,9 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
         } else {
             itr = in.inputIterator();
         }
-        while (itr.hasNext()) {
-            Object o = itr.next();
+        while (itr.hasNext()) { // skips events that have been filtered out
+            BasicEvent o = (BasicEvent) itr.next();
+           
             if (dvsEvents && dvsWriter != null) {
                 PolarityEvent pe = (PolarityEvent) o;
                 // One event per line (timestamp x y polarity) as in RPG events.txt
@@ -197,21 +198,21 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
         putBoolean("dvsEvents", dvsEvents);
     }
 
-    /**
-     * @return the apsFrames
-     */
-    public boolean isApsFrames() {
-        return apsFrames;
-    }
-
-    /**
-     * @param apsFrames the apsFrames to set
-     */
-    public void setApsFrames(boolean apsFrames) {
-        throw new UnsupportedOperationException("not yet implemented");
-//        this.apsFrames = apsFrames;
-//        putBoolean("apsFrames", apsFrames);
-    }
+//    /**
+//     * @return the apsFrames
+//     */
+//    public boolean isApsFrames() {
+//        return apsFrames;
+//    }
+//
+//    /**
+//     * @param apsFrames the apsFrames to set
+//     */
+//    public void setApsFrames(boolean apsFrames) {
+//        throw new UnsupportedOperationException("not yet implemented");
+////        this.apsFrames = apsFrames;
+////        putBoolean("apsFrames", apsFrames);
+//    }
 
     /**
      * @return the imuSamples
@@ -249,9 +250,9 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "writers are already opened; close them first");
             return;
         }
-        if(!dvsEvents && !imuSamples && !apsFrames){
-              JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "First select at least one of dvsEvents, imuSamples, apsFrames");
-              return;
+        if (!dvsEvents && !imuSamples /*&& !apsFrames*/) {
+            JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "First select at least one of dvsEvents, imuSamples, apsFrames");
+            return;
         }
         JFileChooser c = new JFileChooser(lastFileName);
         c.setFileFilter(new FileFilter() {
@@ -291,7 +292,7 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
                 String fn = basename + "-imu.txt";
                 if (checkFileExists(fn)) {
                     imuWriter = openWriter(new File(fn));
-                    imuWriter.println("# dvs-events: One measurement per line: timestamp(us) ax(g) ay(g) az(g) gx(d/s) gy(d/s) gz(d/s)");
+                    imuWriter.println("# imu-samples: One measurement per line: timestamp(us) ax(g) ay(g) az(g) gx(d/s) gy(d/s) gz(d/s)");
                 }
             }
 
