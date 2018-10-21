@@ -49,11 +49,13 @@ import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- * Writes out text format DVS, IMU and frame data from DAVIS cameras
+ * "Writes out text format files with DVS and IMU data from DAVIS and DVS cameras. Previous filtering affects the output. Output format is compatible with http://rpg.ifi.uzh.ch/davis_data.html
  *
- * @author tobid
+ * @author Tobi Delbruck
  */
-@Description("Writes out text format files with data from DAVIS cameras. Previous filtering affects the output.")
+@Description("<html>Writes out text format files with DVS and IMU data from DAVIS and DVS cameras."
+        + " <p>Previous filtering affects the output. "
+        + "<p>Output format is compatible with <a href=\"http://rpg.ifi.uzh.ch/davis_data.html\">rpg.ifi.uzh.ch/davis_data.html</a>")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements PropertyChangeListener {
 
