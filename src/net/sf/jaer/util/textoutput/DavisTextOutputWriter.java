@@ -49,7 +49,9 @@ import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- * "Writes out text format files with DVS and IMU data from DAVIS and DVS cameras. Previous filtering affects the output. Output format is compatible with http://rpg.ifi.uzh.ch/davis_data.html
+ * "Writes out text format files with DVS and IMU data from DAVIS and DVS
+ * cameras. Previous filtering affects the output. Output format is compatible
+ * with http://rpg.ifi.uzh.ch/davis_data.html
  *
  * @author Tobi Delbruck
  */
@@ -117,25 +119,34 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
         if (!isWriteEnabled() || (!dvsEvents && !imuSamples /*&& !apsFrames*/)) {
             return in;
         }
+        boolean davis = false;
 //        try {
         Iterator itr = null;
         if (in instanceof ApsDvsEventPacket) {
             itr = ((ApsDvsEventPacket) in).fullIterator();
+            davis = true;
         } else {
             itr = in.inputIterator();
+            davis = false;
         }
         while (itr.hasNext()) { // skips events that have been filtered out
             BasicEvent o = (BasicEvent) itr.next();
-           
-            if (dvsEvents && dvsWriter != null) {
+            // we get all events, including IMU, DVS, and APS samples
+
+            if (!davis) { // pure DVS
                 PolarityEvent pe = (PolarityEvent) o;
-                // One event per line (timestamp x y polarity) as in RPG events.txt
-                dvsWriter.println(String.format("%d %d %d %d", pe.timestamp, pe.x, pe.y, pe.type));
-                incrementCountAndMaybeCloseOutput();
-            }
-            if (imuSamples && imuWriter != null && o instanceof ApsDvsEvent) {
+                if (dvsEvents && dvsWriter != null) {
+                    // One event per line (timestamp x y polarity) as in RPG events.txt
+                    dvsWriter.println(String.format("%d %d %d %d", pe.timestamp, pe.x, pe.y, pe.polarity == PolarityEvent.Polarity.Off ? 0 : 1));
+                    incrementCountAndMaybeCloseOutput();
+                }
+            } else { // davis type
                 ApsDvsEvent ae = (ApsDvsEvent) o;
-                if (ae.isImuSample()) {
+                if (dvsEvents && dvsWriter != null && ae.isDVSEvent()) {
+                    // One event per line (timestamp x y polarity) as in RPG events.txt
+                    dvsWriter.println(String.format("%d %d %d %d", ae.timestamp, ae.x, ae.y, ae.polarity == PolarityEvent.Polarity.Off ? 0 : 1));
+                    incrementCountAndMaybeCloseOutput();
+                } else if (imuSamples && imuWriter != null && ae.isImuSample()) {
                     IMUSample i = ae.getImuSample();
                     imuWriter.println(String.format("%d %f %f %f %f %f %f", ae.timestamp,
                             i.getAccelX(), i.getAccelY(), i.getAccelZ(),
@@ -143,6 +154,7 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
                     incrementCountAndMaybeCloseOutput();
                 }
             }
+
         }
 //        } catch (IOException ex) {
 //            Logger.getLogger(DavisTextOutputWriter.class.getName()).log(Level.SEVERE, null, ex);
@@ -215,7 +227,6 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
 ////        this.apsFrames = apsFrames;
 ////        putBoolean("apsFrames", apsFrames);
 //    }
-
     /**
      * @return the imuSamples
      */
