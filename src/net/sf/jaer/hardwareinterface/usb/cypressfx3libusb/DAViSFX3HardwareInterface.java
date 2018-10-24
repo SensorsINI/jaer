@@ -438,10 +438,14 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									// Invert polarity for PixelParade high gain pixels (DavisSense), because of
 									// negative gain from pre-amplifier.
-									final byte polarity = ((chipID == DAViSFX3HardwareInterface.CHIP_DAVIS208) && (data < 192))
+                                                                        // tobi commented out because it seems that array is now flipped horizontally (oct 2018)
+//                                                                       final byte polarity =code;
+//									final byte polarity = ((chipID == DAViSFX3HardwareInterface.CHIP_DAVIS208) && (data < 192))
+//										? ((byte) (~code))
+//										: (code);
+									final byte polarity = ((chipID == DAViSFX3HardwareInterface.CHIP_DAVIS208) && (data <= 16))
 										? ((byte) (~code))
 										: (code);
-
 									if (dvsInvertXY) {
 										buffer
 											.getAddresses()[eventCounter] = (((dvsSizeX - 1 - data) << DavisChip.YSHIFT) & DavisChip.YMASK)
