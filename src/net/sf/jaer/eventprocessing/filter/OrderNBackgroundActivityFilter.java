@@ -28,6 +28,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
@@ -64,8 +65,14 @@ public class OrderNBackgroundActivityFilter extends EventFilter2D implements Fra
 
     @Override
     public void resetFilter() {
-        if(lastRowTs==null) initFilter();
-        if(sx*sy==0) return;
+        sx = chip.getSizeX();
+        sy = chip.getSizeY();
+        if (lastRowTs == null) {
+            initFilter();
+        }
+        if (sx * sy == 0) {
+            return;
+        }
         Arrays.fill(lastColTs, 0);
         Arrays.fill(lastRowTs, 0);
         Arrays.fill(lastXByRow, -1);
@@ -155,6 +162,8 @@ public class OrderNBackgroundActivityFilter extends EventFilter2D implements Fra
     public void propertyChange(PropertyChangeEvent evt) {
         super.propertyChange(evt); //To change body of generated methods, choose Tools | Templates.
         if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
+            resetFilter();
+        } else if (evt.getPropertyName() == AEViewer.EVENT_CHIP) {
             resetFilter();
         }
 
