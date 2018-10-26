@@ -305,6 +305,8 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         imuControlGUI = new ImuControl(this, imuControl);
 
         // Link to DavisUserControlPanel to update values there too.
+        
+        // TODO add observer for updating computed DVS threshold values with diff/diffOn/diffOff change
         dvsRun.addObserver(new Observer() {
             @Override
             public void update(final Observable o, final Object arg) {

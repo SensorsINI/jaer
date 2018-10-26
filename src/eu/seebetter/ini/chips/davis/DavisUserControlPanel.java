@@ -374,10 +374,13 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         thresholdTweaker = new net.sf.jaer.biasgen.PotTweaker();
         onOffBalanceTweaker = new net.sf.jaer.biasgen.PotTweaker();
         jPanel4 = new javax.swing.JPanel();
+        jLabel9 = new javax.swing.JLabel();
         jLabel7 = new javax.swing.JLabel();
         onThrTF = new javax.swing.JTextField();
         jLabel8 = new javax.swing.JLabel();
         offThrTF = new javax.swing.JTextField();
+        jLabel10 = new javax.swing.JLabel();
+        onMinusOffTF = new javax.swing.JTextField();
         apsPanel = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         fdSp = new javax.swing.JSpinner();
@@ -435,6 +438,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             .addGap(0, 0, Short.MAX_VALUE)
         );
 
+        bandwidthTweaker.setToolTipText("<html>Adjust the photoreceptor and source follower bandwidth by changing Pr and PRSf bias currents\n<p>Limited to changing fine current value. For more control, adjust these currents directly.");
         bandwidthTweaker.setLessDescription("Slower");
         bandwidthTweaker.setMinimumSize(new java.awt.Dimension(80, 30));
         bandwidthTweaker.setMoreDescription("Faster");
@@ -447,6 +451,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             }
         });
 
+        maxFiringRateTweaker.setToolTipText("<html>Adjusts the refractory period after each event by changing Refr bias.\n<p>This current sets the rate at which the reset switch voltage is recharged.\n<p>Limited to changing fine current value. For more control, adjust these currents directly.");
         maxFiringRateTweaker.setLessDescription("Slower");
         maxFiringRateTweaker.setMinimumSize(new java.awt.Dimension(80, 30));
         maxFiringRateTweaker.setMoreDescription("Faster");
@@ -495,6 +500,9 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             }
         });
 
+        jPanel3.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+
+        thresholdTweaker.setToolTipText("<html>Adjusts DVS event temporal contrast thresholds magnitude <br>\nby changing current ratios diffOn/diff and diffOff/diff. \n<p>Limited to only adjusting fine current value; <br>\nwhen this limit is reached, user must manually change the coarse current value.");
         thresholdTweaker.setLessDescription("Lower/more events");
         thresholdTweaker.setMinimumSize(new java.awt.Dimension(80, 30));
         thresholdTweaker.setMoreDescription("Higher/less events");
@@ -507,6 +515,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             }
         });
 
+        onOffBalanceTweaker.setToolTipText("<html>Adjusts DVS event temporal contrast thresholds balance<br>\nby changing current ratios diffOn/diff and diffOff/diff. \n<p>Limited to only adjusting fine current value; <br>\nwhen this limit is reached, user must manually change the coarse current value.");
         onOffBalanceTweaker.setLessDescription("More Off events");
         onOffBalanceTweaker.setMinimumSize(new java.awt.Dimension(80, 30));
         onOffBalanceTweaker.setMoreDescription("More On events");
@@ -519,19 +528,25 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             }
         });
 
-        jLabel7.setText("ON threshold");
+        jPanel4.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+
+        jLabel9.setText("Estimated DVS thresholds:");
+        jLabel9.setToolTipText("<html>Displays computed values of DVS event temporal contrast thresholds<br> \nbased on paper\n<a href=\"https://ieeexplore.ieee.org/document/7962235\">Temperature and\n Parasitic Photocurrent <br> Effects in Dynamic Vision Sensors, <br>Y Nozaki, T\nDelbruck. <br>IEEE Trans. on Electron Devices, 2018</a>");
+        jPanel4.add(jLabel9);
+
+        jLabel7.setText("ON");
         jPanel4.add(jLabel7);
 
         onThrTF.setEditable(false);
-        onThrTF.setColumns(10);
+        onThrTF.setColumns(7);
         onThrTF.setToolTipText("Estimated DVS  temporal contrast threshold  (log base e units)");
         jPanel4.add(onThrTF);
 
-        jLabel8.setText("OFF threshold");
+        jLabel8.setText("OFF");
         jPanel4.add(jLabel8);
 
         offThrTF.setEditable(false);
-        offThrTF.setColumns(10);
+        offThrTF.setColumns(7);
         offThrTF.setToolTipText("Estimated DVS  temporal contrast threshold  (log base e units)");
         offThrTF.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -539,6 +554,14 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             }
         });
         jPanel4.add(offThrTF);
+
+        jLabel10.setText("ON+OFF");
+        jLabel10.setToolTipText("difference ON to OFF thresholds (nominal balance)");
+        jPanel4.add(jLabel10);
+
+        onMinusOffTF.setEditable(false);
+        onMinusOffTF.setColumns(7);
+        jPanel4.add(onMinusOffTF);
 
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
@@ -947,8 +970,11 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
     }// GEN-LAST:event_bandwidthTweakerStateChanged
 
     private void setEstimatedThresholdValues() {
-        onThrTF.setText(String.format("%.3f", apsDvsTweaks.getOnThresholdLogE()));
-        offThrTF.setText(String.format("%.3f", apsDvsTweaks.getOffThresholdLogE()));
+        final float onThresholdLogE = apsDvsTweaks.getOnThresholdLogE();
+        onThrTF.setText(String.format("%.3f", onThresholdLogE));
+        final float offThresholdLogE = apsDvsTweaks.getOffThresholdLogE();
+        offThrTF.setText(String.format("%.3f", offThresholdLogE));
+        onMinusOffTF.setText(String.format("%.3f", onThresholdLogE+offThresholdLogE));
     }
 
     private void thresholdTweakerStateChanged(final javax.swing.event.ChangeEvent evt) {// GEN-FIRST:event_thresholdTweakerStateChanged
@@ -1080,6 +1106,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
     private javax.swing.JPanel imuPanel;
     private javax.swing.JCheckBox imuVisibleCB;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
@@ -1087,6 +1114,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
     private javax.swing.JLabel jLabel6;
     private javax.swing.JLabel jLabel7;
     private javax.swing.JLabel jLabel8;
+    private javax.swing.JLabel jLabel9;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
@@ -1094,6 +1122,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
     private javax.swing.JScrollPane jScrollPane1;
     private net.sf.jaer.biasgen.PotTweaker maxFiringRateTweaker;
     private javax.swing.JTextField offThrTF;
+    private javax.swing.JTextField onMinusOffTF;
     private net.sf.jaer.biasgen.PotTweaker onOffBalanceTweaker;
     private javax.swing.JTextField onThrTF;
     private javax.swing.JButton snapshotButton;
