@@ -45,14 +45,16 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
 
 /**
- * Describes DVS128 retina and its event extractor and bias generator.
- * This camera is the Tmpdiff128 chip with certain biases tied to the rails to enhance AE bus bandwidth and
- * it achieves about 2 Meps, as opposed to the approx 500 keps using the onchip Tmpdiff128 biases.
+ * Describes DVS128 retina and its event extractor and bias generator. This
+ * camera is the Tmpdiff128 chip with certain biases tied to the rails to
+ * enhance AE bus bandwidth and it achieves about 2 Meps, as opposed to the
+ * approx 500 keps using the onchip Tmpdiff128 biases.
  * <p>
- * Two constructors ara available, the vanilla constructor is used for event playback and the
- *one with a HardwareInterface parameter is useful for live capture.
- * {@link #setHardwareInterface} is used when the hardware interface is constructed after the retina object.
- *The constructor that takes a hardware interface also constructs the biasgen interface.
+ * Two constructors ara available, the vanilla constructor is used for event
+ * playback and the one with a HardwareInterface parameter is useful for live
+ * capture. {@link #setHardwareInterface} is used when the hardware interface is
+ * constructed after the retina object. The constructor that takes a hardware
+ * interface also constructs the biasgen interface.
  *
  * @author tobi
  */
@@ -67,7 +69,10 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
 //        setPreferredHardwareInterface(CypressFX2Biasgen.class); // TODO causing problems in applet
     }
 
-    /** Creates a new instance of DVS128. No biasgen is constructed for this constructor, because there is no hardware interface defined. */
+    /**
+     * Creates a new instance of DVS128. No biasgen is constructed for this
+     * constructor, because there is no hardware interface defined.
+     */
     public DVS128andCochleaAMS1b() {
         setName("DVS128");
         setSizeX(128);
@@ -82,15 +87,21 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
 //        if(c!=null)c.setBorderSpacePixels(5);// make border smaller than default
     }
 
-    /** Creates a new instance of DVS128
-     * @param hardwareInterface an existing hardware interface. This constructer is preferred. It makes a new Biasgen object to talk to the on-chip biasgen.
+    /**
+     * Creates a new instance of DVS128
+     *
+     * @param hardwareInterface an existing hardware interface. This constructer
+     * is preferred. It makes a new Biasgen object to talk to the on-chip
+     * biasgen.
      */
     public DVS128andCochleaAMS1b(HardwareInterface hardwareInterface) {
         this();
         setHardwareInterface(hardwareInterface);
     }
 
-    /** Updates AEViewer specialized menu items according to capabilities of HardwareInterface.
+    /**
+     * Updates AEViewer specialized menu items according to capabilities of
+     * HardwareInterface.
      *
      * @param o the observable, i.e. this Chip.
      * @param arg the argument (e.g. the HardwareInterface).
@@ -191,9 +202,12 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
 
     }
 
-    /** the event extractor for DVS128. DVS128 has two polarities 0 and 1. Here the polarity is flipped by the extractor so that the raw polarity 0 becomes 1
-    in the extracted event. The ON events have raw polarity 0.
-    1 is an ON event after event extraction, which flips the type. Raw polarity 1 is OFF event, which becomes 0 after extraction.
+    /**
+     * the event extractor for DVS128. DVS128 has two polarities 0 and 1. Here
+     * the polarity is flipped by the extractor so that the raw polarity 0
+     * becomes 1 in the extracted event. The ON events have raw polarity 0. 1 is
+     * an ON event after event extraction, which flips the type. Raw polarity 1
+     * is OFF event, which becomes 0 after extraction.
      */
     public class Extractor extends RetinaExtractor {
 
@@ -212,9 +226,12 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
             setFliptype(true);
         }
 
-        /** extracts the meaning of the raw events.
-         *@param in the raw events, can be null
-         *@return out the processed events. these are partially processed in-place. empty packet is returned if null is supplied as in.
+        /**
+         * extracts the meaning of the raw events.
+         *
+         * @param in the raw events, can be null
+         * @return out the processed events. these are partially processed
+         * in-place. empty packet is returned if null is supplied as in.
          */
         @Override
         synchronized public EventPacket extractPacket(AEPacketRaw in) {
@@ -250,7 +267,7 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
                     // TODO handle this by outputting SyncEvent's instead of PolarityEvent's
                 } else {
                     PolarityEvent e = (PolarityEvent) outItr.nextOutput();
-                    e.address=addr;
+                    e.address = addr;
                     e.timestamp = (timestamps[i]);
                     e.type = (byte) (1 - addr & 1);
                     e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
@@ -267,9 +284,12 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
         }
     }
 
-    /** overrides the Chip setHardware interface to construct a biasgen if one doesn't exist already.
-     * Sets the hardware interface and the bias generators hardware interface
-     *@param hardwareInterface the interface
+    /**
+     * overrides the Chip setHardware interface to construct a biasgen if one
+     * doesn't exist already. Sets the hardware interface and the bias
+     * generators hardware interface
+     *
+     * @param hardwareInterface the interface
      */
     @Override
     public void setHardwareInterface(final HardwareInterface hardwareInterface) {
@@ -326,12 +346,14 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
     }
 
     /**
-     * Describes IPots on DVS128 retina chip. These are configured by a shift register as shown here:
-     *<p>
-     *<img src="doc-files/tmpdiff128biasgen.gif" alt="tmpdiff128 shift register arrangement"/>
-
+     * Describes IPots on DVS128 retina chip. These are configured by a shift
+     * register as shown here:
+     * <p>
+     * <img src="doc-files/tmpdiff128biasgen.gif" alt="tmpdiff128 shift register arrangement"/>
+     *
     <p>
-    This bias generator also offers an abstracted ChipControlPanel interface that is used for a simplified user interface.
+     * This bias generator also offers an abstracted ChipControlPanel interface
+     * that is used for a simplified user interface.
      *
      * @author tobi
      */
@@ -339,13 +361,15 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
 
         private IPot diffOn, diffOff, refr, pr, sf, diff;
 
-        /** Creates a new instance of Biasgen for DVS128 with a given hardware interface
-         *@param chip the chip this biasgen belongs to
+        /**
+         * Creates a new instance of Biasgen for DVS128 with a given hardware
+         * interface
+         *
+         * @param chip the chip this biasgen belongs to
          */
         public Biasgen(Chip chip) {
             super(chip);
             setName("DVS128");
-
 
 //  /** Creates a new instance of IPot
 //     *@param biasgen
@@ -358,7 +382,6 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
 //     *@param tooltipString a String to display to user of GUI telling them what the pots does
 //     */
 ////    public IPot(Biasgen biasgen, String name, int shiftRegisterNumber, final Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
-
             // create potArray according to our needs
             setPotArray(new IPotArray(this));
 
@@ -379,14 +402,19 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
 
         }
 
-        /** sends the ipot values over the hardware interface if there is not a batch edit occuring.
-         *@param biasgen the bias generator object.
-         * This parameter is necessary because the same method is used in the hardware interface,
-         * which doesn't know about the particular bias generator instance.
-         *@throws HardwareInterfaceException if there is a hardware error. If there is no interface, prints a message and just returns.
-         *@see #startBatchEdit
-         *@see #endBatchEdit
-         **/
+        /**
+         * sends the ipot values over the hardware interface if there is not a
+         * batch edit occuring.
+         *
+         * @param biasgen the bias generator object. This parameter is necessary
+         * because the same method is used in the hardware interface, which
+         * doesn't know about the particular bias generator instance.
+         * @throws HardwareInterfaceException if there is a hardware error. If
+         * there is no interface, prints a message and just returns.
+         * @see #startBatchEdit
+         * @see #endBatchEdit
+         *
+         */
         public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
             if (hardwareInterface == null) {
 //            log.warning("Biasgen.sendIPotValues(): no hardware interface");
@@ -397,9 +425,13 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
 //            hardwareInterface.se(this);
             }
         }
-        /** the change in current from an increase* or decrease* call */
+        /**
+         * the change in current from an increase* or decrease* call
+         */
         public final float RATIO = 1.05f;
-        /** the minimum on/diff or diff/off current allowed by decreaseThreshold */
+        /**
+         * the minimum on/diff or diff/off current allowed by decreaseThreshold
+         */
         public final float MIN_THRESHOLD_RATIO = 2f;
         public final float MAX_DIFF_ON_CURRENT = 6e-6f;
         public final float MIN_DIFF_OFF_CURRENT = 1e-9f;
@@ -456,7 +488,8 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
         }
         JComponent expertTab, basicTab;
 
-        /** @return a new panel for controlling this bias generator functionally
+        /**
+         * @return a new panel for controlling this bias generator functionally
          */
         @Override
         public JPanel buildControlPanel() {
@@ -518,6 +551,24 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
         @Override
         public float getOnOffBalanceTweak() {
             throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        // see https://ieeexplore.ieee.org/document/7962235 fig 1
+        private final float KAPPA_N = .7f, KAPPA_P = 0.7f, CAP_RATIO = 22;
+
+        private float thresholdFromCurrents(float diffCurrent, float comparatorCurrent) {
+            return (float) ((KAPPA_N / (KAPPA_P * KAPPA_P)) * CAP_RATIO * Math.log(comparatorCurrent / diffCurrent));
+        }
+
+        //)
+        @Override
+        public float getOnThresholdLogE() {
+            return thresholdFromCurrents(diffOn.getCurrent(), diff.getCurrent());
+        }
+
+        @Override
+        public float getOffThresholdLogE() {
+            return thresholdFromCurrents(diffOff.getCurrent(), diff.getCurrent());
         }
     } // Tmpdiff128Biasgen
 }

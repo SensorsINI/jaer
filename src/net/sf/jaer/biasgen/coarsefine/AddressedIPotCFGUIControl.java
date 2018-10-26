@@ -715,7 +715,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         //totalCurrentTextField.setText(engFormat.format(pot.getTotalCurrent()));
 
         fineBiasSlider.setValue(fineSliderValueFromBitValue());
-        fineBiasTextField.setText(engFormat.format(pot.getFineCurrent()));
+        fineBiasTextField.setText(engFormat.format(pot.getCurrent()));
         
         totalBiasTextField.setText(String.format("%16s", Integer.toBinaryString(pot.computeBinaryRepresentation())).replace(' ', '0'));
 

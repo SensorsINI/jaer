@@ -2,12 +2,11 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package ch.unizh.ini.jaer.chip.retina;
 
 /**
- *  Specifies tweaks that can be done to the parameters of a DVS sensor, for use in defining
- *  user interfaces to control the biases.
+ * Specifies tweaks that can be done to the parameters of a DVS sensor, for use
+ * in defining user interfaces to control the biases.
  *
  * @author tobi
  */
@@ -35,5 +34,28 @@ public interface DVSTweaks {
 
     public float getOnOffBalanceTweak();
 
+    /**
+     * Returns estimated ON event threshold in log base e units.
+     * <p>
+     * Theory is based on paper
+     * <a href="https://ieeexplore.ieee.org/document/7962235">Temperature and
+     * Parasitic Photocurrent Effects in Dynamic Vision Sensors, Y Nozaki, T
+     * Delbruck. IEEE Trans. on Electron Devices, 2018</a>.
+     *
+     * @return ON threshold (positive value)
+     */
+    public float getOnThresholdLogE();
+
+    /**
+     * Returns estimated OFF event threshold in log base e units
+     * <p>
+     * Theory is based on paper
+     * <a href="https://ieeexplore.ieee.org/document/7962235">Temperature and
+     * Parasitic Photocurrent Effects in Dynamic Vision Sensors, Y Nozaki, T
+     * Delbruck. IEEE Trans. on Electron Devices, 2018</a>.
+     *
+     * @return OFF threshold (negative value)
+     */
+    public float getOffThresholdLogE();
 
 }

@@ -373,19 +373,44 @@ public class AddressedIPotCF extends AddressedIPot {
     }
 
 
-    /** TODO: real calculations
+    /** 
+     * Sets the value of bias current by changing the only the fine bit value. If the value is out of range of this fine value then the current will clip
+     * to minimum or maximum value, and the user must change the coarse value.
+     * 
+     * TODO develop strategy to set both coarse and fine value to achieve final value
+     * 
+     * @param current the current in amps
      */
     public float setFineCurrent(float current){
         float im=getCoarseCurrent();
         float r=current/im;
         setFineBitValue(Math.round(r*(maxFineBitValue+1)));
-        return getFineCurrent();
+        return getCurrent();
     }
 
-    public float getFineCurrent(){
+    /**
+     * Computes and returns the actual final estimated value of current using coarse and fine bit estimates.
+     * Overrides the method from base Biasgen that used a single splitter rather than coarse/fine architecture.
+     * 
+     * @return the actual final estimated value of current using coarse and fine bit estimates
+     */
+    @Override
+    public float getCurrent(){
         float im=getCoarseCurrent();
         float i=(im*getFineBitValue())/(maxFineBitValue+1);
         return i;
+    }
+    
+    /** Overridden to have no effect since DAVIS use coarse fine architecture. 
+     * 
+     * @param current - has no effect currently
+     * @return current
+     */
+    @Override 
+    public float setCurrent(float current){
+        // TODO develop strategy to set current by adjusting coarse and fine values
+        log.warning("(ignored) this bias generator uses a coarse/fine architecture and code should use setCoarseBitValue and setFineBitValue to adjust current");
+        return current;
     }
 
 

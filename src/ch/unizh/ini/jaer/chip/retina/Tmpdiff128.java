@@ -400,5 +400,15 @@ public class Tmpdiff128 extends AETemporalConstastRetina implements Serializable
 		public float getOnOffBalanceTweak() {
 			throw new UnsupportedOperationException("Not supported yet.");
 		}
+
+        @Override
+        public float getOnThresholdLogE() {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+
+        @Override
+        public float getOffThresholdLogE() {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
 	} // Tmpdiff128Biasgen
 }

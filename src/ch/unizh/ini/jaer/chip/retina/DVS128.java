@@ -884,6 +884,19 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         public void setGamma(float gamma) {
             throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         }
+
+        /** see https://ieeexplore.ieee.org/document/7962235 fig 1 */
+        private final float KAPPA_N = .7f, KAPPA_P = 0.7f, CAP_RATIO = 22, THR_FAC=((KAPPA_N / (KAPPA_P * KAPPA_P)) / CAP_RATIO);
+
+        @Override
+        public float getOnThresholdLogE() {
+            return (float)  (THR_FAC* Math.log(diffOn.getCurrent()/diff.getCurrent()));
+        }
+
+        @Override
+        public float getOffThresholdLogE() {
+            return (float)  (THR_FAC* Math.log(diffOff.getCurrent()/diff.getCurrent()));
+        }
     } // DVS128Biasgen
 
     @Override
