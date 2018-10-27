@@ -46,36 +46,56 @@
         <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="thresholdTweakerStateChanged"/>
       </Events>
     </Component>
-    <Container class="javax.swing.JPanel" name="jPanel1">
+    <Container class="javax.swing.JPanel" name="jPanel4">
 
-      <Layout class="org.netbeans.modules.form.compat2.layouts.DesignFlowLayout"/>
+      <Layout class="org.netbeans.modules.form.compat2.layouts.DesignFlowLayout">
+        <Property name="alignment" type="int" value="0"/>
+      </Layout>
       <SubComponents>
-        <Component class="javax.swing.JLabel" name="jLabel2">
+        <Component class="javax.swing.JLabel" name="jLabel9">
           <Properties>
-            <Property name="text" type="java.lang.String" value="ON threshold"/>
+            <Property name="text" type="java.lang.String" value="Estimated DVS thresholds:"/>
+            <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Displays computed values of DVS event temporal contrast thresholds&lt;br&gt; &#xa;based on paper&#xa;&lt;a href=&quot;https://ieeexplore.ieee.org/document/7962235&quot;&gt;Temperature and&#xa; Parasitic Photocurrent &lt;br&gt; Effects in Dynamic Vision Sensors, &lt;br&gt;Y Nozaki, T&#xa;Delbruck. &lt;br&gt;IEEE Trans. on Electron Devices, 2018&lt;/a&gt;"/>
+          </Properties>
+        </Component>
+        <Component class="javax.swing.JLabel" name="jLabel7">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="ON"/>
           </Properties>
         </Component>
         <Component class="javax.swing.JTextField" name="onThrTF">
           <Properties>
             <Property name="editable" type="boolean" value="false"/>
-            <Property name="columns" type="int" value="10"/>
+            <Property name="columns" type="int" value="12"/>
             <Property name="toolTipText" type="java.lang.String" value="Estimated DVS  temporal contrast threshold  (log base e units)"/>
           </Properties>
         </Component>
-        <Component class="javax.swing.JLabel" name="jLabel3">
+        <Component class="javax.swing.JLabel" name="jLabel8">
           <Properties>
-            <Property name="text" type="java.lang.String" value="OFF threshold"/>
+            <Property name="text" type="java.lang.String" value="OFF"/>
           </Properties>
         </Component>
         <Component class="javax.swing.JTextField" name="offThrTF">
           <Properties>
             <Property name="editable" type="boolean" value="false"/>
-            <Property name="columns" type="int" value="10"/>
+            <Property name="columns" type="int" value="12"/>
             <Property name="toolTipText" type="java.lang.String" value="Estimated DVS  temporal contrast threshold  (log base e units)"/>
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="offThrTFActionPerformed"/>
           </Events>
+        </Component>
+        <Component class="javax.swing.JLabel" name="jLabel10">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="ON+OFF"/>
+            <Property name="toolTipText" type="java.lang.String" value="difference ON to OFF thresholds (nominal balance)"/>
+          </Properties>
+        </Component>
+        <Component class="javax.swing.JTextField" name="onMinusOffTF">
+          <Properties>
+            <Property name="editable" type="boolean" value="false"/>
+            <Property name="columns" type="int" value="7"/>
+          </Properties>
         </Component>
       </SubComponents>
     </Container>

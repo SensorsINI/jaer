@@ -54,11 +54,14 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
         jLabel1 = new javax.swing.JLabel();
         bandwidthTweaker = new net.sf.jaer.biasgen.PotTweaker();
         thresholdTweaker = new net.sf.jaer.biasgen.PotTweaker();
-        jPanel1 = new javax.swing.JPanel();
-        jLabel2 = new javax.swing.JLabel();
+        jPanel4 = new javax.swing.JPanel();
+        jLabel9 = new javax.swing.JLabel();
+        jLabel7 = new javax.swing.JLabel();
         onThrTF = new javax.swing.JTextField();
-        jLabel3 = new javax.swing.JLabel();
+        jLabel8 = new javax.swing.JLabel();
         offThrTF = new javax.swing.JTextField();
+        jLabel10 = new javax.swing.JLabel();
+        onMinusOffTF = new javax.swing.JTextField();
         onOffBalanceTweaker = new net.sf.jaer.biasgen.PotTweaker();
         maxFiringRateTweaker = new net.sf.jaer.biasgen.PotTweaker();
 
@@ -89,28 +92,42 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
         });
         add(thresholdTweaker);
 
-        jLabel2.setText("ON threshold");
-        jPanel1.add(jLabel2);
+        jPanel4.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+
+        jLabel9.setText("Estimated DVS thresholds:");
+        jLabel9.setToolTipText("<html>Displays computed values of DVS event temporal contrast thresholds<br> \nbased on paper\n<a href=\"https://ieeexplore.ieee.org/document/7962235\">Temperature and\n Parasitic Photocurrent <br> Effects in Dynamic Vision Sensors, <br>Y Nozaki, T\nDelbruck. <br>IEEE Trans. on Electron Devices, 2018</a>");
+        jPanel4.add(jLabel9);
+
+        jLabel7.setText("ON");
+        jPanel4.add(jLabel7);
 
         onThrTF.setEditable(false);
-        onThrTF.setColumns(10);
+        onThrTF.setColumns(12);
         onThrTF.setToolTipText("Estimated DVS  temporal contrast threshold  (log base e units)");
-        jPanel1.add(onThrTF);
+        jPanel4.add(onThrTF);
 
-        jLabel3.setText("OFF threshold");
-        jPanel1.add(jLabel3);
+        jLabel8.setText("OFF");
+        jPanel4.add(jLabel8);
 
         offThrTF.setEditable(false);
-        offThrTF.setColumns(10);
+        offThrTF.setColumns(12);
         offThrTF.setToolTipText("Estimated DVS  temporal contrast threshold  (log base e units)");
         offThrTF.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 offThrTFActionPerformed(evt);
             }
         });
-        jPanel1.add(offThrTF);
+        jPanel4.add(offThrTF);
 
-        add(jPanel1);
+        jLabel10.setText("ON+OFF");
+        jLabel10.setToolTipText("difference ON to OFF thresholds (nominal balance)");
+        jPanel4.add(jLabel10);
+
+        onMinusOffTF.setEditable(false);
+        onMinusOffTF.setColumns(7);
+        jPanel4.add(onMinusOffTF);
+
+        add(jPanel4);
 
         onOffBalanceTweaker.setLessDescription("More Off events");
         onOffBalanceTweaker.setMoreDescription("More On events");
@@ -148,9 +165,15 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
     }//GEN-LAST:event_thresholdTweakerStateChanged
 
     private void setEstimatedThresholdValues() {
-        onThrTF.setText(String.format("%.3f", biasgen.getOnThresholdLogE()));
-        offThrTF.setText(String.format("%.3f", biasgen.getOffThresholdLogE()));
+        final float onThresholdLogE = biasgen.getOnThresholdLogE();
+        final float offThresholdLogE = biasgen.getOffThresholdLogE();
+        final float onPerCent = (float) (100 * (Math.exp(onThresholdLogE) - 1));
+        final float offPerCent = (float) (100 * (Math.exp(offThresholdLogE) - 1));
+        onThrTF.setText(String.format("%.3f e-folds (%.1f%%)", onThresholdLogE, onPerCent));
+        offThrTF.setText(String.format("%.3f e-folds (%.1f%%)", offThresholdLogE, offPerCent));
+        onMinusOffTF.setText(String.format("%.3f", onThresholdLogE + offThresholdLogE));
     }
+
 
     private void maxFiringRateTweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_maxFiringRateTweakerStateChanged
         biasgen.setMaxFiringRateTweak(maxFiringRateTweaker.getValue());
@@ -170,11 +193,14 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private net.sf.jaer.biasgen.PotTweaker bandwidthTweaker;
     private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
-    private javax.swing.JPanel jPanel1;
+    private javax.swing.JLabel jLabel10;
+    private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel8;
+    private javax.swing.JLabel jLabel9;
+    private javax.swing.JPanel jPanel4;
     private net.sf.jaer.biasgen.PotTweaker maxFiringRateTweaker;
     private javax.swing.JTextField offThrTF;
+    private javax.swing.JTextField onMinusOffTF;
     private net.sf.jaer.biasgen.PotTweaker onOffBalanceTweaker;
     private javax.swing.JTextField onThrTF;
     private net.sf.jaer.biasgen.PotTweaker thresholdTweaker;
