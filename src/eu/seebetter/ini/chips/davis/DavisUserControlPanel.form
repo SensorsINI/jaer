@@ -378,7 +378,7 @@
                         <Component class="javax.swing.JTextField" name="onThrTF">
                           <Properties>
                             <Property name="editable" type="boolean" value="false"/>
-                            <Property name="columns" type="int" value="7"/>
+                            <Property name="columns" type="int" value="12"/>
                             <Property name="toolTipText" type="java.lang.String" value="Estimated DVS  temporal contrast threshold  (log base e units)"/>
                           </Properties>
                         </Component>
@@ -390,7 +390,7 @@
                         <Component class="javax.swing.JTextField" name="offThrTF">
                           <Properties>
                             <Property name="editable" type="boolean" value="false"/>
-                            <Property name="columns" type="int" value="7"/>
+                            <Property name="columns" type="int" value="12"/>
                             <Property name="toolTipText" type="java.lang.String" value="Estimated DVS  temporal contrast threshold  (log base e units)"/>
                           </Properties>
                           <Events>

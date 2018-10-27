@@ -538,7 +538,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         jPanel4.add(jLabel7);
 
         onThrTF.setEditable(false);
-        onThrTF.setColumns(7);
+        onThrTF.setColumns(12);
         onThrTF.setToolTipText("Estimated DVS  temporal contrast threshold  (log base e units)");
         jPanel4.add(onThrTF);
 
@@ -546,7 +546,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         jPanel4.add(jLabel8);
 
         offThrTF.setEditable(false);
-        offThrTF.setColumns(7);
+        offThrTF.setColumns(12);
         offThrTF.setToolTipText("Estimated DVS  temporal contrast threshold  (log base e units)");
         offThrTF.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -971,9 +971,11 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
     private void setEstimatedThresholdValues() {
         final float onThresholdLogE = apsDvsTweaks.getOnThresholdLogE();
-        onThrTF.setText(String.format("%.3f", onThresholdLogE));
         final float offThresholdLogE = apsDvsTweaks.getOffThresholdLogE();
-        offThrTF.setText(String.format("%.3f", offThresholdLogE));
+        final float onPerCent=(float)(100*(Math.exp(onThresholdLogE)-1));
+        final float offPerCent=(float)(100*(Math.exp(offThresholdLogE)-1));
+        onThrTF.setText(String.format("%.3f e-folds (%.1f%%)", onThresholdLogE,onPerCent));
+        offThrTF.setText(String.format("%.3f e-folds (%.1f%%)", offThresholdLogE,offPerCent));
         onMinusOffTF.setText(String.format("%.3f", onThresholdLogE+offThresholdLogE));
     }
 
