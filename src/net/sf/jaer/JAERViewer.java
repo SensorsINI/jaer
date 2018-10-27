@@ -56,6 +56,9 @@ import com.jogamp.opengl.GLCapabilities;
 import com.jogamp.opengl.GLDrawableFactory;
 import com.jogamp.opengl.GLProfile;
 import com.jogamp.opengl.JoglVersion;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.FileHandler;
+import java.util.logging.Handler;
 
 /**
  * Used to show multiple chips simultaneously in separate instances of
@@ -91,7 +94,11 @@ public class JAERViewer {
     public ToggleSyncEnabledAction getToggleSyncEnabledAction() {
         return toggleSyncEnabledAction;
     }
-    /** This public flag marks that data logging (recording) is enabled. It is normally set by startLogging/stopLogging, but special applications can set it */
+    /**
+     * This public flag marks that data logging (recording) is enabled. It is
+     * normally set by startLogging/stopLogging, but special applications can
+     * set it
+     */
     public volatile boolean loggingEnabled = false;
     //private boolean electricalTimestampResetEnabled=prefs.getBoolean("JAERViewer.electricalTimestampResetEnabled",false);
 //    private String aeChipClassName=prefs.get("JAERViewer.aeChipClassName",Tmpdiff128.class.getName());
@@ -139,7 +146,7 @@ public class JAERViewer {
         // tobi implemented this from user guide for JOGL that suggests a shared drawable context for all uses of JOGL
         GLProfile.initSingleton(); // recommneded by https://sites.google.com/site/justinscsstuff/jogl-tutorial-2 especially for linux systems
         final GLCapabilities caps = new GLCapabilities(GLProfile.getDefault());
-        final GLProfile glp=GLProfile.getMaximum(true);// FixedFunc(true);
+        final GLProfile glp = GLProfile.getMaximum(true);// FixedFunc(true);
 //        final GLProfile glp = caps.getGLProfile();
         final boolean createNewDevice = true; // use 'own' display device!
         sharedDrawable = GLDrawableFactory.getFactory(glp).createDummyAutoDrawable(null, createNewDevice, caps, null);
@@ -204,7 +211,6 @@ public class JAERViewer {
                     } catch (IllegalArgumentException e2) {
                         log.warning("tried to store too many classes in last chip classes");
                     }
-
                 }
             }
         });
@@ -270,8 +276,24 @@ public class JAERViewer {
 //        globalDataViewer.redirectStreams(); // tobi removed because AEViewerConsoleOutputFrame replaces this logging output
 
         //init static fields
-        prefs = Preferences.userNodeForPackage(JAERViewer.class);
         log = Logger.getLogger("JAERViewer");
+        log.info("jAERViewer starting up");
+        prefs = Preferences.userNodeForPackage(JAERViewer.class);
+        log.info("Preferences come from root located at " + prefs.absolutePath());
+        Logger root = log;
+        while (root.getParent() != null) {
+            root = root.getParent(); // find root logger
+        }
+        log.info("logging configuration read from java.util.logging.config.file="+System.getProperty("java.util.logging.config.file"));
+        for (Handler h : root.getHandlers()) {
+            if(h instanceof ConsoleHandler){
+                log.info("debug logging to console with Level="+((ConsoleHandler)h).getLevel());
+            }else if(h instanceof FileHandler){
+                log.info("debug logging to file with Level="+((FileHandler)h).getLevel()+" to file (see config file for location)");
+            }else {
+                log.info("debug logging to handler that is not ConsoleHandler or FileHandler using "+h);
+            }
+        }
 
 //            String exepath = System.getProperty("exepath");
 //            if ( exepath != null ){
@@ -291,6 +313,7 @@ public class JAERViewer {
                 JOptionPane.showMessageDialog(null, "<html>Trying to start JAERViewer with <br>file=\"" + f + "\"<br>Caught " + e);
             }
         } else {
+            log.info("starting with no arguments in working directory=" + System.getProperty("user.dir"));
             SwingUtilities.invokeLater(new Runnable() {
 
                 @Override
