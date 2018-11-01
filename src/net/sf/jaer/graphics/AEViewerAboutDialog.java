@@ -9,6 +9,7 @@ import java.awt.Cursor;
 import java.awt.Desktop;
 import java.io.BufferedReader;
 import java.io.InputStream;
+import java.io.StringWriter;
 import java.net.URI;
 import java.net.URL;
 import java.util.Enumeration;
@@ -16,6 +17,7 @@ import java.util.Properties;
 import java.util.logging.Logger;
 
 import javax.swing.JOptionPane;
+import org.apache.commons.io.IOUtils;
 
 /**
  * The About dialog. It displays About information and latest SVN commit and
@@ -51,17 +53,10 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
                 //            JOptionPane.showMessageDialog(parent,"urlContents="+urlContents);
                 BufferedReader in = null;
                 if (urlContents instanceof InputStream) {
-                    props.load((InputStream) urlContents);
-                    //                in=new BufferedReader(new InputStreamReader((InputStream)urlContents));
-                    //            }else if(urlContents instanceof ZipFile){
-                    //                ZipFile zf=(ZipFile)urlContents;
-                    ////                JOptionPane.showMessageDialog(parent,"zf="+zf);
-                    ////                JOptionPane.showMessageDialog(parent,zf.size()+" entries");
-                    //                Enumeration en=zf.entries();
-                    //                in=new BufferedReader(new InputStreamReader(.getInputStream()));
+                    StringWriter writer=new StringWriter();
+                    IOUtils.copy((InputStream)urlContents, writer, "UTF-8");
+                    versionLabel.setText(writer.toString());
                 }
-                //            if(in!=null) dateModified=in.readLine();
-                //            JOptionPane.showMessageDialog(parent,"dateModifed="+dateModified);
             } catch (Exception e) {
                 e.printStackTrace();
                 JOptionPane.showMessageDialog(parent, e);
@@ -69,25 +64,6 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
         } else {
             props.setProperty("version", "missing file " + VERSION_FILE + " in jAER.jar");
         }
-        Enumeration e = props.propertyNames();
-        //        int n=props.size();
-        //        Object[][] tableContents=new Object[n][2];
-        //        int i=0;
-        while (e.hasMoreElements()) {
-            Object o = e.nextElement();
-            if (o instanceof String) {
-                String key = (String) o;
-                String value = props.getProperty(key);
-                //                tableContents[i][0]=key;
-                //                tableContents[i++][1]=value;
-                versionLabel.setText(versionLabel.getText() + "<center>" + key + " = " + value + "</center>");
-            }
-        }
-        //        String[] titles={"",""};
-        //        JTable table=new JTable(tableContents,titles);
-        //        versionPanel.add(table);
-        //        aboutLabel.setText(aboutLabel.getText() + "<center>" + props + "</center>");
-        versionLabel.setText(versionLabel.getText());
         pack();
     }
 
@@ -100,9 +76,10 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
     private void initComponents() {
 
         aboutLabel = new javax.swing.JLabel();
-        versionLabel = new javax.swing.JLabel();
         okButton = new javax.swing.JButton();
         jaerProjectLinkLabel = new javax.swing.JLabel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        versionLabel = new javax.swing.JTextArea();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -112,9 +89,7 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
         });
 
         aboutLabel.setFont(new java.awt.Font("Tahoma", 0, 24)); // NOI18N
-        aboutLabel.setText("<html> <center> <h1> jAER - Java tools for Address-Event Sensors </h1> </center></html>");
-
-        versionLabel.setText("<html>");
+        aboutLabel.setText("<html> <center> <h1> jAER - Java tools for Address-Event Representation Sensors </h1> </center></html>");
 
         okButton.setText("OK");
         okButton.addActionListener(new java.awt.event.ActionListener() {
@@ -137,6 +112,11 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
             }
         });
 
+        versionLabel.setEditable(false);
+        versionLabel.setColumns(20);
+        versionLabel.setRows(5);
+        jScrollPane1.setViewportView(versionLabel);
+
         org.jdesktop.layout.GroupLayout layout = new org.jdesktop.layout.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -146,15 +126,12 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
                     .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
                         .add(77, 77, 77)
                         .add(jaerProjectLinkLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 108, Short.MAX_VALUE)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 219, Short.MAX_VALUE)
                         .add(okButton))
                     .add(layout.createSequentialGroup()
                         .addContainerGap()
-                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                            .add(layout.createSequentialGroup()
-                                .add(aboutLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 308, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                .add(0, 0, Short.MAX_VALUE))
-                            .add(versionLabel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 342, Short.MAX_VALUE))))
+                        .add(jScrollPane1))
+                    .add(org.jdesktop.layout.GroupLayout.TRAILING, aboutLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -163,8 +140,8 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
                 .addContainerGap()
                 .add(aboutLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
-                .add(versionLabel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 67, Short.MAX_VALUE)
-                .add(18, 18, 18)
+                .add(jScrollPane1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 166, Short.MAX_VALUE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(okButton)
                     .add(jaerProjectLinkLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
@@ -228,9 +205,10 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel aboutLabel;
+    private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JLabel jaerProjectLinkLabel;
     private javax.swing.JButton okButton;
-    private javax.swing.JLabel versionLabel;
+    private javax.swing.JTextArea versionLabel;
     // End of variables declaration//GEN-END:variables
 
 }
