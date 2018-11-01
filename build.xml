@@ -317,21 +317,17 @@
         <tstamp/>
         <echo message="Making build version file ${buildversion.outputfile} - you can ignore any error ${line.separator}generated here since it will only affect the Help/About... dialog." />
         <delete file="${buildversion.outputfile}"/>
+        <echo message="Built ${TODAY} at ${TSTAMP} by ${user.name}${line.separator}" append="true" file="${buildversion.outputfile}" />
+        <echo message="os.name=${os.name}${line.separator}" append="true" file="${buildversion.outputfile}" />
+        <echo message="os.version=${os.version}${line.separator}" append="true" file="${buildversion.outputfile}" />
+        <echo message="java.version=${java.version}${line.separator}" append="true" file="${buildversion.outputfile}" />
+        <echo message="java.vendor=${java.vendor}${line.separator}" append="true" file="${buildversion.outputfile}" />
+        <echo message="&quot;:git describe&quot; output: " append="true" file="${buildversion.outputfile}" />
         <!-- run version command to get revision numnber -->
-        <exec executable="git" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" searchpath="true">
+        <exec executable="git" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" append="true" searchpath="true">
             <arg line="describe"/>
         </exec>
-        <!-- make it a property line -->
-        <!--        <replaceregexp file="${buildversion.outputfile}"
-        match="(.*)"
-        replace="subversion.revisionNumber=\1"
-        byline="false"/>-->
-        <!-- run subwcrev (must have tortoisesvn installed and on PATH) to get svn revision numnber -->
-        <!--        <exec executable="subWCrev" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" append="true">
-            <arg line="."/>
-        </exec>-->
-        <!-- add a datestamp property -->
-        <echo message="build.date=${DSTAMP} at ${TSTAMP}" append="true" file="${buildversion.outputfile}" />
+        <echo message="${line.separator}" append="true" file="${buildversion.outputfile}" />
         <concat>
             <filelist dir="${basedir}" files="${buildversion.outputfile}"/>
         </concat>
