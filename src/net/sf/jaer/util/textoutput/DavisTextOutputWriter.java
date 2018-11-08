@@ -97,10 +97,12 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
         setPropertyTooltip("dvsEvents", "write dvs events as one per line with format one per line timestamp(us) x y polarity(0=off,1=on)");
         setPropertyTooltip("imuSamples", "write IMU samples as one per line with format one measurement per line: timestamp(us) ax(g) ay(g) az(g) gx(d/s) gy(d/s) gz(d/s)");
         setPropertyTooltip("apsFrames", "write APS frames with format TBD");
-
+        setShowCrossHairCursor(false);
         additionalComments.add("jAER DAVIS/DVS camera text file output");
 
     }
+
+    private int lastTimestampWritten = 0; // DEBUG nonmonotonic
 
     /**
      * Processes packet to write output
@@ -130,28 +132,29 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
             davis = false;
         }
         while (itr.hasNext()) { // skips events that have been filtered out
-            BasicEvent o = (BasicEvent) itr.next();
+            BasicEvent be = (BasicEvent) itr.next();
             // we get all events, including IMU, DVS, and APS samples
 
             if (!davis) { // pure DVS
-                PolarityEvent pe = (PolarityEvent) o;
+                PolarityEvent ae = (PolarityEvent) be;
                 if (dvsEvents && dvsWriter != null) {
                     // One event per line (timestamp x y polarity) as in RPG events.txt
-                    dvsWriter.println(String.format("%d %d %d %d", pe.timestamp, pe.x, pe.y, pe.polarity == PolarityEvent.Polarity.Off ? 0 : 1));
-                    incrementCountAndMaybeCloseOutput();
+                    dvsWriter.println(String.format("%d %d %d %d", ae.timestamp, ae.x, ae.y, ae.polarity == PolarityEvent.Polarity.Off ? 0 : 1));
+                    incrementCountAndMaybeCloseOutput(be);
                 }
             } else { // davis type
-                ApsDvsEvent ae = (ApsDvsEvent) o;
+                ApsDvsEvent ae = (ApsDvsEvent) be;
                 if (dvsEvents && dvsWriter != null && ae.isDVSEvent()) {
                     // One event per line (timestamp x y polarity) as in RPG events.txt
                     dvsWriter.println(String.format("%d %d %d %d", ae.timestamp, ae.x, ae.y, ae.polarity == PolarityEvent.Polarity.Off ? 0 : 1));
-                    incrementCountAndMaybeCloseOutput();
+                    incrementCountAndMaybeCloseOutput(be);
+                    lastTimestampWritten = ae.timestamp;
                 } else if (imuSamples && imuWriter != null && ae.isImuSample()) {
                     IMUSample i = ae.getImuSample();
                     imuWriter.println(String.format("%d %f %f %f %f %f %f", ae.timestamp,
                             i.getAccelX(), i.getAccelY(), i.getAccelZ(),
                             i.getGyroTiltX(), i.getGyroYawY(), i.getGyroRollZ()));
-                    incrementCountAndMaybeCloseOutput();
+                    incrementCountAndMaybeCloseOutput(be);
                 }
             }
 
@@ -396,7 +399,12 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
         }
     }
 
-    protected void incrementCountAndMaybeCloseOutput() {
+    protected void incrementCountAndMaybeCloseOutput(BasicEvent be) {
+        if (be.timestamp < lastTimestampWritten) {
+            log.warning(String.format("nonmontonic timestamp written (previous timestamp %d, this timestamp %d, difference %d)",
+                    lastTimestampWritten, be.timestamp, (be.timestamp - lastTimestampWritten)));
+        }
+        lastTimestampWritten = be.timestamp;
         eventsWritten++;
         if (maxEvents > 0 && eventsWritten >= maxEvents && isFilesOpen()) {
             log.info("wrote maxEvents=" + maxEvents + " events; closing files");
