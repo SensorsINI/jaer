@@ -40,6 +40,7 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
     protected GLU glu = new GLU();
     protected GLUquadric quad = null;
     private boolean hasBlendChecked = false, hasBlend = false;
+    protected boolean showCrossHairCursor=true;
 
     public EventFilter2DMouseAdaptor(AEChip chip) {
         super(chip);
@@ -76,7 +77,7 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
         if (glCanvas == null) {
             return;
         }
-        if (isSelected()) {
+        if (isSelected() && showCrossHairCursor) {
             Point mp = glCanvas.getMousePosition();
             Point p = chipCanvas.getPixelFromPoint(mp);
             if (p == null) {
@@ -209,6 +210,21 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
     @Override
     public void mouseWheelMoved(MouseWheelEvent mwe) {
 
+    }
+
+    /**
+     * @return the showCrossHairCursor
+     */
+    protected boolean isShowCrossHairCursor() {
+        return showCrossHairCursor;
+    }
+
+    /**
+     * By default a cross hair selection cursor is drawn. This method prevent drawing the cross hair.
+     * @param showCrossHairCursor the showCrossHairCursor to set
+     */
+    protected void setShowCrossHairCursor(boolean showCrossHairCursor) {
+        this.showCrossHairCursor = showCrossHairCursor;
     }
 
 }
