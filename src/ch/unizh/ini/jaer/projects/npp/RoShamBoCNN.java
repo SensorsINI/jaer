@@ -39,6 +39,7 @@ import com.jogamp.opengl.util.texture.Texture;
 import com.jogamp.opengl.util.texture.TextureIO;
 
 import gnu.io.NRSerialPort;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.InputStream;
 import net.sf.jaer.Description;
@@ -74,6 +75,8 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     private boolean serialPortCommandsEnabled = getBoolean("serialPortCommandsEnabled", false);
     private int serialBaudRate = getInt("serialBaudRate", 115200);
     private DataOutputStream serialPortOutputStream = null;
+    private DataInputStream serialPortInputStream = null;
+    protected boolean measureSerialLatency = false;
     private Enumeration portList = null;
     private boolean playSounds = getBoolean("playSounds", false);
     private int playSoundsMinIntervalMs = getInt("playSoundsMinIntervalMs", 1000);
@@ -112,6 +115,13 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     protected boolean showDecisionStatistics = getBoolean("showDecisionStatistics", true);
 
     /**
+     * commands to physical hand and light box as defined in arduino code
+     */
+    private final char HAND_CMD_PAPER = '1', HAND_CMD_SCISSORS = '2', HAND_CMD_ROCK = '3',
+            HAND_CMD_SLOWLY_WIGGLE = '4',
+            HAND_CMD_TURN_OFF = '5', HAND_CMD_TWITCH = '6';
+
+    /**
      * Symbols
      */
     private Texture[] symbolTextures = null;
@@ -137,6 +147,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         setPropertyTooltip(roshambo, "playSpikeSounds", "Play a spike sound on change of network output decision");
         setPropertyTooltip(roshambo, "serialPortName", "Name of serial port to send robot commands to");
         setPropertyTooltip(roshambo, "serialPortCommandsEnabled", "Send commands to serial port for Arduino Nano hand robot");
+        setPropertyTooltip(roshambo, "measureSerialLatency", "Waits for return character from Arduino and prints round trip latency (requires ECHO to be defined in RoShamBoHandControl arduino firmware)");
         setPropertyTooltip(roshambo, "serialBaudRate", "Baud rate (default 115200), upper limit 12000000");
         setPropertyTooltip(roshambo, "playSounds", "Play sound effects (Rock/Scissors/Paper) every time the decision changes and playSoundsMinIntervalMs has intervened");
         setPropertyTooltip(roshambo, "playSoundsMinIntervalMs", "Minimum time inteval for playing sound effects in ms");
@@ -144,6 +155,8 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         setPropertyTooltip(roshambo, "showDecisionStatistics", "Displays statistics of decisions");
         setPropertyTooltip(roshambo, "playToWin", "If selected, symbol showsn and sent to hand will  beat human; if unselected, it ties the human");
         setPropertyTooltip(roshambo, "showSymbol", "If selected, symbol is displayed as overlay, either the one recognized or the winner, depending on playToWin");
+        setPropertyTooltip(roshambo, "twitch", "make the hand twitch");
+        setPropertyTooltip(roshambo, "turnOff", "turn off the hand (should already happen a short time after each command, to save jammed servos)");
 
         dvsFramer.setRectifyPolarities(true);
         dvsFramer.setNormalizeDVSForZsNullhop(true); // to make it work out of the box
@@ -151,6 +164,13 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         if (apsDvsNet != null) {
             apsDvsNet.getSupport().addPropertyChangeListener(AbstractDavisCNN.EVENT_MADE_DECISION, statistics);
         }
+        setSoftMaxOutput(false); // not wanted for network that already does it
+        setZeroPadding(false);
+        setProcessAPSDVSFrames(false);
+        setProcessDVSTimeSlices(true);
+        setProcessAPSFrames(false);
+        dvsFramer.setOutputImageHeight(64);
+        dvsFramer.setOutputImageWidth(64);
     }
 
     @Override
@@ -213,7 +233,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
                 case Idle:
                     if (handTrackerState == HandTrackerState.CrossedLower) {
                         gameState = GameState.Throw1;
-                        twitch();
+                        doTwitch();
                         gameStateUpdateTimeMs = System.currentTimeMillis();
                     }
                     break;
@@ -224,7 +244,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
                     }
                     if (handTrackerState == HandTrackerState.CrossedLower) {
                         gameState = GameState.Throw2;
-                        twitch();
+                        doTwitch();
                         gameStateUpdateTimeMs = System.currentTimeMillis();
                     }
                     break;
@@ -250,14 +270,6 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         return out;
     }
 
-    private void twitch() {
-        sendCommandToHand('6');
-    }
-
-    /**
-     * commands to physical hand and light box as defined in arduino code
-     */
-    private final int HAND_CMD_PAPER = 1, HAND_CMD_SCISSORS = 2, HAND_CMD_ROCK = 3, HAND_CMD_SLOWLY_WIGGLE = 4, HAND_CMD_TURN_OFF = 5, HAND_CMD_TWITCH = 6;
     /**
      * Hand firmware has option WIN that programs it to show the symbol that
      * beats the symbol sent to it, e.g. if HAND_CMD_ROCK is sent, hand will
@@ -274,16 +286,16 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         if (!HAND_PROGRAMED_TO_WIN) {
             switch (statistics.symbolOutput) { // this is symbol shown on screen
                 case DECISION_ROCK:
-                    cmd = '0' + HAND_CMD_ROCK;
+                    cmd = HAND_CMD_ROCK;
                     break;
                 case DECISION_SCISSORS:
-                    cmd = '0' + HAND_CMD_SCISSORS;
+                    cmd = HAND_CMD_SCISSORS;
                     break;
                 case DECISION_PAPER:
-                    cmd = '0' + HAND_CMD_PAPER;
+                    cmd = HAND_CMD_PAPER;
                     break;
                 case DECISION_BACKGROUND:
-                    cmd = '0' + HAND_CMD_SLOWLY_WIGGLE;
+                    cmd = HAND_CMD_SLOWLY_WIGGLE;
                     break;
                 default:
 //                    log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
@@ -291,16 +303,16 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         } else {
             switch (statistics.symbolOutput) {
                 case DECISION_ROCK:
-                    cmd = '0' + HAND_CMD_SCISSORS;
+                    cmd = HAND_CMD_SCISSORS;
                     break;
                 case DECISION_SCISSORS:
-                    cmd = '0' + HAND_CMD_PAPER;
+                    cmd = HAND_CMD_PAPER;
                     break;
                 case DECISION_PAPER:
-                    cmd = '0' + HAND_CMD_ROCK;
+                    cmd = HAND_CMD_ROCK;
                     break;
                 case DECISION_BACKGROUND:
-                    cmd = '0' + HAND_CMD_SLOWLY_WIGGLE;
+                    cmd = HAND_CMD_SLOWLY_WIGGLE;
                     break;
                 default:
 //                    log.warning("maxUnit=" + statistics.descision + " is not a valid network output state");
@@ -309,15 +321,42 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         sendCommandToHand(cmd);
     }
 
+    private char lastCmdSent = 0; // used to prevent sending multiple of the same commands unless they are action starting type
+
     private void sendCommandToHand(char cmd) {
+        switch (cmd) {
+            case HAND_CMD_PAPER:
+            case HAND_CMD_ROCK:
+            case HAND_CMD_SCISSORS:
+                if (lastCmdSent == cmd) {
+                    return;
+                }
+        }
+        lastCmdSent = cmd;
+        sendByteToHand((byte) ('0' + cmd));
+    }
+
+    private void sendByteToHand(byte cmd) {
         if (serialPortCommandsEnabled && (serialPortOutputStream != null)) {
             try {
-                serialPortOutputStream.write((byte) cmd);
+                //debug latency
+                long startLatencyTimerTime = System.nanoTime();
+                serialPortOutputStream.write(cmd);
+                if (measureSerialLatency) {
+                    while (serialPortInputStream.available() == 0) {
+                    };
+                    while (serialPortInputStream.available() > 0) {
+                        serialPortInputStream.read();
+                    };
+                    long endLatencyTimerTime = System.nanoTime();
+                    long roundTripTimeNs = (endLatencyTimerTime - startLatencyTimerTime);
+                    float roundTripTimeMs = roundTripTimeNs * 1e-6f;
+                    log.info("round trip time=" + roundTripTimeMs + " ms");
+                }
             } catch (IOException ex) {
                 log.warning(ex.toString());
             }
         }
-
     }
 
     @Override
@@ -611,6 +650,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         }
         serialPort.connect();
         serialPortOutputStream = new DataOutputStream(serialPort.getOutputStream());
+        serialPortInputStream = new DataInputStream(serialPort.getInputStream());
         log.info("opened serial port " + serialPortName + " with baud rate=" + serialBaudRate);
     }
 
@@ -983,6 +1023,44 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     public void setShowSymbol(boolean showSymbol) {
         this.showSymbol = showSymbol;
         putBoolean("showSymbol", showSymbol);
+    }
+
+    public void doTwitch() {
+        sendCommandToHand(HAND_CMD_TWITCH);
+    }
+
+    public void doTurnOff() {
+        sendCommandToHand(HAND_CMD_TURN_OFF);
+    }
+
+    public void doSlowlyWiggle() {
+        sendCommandToHand(HAND_CMD_SLOWLY_WIGGLE);
+    }
+
+    public void doRock() {
+        sendCommandToHand(HAND_CMD_ROCK);
+    }
+
+    public void doScissors() {
+        sendCommandToHand(HAND_CMD_SCISSORS);
+    }
+
+    public void doPaper() {
+        sendCommandToHand(HAND_CMD_PAPER);
+    }
+
+    /**
+     * @return the measureSerialLatency
+     */
+    public boolean isMeasureSerialLatency() {
+        return measureSerialLatency;
+    }
+
+    /**
+     * @param measureSerialLatency the measureSerialLatency to set
+     */
+    public void setMeasureSerialLatency(boolean measureSerialLatency) {
+        this.measureSerialLatency = measureSerialLatency;
     }
 
 }
