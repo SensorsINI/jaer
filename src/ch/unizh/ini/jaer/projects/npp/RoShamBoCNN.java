@@ -333,7 +333,8 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
                 }
         }
         lastCmdSent = cmd;
-        sendByteToHand((byte) ('0' + cmd));
+//        log.info("sending "+cmd);
+        sendByteToHand((byte) cmd);
     }
 
     private void sendByteToHand(byte cmd) {
@@ -639,13 +640,17 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         }
         log.info(sb.toString());
         if (!availableSerialPorts.contains(serialPortName)) {
-            log.warning(serialPortName + " is not in avaiable " + sb.toString());
+            final String warningString = serialPortName + " is not in avaiable " + sb.toString();
+            log.warning(warningString);
+            showWarningDialogInSwingThread(warningString, "Serial port not available");
             return;
         }
 
         serialPort = new NRSerialPort(serialPortName, serialBaudRate);
         if (serialPort == null) {
-            log.warning("null serial port returned when trying to open " + serialPortName + "; available " + sb.toString());
+            final String warningString = "null serial port returned when trying to open " + serialPortName + "; available " + sb.toString();
+            log.warning(warningString);
+            showWarningDialogInSwingThread(warningString, "Serial port not available");
             return;
         }
         serialPort.connect();
@@ -1026,27 +1031,39 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     }
 
     public void doTwitch() {
-        sendCommandToHand(HAND_CMD_TWITCH);
+        if (checkSerialPortAndWarn()) {
+            sendCommandToHand(HAND_CMD_TWITCH);
+        }
     }
 
     public void doTurnOff() {
-        sendCommandToHand(HAND_CMD_TURN_OFF);
+        if (checkSerialPortAndWarn()) {
+            sendCommandToHand(HAND_CMD_TURN_OFF);
+        }
     }
 
     public void doSlowlyWiggle() {
-        sendCommandToHand(HAND_CMD_SLOWLY_WIGGLE);
+        if (checkSerialPortAndWarn()) {
+            sendCommandToHand(HAND_CMD_SLOWLY_WIGGLE);
+        }
     }
 
     public void doRock() {
-        sendCommandToHand(HAND_CMD_ROCK);
+        if (checkSerialPortAndWarn()) {
+            sendCommandToHand(HAND_CMD_ROCK);
+        }
     }
 
     public void doScissors() {
-        sendCommandToHand(HAND_CMD_SCISSORS);
+        if (checkSerialPortAndWarn()) {
+            sendCommandToHand(HAND_CMD_SCISSORS);
+        }
     }
 
     public void doPaper() {
-        sendCommandToHand(HAND_CMD_PAPER);
+        if (checkSerialPortAndWarn()) {
+            sendCommandToHand(HAND_CMD_PAPER);
+        }
     }
 
     /**
@@ -1061,6 +1078,14 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
      */
     public void setMeasureSerialLatency(boolean measureSerialLatency) {
         this.measureSerialLatency = measureSerialLatency;
+    }
+
+    private boolean checkSerialPortAndWarn() {
+        if (!serialPortCommandsEnabled || (serialPortCommandsEnabled && serialPort == null)) {
+            showWarningDialogInSwingThread("serial port commands disabled, filter is not enabled, or port is not opened", "No serial connection");
+            return false;
+        }
+        return true;
     }
 
 }
