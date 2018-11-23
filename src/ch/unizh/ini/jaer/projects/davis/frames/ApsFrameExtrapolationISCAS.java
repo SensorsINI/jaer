@@ -18,6 +18,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
+import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * Demonstrates the DAVIS real time interframe reconstruction in the paper 
@@ -71,6 +72,8 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
     private short[][] onTimeBlame, offTimeBlame;
     private float[] onTimeBins, offTimeBins;
     private float[][] onPixTimeBins, offPixTimeBins;
+    
+    private EngineeringFormat engFmt=new EngineeringFormat();
 
     public ApsFrameExtrapolationISCAS(AEChip chip) {
         super(chip);
@@ -184,7 +187,7 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
                 }
             }
         }
-        frameExtractor.setLegend("Events since last frame: " + eventsSinceFrame + ", errror per pixel: " + errPP + ", error per event: " + errPE);
+        frameExtractor.setLegend("Events since last frame: " + eventsSinceFrame + ", err/pixel: " + engFmt.format(errPP) + ", err/event: " + engFmt.format(errPE));
         return in;
     }
 
