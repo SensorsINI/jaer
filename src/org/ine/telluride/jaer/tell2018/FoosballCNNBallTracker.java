@@ -18,24 +18,17 @@
  */
 package org.ine.telluride.jaer.tell2018;
 
-import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.npp.AbstractDavisCNN;
-import ch.unizh.ini.jaer.projects.npp.DavisCNNPureJava;
 import ch.unizh.ini.jaer.projects.npp.DavisClassifierCNNProcessor;
-import ch.unizh.ini.jaer.projects.npp.TensorFlow;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
-import eu.seebetter.ini.chips.DavisChip;
-import java.awt.Color;
 import java.beans.PropertyChangeEvent;
 import java.io.File;
-import javax.swing.BoxLayout;
 import javax.swing.JFrame;
-import javax.swing.JPanel;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.AEViewer;
@@ -46,9 +39,15 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 /**
  * Runs the trained CNN with tensorflow to track Greg Cohen's foosball ball.
  * Telluride 2018 in ESP18 group.
- *
- * @author Tobi Delbruck
+ * 
+ * See 
+ * https://drive.google.com/drive/folders/1o-kMdFZIw26YB2Q81hA5bu4mUt608FYK
+ * https://github.com/Neuromorphs18/foosball2018  
+ * https://docs.google.com/document/d/1CWOP7UmQa_P_RjM9oXD9f639kCdbEsU9dVkN4ZefgkY/edit#
+ * @author Tobi Delbruck, Damien Joubert, 2018
  */
+@Description("Runs the trained CNN with tensorflow to track Greg Cohen's foosball ball")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class FoosballCNNBallTracker extends DavisClassifierCNNProcessor implements FrameAnnotater {
 
     private float annotateAlpha = getFloat("annotateAlpha", 0.5f);
