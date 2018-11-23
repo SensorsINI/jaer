@@ -85,7 +85,7 @@ abstract public class DvsFramer extends EventFilter2D {
     protected int warningsBadEvent = 0;
 
     public enum TimeSliceMethod {
-        EventCount, TimeIntervalUs
+        EventCount, TimeIntervalUs, AreaEvent
     }
 
     private TimeSliceMethod timeSliceMethod = null; // init in construction with try catch
@@ -472,7 +472,7 @@ abstract public class DvsFramer extends EventFilter2D {
 
         @Override
         public String toString() {
-            return "DvsFrame{" + "width=" + width + ", height=" + height + ", accumulatedEventCount=" + accumulatedEventCount + ", mostOffCount=" + mostOffCount + ", mostOnCount=" + mostOnCount + ", sparsity=" + sparsity + ", filled=" + filled + '}';
+            return "DvsFrame{" + "width=" + width + ", height=" + height + ", accumulatedEventCount=" + accumulatedEventCount+ ", durationUs=" + durationUs + ", mostOffCount=" + mostOffCount + ", mostOnCount=" + mostOnCount + ", sparsity=" + sparsity + ", filled=" + filled + '}';
         }
 
         public void clear() {
@@ -568,6 +568,10 @@ abstract public class DvsFramer extends EventFilter2D {
                         filled = true;
                     }
                     break;
+                default:
+                    log.warning("method "+timeSliceMethod+" not yet implemented, disabling filter");
+                    showWarningDialogInSwingThread("DvsFramer method "+timeSliceMethod+" not yet implemented, disabling filter", "DvsFramer");
+                    setFilterEnabled(false);
             }
             if (filled) {
                 normalizeFrame();
@@ -874,7 +878,7 @@ abstract public class DvsFramer extends EventFilter2D {
         }
 
         /**
-         * Returns true if the accumulated event count is >=dvsEventsPerFrame
+         * Returns true if frame is considered filled
          *
          * @return the filled
          */
@@ -889,7 +893,11 @@ abstract public class DvsFramer extends EventFilter2D {
             this.filled = filled;
         }
 
-        private int getDurationUs() {
+        /** Returns accumulation time in us
+         * 
+         * @return time for accumulating this frame in us
+         */
+        public int getDurationUs() {
             return durationUs;
         }
 
