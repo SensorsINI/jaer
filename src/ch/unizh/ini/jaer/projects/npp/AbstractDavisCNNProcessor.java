@@ -108,8 +108,9 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     private String lastManuallyLoadedLabels = getString("lastManuallyLoadedLabels", "");
     protected TextRenderer textRenderer = null;
     private AbstractDavisCNN.APSDVSFrame apsDvsFrame = null;
-    protected Tensor output=null;
+    protected Tensor output = null;
     public long[][][] resHeatMap = new long[1][90][120];
+    protected int maxFrameAccumulationTimeToProcessMs = getInt("maxFrameAccumulationTimeToProcessUs", 0);
 
     public AbstractDavisCNNProcessor(AEChip chip) {
         super(chip);
@@ -145,6 +146,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         setPropertyTooltip(anal, "processAPSDVSTogetherInAPSNet", "sends APS frames and DVS time slices to single convnet");
         setPropertyTooltip(anal, "zeroPadding", "CNN uses zero padding; must be set properly according to CNN to run CNN");
         setPropertyTooltip(anal, "processingTimeLimitMs", "<html>time limit for processing packet in ms to process OF events (events still accumulate). <br> Set to 0 to disable. <p>Alternative to the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events");
+        setPropertyTooltip(anal, "maxFrameAccumulationTimeToProcessMs", "maximum time in ms for accumulated DvsFrame to process it; set this to a value of e.g. 300ms to avoid processing DVS frames from very slow movements. Set to 0 to disable.");
         setPropertyTooltip(tf, "makeRGBFrames", "(TensorFlow only) Tells the CNN to make RGB input from grayscale DVS/APS frames; use it with a network configured for RGB input");
         setPropertyTooltip(tf, "lastManuallyLoadedNetwork", "last network we manually loaded");
         setPropertyTooltip(tf, "inputLayerName", "(TensorFlow only) Input layer; parse it from loading the network and examining console output for layers for lines starting with ****");
@@ -195,14 +197,14 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         File file = c.getSelectedFile();
         return file;
     }
-    
+
     /*
         Put output Tensorflow Tensor into a 4D array
         1 * 90 * 120 * 2
         Corresponding to heatmap labels to track the ball on Foosball table
     
-    */
-    public synchronized void tensor2Array(float[][][][] arr){
+     */
+    public synchronized void tensor2Array(float[][][][] arr) {
         output.copyTo(arr);
     }
 
@@ -435,7 +437,9 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         resetTimeLimiter();
         //            final int sizeX = chip.getSizeX();
         //            final int sizeY = chip.getSizeY();
-        if(frameExtractor!=null && processAPSFrames) frameExtractor.filterPacket(in);
+        if (frameExtractor != null && processAPSFrames) {
+            frameExtractor.filterPacket(in);
+        }
         for (BasicEvent e : in) {
             lastProcessedEventTimestamp = e.getTimestamp();
             PolarityEvent p = (PolarityEvent) e;
@@ -579,18 +583,18 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                         startTime = System.nanoTime();
                     }
 
-                    try{
-                    updateAPSDVSFrame(frameExtractor);
-                    //output = apsDvsNet.processAPSDVSFrame(apsDvsFrame);  // TODO replace with ApsFrameExtractor
-                    apsDvsNet.processAPSDVSFrameArray(apsDvsFrame, resHeatMap);
-                    if (measurePerformance) {
-                        long dt = System.nanoTime() - startTime;
-                        float ms = 1e-6f * dt;
-                        float fps = 1e3f / ms;
-                        performanceString = String.format("Frame processing time: %.1fms (%.1f FPS)", ms, fps);
-                    }
-                    }catch(Exception e){
-                        log.log(Level.SEVERE,e.toString(),e); // TODO debug
+                    try {
+                        updateAPSDVSFrame(frameExtractor);
+                        //output = apsDvsNet.processAPSDVSFrame(apsDvsFrame);  // TODO replace with ApsFrameExtractor
+                        apsDvsNet.processAPSDVSFrameArray(apsDvsFrame, resHeatMap);
+                        if (measurePerformance) {
+                            long dt = System.nanoTime() - startTime;
+                            float ms = 1e-6f * dt;
+                            float fps = 1e3f / ms;
+                            performanceString = String.format("Frame processing time: %.1fms (%.1f FPS)", ms, fps);
+                        }
+                    } catch (Exception e) {
+                        log.log(Level.SEVERE, e.toString(), e); // TODO debug
                     }
                 } else if (isFilterEnabled() && (apsDvsNet != null) && (processAPSFrames)) {
                     long startTime = 0;
@@ -607,17 +611,22 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                 }
                 break;
             case DvsFramer.EVENT_NEW_FRAME_AVAILABLE:
+                final DvsFrame dvsFrame = (DvsFrame) evt.getNewValue();
+                if (maxFrameAccumulationTimeToProcessMs>0 && dvsFrame.getDurationUs() > maxFrameAccumulationTimeToProcessMs * 1000) {
+                    log.info("skipping long frame "+dvsFrame);
+                    return; // don't process this very long frame
+                }
                 long startTime = 0;
                 if (measurePerformance) {
                     startTime = System.nanoTime();
                 }
                 if (processAPSDVSFrames && apsDvsNet != null) {
-                     try{  // TODO debug
-                    updateApsDvsFrame((DvsFrame) evt.getNewValue());
-                    //output = apsDvsNet.processAPSDVSFrame(apsDvsFrame); // generates PropertyChange EVENT_MADE_DECISION
-                    //apsDvsNet.processAPSDVSFrameArray(apsDvsFrame, resHeatMap);
-                    }catch(Exception e){
-                        log.log(Level.SEVERE,e.toString(),e); // TODO debug
+                    try {  // TODO debug
+                        updateApsDvsFrame(dvsFrame);
+                        //output = apsDvsNet.processAPSDVSFrame(apsDvsFrame); // generates PropertyChange EVENT_MADE_DECISION
+                        //apsDvsNet.processAPSDVSFrameArray(apsDvsFrame, resHeatMap);
+                    } catch (Exception e) {
+                        log.log(Level.SEVERE, e.toString(), e); // TODO debug
                     }
                     if (measurePerformance) {
                         long dt = System.nanoTime() - startTime;
@@ -626,7 +635,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                         performanceString = String.format("Frame processing time: %.1fms (%.1f FPS)", ms, fps);
                     }
                 } else if (processDVSTimeSlices && apsDvsNet != null) {
-                    apsDvsNet.processDvsFrame((DvsFrame) evt.getNewValue()); // generates PropertyChange EVENT_MADE_DECISION
+                    apsDvsNet.processDvsFrame(dvsFrame); // generates PropertyChange EVENT_MADE_DECISION
                     if (measurePerformance) {
                         long dt = System.nanoTime() - startTime;
                         float ms = 1e-6f * dt;
@@ -1164,6 +1173,21 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
      */
     public String getLastManuallyLoadedLabels() {
         return lastManuallyLoadedLabels;
+    }
+
+    /**
+     * @return the maxFrameAccumulationTimeToProcessMs
+     */
+    public int getMaxFrameAccumulationTimeToProcessMs() {
+        return maxFrameAccumulationTimeToProcessMs;
+    }
+
+    /**
+     * @param maxFrameAccumulationTimeToProcessMs the
+     * maxFrameAccumulationTimeToProcessMs to set
+     */
+    public void setMaxFrameAccumulationTimeToProcessMs(int maxFrameAccumulationTimeToProcessMs) {
+        this.maxFrameAccumulationTimeToProcessMs = maxFrameAccumulationTimeToProcessMs;
     }
 
 }
