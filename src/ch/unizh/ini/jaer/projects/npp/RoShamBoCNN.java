@@ -84,7 +84,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     private SoundPlayer soundPlayer = null;
     protected boolean playToWin = getBoolean("playToWin", true);
     private boolean addedStatisticsListener = false;
-
+ 
     /**
      * for game state machine
      */
@@ -157,7 +157,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         setPropertyTooltip(roshambo, "showSymbol", "If selected, symbol is displayed as overlay, either the one recognized or the winner, depending on playToWin");
         setPropertyTooltip(roshambo, "twitch", "make the hand twitch");
         setPropertyTooltip(roshambo, "turnOff", "turn off the hand (should already happen a short time after each command, to save jammed servos)");
-
+ 
         dvsFramer.setRectifyPolarities(true);
         dvsFramer.setNormalizeDVSForZsNullhop(true); // to make it work out of the box
 
@@ -183,7 +183,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
 
     @Override
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
-        EventPacket out = super.filterPacket(in);
+        EventPacket out = super.filterPacket(in); // does all the processing to send DVS frames to CNN for processing, decisions come back via PropertyChange event to Statistics.propertyChanged
         if (apsDvsNet == null) {
             showWarningDialogInSwingThread("null CNN, load a valid CNN and re-enable filter", "No CNN loaded");
             setFilterEnabled(false);
@@ -1088,4 +1088,5 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         return true;
     }
 
+  
 }
