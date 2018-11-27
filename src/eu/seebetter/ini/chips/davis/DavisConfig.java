@@ -679,9 +679,9 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
     }
 
     /**
-     * Returns the frame delay setting in float ms.
+     * Returns the frame interval setting in float ms.
      *
-     * @return value of exposure delay. It is quantized by apsExposure to be a
+     * @return value of exposure delay. It is quantized to be a
      * multiple of 1us.
      * @see #getExposureFrameDelayQuantizationMs()
      */
@@ -690,7 +690,14 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         apsFrameInterval.set(fdUs);
     }
 
-    public float getFrameIntervalMs() {
+   /**
+     * Returns the frame interval setting in float ms.
+     *
+     * @return value of frame interval. It is quantized to be a
+     * multiple of 1us.
+     * @see #getExposureFrameDelayQuantizationMs()
+     */
+   public float getFrameIntervalMs() {
         return apsFrameInterval.get() * .001f;
 
     }
