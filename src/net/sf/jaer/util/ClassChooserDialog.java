@@ -18,7 +18,7 @@ import net.sf.jaer.chip.AEChip;
 
 /** A modal dialog that shows a list of source classes (found from the classpath) and a list of String names of classes and lets
  the user shuffle them from one side to the other and reorder the chosen class names.
- Use it by contructing a new instance, making it visible (this call will magically block until
+ Use it by constructing a new instance, making it visible (this call will magically block until
  the user presses OK or Cancel), and then calling <code>getReturnValue()</code>.
  
  * @author  tobi */
