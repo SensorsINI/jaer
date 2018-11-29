@@ -96,6 +96,10 @@ public class EngineeringFormat {
     }
     
     
+    /** Sets the decimal fractional precision of output, e.g. 1 makes 1.1
+     * 
+     * @param p precision of output
+     */
     final public void setPrecision(int p){
         precision=p;
         formatterString="%c%."+precision+"f%c";
