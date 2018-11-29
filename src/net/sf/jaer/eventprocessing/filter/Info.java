@@ -582,7 +582,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     }
 
     private void drawClock(GL2 gl, long t) {
-        final int radius = 20, hourLen = 10, minLen = 18, secLen = 7, msLen = 19;
+        final int radius = 20, hourLen = 10, minLen = 18, secLen = 19, msLen = 7;
         Instant instant=Instant.ofEpochMilli(t);
         ZonedDateTime zdt=null;
         if(aeFileInputStream!=null && aeFileInputStream.getZoneId()!=null){
