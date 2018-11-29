@@ -86,7 +86,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     volatile private long updateTimeMs = 0; // volatile because this field accessed by filtering and rendering threads
 //    volatile private float eventRateMeasured = 0; // volatile, also shared
     private boolean addedViewerPropertyChangeListener = false; // need flag because viewer doesn't exist on creation
-    private boolean eventRate = getBoolean("Info.eventRate", true);
+    private boolean eventRate = getBoolean("eventRate", true);
 
     private TypedEventRateEstimator typedEventRateEstimator;
     private HashMap<EventRateEstimator, RateHistory> rateHistories = new HashMap();
@@ -843,7 +843,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public void setEventRate(boolean eventRate) {
         boolean old = this.eventRate;
         this.eventRate = eventRate;
-        getPrefs().putBoolean("Info.eventRate", eventRate);
+        putBoolean("eventRate", eventRate);
         getSupport().firePropertyChange("eventRate", old, eventRate);
     }
     private volatile boolean resetTimeEnabled = false;
