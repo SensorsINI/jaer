@@ -72,6 +72,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     // Remote control support
     private final String CMD_EXPOSURE = "exposure";
     private final String CMD_GET_IMU_TEMPERATURE_C = "getImuTemperature";
+    private final String CMD_SET_APS_ENABLED = "setApsEnabled", CMD_SET_DVS_ENABLED = "setDvsEnabled", CMD_SET_IMU_ENABLED = "setImuEnabled";
 
     private final DavisDisplayMethod davisDisplayMethod;
     protected DavisConfig davisConfig;
@@ -136,6 +137,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         if (getRemoteControl() != null) {
             getRemoteControl().addCommandListener(this, CMD_EXPOSURE, CMD_EXPOSURE + " val - sets exposure. val in ms.");
             getRemoteControl().addCommandListener(this, CMD_GET_IMU_TEMPERATURE_C, CMD_GET_IMU_TEMPERATURE_C + "returns string value of IMU temperature in Celsius.");
+            getRemoteControl().addCommandListener(this, CMD_SET_APS_ENABLED, CMD_SET_APS_ENABLED + "[0|1] - sets APS frames enabled");
+            getRemoteControl().addCommandListener(this, CMD_SET_DVS_ENABLED, CMD_SET_DVS_ENABLED + "[0|1] - sets DVS events enabled");
+            getRemoteControl().addCommandListener(this, CMD_SET_IMU_ENABLED, CMD_SET_IMU_ENABLED + "[0|1]- sets IMU enabled");
         }
     }
 
@@ -1338,11 +1342,21 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         } catch (final NumberFormatException e) {
             return input + ": bad argument? Caught " + e.toString();
         }
+        boolean boolVal = (int) v == 1;
         final String c = command.getCmdName();
         if (c.equals(CMD_EXPOSURE)) {
             getDavisConfig().setExposureDelayMs(v);
         } else if (c.equals(CMD_GET_IMU_TEMPERATURE_C)) {
             return String.format("%.3f", getImuSample().getTemperature());
+        } else if (c.equals(CMD_SET_APS_ENABLED)) {
+            getDavisConfig().setCaptureFramesEnabled(boolVal);
+            getDavisConfig().setDisplayFrames(boolVal);
+        } else if (c.equals(CMD_SET_DVS_ENABLED)) {
+            getDavisConfig().setCaptureEvents(boolVal);
+            getDavisConfig().setDisplayEvents(boolVal);
+        } else if (c.equals(CMD_SET_IMU_ENABLED)) {
+            getDavisConfig().setImuEnabled(boolVal);
+            getDavisConfig().setDisplayImu(boolVal);
         }
         return "successfully processed command " + input;
     }
@@ -1590,7 +1604,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 float fRate = (1000.0f / getDavisConfig().getFrameIntervalMs());
                 fRate /= exposureChangeFactor;
                 if (fRate < 0.125f) {
-                	fRate = 0.125f;
+                    fRate = 0.125f;
                 }
                 getDavisConfig().setFrameIntervalMs(1000.0f / fRate);
             } catch (IllegalArgumentException ex) {
@@ -1617,10 +1631,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         @Override
         public void actionPerformed(ActionEvent e) {
             try {
-            	float fRate = (1000.0f / getDavisConfig().getFrameIntervalMs());
+                float fRate = (1000.0f / getDavisConfig().getFrameIntervalMs());
                 fRate *= exposureChangeFactor;
                 if (fRate > 200.0f) {
-                	fRate = 200.0f;
+                    fRate = 200.0f;
                 }
                 getDavisConfig().setFrameIntervalMs(1000.0f / fRate);
             } catch (IllegalArgumentException ex) {
