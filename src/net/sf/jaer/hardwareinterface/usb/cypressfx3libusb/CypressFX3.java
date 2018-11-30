@@ -5,8 +5,11 @@
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx3libusb;
 
+import java.awt.Desktop;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeSupport;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.IntBuffer;
@@ -529,33 +532,43 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	protected void checkFirmwareLogic(final int requiredFirmwareVersion, final int requiredLogicRevision)
 		throws HardwareInterfaceException {
-		final StringBuilder updateStringBuilder = new StringBuilder();
+		final StringBuilder updateStringBuilder = new StringBuilder("<html>");
+                boolean needsUpdate=false;
 
 		// Verify device firmware version and logic revision.
 		final int usbFWVersion = getDID() & 0x00FF;
 		if (usbFWVersion != requiredFirmwareVersion) {
 			updateStringBuilder
-				.append(String.format("Device firmware version incorrect. You have version %d; but version %d is required.\n",
+				.append(String.format("<p>Device firmware version incorrect. You have version %d; but version %d is required.</p>",
 					usbFWVersion, requiredFirmwareVersion));
+                        needsUpdate=true;
 		}
 
 		final int logicRevision = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 0);
 		if (logicRevision != requiredLogicRevision) {
 			updateStringBuilder
-				.append(String.format("Device logic version incorrect. You have version %d; but version %d is required.\n",
+				.append(String.format("<p>Device logic version incorrect. You have version %d; but version %d is required.</p>",
 					logicRevision, requiredLogicRevision));
+                        needsUpdate=true;
 		}
 
-		if (updateStringBuilder.length() > 0) {
+		if (needsUpdate) {
 			updateStringBuilder
-				.append("Please update by following the Flashy documentation at " + AEViewer.HELP_USER_GUIDE_URL_FLASHY);
-
+				.append("<p>Please update by following the Flashy documentation at <a href=\" " + AEViewer.HELP_USER_GUIDE_URL_FLASHY+"\">"+AEViewer.HELP_USER_GUIDE_URL_FLASHY+"</a></p>");
+                        updateStringBuilder.append("<p>Clicking OK will open this URL in browser</p>");
 			final String updateString = updateStringBuilder.toString();
 
 			final SwingWorker<Void, Void> strWorker = new SwingWorker<Void, Void>() {
 				@Override
 				public Void doInBackground() {
 					JOptionPane.showMessageDialog(null, updateString);
+                                        if(Desktop.isDesktopSupported()){
+                                            try {
+                                                Desktop.getDesktop().browse(new URI(AEViewer.HELP_USER_GUIDE_URL_FLASHY));
+                                            } catch (Exception ex) {
+                                                Logger.getLogger(CypressFX3.class.getName()).log(Level.WARNING, null, ex);
+                                            }
+                                        }
 
 					return (null);
 				}
