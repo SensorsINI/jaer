@@ -56,6 +56,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     private ArrayList<ClassNameWithDescriptionAndDevelopmentStatus> availAllList;
     private ArrayList<String> revertCopy, defaultClassNames;
     private DescriptionMap descriptionMap = new DescriptionMap();
+    private Class superClass=null; // the classes available will be subclasses of this class
 
     private class ClassDescription {
 
@@ -139,15 +140,16 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     /**
      * Creates new form ClassChooserPanel
      *
-     * @param subclassOf a Class that will be used to search the classpath for
+     * @param superClass a Class that will be used to search the classpath for
      * subclasses of subClassOf.
      * @param classNames a list of names, which is filled in by the actions of
      * the user with the chosen classes
-     * @param defaultClassNames the list on the right is replaced by this lixt
+     * @param defaultClassNames the list on the right is replaced by this list
      * if the user pushes the Defaults button.
      */
-    public ClassChooserPanel(final Class subclassOf, ArrayList<String> classNames, ArrayList<String> defaultClassNames) {
+    public ClassChooserPanel(final Class superClass, ArrayList<String> classNames, ArrayList<String> defaultClassNames) {
         initComponents();
+        this.superClass=superClass;
         includeExperimentalCB.setEnabled(onlyStableCB.isSelected());
         availFilterTextField.requestFocusInWindow();
         this.defaultClassNames = defaultClassNames;
@@ -181,10 +183,42 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         } finally {
             setCursor(Cursor.getDefaultCursor());
         }
+
+        Action removeAction = new AbstractAction() {
+
+            @Override
+            public void actionPerformed(final ActionEvent e) {
+                int index = classJList.getSelectedIndex();
+                chosenClassesListModel.removeElementAt(index);
+                int size = chosenClassesListModel.getSize();
+
+                if (size == 0) { //Nobody's left, disable firing.
+                    removeClassButton.setEnabled(false);
+                } else { //Select an index.
+                    if (index == chosenClassesListModel.getSize()) {
+                        //removed item in last position
+                        index--;
+                    }
+
+                    classJList.setSelectedIndex(index);
+                    classJList.ensureIndexIsVisible(index);
+                }
+            }
+        };
+        addAction(classJList, removeAction);
+
+        populateAvailableClassesListModel(superClass,true);
+
+        revertCopy = new ArrayList<>(classNames);
+        chosenClassesListModel = new FilterableListModel(classNames);
+        classJList.setModel(chosenClassesListModel);
+        classJList.setCellRenderer(new MyCellRenderer());
+    }
+
+    private void populateAvailableClassesListModel(final Class subclassOf, boolean useCache) {
         final ProgressMonitor progressMonitor = new ProgressMonitor(this, "Finding classes", "", 0, 100);
-//        progressMonitor.setMillisToDecideToPopup(200);
         progressMonitor.setMillisToPopup(200);
-        final SubclassFinder.SubclassFinderWorker worker = new SubclassFinder.SubclassFinderWorker(subclassOf, availClassesListModel);
+        final SubclassFinder.SubclassFinderWorker worker = new SubclassFinder.SubclassFinderWorker(subclassOf, availClassesListModel, useCache);
         worker.addPropertyChangeListener(new PropertyChangeListener() {
 
             @Override
@@ -221,44 +255,10 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                         setCursor(Cursor.getDefaultCursor());
                     }
                 }
-//                else if ((evt != null) && (evt.getNewValue() instanceof Integer)) {
-//                    int progress = (Integer) evt.getNewValue();
-//                    String s = String.format("Scanning %d/100...", progress);
-//                    tmpList.removeAllElements();
-//                    tmpList.addElement(s);
-//                }
             }
         });
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         worker.execute();
-
-        Action removeAction = new AbstractAction() {
-
-            @Override
-            public void actionPerformed(final ActionEvent e) {
-                int index = classJList.getSelectedIndex();
-                chosenClassesListModel.removeElementAt(index);
-                int size = chosenClassesListModel.getSize();
-
-                if (size == 0) { //Nobody's left, disable firing.
-                    removeClassButton.setEnabled(false);
-                } else { //Select an index.
-                    if (index == chosenClassesListModel.getSize()) {
-                        //removed item in last position
-                        index--;
-                    }
-
-                    classJList.setSelectedIndex(index);
-                    classJList.ensureIndexIsVisible(index);
-                }
-            }
-        };
-        addAction(classJList, removeAction);
-
-        revertCopy = new ArrayList<>(classNames);
-        chosenClassesListModel = new FilterableListModel(classNames);
-        classJList.setModel(chosenClassesListModel);
-        classJList.setCellRenderer(new MyCellRenderer());
     }
 
     private boolean containsClass(FilterableListModel model, Object obj) {
@@ -494,6 +494,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         availFilterTextField = new javax.swing.JTextField();
         clearFilterBut = new javax.swing.JButton();
         includeDescriptionCB = new javax.swing.JCheckBox();
+        refrreshButton = new javax.swing.JButton();
         chosenClassPanel = new javax.swing.JPanel();
         jScrollPane3 = new javax.swing.JScrollPane();
         classJList = new javax.swing.JList();
@@ -573,6 +574,14 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         });
 
+        refrreshButton.setText("Refresh list");
+        refrreshButton.setToolTipText("<html> <p>Scans entire classpath for possible classes</p><p>(needs to be refreshed if new classes are added)</p>");
+        refrreshButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                refrreshButtonActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout availClassPanelLayout = new javax.swing.GroupLayout(availClassPanel);
         availClassPanel.setLayout(availClassPanelLayout);
         availClassPanelLayout.setHorizontalGroup(
@@ -594,11 +603,13 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                             .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                             .addComponent(clearFilterBut)
                             .addGap(44, 44, 44)))))
+            .addComponent(refrreshButton)
         );
         availClassPanelLayout.setVerticalGroup(
             availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, availClassPanelLayout.createSequentialGroup()
-                .addContainerGap()
+                .addComponent(refrreshButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(filterLabel)
                     .addComponent(availFilterTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -829,8 +840,8 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                     .addGroup(layout.createSequentialGroup()
                         .addContainerGap()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 396, Short.MAX_VALUE)
-                            .addComponent(availClassPanel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 396, Short.MAX_VALUE)))
+                            .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 563, Short.MAX_VALUE)
+                            .addComponent(availClassPanel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 563, Short.MAX_VALUE)))
                     .addGroup(layout.createSequentialGroup()
                         .addGap(40, 40, 40)
                         .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -969,6 +980,10 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         classJList.setSelectedIndex(last + 1);
     }//GEN-LAST:event_addClassButtonActionPerformed
 
+    private void refrreshButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refrreshButtonActionPerformed
+        populateAvailableClassesListModel(superClass, false);
+    }//GEN-LAST:event_refrreshButtonActionPerformed
+
     private boolean checkIfAddDuplicate(Object o) {
         int retVal = JOptionPane.showOptionDialog(this,
                 "List already contains " + o.toString() + "; add it anyway?", "Confirm addition",
@@ -1001,6 +1016,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     private javax.swing.JButton moveDownButton;
     private javax.swing.JButton moveUpButton;
     private javax.swing.JCheckBox onlyStableCB;
+    private javax.swing.JButton refrreshButton;
     private javax.swing.JButton removeAllButton;
     private javax.swing.JButton removeClassButton;
     private javax.swing.JButton revertButton;
