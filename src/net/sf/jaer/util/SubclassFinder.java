@@ -190,7 +190,7 @@ public class SubclassFinder {
                         final ClassNameWithDescriptionAndDevelopmentStatus myFoundClass = new ClassNameWithDescriptionAndDevelopmentStatus(c);
 //sees if e.g. superclass AEChip can be cast from e.g. c=DVS128, i.e. can we do (AEChip)DVS128?
                         classes.add(myFoundClass);
-                        int prog=(int) (100 * ((float) (linesReadCount) / nLines));
+                        int prog=(int) (100 * ((float) (linesReadCount++) / nLines));
                         if(prog>100) prog=100;
                         setProgress(prog);
                         publish(myFoundClass);

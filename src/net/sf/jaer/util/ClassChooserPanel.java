@@ -217,7 +217,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
     private void populateAvailableClassesListModel(final Class subclassOf, boolean useCache) {
         final ProgressMonitor progressMonitor = new ProgressMonitor(this, "Finding classes", "", 0, 100);
-        progressMonitor.setMillisToPopup(200);
+        progressMonitor.setMillisToPopup(10);
         final SubclassFinder.SubclassFinderWorker worker = new SubclassFinder.SubclassFinderWorker(subclassOf, availClassesListModel, useCache);
         worker.addPropertyChangeListener(new PropertyChangeListener() {
 
