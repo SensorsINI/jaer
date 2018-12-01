@@ -48,7 +48,7 @@ public class ListClasses {
         "org/jdesktop", "de/thesycon", "com/kitfox", "org/uncommons",
         "de/ailis", "org/netbeans",
         "com/kitfox", "org/bytedeco", "org/usb4java", "org/openni",
-        "jogamp", "org/jogamp", "com/jogamp", "gluegen", "newt",
+        "jogamp", "org/jogamp", "com/jogamp", "gluegen", "newt","ncsa.hdf.hdf5lib",
         "lib", "org/tensorflow", "org/ros", "com/fasterxml", "ch/qos", "groovy/lang", "com/google", "groovy", "ch/systemsx"
     };
 
