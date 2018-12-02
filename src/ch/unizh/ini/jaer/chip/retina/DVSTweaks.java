@@ -18,18 +18,38 @@ public interface DVSTweaks {
      */
     public static final String BANDWIDTH = "bandwidth", MAX_FIRING_RATE = "maxFiringRate", THRESHOLD = "threshold", ON_OFF_BALANCE = "onOffBalance";
 
+    /**
+     * Tweaks front end bandwidth, larger is higher bandwidth.
+     *
+     * @param val -1 to 1 range
+     */
     public void setBandwidthTweak(float val);
 
     public float getBandwidthTweak();
 
+    /**
+     * Tweaks max firing rate (refractory period), larger is higher firing rate.
+     *
+     * @param val -1 to 1 range
+     */
     public void setMaxFiringRateTweak(float val);
 
     public float getMaxFiringRateTweak();
 
+    /**
+     * Tweaks threshold, larger is higher threshold.
+     *
+     * @param val -1 to 1 range
+     */
     public void setThresholdTweak(float val);
 
     public float getThresholdTweak();
 
+    /**
+     * Tweaks on off balance, larger is more ON events.
+     *
+     * @param val -1 to 1 range
+     */
     public void setOnOffBalanceTweak(float val);
 
     public float getOnOffBalanceTweak();
