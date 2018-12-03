@@ -29,10 +29,10 @@ import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Controls the rate of events from the retina by controlling retina biases. The
- * event threshold is increased if rate exceeds rateHigh until rate drops below
- * rateHigh. The threshold is decreased if rate is lower than rateLow.
- * Hysterisis limits crossing noise. A lowpass filter smooths the rate
- * measurements.
+ * event threshold is increased if rate exceeds rateHighKeps until rate drops
+ * below rateHighKeps. The threshold is decreased if rate is lower than
+ * rateLowKeps. Hysterisis limits crossing noise. A lowpass filter smooths the
+ * rate measurements.
  *
  * @author tobi
  */
@@ -40,15 +40,17 @@ import net.sf.jaer.DevelopmentStatus;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
 
-    protected int rateHigh = getInt("rateHigh", 400);
-
-    //    private int rateMid=getInt("rateMid",300);
-    private int rateLow = getInt("rateLow", 100);
+    protected int rateHighKeps = getInt("rateHighKeps", 400);
+    private int rateLowKeps = getInt("rateLowKeps", 100);
     private int rateHysteresis = getInt("rateHysteresis", 50);
     private float hysteresisFactor = getFloat("hysteresisFactor", 1.3f);
     private int minCommandIntervalMs = getInt("minCommandIntervalMs", 300);
     private long lastCommandTime = 0; // limits use of status messages that control biases
     private float tweakStepAmount = getFloat("tweakStepAmount", .01f);
+    private boolean changeDvsEventThresholds = getBoolean("changeDvsEventThresholds", true);
+    private boolean changeDvsRefractoryPeriod = getBoolean("changeDvsRefractoryPeriod", true);
+    private boolean changeDvsPixelBandwidth = getBoolean("changeDvsPixelBandwidth", true);
+    private boolean showAnnotation = getBoolean("showAnnotation", true);
     private EventRateEstimator rateEstimator;
 
     enum State {
@@ -92,13 +94,19 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         FilterChain chain = new FilterChain(chip);
         chain.add(rateEstimator);
         setEnclosedFilterChain(chain);
+        final String rates = "2. Event rates", policy = "3. Policy parameters", type = "1. Type of control", display="4. Display";
 
-        setPropertyTooltip("rateLow", "event rate in keps for LOW state");
-        setPropertyTooltip("rateHigh", "event rate in keps for HIGH state");
-        setPropertyTooltip("rateHysteresis", "hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");
-        setPropertyTooltip("hysteresisFactor", "hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");
-        setPropertyTooltip("tweakStepAmount", "amount to tweak bias by each step");
-        setPropertyTooltip("minCommandIntervalMs", "min time in ms between changing biases");
+        setPropertyTooltip(rates, "rateLowKeps", "event rate in keps for LOW state, where event threshold or refractory period are reduced");
+        setPropertyTooltip(rates, "rateHighKeps", "event rate in keps for HIGH state, where event threshold or refractory period are increased");
+        setPropertyTooltip(policy, "rateHysteresis", "hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");
+        setPropertyTooltip(policy, "hysteresisFactor", "hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");
+        setPropertyTooltip(policy, "tweakStepAmount", "fraction by which to tweak bias by each step, e.g. 0.1 means tweak bias current by 10% for each step");
+        setPropertyTooltip(policy, "minCommandIntervalMs", "minimum time in ms between changing biases; avoids noise from changing biases too frequently");
+        setPropertyTooltip(type, "changeDvsRefractoryPeriod", "enables changing DVS refractory period (time after each event that pixel is reset)");
+        setPropertyTooltip(type, "changeDvsEventThresholds", "enables changing DVS temporal contrast thresholds");
+        setPropertyTooltip(type, "changeDvsPixelBandwidth", "enables changing DVS photoreceptor/source follower analog bandwidth");
+        setPropertyTooltip(display, "showAnnotation", "enables showing controller state and actions on viewer");
+        setPropertyTooltip(display, "writeLogEnabled", "writes a log file called DVSBiasController-xxx.txt to the startup folder (root of jaer) to allow analyzing controller dynamics");
     }
 
     public Object getFilterState() {
@@ -129,22 +137,22 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         state = State.INITIAL;
     }
 
-    public int getRateHigh() {
-        return rateHigh;
+    public int getRateHighKeps() {
+        return rateHighKeps;
     }
 
-    synchronized public void setRateHigh(int upperThreshKEPS) {
-        rateHigh = upperThreshKEPS;
-        putInt("rateHigh", upperThreshKEPS);
+    synchronized public void setRateHighKeps(int upperThreshKEPS) {
+        rateHighKeps = upperThreshKEPS;
+        putInt("rateHighKeps", upperThreshKEPS);
     }
 
-    public int getRateLow() {
-        return rateLow;
+    public int getRateLowKeps() {
+        return rateLowKeps;
     }
 
-    synchronized public void setRateLow(int lowerThreshKEPS) {
-        rateLow = lowerThreshKEPS;
-        putInt("rateLow", lowerThreshKEPS);
+    synchronized public void setRateLowKeps(int lowerThreshKEPS) {
+        rateLowKeps = lowerThreshKEPS;
+        putInt("rateLowKeps", lowerThreshKEPS);
     }
 
     @Override
@@ -176,19 +184,19 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         lastState = state;
         switch (state) {
             case LOW_RATE:
-                if (r > (rateLow * hysteresisFactor)) {
+                if (r > (rateLowKeps * hysteresisFactor)) {
                     state = State.MEDIUM_RATE;
                 }
                 break;
             case MEDIUM_RATE:
-                if (r < (rateLow / hysteresisFactor)) {
+                if (r < (rateLowKeps / hysteresisFactor)) {
                     state = State.LOW_RATE;
-                } else if (r > (rateHigh * hysteresisFactor)) {
+                } else if (r > (rateHighKeps * hysteresisFactor)) {
                     state = State.HIGH_RATE;
                 }
                 break;
             case HIGH_RATE:
-                if (r < (rateHigh / hysteresisFactor)) {
+                if (r < (rateHighKeps / hysteresisFactor)) {
                     state = State.MEDIUM_RATE;
                 }
                 break;
@@ -209,19 +217,35 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
             log.warning("null biasgen, not doing anything");
             return;
         }
-        float bw = biasgen.getThresholdTweak();
+        float thr = biasgen.getThresholdTweak(), refr = biasgen.getMaxFiringRateTweak(), bw = biasgen.getBandwidthTweak();
         switch (state) {
             case LOW_RATE:
-                biasgen.setThresholdTweak(bw - getTweakStepAmount());
+                if (changeDvsEventThresholds) {
+                    biasgen.setThresholdTweak(thr - getTweakStepAmount());
+                }
+                if (changeDvsRefractoryPeriod) {
+                    biasgen.setMaxFiringRateTweak(refr + getTweakStepAmount());
+                }
+                if (changeDvsPixelBandwidth) {
+                    biasgen.setBandwidthTweak(bw + getTweakStepAmount());
+                }
+
                 //                biasgen.decreaseThreshold();
                 break;
             case HIGH_RATE:
-                biasgen.setThresholdTweak(bw + getTweakStepAmount());
-                //               biasgen.increaseThreshold();
+                if (changeDvsEventThresholds) {
+                    biasgen.setThresholdTweak(thr + getTweakStepAmount());
+                }
+                if (changeDvsRefractoryPeriod) {
+                    biasgen.setMaxFiringRateTweak(refr - getTweakStepAmount());
+                }
+                if (changeDvsPixelBandwidth) {
+                    biasgen.setBandwidthTweak(bw - getTweakStepAmount());
+                }
+
                 break;
             default:
         }
-        System.out.println("bw=" + bw);
 
     }
 
@@ -280,9 +304,9 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         }
         try {
             writer = new FileWriter(loggingFile);
-            log.info("starting logging bias control at " + dateString);
+            log.info("starting logging bias control at " + dateString+ " to file "+loggingFile.getAbsolutePath());
             writer.write("# time rate lpRate state\n");
-            writer.write(String.format("# rateLow=%f rateHigh=%f hysteresisFactor=%f\n", rateLow, rateHigh, hysteresisFactor));
+            writer.write(String.format("# rateLowKeps=%f rateHighKeps=%f hysteresisFactor=%f\n", rateLowKeps, rateHighKeps, hysteresisFactor));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -293,9 +317,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        if (!isFilterEnabled()) {
-            return;
-        }
+        if(!showAnnotation) return;
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushMatrix();
         final GLUT glut = new GLUT();
@@ -326,5 +348,65 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
     public void setMinCommandIntervalMs(int minCommandIntervalMs) {
         this.minCommandIntervalMs = minCommandIntervalMs;
         putInt("minCommandIntervalMs", minCommandIntervalMs);
+    }
+
+    /**
+     * @return the changeDvsEventThresholds
+     */
+    public boolean isChangeDvsEventThresholds() {
+        return changeDvsEventThresholds;
+    }
+
+    /**
+     * @param changeDvsEventThresholds the changeDvsEventThresholds to set
+     */
+    public void setChangeDvsEventThresholds(boolean changeDvsEventThresholds) {
+        this.changeDvsEventThresholds = changeDvsEventThresholds;
+        putBoolean("changeDvsEventThresholds", changeDvsEventThresholds);
+    }
+
+    /**
+     * @return the changeDvsRefractoryPeriod
+     */
+    public boolean isChangeDvsRefractoryPeriod() {
+        return changeDvsRefractoryPeriod;
+    }
+
+    /**
+     * @param changeDvsRefractoryPeriod the changeDvsRefractoryPeriod to set
+     */
+    public void setChangeDvsRefractoryPeriod(boolean changeDvsRefractoryPeriod) {
+        this.changeDvsRefractoryPeriod = changeDvsRefractoryPeriod;
+        putBoolean("changeDvsRefractoryPeriod", changeDvsRefractoryPeriod);
+    }
+
+    /**
+     * @return the changeDvsPixelBandwidth
+     */
+    public boolean isChangeDvsPixelBandwidth() {
+        return changeDvsPixelBandwidth;
+    }
+
+    /**
+     * @param changeDvsPixelBandwidth the changeDvsPixelBandwidth to set
+     */
+    public void setChangeDvsPixelBandwidth(boolean changeDvsPixelBandwidth) {
+        this.changeDvsPixelBandwidth = changeDvsPixelBandwidth;
+        putBoolean("changeDvsPixelBandwidth", changeDvsPixelBandwidth);
+    }
+
+    /**
+     * @return the showAnnotation
+     */
+    public boolean isShowAnnotation() {
+        return showAnnotation;
+    }
+
+    /**
+     * @param showAnnotation the showAnnotation to set
+     */
+    public void setShowAnnotation(boolean showAnnotation) {
+        this.showAnnotation = showAnnotation;
+        putBoolean("showAnnotation", showAnnotation);
     }
 }
