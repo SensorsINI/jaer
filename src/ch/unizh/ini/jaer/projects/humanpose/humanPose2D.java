@@ -18,6 +18,7 @@
  */
 package ch.unizh.ini.jaer.projects.humanpose;
 
+import ch.unizh.ini.jaer.chip.multicamera.MultiDavisCameraChip.SelectCamera;
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.humanpose.AbstractDavisCNN;
 //import ch.unizh.ini.jaer.projects.humanpose.DavisCNNPureJava;
@@ -187,14 +188,14 @@ public class humanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
             
         }
         
-        int camera_shift=344*3;
+        int camera_shift=346*camera;
         
         gl.glColor3f(1, 1, 0);
         gl.glPointSize(4);
         gl.glBegin(GL.GL_POINTS);
         for (int i = 0; i < valueAndLocationMaxHeatmaps.length; i++) {
-            float xJoint = camera_shift + valueAndLocationMaxHeatmaps[i][2]; // enrico hack
-            float yJoint = 260 - valueAndLocationMaxHeatmaps[i][1]; // enrico hack
+            float xJoint = camera_shift + valueAndLocationMaxHeatmaps[i][2]; 
+            float yJoint = 260 - valueAndLocationMaxHeatmaps[i][1]; 
             gl.glVertex2f(xJoint, yJoint);
         }
         gl.glEnd();
@@ -302,16 +303,17 @@ public class humanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
     /**
      * @return the camera
      */
-    public float getCamera() {
+    public int getCamera() {
         return camera;
     }
     
     /**
      * @param camera the camera to set
     */
-    public void setCamera(float camera) {
-        chip.getAeViewer().getJMenuBar().getMenu(7).getItem(0);
-        
+    public void setCamera(int camera) {
+        SelectCamera selectedCamera = (SelectCamera)chip.getAeViewer().getJMenuBar().getMenu(7).getItem(0).getAction();
+        selectedCamera.setDisplayCamera(camera);
+        this.camera=camera;
     }
 
     private void processDecision(PropertyChangeEvent evt) {

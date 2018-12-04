@@ -231,6 +231,10 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
                 displaycamera=NUM_CAMERAS;
             }
         }
+        
+        public void setDisplayCamera(int n){
+            displaycamera=n;
+        }
     }
     
     public void findMaxNumCameras(MultiCameraApsDvsEvent e){
