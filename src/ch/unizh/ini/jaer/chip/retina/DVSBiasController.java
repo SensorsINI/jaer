@@ -29,10 +29,10 @@ import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Controls the rate of events from the retina by controlling retina biases. The
- * event threshold is increased if rate exceeds rateHighKeps until rate drops
- * below rateHighKeps. The threshold is decreased if rate is lower than
- * rateLowKeps. Hysterisis limits crossing noise. A lowpass filter smooths the
- * rate measurements.
+ * event threshold is increased if rate exceeds eventRateHighHz until rate drops
+ * below eventRateHighHz. The threshold is decreased if rate is lower than
+ * eventRateLowHz. Hysterisis limits crossing noise. A lowpass filter smooths
+ * the rate measurements.
  *
  * @author tobi
  */
@@ -40,9 +40,14 @@ import net.sf.jaer.DevelopmentStatus;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
 
-    protected int rateHighKeps = getInt("rateHighKeps", 400);
-    private int rateLowKeps = getInt("rateLowKeps", 100);
-    private int rateHysteresis = getInt("rateHysteresis", 50);
+    public enum Goal {
+        LimitEventRate, MaximuizeSNR, FillBusBandwidth
+    }
+    private Goal goal = Goal.valueOf(getString("goal", Goal.LimitEventRate.toString()));
+
+    private float maxEventRateHz = getFloat("maxEventeRateHz", 4e6f);
+    private float eventRateHighHz = getFloat("eventRateHighHz", 1e6f);
+    private float eventRateLowHz = getFloat("rateLowKeps", 100e3f);
     private float hysteresisFactor = getFloat("hysteresisFactor", 1.3f);
     private int minCommandIntervalMs = getInt("minCommandIntervalMs", 300);
     private long lastCommandTime = 0; // limits use of status messages that control biases
@@ -79,7 +84,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
             }
         }
     };
-    State state = State.INITIAL, lastState = State.INITIAL;
+    State eventRateState = State.INITIAL, lastEventRateState = State.INITIAL;
     Writer logWriter;
     private boolean writeLogEnabled = false;
     long timeNowMs = 0;
@@ -94,16 +99,22 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         FilterChain chain = new FilterChain(chip);
         chain.add(rateEstimator);
         setEnclosedFilterChain(chain);
-        final String rates = "2. Event rates", policy = "3. Policy parameters", type = "1. Type of control", display="4. Display";
+        final String rates = "2. Event rates", policy = "3. Policy parameters", type = "1. Type of control", display = "4. Display";
 
-        setPropertyTooltip(rates, "rateLowKeps", "event rate in keps for LOW state, where event threshold or refractory period are reduced");
-        setPropertyTooltip(rates, "rateHighKeps", "event rate in keps for HIGH state, where event threshold or refractory period are increased");
+        setPropertyTooltip(rates, "eventRateLowHz", "event rate in keps for LOW state, where event threshold or refractory period are reduced");
+        setPropertyTooltip(rates, "eventRateHighHz", "event rate in keps for HIGH state, where event threshold or refractory period are increased");
         setPropertyTooltip(policy, "rateHysteresis", "hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");
         setPropertyTooltip(policy, "hysteresisFactor", "hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");
         setPropertyTooltip(policy, "tweakStepAmount", "fraction by which to tweak bias by each step, e.g. 0.1 means tweak bias current by 10% for each step");
         setPropertyTooltip(policy, "minCommandIntervalMs", "minimum time in ms between changing biases; avoids noise from changing biases too frequently");
+        setPropertyTooltip(type, "goal", "<html>Overall goal of bias control"
+                + "<ul> "
+                + "<li> <b>LimitEventRate</b>: prevents too high or too low event rate"
+                + "<li> <b>MaximuizeSNR</b>: attempt to control biases to maximize some metric of SNR"
+                + "<li> <b>FillBusBandwidth</b>: set thresholds and to fill up bus capacity all the time"
+                + "</ul>");
         setPropertyTooltip(type, "changeDvsRefractoryPeriod", "enables changing DVS refractory period (time after each event that pixel is reset)");
-        setPropertyTooltip(type, "changeDvsEventThresholds", "enables changing DVS temporal contrast thresholds");
+        setPropertyTooltip(type, "changeDvsEventThresholds", "enables changing DVS refractory period (time after each event that pixel is reset)");
         setPropertyTooltip(type, "changeDvsPixelBandwidth", "enables changing DVS photoreceptor/source follower analog bandwidth");
         setPropertyTooltip(display, "showAnnotation", "enables showing controller state and actions on viewer");
         setPropertyTooltip(display, "writeLogEnabled", "writes a log file called DVSBiasController-xxx.txt to the startup folder (root of jaer) to allow analyzing controller dynamics");
@@ -134,25 +145,25 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
             return;
         }
 //		 biasgen.loadPreferences();
-        state = State.INITIAL;
+        eventRateState = State.INITIAL;
     }
 
-    public int getRateHighKeps() {
-        return rateHighKeps;
+    public float getEventRateHighHz() {
+        return eventRateHighHz;
     }
 
-    synchronized public void setRateHighKeps(int upperThreshKEPS) {
-        rateHighKeps = upperThreshKEPS;
-        putInt("rateHighKeps", upperThreshKEPS);
+    synchronized public void setEventRateHighHz(float eventRateHighHz) {
+        this.eventRateHighHz = eventRateHighHz;
+        putFloat("eventRateHighHz", eventRateHighHz);
     }
 
-    public int getRateLowKeps() {
-        return rateLowKeps;
+    public float getEventRateLowHz() {
+        return eventRateLowHz;
     }
 
-    synchronized public void setRateLowKeps(int lowerThreshKEPS) {
-        rateLowKeps = lowerThreshKEPS;
-        putInt("rateLowKeps", lowerThreshKEPS);
+    synchronized public void setEventRateLowHz(float eventRateLowHz) {
+        this.eventRateLowHz = eventRateLowHz;
+        putFloat("eventRateLowHz", eventRateLowHz);
     }
 
     @Override
@@ -163,16 +174,16 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         //        }
         getEnclosedFilterChain().filterPacket(in);
 
-        float r = rateEstimator.getFilteredEventRate() * 1e-3f;
+        float r = rateEstimator.getFilteredEventRate();
 
-        setState(r);
+        setEventRateState(r);
         setBiases();
         if (writeLogEnabled) {
             if (logWriter == null) {
                 logWriter = openLoggingOutputFile();
             }
             try {
-                logWriter.write(in.getLastTimestamp() + " " + r + " " + state.ordinal() + "\n");
+                logWriter.write(in.getLastTimestamp() + " " + r + " " + eventRateState.ordinal() + "\n");
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -180,28 +191,28 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         return in;
     }
 
-    void setState(float r) {
-        lastState = state;
-        switch (state) {
+    private void setEventRateState(float r) {
+        lastEventRateState = eventRateState;
+        switch (eventRateState) {
             case LOW_RATE:
-                if (r > (rateLowKeps * hysteresisFactor)) {
-                    state = State.MEDIUM_RATE;
+                if (r > (eventRateLowHz * hysteresisFactor)) {
+                    eventRateState = State.MEDIUM_RATE;
                 }
                 break;
             case MEDIUM_RATE:
-                if (r < (rateLowKeps / hysteresisFactor)) {
-                    state = State.LOW_RATE;
-                } else if (r > (rateHighKeps * hysteresisFactor)) {
-                    state = State.HIGH_RATE;
+                if (r < (eventRateLowHz / hysteresisFactor)) {
+                    eventRateState = State.LOW_RATE;
+                } else if (r > (eventRateHighHz * hysteresisFactor)) {
+                    eventRateState = State.HIGH_RATE;
                 }
                 break;
             case HIGH_RATE:
-                if (r < (rateHighKeps / hysteresisFactor)) {
-                    state = State.MEDIUM_RATE;
+                if (r < (eventRateHighHz / hysteresisFactor)) {
+                    eventRateState = State.MEDIUM_RATE;
                 }
                 break;
             default:
-                state = State.MEDIUM_RATE;
+                eventRateState = State.MEDIUM_RATE;
         }
     }
 
@@ -218,7 +229,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
             return;
         }
         float thr = biasgen.getThresholdTweak(), refr = biasgen.getMaxFiringRateTweak(), bw = biasgen.getBandwidthTweak();
-        switch (state) {
+        switch (eventRateState) {
             case LOW_RATE:
                 if (changeDvsEventThresholds) {
                     biasgen.setThresholdTweak(thr - getTweakStepAmount());
@@ -304,9 +315,9 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         }
         try {
             writer = new FileWriter(loggingFile);
-            log.info("starting logging bias control at " + dateString+ " to file "+loggingFile.getAbsolutePath());
+            log.info("starting logging bias control at " + dateString + " to file " + loggingFile.getAbsolutePath());
             writer.write("# time rate lpRate state\n");
-            writer.write(String.format("# rateLowKeps=%f rateHighKeps=%f hysteresisFactor=%f\n", rateLowKeps, rateHighKeps, hysteresisFactor));
+            writer.write(String.format("# rateLowKeps=%f rateHighKeps=%f hysteresisFactor=%f\n", eventRateLowHz, eventRateHighHz, hysteresisFactor));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -317,13 +328,15 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        if(!showAnnotation) return;
+        if (!showAnnotation) {
+            return;
+        }
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushMatrix();
         final GLUT glut = new GLUT();
         gl.glColor3f(1, 1, 1); // must set color before raster position (raster position is like glVertex)
         gl.glRasterPos3f(0, 0, 0);
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_12, String.format("Low passed event rate=%s Hz, state=%s", fmt.format(rateEstimator.getFilteredEventRate()), state.toString()));
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_12, String.format("Low passed event rate=%s Hz, state=%s", fmt.format(rateEstimator.getFilteredEventRate()), eventRateState.toString()));
         gl.glPopMatrix();
     }
 
@@ -408,5 +421,20 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
     public void setShowAnnotation(boolean showAnnotation) {
         this.showAnnotation = showAnnotation;
         putBoolean("showAnnotation", showAnnotation);
+    }
+
+    /**
+     * @return the goal
+     */
+    public Goal getGoal() {
+        return goal;
+    }
+
+    /**
+     * @param goal the goal to set
+     */
+    public void setGoal(Goal goal) {
+        this.goal = goal;
+        putString("goal", goal.toString());
     }
 }
