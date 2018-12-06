@@ -8,17 +8,21 @@ package ch.unizh.ini.jaer.projects.minliu;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.awt.TextRenderer;
+import java.awt.Color;
 import java.awt.Font;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
@@ -40,7 +44,6 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
     protected Point2D.Float velocityPps = new Point2D.Float();
     private float distance, deltaTimestamp;
     EngineeringFormat engFmt = new EngineeringFormat();
-    TextRenderer textRenderer = null;
     private static final float[] START_COLOR = new float[]{0, 1, 0, 1}, END_COLOR = new float[]{1, 0, 0, 1};
 
     public Speedometer(AEChip chip) {
@@ -108,7 +111,6 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
      * @param key - the filter preference key header is prepended.
      * @return true if a non-null value exists
      */
-
     private class TimePoint extends Point {
 
         int t;
@@ -136,8 +138,10 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
         }
         super.annotate(drawable); //To change body of generated methods, choose Tools | Templates.
         GL2 gl = drawable.getGL().getGL2();
+        gl.glPushMatrix();
         drawCursor(gl, getStartPoint(), START_COLOR);
         drawCursor(gl, getEndPoint(), END_COLOR);
+        gl.glPopMatrix(); // must push pop since drawCursor translates?
         if (getStartPoint() != null && getEndPoint() != null) {
             gl.glColor3f(1, 1, 0);
             gl.glBegin(GL.GL_LINES);
@@ -145,16 +149,21 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
             gl.glVertex2f(getEndPoint().x, getEndPoint().y);
             gl.glEnd();
 
-            if (textRenderer == null) {
-                textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, false);
-            }
-            textRenderer.setColor(1, 1, 0, 1);
-            String s = String.format("%s pps (%.0fpix /%ss)", engFmt.format(speedPps), distance, engFmt.format(1e-6f * deltaTimestamp));
-            textRenderer.beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
-//            Rectangle2D r = textRenderer.getBounds(s);
-            textRenderer.draw(s, (getStartPoint().x + getEndPoint().x) / 2, (getStartPoint().y + getEndPoint().y) / 2);
-            textRenderer.endRendering();
+            String s = String.format("Speed: %s pps (%.0fpix/%ss), dx/dy=%d/%d", engFmt.format(speedPps), distance, engFmt.format(1e-6f * deltaTimestamp), (int) Math.abs(endPoint.x - startPoint.x), (int) Math.abs(endPoint.y - startPoint.y));
+             drawString(drawable, s);
+        } else if (getStartPoint() != null) {
+            String s = String.format("Left click for end point. Time from IN mark: %ss", engFmt.format(1e-6f * (currentTimestamp - getStartPoint().t)));
+            drawString(drawable, s);
+
+        } else {
+            String s = "Left click for start point";
+            drawString(drawable, s);
+
         }
+    }
+
+    private void drawString(GLAutoDrawable drawable, String s) throws GLException {
+        DrawGL.drawString(drawable, 24, 0.5f, .2f, .5f, Color.yellow, s);
     }
 
     private void drawCursor(GL2 gl, Point p, float[] color) {
