@@ -30,7 +30,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.event.BasicEvent;
 
 /**
- * Filters out high-firing input using probabalistic depressing synaptic
+ * Filters out high-firing input using probabilistic depressing synaptic
  * connection. Works particularly well for high firing rate flickering lighting
  * sources with the DVS. The depression state saturates, so a bursting input
  * recovers between bursts more rapidly than one that steadily fires at the same
