@@ -31,7 +31,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.PolarityEvent;
 
 /**
- * A 2D array of signed IF neurons with controllable decay and thresholds. Can
+ * A 2D array of signed leaky IF neurons with controllable decay and thresholds. Can
  * be used to filter out low firing pixels.
  *
  * @author tobi
@@ -41,7 +41,7 @@ import net.sf.jaer.event.PolarityEvent;
  * LGPL
  * (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
-@Description("A 2D array of signed IF neurons with controllable decay and thresholds.")
+@Description("A 2D array of signed leaky IF neurons with controllable decay and thresholds.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class IFSignedNeuronArray extends EventFilter2D implements FrameAnnotater {
 
