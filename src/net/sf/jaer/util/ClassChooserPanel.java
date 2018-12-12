@@ -363,7 +363,11 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 }
 
                 if (des != null) {
-                    setToolTipText(fullclassname + ": " + des);
+                    if (des.startsWith("<html>")) {
+                        setToolTipText(des);
+                    } else {
+                        setToolTipText(fullclassname + ": " + des);
+                    }
                     descPane.setContentType("text/html");
                     descPane.setText("<html>" + shortname + ": " + des);
                 } else {
