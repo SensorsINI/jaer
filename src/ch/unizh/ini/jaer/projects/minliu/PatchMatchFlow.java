@@ -63,7 +63,8 @@ import net.sf.jaer.util.filter.LowpassFilter;
  *
  * @author Tobi and Min, Jan 2016
  */
-@Description("Computes optical flow with vector direction using block matching")
+@Description("<html>Computes optical flow with vector direction using adaptive time slice block matching (ABMOF) as published in<br>"
+        + "Liu, M., and Delbruck, T. (2018). <a href=\"http://bmvc2018.org/contents/papers/0280.pdf\">Adaptive Time-Slice Block-Matching Optical Flow Algorithm for Dynamic Vision Sensors</a>.<br> in BMVC 2018 (Nescatle upon Tyne)")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class PatchMatchFlow extends AbstractMotionFlow implements Observer, FrameAnnotater {
 
