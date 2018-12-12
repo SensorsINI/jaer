@@ -6,12 +6,15 @@ package net.sf.jaer.util;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
+import java.awt.Desktop;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -33,6 +36,8 @@ import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.ProgressMonitor;
 import javax.swing.SwingWorker;
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
@@ -56,7 +61,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     private ArrayList<ClassNameWithDescriptionAndDevelopmentStatus> availAllList;
     private ArrayList<String> revertCopy, defaultClassNames;
     private DescriptionMap descriptionMap = new DescriptionMap();
-    private Class superClass=null; // the classes available will be subclasses of this class
+    private Class superClass = null; // the classes available will be subclasses of this class
 
     private class ClassDescription {
 
@@ -149,7 +154,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
      */
     public ClassChooserPanel(final Class superClass, ArrayList<String> classNames, ArrayList<String> defaultClassNames) {
         initComponents();
-        this.superClass=superClass;
+        this.superClass = superClass;
         includeExperimentalCB.setEnabled(onlyStableCB.isSelected());
         availFilterTextField.requestFocusInWindow();
         this.defaultClassNames = defaultClassNames;
@@ -207,12 +212,25 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         };
         addAction(classJList, removeAction);
 
-        populateAvailableClassesListModel(superClass,true);
+        populateAvailableClassesListModel(superClass, true);
 
         revertCopy = new ArrayList<>(classNames);
         chosenClassesListModel = new FilterableListModel(classNames);
         classJList.setModel(chosenClassesListModel);
         classJList.setCellRenderer(new MyCellRenderer());
+        descPane.addHyperlinkListener(new HyperlinkListener() {
+            @Override
+            public void hyperlinkUpdate(HyperlinkEvent event) {
+                if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+                    String url = event.getURL().toString();
+                    try {
+                        Desktop.getDesktop().browse(URI.create(url));
+                    } catch (IOException ex) {
+                        Logger.getLogger(ClassChooserPanel.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+            }
+        });
     }
 
     private void populateAvailableClassesListModel(final Class subclassOf, boolean useCache) {
@@ -522,7 +540,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
         availClassDesciptionPanel.setBorder(null);
 
-        availClassJList.setToolTipText("If your class doesn't show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath)");
+        availClassJList.setToolTipText("If your class doesn't show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath) and hit the Refresh button to rescan classpath.");
         availClassDesciptionPanel.setViewportView(availClassJList);
         availClassJList.getAccessibleContext().setAccessibleDescription("");
 

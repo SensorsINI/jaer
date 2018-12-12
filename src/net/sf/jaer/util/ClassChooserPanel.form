@@ -141,7 +141,7 @@
                 <Property name="model" type="javax.swing.ListModel" editor="org.netbeans.modules.form.editors2.ListModelEditor">
                   <StringArray count="0"/>
                 </Property>
-                <Property name="toolTipText" type="java.lang.String" value="If your class doesn&apos;t show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath)"/>
+                <Property name="toolTipText" type="java.lang.String" value="If your class doesn&apos;t show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath) and hit the Refresh button to rescan classpath."/>
               </Properties>
               <AccessibilityProperties>
                 <Property name="AccessibleContext.accessibleDescription" type="java.lang.String" value=""/>
