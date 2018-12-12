@@ -19,25 +19,16 @@
 package ch.unizh.ini.jaer.projects.humanpose;
 
 import ch.unizh.ini.jaer.chip.multicamera.MultiDavisCameraChip.SelectCamera;
-import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
-import ch.unizh.ini.jaer.projects.humanpose.AbstractDavisCNN;
-//import ch.unizh.ini.jaer.projects.humanpose.DavisCNNPureJava;
-import ch.unizh.ini.jaer.projects.humanpose.DavisClassifierCNNProcessor;
-import ch.unizh.ini.jaer.projects.humanpose.TensorFlow;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
-import com.jogamp.opengl.util.gl2.GLUT;
-import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.HotPixelFilter;
-import java.awt.Color;
-import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.io.File;
-import javax.swing.BoxLayout;
 import javax.swing.JFrame;
-import javax.swing.JPanel;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -55,7 +46,9 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 /**
  * @author Tobi, Gemma, Enrico
  */
-public class humanPose2D extends DavisClassifierCNNProcessor implements FrameAnnotater {
+@Description("<html>Human pose (joint) estimation with CNN from DHP19 dataset<br>See <a href=\"https://sites.google.com/view/dhp19/home\">DHP19 web site</a>")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnnotater {
 
     private float annotateAlpha = getFloat("annotateAlpha", 0.5f);
     private int camera = getInt("camera", 0);
@@ -69,7 +62,7 @@ public class humanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
     private HotPixelFilter hotPixel;
     float [][] valueAndLocationMaxHeatmaps = new float[13][3];
 
-    public humanPose2D(AEChip chip) {
+    public HumanPose2D(AEChip chip) {
         super(chip);
         
         //Filter Chain
