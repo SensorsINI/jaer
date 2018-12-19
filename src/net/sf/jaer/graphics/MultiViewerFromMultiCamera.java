@@ -7,9 +7,11 @@ package net.sf.jaer.graphics;
 
 
 import ch.unizh.ini.jaer.chip.multicamera.MultiDavisCameraChip;
+import com.sun.media.jfxmedia.logging.Logger;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
 import java.awt.Frame;
+import java.util.logging.Level;
 import javax.swing.JOptionPane;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -42,7 +44,7 @@ public class MultiViewerFromMultiCamera extends AEFrameChipRenderer{
         try{
                 NumCam = Integer.parseInt((String) JOptionPane.showInputDialog(frame,"Define the number of Cameras","Number of Cameras",JOptionPane.QUESTION_MESSAGE,null,null,null));
             } catch(Exception ex){
-                System.out.println(ex);
+                log.log(Level.SEVERE,"number cameras not defined, setting to 1 camera",ex);
                 NumCam=1;
             }
         chip.setSizeX(sizeX*NumCam);
