@@ -51,13 +51,13 @@ from the devices owing to buffering.
  */
 public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderBufferControl, PropertyChangeListener {
 
+    final static Logger log = Logger.getLogger("HardwareInterface");  // define Logger first in case exception thrown in constructor that needs to log the error
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     protected AEChip chip;
     /** The multiple hardware interfaces. */ // TODO currently depends on global static MultiCameraEvent.NUM_CAMERAS
     private static boolean firstTimeReadHWInterface=true;
     public static int NUM_CAMERAS=MultiCameraHardwareInterface.getNumberOfCameraChip();
     private AEMonitorInterface[] aemons = new AEMonitorInterface[NUM_CAMERAS];
-    final static Logger log = Logger.getLogger("HardwareInterface");
     private boolean ignoreTimestampNonmonotonicity = false;
     private int RESET_DELAY_MS = 200; 
     /** These FIFOs hold packets which are references to the packets from each source */
