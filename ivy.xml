@@ -130,11 +130,16 @@ MA 02110-1301  USA
         <!--we use version 1.0 of javacv because the stereo matching opencv only has 3 arguments in existing code but later opencv has many more options-->
         <dependency org="org.bytedeco" name="javacv" rev="1.0" />
         
-        <!--tensorflow has native libraries, but handled fine with this dependeny-->
+        <!--tensorflow has native libraries, but handled fine with this dependeny - see https://www.tensorflow.org/install/lang_java -->
         <!--if having trouble loading the DLL, you might have to downgrade locally to version 1.5.0-->
         <!--make sure to delete newer versions of libtensorflow* and tensorflow* from lib/-->
-        <dependency org="org.tensorflow" name="tensorflow" rev="1.5.0" />
-
+        <dependency org="org.tensorflow" name="tensorflow" rev="1.12.0" />
+        <!--to use GPU if you have an Nvida GPU installed, comment line above and use lines below with appropriate version of tensor flow. 
+        You have to separately install Cuda toolkit  for this to work - see https://developer.nvidia.com/cuda-toolkit-->
+<!--        <dependency org="org.tensorflow" name="libtensorflow_jni_gpu" rev="1.12.0" />
+        <dependency org="org.tensorflow" name="libtensorflow" rev="1.12.0" />-->
+        
+        
         <!--for reading yaml files that store the input format for tensorflow graphs, e.g. cnns-->
         <dependency org="com.esotericsoftware.yamlbeans" name="yamlbeans" rev="1.13" />
 
