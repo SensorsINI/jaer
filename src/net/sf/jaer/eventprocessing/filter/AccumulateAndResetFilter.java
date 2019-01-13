@@ -152,10 +152,11 @@ public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnno
     @Override
     public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
-        gl.glColor3f(1, 1, 1);
+        gl.glColor3f(.2f, .2f, .8f);
         TextRenderer renderer = null;
         if (showTimeElapsedText || showEventsAccumulatedBar) {
             renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 18));
+            renderer.setColor(.2f, .2f, .8f,.75f);
         }
 
         if (showEventsAccumulatedBar) {
