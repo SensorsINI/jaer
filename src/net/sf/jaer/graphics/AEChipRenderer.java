@@ -77,7 +77,8 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 		RedGreen("ON events are green; OFF events are red"),
 		ColorTime("Events are colored according to time within displayed slice, with red coding old events and green coding new events"),
 		GrayTime("Events are colored according to time within displayed slice, with white coding old events and black coding new events"),
-		HotCode("Events counts are colored blue to red, blue=0, red=full scale");
+		HotCode("Events counts are colored blue to red, blue=0, red=full scale"),
+		WhiteBackground("Events counts (unsigned) are dark on white background");
 		public String description;
 
 		ColorMode(String description) {

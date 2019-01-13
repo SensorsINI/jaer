@@ -182,6 +182,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                         grayBuffer.put(0);
                         grayBuffer.put(.5f);
                         grayBuffer.put(.5f);
+                    } else if (colorMode == ColorMode.WhiteBackground) {
+                        grayBuffer.put(1.0f);
+                        grayBuffer.put(1.0f);
+                        grayBuffer.put(1.0f);
+                        grayBuffer.put(1.0f);
                     } else {
                         grayBuffer.put(grayValue);
                         grayBuffer.put(grayValue);
@@ -274,6 +279,16 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 offColor[0] = 0.0f;
                 offColor[1] = 0.0f;
                 offColor[2] = 0.0f;
+                offColor[3] = 0.0f;
+                break;
+            case WhiteBackground:
+                onColor[0] = 1.0f;
+                onColor[1] = 1.0f;
+                onColor[2] = 1.0f;
+                onColor[3] = 0.0f;
+                offColor[0] = 1.0f;
+                offColor[1] = 1.0f;
+                offColor[2] = 1.0f;
                 offColor[3] = 0.0f;
                 break;
             case RedGreen:
@@ -575,7 +590,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             map[index + 1] = timeColors[ind][1];
             map[index + 2] = timeColors[ind][2];
             map[index + 3] = 0.5f;
-        } else if (colorMode == ColorMode.HotCode) {
+        } else if (colorMode == ColorMode.HotCode || colorMode == ColorMode.WhiteBackground) {
             final float alpha = map[index + 3] + (1.0f / colorScale);
             map[index + 3] = normalizeEvent(alpha);
             int ind = (int) Math.floor(((AEChipRenderer.NUM_TIME_COLORS - 1) * alpha));
@@ -739,8 +754,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     /**
-     * Returns index into pixmap. To access RGB values, just appendCopy 0,1, or 2 to
- the returned index.
+     * Returns index into pixmap. To access RGB values, just appendCopy 0,1, or
+     * 2 to the returned index.
      *
      * @param x
      * @param y
@@ -960,7 +975,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     public float getGrayValue() {
         if (isDisplayFrames() || (colorMode == ColorMode.Contrast) || (colorMode == ColorMode.GrayLevel)) {
             grayValue = 0.5f;
-        } else if (colorMode == ColorMode.GrayTime) {
+        } else if (colorMode == ColorMode.GrayTime || colorMode==ColorMode.WhiteBackground) {
             grayValue = 1.0f;
         } else {
             grayValue = 0.0f;
