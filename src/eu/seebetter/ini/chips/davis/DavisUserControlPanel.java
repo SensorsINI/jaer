@@ -644,7 +644,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         apsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Image Sensor", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 1, 11))); // NOI18N
         apsPanel.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
 
-        jLabel1.setText("Target Frame rate (ms)");
+        jLabel1.setText("Target Frame rate (Hz)");
         jLabel1.setToolTipText("Set the target frame rate; actual rate will be displayed on right and depends on quantization and possible other delays");
 
         fdSp.setModel(new javax.swing.SpinnerNumberModel(0.0f, 0.0f, null, 1.0f));
