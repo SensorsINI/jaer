@@ -90,11 +90,12 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     protected float[] onColor, offColor;
 
     /**
-     * The linear buffer of RGBA pixel colors of image frame brightness values
+     * The linear buffer of RGBA pixel colors of image frame brightness values. These maps are used e.g. in ChipRendererDisplayMethodRGBA to 
+     * draw the textures for each event type separately.
      */
     protected FloatBuffer pixBuffer;
-    protected FloatBuffer onMap, onBuffer;
-    protected FloatBuffer offMap, offBuffer;
+    protected FloatBuffer onMap;
+    protected FloatBuffer offMap;
     /**
      * pix map used for annotation overlay.
      *
