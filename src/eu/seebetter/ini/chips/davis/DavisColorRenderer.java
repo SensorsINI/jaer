@@ -136,14 +136,15 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 	protected void updateEventMaps(final PolarityEvent e) {
 		float[] map;
 		if (packet.getNumCellTypes() > 2) {
-			map = onMap.array();
+			map = dvsEventsMap.array();
 		}
-		else if (e.polarity == Polarity.On) {
-			map = onMap.array();
-		}
-		else {
-			map = offMap.array();
-		}
+		else 
+//                    if (e.polarity == Polarity.On) {
+			map = dvsEventsMap.array();
+//		}
+//		else {
+//			map = offMap.array();
+//		}
 
 		final int index = getIndex(e);
 		if ((index < 0) || (index >= map.length)) {

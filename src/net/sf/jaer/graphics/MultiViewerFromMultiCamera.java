@@ -117,8 +117,8 @@ public class MultiViewerFromMultiCamera extends AEFrameChipRenderer{
     public float[] getDvsRenderedValuesAtPixel(final int x, final int y, final int ID) {
         final int k = getPixMapIndex(x, y, ID);
         final float[] f = new float[3];
-        f[0] = onMap.get(k + 3);
-        f[1] = offMap.get(k + 3);
+        f[0] = dvsEventsMap.get(k + 0);
+        f[1] = dvsEventsMap.get(k + 1);
         f[2] = 0; // return alpha channel which is the ON and OFF value that is rendered (RGB are 1 for ON and OFF maps)
         return f; // To change body of generated methods, choose Tools | Templates.
     }
@@ -201,7 +201,7 @@ public class MultiViewerFromMultiCamera extends AEFrameChipRenderer{
 //        }
 //        
 //        if (!accumulateEnabled) {
-//            Arrays.fill(onMap.array(), 0.0f);
+//            Arrays.fill(dvsEventsMap.array(), 0.0f);
 //            Arrays.fill(offMap.array(), 0.0f);
 //        }
 //           
@@ -228,7 +228,7 @@ public class MultiViewerFromMultiCamera extends AEFrameChipRenderer{
 //            }else{
 //                float[] map;
 //                if (e.polarity == PolarityEvent.Polarity.On) {
-//                    map = onMap.array();
+//                    map = dvsEventsMap.array();
 //                } else {
 //                    map = offMap.array();
 //                }

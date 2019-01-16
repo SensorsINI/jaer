@@ -76,7 +76,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 		final Chip2DRenderer renderer = getChipCanvas().getRenderer();
 		final FloatBuffer pixmap = renderer.getPixmap();
 		FloatBuffer onMap = null;
-		FloatBuffer offMap = null;
+//		FloatBuffer offMap = null;
 		FloatBuffer annotateMap = null;
 		boolean displayEvents = false;
 		boolean displayFrames = true;
@@ -84,8 +84,8 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 
 		if (renderer instanceof AEFrameChipRenderer) {
 			final AEFrameChipRenderer frameRenderer = (AEFrameChipRenderer) renderer;
-			onMap = frameRenderer.getOnMap();
-			offMap = frameRenderer.getOffMap();
+			onMap = frameRenderer.getDvsEventsMap();
+//			offMap = frameRenderer.getOffMap();
 			annotateMap = frameRenderer.getAnnotateMap();
 			displayFrames = frameRenderer.isDisplayFrames();
 			displayEvents = frameRenderer.isDisplayEvents();
@@ -153,21 +153,37 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 			gl.glDisable(GL.GL_TEXTURE_2D);
 		}
 
-		if ((offMap != null) && displayEvents) {
-			gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
-			gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, nearestFilter);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, nearestFilter);
-			gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2ES1.GL_TEXTURE_ENV_MODE, GL.GL_REPLACE);
-			gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, offMap);
-
-			gl.glEnable(GL.GL_TEXTURE_2D);
-			gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
-			drawPolygon(gl, width, height);
-			gl.glDisable(GL.GL_TEXTURE_2D);
-		}
+//                // see // https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glTexEnv.xml for API
+//                // see https://www.khronos.org/opengl/wiki/Texture_Combiners for combining textures
+//                // we want to simply add RGB from ON and OFF events so that for example ON and OFF produces yellow from green and red
+//		if ((offMap != null) && displayEvents) {
+//			gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
+//			gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
+//			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
+//			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
+//			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, nearestFilter);
+//			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, nearestFilter);
+//			// rgb
+//                        gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_TEXTURE_ENV_MODE, GL2.GL_REPLACE); 
+//                        gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_COMBINE_RGB, GL2.GL_ADD); 
+//			gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE0_RGB, GL2.GL_PREVIOUS);
+//			gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE1_RGB, GL2.GL_TEXTURE);
+//			gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND0_RGB, GL2.GL_SRC_COLOR);
+//			gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND1_RGB, GL2.GL_SRC_COLOR);
+//                        // alpha
+////                        gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_COMBINE_ALPHA, GL2.GL_ADD); 
+////			gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE0_ALPHA, GL2.GL_PREVIOUS);
+////			gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE1_ALPHA, GL2.GL_TEXTURE);
+////			gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND0_ALPHA, GL2.GL_SRC_ALPHA);
+////			gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND1_ALPHA, GL2.GL_SRC_ALPHA);
+//                        
+//                        gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, offMap);
+//
+//			gl.glEnable(GL.GL_TEXTURE_2D);
+//			gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
+//			drawPolygon(gl, width, height);
+//			gl.glDisable(GL.GL_TEXTURE_2D);
+//		}
 
 		if (displayAnnotation) {
 			gl.glBindTexture(GL.GL_TEXTURE_2D, 1);

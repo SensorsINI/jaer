@@ -64,8 +64,8 @@ public class MultiCameraDifferentColorDisplayRenderer extends AEFrameChipRendere
         
         setColors();
         if (!accumulateEnabled) {
-            Arrays.fill(onMap.array(), 0.0f);
-            Arrays.fill(offMap.array(), 0.0f);
+            Arrays.fill(dvsEventsMap.array(), 0.0f);
+//            Arrays.fill(offMap.array(), 0.0f);
         }
 
         checkPixmapAllocation();
@@ -97,11 +97,11 @@ public class MultiCameraDifferentColorDisplayRenderer extends AEFrameChipRendere
                 return;
             }else{
                 float[] map;
-                if (e.polarity == PolarityEvent.Polarity.On) {
-                    map = onMap.array();
-                } else {
-                    map = offMap.array();
-                }
+//                if (e.polarity == PolarityEvent.Polarity.On) {
+                    map = dvsEventsMap.array();
+//                } else {
+//                    map = offMap.array();
+//                }
                 if(!ignorePolarityEnabled){
                     if (e.polarity == PolarityEvent.Polarity.On) {
                         map[index] = onColor[0]+(float)camera/numCam;

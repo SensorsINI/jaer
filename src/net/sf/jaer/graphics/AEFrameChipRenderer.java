@@ -94,8 +94,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      * draw the textures for each event type separately.
      */
     protected FloatBuffer pixBuffer;
-    protected FloatBuffer onMap;
-    protected FloatBuffer offMap;
+    protected FloatBuffer dvsEventsMap;
+//    protected FloatBuffer offMap;
     /**
      * pix map used for annotation overlay.
      *
@@ -214,15 +214,15 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         grayBuffer.rewind();
         // Fill maps with fully transparent values
         Arrays.fill(grayBuffer.array(), 0.0f);
-        System.arraycopy(grayBuffer.array(), 0, onMap.array(), 0, n);
-        System.arraycopy(grayBuffer.array(), 0, offMap.array(), 0, n);
+        System.arraycopy(grayBuffer.array(), 0, dvsEventsMap.array(), 0, n);
+//        System.arraycopy(grayBuffer.array(), 0, offMap.array(), 0, n);
         // if(displayAnnotation) Arrays.fill(annotateMap.array(), 0);
 
         grayBuffer.rewind();
-        onMap.rewind();
-        offMap.rewind();
-        onMap.limit(n);
-        offMap.limit(n);
+        dvsEventsMap.rewind();
+//        offMap.rewind();
+        dvsEventsMap.limit(n);
+//        offMap.limit(n);
     }
 
     public synchronized void clearAnnotationMap() {
@@ -539,13 +539,13 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 //        }
         dvsDownsamplingCount = 0;
         float[] map;
-        if (packet.getNumCellTypes() > 2) {
-            map = onMap.array();
-        } else if (e.polarity == Polarity.On) {
-            map = onMap.array();
-        } else {
-            map = offMap.array();
-        }
+//        if (packet.getNumCellTypes() > 2) {
+            map = dvsEventsMap.array();
+//        } else if (e.polarity == Polarity.On) {
+//            map = dvsEventsMap.array();
+//        } else {
+//            map = offMap.array();
+//        }
 
         final int index = getIndex(e);
         if ((index < 0) || (index >= map.length)) {
@@ -610,18 +610,18 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             map[index + 2] = v;
             map[index + 3] = 1.0f;
         } else {
-            if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
-                map[index] = onColor[0];
-                map[index + 1] = onColor[1];
-                map[index + 2] = onColor[2]; // if using gray/contrast rendering, then just use onMap and onColor, and set alpaha up or down from .5 below
+             final float scale = (1.0f / colorScale);
+           if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
+                map[index] += scale*onColor[0];
+                map[index + 1] += scale*onColor[1];
+                map[index + 2] += scale*onColor[2]; // if using gray/contrast rendering, then just use dvsEventsMap and onColor, and set alpaha up or down from .5 below
             } else {
-                map[index] = offColor[0];
-                map[index + 1] = offColor[1];
-                map[index + 2] = offColor[2];
+                map[index] += scale*offColor[0];
+                map[index + 1] += scale*offColor[1];
+                map[index + 2] += scale*offColor[2];
             }
 
-            final float alpha = map[index + 3] + (1.0f / colorScale);
-            map[index + 3] = normalizeEvent(alpha);
+            map[index + 3] = 1;
         }
     }
 
@@ -668,12 +668,12 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
 
         final int n = 4 * textureWidth * textureHeight;
-        if ((pixmap == null) || (pixmap.capacity() < n) || (pixBuffer.capacity() < n) || (onMap.capacity() < n) || (offMap.capacity() < n)
+        if ((pixmap == null) || (pixmap.capacity() < n) || (pixBuffer.capacity() < n) || (dvsEventsMap.capacity() < n) /*|| (offMap.capacity() < n)*/
                 || (annotateMap.capacity() < n)) {
             pixmap = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
             pixBuffer = FloatBuffer.allocate(n);
-            onMap = FloatBuffer.allocate(n);
-            offMap = FloatBuffer.allocate(n);
+            dvsEventsMap = FloatBuffer.allocate(n);
+//            offMap = FloatBuffer.allocate(n);
             annotateMap = FloatBuffer.allocate(n);
         }
     }
@@ -719,23 +719,23 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      * @return a float buffer. Obtain a pixel from it using getPixMapIndex
      * @see #getPixMapIndex(int, int)
      */
-    protected FloatBuffer getOnMap() {
-        onMap.rewind();
+    protected FloatBuffer getDvsEventsMap() {
+        dvsEventsMap.rewind();
         checkPixmapAllocation();
-        return onMap;
+        return dvsEventsMap;
     }
 
-    /**
-     * Returns pixmap for OFF events
-     *
-     * @return a float buffer. Obtain a pixel from it using getPixMapIndex
-     * @see #getPixMapIndex(int, int)
-     */
-    protected FloatBuffer getOffMap() {
-        offMap.rewind();
-        checkPixmapAllocation();
-        return offMap;
-    }
+//    /**
+//     * Returns pixmap for OFF events
+//     *
+//     * @return a float buffer. Obtain a pixel from it using getPixMapIndex
+//     * @see #getPixMapIndex(int, int)
+//     */
+//    protected FloatBuffer getOffMap() {
+//        offMap.rewind();
+//        checkPixmapAllocation();
+//        return offMap;
+//    }
 
     /**
      * Returns pixmap for annotated pixels
@@ -766,7 +766,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     /**
      * Overridden to return ON and OFF map values as R and G channels. B channel
-     * is returned 0. Note that this method returns rendering of events; it
+     * is returned as well and might have value as well depending on rendering mode.
+     * Note that this method returns rendering of events; it
      * disregards APS frame values.
      *
      * @param x
@@ -776,10 +777,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     public float[] getDvsRenderedValuesAtPixel(final int x, final int y) {
         final int k = getPixMapIndex(x, y);
         final float[] f = new float[3];
-        f[0] = onMap.get(k + 3);
-        f[1] = offMap.get(k + 3);
-        f[2] = 0; // return alpha channel which is the ON and OFF value that is rendered (RGB are 1 for ON and OFF maps)
-        return f; // To change body of generated methods, choose Tools | Templates.
+        f[0] = dvsEventsMap.get(k );
+        f[1] = dvsEventsMap.get(k + 1);
+        f[2] = dvsEventsMap.get(k + 2);
+//        f[2] = 0; // return alpha channel which is the ON and OFF value that is rendered (RGB are 1 for ON and OFF maps)
+        return f;
     }
 
     /**
