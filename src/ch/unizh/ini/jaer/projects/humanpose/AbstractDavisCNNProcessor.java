@@ -109,7 +109,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     protected TextRenderer textRenderer = null;
     private AbstractDavisCNN.APSDVSFrame apsDvsFrame = null;
     protected Tensor output = null;
-    public float[][][] resHeatMap = null;//new float[][][];//[260][344][13];
+    //public float[][][] resHeatMap = null;//new float[][][];//[260][344][13];
+    public float[] resHeatMap = null;//[260*344*13];
     protected int maxFrameAccumulationTimeToProcessMs = getInt("maxFrameAccumulationTimeToProcessUs", 0);
 
     public AbstractDavisCNNProcessor(AEChip chip) {
@@ -602,7 +603,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                     if (measurePerformance) {
                         startTime = System.nanoTime();
                     }
-                    float[][][] outputs = apsDvsNet.processAPSFrame(frameExtractor);  // TODO replace with ApsFrameExtractor
+                    float[] outputs = apsDvsNet.processAPSFrame(frameExtractor);  // TODO replace with ApsFrameExtractor
                     if (measurePerformance) {
                         long dt = System.nanoTime() - startTime;
                         float ms = 1e-6f * dt;

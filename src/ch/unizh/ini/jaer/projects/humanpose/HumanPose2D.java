@@ -60,54 +60,54 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
     private JFrame activationsFrame = null;
     private BackgroundActivityFilter backgroundActivityFilter;
     private HotPixelFilter hotPixel;
-    float [][] valueAndLocationMaxHeatmaps = new float[13][3];
+    float[][] valueAndLocationMaxHeatmaps = new float[13][3];
 
     public HumanPose2D(AEChip chip) {
         super(chip);
-        
+
         //Filter Chain
-        FilterChain chain= getEnclosedFilterChain();
+        FilterChain chain = getEnclosedFilterChain();
         //Add backgroundActivityFilter
-        backgroundActivityFilter = new BackgroundActivityFilter(chip); 
+        backgroundActivityFilter = new BackgroundActivityFilter(chip);
         hotPixel = new HotPixelFilter(chip);
-        chain.add(0, backgroundActivityFilter); 
-        chain.add(1, hotPixel); 
-        
+        chain.add(0, backgroundActivityFilter);
+        chain.add(1, hotPixel);
+
         //remove ApsFrameExtractor (added in the Abstract)
         chain.remove(chain.get(2));
-        
+
         chain.get(0).setFilterEnabled(true);
         chain.get(1).setFilterEnabled(true);
         chain.get(2).setFilterEnabled(true);
         setEnclosedFilterChain(chain);
-        
+
         //Set parameters for DvsFramerSingleFrame
-        ((DvsFramerSingleFrame) chain.get(2)).setDvsEventsPerFrame(7500); 
-        ((DvsFramerSingleFrame) chain.get(2)).setDvsGrayScale(255); 
+        ((DvsFramerSingleFrame) chain.get(2)).setDvsEventsPerFrame(7500);
+        ((DvsFramerSingleFrame) chain.get(2)).setDvsGrayScale(255);
         ((DvsFramerSingleFrame) chain.get(2)).setFrameCutRight(1038);
         ((DvsFramerSingleFrame) chain.get(2)).setOutputImageHeight(260);
         ((DvsFramerSingleFrame) chain.get(2)).setOutputImageWidth(344);
         ((DvsFramerSingleFrame) chain.get(2)).setShowFrames(true);
-        
+
         //set filter parameters
         setInputLayerName("input_1");
         setOutputLayerName("output0");
         setImageHeight(260);
         setImageWidth(344);
         setSoftMaxOutput(false);
-        
+
         //Add for heatmap (from foosball?)
         setPropertyTooltip("annotation", "annotateAlpha", "Sets the transparency for the heatmap display. ");
         setPropertyTooltip("1. Input", "camera", "Input camera for multicamera filter, otherwise leave it 0");
 
     }
-    
+
     @Override
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
-        EventPacket<?> in1=backgroundActivityFilter.filterPacket(in);
-        EventPacket<?> in2=hotPixel.filterPacket(in1);
-        EventPacket<?> in3=dvsFramer.filterPacket(in2);
-        
+        EventPacket<?> in1 = backgroundActivityFilter.filterPacket(in);
+        EventPacket<?> in2 = hotPixel.filterPacket(in1);
+        EventPacket<?> in3 = dvsFramer.filterPacket(in2);
+
         if (!addedPropertyChangeListener) {
             if (dvsFramer == null) {
                 throw new RuntimeException("Null dvsSubsampler; this should not occur");
@@ -116,7 +116,7 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
             }
             addedPropertyChangeListener = true;
         }
-        
+
         if (apsDvsNet == null) {
             log.warning("null CNN; load one with the LoadApsDvsNetworkFromXML button");
 //            return in;
@@ -163,11 +163,10 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        
-      
+
         AEChipRenderer renderer = (AEChipRenderer) chip.getRenderer();
         GL2 gl = drawable.getGL().getGL2();
-        
+
         if (apsDvsNet != null && apsDvsNet.getNetname() != null) {
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1f);
             MultilineAnnotationTextRenderer.setScale(.3f);
@@ -176,16 +175,19 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
             //    MultilineAnnotationTextRenderer.renderMultilineString(performanceString);
             //    lastPerformanceString = performanceString;
             //}
-            
-            valueAndLocationMaxHeatmaps = apsDvsNet.getOutputLayer().getMaxActAndLocPerMap();
-            
+            if (apsDvsNet!=null && apsDvsNet.getOutputLayer() != null) {
+                valueAndLocationMaxHeatmaps = apsDvsNet.getOutputLayer().getMaxActAndLocPerMap();
+            }
+
         }
-        
-        int camera_shift=346*camera;
+
+        int camera_shift = 346 * camera;
+
         
         gl.glColor3f(1, 1, 0);
         gl.glPointSize(4);
         gl.glBegin(GL.GL_POINTS);
+        // order is: [mapIdx][activation y x]
         for (int i = 0; i < valueAndLocationMaxHeatmaps.length; i++) {
             float xJoint = camera_shift + valueAndLocationMaxHeatmaps[i][2]; 
             float yJoint = 260 - valueAndLocationMaxHeatmaps[i][1]; 
@@ -234,11 +236,6 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
         textRenderer.draw3D("Rfoot", (int)(camera_shift + valueAndLocationMaxHeatmaps[11][2]), (int)(260 - valueAndLocationMaxHeatmaps[11][1]), 0, scale);
         textRenderer.draw3D("Lfoot", (int)(camera_shift + valueAndLocationMaxHeatmaps[12][2]), (int)(260 - valueAndLocationMaxHeatmaps[12][1]), 0, scale);
         
-        // output is heat map
-        //renderer.resetAnnotationFrame(0.0f);
-        //float[] output = apsDvsNet.getOutputLayer().getActivations();
-
-        
     }
 
     @Override
@@ -263,10 +260,11 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
         }
     }
 
+    //used?
     private float getOutputValue(float[] output, int x, int y) {
-       // final int width = 120, height = 90;
-       // return output[x * height + y];
-       return 0;
+        // final int width = 120, height = 90;
+        // return output[x * height + y];
+        return 0;
     }
 
     /**
@@ -292,34 +290,33 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
             frameRenderer.setAnnotateAlpha(annotateAlpha);
         }
     }
-    
+
     /**
      * @return the camera
      */
     public int getCamera() {
         return camera;
     }
-    
+
     /**
      * @param camera the camera to set
-    */
+     */
     public void setCamera(int camera) {
-        SelectCamera selectedCamera = (SelectCamera)chip.getAeViewer().getJMenuBar().getMenu(7).getItem(0).getAction();
+        SelectCamera selectedCamera = (SelectCamera) chip.getAeViewer().getJMenuBar().getMenu(7).getItem(0).getAction();
         selectedCamera.setDisplayCamera(camera);
-        this.camera=camera;
+        this.camera = camera;
     }
 
     private void processDecision(PropertyChangeEvent evt) {
-         
+
         if (resHeatMap != null) {
-            
-            if(nbTarget > 0){
-                xTarget /= nbTarget ;
-                yTarget /= nbTarget ;
-            }
-            else{
+
+            if (nbTarget > 0) {
+                xTarget /= nbTarget;
+                yTarget /= nbTarget;
+            } else {
                 xTarget = -1;
-                yTarget = -1;                
+                yTarget = -1;
             }
             xTarget *= 2;
             yTarget *= 2;

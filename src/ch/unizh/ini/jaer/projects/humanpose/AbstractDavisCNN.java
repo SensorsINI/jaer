@@ -98,7 +98,7 @@ public abstract class AbstractDavisCNN {
      * @param subsampler
      * @return the output activations vector
      */
-    abstract public float[][][] processDvsFrame(DvsFramer.DvsFrame subsampler);
+    abstract public float[] processDvsFrame(DvsFramer.DvsFrame subsampler);
 
     /**
      * Computes the output of the network from an input activationsFrame
@@ -107,7 +107,7 @@ public abstract class AbstractDavisCNN {
      * @return the vector of output values
      * @see #getActivations
      */
-    abstract public float[][][] processAPSFrame(ApsFrameExtractor frame);
+    abstract public float[] processAPSFrame(ApsFrameExtractor frame);
 
     /**
      * Computes the output of the network from an input for a 2-channel APS-DVS
@@ -128,7 +128,7 @@ public abstract class AbstractDavisCNN {
      * @param array the output array containing output 4D tensor 1*90*120*1
      * @see #getActivations*
      */
-    abstract public void processAPSDVSFrameArray(APSDVSFrame frame, float[][][] array);
+    abstract public void processAPSDVSFrameArray(APSDVSFrame frame, float[] array);
 
     /**
      * Computes the output of the network from an input activationsFrame
@@ -456,7 +456,7 @@ public abstract class AbstractDavisCNN {
 
         public float[][] getMaxActAndLocPerMap(); // to return max activation and its pixel position for each map.
         
-        public float[][][] getActivations();
+        public float[] getActivations();
     }
 
     public static void drawHistogram(GL2 gl, float[][][] activations, int width, int height, float lineWidth, Color color) {
