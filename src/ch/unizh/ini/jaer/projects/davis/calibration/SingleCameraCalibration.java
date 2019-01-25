@@ -144,6 +144,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private boolean saved = false;
     private boolean textRendererScaleSet = false;
     private float textRendererScale = 0.3f;
+    private int noPatternFoundwarningSkipInterval = 30, noPatternFoundWarningCount = 0;
 
     public SingleCameraCalibration(AEChip chip) {
         super(chip);
@@ -226,6 +227,12 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                         (new CalibrationWorker()).execute();
                     } else {
                         log.info("captured frame " + nAcqFrames);
+                    }
+                } else {
+                    if (--noPatternFoundWarningCount <0) {
+                        log.warning("no pattern found; check pattern height and width numbers");
+//                        getChip().getCanvas().getDisplayMethod().showStatusChangeText("No pattern found; check pattern height/width?");
+                        noPatternFoundWarningCount = noPatternFoundwarningSkipInterval;
                     }
                 }
 
@@ -858,7 +865,11 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             String fn = dir + File.separator + name + ".xml";
 
             // convert org.opencv.core.Mat to opencv_core.Mat to use FileStorage class; see https://github.com/bytedeco/javacpp/issues/38
-            opencv_core.Mat bdMat = new opencv_core.Mat() { { address = sMat.getNativeObjAddr(); } };
+            opencv_core.Mat bdMat = new opencv_core.Mat() {
+                {
+                    address = sMat.getNativeObjAddr();
+                }
+            };
             opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.WRITE);
             storage.write(name, bdMat);
             storage.release();
@@ -880,7 +891,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             return null;
         }
         // convert to org.opencv.core.Mat to return; see https://github.com/bytedeco/javacpp/issues/38
-        org.opencv.core.Mat mat=new org.opencv.core.Mat(bdMat.address());
+        org.opencv.core.Mat mat = new org.opencv.core.Mat(bdMat.address());
         return mat;
     }
 
@@ -1172,9 +1183,9 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             if (chip.getNumPixels() > 0) {
                 sx = chip.getSizeX();
                 sy = chip.getSizeY(); // might not yet have been set in constructor
-                if(!calibrated) {
-					loadCalibration();
-				}
+                if (!calibrated) {
+                    loadCalibration();
+                }
             }
         }
     }
