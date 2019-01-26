@@ -19,12 +19,13 @@
 package ch.unizh.ini.jaer.projects.npp;
 
 import java.util.Arrays;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.tensorflow.DataType;
 import org.tensorflow.Graph;
 import org.tensorflow.Output;
 import org.tensorflow.SavedModelBundle;
 import org.tensorflow.Session;
-import org.tensorflow.Shape;
 import org.tensorflow.Tensor;
 import org.tensorflow.types.UInt8;
 
@@ -34,6 +35,7 @@ import org.tensorflow.types.UInt8;
  * @author Tobi
  */
 public class TensorFlow {
+    private static Logger log=Logger.getLogger("TensorFlow");
 
     public static int maxIndex(float[] probabilities) {
         int best = 0;
@@ -79,10 +81,15 @@ public class TensorFlow {
         }
     }
 
+    private static Session session = null;
+
     public static float[] executeGraph(Graph graph, Tensor<Float> image, String inputLayerName, String outputLayerName) {
 //        try (Graph g=graph) {
-        try (Session s = new Session(graph);
-                Tensor<Float> result = s.runner().feed(inputLayerName, image).fetch(outputLayerName).run().get(0).expect(Float.class)) {
+        try {
+            if (session == null) {
+                session = new Session(graph);
+            }
+            Tensor<Float> result = session.runner().feed(inputLayerName, image).fetch(outputLayerName).run().get(0).expect(Float.class);
             final long[] rshape = result.shape();
             if (result.numDimensions() != 2 || rshape[0] != 1) {
                 throw new RuntimeException(
@@ -92,8 +99,13 @@ public class TensorFlow {
             }
             int nlabels = (int) rshape[1];
             return result.copyTo(new float[1][nlabels])[0];
+        } catch (Exception e) {
+            log.log(Level.SEVERE, "Exception running network: "+e.toString(),  e.getCause());
+            if(session!=null){
+                session.close();
+            }
+            return null;
         }
-//        }
     }
 
     static float[] executeSession(SavedModelBundle savedModelBundle, Tensor<Float> image, String inputLayerName, String outputLayerName) {
@@ -120,23 +132,22 @@ public class TensorFlow {
         }
 
     }
-    
-    //public static long heatMapPrev[][][] = new long[1][90][120];
 
+    //public static long heatMapPrev[][][] = new long[1][90][120];
     static Tensor executeGraphAndReturnTensorWithBoolean(Graph graph, Tensor<Float> image, String inputLayerName, Tensor<Boolean> inputBool, String inputBoolName, String outputLayerName) {
         try (Session s = new Session(graph);
-            Tensor<Float> result = s.runner().feed(inputLayerName, image).feed(inputBoolName, inputBool).fetch(outputLayerName).run().get(0).expect(Float.class)) {
+                Tensor<Float> result = s.runner().feed(inputLayerName, image).feed(inputBoolName, inputBool).fetch(outputLayerName).run().get(0).expect(Float.class)) {
             //result.copyTo(heatMap);
             return result;
         }
 
     }
-    
+
     static void executeGraphAndReturnTensorWithBooleanArray(long[][][] array, Graph graph, Tensor<Float> image, String inputLayerName, Tensor<Boolean> inputBool, String inputBoolName, String outputLayerName) {
         try (Session s = new Session(graph);
-            Tensor<Long> result = s.runner().feed(inputLayerName, image).feed(inputBoolName, inputBool).fetch(outputLayerName).run().get(0).expect(Long.class)) {
+                Tensor<Long> result = s.runner().feed(inputLayerName, image).feed(inputBoolName, inputBool).fetch(outputLayerName).run().get(0).expect(Long.class)) {
             //result.copyTo(heatMap);
-            if(array != null){
+            if (array != null) {
                 result.copyTo(array);
                 /*
                 for (int i = 0; i < 90; i++) {
@@ -145,7 +156,7 @@ public class TensorFlow {
                                 System.out.println(" Ball : " + Float.toString(array[0][i][j]));
                     }
                 }
-                */
+                 */
             }
         }
     }
