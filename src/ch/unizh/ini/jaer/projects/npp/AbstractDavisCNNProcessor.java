@@ -58,6 +58,7 @@ import net.sf.jaer.eventprocessing.TimeLimiter;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.filter.LowpassFilter;
 import org.tensorflow.Tensor;
 
 /**
@@ -111,6 +112,9 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     protected Tensor output = null;
     public long[][][] resHeatMap = new long[1][90][120];
     protected int maxFrameAccumulationTimeToProcessMs = getInt("maxFrameAccumulationTimeToProcessUs", 0);
+    protected LowpassFilter frameRateFilter = new LowpassFilter(5000);
+    protected long lastFrameStartTime = 0;
+    long lastFrameIntervalNs;
 
     public AbstractDavisCNNProcessor(AEChip chip) {
         super(chip);
@@ -578,21 +582,13 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                     return; // don't process this frame
                 }
                 if (isFilterEnabled() && (apsDvsNet != null) && (processAPSDVSFrames)) {
-                    long startTime = 0;
-                    if (measurePerformance) {
-                        startTime = System.nanoTime();
-                    }
+                    startMeasurePerformance();
 
                     try {
                         updateAPSDVSFrame(frameExtractor);
                         //output = apsDvsNet.processAPSDVSFrame(apsDvsFrame);  // TODO replace with ApsFrameExtractor
                         apsDvsNet.processAPSDVSFrameArray(apsDvsFrame, resHeatMap);
-                        if (measurePerformance) {
-                            long dt = System.nanoTime() - startTime;
-                            float ms = 1e-6f * dt;
-                            float fps = 1e3f / ms;
-                            performanceString = String.format("Frame processing time: %.1fms (%.1f FPS)", ms, fps);
-                        }
+                        endMeasurePerformance();
                     } catch (Exception e) {
                         log.log(Level.SEVERE, e.toString(), e); // TODO debug
                     }
@@ -612,14 +608,11 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                 break;
             case DvsFramer.EVENT_NEW_FRAME_AVAILABLE:
                 final DvsFrame dvsFrame = (DvsFrame) evt.getNewValue();
-                if (maxFrameAccumulationTimeToProcessMs>0 && dvsFrame.getDurationUs() > maxFrameAccumulationTimeToProcessMs * 1000) {
-                    log.info("skipping long frame "+dvsFrame);
+                if (maxFrameAccumulationTimeToProcessMs > 0 && dvsFrame.getDurationUs() > maxFrameAccumulationTimeToProcessMs * 1000) {
+                    log.info("skipping long frame " + dvsFrame);
                     return; // don't process this very long frame
                 }
-                long startTime = 0;
-                if (measurePerformance) {
-                    startTime = System.nanoTime();
-                }
+                startMeasurePerformance();
                 if (processAPSDVSFrames && apsDvsNet != null) {
                     try {  // TODO debug
                         updateApsDvsFrame(dvsFrame);
@@ -628,21 +621,30 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                     } catch (Exception e) {
                         log.log(Level.SEVERE, e.toString(), e); // TODO debug
                     }
-                    if (measurePerformance) {
-                        long dt = System.nanoTime() - startTime;
-                        float ms = 1e-6f * dt;
-                        float fps = 1e3f / ms;
-                        performanceString = String.format("Frame processing time: %.1fms (%.1f FPS)", ms, fps);
-                    }
+                    endMeasurePerformance();
                 } else if (processDVSTimeSlices && apsDvsNet != null) {
                     apsDvsNet.processDvsFrame(dvsFrame); // generates PropertyChange EVENT_MADE_DECISION
-                    if (measurePerformance) {
-                        long dt = System.nanoTime() - startTime;
-                        float ms = 1e-6f * dt;
-                        float fps = 1e3f / ms;
-                        performanceString = String.format("Frame processing time: %.1fms (%.1f FPS)", ms, fps);
-                    }
+                    endMeasurePerformance();
                 }
+        }
+    }
+
+    private void startMeasurePerformance() {
+        if (measurePerformance) {
+            long now = System.nanoTime();
+            lastFrameIntervalNs = now - lastFrameStartTime;
+            lastFrameStartTime = now;
+        }
+    }
+
+    private void endMeasurePerformance() {
+        if (measurePerformance) {
+            long now = System.nanoTime();
+            long frameProcessingTimeNs = now - lastFrameStartTime;
+            float msToProcessThisFrame = 1e-6f * frameProcessingTimeNs;
+            float lastFps = 1e9f / lastFrameIntervalNs;
+            float avgFps = frameRateFilter.filter(lastFps, (int) (now >> 10));
+            performanceString = String.format("Frame processing time: %.1fms (avg %.1f FPS)", msToProcessThisFrame, avgFps);
         }
     }
 
