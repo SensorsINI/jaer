@@ -126,6 +126,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         super.filterPacket(in);
         frameExtractor.filterPacket(in); // process frame extractor, target labeler and dvsframer
         targetLabeler.filterPacket(in);
+        dvsFrame.checkParameters();
 
         checkSubsampler();
         for (BasicEvent e : in) {
