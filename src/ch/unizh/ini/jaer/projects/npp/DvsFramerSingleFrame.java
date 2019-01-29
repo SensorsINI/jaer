@@ -183,4 +183,14 @@ public class DvsFramerSingleFrame extends DvsFramer {
         return "DvsFramerSingleFrame{" + "dvsFrame=" + dvsFrame + '}';
     }
 
+    @Override
+    public void checkParameters() {
+        super.checkParameters(); 
+        if(dvsFrame.width * dvsFrame.height<=0){
+            throw new RuntimeException("check width and height of DvsFramerSingleFrame.outputImage, currently zero sized");
+        }
+    }
+    
+    
+
 }
