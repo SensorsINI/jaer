@@ -171,6 +171,7 @@ abstract public class DvsFramer extends EventFilter2D {
      */
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+        checkParameters();
         return in;
     }
 
@@ -948,6 +949,14 @@ abstract public class DvsFramer extends EventFilter2D {
     public void setTimeDurationUsPerFrame(int timeDurationUsPerFrame) {
         this.timeDurationUsPerFrame = timeDurationUsPerFrame;
         putInt("timeDurationUsPerFrame", timeDurationUsPerFrame);
+    }
+    
+    /** Subclasses can override this method to check reasonable parameters.
+     * This method should throw an exception after informing users that parameters are not reasonable.
+     * 
+     */
+    public void checkParameters(){
+       
     }
 
 }
