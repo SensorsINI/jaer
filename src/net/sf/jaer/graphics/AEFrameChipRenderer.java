@@ -258,14 +258,14 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         switch (colorMode) {
             case GrayLevel:
             case Contrast:
-                onColor[0] = 1.0f;
-                onColor[1] = 1.0f;
-                onColor[2] = 1.0f;
-                onColor[3] = 0.0f;
-                offColor[0] = 0.0f;
-                offColor[1] = 0.0f;
-                offColor[2] = 0.0f;
-                offColor[3] = 0.0f;
+                onColor[0] = 1;
+                onColor[1] = 1;
+                onColor[2] = 1;
+                onColor[3] = 0;
+                offColor[0] = -1;
+                offColor[1] = -1;
+                offColor[2] = -1;
+                offColor[3] = 0;
                 break;
             case HotCode:
                 onColor[0] = 1.0f;
