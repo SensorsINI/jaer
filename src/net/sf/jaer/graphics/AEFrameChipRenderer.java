@@ -192,6 +192,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 }
             }
         }
+        grayValue=value;
         grayBuffer.rewind();
         System.arraycopy(grayBuffer.array(), 0, pixmap.array(), 0, n);
         System.arraycopy(grayBuffer.array(), 0, pixBuffer.array(), 0, n);
@@ -213,7 +214,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
         grayBuffer.rewind();
         // Fill maps with fully transparent values
-        Arrays.fill(grayBuffer.array(), 0.0f);
+        Arrays.fill(grayBuffer.array(), grayValue);
         System.arraycopy(grayBuffer.array(), 0, dvsEventsMap.array(), 0, n);
 //        System.arraycopy(grayBuffer.array(), 0, offMap.array(), 0, n);
         // if(displayAnnotation) Arrays.fill(annotateMap.array(), 0);
