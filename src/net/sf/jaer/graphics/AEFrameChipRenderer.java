@@ -974,10 +974,12 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     public float getGrayValue() {
         if (isDisplayFrames() || (colorMode == ColorMode.Contrast) || (colorMode == ColorMode.GrayLevel)) {
             grayValue = 0.5f;
-        } else if (colorMode == ColorMode.GrayTime || colorMode == ColorMode.WhiteBackground) {
+        } else if (colorMode == ColorMode.GrayTime ) {
             grayValue = 1.0f;
+        } else if (colorMode == ColorMode.WhiteBackground){
+            grayValue = 1f;
         } else {
-            grayValue = 0.0f;
+            grayValue=0;
         }
 
         return grayValue;
