@@ -503,9 +503,9 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         jPanel3.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
 
         thresholdTweaker.setToolTipText("<html>Adjusts DVS event temporal contrast thresholds magnitude <br>\nby changing current ratios diffOn/diff and diffOff/diff. \n<p>Limited to only adjusting fine current value; <br>\nwhen this limit is reached, user must manually change the coarse current value.");
-        thresholdTweaker.setLessDescription("Lower/more events");
+        thresholdTweaker.setLessDescription("Lower & More events");
         thresholdTweaker.setMinimumSize(new java.awt.Dimension(80, 30));
-        thresholdTweaker.setMoreDescription("Higher/less events");
+        thresholdTweaker.setMoreDescription("Higher &  Fewer events");
         thresholdTweaker.setName("Adjusts event threshold"); // NOI18N
         thresholdTweaker.setPreferredSize(new java.awt.Dimension(250, 47));
         thresholdTweaker.setTweakDescription("");
