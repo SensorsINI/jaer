@@ -148,10 +148,8 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 
         defaultFolder = System.getProperty("user.dir");
         try {
-            File f = new File(defaultFolder);
-            File f2 = new File(f.getParent());
-            File f3 = new File(f2.getParent());
-            defaultFolder = f3 + File.separator + "biasgenSettings";
+            File f = new File(defaultFolder+ File.separator + "biasgenSettings");
+            defaultFolder = f.getPath() ;
         } catch (Exception e) {
         }
 
