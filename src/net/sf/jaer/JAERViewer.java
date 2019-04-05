@@ -132,16 +132,7 @@ public class JAERViewer {
 
         multistartmode = multimode;
 
-        Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("jAER UncaughtExceptionHandler");
-        Thread.setDefaultUncaughtExceptionHandler(handler);
-
-        final java.awt.SplashScreen splash = java.awt.SplashScreen.getSplashScreen();
-        if (splash != null) {
-            new SplashHandler(splash);
-        } else {
-            log.warning("no Java 6 splash screen to animate (don't worry; this happens if you run from development environment)");
-        }
-
+ 
         // GLProfile and GLCapabilities should be equal across all shared GL drawable/context.
         // tobi implemented this from user guide for JOGL that suggests a shared drawable context for all uses of JOGL
         GLProfile.initSingleton(); // recommneded by https://sites.google.com/site/justinscsstuff/jogl-tutorial-2 especially for linux systems
@@ -156,8 +147,6 @@ public class JAERViewer {
 //        if(true){
 //        throw new RuntimeException("test exception");
 //        }
-        log.info("java.vm.version=" + System.getProperty("java.vm.version") + " user.dir=" + System.getProperty("user.dir"));
-
         windowSaver = new WindowSaver(this, prefs);
         // WindowSaver calls for determining screen insets (e.g. Windows Taskbar) could cause problems on different OS's
         Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver, AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events
@@ -264,68 +253,8 @@ public class JAERViewer {
 
     }
 
-    /**
-     * The main launcher for AEViewer's.
-     *
-     * @param args the first argument can be a recorded AE data filename (.dat)
-     * with full path; the viewer will play this file
-     */
-    public static void main(String[] args) {
-        //redirect output to DataViewer window
-        // should be before any logger is initialized
-//        globalDataViewer.redirectStreams(); // tobi removed because AEViewerConsoleOutputFrame replaces this logging output
 
-        //init static fields
-        log = Logger.getLogger("JAERViewer");
-        log.info("jAERViewer starting up");
-        prefs = Preferences.userNodeForPackage(JAERViewer.class);
-        log.info("Preferences come from root located at " + prefs.absolutePath());
-        Logger root = log;
-        while (root.getParent() != null) {
-            root = root.getParent(); // find root logger
-        }
-        log.info("logging configuration read from java.util.logging.config.file="+System.getProperty("java.util.logging.config.file"));
-        for (Handler h : root.getHandlers()) {
-            if(h instanceof ConsoleHandler){
-                log.info("debug logging to console with Level="+((ConsoleHandler)h).getLevel());
-            }else if(h instanceof FileHandler){
-                log.info("debug logging to file with Level="+((FileHandler)h).getLevel()+" to file (see config file for location)");
-            }else {
-                log.info("debug logging to handler that is not ConsoleHandler or FileHandler using "+h);
-            }
-        }
-
-//            String exepath = System.getProperty("exepath");
-//            if ( exepath != null ){
-//                System.out.println("exepath (set from JSmooth launcher) = " + exepath);
-//            }
-//        }
-        if (args.length > 0) {
-            log.info("starting with args[0]=" + args[0] + " in working directory=" + System.getProperty("user.dir"));
-            final File f = new File(args[0]);
-            try {
-                JAERViewer jv = new JAERViewer();
-                while (jv.getNumViewers() == 0) {
-                    Thread.sleep(300);
-                }
-                jv.getSyncPlayer().startPlayback(f);
-            } catch (Exception e) {
-                JOptionPane.showMessageDialog(null, "<html>Trying to start JAERViewer with <br>file=\"" + f + "\"<br>Caught " + e);
-            }
-        } else {
-            log.info("starting with no arguments in working directory=" + System.getProperty("user.dir"));
-            SwingUtilities.invokeLater(new Runnable() {
-
-                @Override
-                public void run() {
-                    new JAERViewer();
-                }
-            });
-        }
-
-    }
-
-    private class SplashHandler extends java.util.logging.Handler {
+    private static class SplashHandler extends java.util.logging.Handler {
 
         SplashScreen splashScreen;
         Graphics2D g;
@@ -844,6 +773,83 @@ public class JAERViewer {
 //        else
 //            SwingUtilities.
 //            SwingUtilities.invokeLater(new MultiLauncher());
+    }
+
+    
+        /**
+     * The main launcher for AEViewer's.
+     *
+     * @param args the first argument can be a recorded AE data filename (.dat)
+     * with full path; the viewer will play this file
+     */
+    public static void main(String[] args) {
+        //redirect output to DataViewer window
+        // should be before any logger is initialized
+//        globalDataViewer.redirectStreams(); // tobi removed because AEViewerConsoleOutputFrame replaces this logging output
+
+        Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("jAER UncaughtExceptionHandler");
+        Thread.setDefaultUncaughtExceptionHandler(handler);
+
+        //init static fields
+        log = Logger.getLogger("JAERViewer");
+ 
+        final java.awt.SplashScreen splash = java.awt.SplashScreen.getSplashScreen();
+        if (splash != null) {
+            new SplashHandler(splash);
+        } else {
+            log.warning("no Java 6 splash screen to animate (don't worry; this happens if you run from development environment)");
+        }
+
+        log.info("jAERViewer starting up");
+        log.info("java.vm.version=" + System.getProperty("java.vm.version") + " user.dir=" + System.getProperty("user.dir"));
+        log.info("Java logging is configured by the command line option -Djava.util.logging.config.file=<filename>."
+                + " \nThe current value of java.util.logging.config.file is " + System.getProperty("java.util.logging.config.file")
+                + "\nEdit this file to configure logging." + "\nThe value of java.io.tmpdir is " + System.getProperty("java.io.tmpdir"));
+        prefs = Preferences.userNodeForPackage(JAERViewer.class);
+        log.info("Preferences come from root located at " + prefs.absolutePath());
+        Logger root = log;
+        while (root.getParent() != null) {
+            root = root.getParent(); // find root logger
+        }
+        log.info("logging configuration read from java.util.logging.config.file=" + System.getProperty("java.util.logging.config.file"));
+        for (Handler h : root.getHandlers()) {
+            if (h instanceof ConsoleHandler) {
+                log.info("debug logging to console with Level=" + ((ConsoleHandler) h).getLevel());
+            } else if (h instanceof FileHandler) {
+                log.info("debug logging to file with Level=" + ((FileHandler) h).getLevel() + " to file (see config file for location)");
+            } else {
+                log.info("debug logging to handler that is not ConsoleHandler or FileHandler using " + h);
+            }
+        }
+
+//            String exepath = System.getProperty("exepath");
+//            if ( exepath != null ){
+//                System.out.println("exepath (set from JSmooth launcher) = " + exepath);
+//            }
+//        }
+        if (args.length > 0) {
+            log.info("starting with args[0]=" + args[0] + " in working directory=" + System.getProperty("user.dir"));
+            final File f = new File(args[0]);
+            try {
+                JAERViewer jv = new JAERViewer();
+                while (jv.getNumViewers() == 0) {
+                    Thread.sleep(300);
+                }
+                jv.getSyncPlayer().startPlayback(f);
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(null, "<html>Trying to start JAERViewer with <br>file=\"" + f + "\"<br>Caught " + e);
+            }
+        } else {
+            log.info("starting with no arguments in working directory=" + System.getProperty("user.dir"));
+            SwingUtilities.invokeLater(new Runnable() {
+
+                @Override
+                public void run() {
+                    new JAERViewer();
+                }
+            });
+        }
+
     }
 
 }
