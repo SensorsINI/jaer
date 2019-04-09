@@ -1,7 +1,7 @@
 # jAER
 Java tools for Address-Event Representation (AER) neuromorphic processing. 
 
-**Permanent links:** https://jaerproject.org or https://jaerproject.org
+**Permanent links:** http://jaerproject.org or http://jaerproject.org
 
 [![Build Status](https://travis-ci.org/SensorsINI/jaer.svg?branch=master)](https://travis-ci.org/SensorsINI/jaer)
 
