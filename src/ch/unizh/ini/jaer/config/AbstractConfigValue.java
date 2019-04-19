@@ -11,8 +11,9 @@ import javax.swing.JComponent;
 
 import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.util.RemoteControlled;
 
-public abstract class AbstractConfigValue extends Observable implements PreferenceChangeListener, HasPreference, Observer {
+public abstract class AbstractConfigValue extends Observable implements PreferenceChangeListener, HasPreference, Observer, RemoteControlled {
 
 	private final String configName, toolTip, prefKey;
 	protected final AEChip chip;

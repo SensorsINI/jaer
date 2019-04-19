@@ -250,7 +250,7 @@ public class RemoteControl /* implements RemoteControlled */{
             }
             if ( line.startsWith(HELP) ){
                 String help = getHelp();
-                echo(help + PROMPT);
+                echo("See jaer console output for available commands\n"+PROMPT);
                 log.info(help);
             } else{
                 String[] tokens = line.split("\\s");
