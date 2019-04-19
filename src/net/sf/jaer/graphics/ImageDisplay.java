@@ -316,7 +316,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         if (gl == null) {
             return;
         }
-        if(pixmap==null){
+        if (pixmap == null) {
             log.warning("null pixmap, cannot display");
             return;
         }
@@ -554,6 +554,25 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         }
         pixmap.rewind();
         pixmap.limit(n);
+    }
+
+    /**
+     * Sets the whole pixmap array in gray values - a float[x][y] of gray values
+     *
+     * @param src the array of gray values
+     * @see #setPixmapGray(int, int, float)
+     */
+    public void setPixmapFromGrayArray(float[][] src) {
+        checkPixmapAllocation();
+        float[] dest = pixmap.array();
+        int nx = src.length, ny = src[0].length;
+        for (int x = 0; x < nx; x++) {
+            for (int y = 0; y < ny; y++) {
+                float s = src[x][y];
+                setPixmapGray(x, y, s);
+            }
+            pixmap.rewind();
+        }
     }
 
     /**
@@ -1346,9 +1365,11 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
                     // randomly set a pixel to some RGB value
                     xx = r.nextInt(disp.getSizeX());
                     yy = r.nextInt(disp.getSizeY());
-                    float red=r.nextFloat(), green=r.nextFloat(), blue=r.nextFloat();
-                    if(xx==0 && yy==0){
-                        red=1; green=1; blue=1;
+                    float red = r.nextFloat(), green = r.nextFloat(), blue = r.nextFloat();
+                    if (xx == 0 && yy == 0) {
+                        red = 1;
+                        green = 1;
+                        blue = 1;
                     }
                     disp.setPixmapRGB(xx, yy, red, green, blue);
                     disp2.setPixmapRGB(xx, yy, r.nextFloat(), r.nextFloat(), r.nextFloat());
