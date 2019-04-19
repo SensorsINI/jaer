@@ -115,7 +115,7 @@ public class BandpassEventFilter extends EventFilter2DMouseAdaptor implements Fr
         ptr++; if(ptr>=bufferLengthEventsPerPixel) {
             ptr=0; initialized[ev.x][ev.y]=true;
         }
-        timestamps[ev.x][ev.y][ptr]=ev.timestamp;
+        timestamps[ev.x][ev.y][ptr]=ev.timestamp; // timestamps are stored in rotating buffer. To access last event use ptr, ptr-1, etc making sure to wrap around at 0 back to bufferLengthEventsPerPixel-1
         // now we have everything, process filter based on this and past delta events
         output[ev.x][ev.y] += ev.getPolaritySignum() *.1f; // only for debug
         return output[ev.x][ev.y];
