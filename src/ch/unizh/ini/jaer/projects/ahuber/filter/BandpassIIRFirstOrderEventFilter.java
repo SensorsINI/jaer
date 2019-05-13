@@ -28,6 +28,7 @@ import javax.swing.JFrame;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
@@ -49,21 +50,14 @@ import scala.actors.threadpool.Arrays;
 public class BandpassIIRFirstOrderEventFilter extends EventFilter2DMouseAdaptor implements FrameAnnotater {
 
     private final static float PI2 = (float) (Math.PI * 2);
-    /**
-     * The filter time constant in ms.
-     */
-    private float tauMsCutoff = getFloat("tauMsCorner", 1000/(PI2*100)); // 100Hz
-    /**
-     * The filter time constant in ms.
-     */
-    private float tauMsCorner = getFloat("tauMsCorner", 1000/(PI2*1)); // 1Hz
-
+    private float tauMsCutoff = getFloat("tauMsCutoff", 1000 / (PI2 * 100)); // 100Hz
+    private float tauMsCorner = getFloat("tauMsCorner", 1000 / (PI2 * 1)); // 1Hz
     private boolean showFilterOutput = getBoolean("showFilterOutput", true);
-    private float contrast=getFloat("contrast",0.1f);
+    private float contrast = getFloat("contrast", 0.1f);
 
     // rotating bufffer memory to hold past events at each pixel, index is [x][y][events]; index to last event is stored in pointers
     private int[] timestamps = null;
-    private float[] input = null, lowpass = null, output = null, display=null; // state of first and second stage
+    private float[] input = null, lowpass = null, output = null, display = null; // state of first and second stage
     private boolean[] initialized = null;
 
     private int sx = 0, sy = 0, npix; // updated on each packet
@@ -92,6 +86,7 @@ public class BandpassIIRFirstOrderEventFilter extends EventFilter2DMouseAdaptor 
             PolarityEvent e = (PolarityEvent) o;
             filterEvent(e);
         }
+        filterOutput(in);
         return in;
     }
 
@@ -129,8 +124,8 @@ public class BandpassIIRFirstOrderEventFilter extends EventFilter2DMouseAdaptor 
         }
         if (chip.getBiasgen() != null && chip.getBiasgen() instanceof DavisConfig) {
             DavisConfig config = (DavisConfig) chip.getBiasgen();
-            thrOn = config.getOnThresholdLogE()*contrast;
-            thrOff = config.getOffThresholdLogE()*contrast;
+            thrOn = config.getOnThresholdLogE() * contrast;
+            thrOff = config.getOffThresholdLogE() * contrast;
         }
     }
 
@@ -159,17 +154,31 @@ public class BandpassIIRFirstOrderEventFilter extends EventFilter2DMouseAdaptor 
         }
         float epsCutoff = (0.001f * dtUs) / tauMsCutoff; // dt as fraction of lowpass (cutoff) tau
         if (epsCutoff > 1) {
-            epsCutoff=1; // step too big, clip it 
+            epsCutoff = 1; // step too big, clip it 
         }
-        float oldLowpass=lowpass[idx];
+        float oldLowpass = lowpass[idx];
         lowpass[idx] = (1 - epsCutoff) * lowpass[idx] + epsCutoff * input[idx];
         float epsCorner = (0.001f * dtUs) / tauMsCorner; // dt as fraction of lowpass (cutoff) tau
         if (epsCorner > 1) {
-            epsCorner=1; // also too big, clip
+            epsCorner = 1; // also too big, clip
         }
-        output[idx] = (1 - epsCorner) * output[idx] + (lowpass[idx]-oldLowpass);
-        display[idx]=output[idx]+0.5f;
+        output[idx] = (1 - epsCorner) * output[idx] + (lowpass[idx] - oldLowpass);
         return;
+    }
+
+    // filter output to update all values even if they never got an event
+    private void filterOutput(EventPacket<? extends BasicEvent> in) {
+        if (in.isEmpty()) {
+            return;
+        }
+        int lastTs = in.getLastTimestamp();
+        for (int idx = 0; idx < npix; idx++) {
+            int dtUs = lastTs - timestamps[idx];
+            float eps = (0.001f * dtUs) / tauMsCorner;
+            timestamps[idx] = lastTs;
+            output[idx] = (1 - eps) * output[idx];
+            display[idx] = output[idx] + 0.5f;
+        }
     }
 
     /**
@@ -214,7 +223,7 @@ public class BandpassIIRFirstOrderEventFilter extends EventFilter2DMouseAdaptor 
      */
     private void setTauMsCutoff(float tauMsCutoff) {
         this.tauMsCutoff = tauMsCutoff;
-        putFloat("tauMsCutoff",tauMsCutoff);
+        putFloat("tauMsCutoff", tauMsCutoff);
     }
 
     /**
@@ -229,7 +238,7 @@ public class BandpassIIRFirstOrderEventFilter extends EventFilter2DMouseAdaptor 
      */
     private void setTauMsCorner(float tauMsCorner) {
         this.tauMsCorner = tauMsCorner;
-        putFloat("tauMsCorner",tauMsCorner);
+        putFloat("tauMsCorner", tauMsCorner);
     }
 
     @Override
@@ -241,7 +250,7 @@ public class BandpassIIRFirstOrderEventFilter extends EventFilter2DMouseAdaptor 
                 outputDisplay.setImageSize(chip.getSizeX(), chip.getSizeY());
                 outputDisplay.setGrayValue(0.5f);
                 outputFrame = new JFrame("BandpassEventFilter");
-                outputFrame.setPreferredSize(new Dimension(sx,sy));
+                outputFrame.setPreferredSize(new Dimension(sx, sy));
                 outputFrame.getContentPane().add(outputDisplay, BorderLayout.CENTER);
                 outputFrame.pack();
                 outputFrame.addWindowListener(new WindowAdapter() {
@@ -261,10 +270,6 @@ public class BandpassIIRFirstOrderEventFilter extends EventFilter2DMouseAdaptor 
         outputDisplay.repaint();
     }
 
-    private class FilterMemory { // one per pixel
-
-    }
-
     /**
      * @return the showFilterOutput
      */
@@ -277,7 +282,7 @@ public class BandpassIIRFirstOrderEventFilter extends EventFilter2DMouseAdaptor 
      */
     public void setShowFilterOutput(boolean showFilterOutput) {
         this.showFilterOutput = showFilterOutput;
-        if (showFilterOutput && outputFrame!=null && !outputFrame.isVisible()) {
+        if (showFilterOutput && outputFrame != null && !outputFrame.isVisible()) {
             outputFrame.setVisible(true);
         }
     }
@@ -294,7 +299,7 @@ public class BandpassIIRFirstOrderEventFilter extends EventFilter2DMouseAdaptor 
      */
     public void setContrast(float contrast) {
         this.contrast = contrast;
-        putFloat("contrast",contrast);
+        putFloat("contrast", contrast);
     }
 
 }
