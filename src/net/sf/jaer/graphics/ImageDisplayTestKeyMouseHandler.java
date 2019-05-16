@@ -14,7 +14,8 @@ import java.awt.geom.Point2D;
 import static net.sf.jaer.graphics.ImageDisplay.log;
 
 /**
- *
+ * Handles keyboard and mouse events for ImageDisplay test class
+ * 
  * @author tobi
  */
    public class ImageDisplayTestKeyMouseHandler {
