@@ -22,8 +22,14 @@ import com.jogamp.opengl.GLAutoDrawable;
 import eu.seebetter.ini.chips.davis.DavisConfig;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.geom.Point2D;
 import javax.swing.JFrame;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -39,17 +45,17 @@ import scala.actors.threadpool.Arrays;
 
 /**
  * Implementation of IIR bandpass filter for DVS event streams. Produces output
- * image of filtered values that are updated on each DVS event. 
- * The IIR filter order can be set for both highpass (corner) and lowpass (cutoff) frequencies.
+ * image of filtered values that are updated on each DVS event. The IIR filter
+ * order can be set for both highpass (corner) and lowpass (cutoff) frequencies.
  *
  * @author Tobi Delbruck <tobi@ini.uzh.ch>, Huber Adrian
  * <huberad@student.ethz.ch>
  */
 @Description("IIR bandpass filter for DVS event streams. Produces output\n"
         + " * image of filtered values that are updated on each pixel event.\n"
-        + "Produces output\n" +
-" * image of filtered values that are updated on each DVS event. \n" +
-" * The IIR filter order can be set for both highpass (corner) and lowpass (cutoff) frequencies.")
+        + "Produces output\n"
+        + " * image of filtered values that are updated on each DVS event. \n"
+        + " * The IIR filter order can be set for both highpass (corner) and lowpass (cutoff) frequencies.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements FrameAnnotater {
 
@@ -60,6 +66,7 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
     private float contrast = getFloat("contrast", 0.1f);
     private int cutoffOrder = getInt("cutoffOrder", 1);
     private int cornerOrder = getInt("cornerOrder", 1);
+    private int maxDtMsForUpdate = getInt("maxDtUsForUpdate", 100);
 
     private boolean balanceThresholdsAutomatically = getBoolean("balanceThresholdsAutomatically", false);
     private float thresholdBalanceTauMs = getFloat("thresholdBalanceTauMs", 10000);
@@ -67,47 +74,42 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
     // rotating bufffer memory to hold past events at each pixel, index is [x][y][events]; index to last event is stored in pointers
     private int[] timestamps = null;
     private float[] input = null, display = null; // state of first and second stage
-    private float[][] lowpass = null, highpass = null;
+    private float[][] lowpass = null, highpass = null, pastHighpassInputs=null;
     private boolean[] initialized = null;
 
-    private int sx = 0, sy = 0, npix; // updated on each packet
+    private int sx = 0, sy = 0, npix = 0; // updated on each packet
     private float thrOn = 1, thrOff = -1; // log intensity change thresholds, from biasgen if available
 
     private ImageDisplay outputDisplay = null;
     private JFrame outputFrame = null;
+    private Point2D.Float mousePoint=new Point2D.Float(); // selected point in sensor pixel coordinates in image display of filter state
 
     public BandpassIIREventFilter(AEChip chip) {
         super(chip);
 //        setPropertyTooltip("tauMsCorner", "time constant in ms of highpass corner");
 //        setPropertyTooltip("tauMsCutoff", "time constant in ms of lowpass cutoff");
-        setPropertyTooltip("3dBCornerFrequencyHz", "corner frequency of highpass filter in Hz");
-        setPropertyTooltip("3dBCutoffFrequencyHz", "cutoff frequency of lowpass filter in Hz");
-        setPropertyTooltip("showFilterOutput", "show ImageDisplay of filter output");
-        setPropertyTooltip("contrast", "contrast of each event, reduce for more gray scale. Events are automatically scaled by estimated DVS event thresholds.");
-        setPropertyTooltip("cutoffOrder", "Number for first order filters to cascade, default 1");
-        setPropertyTooltip("cornerOrder", "Number for first order filters to cascade, default 1");
-    }
+        String filterString = "Filter", displayString = "Display";
+        setPropertyTooltip(filterString, "3dBCornerFrequencyHz", "corner frequency of highpass filter in Hz");
+        setPropertyTooltip(filterString, "3dBCutoffFrequencyHz", "cutoff frequency of lowpass filter in Hz");
+        setPropertyTooltip(filterString, "cutoffOrder", "Number for first order filters to cascade, default 1");
+        setPropertyTooltip(filterString, "cornerOrder", "Number for first order filters to cascade, default 1");
+        setPropertyTooltip(filterString, "maxDtMsForUpdate", "Maximum time in ms between filter updates; if no event arrives in pixel, then filter is updated with current input state and last packet event timestamp");
 
-    @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-        checkMemory();
-        for (Object o : in) {
-            if (!(o instanceof PolarityEvent)) {
-                throw new RuntimeException("must be PolarityEvent to process");
-            }
-            PolarityEvent e = (PolarityEvent) o;
-            filterEvent(e);
-        }
-        filterOutput(in);
-        return in;
+        setPropertyTooltip(displayString, "contrast", "contrast of each event, reduce for more gray scale. Events are automatically scaled by estimated DVS event thresholds.");
+        setPropertyTooltip(displayString, "showFilterOutput", "show ImageDisplay of filter output");
     }
 
     private int computeIdx(int x, int y) {
         return x + (sx * y);
     }
 
+    private void updateTimestamp(int idx, int timestamp) {
+        timestamps[idx] = timestamp;
+    }
+
     @Override
     synchronized public void resetFilter() {
+        checkMemory();
         if (highpass != null) {
             Arrays.fill(initialized, false);
             Arrays.fill(input, 0);
@@ -115,6 +117,9 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
                 Arrays.fill(f, 0);
             }
             for (float[] f : highpass) {
+                Arrays.fill(f, 0);
+            }
+            for (float[] f : pastHighpassInputs) {
                 Arrays.fill(f, 0);
             }
             Arrays.fill(display, .5f);
@@ -129,11 +134,12 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
     private void checkMemory() {
         sx = chip.getSizeX();
         sy = chip.getSizeY();
-        npix = sx * sy;
-        if (highpass == null || highpass.length != npix) {
+        if (npix != sx * sy || highpass == null || cornerOrder != highpass.length || lowpass == null || cutoffOrder != lowpass.length) {
+            npix = sx * sy;
             initialized = new boolean[npix];
             input = new float[npix];
             highpass = new float[cornerOrder][npix];
+            pastHighpassInputs = new float[cornerOrder][npix];
             lowpass = new float[cutoffOrder][npix];
             display = new float[npix];
             timestamps = new int[npix];
@@ -143,6 +149,21 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
             thrOn = config.getOnThresholdLogE() * contrast;
             thrOff = config.getOffThresholdLogE() * contrast; // will be hegative
         }
+    }
+
+    @Override
+    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+        checkMemory();
+        for (final Object o : in) {
+            if (!(o instanceof PolarityEvent)) {
+                throw new RuntimeException("must be PolarityEvent to process");
+            }
+            final PolarityEvent e = (PolarityEvent) o;
+            filterEvent(e);
+        }
+        updateNonActiveFilters(in);
+        updateDisplay();
+        return in;
     }
 
     /**
@@ -155,7 +176,7 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
      * @return the filter output value
      */
     public void filterEvent(PolarityEvent ev) {
-        int idx = computeIdx(ev.x, ev.y);
+        final int idx = computeIdx(ev.x, ev.y);
         Polarity pol = ev.getPolarity();
         int timestamp = ev.timestamp;
         updateFilter(idx, pol, timestamp);
@@ -164,11 +185,11 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
 
     private void updateFilter(int idx, Polarity pol, int timestamp) {
         input[idx] += (pol == Polarity.On ? thrOn : thrOff); // reconstructed input, using event polarity and estimated logE threshold
-        int lastTs = timestamps[idx];
-        int dtUs = timestamp - lastTs;
-        timestamps[idx] = timestamp;
-        if (!initialized[idx]) {
+        final int lastTs = timestamps[idx];
+        final int dtUs = timestamp - lastTs;
+        if (initialized[idx]) {
             initialized[idx] = true;
+            updateTimestamp(idx, timestamp);
             return;
         }
         if (dtUs < 0) {
@@ -178,6 +199,7 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
 
         updateLowpass(dtUs, idx);
         updateHighpass(dtUs, idx);
+        updateTimestamp(idx, timestamp);
     }
 
     private void updateHighpass(int dtUs, int idx) {
@@ -186,9 +208,14 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
         if (epsCorner > 1) {
             epsCorner = 1; // also too big, clip
         }
+        // highpass needs previous input to compute change. Previous input to each stage is previous output of prior stage. 
+        // so save that here before update
+        float[] pastInputs=new float[cornerOrder];
+       
         for (int i = 0; i < cornerOrder; i++) {
             float in = i == 0 ? lowpass[cutoffOrder - 1][idx] : highpass[i - 1][idx];
-            highpass[i][idx] = (1 - epsCorner) * highpass[i][idx] + (in - highpass[i][idx]);
+            highpass[i][idx] = (1 - epsCorner) * highpass[i][idx] + (in - pastHighpassInputs[i][idx]);
+            pastHighpassInputs[i][idx]=in;
         }
     }
 
@@ -200,21 +227,31 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
         }
         for (int i = 0; i < cutoffOrder; i++) {
             float in = i == 0 ? input[idx] : lowpass[i - 1][idx];
-            lowpass[i][idx] = (1 - epsCutoff) *  lowpass[i][idx] + epsCutoff * in;
+            lowpass[i][idx] = (1 - epsCutoff) * lowpass[i][idx] + epsCutoff * in;
+        }
+    }
+
+    private void updateDisplay() {
+        for (int idx = 0; idx < npix; idx++) {
+            display[idx] = highpass[cornerOrder - 1][idx] + 0.5f;
         }
     }
 
     // filter output to update all values even if they never got an event
-    private void filterOutput(EventPacket<? extends BasicEvent> in) {
+    private void updateNonActiveFilters(EventPacket<? extends BasicEvent> in) {
         if (in.isEmpty()) {
-            return;
+            return; // we need a timestamp, at least one
         }
-        int lastTs = in.getLastTimestamp();
+        final int lastTs = in.getLastTimestamp();
+        final int maxDtUs = maxDtMsForUpdate * 1000;
         for (int idx = 0; idx < npix; idx++) {
 
             int dtUs = lastTs - timestamps[idx];
-            updateHighpass(dtUs, idx);
-            display[idx] = highpass[cornerOrder - 1][idx] + 0.5f;
+            if (dtUs > maxDtUs) {
+                updateLowpass(dtUs, idx);
+                updateHighpass(dtUs, idx);
+                updateTimestamp(idx, lastTs);
+            }
         }
     }
 
@@ -279,13 +316,16 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        if(!showFilterOutput) return;
+        if (!showFilterOutput) {
+            return;
+        }
         // if the filter output exists, show it in separate ImageDisplay
-        if (highpass != null) {
+        if (display != null) {
             if (outputDisplay == null) {
                 outputDisplay = ImageDisplay.createOpenGLCanvas();
                 outputDisplay.setImageSize(chip.getSizeX(), chip.getSizeY());
                 outputDisplay.setGrayValue(0.5f);
+                new ImageKeyMouseHandler(outputDisplay, mousePoint, Thread.currentThread());
                 outputFrame = new JFrame("BandpassEventFilter");
                 outputFrame.setPreferredSize(new Dimension(sx, sy));
                 outputFrame.getContentPane().add(outputDisplay, BorderLayout.CENTER);
@@ -318,7 +358,7 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
      * @param showFilterOutput the showFilterOutput to set
      */
     public void setShowFilterOutput(boolean showFilterOutput) {
-        boolean old=this.showFilterOutput;
+        boolean old = this.showFilterOutput;
         this.showFilterOutput = showFilterOutput;
         if (showFilterOutput && outputFrame != null && !outputFrame.isVisible()) {
             outputFrame.setVisible(true);
@@ -381,6 +421,60 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
         }
         this.cornerOrder = cornerOrder;
         putInt("cornerOrder", cornerOrder);
+    }
+
+    /**
+     * @return the maxDtMsForUpdate
+     */
+    public int getMaxDtMsForUpdate() {
+        return maxDtMsForUpdate;
+    }
+
+    /**
+     * @param maxDtMsForUpdate the maxDtMsForUpdate to set
+     */
+    public void setMaxDtMsForUpdate(int maxDtMsForUpdate) {
+        this.maxDtMsForUpdate = maxDtMsForUpdate;
+        putInt("maxDtMsForUpdate", maxDtMsForUpdate);
+    }
+
+    public class ImageKeyMouseHandler {
+
+        final ImageDisplay disp;
+        final Point2D.Float mousePoint;
+        Thread thread;
+
+        public ImageKeyMouseHandler(ImageDisplay d, Point2D.Float mp, Thread t) {
+            this.disp = d;
+            this.mousePoint = mp;
+            this.thread = t;
+            this.disp.addKeyListener(new KeyAdapter() { // add some key listeners to the ImageDisplay
+
+                @Override
+                public void keyReleased(KeyEvent e) {
+                    int k = e.getKeyCode();
+                    if ((k == KeyEvent.VK_ESCAPE) || (k == KeyEvent.VK_X)) {
+                    }
+                }
+            });
+
+            this.disp.addMouseListener(
+                    new MouseAdapter() {
+
+                @Override
+                public void mouseClicked(MouseEvent e
+                ) {
+                    super.mouseClicked(e);
+                    Point2D.Float p = disp.getMouseImagePosition(e); // save the mouse point in image coordinates
+                    mousePoint.x = p.x;
+                    mousePoint.y = p.y;
+                    log.info(mousePoint.toString());
+                }
+            }
+            );
+
+        }
+
     }
 
 }
