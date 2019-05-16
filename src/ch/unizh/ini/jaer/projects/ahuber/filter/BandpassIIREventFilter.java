@@ -247,7 +247,7 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
         for (int idx = 0; idx < npix; idx++) {
 
             int dtUs = lastTs - timestamps[idx];
-            if (dtUs > maxDtUs) {
+            if (dtUs<0 || dtUs > maxDtUs) {
                 updateLowpass(dtUs, idx);
                 updateHighpass(dtUs, idx);
                 updateTimestamp(idx, lastTs);
