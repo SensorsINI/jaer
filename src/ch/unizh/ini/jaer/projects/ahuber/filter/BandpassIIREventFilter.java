@@ -21,8 +21,10 @@ package ch.unizh.ini.jaer.projects.ahuber.filter;
 import com.jogamp.opengl.GLAutoDrawable;
 import eu.seebetter.ini.chips.davis.DavisConfig;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.event.InputEvent;
+import java.awt.Insets;
+import java.awt.Point;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -41,6 +43,10 @@ import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
+import net.sf.jaer.util.chart.Axis;
+import net.sf.jaer.util.chart.Category;
+import net.sf.jaer.util.chart.Series;
+import net.sf.jaer.util.chart.XYChart;
 import scala.actors.threadpool.Arrays;
 
 /**
@@ -62,7 +68,6 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
     private final static float PI2 = (float) (Math.PI * 2);
     private float tauMsCutoff = getFloat("tauMsCutoff", 1000 / (PI2 * 100)); // 100Hz
     private float tauMsCorner = getFloat("tauMsCorner", 1000 / (PI2 * 1)); // 1Hz
-    private boolean showFilterOutput = getBoolean("showFilterOutput", true);
     private float contrast = getFloat("contrast", 0.1f);
     private int cutoffOrder = getInt("cutoffOrder", 1);
     private int cornerOrder = getInt("cornerOrder", 1);
@@ -71,10 +76,14 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
     private boolean balanceThresholdsAutomatically = getBoolean("balanceThresholdsAutomatically", false);
     private float thresholdBalanceTauMs = getFloat("thresholdBalanceTauMs", 10000);
 
-    // rotating bufffer memory to hold past events at each pixel, index is [x][y][events]; index to last event is stored in pointers
+    private boolean showFilterOutput = getBoolean("showFilterOutput", true);
+    private boolean showFilterPlot = false;
+    private int numSamplesToPlot = getInt("numSamplesToPlot", 300);
+
+// rotating bufffer memory to hold past events at each pixel, index is [x][y][events]; index to last event is stored in pointers
     private int[] timestamps = null;
     private float[] input = null, display = null; // state of first and second stage
-    private float[][] lowpass = null, highpass = null, pastHighpassInputs=null;
+    private float[][] lowpass = null, highpass = null, pastHighpassInputs = null;
     private boolean[] initialized = null;
 
     private int sx = 0, sy = 0, npix = 0; // updated on each packet
@@ -82,7 +91,17 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
 
     private ImageDisplay outputDisplay = null;
     private JFrame outputFrame = null;
-    private Point2D.Float mousePoint=new Point2D.Float(); // selected point in sensor pixel coordinates in image display of filter state
+
+    private XYChart plotChart = null;
+    private JFrame plotFrame = null;
+    private Point mousePoint = new Point(-1, -1); // selected point in sensor pixel coordinates in image display of filter state
+    private Axis timeAxis = new Axis();
+    private Axis valueAxis = new Axis(0, 1);
+    private Axis[] axes = new Axis[]{timeAxis, valueAxis};
+    private Series series = new Series(2);
+    private int minPlotTime = Integer.MAX_VALUE, maxPlotTime = Integer.MIN_VALUE;
+    private float minPlotValue = Float.NEGATIVE_INFINITY, maxPlotValue = Float.POSITIVE_INFINITY;
+    private Category category = new Category(series, axes);
 
     public BandpassIIREventFilter(AEChip chip) {
         super(chip);
@@ -97,6 +116,9 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
 
         setPropertyTooltip(displayString, "contrast", "contrast of each event, reduce for more gray scale. Events are automatically scaled by estimated DVS event thresholds.");
         setPropertyTooltip(displayString, "showFilterOutput", "show ImageDisplay of filter output");
+        setPropertyTooltip(displayString, "numSamplesToPlot", "max number of samples of filter output to display in trace");
+        setPropertyTooltip(displayString, "showFilterPlot", "display a rolling plot view of the filter output from selected pixel");
+        series.setCapacity(numSamplesToPlot);
     }
 
     private int computeIdx(int x, int y) {
@@ -180,6 +202,10 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
         Polarity pol = ev.getPolarity();
         int timestamp = ev.timestamp;
         updateFilter(idx, pol, timestamp);
+        if (ev.x == mousePoint.x && ev.y == mousePoint.y) {
+            addPlotPoint(timestamps[idx], highpass[cornerOrder - 1][idx]);
+
+        }
         return;
     }
 
@@ -210,12 +236,12 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
         }
         // highpass needs previous input to compute change. Previous input to each stage is previous output of prior stage. 
         // so save that here before update
-        float[] pastInputs=new float[cornerOrder];
-       
+        float[] pastInputs = new float[cornerOrder];
+
         for (int i = 0; i < cornerOrder; i++) {
             float in = i == 0 ? lowpass[cutoffOrder - 1][idx] : highpass[i - 1][idx];
             highpass[i][idx] = (1 - epsCorner) * highpass[i][idx] + (in - pastHighpassInputs[i][idx]);
-            pastHighpassInputs[i][idx]=in;
+            pastHighpassInputs[i][idx] = in;
         }
     }
 
@@ -247,7 +273,7 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
         for (int idx = 0; idx < npix; idx++) {
 
             int dtUs = lastTs - timestamps[idx];
-            if (dtUs<0 || dtUs > maxDtUs) {
+            if (dtUs < 0 || dtUs > maxDtUs) {
                 updateLowpass(dtUs, idx);
                 updateHighpass(dtUs, idx);
                 updateTimestamp(idx, lastTs);
@@ -345,6 +371,42 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
         outputDisplay.setImageSize(chip.getSizeX(), chip.getSizeY());
         outputDisplay.setPixmapFromGrayArray(display);
         outputDisplay.repaint();
+
+        if (mousePoint != null && showFilterPlot) {
+            if (plotFrame == null) {
+                plotChart = new XYChart("filter output");
+                plotFrame = new JFrame("BandpassIIREventFilter trace");
+                plotFrame.setPreferredSize(new Dimension(sx, sy));
+                plotFrame.getContentPane().add(plotChart, BorderLayout.CENTER);
+                plotFrame.pack();
+                plotFrame.addWindowListener(new WindowAdapter() {
+                    @Override
+                    public void windowClosing(final WindowEvent e) {
+                        setShowFilterPlot(false);
+                    }
+
+                });
+
+                plotChart.setInsets(new Insets(10, 10, 10, 10)); // top left bottom right
+                plotChart.setBackground(Color.WHITE);
+                Axis timeAxis = new Axis();
+                timeAxis.setTitle("time");
+                timeAxis.setUnit("us");
+                Axis valueAxis = new Axis(0, 1);
+                valueAxis.setTitle("out");
+                valueAxis.setUnit("log");
+                Axis[] axes = new Axis[]{timeAxis, valueAxis};
+                Category category = new Category(series, axes);
+                category.setColor(new float[]{1.0f, 0.0f, 0.0f});
+                //        series.setLineWidth(4);
+                plotChart.addCategory(category);
+            }
+            timeAxis.setMinimum(minPlotTime);
+            timeAxis.setMinimum(minPlotTime);
+            valueAxis.setMinimum(minPlotValue);
+            valueAxis.setMaximum(maxPlotValue);
+            plotChart.repaint();
+        }
     }
 
     /**
@@ -438,13 +500,62 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
         putInt("maxDtMsForUpdate", maxDtMsForUpdate);
     }
 
+    /**
+     * @return the showFilterPlot
+     */
+    public boolean isShowFilterPlot() {
+        return showFilterPlot;
+    }
+
+    /**
+     * @param showFilterPlot the showFilterPlot to set
+     */
+    public void setShowFilterPlot(boolean showFilterPlot) {
+        boolean old = this.showFilterPlot;
+        this.showFilterPlot = showFilterPlot;
+        if (showFilterPlot && plotFrame != null && !plotFrame.isVisible()) {
+            plotFrame.setVisible(true);
+        }
+        getSupport().firePropertyChange("showFilterPlot", old, showFilterPlot);
+    }
+
+    /**
+     * @return the numSamplesToPlot
+     */
+    public int getNumSamplesToPlot() {
+        return numSamplesToPlot;
+    }
+
+    /**
+     * @param numSamplesToPlot the numSamplesToPlot to set
+     */
+    public void setNumSamplesToPlot(int numSamplesToPlot) {
+        this.numSamplesToPlot = numSamplesToPlot;
+        putInt("numSamplesToPlot", numSamplesToPlot);
+        series.setCapacity(numSamplesToPlot);
+    }
+
+    private void addPlotPoint(int timestamp, float value) {
+        series.add(timestamp, value);
+        if (value < minPlotValue) {
+            minPlotValue = value;
+        } else if (value > maxPlotValue) {
+            maxPlotValue = value;
+        }
+        if (timestamp < minPlotTime) {
+            minPlotTime = timestamp;
+        } else if (timestamp > maxPlotTime) {
+            maxPlotTime = timestamp;
+        }
+    }
+
     public class ImageKeyMouseHandler {
 
         final ImageDisplay disp;
-        final Point2D.Float mousePoint;
+        final Point mousePoint;
         Thread thread;
 
-        public ImageKeyMouseHandler(ImageDisplay d, Point2D.Float mp, Thread t) {
+        public ImageKeyMouseHandler(ImageDisplay d, Point mp, Thread t) {
             this.disp = d;
             this.mousePoint = mp;
             this.thread = t;
@@ -466,9 +577,15 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
                 ) {
                     super.mouseClicked(e);
                     Point2D.Float p = disp.getMouseImagePosition(e); // save the mouse point in image coordinates
-                    mousePoint.x = p.x;
-                    mousePoint.y = p.y;
+                    mousePoint.x = (int) p.x;
+                    mousePoint.y = (int) p.y;
                     log.info(mousePoint.toString());
+                    series.clear();
+                    minPlotTime = Integer.MAX_VALUE;
+                    maxPlotTime = Integer.MIN_VALUE;
+                    minPlotValue = Float.NEGATIVE_INFINITY;
+                    maxPlotValue = Float.POSITIVE_INFINITY;
+                    showFilterPlot = true;
                 }
             }
             );
