@@ -71,11 +71,10 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
     private float contrast = getFloat("contrast", 0.1f);
     private int cutoffOrder = getInt("cutoffOrder", 1);
     private int cornerOrder = getInt("cornerOrder", 1);
-    private int maxDtMsForUpdate = getInt("maxDtUsForUpdate", 100);
+    private int maxDtMsForUpdate = getInt("maxDtMsForUpdate", 100), lastUpdateTimestamp = Integer.MAX_VALUE;
 
-    private boolean balanceThresholdsAutomatically = getBoolean("balanceThresholdsAutomatically", false);
-    private float thresholdBalanceTauMs = getFloat("thresholdBalanceTauMs", 10000);
-
+//    private boolean balanceThresholdsAutomatically = getBoolean("balanceThresholdsAutomatically", false);
+//    private float thresholdBalanceTauMs = getFloat("thresholdBalanceTauMs", 10000);
     private boolean showFilterOutput = getBoolean("showFilterOutput", true);
     private boolean showFilterPlot = false;
     private int numSamplesToPlot = getInt("numSamplesToPlot", 300), numSamplesCollected = 0;
@@ -95,6 +94,7 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
     private XYChart plotChart = null;
     private JFrame plotFrame = null;
     private Point mousePoint = new Point(-1, -1); // selected point in sensor pixel coordinates in image display of filter state
+    private int mouseIdx = -1;
     private Axis timeAxis = null;
     private Axis valueAxis = null;
     protected boolean autoScalePlotValue = getBoolean("autoScalePlotValue", true);
@@ -229,10 +229,13 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
             initialized[idx] = true;
             updateTimestamp(idx, timestamp);
             initializeLowpass(idx);
+            initializeHighpass(idx);
             return;
         }
         if (dtUs < 0) {
-//            log.warning(String.format("ignoring nonmonotonic timestamp dtUs=%d for event %s", dtUs, ev.toString()));
+            log.warning(String.format("resetting filter on nonmonotonic timestamp dtUs=%d for timestamp %d", dtUs, timestamp));
+
+            resetFilter();
             return;
         }
 
@@ -247,13 +250,11 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
         if (epsCorner > 1) {
             epsCorner = 1; // also too big, clip
         }
-        // highpass needs previous input to compute change. Previous input to each stage is previous output of prior stage. 
-        // so save that here before update
-        float[] pastInputs = new float[cornerOrder];
 
+        final float eps1 = 1 - epsCorner;
         for (int i = 0; i < cornerOrder; i++) {
-            float in = i == 0 ? lowpass[cutoffOrder - 1][idx] : highpass[i - 1][idx];
-            highpass[i][idx] = (1 - epsCorner) * highpass[i][idx] + (in - pastHighpassInputs[i][idx]);
+            final float in = i == 0 ? lowpass[cutoffOrder - 1][idx] : highpass[i - 1][idx];
+            highpass[i][idx] = (eps1) * highpass[i][idx] + (in - pastHighpassInputs[i][idx]);
             pastHighpassInputs[i][idx] = in;
         }
     }
@@ -264,9 +265,10 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
         if (epsCutoff > 1) {
             epsCutoff = 1; // step too big, clip it
         }
+        final float eps1 = 1 - epsCutoff;
         for (int i = 0; i < cutoffOrder; i++) {
-            float in = i == 0 ? input[idx] : lowpass[i - 1][idx];
-            lowpass[i][idx] = (1 - epsCutoff) * lowpass[i][idx] + epsCutoff * in;
+            final float in = i == 0 ? input[idx] : lowpass[i - 1][idx];
+            lowpass[i][idx] = (eps1) * lowpass[i][idx] + epsCutoff * in;
         }
     }
 
@@ -276,9 +278,19 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
         }
     }
 
+    private void initializeHighpass(int idx) {
+        for (int i = 0; i < cornerOrder; i++) {
+            pastHighpassInputs[i][idx] = i==0? input[idx]:0;
+        }
+    }
+
     private void updateDisplay() {
+        if (!showFilterOutput) {
+            return;
+        }
+        final int fidx = cornerOrder - 1;
         for (int idx = 0; idx < npix; idx++) {
-            display[idx] = highpass[cornerOrder - 1][idx] + 0.5f;
+            display[idx] = highpass[fidx][idx] + 0.5f;
         }
     }
 
@@ -289,13 +301,20 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
         }
         final int lastTs = in.getLastTimestamp();
         final int maxDtUs = maxDtMsForUpdate * 1000;
-        for (int idx = 0; idx < npix; idx++) {
+        final int deltaTimeSinceUpdate = lastTs - lastUpdateTimestamp;
+        if (deltaTimeSinceUpdate < 0 || deltaTimeSinceUpdate > maxDtUs) {
+            lastUpdateTimestamp = lastTs;  // prevent excessive CPU updating a bunch of idle pixels too often
+            for (int idx = 0; idx < npix; idx++) {
 
-            int dtUs = lastTs - timestamps[idx];
-            if (dtUs < 0 || dtUs > maxDtUs) {
-                updateLowpass(dtUs, idx);
-                updateHighpass(dtUs, idx);
-                updateTimestamp(idx, lastTs);
+                int dtUs = lastTs - timestamps[idx];
+                if (dtUs < 0 || dtUs > maxDtUs) {
+                    updateLowpass(dtUs, idx);
+                    updateHighpass(dtUs, idx);
+                    updateTimestamp(idx, lastTs);
+                    if (idx == mouseIdx) {
+                        addPlotPoint(timestamps[idx], highpass[cornerOrder - 1][idx]);
+                    }
+                }
             }
         }
     }
@@ -661,6 +680,7 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
                     Point2D.Float p = disp.getMouseImagePosition(e); // save the mouse point in image coordinates
                     mousePoint.x = (int) p.x;
                     mousePoint.y = (int) p.y;
+                    mouseIdx = computeIdx(mousePoint.x, mousePoint.y);
                     log.info(mousePoint.toString());
                     filterOutputSeries.clear();
                     minPlotTime = Integer.MAX_VALUE;
