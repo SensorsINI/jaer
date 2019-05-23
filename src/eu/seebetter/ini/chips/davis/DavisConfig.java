@@ -47,13 +47,16 @@ import net.sf.jaer.stereopsis.MultiCameraBiasgenHardwareInterface;
 import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.ParameterControlPanel;
 import net.sf.jaer.util.PropertyTooltipSupport;
+import net.sf.jaer.util.RemoteControl;
+import net.sf.jaer.util.RemoteControlCommand;
+import net.sf.jaer.util.RemoteControlled;
 
 /**
  * Base class for configuration of Davis cameras
  *
  * @author tobi
  */
-public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface, DavisTweaks, ChipControlPanel {
+public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface, DavisTweaks, ChipControlPanel, RemoteControlled {
     // All preferences, excluding biases.
 
     protected final List<SPIConfigValue> allPreferencesList = new ArrayList<>();
@@ -305,7 +308,6 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         imuControlGUI = new ImuControl(this, imuControl);
 
         // Link to DavisUserControlPanel to update values there too.
-        
         // TODO add observer for updating computed DVS threshold values with diff/diffOn/diffOff change
         dvsRun.addObserver(new Observer() {
             @Override
@@ -341,6 +343,16 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
             }
         });
 
+        if (chip.getRemoteControl() != null) {
+            RemoteControl control=chip.getRemoteControl();
+            control.addCommandListener(this, CMD_BANDWIDTH_TWEAK, CMD_BANDWIDTH_TWEAK + " val - sets DVS bandwidth tweak; range -1:1 range");
+            control.addCommandListener(this, CMD_MAXFIRINGRATE_TWEAK, CMD_MAXFIRINGRATE_TWEAK + " val - sets DVS max firing rate (refractory period) tweak; range -1:1 range");
+            control.addCommandListener(this, CMD_ONOFFBALANCE_TWEAK, CMD_ONOFFBALANCE_TWEAK + " val - sets DVS On/Off event threshold tweak; range -1:1 range");
+            control.addCommandListener(this, CMD_THRESHOLD_TWEAK, CMD_THRESHOLD_TWEAK + " val - sets DVS threshold tweak; range -1:1 range");
+            control.addCommandListener(this, CMD_GETOFFTHRSHOLDLOGE, CMD_GETOFFTHRSHOLDLOGE + " - returns estimated DVS OFF threshold value in log_E units");
+            control.addCommandListener(this, CMD_GETONTHRESHOLDLOGE, CMD_GETONTHRESHOLDLOGE + " - returns estimated DVS ON threshold value in log_E units");
+        }
+
         setBatchEditOccurring(true);
         loadPreferences();
         setBatchEditOccurring(false);
@@ -350,6 +362,44 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         } catch (final HardwareInterfaceException ex) {
             Biasgen.log.log(Level.SEVERE, null, ex);
         }
+    }
+
+    @Override
+    public String processRemoteControlCommand(final RemoteControlCommand command, final String input) {
+        log.log(Level.INFO, "processing RemoteControlCommand {0} with input={1}", new Object[]{command, input});
+
+        if (command == null) {
+            return null;
+        }
+
+        final String[] tokens = input.split(" ");
+        if (tokens.length < 2) {
+            return input + ": unknown command - did you forget the argument?";
+        }
+        if ((tokens[1] == null) || (tokens[1].length() == 0)) {
+            return input + ": argument too short - need a number";
+        }
+        float v = 0;
+        try {
+            v = Float.parseFloat(tokens[1]);
+        } catch (final NumberFormatException e) {
+            return input + ": bad argument? Caught " + e.toString();
+        }
+        final String c = command.getCmdName();
+        if (c.equals(CMD_BANDWIDTH_TWEAK)) {
+            setBandwidthTweak(v);
+        } else if (c.equals(CMD_MAXFIRINGRATE_TWEAK)) {
+            setMaxFiringRateTweak(v);
+        } else if (c.equals(CMD_THRESHOLD_TWEAK)) {
+            setThresholdTweak(v);
+        } else if (c.equals(CMD_ONOFFBALANCE_TWEAK)) {
+            setOnOffBalanceTweak(v);
+        } else if (c.equals(CMD_GETOFFTHRSHOLDLOGE)) {
+            return String.format("%.5f", getOffThresholdLogE());
+        } else if (c.equals(CMD_GETONTHRESHOLDLOGE)) {
+            return String.format("%.5f", getOnThresholdLogE());
+        }
+        return "successfully processed command " + input;
     }
 
     private ParameterControlPanel videoParameterControlPanel;
@@ -681,8 +731,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
     /**
      * Returns the frame interval setting in float ms.
      *
-     * @return value of exposure delay. It is quantized to be a
-     * multiple of 1us.
+     * @return value of exposure delay. It is quantized to be a multiple of 1us.
      * @see #getExposureFrameDelayQuantizationMs()
      */
     public void setFrameIntervalMs(final float ms) {
@@ -690,14 +739,13 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         apsFrameInterval.set(fdUs);
     }
 
-   /**
+    /**
      * Returns the frame interval setting in float ms.
      *
-     * @return value of frame interval. It is quantized to be a
-     * multiple of 1us.
+     * @return value of frame interval. It is quantized to be a multiple of 1us.
      * @see #getExposureFrameDelayQuantizationMs()
      */
-   public float getFrameIntervalMs() {
+    public float getFrameIntervalMs() {
         return apsFrameInterval.get() * .001f;
 
     }
@@ -764,6 +812,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
      */
     @Override
     public void setThresholdTweak(float val) {
+        log.info("setting threshold tweak to "+val);
         if (val > 1) {
             val = 1;
         } else if (val < -1) {
@@ -877,12 +926,14 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         }
     }
 
-    /** see https://ieeexplore.ieee.org/document/7962235 fig 1 */
-    protected float KAPPA_N = .7f, KAPPA_P = 0.7f, CAP_RATIO = 20, THR_FAC=((KAPPA_N / (KAPPA_P * KAPPA_P)) / CAP_RATIO);
+    /**
+     * see https://ieeexplore.ieee.org/document/7962235 fig 1
+     */
+    protected float KAPPA_N = .7f, KAPPA_P = 0.7f, CAP_RATIO = 20, THR_FAC = ((KAPPA_N / (KAPPA_P * KAPPA_P)) / CAP_RATIO);
 
     @Override
     public float getOnThresholdLogE() {
-        return (float) (THR_FAC * Math.log(diffOn.getCurrent()  / diff.getCurrent()));
+        return (float) (THR_FAC * Math.log(diffOn.getCurrent() / diff.getCurrent()));
     }
 
     @Override

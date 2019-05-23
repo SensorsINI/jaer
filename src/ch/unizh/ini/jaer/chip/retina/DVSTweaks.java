@@ -17,6 +17,9 @@ public interface DVSTweaks {
      * value is the new tweak value.
      */
     public static final String BANDWIDTH = "bandwidth", MAX_FIRING_RATE = "maxFiringRate", THRESHOLD = "threshold", ON_OFF_BALANCE = "onOffBalance";
+    
+    /** Remote control command */
+    public static final String CMD_BANDWIDTH_TWEAK="setBandwidthTweak", CMD_THRESHOLD_TWEAK="setThresholdTweak", CMD_ONOFFBALANCE_TWEAK="setOnOffBalanceTweak", CMD_MAXFIRINGRATE_TWEAK="setMaxFiringRateTweak", CMD_GETONTHRESHOLDLOGE="getOnThresholdLogE", CMD_GETOFFTHRSHOLDLOGE="getOffThresholdLogE";
 
     /**
      * Tweaks front end bandwidth, larger is higher bandwidth.

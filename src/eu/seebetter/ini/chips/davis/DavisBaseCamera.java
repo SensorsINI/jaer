@@ -1347,7 +1347,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         if (c.equals(CMD_EXPOSURE)) {
             getDavisConfig().setExposureDelayMs(v);
         } else if (c.equals(CMD_GET_IMU_TEMPERATURE_C)) {
-            return String.format("%.3f", getImuSample().getTemperature());
+            return String.format("%.6f", getImuSample().getTemperature());
         } else if (c.equals(CMD_SET_APS_ENABLED)) {
             getDavisConfig().setCaptureFramesEnabled(boolVal);
             getDavisConfig().setDisplayFrames(boolVal);
