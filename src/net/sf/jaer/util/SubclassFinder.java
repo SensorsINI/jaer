@@ -46,9 +46,9 @@ public class SubclassFinder {
                 ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
                 className2subclassListFileName = (HashMap<String, String>) in.readObject();
                 in.close();
-                log.info("loaded existing filename hashmap from preferences");
+                log.info("loaded SubclassFinder cache existing filename hashmap from preferences. Filename is "+ className2subclassListFileName);
             } else {
-                log.info("no existing filename hashmap to load, must scan classpath to find subclasses");
+                log.info("no existing SubclassFinder cache filename hashmap to load, must scan classpath to find subclasses");
             }
         } catch (Exception e) {
             e.printStackTrace();
