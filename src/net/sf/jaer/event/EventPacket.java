@@ -126,11 +126,13 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      * is not related to the event times of the events in the packet.
      */
     public long systemModificationTimeNs = 0;
-    
-    /** Used to store last timestamp for this packet so that calling getLastTimestamp() can return it instead of 0.
-     * 
+
+    /**
+     * Used to store last timestamp for this packet so that calling
+     * getLastTimestamp() can return it instead of 0.
+     *
      */
-    protected int lastTimestamp=0;
+    protected int lastTimestamp = 0;
 
 //    /**
 //     * Resets the time limiter for input iteration. After the timer times out
@@ -294,17 +296,17 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     }
 
     /**
-     * @return last timestamp in packet. If packet is empty, 
-     * returns stored value of previous read of getLastTimestamp()
+     * @return last timestamp in packet. If packet is empty, returns stored
+     * value of previous read of getLastTimestamp()
      */
     public int getLastTimestamp() {
-       
+
         final int s = size;
         if (s == 0) {
             log.warning("called getLastTimestamp on empty packet, returning previous getLastTimestamp() value");
             return lastTimestamp;
         }
-        lastTimestamp=elementData[s - 1].timestamp;
+        lastTimestamp = elementData[s - 1].timestamp;
         return lastTimestamp;
     }
 
@@ -343,6 +345,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
         } else {
             inputIterator.reset();
         }
+        filteredOutCount = 0;
         return inputIterator;
     }
 
@@ -540,7 +543,6 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
 //            usingTimeout = timeLimitTimer==null?false:timeLimitTimer.isEnabled(); // timelimiter only used if timeLimitTimer is enabled
             // but flag to
             // check it it only set on packet reset
-            filteredOutCount = 0;
         }
 
         /**
@@ -660,7 +662,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     }
 
     /**
-     * Appends event. A copy of the event is appended to the end of the packet 
+     * Appends event. A copy of the event is appended to the end of the packet
      *
      * @param event the event reference to be copied from.
      */
@@ -791,7 +793,8 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     /**
      * Returns the number of events in the packet. If the packet has extra data
      * not consisting of events this method could return 0 but there could still
-     * be data, e.g. sampled ADC data, image frames, etc.
+     * be data, e.g. sampled ADC data, image frames, etc. The size includes
+     * events that have been flagged as "filtered out".
      *
      *
      * @return size in events.
