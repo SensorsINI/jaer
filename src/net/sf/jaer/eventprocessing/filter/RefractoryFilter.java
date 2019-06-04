@@ -28,7 +28,7 @@ import net.sf.jaer.graphics.AbstractAEPlayer;
  */
 @Description("Applies a refractory period to pixels so that they events only pass if there is sufficient time since the last event from that pixel")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class RefractoryFilter extends EventFilter2D implements Observer, PropertyChangeListener {
+public class RefractoryFilter extends AbstractNoiseFilter implements Observer, PropertyChangeListener {
 
     final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
     /**
@@ -84,6 +84,8 @@ public class RefractoryFilter extends EventFilter2D implements Observer, Propert
 //        OutputEventIterator outItr = getOutputPacket().outputIterator();
 //        int sx = chip.getSizeX() - 1;
 //        int sy = chip.getSizeY() - 1;
+        totalEventCount = 0;
+        filteredOutEventCount = 0;
         for (Object e : in) {
             BasicEvent i = (BasicEvent) e;
             if (i.isSpecial()) {
@@ -92,6 +94,7 @@ public class RefractoryFilter extends EventFilter2D implements Observer, Propert
             if (i.x >= sx || i.x < 0 || i.y >= sy || i.y < 0) {
                 continue;
             }
+            totalEventCount++;
             ts = i.timestamp;
             short x = (short) (i.x >>> subsampleBy), y = (short) (i.y >>> subsampleBy);
             int lastt = lastTimestamps[x][y];
@@ -103,6 +106,7 @@ public class RefractoryFilter extends EventFilter2D implements Observer, Propert
                 i.setFilteredOut(false);
             } else {
                 i.setFilteredOut(true);
+                filteredOutEventCount++;
             }
             lastTimestamps[x][y] = ts;
         }
@@ -137,7 +141,7 @@ public class RefractoryFilter extends EventFilter2D implements Observer, Propert
     }
 
     void resetLastTimestamps() {
-        for (int[] a:lastTimestamps ) {
+        for (int[] a : lastTimestamps) {
             Arrays.fill(a, DEFAULT_TIMESTAMP);
         }
     }

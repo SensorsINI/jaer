@@ -32,7 +32,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  */
 @Description("Filters out uncorrelated noise events")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Observer, FrameAnnotater {
+public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter implements Observer {
 
     private final int MAX_DT = 100000, MIN_DT = 10;
     private final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
@@ -45,8 +45,6 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
     private boolean letFirstEventThrough = getBoolean("letFirstEventThrough", true);
     private int numMustBeCorrelated = getInt("numMustBeCorrelated", 5);
 
-    private int totalEventCount = 0;
-    private int filteredOutEventCount = 0;
     private int activityBinDimBits = getInt("activityBinDimBits", 4);
     private int[][] activityHistInput, activityHistFiltered;
     private int binDim, nBinsX, nBinsY, nBinsTotal;
@@ -72,7 +70,7 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         super(chip);
         chip.addObserver(this);
         initFilter();
-        String filt = "1. basic params", adap = "2. AdaptiveFiltering";
+        String filt = "1. basic params", adap = "2. AdaptiveFiltering", disp = "Display";
         setPropertyTooltip(filt, "dt", "Events with less than this delta time in us to neighbors pass through");
         setPropertyTooltip(filt, "subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
         setPropertyTooltip(filt, "letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
@@ -82,8 +80,9 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         setPropertyTooltip(adap, "entropyReductionLowLimit", "if entropy reduction from filtering is below this limit, decrease dt");
         setPropertyTooltip(adap, "entropyReductionHighLimit", "if entropy reduction from filtering is above this limit, increase dt");
         setPropertyTooltip(adap, "dtChangeFraction", "fraction by which dt is increased/decreased per packet if entropyReduction is too low/high");
-         getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
-   }
+        setPropertyTooltip(disp, "showFilteringStatistics", "annotate display with statistics");
+        getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
+    }
 
     /**
      * filters in to out. if filtering is enabled, the number of out may be less
@@ -116,10 +115,10 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
             }
             totalEventCount++;
             int ts = e.timestamp;
-            if(ts<lastTimestamp){
+            if (ts < lastTimestamp) {
                 resetFilter(); // handle rewind TODO check if this breaks with nonmonotonic timestamps
             }
-            lastTimestamp=ts;
+            lastTimestamp = ts;
             final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy);
             if ((x < 0) || (x >= sx) || (y < 0) || (y >= sy)) {
                 e.setFilteredOut(true);
@@ -162,6 +161,29 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
             adaptFiltering();
         }
         return in;
+    }
+
+    @Override
+    public void annotate(GLAutoDrawable drawable) {
+        if (!showFilteringStatistics) {
+            return;
+        }
+        GL2 gl = drawable.getGL().getGL2();
+        gl.glPushMatrix();
+        final GLUT glut = new GLUT();
+        gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
+        gl.glRasterPos3f(0, 0, 0);
+        final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
+        String s = null;
+        if (adaptiveFilteringEnabled) {
+            s = String.format("dt=%.1fms, filteredOutPercent=%%%.1f, entropyReduction=%.1f",
+                    dt * 1e-3f, filteredOutPercent, entropyReduction);
+        } else {
+            s = String.format("filteredOutPercent=%%%.1f",
+                    filteredOutPercent);
+        }
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
+        gl.glPopMatrix();
     }
 
     @Override
@@ -283,29 +305,6 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
         putBoolean("letFirstEventThrough", letFirstEventThrough);
     }
 
-    @Override
-    public void annotate(GLAutoDrawable drawable) {
-        if (!isFilterEnabled()) {
-            return;
-        }
-        GL2 gl = drawable.getGL().getGL2();
-        gl.glPushMatrix();
-        final GLUT glut = new GLUT();
-        gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
-        gl.glRasterPos3f(0, 0, 0);
-        final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
-        String s = null;
-        if (adaptiveFilteringEnabled) {
-            s = String.format("dt=%.1fms, filteredOutPercent=%%%.1f, entropyReduction=%.1f",
-                    dt * 1e-3f, filteredOutPercent, entropyReduction);
-        } else {
-            s = String.format("filteredOutPercent=%%%.1f",
-                    filteredOutPercent);
-        }
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
-        gl.glPopMatrix();
-    }
-
     /**
      * @return the numMustBeCorrelated
      */
@@ -388,13 +387,11 @@ public class SpatioTemporalCorrelationFilter extends EventFilter2D implements Ob
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        super.propertyChange(evt); 
-        if(evt.getPropertyName()==AEInputStream.EVENT_REWOUND){
+        super.propertyChange(evt);
+        if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             resetFilter();
         }
     }
-    
-    
 
     private void resetActivityHistograms() {
         for (int[] i : activityHistInput) {

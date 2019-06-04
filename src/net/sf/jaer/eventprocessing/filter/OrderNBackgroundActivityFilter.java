@@ -39,10 +39,10 @@ import net.sf.jaer.graphics.FrameAnnotater;
  */
 @Description("filters noise based on Khodamoradi and Kastner 2018 IEEE emerging topics paper")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
-public class OrderNBackgroundActivityFilter extends EventFilter2D implements FrameAnnotater {
+public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implements FrameAnnotater {
 
     private int dtUs = getInt("dtUs", 10000);
-    int[] lastRowTs, lastColTs;
+    int[] lastRowTs, lastColTs; // these arrays hold last timestamp of event in each row/column. A value of 0 means no event since reset.
     int[] lastXByRow, lastYByCol;
     int sx = 0, sy = 0;
 
@@ -54,13 +54,15 @@ public class OrderNBackgroundActivityFilter extends EventFilter2D implements Fra
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-
+        totalEventCount=0;
+        filteredOutEventCount=0;
         for (BasicEvent e : in) {
             checkAndFilterEvent(e);
+            totalEventCount++;
+            if(e.isFilteredOut()) filteredOutEventCount++;
         }
-
+//        filteredOutEventCount=in.getFilteredOutCount();
         return in;
-
     }
 
     @Override
@@ -90,44 +92,33 @@ public class OrderNBackgroundActivityFilter extends EventFilter2D implements Fra
         resetFilter();
     }
 
-    @Override
-    public void annotate(GLAutoDrawable drawable) {
-    }
 
     private void checkAndFilterEvent(BasicEvent e) {
 
         // check all neighbors to see if there was event around us suffiently recently
-        e.setFilteredOut(true);
+        e.setFilteredOut(true); // by default filter out
         if (e.x <= 0 || e.y <= 0 || e.x >= sx - 1 || e.y >= sy - 1) {
             saveEvent(e);
             return; // filter out all edge events since we cannot fully check correlation TDOO not really correct
         }
         boolean selfCorrelated = false;
+        // first check rows around us, if any adjancent row has event then filter in
         for (int y = -1; y <= 1; y++) {
-            if (lastRowTs[e.y + y] == 0) {
-                e.setFilteredOut(true);
-                saveEvent(e);
-                return;
-            }
-            if (e.timestamp - lastRowTs[e.y + y] < dtUs
+            if (lastRowTs[e.y + y] != 0 && e.timestamp - lastRowTs[e.y + y] < dtUs
                     && Math.abs(lastXByRow[e.y + y] - e.x) <= 1) {
+                // if there was event (ts!=0), and the timestamp is recent enough, and the column was adjacent, then filter in
                 e.setFilteredOut(false);
                 saveEvent(e);
                 selfCorrelated = y == 0;
             }
-
         }
+        // now do same for columns
         for (int x = -1; x <= 1; x++) {
-            if (lastColTs[e.x + x] == 0) {
-                e.setFilteredOut(true);
-                saveEvent(e);
-                return;
-            }
-            if (e.timestamp - lastColTs[e.x + x] < dtUs
+            if (lastColTs[e.x + x] != 0 && e.timestamp - lastColTs[e.x + x] < dtUs
                     && Math.abs(lastYByCol[e.x + x] - e.y) <= 1) {
                 e.setFilteredOut(false);
                 saveEvent(e);
-                if (selfCorrelated && x == 0) {
+                if (selfCorrelated && x == 0) { // if we correlated with ourselves only, then filter out and just return
                     e.setFilteredOut(true);
                 }
                 return;

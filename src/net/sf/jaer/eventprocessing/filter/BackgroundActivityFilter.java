@@ -24,7 +24,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  */
 @Description("Filters out uncorrelated background activity noise")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class BackgroundActivityFilter extends EventFilter2D implements Observer {
+public class BackgroundActivityFilter extends AbstractNoiseFilter implements Observer {
 
     final int MAX_DT = 100000, MIN_DT = 10;
     final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
@@ -71,7 +71,8 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
         if (lastTimesMap == null) {
             allocateMaps(chip);
         }
-
+       totalEventCount=in.getSize();
+  
         // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
         for (Object eIn : in) {
@@ -112,6 +113,7 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
                 lastTimesMap[x + 1][y - 1] = ts;
             }
         }
+       filteredOutEventCount=in.getFilteredOutCount();
 
         return in;
     }
