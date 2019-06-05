@@ -65,6 +65,7 @@ import net.sf.jaer.util.SpikeSound;
 public class RoShamBoCNN extends DavisClassifierCNNProcessor {
 
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
+    private boolean showInputFrames = false;
     private boolean showSymbol = getBoolean("showSymbol", true);
     protected Statistics statistics = new Statistics();
     protected float decisionLowPassMixingFactor = getFloat("decisionLowPassMixingFactor", 1f);
@@ -84,7 +85,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     private SoundPlayer soundPlayer = null;
     protected boolean playToWin = getBoolean("playToWin", true);
     private boolean addedStatisticsListener = false;
- 
+
     /**
      * for game state machine
      */
@@ -156,8 +157,13 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         setPropertyTooltip(roshambo, "playToWin", "If selected, symbol showsn and sent to hand will  beat human; if unselected, it ties the human");
         setPropertyTooltip(roshambo, "showSymbol", "If selected, symbol is displayed as overlay, either the one recognized or the winner, depending on playToWin");
         setPropertyTooltip(roshambo, "twitch", "make the hand twitch");
+        setPropertyTooltip(roshambo, "rock", "show rock symbol");
+        setPropertyTooltip(roshambo, "scissors", "show scissors symbol");
+        setPropertyTooltip(roshambo, "paper", "show paper symbol");
+        setPropertyTooltip(roshambo, "slowlyWiggle", "turn on slow wiggling of fingers to entice players");
         setPropertyTooltip(roshambo, "turnOff", "turn off the hand (should already happen a short time after each command, to save jammed servos)");
- 
+        setPropertyTooltip(roshambo, "showInputFrames", "toggle display of DvsFramerSingleFrame input to CNN");
+
         dvsFramer.setRectifyPolarities(true);
         dvsFramer.setNormalizeDVSForZsNullhop(true); // to make it work out of the box
 
@@ -1030,6 +1036,14 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         putBoolean("showSymbol", showSymbol);
     }
 
+    public void doToggleOnShowInputFrames() {
+        dvsFramer.setShowFrames(true);
+    }
+
+    public void doToggleOffShowInputFrames() {
+        dvsFramer.setShowFrames(false);
+    }
+
     public void doTwitch() {
         if (checkSerialPortAndWarn()) {
             sendCommandToHand(HAND_CMD_TWITCH);
@@ -1088,5 +1102,4 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
         return true;
     }
 
-  
 }
