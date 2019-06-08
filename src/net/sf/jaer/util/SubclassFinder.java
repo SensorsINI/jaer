@@ -46,7 +46,7 @@ public class SubclassFinder {
                 ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
                 className2subclassListFileName = (HashMap<String, String>) in.readObject();
                 in.close();
-                log.info("loaded SubclassFinder cache existing filename hashmap from preferences. Filename is "+ className2subclassListFileName);
+                log.info("loaded SubclassFinder cache existing filename hashmap from preferences. Key is "+ className2subclassListFileName);
             } else {
                 log.info("no existing SubclassFinder cache filename hashmap to load, must scan classpath to find subclasses");
             }
@@ -172,7 +172,7 @@ public class SubclassFinder {
                 if(cachefilename!=null){
                     f=new File(cachefilename);
                 }
-                if (f != null && f.isFile() && f.exists()) {
+                if (f != null && f.exists() && f.isFile() ) {
                     log.info("for super class " + superClassName + " found cache file " + f.getAbsolutePath());
                     LineNumberReader is = new LineNumberReader(new FileReader(f));
                     // count lines for progress
@@ -199,7 +199,7 @@ public class SubclassFinder {
                     return classes;
                 }
             }
-            log.info("no cache found for " + superClassName + " scanning entire classpath");
+            log.info("no cache found for " + superClassName + "; now scanning entire classpath to build list of subclasses of "+superClassName);
             Class superClass = FastClassFinder.forName(superClassName);
             List<String> allClasses = ListClasses.listClasses();  // expensive, must search all classpath and make big string array list
             int n = ".class".length();
