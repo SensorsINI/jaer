@@ -46,7 +46,7 @@ public class SubclassFinder {
                 ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
                 className2subclassListFileNameMap = (HashMap<String, String>) in.readObject();
                 in.close();
-                log.info("loaded SubclassFinder cache existing filename hashmap from preferences. Key is "+ className2subclassListFileNameMap);
+                log.info("loaded SubclassFinder cache existing filename hashmap from preferences. Key is " + className2subclassListFileNameMap);
             } else {
                 log.info("no existing SubclassFinder cache filename hashmap to load, must scan classpath to find subclasses");
             }
@@ -155,6 +155,7 @@ public class SubclassFinder {
          */
         @Override
         protected ArrayList<ClassNameWithDescriptionAndDevelopmentStatus> doInBackground() throws Exception {
+            long startTime = System.currentTimeMillis();
             setProgress(0);
             String superClassName = clazz.getName();
             ArrayList<ClassNameWithDescriptionAndDevelopmentStatus> classes = new ArrayList<>(300);
@@ -163,17 +164,17 @@ public class SubclassFinder {
                 return classes;
             }
             // see if cache should be used
-            if (useCacheIfAvailable && className2subclassListFileNameMap != null ) {
-                String cachefilename=className2subclassListFileNameMap.get(superClassName);
-                if(cachefilename==null){
-                    log.info("no cache file found for "+superClassName);
+            if (useCacheIfAvailable && className2subclassListFileNameMap != null) {
+                String cachefilename = className2subclassListFileNameMap.get(superClassName);
+                if (cachefilename == null) {
+                    log.info("no cache file found for " + superClassName);
                 }
                 File f = null;
-                if(cachefilename!=null){
-                    f=new File(cachefilename);
+                if (cachefilename != null) {
+                    f = new File(cachefilename);
                 }
-                if (f != null && f.exists() && f.isFile() ) {
-                    log.info("for super class " + superClassName + " found cache file " + f.getAbsolutePath()+"; reading subclasses from this file");
+                if (f != null && f.exists() && f.isFile()) {
+                    log.info("for super class " + superClassName + " found cache file " + f.getAbsolutePath() + "; reading subclasses from this file");
                     LineNumberReader is = new LineNumberReader(new FileReader(f));
                     // count lines for progress
                     while (is.skip(Long.MAX_VALUE) > 0) {
@@ -190,19 +191,22 @@ public class SubclassFinder {
                         final ClassNameWithDescriptionAndDevelopmentStatus myFoundClass = new ClassNameWithDescriptionAndDevelopmentStatus(c);
 //sees if e.g. superclass AEChip can be cast from e.g. c=DVS128, i.e. can we do (AEChip)DVS128?
                         classes.add(myFoundClass);
-                        int prog=(int) (100 * ((float) (linesReadCount++) / nLines));
-                        if(prog>100) prog=100;
+                        int prog = (int) (100 * ((float) (linesReadCount++) / nLines));
+                        if (prog > 100) {
+                            prog = 100;
+                        }
                         setProgress(prog);
                         publish(myFoundClass);
-                        line=is.readLine();
+                        line = is.readLine();
                     }
-                    log.info("Read "+classes.size()+" subclasses from "+cachefilename);
+                    long duration = System.currentTimeMillis() - startTime;
+                    log.info("Read " + classes.size() + " subclasses from " + cachefilename + " in " + duration / 1000 + "s");
                     return classes;
-                }else{
-                    log.info("Cache filename "+cachefilename+" does not lead to a readable file; will rescan entire classpath");
+                } else {
+                    log.info("Cache filename " + cachefilename + " does not lead to a readable file; will rescan entire classpath");
                 }
             }
-            log.info("no cache found for " + superClassName + "; now scanning entire classpath to build list of subclasses of "+superClassName);
+            log.info("no cache found for " + superClassName + "; now scanning entire classpath to build list of subclasses of " + superClassName);
             Class superClass = FastClassFinder.forName(superClassName);
             List<String> allClasses = ListClasses.listClasses();  // expensive, must search all classpath and make big string array list
             int n = ".class".length();
@@ -267,7 +271,7 @@ public class SubclassFinder {
                 ps.println(clz.getClassName());
             }
             ps.close();
-            log.info("wrote "+classes.size()+" classes to cache file "+cacheFile.getAbsolutePath());
+            log.info("wrote " + classes.size() + " classes to cache file " + cacheFile.getAbsolutePath());
             if (className2subclassListFileNameMap == null) {
                 className2subclassListFileNameMap = new HashMap<String, String>();
             }
@@ -279,7 +283,9 @@ public class SubclassFinder {
             // Get the bytes of the serialized object
             byte[] buf = bos.toByteArray();
             prefs.putByteArray(SUBCLASS_FINDERFILENAME_HASH_MAP_PREFS_KEY, buf);
-            log.info("stored cache file name with preferences key "+SUBCLASS_FINDERFILENAME_HASH_MAP_PREFS_KEY);
+            log.info("stored cache file name with preferences key " + SUBCLASS_FINDERFILENAME_HASH_MAP_PREFS_KEY);
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("Scanned " + classes.size() + " subclasses in " + duration / 1000 + "s");
 
             return classes;
         }
