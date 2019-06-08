@@ -36,7 +36,7 @@ public class SubclassFinder {
 // TODO needs a way of caching in preferences the list of classes and the number or checksum of classes,
     // to reduce startup time, since this lookup of subclasses takes 10s of seconds on some machines
 
-    private static HashMap<String, String> className2subclassListFileName = null;
+    private static HashMap<String, String> className2subclassListFileNameMap = null; // map from super class to filename of file that holds the subclasses
     private static final String SUBCLASS_FINDERFILENAME_HASH_MAP_PREFS_KEY = "SubclassFinder.filenameHashMap";
 
     static {
@@ -44,9 +44,9 @@ public class SubclassFinder {
             byte[] bytes = prefs.getByteArray(SUBCLASS_FINDERFILENAME_HASH_MAP_PREFS_KEY, null);
             if (bytes != null) {
                 ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
-                className2subclassListFileName = (HashMap<String, String>) in.readObject();
+                className2subclassListFileNameMap = (HashMap<String, String>) in.readObject();
                 in.close();
-                log.info("loaded SubclassFinder cache existing filename hashmap from preferences. Key is "+ className2subclassListFileName);
+                log.info("loaded SubclassFinder cache existing filename hashmap from preferences. Key is "+ className2subclassListFileNameMap);
             } else {
                 log.info("no existing SubclassFinder cache filename hashmap to load, must scan classpath to find subclasses");
             }
@@ -163,8 +163,8 @@ public class SubclassFinder {
                 return classes;
             }
             // see if cache should be used
-            if (useCacheIfAvailable && className2subclassListFileName != null ) {
-                String cachefilename=className2subclassListFileName.get(superClassName);
+            if (useCacheIfAvailable && className2subclassListFileNameMap != null ) {
+                String cachefilename=className2subclassListFileNameMap.get(superClassName);
                 if(cachefilename==null){
                     log.info("no cache file found for "+superClassName);
                 }
@@ -197,6 +197,8 @@ public class SubclassFinder {
                         line=is.readLine();
                     }
                     return classes;
+                }else{
+                    log.info("Cache filename "+cachefilename+" does not lead to a readable file; will rescan entire classpath");
                 }
             }
             log.info("no cache found for " + superClassName + "; now scanning entire classpath to build list of subclasses of "+superClassName);
@@ -265,13 +267,13 @@ public class SubclassFinder {
             }
             ps.close();
             log.info("wrote "+classes.size()+" classes to cache file "+cacheFile.getAbsolutePath());
-            if (className2subclassListFileName == null) {
-                className2subclassListFileName = new HashMap<String, String>();
+            if (className2subclassListFileNameMap == null) {
+                className2subclassListFileNameMap = new HashMap<String, String>();
             }
-            className2subclassListFileName.put(superClassName, cacheFile.getAbsolutePath());
+            className2subclassListFileNameMap.put(superClassName, cacheFile.getAbsolutePath());
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             ObjectOutput oos = new ObjectOutputStream(bos);
-            oos.writeObject(className2subclassListFileName);
+            oos.writeObject(className2subclassListFileNameMap);
             oos.close();
             // Get the bytes of the serialized object
             byte[] buf = bos.toByteArray();
