@@ -173,7 +173,7 @@ public class SubclassFinder {
                     f=new File(cachefilename);
                 }
                 if (f != null && f.exists() && f.isFile() ) {
-                    log.info("for super class " + superClassName + " found cache file " + f.getAbsolutePath());
+                    log.info("for super class " + superClassName + " found cache file " + f.getAbsolutePath()+"; reading subclasses from this file");
                     LineNumberReader is = new LineNumberReader(new FileReader(f));
                     // count lines for progress
                     while (is.skip(Long.MAX_VALUE) > 0) {
@@ -196,6 +196,7 @@ public class SubclassFinder {
                         publish(myFoundClass);
                         line=is.readLine();
                     }
+                    log.info("Read "+classes.size()+" subclasses from "+cachefilename);
                     return classes;
                 }else{
                     log.info("Cache filename "+cachefilename+" does not lead to a readable file; will rescan entire classpath");
