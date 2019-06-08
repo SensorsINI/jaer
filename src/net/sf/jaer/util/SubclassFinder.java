@@ -157,7 +157,7 @@ public class SubclassFinder {
         protected ArrayList<ClassNameWithDescriptionAndDevelopmentStatus> doInBackground() throws Exception {
             setProgress(0);
             String superClassName = clazz.getName();
-            ArrayList<ClassNameWithDescriptionAndDevelopmentStatus> classes = new ArrayList<>(100);
+            ArrayList<ClassNameWithDescriptionAndDevelopmentStatus> classes = new ArrayList<>(300);
             if (superClassName == null) {
                 log.warning("tried to find subclasses of null class name, returning empty list");
                 return classes;
