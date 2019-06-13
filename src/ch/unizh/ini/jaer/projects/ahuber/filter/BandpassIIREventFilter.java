@@ -32,6 +32,8 @@ import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Point2D;
+import java.beans.PropertyChangeEvent;
+import java.util.logging.Level;
 import javax.swing.JFrame;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -40,6 +42,9 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
+import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEInputStream;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -105,6 +110,7 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
     private int minPlotTime = Integer.MAX_VALUE, maxPlotTime = Integer.MIN_VALUE;
     private float minPlotValue = Float.POSITIVE_INFINITY, maxPlotValue = Float.NEGATIVE_INFINITY;
     private Category filterOutputCategory = null, inputCategory = null;
+    private boolean addedViewerPropertyChangeListener;
 
     public BandpassIIREventFilter(AEChip chip) {
         super(chip);
@@ -188,6 +194,12 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         checkMemory();
+        if (!addedViewerPropertyChangeListener) {
+            if (chip.getAeViewer() != null) {
+                chip.getAeViewer().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+                addedViewerPropertyChangeListener = true;
+            }
+        }
         for (final Object o : in) {
             if (!(o instanceof PolarityEvent)) {
                 throw new RuntimeException("must be PolarityEvent to process");
@@ -195,7 +207,9 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
             final PolarityEvent e = (PolarityEvent) o;
             filterEvent(e);
         }
+
         updateNonActiveFilters(in);
+
         updateDisplay();
         return in;
     }
@@ -280,7 +294,7 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
 
     private void initializeHighpass(int idx) {
         for (int i = 0; i < cornerOrder; i++) {
-            pastHighpassInputs[i][idx] = i==0? input[idx]:0;
+            pastHighpassInputs[i][idx] = i == 0 ? input[idx] : 0;
         }
     }
 
@@ -648,6 +662,7 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
     public void setMaxPlotAxisValue(float maxPlotAxisValue) {
         this.maxPlotAxisValue = maxPlotAxisValue;
         putFloat("maxPlotAxisValue", maxPlotAxisValue);
+
     }
 
     public class ImageKeyMouseHandler {
@@ -692,6 +707,26 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
             }
             );
 
+        }
+
+    }
+
+    /**
+     * Handle rewind events
+     */
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        super.propertyChange(evt);
+        switch (evt.getPropertyName()) {
+            case AEInputStream.EVENT_REWOUND:
+            case AEInputStream.EVENT_WRAPPED_TIME:
+                try {
+                    resetFilter();
+                } catch (Exception e) {
+                    log.log(Level.SEVERE, "For EventFilter2D " + this.getClass() + " caught exception in initFilter(): " + e.toString(), e);
+                }
+                break;
+            default:
         }
 
     }
