@@ -73,7 +73,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     public ImageDisplay display;
     private boolean showOutput;
     private volatile boolean newApsFrameAvailable = false;
-    private int endOfFrameTimestamp = 0, lastTimestamp = 0;
+    private int endOfFrameTimestamp = Integer.MIN_VALUE, lastTimestamp = 0;
     protected boolean writeDvsSliceImageOnApsFrame = getBoolean("writeDvsSliceImageOnApsFrame", false);
     private boolean writeDvsFrames = getBoolean("writeDvsFrames", true);
     private boolean writeApsFrames = getBoolean("writeApsFrames", false);
@@ -127,6 +127,10 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         frameExtractor.filterPacket(in); // process frame extractor, target labeler and dvsframer
         targetLabeler.filterPacket(in);
         dvsFrame.checkParameters();
+        if (aviOutputImage == null || aviOutputImage.getWidth() != getOutputImageWidth() || aviOutputImage.getHeight() != getOutputImageHeight()) {
+            aviOutputImage = new BufferedImage(getOutputImageWidth(),
+                    dvsFrame.getOutputImageHeight(), BufferedImage.TYPE_INT_BGR);
+        }
 
         checkSubsampler();
         for (BasicEvent e : in) {
@@ -261,13 +265,15 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             chip.getAeViewer().getAePlayer().rewind();
             ignoreRewinwdEventFlag = true;
         }
-        aviOutputImage = new BufferedImage(getOutputImageWidth(),
-                dvsFrame.getOutputImageHeight(), BufferedImage.TYPE_INT_BGR);
 
     }
 
     private int getOutputImageWidth() {
         return (writeApsFrames && writeDvsFrames) ? dvsFrame.getOutputImageWidth() * 2 : dvsFrame.getOutputImageWidth();
+    }
+
+    private int getOutputImageHeight() {
+        return (writeApsFrames && writeDvsFrames) ? dvsFrame.getOutputImageHeight() * 2 : dvsFrame.getOutputImageHeight();
     }
 
     private int getDvsStartingX() {
@@ -386,6 +392,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     }
 
     private BufferedImage toImage(DvsFramerSingleFrame dvsFramer) {
+        if (aviOutputImage == null) {
+            throw new RuntimeException("null aviOutputImage; output has not yet been opened");
+        }
         int[] bd = ((DataBufferInt) aviOutputImage.getRaster().getDataBuffer()).getData();
 
         for (int y = 0; y < dvsFrame.getOutputImageHeight(); y++) {
@@ -448,7 +457,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             frame.pack();
             frame.addWindowListener(new WindowAdapter() {
                 @Override
-				public void windowClosing(WindowEvent e) {
+                public void windowClosing(WindowEvent e) {
                     setShowOutput(false);
                 }
             });
@@ -866,12 +875,15 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         writer.setCloseOnRewind(oldCloseOnRewind);
         writer.doCloseFile();
         System.out.println(String.format("Settings: aechip=%s\nwidth=%d height=%d quality=%f format=%s framerate=%d grayscale=%d\n"
+                + "writeapsframes=%s writedvsframes=%s\n"
                 + "writedvssliceonapsframe=%s writetimecodefile=%s\n"
                 + "timeslicemethod=%s numevents=%d framedurationus=%d\n"
                 + " rectify=%s normalize=%s nullhopnormalize=%s showoutput=%s maxframes=%d",
                 chipname, writer.getDvsFrame().getOutputImageWidth(), writer.getDvsFrame().getOutputImageHeight(),
                 writer.getCompressionQuality(), writer.getFormat().toString(),
-                writer.getFrameRate(), writer.getDvsFrame().getDvsGrayScale(), writer.isWriteDvsSliceImageOnApsFrame(),
+                writer.getFrameRate(), writer.getDvsFrame().getDvsGrayScale(),
+                writer.isWriteApsFrames(), writer.isWriteDvsFrames(),
+                writer.isWriteDvsSliceImageOnApsFrame(),
                 writer.isWriteTimecodeFile(), writer.getDvsFrame().getTimeSliceMethod().toString(),
                 writer.getDvsFrame().getDvsEventsPerFrame(), writer.getDvsFrame().getTimeDurationUsPerFrame(),
                 writer.getDvsFrame().isRectifyPolarities(),

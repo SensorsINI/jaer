@@ -234,10 +234,10 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      */
     public AVIOutputStream openAVIOutputStream(File f, String[] additionalComments) {
         try {
-            AVIOutputStream os = new AVIOutputStream(f, format);
+            aviOutputStream = new AVIOutputStream(f, format);
 //            aviOutputStream.setFrameRate(chip.getAeViewer().getFrameRate());
-            os.setFrameRate(frameRate);
-            os.setVideoCompressionQuality(compressionQuality);
+            aviOutputStream.setFrameRate(frameRate);
+            aviOutputStream.setVideoCompressionQuality(compressionQuality);
 //            aviOutputStream.setVideoDimension(chip.getSizeX(), chip.getSizeY());
             lastFile = f;
             lastFileName = f.toString();
@@ -266,7 +266,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             setFramesWritten(0);
             getSupport().firePropertyChange("framesWritten", null, framesWritten);
             setWriteEnabled(true);
-            return os;
+            return aviOutputStream;
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(null, ex.toString(), "Couldn't create output file stream", JOptionPane.WARNING_MESSAGE, null);
             return null;
@@ -368,7 +368,9 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         if (maxFrames > 0 && framesWritten >= maxFrames) {
             log.info("wrote maxFrames=" + maxFrames + " frames; closing AVI file");
             doCloseFile();
-            JOptionPane.showMessageDialog(chip.getAeViewer(), "Closed file " + lastFileName + " after " + framesWritten + " maxFrames frames were written");
+            if(chip.getAeViewer()!=null){ // only show if interactive
+                JOptionPane.showMessageDialog(chip.getAeViewer(), "Closed file " + lastFileName + " after " + framesWritten + " maxFrames frames were written");
+            }
         }
     }
 
