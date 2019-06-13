@@ -21,6 +21,9 @@
         <spellchecker-wordlist xmlns="http://www.netbeans.org/ns/spellchecker-wordlist/1">
             <word>addr</word>
             <word>biasgen</word>
+            <word>classpath</word>
+            <word>clazz</word>
+            <word>configurability</word>
             <word>Delbruck</word>
             <word>DVS</word>
             <word>INI</word>
