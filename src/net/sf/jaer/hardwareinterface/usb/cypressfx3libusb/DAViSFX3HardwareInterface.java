@@ -43,7 +43,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	/** The USB product ID of this device */
 	static public final short PID_FX3 = (short) 0x841A;
 	static public final short PID_FX2 = (short) 0x841B;
-	static public final int REQUIRED_FIRMWARE_VERSION_FX3 = 5;
+	static public final int REQUIRED_FIRMWARE_VERSION_FX3 = 6;
 	static public final int REQUIRED_FIRMWARE_VERSION_FX2 = 4;
 	static public final int REQUIRED_LOGIC_REVISION_FX3 = 18;
 	static public final int REQUIRED_LOGIC_REVISION_FX2 = 18;
