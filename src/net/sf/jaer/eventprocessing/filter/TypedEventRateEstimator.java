@@ -5,6 +5,8 @@
 package net.sf.jaer.eventprocessing.filter;
 
 import java.beans.PropertyChangeListener;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -17,6 +19,9 @@ import net.sf.jaer.event.TypedEvent;
  *
  * @author tobi
  */
+@Description("Estimates event rates of TypedEvent in a packet. Expensive because it splits\n" +
+" * up data to temporary packets to estimate rate.")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class TypedEventRateEstimator extends EventRateEstimator {
 
     private int numCellTypes = 0;

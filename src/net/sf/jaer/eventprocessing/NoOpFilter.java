@@ -5,6 +5,7 @@
 package net.sf.jaer.eventprocessing;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -15,6 +16,7 @@ import net.sf.jaer.event.OutputEventIterator;
  * @author tobi
  */
 @Description("A do-nothing filter used to measure cost of packet iteration and event-copying")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class NoOpFilter extends EventFilter2D {
     
     public boolean copyInputPacket=false;

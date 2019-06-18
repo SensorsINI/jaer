@@ -31,7 +31,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * chicca, Chiara Bartolozzi Telluride 2017
  */
 @Description("Filters out uncorrelated noise events")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter implements Observer {
 
     private final int MAX_DT = 100000, MIN_DT = 10;

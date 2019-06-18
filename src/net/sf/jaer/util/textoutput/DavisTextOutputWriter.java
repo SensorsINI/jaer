@@ -58,7 +58,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 @Description("<html>Writes out text format files with DVS and IMU data from DAVIS and DVS cameras."
         + " <p>Previous filtering affects the output. "
         + "<p>Output format is compatible with <a href=\"http://rpg.ifi.uzh.ch/davis_data.html\">rpg.ifi.uzh.ch/davis_data.html</a>")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements PropertyChangeListener {
 
     private boolean dvsEvents = getBoolean("dvsEvents", true);

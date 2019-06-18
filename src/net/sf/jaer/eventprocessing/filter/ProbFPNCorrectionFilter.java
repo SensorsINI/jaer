@@ -18,6 +18,7 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -34,6 +35,7 @@ firing rate the same as the global average.
  * @author tobi
  */
 @Description("Adjusts probability of transmission of event so that average rate of activity is the same for all cells")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class ProbFPNCorrectionFilter extends EventFilter2D implements FrameAnnotater{
     float[][][] isi;
     int[][][] lastTs;

@@ -12,6 +12,8 @@ package net.sf.jaer.eventprocessing.filter;
 
 import java.beans.PropertyChangeSupport;
 import java.util.prefs.Preferences;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
@@ -21,6 +23,8 @@ import net.sf.jaer.eventprocessing.EventFilter;
  * A class that filters raw event packets (not EventPacket) and only outputs events whose bits are set as in address.
  * @author tobi
  */
+@Description("Filters raw event packets (not EventPacket) and only outputs events whose bits are set as in addres")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class RawAddressFilter {
     
     protected Preferences prefs=Preferences.userNodeForPackage(EventFilter.class);

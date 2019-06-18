@@ -23,7 +23,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author tobid
  */
 @Description("Exposes DAVIS frames at desired (and low) frame rate for a time lapse movie mode")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class TimeLapse extends EventFilter2D implements FrameAnnotater {
 
     private float frameRateHz = getFloat("frameRateHz", 1);

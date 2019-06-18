@@ -69,7 +69,7 @@ import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
  * @author tobi
  */
 @Description("Compenstates global scene translation and rotation to stabilize scene like a SteadiCam, using built-in IMU or other methods of estimation of camera rotation.")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotater, Observer, PropertyChangeListener {
 
     /**

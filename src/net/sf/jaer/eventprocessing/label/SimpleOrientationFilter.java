@@ -34,7 +34,7 @@ import net.sf.jaer.event.orientation.DvsOrientationEvent;
  * DvsOrientationEvent or BinocularEvents.
  * @author tobi/phess */
 @Description("Detects local orientation by spatio-temporal correlation for DVS sensors")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SimpleOrientationFilter extends AbstractOrientationFilter{
     //TODO: The oriHistoryMap is still not completely bias-free.
     //      The values for orientation range from 0-3 and each time we update

@@ -38,7 +38,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author Tobi Delbruck
  */
 @Description("filters noise based on Khodamoradi and Kastner 2018 IEEE emerging topics paper")
-@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implements FrameAnnotater {
 
     private int dtUs = getInt("dtUs", 10000);
