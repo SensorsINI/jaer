@@ -77,7 +77,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
     @Override
     public Tensor processAPSDVSFrame(APSDVSFrame frame) {
         final int numChannels = 3; //frame.NUM_CHANNELS;
-        final int sx = frame.getWidth(), sy = frame.getHeight();
+      final int sx = frame.getWidth(), sy = frame.getHeight();
         FloatBuffer fb = FloatBuffer.allocate(sx * sy * numChannels);
         for (int y = 0; y < sy; y++) {
             for (int x = 0; x < sx; x++) {
@@ -99,15 +99,15 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
         //Tensor results = TensorFlow.executeGraphAndReturnTensor(executionGraph, inputImageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
         Tensor results = TensorFlow.executeGraphAndReturnTensorWithBoolean(executionGraph, inputImageTensor, processor.getInputLayerName(), t, "phase_train", processor.getOutputLayerName());
         getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
-        return results;
+        return results;   
     }
-
+    
     @Override
     public void processAPSDVSFrameArray(APSDVSFrame frame, float[] array) {
-        final int numChannels = 3; //frame.NUM_CHANNELS;
-        final int sx = frame.getWidth(), sy = frame.getHeight();
+      final int numChannels = 3; //frame.NUM_CHANNELS;
+      final int sx = frame.getWidth(), sy = frame.getHeight();
         FloatBuffer fb = FloatBuffer.allocate(sx * sy * numChannels);
-        float[][][][] buf = new float[1][260][344][1];
+        float[][][][] buf = new float[1][260][344][1]; // TODO: this is hardcoded, btw processAPSDVSFrameArray function is never used.
         float nbNulPix = 0;
         for (int y = 0; y < sy; y++) {
             for (int x = 0; x < sx; x++) {
@@ -117,24 +117,24 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
                     } else {
                         buf[0][y][x][c] = frame.getValue(c, x, y) * 255;
                         //if( c==1 && frame.getValue(c,x,y)== 0)
-                        //nbNulPix++;
-
+                           //nbNulPix++;
+                            
                     }
                 }
                 //nbNulPix+=buf[0][y][x][0];
-
+                
             }
         }
         System.out.println(Float.toString(nbNulPix / (90 * 120)));
         fb.rewind();
         //Tensor<Float> inputImageTensor = Tensor.create(new long[]{1, sy, sx, numChannels}, fb);
-        Tensor<Float> inputImageTensor = Tensor.create(buf, Float.class);
+        Tensor<Float> inputImageTensor = Tensor.create(buf,  Float.class);
         Boolean b = false;
         Tensor<Boolean> t = Tensor.create(b, Boolean.class);
         //executionGraph.opBuilder("MaxPoolWithArgmax", "MyMaxPoolWithArgmax").setAttr("dtype", inputImageTensor.dataType()).setAttr("value", inputImageTensor).build();
         //Tensor results = TensorFlow.executeGraphAndReturnTensor(executionGraph, inputImageTensor, processor.getInputLayerName(), processor.getOutputLayerName());
         //TensorFlow.executeGraphAndReturnTensorWithBooleanArray(array, executionGraph, inputImageTensor, processor.getInputLayerName(),t,"phase_train", processor.getOutputLayerName());
-        getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
+        getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);  
     }
 
     @Override
@@ -204,12 +204,13 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
                 .get(0).expect(Float.class);
 
         float[] results = null;
-
-        if (savedModelBundle == null) {
-            //results = TensorFlow.executeGraph(executionGraph, normalizedImage, processor.getInputLayerName(), processor.getOutputLayerName());
+        
+        /*if (savedModelBundle == null) {
+            results = TensorFlow.executeGraph(executionGraph, normalizedImage, processor.getInputLayerName(), processor.getOutputLayerName());
         } else {
-            //results = TensorFlow.executeSession(savedModelBundle, normalizedImage, processor.getInputLayerName(), processor.getOutputLayerName());
-        }
+            results = TensorFlow.executeSession(savedModelBundle, normalizedImage, processor.getInputLayerName(), processor.getOutputLayerName());
+        }*/
+        
         outputLayer = new OutputLayer(results);
         getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
         return results;
@@ -217,7 +218,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
 
     // added to extract the output shape at first inference.
     private static int[] outShape = null;
-
+    
     /**
      * Executes the stored Graph of the CNN.
      *
@@ -275,16 +276,16 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
 
             //TIMING
             long startTime = System.nanoTime();
-
+            
             outputLayer = new OutputLayer(output);
-
+            
             long dtNs_outputLayer = (System.nanoTime() - startTime);
-            log.info("outputLayer took " + (dtNs_outputLayer * 1e-6f) + " ms");
-
-            if (isSoftMaxOutput()) {
+            log.info("outputLayer took " + (dtNs_outputLayer * 1e-6f) + " ms");  
+            
+            //if (isSoftMaxOutput()) {
                 //computeSoftMax();
-                throw new UnsupportedOperationException("Removed implementation.");
-            }
+            //    throw new UnsupportedOperationException("Removed implementation.");
+            //}
             getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
             return output;
         } catch (IllegalArgumentException ex) {
@@ -312,21 +313,34 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
      * computes the softmax on the existing activations. * Computes softmax on
      * its input activations, by o_i= exp(a_i)/sum_k(exp(a_k)) where o_i is the
      * i'th output and a_k is the k'th input.
-     *
-     * private void computeSoftMax() { float[] activations =
-     * outputLayer.getActivations(); if ((activations == null) ||
-     * (activations.length == 0)) { log.warning("tried to compute softmax on
-     * null or empty output layer activations"); return; } float sum = 0; for
-     * (int k = 0; k < activations.length; k++) { // simply MAC the weight times
-     * the input activation float f = (float) Math.exp(activations[k]); if
-     * (Float.isInfinite(f)) { f = Float.MAX_VALUE; // handle exponential
-     * overflow } sum += f; activations[k] = f; } outputLayer.maxActivation =
-     * Float.NEGATIVE_INFINITY; float r = 1 / sum; for (int k = 0; k < activations.length; k++) { // simply MAC the weight times the input activation
-     * activations[k] *= r;
-     * if (activations[k] > outputLayer.maxActivation) {
-     * outputLayer.maxActivatedUnit = k; outputLayer.maxActivation =
-     * activations[k]; } } }
-     */
+     
+    private void computeSoftMax() {
+        float[] activations = outputLayer.getActivations();
+        if ((activations == null) || (activations.length == 0)) {
+            log.warning("tried to compute softmax on null or empty output layer activations");
+            return;
+        }
+        float sum = 0;
+        for (int k = 0; k < activations.length; k++) { // simply MAC the weight times the input activation
+            float f = (float) Math.exp(activations[k]);
+            if (Float.isInfinite(f)) {
+                f = Float.MAX_VALUE; // handle exponential overflow
+            }
+            sum += f;
+            activations[k] = f;
+        }
+        outputLayer.maxActivation = Float.NEGATIVE_INFINITY;
+        float r = 1 / sum;
+        for (int k = 0; k < activations.length; k++) { // simply MAC the weight times the input activation
+            activations[k] *= r;
+            if (activations[k] > outputLayer.maxActivation) {
+                outputLayer.maxActivatedUnit = k;
+                outputLayer.maxActivation = activations[k];
+            }
+        }
+    }
+    */
+
     @Override
     public float[][][] processInputPatchFrame(AEFrameChipRenderer frame, int offX, int offY) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
@@ -395,8 +409,8 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
                         || s.contains("prediction")) {  // find input placeholder & output
 //                    int numOutputs = o.numOutputs();
 //                    if(! s.contains("output_shape") && !s.contains("conv2d_transpos")){
-                    b.append("********** ");
-                    ioLayers.add(s);
+                        b.append("********** ");
+                        ioLayers.add(s);
 //                    for (int onum = 0; onum < numOutputs; onum++) {
 //                        Output output = o.output(onum);
 //                        Shape shape = output.shape();
@@ -406,7 +420,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
 //                        }
 //                    }
 //                    int inputLength=o.inputListLength("");
-                    b.append(opnum++ + ": " + o.toString() + "\n");
+                        b.append(opnum++ + ": " + o.toString() + "\n");
 //                    }
                 }
             }
@@ -431,10 +445,10 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
 
         float[] outActivations;
         int numUnits;
-
+        
         float[][] maxActAndLocPerMap; // stores max activation and location for each map.
-
-        /*  public OutputLayer(float[][][] output) {
+        
+        /*public OutputLayer(float[][][] output) {
             float[][] tmpMapActivations = new float[output.length][output[0].length];
             float[][] tmpMaxActAndLocPerMap = new float[output[0][0].length][3]; // hardcoded, max value and x,y position.
             outActivations = output;
@@ -448,6 +462,8 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
             tmpMaxActAndLocPerMap[k] = TensorFlow.maxIndex(tmpMapActivations); // maxIndex returns both max activation and location
             }
             maxActAndLocPerMap = tmpMaxActAndLocPerMap; }*/
+        
+        
         // This method is modified to extract the max from the 1d array output of the network. Previously was working on 3d array.
         // This method loops over the network output and extracts max position and activation for each heatmap.
         public OutputLayer(float[] output) {
@@ -517,30 +533,38 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
             log.info(String.format("max (in tmp) took %.3fms", 1e-6f * (t1 - t0)));
             log.info(String.format("max copy  from tmp %.3fms", 1e-6f * (System.nanoTime() - t1)));
         }
-
+        
+        
         @Override
         public int getNumUnits() {
             return numUnits;
         }
-
+        
+              
+                
         //@Override
         //public int[] getMaxActivatedUnit() {
         //    return maxActivatedUnitPerMap;
         //}
+
         //@Override
         //public void setMaxActivatedUnit(int unit) {
         //    maxActivatedUnitPerMap = unit;
         //}
+
         //@Override
         //public float[] getMaxActivation() {
         //    return maxActivationPerMap;
         //}
+
         //@Override
         //public void drawHistogram(GL2 gl, int width, int height, float lineWidth, Color color) {
         //    AbstractDavisCNN.drawHistogram(gl, outActivations, width, height, lineWidth, color);
         //}
+        
+        
         @Override
-        public float[][] getMaxActAndLocPerMap() {
+        public float[][] getMaxActAndLocPerMap(){
             return maxActAndLocPerMap;
         }
 

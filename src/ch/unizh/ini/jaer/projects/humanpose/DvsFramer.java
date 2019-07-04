@@ -106,7 +106,7 @@ abstract public class DvsFramer extends EventFilter2D {
     /**
      * Output image width and height
      */
-    protected int outputImageWidth = getInt("outputImageWidth", 0), outputImageHeight = getInt("outputImageHeight", 0);
+    protected int outputImageWidth = getInt("outputImageWidth", 346), outputImageHeight = getInt("outputImageHeight", 260);
 
     /**
      * frame cut is the pixels we cut from the original image, it follows [[top,
@@ -132,7 +132,7 @@ abstract public class DvsFramer extends EventFilter2D {
     /**
      * range 0-rangeNormalizeFrame for frame normalization
      */
-    protected int rangeNormalizeFrame=0;
+    protected int rangeNormalizeFrame=255;
 
     /**
      * Makes a new DvsSubsamplingTimesliceConvNetInput
@@ -808,7 +808,14 @@ abstract public class DvsFramer extends EventFilter2D {
 //                    imageDisplay.setPixmapGray(x, y, lastDvsFrame.getValueAtPixel(x, y));
 //                }
 //            }
-            imageDisplay.setPixmapFromGrayArray(pixmap);
+            
+            
+            //imageDisplay.setPixmapFromGrayArray(pixmap);
+            float [] pixmap_range_0_1 = new float[pixmap.length];
+            for(int i=0;i<pixmap.length;i++){
+                pixmap_range_0_1[i] = pixmap[i]/255;
+            }
+            imageDisplay.setPixmapFromGrayArray(pixmap_range_0_1);
             imageDisplay.display();
         }
 
