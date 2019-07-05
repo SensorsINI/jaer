@@ -63,7 +63,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     private float offsetX = getFloat("offsetX", -2.0f);
     private float offsetY = getFloat("offsetY", -1.0f);
     private float gainMotion = getFloat("gainMotion", 70.0f);
-    private float motionDecay = getFloat("motionDecay", 0.96f);
+    private float motionMixingFactor = getFloat("motionMixingFactor", 0.04f);
     private boolean displayXEvents = true;
     private boolean displayYEvents = true;
     private boolean ignoreTimestampOrdering = getBoolean("ignoreTimestampOrdering", true);
@@ -88,13 +88,13 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         setPropertyTooltip("connectServo", "enable to connect to servos");
         setPropertyTooltip("comPortNumber", "sets the COM port number used on connectServo - check the Windows Device Manager for the actual port");
         setPropertyTooltip("obtainTrueTablePosition", "enable to request true table position when sending new desired position");
-        setPropertyTooltip("gainAngle", "controller gain for angle of object");
-        setPropertyTooltip("gainBase", "controller gain for base of object");
+        setPropertyTooltip("gainAngle", "controller gain for angle of pencil; increse to more more if angle higher");
+        setPropertyTooltip("gainBase", "controller gain for base of object; increase to more center pencil");
         setPropertyTooltip("offsetAutomatic", "find best offset in X- and Y- direction based on past desired motion");
         setPropertyTooltip("offsetX", "offset to compensate misalignment between camera and table");
         setPropertyTooltip("offsetY", "offset to compensate misalignment between camera and table");
-        setPropertyTooltip("gainMotion", "controller gain for motion of object");
-        setPropertyTooltip("motionDecay", "time constant to compute motion decay");
+        setPropertyTooltip("gainMotion", "derivative controller gain for motion of pecil");
+        setPropertyTooltip("motionMixingFactor", "mixing factor to update velocity of pencil x,y position; 0-1 range. Increase to update velocities more quickly");
         setPropertyTooltip("displayXEvents", "show tracking of line in X");
         setPropertyTooltip("ignoreTimestampOrdering", "enable to ignore timestamp non-monotonicity in stereo USB input, just deliver packets as soon as they are available");
         setPropertyTooltip("displayYEvents", "show tracking of line in Y");
@@ -414,10 +414,10 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         // It is in units corresponding to pixel widths at the "origin", roughly mm.
 
         // estimate an average of recent motion (in pixels/call)
-        float newx0 = motionDecay * slowx0 + (1 - motionDecay) * x0;
-        float newx1 = motionDecay * slowx1 + (1 - motionDecay) * x1;
-        float newy0 = motionDecay * slowy0 + (1 - motionDecay) * y0;
-        float newy1 = motionDecay * slowy1 + (1 - motionDecay) * y1;
+        float newx0 = (1-motionMixingFactor) * slowx0 + (motionMixingFactor) * x0;
+        float newx1 = (1-motionMixingFactor) * slowx1 + (motionMixingFactor) * x1;
+        float newy0 = (1-motionMixingFactor) * slowy0 + (motionMixingFactor) * y0;
+        float newy1 = (1-motionMixingFactor) * slowy1 + (motionMixingFactor) * y1;
         float dx0 = newx0 - slowx0;
 //        float dx1 = newx1 - slowx1;    // unused
         float dy0 = newy0 - slowy0;
@@ -544,20 +544,20 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         putFloat("gainMotion", gainMotion);
     }
 
-    public float getMotionDecay() {
-        return (motionDecay);
+    public float getMotionMixingFactor() {
+        return (motionMixingFactor);
     }
 
-    synchronized public void setMotionDecay(float motionDecay) {
-        if (motionDecay > 1) {
-            motionDecay = 1;
-        } else if (motionDecay < 0) {
-            motionDecay = 0;
+    synchronized public void setMotionMixingFactor(float motionMixingFactor) {
+        if (motionMixingFactor > 1) {
+            motionMixingFactor = 1;
+        } else if (motionMixingFactor < 0) {
+            motionMixingFactor = 0;
         }
-        float old = this.motionDecay;
-        this.motionDecay = motionDecay;
-        getSupport().firePropertyChange("motionDecay", old, motionDecay);
-        putFloat("motionDecay", motionDecay);
+        float old = this.motionMixingFactor;
+        this.motionMixingFactor = motionMixingFactor;
+        getSupport().firePropertyChange("motionDecay", old, motionMixingFactor);
+        putFloat("motionDecay", motionMixingFactor);
     }
 
     public float getGainAngle() {
@@ -594,7 +594,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     }
 
     synchronized public void setOffsetX(float offsetX) {
-        getSupport().firePropertyChange("offsetX", this.offsetX, offsetX);
+        getSupport().firePropertyChange("offsetX", this.offsetX, offsetX); // update GUI
         putFloat("offsetX", offsetX);
         this.offsetX = offsetX;
     }
