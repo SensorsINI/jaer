@@ -45,9 +45,10 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         cornerEvents.clear();
         for (BasicEvent e : in) {
-            if ((e.getAddress() & 1 << 31) != 0) {
+            if ((e.getAddress() & 1) == 0) {
                 // corner event
                 cornerEvents.add(e);
+                e.setFilteredOut(true);
             }
         }
         return in;
@@ -58,15 +59,15 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
     }
 
     @Override
-    public void initFilter() {
+    public void initFilter() {  
     }
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
-        gl.glColor3f(0, 0, 1);
+        gl.glColor3f(1, 0, 0);
         for (BasicEvent e : cornerEvents) {
-            DrawGL.drawCircle(gl, e.x, e.y, 2 /*radius*/, 16);
+//            DrawGL.drawCircle(gl, e.x, e.y, 2 /*radius*/, 16);
         }
     }
 

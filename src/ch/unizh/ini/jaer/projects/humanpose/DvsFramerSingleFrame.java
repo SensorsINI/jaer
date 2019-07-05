@@ -108,6 +108,7 @@ public class DvsFramerSingleFrame extends DvsFramer {
 
     @Override
     synchronized public void setFromNetwork(AbstractDavisCNN apsDvsNet) {
+
         if (apsDvsNet != null && apsDvsNet.getInputLayer() != null) {
             setOutputImageWidth(apsDvsNet.getInputLayer().getWidth());
             setOutputImageHeight(apsDvsNet.getInputLayer().getHeight());
@@ -182,7 +183,5 @@ public class DvsFramerSingleFrame extends DvsFramer {
     public String toString() {
         return "DvsFramerSingleFrame{" + "dvsFrame=" + dvsFrame + '}';
     }
-    
-    
 
 }

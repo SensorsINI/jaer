@@ -1023,7 +1023,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     public void setSecDvsProtocolEnabled(boolean secDvsProtocolEnabled) {
         this.secDvsProtocolEnabled = secDvsProtocolEnabled;
         spinnakerProtocolEnabled=false;
-        setPort(SEC_DVS_STREAMER_PORT);
+        if(secDvsProtocolEnabled) setPort(SEC_DVS_STREAMER_PORT);
         prefs.putBoolean("AEUnicastInput.secDvsProtocolEnabled",secDvsProtocolEnabled);
     }
 

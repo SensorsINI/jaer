@@ -38,12 +38,12 @@ import org.tensorflow.Operation;
  */
 public class TensorFlow {
     private static Logger log=Logger.getLogger("TensorFlow");
-
+    
     public static float[] maxIndex(float[][] mapActivations) {
         int maxLocY = 0;
         int maxLocX = 0;
         float maxValue = 0;
-        //System.out.print(String.format("SHAPE SHAPE SHAPE SHAPEs %s",  mapActivations.length  ));
+
         for (int i = 0; i < mapActivations.length; i++) {
             for (int j = 0; j < mapActivations[0].length; j++) {
                 if (mapActivations[i][j] > mapActivations[maxLocY][maxLocX]) {
@@ -97,9 +97,8 @@ public class TensorFlow {
 
     private static Session s = null;
     //private static float[][][][] resultHeatmaps=null;
-    private static float[] result1d=null;
+    private static float[] result1d = null;
     
-
     public static float[] executeGraph(Graph graph, Tensor<Float> image, String inputLayerName, String outputLayerName) {
         long startTime = System.nanoTime();
  
@@ -164,7 +163,7 @@ public class TensorFlow {
     
     // execute graph just one time to get the shape of the network output
     public static int[] executeGraphStartup(Graph graph, Tensor<Float> image, String inputLayerName, String outputLayerName) {
-         if (s==null){ s = new Session(graph); }
+        if (s==null){ s = new Session(graph); }
         try ( Tensor<Float> result = s.runner().feed(inputLayerName, image).fetch(outputLayerName).run().get(0).expect(Float.class)) {
             long[] outputShapeLong= result.shape(); 
             // cast the output shape of the network to integers.
@@ -173,46 +172,52 @@ public class TensorFlow {
             }
     }
     
-    
-    
-    
-    
-    
-    
+    /*    public static float[][][] executeGraph(Graph graph, Tensor<Float> image, String inputLayerName, String outputLayerName) {
+        try (Session s = new Session(graph);
+                Tensor<Float> result = s.runner().feed(inputLayerName, image).fetch(outputLayerName).run().get(0).expect(Float.class)) {
+                    final long[] rshape = result.shape();
+                    String.format("Output tensor shape is %s", Arrays.toString(rshape));
+                    int hmapH = (int) rshape[1];
+                    int hmapW = (int) rshape[2]; 
+                    int nMaps = (int) rshape[3]; // how many maps
+                    return result.copyTo(new float[1][hmapH][hmapW][nMaps])[0];
+        }
+    }*/
 
     static float[][][] executeSession(SavedModelBundle savedModelBundle, Tensor<Float> image, String inputLayerName, String outputLayerName) {
         try (Session s = savedModelBundle.session();
-                Tensor<Float> result = s.runner().feed(inputLayerName, image).fetch(outputLayerName).run().get(0).expect(Float.class)) {
+            Tensor<Float> result = s.runner().feed(inputLayerName, image).fetch(outputLayerName).run().get(0).expect(Float.class)) {
             final long[] rshape = result.shape();
             String.format("Output tensor shape is %s", Arrays.toString(rshape));
             int hmapH = (int) rshape[1];
-            int hmapW = (int) rshape[2];
+            int hmapW = (int) rshape[2]; 
             int nMaps = (int) rshape[3]; // how many maps
             return result.copyTo(new float[1][hmapH][hmapW][nMaps])[0];
         }
     }
+    
 
     static Tensor executeGraphAndReturnTensor(Graph graph, Tensor<Float> image, String inputLayerName, String outputLayerName) {
         try (Session s = new Session(graph);
                 Tensor<Float> result = s.runner().feed(inputLayerName, image).fetch(outputLayerName).run().get(0).expect(Float.class)) {
             return result;
-        }
+            }
     }
-
+    
     static Tensor executeGraphAndReturnTensorWithBoolean(Graph graph, Tensor<Float> image, String inputLayerName, Tensor<Boolean> inputBool, String inputBoolName, String outputLayerName) {
         try (Session s = new Session(graph);
-                Tensor<Float> result = s.runner().feed(inputLayerName, image).feed(inputBoolName, inputBool).fetch(outputLayerName).run().get(0).expect(Float.class)) {
+            Tensor<Float> result = s.runner().feed(inputLayerName, image).feed(inputBoolName, inputBool).fetch(outputLayerName).run().get(0).expect(Float.class)) {
             //result.copyTo(heatMap);
             return result;
         }
 
     }
-
+    
     static void executeGraphAndReturnTensorWithBooleanArray(float[][][] array, Graph graph, Tensor<Float> image, String inputLayerName, Tensor<Boolean> inputBool, String inputBoolName, String outputLayerName) {
         try (Session s = new Session(graph);
-                Tensor<Long> result = s.runner().feed(inputLayerName, image).feed(inputBoolName, inputBool).fetch(outputLayerName).run().get(0).expect(Long.class)) {
+            Tensor<Long> result = s.runner().feed(inputLayerName, image).feed(inputBoolName, inputBool).fetch(outputLayerName).run().get(0).expect(Long.class)) {
             //result.copyTo(heatMap);
-            if (array != null) {
+            if(array != null){
                 result.copyTo(array);
                 /*
                 for (int i = 0; i < 90; i++) {
@@ -221,7 +226,7 @@ public class TensorFlow {
                                 System.out.println(" Ball : " + Float.toString(array[0][i][j]));
                     }
                 }
-                 */
+                */
             }
         }
     }
