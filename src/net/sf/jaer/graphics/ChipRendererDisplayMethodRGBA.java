@@ -75,7 +75,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 	private void displayQuad(final GLAutoDrawable drawable) {
 		final Chip2DRenderer renderer = getChipCanvas().getRenderer();
 		final FloatBuffer pixmap = renderer.getPixmap();
-		FloatBuffer onMap = null;
+		FloatBuffer dvsEventsMap = null;
 //		FloatBuffer offMap = null;
 		FloatBuffer annotateMap = null;
 		boolean displayEvents = false;
@@ -84,13 +84,13 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 
 		if (renderer instanceof AEFrameChipRenderer) {
 			final AEFrameChipRenderer frameRenderer = (AEFrameChipRenderer) renderer;
-			onMap = frameRenderer.getDvsEventsMap();
+			dvsEventsMap = frameRenderer.getDvsEventsMap();
 //			offMap = frameRenderer.getOffMap();
 			annotateMap = frameRenderer.getAnnotateMap();
 			displayFrames = frameRenderer.isDisplayFrames();
 			displayEvents = frameRenderer.isDisplayEvents();
 			displayAnnotation = frameRenderer.isDisplayAnnotation();
-		}
+		} 
 
 		final int width = renderer.getWidth();
 		final int height = renderer.getHeight();
@@ -104,15 +104,18 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 		getChipCanvas().checkGLError(gl, glu, "before quad");
 
 		gl.glDisable(GL.GL_DEPTH_TEST);
-		gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+                // define blending of layers for APS, DVS and annotation. 
+                // we want that gray stays gray but that the APS is not washed out by adding DVS events 
+		gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA); //GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
 		gl.glEnable(GL.GL_BLEND);
+//                gl.glDisable(GL.GL_BLEND);
 
 		final int nearestFilter = GL.GL_NEAREST;
 		// Tobi: changed to GL_NEAREST so that pixels are not interpolated but
-		// rather are rendered exactly as they come from data not matter
+		// rather are rendered exactly as they come from data no matter
 		// what zoom.
 
-		if (displayFrames) {
+		if (pixmap!=null && displayFrames) {
 			gl.glPushMatrix();
 			if (imageTransform != null) {
 				final int sx = chip.getSizeX() / 2, sy = chip.getSizeY() / 2;
@@ -126,7 +129,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, nearestFilter);
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, nearestFilter);
-			gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2ES1.GL_TEXTURE_ENV_MODE, GL.GL_REPLACE);
+			gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2ES1.GL_TEXTURE_ENV_MODE, GL2ES1.GL_REPLACE);
 			gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, pixmap);
 
 			gl.glEnable(GL.GL_TEXTURE_2D);
@@ -137,15 +140,15 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 			getChipCanvas().checkGLError(gl, glu, "after frames");
 		}
 
-		if ((onMap != null) && displayEvents) {
+		if ((dvsEventsMap != null) && displayEvents) {
 			gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
 			gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, nearestFilter);
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, nearestFilter);
-			gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2ES1.GL_TEXTURE_ENV_MODE, GL.GL_REPLACE);
-			gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, onMap);
+			gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2ES1.GL_TEXTURE_ENV_MODE, GL2ES1.GL_REPLACE);
+			gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, dvsEventsMap);
 
 			gl.glEnable(GL.GL_TEXTURE_2D);
 			gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
@@ -185,14 +188,14 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 //			gl.glDisable(GL.GL_TEXTURE_2D);
 //		}
 
-		if (displayAnnotation) {
+		if (annotateMap!=null && displayAnnotation) {
 			gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
 			gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, nearestFilter);
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, nearestFilter);
-			gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2ES1.GL_TEXTURE_ENV_MODE, GL.GL_REPLACE);
+			gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2ES1.GL_TEXTURE_ENV_MODE, GL2ES1.GL_ADD);
 			gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, annotateMap);
 
 			gl.glEnable(GL.GL_TEXTURE_2D);

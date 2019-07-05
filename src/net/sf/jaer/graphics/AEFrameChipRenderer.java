@@ -172,7 +172,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                         grayBuffer.put(0);
                         grayBuffer.put(0);
                         grayBuffer.put(0);
-                        grayBuffer.put(1.0f);
+                        grayBuffer.put(0);
                     } else if (colorMode == ColorMode.GrayTime) {
                         grayBuffer.put(1.0f);
                         grayBuffer.put(1.0f);
@@ -187,7 +187,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                         grayBuffer.put(grayValue);
                         grayBuffer.put(grayValue);
                         grayBuffer.put(grayValue);
-                        grayBuffer.put(1.0f);
+                        grayBuffer.put(0);
                     }
                 }
             }
@@ -610,19 +610,25 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             map[index + 1] = v;
             map[index + 2] = v;
             map[index + 3] = 1.0f;
-        } else {
+        } else { // contrast, red/green
              final float scale = (1.0f / colorScale);
+            map[index + 3] = scale; // alpha
            if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
-                map[index] += scale*onColor[0];
-                map[index + 1] += scale*onColor[1];
-                map[index + 2] += scale*onColor[2]; // if using gray/contrast rendering, then just use dvsEventsMap and onColor, and set alpaha up or down from .5 below
+                map[index] += onColor[0];
+                map[index + 1] += onColor[1];
+                map[index + 2] += onColor[2]; 
+//                map[index] += scale*onColor[0];
+//                map[index + 1] += scale*onColor[1];
+//                map[index + 2] += scale*onColor[2]; 
             } else {
-                map[index] += scale*offColor[0];
-                map[index + 1] += scale*offColor[1];
-                map[index + 2] += scale*offColor[2];
+                map[index] += offColor[0];
+                map[index + 1] += offColor[1];
+                map[index + 2] += offColor[2];
+//                map[index] += scale*offColor[0];
+//                map[index + 1] += scale*offColor[1];
+//                map[index + 2] += scale*offColor[2];
             }
 
-            map[index + 3] = 1;
         }
     }
 

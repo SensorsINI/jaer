@@ -70,7 +70,7 @@ public class BinocularDVSRenderer extends AEFrameChipRenderer{
         resetSelectedPixelEventCount();
         float a;
         float step = 1f / ( colorScale ); // amount to step rendering gray level up or down for each event
-        float[] f = getPixmapArray();
+        float[] f = getDvsEventsMap().array();
         try{
             float sc = 1f / getColorScale();
             int rgbChan = 0;

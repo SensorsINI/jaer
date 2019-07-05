@@ -9,6 +9,7 @@
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx2libusb;
 
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterfaceInterface;
 import java.nio.ByteBuffer;
 import java.util.prefs.Preferences;
 
@@ -25,10 +26,8 @@ import org.usb4java.Device;
  *
  * @author tobi/rapha
  */
-public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen implements HasResettablePixelArray,
-	HasSyncEventOutput, HasLEDControl {
+public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen implements CypressFX2DVS128HardwareInterfaceInterface {
 
-	public final static String FIRMWARE_FILENAME_DVS128_XSVF = "/net/sf/jaer/hardwareinterface/usb/cypressfx2/dvs128CPLD.xsvf";
 	private static Preferences prefs = Preferences.userNodeForPackage(CypressFX2DVS128HardwareInterface.class);
 	private boolean syncEventEnabled = CypressFX2DVS128HardwareInterface.prefs.getBoolean(
 		"CypressFX2DVS128HardwareInterface.syncEventEnabled", true); // default
@@ -52,12 +51,6 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 	/** Vendor request for setting LED */
 	public final byte VENDOR_REQUEST_LED = (byte) 0xCD;
 	private LEDState ledState = LEDState.UNKNOWN; // efferent copy, since we can't read it
-	/**
-	 * SYNC events are detected when this bit mask is detected in the input event stream.
-	 *
-	 * @see HasSyncEventOutput
-	 */
-	public static final int SYNC_EVENT_BITMASK = 0x8000;
 
 	/** Creates a new instance of CypressFX2Biasgen */
 	protected CypressFX2DVS128HardwareInterface(final Device device) {
@@ -338,6 +331,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 		}
 	}
 
+    @Override
 	public boolean isArrayReset() {
 		return arrayResetEnabled;
 	}
