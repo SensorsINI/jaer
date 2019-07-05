@@ -526,14 +526,14 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         putFloat("polyStddev", polyStddev);
     }
 
-    public boolean getObtainTrueTablePosition() {
-        return (obtainTrueTablePosition);
-    }
-
-    synchronized public void setObtainTrueTablePosition(boolean obtainTrueTablePosition) {
-        this.obtainTrueTablePosition = obtainTrueTablePosition;
-        putBoolean("obtainTrueTablePosition", obtainTrueTablePosition);
-    }
+//    public boolean getObtainTrueTablePosition() {
+//        return (obtainTrueTablePosition);
+//    }
+//
+//    synchronized public void setObtainTrueTablePosition(boolean obtainTrueTablePosition) {
+//        this.obtainTrueTablePosition = obtainTrueTablePosition;
+//        putBoolean("obtainTrueTablePosition", obtainTrueTablePosition);
+//    }
 
     public float getGainMotion() {
         return (gainMotion);
