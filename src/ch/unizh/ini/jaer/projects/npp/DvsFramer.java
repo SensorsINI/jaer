@@ -509,6 +509,7 @@ abstract public class DvsFramer extends EventFilter2D {
          * @see #EVENT_NEW_FRAME_AVAILABLE
          */
         public void addEvent(int x, int y, Polarity p, int timestampUs) {
+            allocateMemory(); // in case chip changed, make sure we have arrays setup
             if (filled) {
                 clear();
                 this.firstTimestampUs = timestampUs;
@@ -822,9 +823,10 @@ abstract public class DvsFramer extends EventFilter2D {
          */
         public boolean allocateMemory() {
             if (nPixels <= 0) {
+                showWarningDialogInSwingThread("zero output DVS frame size; please set width and height", "DvsFramer");
                 return false;
             }
-            if (pixmap == null || pixmap.length != getNumPixels()) {
+            if (pixmap == null || pixmap.length != getNumPixels() || eventSum==null) {
                 pixmap = new float[getNumPixels()];
                 eventSum = new int[getNumPixels()];
                 clear();
