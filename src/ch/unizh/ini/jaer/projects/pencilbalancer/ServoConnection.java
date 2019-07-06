@@ -19,19 +19,23 @@ public class ServoConnection extends Thread {
     static Logger log = Logger.getLogger("ServoConnection");
     private HWP_RS232 rs232Port = null;
     private boolean isRunning = true;
+    
     private int portNumber=3;
+    private String portName = "ttyUSB0";
+    private static String OS = System.getProperty("os.name").toLowerCase();
 
     TobiLogger tobiLogger=null;
     private boolean enableLogging = false;
     ArrayBlockingQueue<String> queue=new ArrayBlockingQueue<String>(1);
     /** Constructs a new ServoConnection to a specified COM port number
      
-     @param comPort e.g. 3 for COM3
+     @param comPort e.g. 3 for COM3, /dev/ttyUSB0
      */
-    public ServoConnection(int comPort) {
+    public ServoConnection(int comPort, String portName) {
         setName("ServoConnection");
         setPriority(MAX_PRIORITY);
         setPortNumber(comPort);
+        setPortName(portName);
         log.info("Starting consumer thread for connection to servo board");
         
         this.start();
@@ -68,6 +72,7 @@ public class ServoConnection extends Thread {
 
     public void terminate() {
         isRunning = false;
+        rs232Port.close();
     }
 
     private void connectServo() {
@@ -77,8 +82,10 @@ public class ServoConnection extends Thread {
         HWPort.PortIdentifier thisPI = null;
         HWPort.PortAttribute thisPA = null;
 
+        String serialPort = (OS.equals("linux")) ? "  /dev/"+getPortName() : "  COM"+getPortNumber();
+        
         for (HWPort.PortIdentifier pi : rs232Port.getPortIdentifierList()) {
-            if ((pi.display).equals("  COM"+portNumber)) {
+            if ((pi.display).equals(serialPort)) {
                 thisPI = pi;
             }
         }
@@ -113,7 +120,9 @@ public class ServoConnection extends Thread {
     }
 
     public String readLine() {
-        String r = null;                // readback currently not implemented!
+        //String r = null;                // readback currently not implemented!
+        String r = rs232Port.readLine();
+        
         return (r);
     }
     
@@ -148,5 +157,13 @@ public class ServoConnection extends Thread {
      */
     public void setPortNumber(int portNumber) {
         this.portNumber = portNumber;
+    }
+    
+    public String getPortName() {
+        return portName;
+    }
+
+    public void setPortName(String portName) {
+        this.portName = portName;
     }
 }

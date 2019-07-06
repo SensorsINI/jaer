@@ -145,7 +145,7 @@ public class TensorFlow {
 
     static void executeGraphAndReturnTensorWithBooleanArray(long[][][] array, Graph graph, Tensor<Float> image, String inputLayerName, Tensor<Boolean> inputBool, String inputBoolName, String outputLayerName) {
         try (Session s = new Session(graph);
-                Tensor<Long> result = s.runner().feed(inputLayerName, image).feed(inputBoolName, inputBool).fetch(outputLayerName).run().get(0).expect(Long.class)) {
+                Tensor<Float> result = s.runner().feed(inputLayerName, image).feed(inputBoolName, inputBool).fetch(outputLayerName).run().get(0).expect(Float.class)) {
             //result.copyTo(heatMap);
             if (array != null) {
                 result.copyTo(array);

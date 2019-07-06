@@ -617,7 +617,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
                     try {  // TODO debug
                         updateApsDvsFrame(dvsFrame);
                         //output = apsDvsNet.processAPSDVSFrame(apsDvsFrame); // generates PropertyChange EVENT_MADE_DECISION
-                        //apsDvsNet.processAPSDVSFrameArray(apsDvsFrame, resHeatMap);
+                        apsDvsNet.processAPSDVSFrameArray(apsDvsFrame, resHeatMap);
                     } catch (Exception e) {
                         log.log(Level.SEVERE, e.toString(), e); // TODO debug
                     }

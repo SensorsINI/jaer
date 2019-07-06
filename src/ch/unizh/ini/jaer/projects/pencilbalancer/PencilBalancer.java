@@ -56,6 +56,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     private float polyStddev = getFloat("polyStddev", 4.0f);
     private boolean connectServoFlag = false;
     private int comPortNumber = getInt("comPortNumber", 3);
+    private String comPortName = getString("comPortName", "ttyUSB0");
     private boolean obtainTrueTablePosition = getBoolean("obtainTrueTablePosition", false);
     private float gainAngle = getFloat("gainAngle", 280.0f);
     private float gainBase = getFloat("gainBase", 1.34f);
@@ -87,7 +88,8 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         setPropertyTooltip("polyStddev", "standard deviation in pixels around line of basin of attraction for new events; increase to follow faster motion but admit more noise");
         setPropertyTooltip("connectServo", "enable to connect to servos");
         setPropertyTooltip("comPortNumber", "sets the COM port number used on connectServo - check the Windows Device Manager for the actual port");
-        setPropertyTooltip("obtainTrueTablePosition", "enable to request true table position when sending new desired position");
+        setPropertyTooltip("comPortName", "sets the COM port name used on connectServo - check the /dev folder for the actual port");
+        setPropertyTooltip("obtainTrueTablePosition", "enable to request and use true table position from linear potentiometers when sending new desired position");
         setPropertyTooltip("gainAngle", "controller gain for angle of pencil; increse to more more if angle higher");
         setPropertyTooltip("gainBase", "controller gain for base of object; increase to more center pencil");
         setPropertyTooltip("offsetAutomatic", "find best offset in X- and Y- direction based on past desired motion");
@@ -146,9 +148,9 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
                 computeDesiredTablePosition();
                 sendDesiredTablePosition();
 
-//                if (obtainTrueTablePosition == true) {
-//                    requestAndFetchCurrentTablePosition();
-//                }
+                if (obtainTrueTablePosition == true) {
+                    requestAndFetchCurrentTablePosition();
+                }
             }
         }
 
@@ -451,18 +453,19 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 
         String command = String.format("!T%d,%d", Math.round(10.0 * desiredTableX), Math.round(10.0 * desiredTableY));
 
-//        if (obtainTrueTablePosition == true) {
-//            fetchTrueTablePositionCounter--;
-//            if (fetchTrueTablePositionCounter == 0) {
-//                command = command + "\n?C";
-//                fetchTrueTablePositionCounter = 3;
-//            }
-//        }
+        if (obtainTrueTablePosition == true) {
+            fetchTrueTablePositionCounter--;
+            if (fetchTrueTablePositionCounter == 0) {
+                command = command + "\n?C";
+                fetchTrueTablePositionCounter = 3;
+            }
+        }
         //      log.info("Sending " + command);
         sc.sendUpdate(command);
     }
 
-//    private int fetchTrueTablePositionCounter = 1;
+    private int fetchTrueTablePositionCounter = 1;
+
     private void requestAndFetchCurrentTablePosition() {
 
         String r = sc.readLine();
@@ -616,7 +619,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
             if (sc != null) {
                 sc.terminate();
             }
-            sc = new ServoConnection(getComPortNumber());
+            sc = new ServoConnection(getComPortNumber(), getComPortName());
         } else {
             sc.terminate();
             sc = null;
@@ -692,5 +695,14 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public void setComPortNumber(int comPortNumber) {
         this.comPortNumber = comPortNumber;
         putInt("comPortNumber", comPortNumber);
+    }
+
+    public String getComPortName() {
+        return comPortName;
+    }
+
+    public void setComPortName(String comPortName) {
+        this.comPortName = comPortName;
+        putString("comPortName", comPortName);
     }
 }
