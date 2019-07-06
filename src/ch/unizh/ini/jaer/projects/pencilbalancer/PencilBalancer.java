@@ -237,6 +237,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     synchronized public void resetFilter() {
 //        log.info("RESET called");
         resetPolynomial();
+        setIgnoreTimestampOrdering(ignoreTimestampOrdering); // to set hardware interface correctly in case we have a hw interface here.
     }
 
     synchronized public void initFilter() {
