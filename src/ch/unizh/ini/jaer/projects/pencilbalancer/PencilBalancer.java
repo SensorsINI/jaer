@@ -98,6 +98,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         setPropertyTooltip("displayXEvents", "show tracking of line in X");
         setPropertyTooltip("ignoreTimestampOrdering", "enable to ignore timestamp non-monotonicity in stereo USB input, just deliver packets as soon as they are available");
         setPropertyTooltip("displayYEvents", "show tracking of line in Y");
+        setPropertyTooltip("enableLogging", "log state to logging file; check console output for location and name of file");
     }
 
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -135,7 +136,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 
         if (connectServoFlag) {
             long currentTimeNS = System.nanoTime();
-            if (Math.abs(currentTimeNS - lastTimeNS) > (3 * 1000 * 1000)) {
+            if (Math.abs(currentTimeNS - lastTimeNS) > (3 * 1000 * 1000)) {  // send commands at most 330Hz
                 // use system time instead of timestamps from events.
                 // those might cause problems with two retinas, still under investigation!
                 lastTimeNS = currentTimeNS;
@@ -415,10 +416,10 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         // It is in units corresponding to pixel widths at the "origin", roughly mm.
 
         // estimate an average of recent motion (in pixels/call)
-        float newx0 = (1-motionMixingFactor) * slowx0 + (motionMixingFactor) * x0;
-        float newx1 = (1-motionMixingFactor) * slowx1 + (motionMixingFactor) * x1;
-        float newy0 = (1-motionMixingFactor) * slowy0 + (motionMixingFactor) * y0;
-        float newy1 = (1-motionMixingFactor) * slowy1 + (motionMixingFactor) * y1;
+        float newx0 = (1 - motionMixingFactor) * slowx0 + (motionMixingFactor) * x0;
+        float newx1 = (1 - motionMixingFactor) * slowx1 + (motionMixingFactor) * x1;
+        float newy0 = (1 - motionMixingFactor) * slowy0 + (motionMixingFactor) * y0;
+        float newy1 = (1 - motionMixingFactor) * slowy1 + (motionMixingFactor) * y1;
         float dx0 = newx0 - slowx0;
 //        float dx1 = newx1 - slowx1;    // unused
         float dy0 = newy0 - slowy0;
@@ -535,7 +536,6 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 //        this.obtainTrueTablePosition = obtainTrueTablePosition;
 //        putBoolean("obtainTrueTablePosition", obtainTrueTablePosition);
 //    }
-
     public float getGainMotion() {
         return (gainMotion);
     }
@@ -610,10 +610,6 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         this.offsetY = offsetY;
     }
 
-    public boolean isConnectServo() {
-        return connectServoFlag;
-    }
-
     synchronized public void setConnectServo(boolean connectServoFlag) {
         this.connectServoFlag = connectServoFlag;
         if (connectServoFlag == true) {
@@ -625,6 +621,14 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
             sc.terminate();
             sc = null;
         }
+    }
+
+    public void doToggleOnConnectServo() {
+        setConnectServo(true);
+    }
+
+    public void doToggleOffConnectServo() {
+        setConnectServo(false);
     }
 
     public boolean isDisplayXEvents() {
