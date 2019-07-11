@@ -468,6 +468,10 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 
     private void requestAndFetchCurrentTablePosition() {
 
+        if(sc==null){
+            log.warning("null serial port, doing nothing");
+            return;
+        }
         String r = sc.readLine();
         while (r != null) {
             if (r.length() == 14) {
@@ -704,5 +708,20 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public void setComPortName(String comPortName) {
         this.comPortName = comPortName;
         putString("comPortName", comPortName);
+    }
+
+    /**
+     * @return the obtainTrueTablePosition
+     */
+    public boolean isObtainTrueTablePosition() {
+        return obtainTrueTablePosition;
+    }
+
+    /**
+     * @param obtainTrueTablePosition the obtainTrueTablePosition to set
+     */
+    public void setObtainTrueTablePosition(boolean obtainTrueTablePosition) {
+        this.obtainTrueTablePosition = obtainTrueTablePosition;
+        putBoolean("obtainTrueTablePosition", obtainTrueTablePosition);
     }
 }
