@@ -565,8 +565,8 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         }
         float old = this.motionMixingFactor;
         this.motionMixingFactor = motionMixingFactor;
-        getSupport().firePropertyChange("motionDecay", old, motionMixingFactor);
-        putFloat("motionDecay", motionMixingFactor);
+        getSupport().firePropertyChange("motionMixingFactor", old, motionMixingFactor);
+        putFloat("motionMixingFactor", motionMixingFactor);
     }
 
     public float getGainAngle() {
@@ -584,7 +584,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 
     synchronized public void setGainBase(float gainBase) {
         this.gainBase = gainBase;
-        putFloat("centering", gainBase);
+        putFloat("gainBase", gainBase);
     }
 
     public boolean getOffsetAutomatic() {
