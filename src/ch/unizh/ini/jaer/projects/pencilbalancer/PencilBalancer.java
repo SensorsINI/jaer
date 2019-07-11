@@ -52,7 +52,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     /* ***************************************************************************************************** */
  /* **  The follwing stuff are variables displayed on GUI *********************************************** */
  /* ***************************************************************************************************** */
-    private float polyDecay = getFloat("polyDecay", 0.98f);
+    private float polyMixingFactor = getFloat("polyMixingFactor", 0.02f);
     private float polyStddev = getFloat("polyStddev", 4.0f);
     private boolean connectServoFlag = false;
     private int comPortNumber = getInt("comPortNumber", 3);
@@ -84,7 +84,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 
         desiredTableXLowPass = ((float) 0.0);
         desiredTableYLowPass = ((float) 0.0);
-        setPropertyTooltip("polyDecay", "decay rate of tracking polynomial per new event; 0-1 range. Increase to update pencil position more quickly but be more noisy");
+        setPropertyTooltip("polyMixingFactor", "IIR update rate of tracking polynomial per new event; 0-1 range. Increase to update pencil position more quickly but be more noisy");
         setPropertyTooltip("polyStddev", "standard deviation in pixels around line of basin of attraction for new events; increase to follow faster motion but admit more noise");
         setPropertyTooltip("connectServo", "enable to connect to servos");
         setPropertyTooltip("comPortNumber", "sets the COM port number used on connectServo - check the Windows Device Manager for the actual port");
@@ -96,7 +96,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         setPropertyTooltip("offsetX", "offset to compensate misalignment between camera and table");
         setPropertyTooltip("offsetY", "offset to compensate misalignment between camera and table");
         setPropertyTooltip("gainMotion", "derivative controller gain for motion of pecil");
-        setPropertyTooltip("motionMixingFactor", "mixing factor to update velocity of pencil x,y position; 0-1 range. Increase to update velocities more quickly");
+        setPropertyTooltip("motionMixingFactor", "IIR update mixing factor to update velocity of pencil x,y position; 0-1 range. Increase to update velocities more quickly");
         setPropertyTooltip("displayXEvents", "show tracking of line in X");
         setPropertyTooltip("ignoreTimestampOrdering", "enable to ignore timestamp non-monotonicity in stereo USB input, just deliver packets as soon as they are available");
         setPropertyTooltip("displayYEvents", "show tracking of line in Y");
@@ -288,7 +288,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         float error = x - proposedX;
         float weight = (float) Math.exp(-error * error / (2f * polyStddev * polyStddev));
 
-        float dec = (polyDecay + (1f - polyDecay) * (1f - weight));
+        float dec = ((1-polyMixingFactor) + (polyMixingFactor) * (1f - weight));
         polyAX = dec * polyAX;
         polyBX = dec * polyBX;
         polyCX = dec * polyCX;
@@ -310,7 +310,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         float error = x - proposedX;
         float weight = (float) Math.exp(-error * error / (2f * polyStddev * polyStddev));
 
-        float dec = (polyDecay + (1f - polyDecay) * (1f - weight));
+        float dec = ((1-polyMixingFactor) + (polyMixingFactor) * (1f - weight));
         polyAY = dec * polyAY;
         polyBY = dec * polyBY;
         polyCY = dec * polyCY;
@@ -416,12 +416,13 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         float y1 = (s2 - b2 * s1) * den;
         // There, now we have our 3D line, aren't we happy!
         // It is in units corresponding to pixel widths at the "origin", roughly mm.
+        final float motionMixingFactor1 = 1 - motionMixingFactor;
 
         // estimate an average of recent motion (in pixels/call)
-        float newx0 = (1 - motionMixingFactor) * slowx0 + (motionMixingFactor) * x0;
-        float newx1 = (1 - motionMixingFactor) * slowx1 + (motionMixingFactor) * x1;
-        float newy0 = (1 - motionMixingFactor) * slowy0 + (motionMixingFactor) * y0;
-        float newy1 = (1 - motionMixingFactor) * slowy1 + (motionMixingFactor) * y1;
+        float newx0 = (motionMixingFactor1) * slowx0 + (motionMixingFactor) * x0;
+        float newx1 = (motionMixingFactor1) * slowx1 + (motionMixingFactor) * x1;
+        float newy0 = (motionMixingFactor1) * slowy0 + (motionMixingFactor) * y0;
+        float newy1 = (motionMixingFactor1) * slowy1 + (motionMixingFactor) * y1;
         float dx0 = newx0 - slowx0;
 //        float dx1 = newx1 - slowx1;    // unused
         float dy0 = newy0 - slowy0;
@@ -444,7 +445,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
                 count = 330;
                 setOffsetX(offsetX - ((float) 0.03) * desiredTableXLowPass);
                 setOffsetY(offsetY - ((float) 0.03) * desiredTableYLowPass);
-                System.out.printf("LP: %8.3f  %8.3f\n", desiredTableXLowPass, desiredTableYLowPass);
+//                System.out.printf("LP: %8.3f  %8.3f\n", desiredTableXLowPass, desiredTableYLowPass);
             }
         }
     }
@@ -510,20 +511,20 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     /* ***************************************************************************************************** */
  /* **  The follwing methods are getter and setters for the filter GUI ********************************** */
  /* ***************************************************************************************************** */
-    public float getPolyDecay() {
-        return ((float) polyDecay);
+    public float getPolyMixingFactor() {
+        return ((float) polyMixingFactor);
     }
 
-    synchronized public void setPolyDecay(float polyDecay) {
-        if (polyDecay > 1) {
-            polyDecay = 1;
-        } else if (polyDecay < 0) {
-            polyDecay = 0;
+    synchronized public void setPolyMixingFactor(float polyMixingFactor) {
+        if (polyMixingFactor > 1) {
+            polyMixingFactor = 1;
+        } else if (polyMixingFactor < 0) {
+            polyMixingFactor = 0;
         }
-        float old = this.polyDecay;
-        this.polyDecay = polyDecay;
-        getSupport().firePropertyChange("polyDecay", old, polyDecay);
-        putFloat("polyDecay", polyDecay);
+        float old = this.polyMixingFactor;
+        this.polyMixingFactor = polyMixingFactor;
+        getSupport().firePropertyChange("polyMixingFactor", old, polyMixingFactor);
+        putFloat("polyMixingFactor", polyMixingFactor);
     }
 
     public float getPolyStddev() {
