@@ -822,7 +822,7 @@ abstract public class DvsFramer extends EventFilter2D {
          * @return true if successful, false if size is zero or negative
          */
         public boolean allocateMemory() {
-            if (nPixels <= 0) {
+            if (isFilterEnabled() && nPixels <= 0) {
                 showWarningDialogInSwingThread("zero output DVS frame size; please set width and height", "DvsFramer");
                 return false;
             }
