@@ -1,4 +1,4 @@
-/*
+ /*
  * PencilBalancer
  *
  *
@@ -13,6 +13,16 @@ import java.util.Observer;
 
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.filechooser.FileFilter;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -20,6 +30,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BinocularEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
@@ -70,7 +81,26 @@ public class PencilBalancer_lqr extends EventFilter2D implements FrameAnnotater,
     private boolean ignoreTimestampOrdering = getBoolean("ignoreTimestampOrdering", true);
     private boolean enableLogging = false;
     TobiLogger tobiLogger = null;
-
+    
+    /* ***************************************************************************************************** */
+    /* **  The follwing stuff are used for LQR controller    *********************************************** */
+    /* ***************************************************************************************************** */
+    private float previousBaseX = 0.0f, previousSlopeX = 0.0f, previousBaseY = 0.0f, previousSlopeY = 0.0f;
+    private float x0, y0, x1, y1;
+    private long last_dt_NS = 0;
+    final private String DELIMITER = ",";
+    private float[][] LQR_matrix;
+    private float[][] LQR_matrix_aux;
+    private boolean lqr_matrix_loaded = false;
+    private float posX = 0.0f, posY = 0.0f;
+    private float LQR_gain = 1.0f;
+    private boolean surroundTable = false;
+    private long last_update_pos = 0;
+    private float[][] surround_path = new float[][]{{100.0f,-50.0f},{100.0f,-10.0f},{100.0f,110.f},{-10.0f,110.0f},
+                                                    {-110.0f,110.0f},{-110.0f,-10f},{-110.0f,-50.0f},{115.0f,-50.0f}};
+    private int surround_path_idx = 7;
+    
+    
     /* ***************************************************************************************************** */
  /* **  The follwing methods belong to the filter as required by jAER *********************************** */
  /* ***************************************************************************************************** */
@@ -101,6 +131,15 @@ public class PencilBalancer_lqr extends EventFilter2D implements FrameAnnotater,
         setPropertyTooltip("ignoreTimestampOrdering", "enable to ignore timestamp non-monotonicity in stereo USB input, just deliver packets as soon as they are available");
         setPropertyTooltip("displayYEvents", "show tracking of line in Y");
         setPropertyTooltip("enableLogging", "log state to logging file; check console output for location and name of file");
+        
+        //LQR
+        setPropertyTooltip("LQR", "Enable LQR controller option. If there is no LQR matrix, open a file dialog to select a csv file with the LQR matriz parameters");
+        setPropertyTooltip("posX", "X coordinate of the balance position");
+        setPropertyTooltip("posY", "Y coordinate of the balance position");
+        setPropertyTooltip("LQR_gain", "Y coordinate of the balance position");
+        setPropertyTooltip("surroundTable", "Start LRQ to surround the table");
+        LQR_matrix = new float[4][4];
+        LQR_matrix_aux = new float[4][4];
     }
 
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -145,6 +184,7 @@ public class PencilBalancer_lqr extends EventFilter2D implements FrameAnnotater,
 
                 updateCurrentEstimateX();
                 updateCurrentEstimateY();
+                computelQR();
                 computeDesiredTablePosition();
                 sendDesiredTablePosition();
 
@@ -153,14 +193,20 @@ public class PencilBalancer_lqr extends EventFilter2D implements FrameAnnotater,
                 }
             }
         }
+        
+        if(surroundTable)
+        {
+            updateNewPosition();
+        }
 
         if (enableLogging) {
-            tobiLogger.log(String.format("%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%d",
+            tobiLogger.log(String.format("%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f,%f,%f,%f",
                     currentBaseX, currentSlopeX,
                     currentBaseY, currentSlopeY,
                     desiredTableX, desiredTableY,
                     currentTableX, currentTableY,
-                    in == null ? 0 : in.getSize(), nright, nleft));
+                    in == null ? 0 : in.getSize(), nright, nleft,
+                    x0,y0,x1,y1));
         }
 
         return in;
@@ -241,6 +287,9 @@ public class PencilBalancer_lqr extends EventFilter2D implements FrameAnnotater,
 //        log.info("RESET called");
         resetPolynomial();
         setIgnoreTimestampOrdering(ignoreTimestampOrdering); // to set hardware interface correctly in case we have a hw interface here.
+        this.lqr_matrix_loaded = false;
+        setPosX(0);
+        setPosY(0);
     }
 
     synchronized public void initFilter() {
@@ -374,6 +423,26 @@ public class PencilBalancer_lqr extends EventFilter2D implements FrameAnnotater,
         polyEY += (-2.0 * x);
         polyFY += (x * x);
     }
+    
+    public synchronized void computelQR(){
+        //LQR
+        float dt = 0;
+        long currentTimeNS = System.nanoTime();
+        dt = (float) (Math.abs(currentTimeNS - last_dt_NS) / 1e9);
+        
+        currentBaseX = currentBaseX - LQR_gain*(LQR_matrix[0][0]*(previousBaseX-posX)+LQR_matrix[0][1]*(previousBaseY-posY)+LQR_matrix[0][2]*previousSlopeX+LQR_matrix[0][3]*previousSlopeY)*dt;
+        currentBaseY = currentBaseY - LQR_gain*(LQR_matrix[1][0]*(previousBaseX-posX)+LQR_matrix[1][1]*(previousBaseY-posY)+LQR_matrix[1][2]*previousSlopeX+LQR_matrix[1][3]*previousSlopeY)*dt;
+        currentSlopeX = currentSlopeX - (LQR_matrix[2][0]*(previousBaseX-posX)+LQR_matrix[2][1]*(previousBaseY-posY)+LQR_matrix[2][2]*previousSlopeX+LQR_matrix[2][3]*previousSlopeY)*dt;
+        currentSlopeY = currentSlopeY - (LQR_matrix[3][0]*(previousBaseX-posX)+LQR_matrix[3][1]*(previousBaseY-posY)+LQR_matrix[3][2]*previousSlopeX+LQR_matrix[3][3]*previousSlopeY)*dt;
+        
+        last_dt_NS = currentTimeNS;
+        
+        previousBaseX = currentBaseX;
+        previousBaseY = currentBaseY;
+        previousSlopeX = currentSlopeX;
+        previousSlopeY = currentSlopeY;
+    }
+    
     /* ***************************************************************************************************** */
  /* **  The follwing methods compute the desired table position ***************************************** */
  /* ***************************************************************************************************** */
@@ -597,6 +666,15 @@ public class PencilBalancer_lqr extends EventFilter2D implements FrameAnnotater,
         desiredTableXLowPass = ((float) 0.0);
         desiredTableYLowPass = ((float) 0.0);
     }
+    
+    public boolean getSurroundTable() {
+        return (surroundTable);
+    }
+
+    synchronized public void setSurroundTable(boolean surroundTable) {
+        this.surroundTable = surroundTable;
+        putBoolean("surroundTable", surroundTable);
+    }
 
     public float getOffsetX() {
         return (offsetX);
@@ -683,7 +761,7 @@ public class PencilBalancer_lqr extends EventFilter2D implements FrameAnnotater,
 
         } else {
             if (tobiLogger == null) {
-                tobiLogger = new TobiLogger("PencilBalancer", "nanoseconds, currentBaseX, currentSlopeX, currentBaseY, currentSlopeY, desiredPosX, desiredPosY, currentPosX, currentPosY, nEvents, nRight, nLeft"); // fill in fields here to help consumer of data
+                tobiLogger = new TobiLogger("PencilBalancer", "nanoseconds, currentBaseX, currentSlopeX, currentBaseY, currentSlopeY, desiredPosX, desiredPosY, currentPosX, currentPosY, nEvents, nRight, nLeft, x0, y0, x1, y1"); // fill in fields here to help consumer of data
                 tobiLogger.setNanotimeEnabled(true);
                 tobiLogger.setAbsoluteTimeEnabled(false);
             }
@@ -710,6 +788,46 @@ public class PencilBalancer_lqr extends EventFilter2D implements FrameAnnotater,
         this.comPortName = comPortName;
         putString("comPortName", comPortName);
     }
+    
+    public float getPosX() {
+        return posX;
+    }
+
+    public void setPosX(float posX) {
+        getSupport().firePropertyChange("posX", this.posX, posX); // update GUI
+        this.posX = posX;
+        putFloat("posX", posX);
+    }
+    
+    public float getPosY() {
+        return posY;
+    }
+
+    public void setPosY(float posY) {
+        getSupport().firePropertyChange("posY", this.posY, posY); // update GUI
+        this.posY = posY;
+        putFloat("posY", posY);
+    }
+
+    public float getLQR_gain() {
+        return LQR_gain;
+    }
+
+    public void setLQR_gain(float LQR_gain) {
+        this.LQR_gain = LQR_gain;
+        putFloat("LQR_gain", posY);
+    }
+    
+    public void updateNewPosition(){
+        long currentTimeNS = System.nanoTime();
+        long timeDiff = Math.abs(currentTimeNS - last_update_pos);
+        if((timeDiff / 1e9) > 3){
+            setPosX(surround_path[surround_path_idx][0]);
+            setPosY(surround_path[surround_path_idx][1]);
+            surround_path_idx = (surround_path_idx == 7) ? 0 : surround_path_idx+1;
+            last_update_pos = currentTimeNS;
+        }
+    }
 
     /**
      * @return the obtainTrueTablePosition
@@ -724,5 +842,106 @@ public class PencilBalancer_lqr extends EventFilter2D implements FrameAnnotater,
     public void setObtainTrueTablePosition(boolean obtainTrueTablePosition) {
         this.obtainTrueTablePosition = obtainTrueTablePosition;
         putBoolean("obtainTrueTablePosition", obtainTrueTablePosition);
+    }
+    
+    synchronized public void setLQR(boolean connectLQRFlag) {
+        if (connectLQRFlag == true) {
+            if(!lqr_matrix_loaded){
+                LoadLQRMatrix();
+            }
+            for(int row_idx=0; row_idx<LQR_matrix.length; row_idx++){
+                for(int col_idx=0; col_idx<LQR_matrix.length; col_idx++){
+                    LQR_matrix[row_idx][col_idx] = LQR_matrix_aux[row_idx][col_idx];
+                }
+            }
+        } else {
+            for(int row_idx=0; row_idx<LQR_matrix.length; row_idx++){
+                for(int col_idx=0; col_idx<LQR_matrix.length; col_idx++){
+                    LQR_matrix[row_idx][col_idx] = 0.0f;
+                }
+            }
+        }
+    }
+
+    public void doToggleOnLQR() {
+        setLQR(true);
+    }
+
+    public void doToggleOffLQR() {
+        setLQR(false);
+    }
+    
+    public synchronized void LoadLQRMatrix() {
+        File file = null;
+        file = openFileDialogAndGetFile("Choose a LQR matrix file", "", "", "LQR File", "csv");
+        if (file == null) {
+            return;
+        }
+        try {
+            load_lqr_file(file);
+            lqr_matrix_loaded = true;
+
+        } catch (Exception ex) {
+            Logger.getLogger(PencilBalancer_lqr.class.getName()).log(Level.SEVERE, null, ex);
+            JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file, caught exception " + ex + ". See console for logging.", "Bad network file", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+    
+    protected void load_lqr_file(File f) throws Exception {
+        try {
+            if (f.exists()) {
+                if (f.isFile()) {
+                    try (BufferedReader br = new BufferedReader(new FileReader(f.getAbsolutePath()))) {
+                        String line;
+                        int row_idx = 0;
+                        while (((line = br.readLine()) != null) && row_idx < 4) {
+                            String[] values = line.split(DELIMITER);
+                            LQR_matrix_aux[row_idx][0] = Float.parseFloat(values[0]);
+                            LQR_matrix_aux[row_idx][1] = Float.parseFloat(values[1]);
+                            LQR_matrix_aux[row_idx][2] = Float.parseFloat(values[2]);
+                            LQR_matrix_aux[row_idx][3] = Float.parseFloat(values[3]);
+                            row_idx++;
+                        }
+                    }
+                }
+            } else {
+                log.warning("file " + f + " does not exist");
+                throw new IOException("file " + f + " does not exist");
+            }
+        } catch (IOException ex) {
+            throw new IOException("Couldn't load the LQR matrix from file " + f, ex);
+        }
+    }
+    
+    /**
+     * Opens a file (do not accept directory) using defaults and previous stored
+     * preference values
+     *
+     * @param tip the tooltip shown
+     * @param key a string key to store preference value
+     * @param defaultFile the default filename
+     * @param type The file type string, e.g. "labels"
+     * @param ext the allowed extensions as an array of strings
+     * @return the file, or null if selection was canceled
+     */
+    protected File openFileDialogAndGetFile(String tip, String key, String defaultFile, String type, String... ext) {
+        String name = getString(key, defaultFile);
+        JFileChooser c = new JFileChooser(name);
+        File f = new File(name);
+        c.setCurrentDirectory(new File(getString(key, "")));
+        c.setToolTipText(tip);
+        FileFilter filt = new FileNameExtensionFilter(type, ext);
+        c.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        c.addChoosableFileFilter(filt);
+        c.setFileFilter(filt);
+        c.setSelectedFile(f);
+        int ret = c.showOpenDialog(chip.getAeViewer());
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            return null;
+        }
+        name = c.getSelectedFile().toString();
+        putString(key, name);
+        File file = c.getSelectedFile();
+        return file;
     }
 }
