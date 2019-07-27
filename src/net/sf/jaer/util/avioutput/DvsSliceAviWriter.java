@@ -124,8 +124,12 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
 //        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsNet on each frame in PropertyChangeListener
         // send DVS timeslice to convnet
         super.filterPacket(in);
-        frameExtractor.filterPacket(in); // process frame extractor, target labeler and dvsframer
-        targetLabeler.filterPacket(in);
+        if (frameExtractor != null) {
+            frameExtractor.filterPacket(in); // process frame extractor, target labeler and dvsframer
+        }
+        if (targetLabeler != null) {
+            targetLabeler.filterPacket(in);
+        }
         dvsFrame.checkParameters();
         if (aviOutputImage == null || aviOutputImage.getWidth() != getOutputImageWidth() || aviOutputImage.getHeight() != getOutputImageHeight()) {
             aviOutputImage = new BufferedImage(getOutputImageWidth(),
