@@ -16,9 +16,9 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
- * An filter that filters slow background activity by only passing
- * events that are supported by another event in the past {@link #setDt dt} in
- * the immediate spatial neighborhood, defined by a subsampling bit shift.
+ * An filter that filters slow background activity by only passing events that
+ * are supported by another event in the past {@link #setDt dt} in the immediate
+ * spatial neighborhood, defined by a subsampling bit shift.
  *
  * @author tobi
  */
@@ -71,8 +71,9 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter implements Obs
         if (lastTimesMap == null) {
             allocateMaps(chip);
         }
-       totalEventCount=in.getSize();
-  
+        totalEventCount = 0;
+        filteredOutEventCount = 0;
+
         // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
         for (Object eIn : in) {
@@ -84,17 +85,20 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter implements Obs
                 continue;
             }
 
+            totalEventCount++;
             short x = (short) (e.x >>> subsampleBy), y = (short) (e.y >>> subsampleBy);
             if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
+                filteredOutEventCount++;
                 continue;
             }
 
             ts = e.timestamp;
             int lastT = lastTimesMap[x][y];
             int deltaT = (ts - lastT);
-            
-            if (!((deltaT < dt) && (lastT != DEFAULT_TIMESTAMP)) && !(letFirstEventThrough && lastT==DEFAULT_TIMESTAMP)) {
+
+            if (!((deltaT < dt) && (lastT != DEFAULT_TIMESTAMP)) && !(letFirstEventThrough && lastT == DEFAULT_TIMESTAMP)) {
                 e.setFilteredOut(true);
+                filteredOutEventCount++;
             }
 
             // For each event write the event's timestamp into the
@@ -113,7 +117,6 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter implements Obs
                 lastTimesMap[x + 1][y - 1] = ts;
             }
         }
-       filteredOutEventCount=in.getFilteredOutCount();
 
         return in;
     }
