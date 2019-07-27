@@ -159,6 +159,7 @@ abstract public class DvsFramer extends EventFilter2D {
         setPropertyTooltip("normalizeFrame", "normalizes DVS frames according to DvsFramer.DvsFrame.normalizeFrame(), to have zero mean and range 0-1 using 3-sigma values");
         setPropertyTooltip("timeSliceMethod", "Either EventCount or TimeInterval can be chosen to expose DVS frames");
         setPropertyTooltip("timeDurationUsPerFrame", "Used with timeSliceMethod TimeInterval: time interval for DVS frames");
+        setPropertyTooltip("setOutputImageToFullFrame", "Set output image AVI frame size to full chip size");
     }
 
     /**
@@ -369,18 +370,31 @@ abstract public class DvsFramer extends EventFilter2D {
     }
 
     synchronized public void setOutputImageWidth(int width) {
-        if(width>chip.getSizeX()) width=chip.getSizeX();
+        int old = getOutputImageWidth();
+        if (width > chip.getSizeX()) {
+            width = chip.getSizeX();
+        }
         this.outputImageWidth = width;
         putInt("outputImageWidth", width);
+        getSupport().firePropertyChange("outputImageWidth", old, this.outputImageWidth);
     }
 
     synchronized public void setOutputImageHeight(int height) {
-        if(height>chip.getSizeY()) height=chip.getSizeY();
+        int old = getOutputImageHeight();
+        if (height > chip.getSizeY()) {
+            height = chip.getSizeY();
+        }
         this.outputImageHeight = height;
         putInt("outputImageHeight", height);
+        getSupport().firePropertyChange("outputImageHeight", old, this.outputImageHeight);
     }
 
-    /**
+     public void doSetOutputImageToFullFrame(){
+        setOutputImageHeight(chip.getSizeY());
+        setOutputImageWidth(chip.getSizeX());
+    }
+
+   /**
      * @return the frameCutBottom
      */
     public int getFrameCutBottom() {
