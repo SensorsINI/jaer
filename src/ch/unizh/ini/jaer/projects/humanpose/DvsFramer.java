@@ -128,11 +128,11 @@ abstract public class DvsFramer extends EventFilter2D {
      * bottom], [left, right]]
      */
     protected int frameCutTop = 0;
-    
+
     /**
      * range 0-rangeNormalizeFrame for frame normalization
      */
-    protected int rangeNormalizeFrame=255;
+    protected int rangeNormalizeFrame = 255;
 
     /**
      * Makes a new DvsSubsamplingTimesliceConvNetInput
@@ -146,8 +146,8 @@ abstract public class DvsFramer extends EventFilter2D {
         try {
             timeSliceMethod = TimeSliceMethod.valueOf(getString("timeSliceMethod", TimeSliceMethod.EventCount.toString()));
         } catch (IllegalArgumentException e) {
-            log.warning("Unknown preference for timeSliceMethod; reverting to default Eventcount: "+e.toString());
-            timeSliceMethod=TimeSliceMethod.EventCount;
+            log.warning("Unknown preference for timeSliceMethod; reverting to default Eventcount: " + e.toString());
+            timeSliceMethod = TimeSliceMethod.EventCount;
         }
         setPropertyTooltip("dvsEventsPerFrame", "Used with timeSliceMethod TimeInterval: number of DVS events accumulated to subsampled ROI to fill the frame");
         setPropertyTooltip("showFrames", "shows the fully exposed (accumulated with events) frames in a separate window");
@@ -165,6 +165,7 @@ abstract public class DvsFramer extends EventFilter2D {
         setPropertyTooltip("rangeNormalizeFrame", "range to normalize the frame");
         setPropertyTooltip("timeSliceMethod", "Either EventCount or TimeInterval can be chosen to expose DVS frames");
         setPropertyTooltip("timeDurationUsPerFrame", "Used with timeSliceMethod TimeInterval: time interval for DVS frames");
+        setPropertyTooltip("setOutputImageToFullFrame", "Set output image AVI frame size to full chip size");
     }
 
     /**
@@ -227,7 +228,9 @@ abstract public class DvsFramer extends EventFilter2D {
      * @param dvsGrayScale the dvsGrayScale to set
      */
     public void setDvsGrayScale(int dvsGrayScale) {
-        if(dvsGrayScale<1) dvsGrayScale=1;
+        if (dvsGrayScale < 1) {
+            dvsGrayScale = 1;
+        }
         this.dvsGrayScale = dvsGrayScale;
         dvsGrayScaleRecip = 1f / dvsGrayScale;
         putInt("dvsGrayScale", dvsGrayScale);
@@ -330,8 +333,8 @@ abstract public class DvsFramer extends EventFilter2D {
     public boolean isNormalizeDVSForZsNullhop() {
         return normalizeDVSForZsNullhop;
     }
-    
-        /**
+
+    /**
      * @return the normalizeFrame
      */
     public boolean isNormalizeFrame() {
@@ -345,7 +348,6 @@ abstract public class DvsFramer extends EventFilter2D {
         this.normalizeFrame = normalizeFrame;
         putBoolean("normalizeFrame", normalizeFrame);
     }
-
 
     /**
      * @param normalizeDVSForZsNullhop the normalizeDVSForZsNullhop to set
@@ -374,15 +376,28 @@ abstract public class DvsFramer extends EventFilter2D {
     }
 
     synchronized public void setOutputImageWidth(int width) {
-        if(width>chip.getSizeX()) width=chip.getSizeX();
+        int old = getOutputImageWidth();
+        if (width > chip.getSizeX()) {
+            width = chip.getSizeX();
+        }
         this.outputImageWidth = width;
         putInt("outputImageWidth", width);
+        getSupport().firePropertyChange("outputImageWidth", old, this.outputImageWidth);
     }
 
     synchronized public void setOutputImageHeight(int height) {
-        if(height>chip.getSizeY()) height=chip.getSizeY();
+        int old = getOutputImageHeight();
+        if (height > chip.getSizeY()) {
+            height = chip.getSizeY();
+        }
         this.outputImageHeight = height;
         putInt("outputImageHeight", height);
+        getSupport().firePropertyChange("outputImageHeight", old, this.outputImageHeight);
+    }
+
+    public void doSetOutputImageToFullFrame(){
+        setOutputImageHeight(chip.getSizeY());
+        setOutputImageWidth(chip.getSizeX());
     }
 
     /**
@@ -478,7 +493,7 @@ abstract public class DvsFramer extends EventFilter2D {
 
         @Override
         public String toString() {
-            return "DvsFrame{" + "width=" + width + ", height=" + height + ", accumulatedEventCount=" + accumulatedEventCount+ ", durationUs=" + durationUs + ", mostOffCount=" + mostOffCount + ", mostOnCount=" + mostOnCount + ", sparsity=" + sparsity + ", filled=" + filled + '}';
+            return "DvsFrame{" + "width=" + width + ", height=" + height + ", accumulatedEventCount=" + accumulatedEventCount + ", durationUs=" + durationUs + ", mostOffCount=" + mostOffCount + ", mostOnCount=" + mostOnCount + ", sparsity=" + sparsity + ", filled=" + filled + '}';
         }
 
         public void clear() {
@@ -570,13 +585,13 @@ abstract public class DvsFramer extends EventFilter2D {
                     }
                     break;
                 case TimeIntervalUs:
-                    if (durationUs<0 || durationUs >= getTimeDurationUsPerFrame()) {
+                    if (durationUs < 0 || durationUs >= getTimeDurationUsPerFrame()) {
                         filled = true;
                     }
                     break;
                 default:
-                    log.warning("method "+timeSliceMethod+" not yet implemented, disabling filter");
-                    showWarningDialogInSwingThread("DvsFramer method "+timeSliceMethod+" not yet implemented, disabling filter", "DvsFramer");
+                    log.warning("method " + timeSliceMethod + " not yet implemented, disabling filter");
+                    showWarningDialogInSwingThread("DvsFramer method " + timeSliceMethod + " not yet implemented, disabling filter", "DvsFramer");
                     setFilterEnabled(false);
             }
             if (filled) {
@@ -727,10 +742,10 @@ abstract public class DvsFramer extends EventFilter2D {
          * Call this method to normalize accumulated frame to have zero mean and
          * range 0-1 using 3-sigma values, as is used in CNNNetwork.
          */
-        
-                      
         public void normalizeFrame() {
-            if(!normalizeFrame) return;
+            if (!normalizeFrame) {
+                return;
+            }
             final float zeroValue = getZeroCountPixelValue(), fullscale = 1 - zeroValue;
             // net trained gets 0-1 range inputs, so make our input so
             int n = eventSum.length;
@@ -778,7 +793,7 @@ abstract public class DvsFramer extends EventFilter2D {
                         f = 0;
                     }
                     float v = normalizeDVSForZsNullhop ? (f - zeroValue) / fullscale : f;
-                    pixmap[i] = v*((float) rangeNormalizeFrame);
+                    pixmap[i] = v * ((float) rangeNormalizeFrame);
                 }
             }
             sparsity = (float) (n - nonZeroCount) / n;
@@ -808,12 +823,11 @@ abstract public class DvsFramer extends EventFilter2D {
 //                    imageDisplay.setPixmapGray(x, y, lastDvsFrame.getValueAtPixel(x, y));
 //                }
 //            }
-            
-            
+
             //imageDisplay.setPixmapFromGrayArray(pixmap);
-            float [] pixmap_range_0_1 = new float[pixmap.length];
-            for(int i=0;i<pixmap.length;i++){
-                pixmap_range_0_1[i] = pixmap[i]/255;
+            float[] pixmap_range_0_1 = new float[pixmap.length];
+            for (int i = 0; i < pixmap.length; i++) {
+                pixmap_range_0_1[i] = pixmap[i] / 255;
             }
             imageDisplay.setPixmapFromGrayArray(pixmap_range_0_1);
             imageDisplay.display();
@@ -908,8 +922,9 @@ abstract public class DvsFramer extends EventFilter2D {
             this.filled = filled;
         }
 
-        /** Returns accumulation time in us
-         * 
+        /**
+         * Returns accumulation time in us
+         *
          * @return time for accumulating this frame in us
          */
         public int getDurationUs() {
@@ -964,19 +979,19 @@ abstract public class DvsFramer extends EventFilter2D {
         this.timeDurationUsPerFrame = timeDurationUsPerFrame;
         putInt("timeDurationUsPerFrame", timeDurationUsPerFrame);
     }
-    
-    /**
-         * @return the rangeNormalizeFrame
-         */
-        public int getRangeNormalizeFrame() {
-            return rangeNormalizeFrame;
-        }
 
-        /**
-         * @param rangeNormalizeFrame the rangeNormalizeFrame to set
-         */
-        public void setRangeNormalizeFrame(int rangeNormalizeFrame) {
-            this.rangeNormalizeFrame = rangeNormalizeFrame;
-        }
+    /**
+     * @return the rangeNormalizeFrame
+     */
+    public int getRangeNormalizeFrame() {
+        return rangeNormalizeFrame;
+    }
+
+    /**
+     * @param rangeNormalizeFrame the rangeNormalizeFrame to set
+     */
+    public void setRangeNormalizeFrame(int rangeNormalizeFrame) {
+        this.rangeNormalizeFrame = rangeNormalizeFrame;
+    }
 
 }
