@@ -259,8 +259,8 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     }
 
 
-    /* ***************************************************************************************************** */
- /* **  The follwing methods belong to the line tracking algorithm ************************************** */
+ /* ***************************************************************************************************** */
+ /* **  The following methods belong to the line tracking algorithm ************************************* */
  /* ***************************************************************************************************** */
     private void updateCurrentEstimateX() {
         float denominator;
@@ -374,8 +374,8 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         polyEY += (-2.0 * x);
         polyFY += (x * x);
     }
-    /* ***************************************************************************************************** */
- /* **  The follwing methods compute the desired table position ***************************************** */
+ /* ***************************************************************************************************** */
+ /* **  The following methods compute the desired table position **************************************** */
  /* ***************************************************************************************************** */
     private float slowx0 = 0, slowx1 = 0, slowy0 = 0, slowy1 = 0;
     private int count = 100;
@@ -395,7 +395,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         // which we receive as a base and slope, for example
         //   base b1 = (x0/(y0+yr), 0)  and slope s1=dx/dz = x1-x0*y1/(y0+yr)
         //   base b2 = (y0/(xr-x0), 0)  and slope s2=dy/dz = y1+y0*x1/(xr-x0)
-        // If we solve these for x0,x1,y0,y1 in terms of b1,s1,b2,s2, we getString
+        // If we solve these for x0,x1,y0,y1 in terms of b1,s1,b2,s2, we get
         //   x0 = (b1*yr + b1*b2*xr) / (b1*b2+1)
         //   x1 = (s1 + b1*s2) / (b1*b2+1)
         //   y0 = (b2*xr - b1*b2*yr) / (b1*b2+1)
@@ -403,8 +403,8 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         // Well that is very nice!  Let's calculate it!
         // First, we have to convert to the coordinate system with origin at the
         // crossing point of the axes of the retinas, somewhat above table center.
-        float xr = 280;  // was 450...
-        float yr = 280; // I hope we can optimize these over time!
+        float xr = 266;  // distance from center to camera in pixel units of other camera
+        float yr = 266; // was 450, 280, ... I hope we can optimize these over time!
         float b1 = ((currentBaseX - 63.5f) + 63.5f * currentSlopeX) / xr;
         float b2 = ((currentBaseY - 63.5f) + 63.5f * currentSlopeY) / yr;
         float s1 = currentSlopeX;
