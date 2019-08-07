@@ -11,24 +11,19 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
-/**
- * The DAVIS240C camera.
- *
- * @author Tobi
- */
-@Description("The DAVIS240C camera")
+@Description("The DVS240 camera")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class DAVIS240C extends DAVIS240BaseCamera {
+public class DVS240 extends DAVIS240BaseCamera {
 
-	public DAVIS240C() {
-		setName("DAVIS240C");
-		setDefaultPreferencesFile("biasgenSettings/Davis240bc/Davis240c_Basic_GlobalShutter_ImuOn_AutoExposure.xml");
+	public DVS240() {
+		setName("DVS240");
+		setDefaultPreferencesFile("biasgenSettings/Davis240bc/dvs240.xml");
 
-		setApsFirstPixelReadOut(new Point(0, getSizeY() - 1));
-		setApsLastPixelReadOut(new Point(getSizeX() - 1, 0));
+		setApsFirstPixelReadOut(new Point(getSizeX() - 1, 0));
+		setApsLastPixelReadOut(new Point(0, getSizeY() - 1));
 	}
 
-	public DAVIS240C(final HardwareInterface hardwareInterface) {
+	public DVS240(final HardwareInterface hardwareInterface) {
 		this();
 		setHardwareInterface(hardwareInterface);
 	}
