@@ -69,6 +69,8 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
     private ArrayList<String> ioLayers = new ArrayList();
     SavedModelBundle savedModelBundle = null;
     private ImageDisplay imageDisplay;
+    
+    private boolean showHeatmapNotSkeletonFlag;
 
     public DavisCNNTensorFlow(AbstractDavisCNNProcessor processor) {
         super(processor);
@@ -441,14 +443,18 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
     
+    @Override
+    public void setShowHeatmapNotSkeleton(boolean showHeatmapNotSkeleton) {
+        showHeatmapNotSkeletonFlag = showHeatmapNotSkeleton;
+    }
     
     
     float[] outActivations;
     int numUnits, height, width, chans, nPixPerRow;
-    float[][] tmpMaxActAndLocPerMap = null;
+    float[][] tmpMaxActAndLocPerMap = null;    
 
     float[][] maxActAndLocPerMap; // stores max activation and location for each map.
-    //float[][] sumHeatmapsOutputSize; // variable to store sum of heatmaps, with CNN output size. To be upsampled for plotting.
+    float[][] heatmapCNNSize; // to store sum of heatmaps, with CNN output size. To be upsampled for plotting.
     
     public class OutputLayer implements AbstractDavisCNN.OutputLayer {
         
@@ -472,7 +478,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
                 numUnits = height * width * chans; // check if needed or can be removed.
                 nPixPerRow = chans * width;
                 tmpMaxActAndLocPerMap = new float[chans][3]; // hardcoded, max value and x,y position.
-                //sumHeatmapsOutputSize = new float[height][width];
+                heatmapCNNSize = new float[height][width];
                 log.info(String.format("*** DONE Instantiating problem-specific constants: [height, width, chans], nPixPerRow, size tmpMaxActAndLocPerMap, size heatmap."));
             }
             
@@ -485,44 +491,32 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
                     for (int c = 0; c < chans; c++) {
                         final int idx=c+x*chans+y*nPixPerRow;
                         final float act=outActivations[idx];
-                        // initialize the value of max for each CNN output.
-                        if ((y==0) && (x==0)) {
-                            tmpMaxActAndLocPerMap[c][0]=act;
-                            tmpMaxActAndLocPerMap[c][1]=0;
-                            tmpMaxActAndLocPerMap[c][2]=0;
+                        
+                        // to display heatmap
+                        if (showHeatmapNotSkeletonFlag){
+                            // only instantaneous heatmap is displayed
+                            if (c==0){ heatmapCNNSize[y][x]=act;} //to avoid initializing the map to zero.
+                            else{ heatmapCNNSize[y][x] += act; }
                         }
-                        else{
-                            if(act>tmpMaxActAndLocPerMap[c][0]){
-                                //order is: [mapIdx][activation y x]
+                        else{ // to display skeleton
+                            // initialize the value of max for each CNN output.
+                            if ((y==0) && (x==0)) {
                                 tmpMaxActAndLocPerMap[c][0]=act;
-                                tmpMaxActAndLocPerMap[c][1]=y;
-                                tmpMaxActAndLocPerMap[c][2]=x;
+                                tmpMaxActAndLocPerMap[c][1]=0;
+                                tmpMaxActAndLocPerMap[c][2]=0;
+                            }
+                            else{
+                                if(act>tmpMaxActAndLocPerMap[c][0]){
+                                    //order is: [mapIdx][activation y x]
+                                    tmpMaxActAndLocPerMap[c][0]=act;
+                                    tmpMaxActAndLocPerMap[c][1]=y;
+                                    tmpMaxActAndLocPerMap[c][2]=x;
+                                }
                             }
                         }
                     }
                 }
-
             }
-//            int mapIdx, xIdx, yIdx;
-//            for (int i = 0; i < outActivations.length; i++) { // loop over the whole 1d array
-//                mapIdx = i % outShape[2];
-//                xIdx = (i / outShape[2]) % outShape[1];
-//                yIdx = ((i / outShape[2]) / outShape[1]) % outShape[0];
-//
-//                //order is: [mapIdx][activation y x]
-//                // write the first nHeatmaps elements
-//                if (i < outShape[2]) {
-//                    tmpMaxActAndLocPerMap[mapIdx][1] = yIdx;
-//                    tmpMaxActAndLocPerMap[mapIdx][2] = xIdx;
-//                    tmpMaxActAndLocPerMap[mapIdx][0] = outActivations[i];
-//                } else { // otherwise replace only if a larger value is found.
-//                    if (tmpMaxActAndLocPerMap[mapIdx][0] < outActivations[i]) {
-//                        tmpMaxActAndLocPerMap[mapIdx][1] = yIdx;
-//                        tmpMaxActAndLocPerMap[mapIdx][2] = xIdx;
-//                        tmpMaxActAndLocPerMap[mapIdx][0] = outActivations[i];
-//                    }
-//                }
-//            }
 
             //long t1 = System.nanoTime();
             maxActAndLocPerMap = tmpMaxActAndLocPerMap;
@@ -537,8 +531,6 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
             return numUnits;
         }
         
-              
-                
         //@Override
         //public int[] getMaxActivatedUnit() {
         //    return maxActivatedUnitPerMap;
@@ -564,12 +556,17 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
         public float[][] getMaxActAndLocPerMap(){
             return maxActAndLocPerMap;
         }
+        
+        @Override
+        public float[][] getHeatmapCNNSize(){
+            return heatmapCNNSize;
+        }
 
         @Override
         public float[] getActivations() {
             return outActivations;
         }
-
+        
     }
 
     public class InputLayer implements AbstractDavisCNN.InputLayer {

@@ -121,7 +121,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
             frameExtractor.getSupport().addPropertyChangeListener(this);
         }
         setEnclosedFilterChain(chain);
-        String deb = "5. Debug", disp = "2. Display", anal = "3. Analysis", tf = "0. Tensorflow", input = "1. Input";
+        String deb = "5. Debug", disp = "2. Display", anal = "4. Analysis", tf = "0. Tensorflow", input = "1. Input";
         setPropertyTooltip("loadNetwork", "Load an XML or PB file containing a CNN");
         //setPropertyTooltip("loadLabels", "Load labels for output units");
         //setPropertyTooltip(disp, "showOutputAsBarChart", "displays activity of output units as bar chart, where height indicates activation");

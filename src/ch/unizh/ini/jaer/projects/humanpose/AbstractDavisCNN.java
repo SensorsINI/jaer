@@ -82,6 +82,7 @@ public abstract class AbstractDavisCNN {
     protected int operationCounter = 0; // counter for ops during update. MAC should be 2 Op
     protected JFrame activationsFrame = null;
     protected boolean hideConvLayers = true;
+    protected boolean showHeatmapNotSkeleton = false;
     protected boolean hideSubsamplingLayers = true;
     protected JFrame kernelsFrame = null;
     protected boolean printActivations = false;
@@ -308,7 +309,14 @@ public abstract class AbstractDavisCNN {
     }
 
     public abstract void printWeights();
-
+    
+    /**
+     * @param showHeatmapNotSkeleton to show heatmap instead of skeleton
+     */
+    public void setShowHeatmapNotSkeleton(boolean showHeatmapNotSkeleton){
+        this.showHeatmapNotSkeleton = showHeatmapNotSkeleton;
+    }
+    
     /**
      * @param hideConvLayers the hideConvLayers to set
      */
@@ -455,8 +463,10 @@ public abstract class AbstractDavisCNN {
         //public void drawHistogram(GL2 gl, int width, int height, float lineWidth, Color color);
 
         public float[][] getMaxActAndLocPerMap(); // to return max activation and its pixel position for each map.
+        public float[][] getHeatmapCNNSize(); // to return the heatmap with all joint activations.
         
         public float[] getActivations();
+        
     }
 
     public static void drawHistogram(GL2 gl, float[][][] activations, int width, int height, float lineWidth, Color color) {
