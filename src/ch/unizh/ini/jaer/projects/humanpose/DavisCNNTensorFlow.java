@@ -440,67 +440,64 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
     public void printWeights() {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
+    
+    
+    
+    float[] outActivations;
+    int numUnits, height, width, chans, nPixPerRow;
+    float[][] tmpMaxActAndLocPerMap = null;
 
+    float[][] maxActAndLocPerMap; // stores max activation and location for each map.
+    //float[][] sumHeatmapsOutputSize; // variable to store sum of heatmaps, with CNN output size. To be upsampled for plotting.
+    
     public class OutputLayer implements AbstractDavisCNN.OutputLayer {
-
-        float[] outActivations;
-        int numUnits;
         
-        float[][] maxActAndLocPerMap; // stores max activation and location for each map.
-        
-        /*public OutputLayer(float[][][] output) {
-            float[][] tmpMapActivations = new float[output.length][output[0].length];
-            float[][] tmpMaxActAndLocPerMap = new float[output[0][0].length][3]; // hardcoded, max value and x,y position.
-            outActivations = output;
-            numUnits = output.length + output[0].length + output[0][0].length;
-            for (int k = 0; k < outActivations[0][0].length; k++) {
-                for (int i = 0; i < outActivations.length; i++) {
-                    for (int j = 0; j < outActivations[0].length; j++) {  
-                    tmpMapActivations[i][j] = outActivations[i][j][k];
-                    }
-                }
-            tmpMaxActAndLocPerMap[k] = TensorFlow.maxIndex(tmpMapActivations); // maxIndex returns both max activation and location
-            }
-            maxActAndLocPerMap = tmpMaxActAndLocPerMap; }*/
-        
-        
-        // This method is modified to extract the max from the 1d array output of the network. Previously was working on 3d array.
-        // This method loops over the network output and extracts max position and activation for each heatmap.
+        // This method loops over the network output (1d array output, previously 3d array) 
+        // and extracts max position and activation for each heatmap.
         public OutputLayer(float[] output) {
 
             //float[] tmpMapActivations = new float[output.length][output[0].length]; 
             // outShape is [ hmapH hmapW nMaps]
             //float[][] tmpMapActivations = new float[outShape[0]][outShape[1]];
-            final int height = outShape[0], width = outShape[1], chans = outShape[2], nPixPerRow=chans*width;
-            float[][] tmpMaxActAndLocPerMap = new float[chans][3]; // hardcoded, max value and x,y position.
-            outActivations = output;
-
-            //numUnits = output.length + output[0].length + output[0][0].length;
-            numUnits = outShape[0] * outShape[1] * outShape[2];
-
-            /*
-            for (int k = 0; k < outActivations[0][0].length; k++) { // loop over the map index
-                for (int i = 0; i < outActivations.length; i++) {// loop over the y index
-                    for (int j = 0; j < outActivations[0].length; j++) {  // loop over the x index
-                    tmpMapActivations[i][j] = outActivations[i][j][k]; // fill the tmp map with values from the activation
-                    }
-                }
-            tmpMaxActAndLocPerMap[k] = TensorFlow.maxIndex(tmpMapActivations); // maxIndex returns both max activation and location
+            
+            // problem-specific sizes.
+            if (tmpMaxActAndLocPerMap == null) {
+                log.info(String.format("*** Instantiating problem-specific constants: [height, width, chans], nPixPerRow, size tmpMaxActAndLocPerMap, size heatmap."));
+                // instead instantiating vars in class.
+                //final int height = outShape[0], width = outShape[1], chans = outShape[2], nPixPerRow=chans*width;
+                //float[][] tmpMaxActAndLocPerMap = new float[chans][3]; // hardcoded, max value and x,y position.
+                height = outShape[0];
+                width = outShape[1];
+                chans = outShape[2];
+                numUnits = height * width * chans; // check if needed or can be removed.
+                nPixPerRow = chans * width;
+                tmpMaxActAndLocPerMap = new float[chans][3]; // hardcoded, max value and x,y position.
+                //sumHeatmapsOutputSize = new float[height][width];
+                log.info(String.format("*** DONE Instantiating problem-specific constants: [height, width, chans], nPixPerRow, size tmpMaxActAndLocPerMap, size heatmap."));
             }
-             */
             
+            outActivations = output;
             
-            long t0 = System.nanoTime();
+            // loop over 1D vector of activations to extract max per each heatmap.
+            //long t0 = System.nanoTime();
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
                     for (int c = 0; c < chans; c++) {
                         final int idx=c+x*chans+y*nPixPerRow;
                         final float act=outActivations[idx];
-                        if(act>tmpMaxActAndLocPerMap[c][0]){
-                            //order is: [mapIdx][activation y x]
+                        // initialize the value of max for each CNN output.
+                        if ((y==0) && (x==0)) {
                             tmpMaxActAndLocPerMap[c][0]=act;
-                            tmpMaxActAndLocPerMap[c][1]=y;
-                            tmpMaxActAndLocPerMap[c][2]=x;
+                            tmpMaxActAndLocPerMap[c][1]=0;
+                            tmpMaxActAndLocPerMap[c][2]=0;
+                        }
+                        else{
+                            if(act>tmpMaxActAndLocPerMap[c][0]){
+                                //order is: [mapIdx][activation y x]
+                                tmpMaxActAndLocPerMap[c][0]=act;
+                                tmpMaxActAndLocPerMap[c][1]=y;
+                                tmpMaxActAndLocPerMap[c][2]=x;
+                            }
                         }
                     }
                 }
@@ -527,11 +524,11 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
 //                }
 //            }
 
-            long t1 = System.nanoTime();
+            //long t1 = System.nanoTime();
             maxActAndLocPerMap = tmpMaxActAndLocPerMap;
             
-            log.info(String.format("max (in tmp) took %.3fms", 1e-6f * (t1 - t0)));
-            log.info(String.format("max copy  from tmp %.3fms", 1e-6f * (System.nanoTime() - t1)));
+            //log.info(String.format("max (in tmp) took %.3fms", 1e-6f * (t1 - t0)));
+            //log.info(String.format("max copy  from tmp %.3fms", 1e-6f * (System.nanoTime() - t1)));
         }
         
         

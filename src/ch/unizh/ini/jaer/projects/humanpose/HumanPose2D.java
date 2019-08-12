@@ -64,8 +64,8 @@ import net.sf.jaer.DevelopmentStatus;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnnotater {
 
-    private float confThreshold = getFloat("confThreshold", 0.3f);
-    
+    //private float confThreshold = getFloat("confThreshold", 0.3f);
+    private float confThreshold;
     private float confThresholdUpper = getFloat("confThresholdUpper", 0.3f);
     private float confThresholdLower = getFloat("confThresholdLower", 0.3f);
     
@@ -84,16 +84,17 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
     float [][] valueAndLocationMaxHeatmaps = new float[13][3]; // final prediction after applying confidence threshold 
     
     
-    String [] joint_names = {"head", "Rshoulder", "Lshoulder", "Relbow", 
+    String [] jointNames = {"head", "Rshoulder", "Lshoulder", "Relbow", 
                              "Lelbow", "Rhip", "Lhip", "Rhand", "Lhand", 
                              "Rknee", "Lknee", "Rfoot", "Lfoot"};
     
-    int sx_input = 346;
-    int sx_cnn_input = 344;
-    int sy_input = 260;
-    int sx_cnn_output = 86;
-    int sy_output = 65;
-    int output_stride = 4;
+    // problem-specific. Some are redundant, output shapes are extracted at first CNN run.
+    int sxInput = 346;
+    int sxCNNInput = 344;
+    int syInput = 260;
+    int sxCNNOutput = 86;
+    int syOutput = 65;
+    int outputStride = 4;
     
 
     public HumanPose2D(AEChip chip) {
@@ -119,8 +120,8 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
         ((DvsFramerSingleFrame) chain.get(2)).setDvsEventsPerFrame(7500); 
         ((DvsFramerSingleFrame) chain.get(2)).setDvsGrayScale(255); 
         //((DvsFramerSingleFrame) chain.get(2)).setFrameCutRight(1038);
-        ((DvsFramerSingleFrame) chain.get(2)).setOutputImageHeight(sy_input);
-        ((DvsFramerSingleFrame) chain.get(2)).setOutputImageWidth(sx_cnn_input);
+        ((DvsFramerSingleFrame) chain.get(2)).setOutputImageHeight(syInput);
+        ((DvsFramerSingleFrame) chain.get(2)).setOutputImageWidth(sxCNNInput);
         
         ((DvsFramerSingleFrame) chain.get(2)).setRangeNormalizeFrame(255); 
 
@@ -130,12 +131,11 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
         //set filter parameters
         setInputLayerName("input_1");
         setOutputLayerName("output0");
-        setImageHeight(sy_input);
-        setImageWidth(sx_cnn_input);
+        setImageHeight(syInput);
+        setImageWidth(sxCNNInput);
         //setSoftMaxOutput(false);
         
-        setPropertyTooltip("1b. Annotation", "confThreshold", "Sets the confidence threshold for joints update.");
-        
+        //setPropertyTooltip("1b. Annotation", "confThreshold", "Sets the confidence threshold for joints update.");
         setPropertyTooltip("1b. Annotation", "confThresholdUpper", "Sets the confidence threshold for UPPER joints update.");
         setPropertyTooltip("1b. Annotation", "confThresholdLower", "Sets the confidence threshold for LOWER joints update.");
         
@@ -220,29 +220,12 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
         if (apsDvsNet != null && apsDvsNet.getNetname() != null) {
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1f);
             MultilineAnnotationTextRenderer.setScale(.3f);
-            MultilineAnnotationTextRenderer.renderMultilineString(apsDvsNet.getNetname());     
-            
- /*
-            
-            float [] image = dvsFramer.lastDvsFrame.getImage();
-            float image_min=0;
-            float image_max=0;
-            
-            try (PrintWriter out = new PrintWriter("/home/enrico/Desktop/jaer_debug/min_max_img.txt")){
- 
-                for(int i=1;i<image.length;i++){
-                    if(image[i] < image_min){
-                        image_min = image[i];}
-                    if(image[i] > image_max){
-                        image_max = image[i];
-                    }}
-                out.println(image_min);
-                out.println(image_max);
-            } catch (FileNotFoundException ex) {
-                Logger.getLogger(humanPose2D.class.getName()).log(Level.SEVERE, null, ex);
+            //MultilineAnnotationTextRenderer.renderMultilineString(apsDvsNet.getNetname());     
+            if ((measurePerformance == true) && (performanceString != null)) {
+                MultilineAnnotationTextRenderer.renderMultilineString(performanceString);
+                lastPerformanceString = performanceString;
             }
-            
-*/
+
        
             instValueAndLocationMaxHeatmaps = apsDvsNet.getOutputLayer().getMaxActAndLocPerMap();
             
@@ -281,7 +264,7 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
         
        
         
-        int camera_shift=sx_input*camera;
+        int camera_shift=sxInput*camera;
         
         
         
@@ -293,8 +276,8 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
         gl.glPointSize(4);
         gl.glBegin(GL.GL_POINTS);
         for (int i = 0; i < valueAndLocationMaxHeatmaps.length; i++) {
-            float xJoint = camera_shift + valueAndLocationMaxHeatmaps[i][2]*output_stride; 
-            float yJoint = sy_input - valueAndLocationMaxHeatmaps[i][1]*output_stride; 
+            float xJoint = camera_shift + valueAndLocationMaxHeatmaps[i][2]*outputStride; 
+            float yJoint = syInput - valueAndLocationMaxHeatmaps[i][1]*outputStride; 
             gl.glVertex2f(xJoint, yJoint);
         }
         gl.glEnd();
@@ -303,27 +286,27 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
         gl.glLineWidth(4);
         gl.glColor3f(1, 1, 0);
         gl.glBegin(GL.GL_LINE_STRIP);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[7][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[7][1]*output_stride);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[3][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[3][1]*output_stride);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[1][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[1][1]*output_stride);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[0][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[0][1]*output_stride);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[2][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[2][1]*output_stride);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[1][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[1][1]*output_stride);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[5][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[5][1]*output_stride);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[6][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[6][1]*output_stride);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[2][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[2][1]*output_stride);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[4][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[4][1]*output_stride);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[8][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[8][1]*output_stride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[7][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[7][1]*outputStride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[3][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[3][1]*outputStride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[1][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[1][1]*outputStride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[0][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[0][1]*outputStride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[2][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[2][1]*outputStride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[1][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[1][1]*outputStride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[5][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[5][1]*outputStride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[6][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[6][1]*outputStride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[2][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[2][1]*outputStride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[4][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[4][1]*outputStride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[8][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[8][1]*outputStride);
         gl.glEnd();
         
         gl.glColor3f(1, 0, 1);
         gl.glBegin(GL.GL_LINE_STRIP);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[11][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[11][1]*output_stride);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[9][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[9][1]*output_stride);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[5][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[5][1]*output_stride);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[6][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[6][1]*output_stride);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[10][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[10][1]*output_stride);
-            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[12][2]*output_stride, sy_input - valueAndLocationMaxHeatmaps[12][1]*output_stride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[11][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[11][1]*outputStride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[9][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[9][1]*outputStride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[5][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[5][1]*outputStride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[6][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[6][1]*outputStride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[10][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[10][1]*outputStride);
+            gl.glVertex2f(camera_shift + valueAndLocationMaxHeatmaps[12][2]*outputStride, syInput - valueAndLocationMaxHeatmaps[12][1]*outputStride);
         gl.glEnd();
         
         float scale=MultilineAnnotationTextRenderer.getScale();
@@ -331,24 +314,24 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
         for(int i = 0; i < valueAndLocationMaxHeatmaps.length; i++) {
             // display only non-NaN names (check only on u, it is the same as v when NaN)
             if (!Float.isNaN(valueAndLocationMaxHeatmaps[i][1])){
-               textRenderer.draw3D(joint_names[i], (int)(camera_shift + valueAndLocationMaxHeatmaps[i][2]*output_stride), (int)(sy_input - valueAndLocationMaxHeatmaps[i][1]*output_stride), 0, scale);
+               textRenderer.draw3D(jointNames[i], (int)(camera_shift + valueAndLocationMaxHeatmaps[i][2]*outputStride), (int)(syInput - valueAndLocationMaxHeatmaps[i][1]*outputStride), 0, scale);
             }
         }
         
         /*
-        textRenderer.draw3D("head", (int)(camera_shift + valueAndLocationMaxHeatmaps[0][2]*output_stride), (int)(sy_input - valueAndLocationMaxHeatmaps[0][1]*output_stride), 0, scale);
-        textRenderer.draw3D("Rshoulder", (int)(camera_shift + valueAndLocationMaxHeatmaps[1][2]*output_stride), (int)(sy_input - valueAndLocationMaxHeatmaps[1][1]*output_stride), 0, scale);
-        textRenderer.draw3D("Lshoulder", (int)(camera_shift + valueAndLocationMaxHeatmaps[2][2]*output_stride), (int)(sy_input - valueAndLocationMaxHeatmaps[2][1]*output_stride), 0, scale);
-        textRenderer.draw3D("Relbow", (int)(camera_shift + valueAndLocationMaxHeatmaps[3][2]*output_stride), (int)(sy_input - valueAndLocationMaxHeatmaps[3][1]*output_stride), 0, scale);
-        textRenderer.draw3D("Lelbow", (int)(camera_shift + valueAndLocationMaxHeatmaps[4][2]*output_stride), (int)(sy_input - valueAndLocationMaxHeatmaps[4][1]*output_stride), 0, scale);
-        textRenderer.draw3D("Rhip", (int)(camera_shift + valueAndLocationMaxHeatmaps[5][2]*output_stride), (int)(sy_input - valueAndLocationMaxHeatmaps[5][1]*output_stride), 0, scale);
-        textRenderer.draw3D("Lhip", (int)(camera_shift + valueAndLocationMaxHeatmaps[6][2]*output_stride), (int)(sy_input - valueAndLocationMaxHeatmaps[6][1]*output_stride), 0, scale);
-        textRenderer.draw3D("Rhand", (int)(camera_shift + valueAndLocationMaxHeatmaps[7][2]*output_stride), (int)(sy_input - valueAndLocationMaxHeatmaps[7][1]*output_stride), 0, scale);
-        textRenderer.draw3D("Lhand", (int)(camera_shift + valueAndLocationMaxHeatmaps[8][2]*output_stride), (int)(sy_input - valueAndLocationMaxHeatmaps[8][1]*output_stride), 0, scale);
-        textRenderer.draw3D("Rknee", (int)(camera_shift + valueAndLocationMaxHeatmaps[9][2]*output_stride), (int)(sy_input - valueAndLocationMaxHeatmaps[9][1]*output_stride), 0, scale);
-        textRenderer.draw3D("Lknee", (int)(camera_shift + valueAndLocationMaxHeatmaps[10][2]*output_stride), (int)(sy_input - valueAndLocationMaxHeatmaps[10][1]*output_stride), 0, scale);
-        textRenderer.draw3D("Rfoot", (int)(camera_shift + valueAndLocationMaxHeatmaps[11][2]*output_stride), (int)(sy_input - valueAndLocationMaxHeatmaps[11][1]*output_stride), 0, scale);
-        textRenderer.draw3D("Lfoot", (int)(camera_shift + valueAndLocationMaxHeatmaps[12][2]*output_stride), (int)(sy_input - valueAndLocationMaxHeatmaps[12][1]*output_stride), 0, scale);
+        textRenderer.draw3D("head", (int)(camera_shift + valueAndLocationMaxHeatmaps[0][2]*outputStride), (int)(syInput - valueAndLocationMaxHeatmaps[0][1]*outputStride), 0, scale);
+        textRenderer.draw3D("Rshoulder", (int)(camera_shift + valueAndLocationMaxHeatmaps[1][2]*outputStride), (int)(syInput - valueAndLocationMaxHeatmaps[1][1]*outputStride), 0, scale);
+        textRenderer.draw3D("Lshoulder", (int)(camera_shift + valueAndLocationMaxHeatmaps[2][2]*outputStride), (int)(syInput - valueAndLocationMaxHeatmaps[2][1]*outputStride), 0, scale);
+        textRenderer.draw3D("Relbow", (int)(camera_shift + valueAndLocationMaxHeatmaps[3][2]*outputStride), (int)(syInput - valueAndLocationMaxHeatmaps[3][1]*outputStride), 0, scale);
+        textRenderer.draw3D("Lelbow", (int)(camera_shift + valueAndLocationMaxHeatmaps[4][2]*outputStride), (int)(syInput - valueAndLocationMaxHeatmaps[4][1]*outputStride), 0, scale);
+        textRenderer.draw3D("Rhip", (int)(camera_shift + valueAndLocationMaxHeatmaps[5][2]*outputStride), (int)(syInput - valueAndLocationMaxHeatmaps[5][1]*outputStride), 0, scale);
+        textRenderer.draw3D("Lhip", (int)(camera_shift + valueAndLocationMaxHeatmaps[6][2]*outputStride), (int)(syInput - valueAndLocationMaxHeatmaps[6][1]*outputStride), 0, scale);
+        textRenderer.draw3D("Rhand", (int)(camera_shift + valueAndLocationMaxHeatmaps[7][2]*outputStride), (int)(syInput - valueAndLocationMaxHeatmaps[7][1]*outputStride), 0, scale);
+        textRenderer.draw3D("Lhand", (int)(camera_shift + valueAndLocationMaxHeatmaps[8][2]*outputStride), (int)(syInput - valueAndLocationMaxHeatmaps[8][1]*outputStride), 0, scale);
+        textRenderer.draw3D("Rknee", (int)(camera_shift + valueAndLocationMaxHeatmaps[9][2]*outputStride), (int)(syInput - valueAndLocationMaxHeatmaps[9][1]*outputStride), 0, scale);
+        textRenderer.draw3D("Lknee", (int)(camera_shift + valueAndLocationMaxHeatmaps[10][2]*outputStride), (int)(syInput - valueAndLocationMaxHeatmaps[10][1]*outputStride), 0, scale);
+        textRenderer.draw3D("Rfoot", (int)(camera_shift + valueAndLocationMaxHeatmaps[11][2]*outputStride), (int)(syInput - valueAndLocationMaxHeatmaps[11][1]*outputStride), 0, scale);
+        textRenderer.draw3D("Lfoot", (int)(camera_shift + valueAndLocationMaxHeatmaps[12][2]*outputStride), (int)(syInput - valueAndLocationMaxHeatmaps[12][1]*outputStride), 0, scale);
         */
         
         
@@ -405,16 +388,16 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
     /**
      * @return the confThreshold
      */
-    public float getConfThreshold() {
-        return confThreshold;
-    }
+    //public float getConfThreshold() {
+    //    return confThreshold;
+    //}
     
     /**
      * @param confThreshold the confidence threshold to update joints
     */
-    public void setConfThreshold(float confThreshold) {
-        this.confThreshold = confThreshold;
-    }
+    //public void setConfThreshold(float confThreshold) {
+    //    this.confThreshold = confThreshold;
+    //}
     
     
     

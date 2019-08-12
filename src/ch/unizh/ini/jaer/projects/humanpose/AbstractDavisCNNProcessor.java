@@ -625,7 +625,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1f);
             MultilineAnnotationTextRenderer.setScale(.3f);
             MultilineAnnotationTextRenderer.renderMultilineString(apsDvsNet.getNetname());
-            if (measurePerformance && performanceString != null /*&& !performanceString.equals(lastPerformanceString)*/) {
+            if ((measurePerformance == true) && (performanceString != null) /*&& !performanceString.equals(lastPerformanceString)*/) {
                 MultilineAnnotationTextRenderer.renderMultilineString(performanceString);
                 lastPerformanceString = performanceString;
             }
