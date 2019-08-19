@@ -71,6 +71,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
     private ImageDisplay imageDisplay;
     
     private boolean showHeatmapNotSkeletonFlag;
+    private int showWhichHeatmap;
 
     public DavisCNNTensorFlow(AbstractDavisCNNProcessor processor) {
         super(processor);
@@ -448,6 +449,12 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
         showHeatmapNotSkeletonFlag = showHeatmapNotSkeleton;
     }
     
+    @Override
+    public void setShowWhichHeatmap(int showWhichHeatmap) {
+        showWhichHeatmap = showWhichHeatmap;
+    }
+    
+    
     
     float[] outActivations;
     int numUnits, height, width, chans, nPixPerRow;
@@ -495,8 +502,13 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
                         // to display heatmap
                         if (showHeatmapNotSkeletonFlag){
                             // only instantaneous heatmap is displayed
-                            if (c==0){ heatmapCNNSize[y][x]=act;} //to avoid initializing the map to zero.
-                            else{ heatmapCNNSize[y][x] += act; }
+                            if (showWhichHeatmap == -1){ // -1 for showing all heatmaps
+                                if (c==0){ heatmapCNNSize[y][x]=act;} //to avoid initializing the map to zero.
+                                else{ heatmapCNNSize[y][x] += act; }
+                            }
+                            else{
+                                if (c==showWhichHeatmap){ heatmapCNNSize[y][x]=act;}
+                            }
                         }
                         else{ // to display skeleton
                             // initialize the value of max for each CNN output.

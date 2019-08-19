@@ -83,6 +83,7 @@ public abstract class AbstractDavisCNN {
     protected JFrame activationsFrame = null;
     protected boolean hideConvLayers = true;
     protected boolean showHeatmapNotSkeleton = false;
+    protected int showWhichHeatmap = -1;
     protected boolean hideSubsamplingLayers = true;
     protected JFrame kernelsFrame = null;
     protected boolean printActivations = false;
@@ -315,6 +316,13 @@ public abstract class AbstractDavisCNN {
      */
     public void setShowHeatmapNotSkeleton(boolean showHeatmapNotSkeleton){
         this.showHeatmapNotSkeleton = showHeatmapNotSkeleton;
+    }
+    
+    /**
+     * @param showWhichHeatmap select which heatmap to show.
+     */
+    public void setShowWhichHeatmap(int showWhichHeatmap){
+        this.showWhichHeatmap = showWhichHeatmap;
     }
     
     /**

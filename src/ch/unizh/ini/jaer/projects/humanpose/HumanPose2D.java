@@ -70,6 +70,7 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
     private float confThresholdLower = getFloat("confThresholdLower", 0.3f);
     
     private boolean showHeatmapNotSkeleton = getBoolean("showHeatmapNotSkeleton", false);
+    private int showWhichHeatmap = getInt("showWhichHeatmap", -1);
     private boolean displaySkeletonEdges = getBoolean("displaySkeletonEdges", true);
         
     private int updateCounterMax = getInt("updateCounterMax", 5);
@@ -152,7 +153,9 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
         setPropertyTooltip("1. Input", "camera", "Input camera for multicamera filter, otherwise leave it 0.");
 
         setPropertyTooltip("2. Display", "showHeatmapNotSkeleton", "Display the heatmap instead of the skeleton.");
+        setPropertyTooltip("2. Display", "showWhichHeatmap", "Select the heatmap to display. -1: sum of all.");
 
+        
         //setPropertyTooltip("3a. Annotation", "confThreshold", "Sets the confidence threshold for joints update.");
         setPropertyTooltip("3a. Skeleton annotation", "displaySkeletonEdges", "Display or hide the skeleton edges.");
         setPropertyTooltip("3a. Skeleton annotation", "confThresholdUpper", "Sets the confidence threshold for UPPER joints update.");
@@ -238,16 +241,9 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
         
         AEFrameChipRenderer frameRenderer = (AEFrameChipRenderer) chip.getRenderer(); // for heatmap
         
-
-        
-        
-        
-        
-        
-        
-        
         
         if (apsDvsNet != null && apsDvsNet.getNetname() != null) {
+            // display CNN latency/FPS. Commented out network name.
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1f);
             MultilineAnnotationTextRenderer.setScale(.3f);
             //MultilineAnnotationTextRenderer.renderMultilineString(apsDvsNet.getNetname());
@@ -684,5 +680,52 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
         this.showHeatmapNotSkeleton = showHeatmapNotSkeleton;
         //putBoolean("showHeatmapNotSkeleton", showHeatmapNotSkeleton);
     }
+
+    
+    
+    // <editor-fold defaultstate="collapsed" desc="getter-setter / Min-Max for --heatmapAlpha--">
+    /**
+     * Select which heatmap to display
+     *
+     * @return the index of heatmap to display. -1 for all.
+     */
+    public int getShowWhichHeatmap() {
+        return this.showWhichHeatmap;
+    }
+
+    /**
+     * sets the value to select the heatmap to display. 
+     * If param is larger then getMaxHeatmapAlpha() or
+     * smaller getMinHeatmapAlpha() the boundary value are used instead of param.
+     * <p>
+     * Fires a PropertyChangeEvent "heatmapAlpha"
+     *
+     * @see #getHeatmapAlpha
+     * @param alpha for heatmap
+     */
+    public void setShowWhichHeatmap(final int showWhichHeatmap) {
+        int setValue = showWhichHeatmap;
+        if (showWhichHeatmap < getMinShowWhichHeatmap()) {
+            setValue = getMinShowWhichHeatmap();
+        }
+        if (showWhichHeatmap > getMaxShowWhichHeatmap()) {
+            setValue = getMaxShowWhichHeatmap();
+        }
+
+        putFloat("showWhichHeatmap", setValue);
+        getSupport().firePropertyChange("showWhichHeatmap", this.showWhichHeatmap, setValue);
+        this.showWhichHeatmap = setValue;
+    }
+
+    public int getMinShowWhichHeatmap() {
+        return -1;
+    }
+
+    public int getMaxShowWhichHeatmap() {
+        return 13;
+    }
+    // </editor-fold>
+    
+    
 
 }
