@@ -19,6 +19,8 @@
 package ch.unizh.ini.jaer.projects.raindrops;
 
 import com.jogamp.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -26,6 +28,7 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
+import net.sf.jaer.eventprocessing.filter.XYTypeFilter;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
@@ -37,10 +40,13 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
  *
  * @author Asude Aydin & tobi Delbruck
  */
+@Description("Counts rain droplets and measures stats about them")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class RaindropCounter extends EventFilter2D implements FrameAnnotater {
 
     private RaindropTracker tracker = null; // does the detection of droplets; we pull up methods to make it easier to control
     private SpatioTemporalCorrelationFilter noiseFilter = null;
+    private XYTypeFilter onEventFilter = null;
     private FilterChain enclosedFilterChain = null;
 
     private int statisticsStartTimestamp = Integer.MIN_VALUE, statisticsCurrentTimestamp = Integer.MIN_VALUE;
@@ -51,7 +57,9 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater {
         super(chip);
         tracker = new RaindropTracker(chip);
         noiseFilter = new SpatioTemporalCorrelationFilter(chip);
+        onEventFilter = new XYTypeFilter(chip);
         enclosedFilterChain = new FilterChain(chip);
+        enclosedFilterChain.add(onEventFilter);
         enclosedFilterChain.add(noiseFilter);
         enclosedFilterChain.add(tracker);
         setEnclosedFilterChain(enclosedFilterChain);
@@ -66,6 +74,12 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip("showFolderInDesktop", "Opens the folder containging the last-written log file");
 
 // reasonable defaults
+        onEventFilter.setTypeEnabled(true);
+        onEventFilter.setXEnabled(false);
+        onEventFilter.setYEnabled(false);
+        onEventFilter.setStartType(1);
+        onEventFilter.setEndType(1);
+        
         if (!isPreferenceStored("showAllClusters")) {
             tracker.setShowAllClusters(true);
         }
@@ -213,10 +227,11 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater {
                         return;
                     }
                     stats.addValue(maxRadius);
-                    if (statisticsStartTimestamp < getLastEventTimestamp()) {
-                        statisticsStartTimestamp = getLastEventTimestamp();
+                    if (statisticsStartTimestamp < tracker.lastTimestamp) {
+                        statisticsStartTimestamp = tracker.lastTimestamp;
+                        statisticsCurrentTimestamp = tracker.lastTimestamp;
                     } else {
-                        statisticsCurrentTimestamp = getLastEventTimestamp();
+                        statisticsCurrentTimestamp = tracker.lastTimestamp;
                     }
                 }
             }
