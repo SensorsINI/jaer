@@ -17,13 +17,25 @@ public class ClusterPathPoint extends Point2D.Float {
     public Point2D.Float velocityPPT=null;
     /** disparity of stereo vision. Valid for stereo vision only */
     public float stereoDisparity;
-
+    /** Measured size (average radius) of cluster */
+    public float averageRadius=-1;
+    
     public ClusterPathPoint(float x, float y, int t, int numEvents) {
         super();
         this.x = x;
         this.y = y;
         this.t = t;
         this.nEvents = numEvents;
+    }
+    
+    /** Constructor that sets average radius */
+    public ClusterPathPoint(float x, float y, int t, int numEvents, float averageRadius) {
+        super();
+        this.x = x;
+        this.y = y;
+        this.t = t;
+        this.nEvents = numEvents;
+        this.averageRadius = averageRadius;
     }
 
     public int getT() {
@@ -47,6 +59,6 @@ public class ClusterPathPoint extends Point2D.Float {
 
     @Override
     public String toString() {
-        return String.format("%d, %f, %f, %d", t, x, y, nEvents);
+        return String.format("%d, %f, %f, %d, %f", t, x, y, nEvents,averageRadius);
     }
 }
