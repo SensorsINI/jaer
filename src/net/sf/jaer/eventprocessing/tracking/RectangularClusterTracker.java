@@ -199,6 +199,7 @@ public class RectangularClusterTracker extends EventFilter2D
         }
     }
 
+    /** timestamp that is updated for each cluster that is updated */
     protected int lastTimestamp = 0;
 
     protected int clusterCounter = 0; // keeps track of absolute cluster number
@@ -755,8 +756,7 @@ public class RectangularClusterTracker extends EventFilter2D
                 && !pruneList.isEmpty()) {
             clusterLogger.logClusterHistories(pruneList);
         }
-        
-       
+
         clusters.removeAll(pruneList);
         for (Cluster c : pruneList) {
             fastClusterFinder.removeCluster(c);
@@ -1137,7 +1137,8 @@ public class RectangularClusterTracker extends EventFilter2D
          * First and last timestamp of cluster. <code>firstEventTimestamp</code>
          * is updated when cluster becomes visible.
          * <code>lastEventTimestamp</code> is the last time the cluster was
-         * touched either by an event or by some other timestamped update, e.g.          {@link #updateClusterList(net.sf.jaer.event.EventPacket, int)
+         * touched either by an event or by some other timestamped update, e.g. null 
+         * {@link #updateClusterList(net.sf.jaer.event.EventPacket, int)
 		 * }.
          *
          * @see #isVisible()
@@ -2162,9 +2163,20 @@ public class RectangularClusterTracker extends EventFilter2D
         }
 
         /**
+         * Factory method that subclasses can override to create custom path
+         * points, e.g. for storing different statistics
+         *
+         * @return a new ClusterPathPoint with x,y,t set. Other fields must be
+         * set using methods.
+         */
+        protected ClusterPathPoint createPoint(float x, float y, int t) {
+            return ClusterPathPoint.createPoint(x, y, t);
+        }
+
+        /**
          * Updates path (historical) information for this cluster, including
          * cluster velocity (by calling updateVelocity()). The path is trimmed
-         * to maximum length if loggging is not enabled.
+         * to maximum length if logging is not enabled.
          *
          * @param t current timestamp.
          */
@@ -2176,8 +2188,9 @@ public class RectangularClusterTracker extends EventFilter2D
                 return; // don't appendCopy point unless we had events that caused change in path (aside from prediction from
                 // velocityPPT)
             }
-//			path.add(new ClusterPathPoint(location.x, location.y, t, numEvents - previousNumEvents));
-            path.add(new ClusterPathPoint(location.x, location.y, t, numEvents - previousNumEvents, getAverageEventDistance()));
+            ClusterPathPoint p = createPoint(location.x, location.y, t);
+            p.setnEvents(numEvents - previousNumEvents);
+            path.add(p);
             previousNumEvents = numEvents;
             updateVelocity();
 
@@ -2964,10 +2977,10 @@ public class RectangularClusterTracker extends EventFilter2D
         }
         try {
             Desktop desktop = Desktop.getDesktop();
-            File f = (clusterLogger != null && clusterLogger.file!=null) ? clusterLogger.file:null;
-            if (f!=null && f.exists()) {
+            File f = (clusterLogger != null && clusterLogger.file != null) ? clusterLogger.file : null;
+            if (f != null && f.exists()) {
                 desktop.open(f.getAbsoluteFile().getParentFile());
-            }else{
+            } else {
                 log.warning("no log file yet");
             }
         } catch (Exception e) {
