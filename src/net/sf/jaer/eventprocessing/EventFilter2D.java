@@ -241,14 +241,15 @@ abstract public class EventFilter2D extends EventFilter implements PropertyChang
     }
 
     /**
-     * Base method to handle PropertyChangeEvent . The base method calls initFilter() when the AEChip size is changed, allowing filters
-     * to allocate memory or do other initialization.
+     * Base method to handle PropertyChangeEvent. It call super.propertyChange() and then initFilter() when the AEChip size is changed, allowing filters
+     * to allocate memory or do other initialization. Subclasses can override to add more PropertyChangeEvent handling e.g from AEViewer or AEFileInputStream.
      *
      * @param evt the PropertyChangeEvent, by jAER convention it is a constant
      * starting with EVENT_
      */
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        super.propertyChange(evt);
         switch (evt.getPropertyName()) {
             case AEChip.EVENT_SIZE_SET:
                 try{
