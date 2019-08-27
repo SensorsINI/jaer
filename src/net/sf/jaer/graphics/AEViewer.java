@@ -195,8 +195,8 @@ import net.sf.jaer.util.filter.LowpassFilter;
 public class AEViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener, ExceptionListener, RemoteControlled {
 
     /**
-     * PropertyChangeEvent fired from this AEViewer
-     *
+     * PropertyChangeEvent fired from this AEViewer to the PropertyChangeSupport that is part of AEViewer. <b>This support is different than the Java AWT property change support</b>.
+     * @see #getSupport() 
      */
     public static final String EVENT_PLAYMODE = "playmode",
             EVENT_FILEOPEN = "fileopen",
@@ -206,6 +206,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             EVENT_TIMESTAMPS_RESET = "timestampsReset",
             EVENT_CHECK_NONMONOTONIC_TIMESTAMPS = "checkNonMonotonicTimestamps",
             EVENT_ACCUMULATE_ENABLED = "accumulateEnabled";
+    private PropertyChangeSupport support =new PropertyChangeSupport(this);
 
     public static final String HELP_URL_JAER_HOME = "https://github.com/SensorsINI/jaer";
     public static final String HELP_URL_USER_GUIDE = "https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing";
@@ -322,6 +323,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         helpMenu.remove(m);
     }
+
+    /**
+     * PropertyChangeSupport for events like file opening, file rewind, etc.
+     * @return the support
+     * @see AEViewer#EVENT_FILEOPEN etc
+     */
+    public PropertyChangeSupport getSupport() {
+        return support;
+    }
+    
     /**
      * Default port number for remote control of this AEViewer.
      *
@@ -1119,7 +1130,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if ((aemon != null) && aemon.isOpen()) {
             aemon.resetTimestamps();
         }
-        firePropertyChange(EVENT_TIMESTAMPS_RESET, null, EVENT_TIMESTAMPS_RESET);
+        getSupport().firePropertyChange(EVENT_TIMESTAMPS_RESET, null, EVENT_TIMESTAMPS_RESET);
     }
 
     /**
@@ -1295,7 +1306,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
             //            getSupport().firePropertyChange("chip", oldChip, getChip());
-            firePropertyChange(EVENT_CHIP, oldChip, getChip());
+            getSupport().firePropertyChange(EVENT_CHIP, oldChip, getChip());
 
             chip.onRegistration();
             setTitleAccordingToState();
@@ -2884,7 +2895,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public void stopMe() {
         stopLogging(true); // in case logging, make sure we give chance to save file
-        firePropertyChange(EVENT_STOPME, null, null);
+        getSupport().firePropertyChange(EVENT_STOPME, null, null);
         //        log.info(Thread.currentThread()+ "AEViewer.stopMe() called");
         switch (getPlayMode()) {
             case PLAYBACK:
@@ -4443,7 +4454,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	private void acccumulateImageEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_acccumulateImageEnabledCheckBoxMenuItemActionPerformed
             boolean old = getRenderer().isAccumulateEnabled();
             getRenderer().setAccumulateEnabled(!getRenderer().isAccumulateEnabled());
-            firePropertyChange(AEViewer.EVENT_ACCUMULATE_ENABLED, old, getRenderer().isAccumulateEnabled());
+            getSupport().firePropertyChange(AEViewer.EVENT_ACCUMULATE_ENABLED, old, getRenderer().isAccumulateEnabled());
 	}//GEN-LAST:event_acccumulateImageEnabledCheckBoxMenuItemActionPerformed
 
 	private void zeroTimestampsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zeroTimestampsMenuItemActionPerformed
@@ -4628,16 +4639,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             switch (evt.getPropertyName()) {
                 case AEInputStream.EVENT_REWOUND:
                     log.info("rewind");
-                    firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());
+                    for(PropertyChangeListener p:getSupport().getPropertyChangeListeners()){
+                        log.info("Listener: "+p);
+                    }
+                    
+                    getSupport().firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());
                     break;
                 case AEInputStream.EVENT_POSITION:
                     // don't pass on position on every packet since this consumes a lot of processing time in each filter
                     break;
                 default:
-                    firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());
+                    getSupport().firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());
             }
         } else if (evt.getSource() instanceof AEPlayer) {
-            firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // forward/refire events from AEFileInputStream to listeners on AEViewer
+            getSupport().firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // forward/refire events from AEFileInputStream to listeners on AEViewer
         }
     }
 
@@ -5262,7 +5277,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if ((aemon != null) && (aemon instanceof StereoPairHardwareInterface)) {
                 ((StereoPairHardwareInterface) aemon).setIgnoreTimestampNonmonotonicity(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
             }
-            firePropertyChange(EVENT_CHECK_NONMONOTONIC_TIMESTAMPS, null, checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
+            getSupport().firePropertyChange(EVENT_CHECK_NONMONOTONIC_TIMESTAMPS, null, checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
 	}//GEN-LAST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
 
 	private void syncEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_syncEnabledCheckBoxMenuItemActionPerformed
@@ -5730,7 +5745,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (!isSingleStep() && (getJaerViewer().getNumViewers() > 1)) {
             interruptViewloop();  // to break out of exchangeers that might be waiting, problem is that it also interrupts a singleStep ....
         }
-        firePropertyChange(EVENT_PAUSED, old, isPaused());
+        getSupport().firePropertyChange(EVENT_PAUSED, old, isPaused());
     }
 
     public boolean isActiveRenderingEnabled() {
@@ -5945,7 +5960,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         //        }
         setTitleAccordingToState();
         fixLoggingControls();
-        firePropertyChange(EVENT_PLAYMODE, oldMode.toString(), playMode.toString());
+        getSupport().firePropertyChange(EVENT_PLAYMODE, oldMode.toString(), playMode.toString());
         // won't fire if old and new are the same,
         // e.g. playing a file and then start playing a new one
     }
