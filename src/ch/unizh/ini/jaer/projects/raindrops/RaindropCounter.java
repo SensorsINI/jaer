@@ -19,20 +19,27 @@
 package ch.unizh.ini.jaer.projects.raindrops;
 
 import com.jogamp.opengl.GLAutoDrawable;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.AEInputStream;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
 import net.sf.jaer.eventprocessing.filter.XYTypeFilter;
+import net.sf.jaer.eventprocessing.tracking.ClusterPathPoint;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
+import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
-import net.sf.jaer.util.histogram.SimpleHistogram;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 /**
@@ -42,7 +49,7 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
  */
 @Description("Counts rain droplets and measures stats about them")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class RaindropCounter extends EventFilter2D implements FrameAnnotater {
+public class RaindropCounter extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
 
     private RaindropTracker tracker = null; // does the detection of droplets; we pull up methods to make it easier to control
     private SpatioTemporalCorrelationFilter noiseFilter = null;
@@ -50,8 +57,8 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater {
     private FilterChain enclosedFilterChain = null;
 
     private int statisticsStartTimestamp = Integer.MIN_VALUE, statisticsCurrentTimestamp = Integer.MIN_VALUE;
-    private DescriptiveStatistics stats;
-//    private SimpleHistogram raindropHistogram;
+    private boolean initialized = false;
+    private DescriptiveStatistics stats; // from Apache, useful class to measure statistics
 
     public RaindropCounter(AEChip chip) {
         super(chip);
@@ -79,23 +86,24 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater {
         onEventFilter.setYEnabled(false);
         onEventFilter.setStartType(1);
         onEventFilter.setEndType(1);
-        
-        if (!isPreferenceStored("showAllClusters")) {
-            tracker.setShowAllClusters(true);
-        }
+
         tracker.setShowClusterRadius(true);
-        if (!isPreferenceStored("showClusterMass")) {
-            tracker.setShowClusterMass(true);
+        tracker.setShowClusterMass(true);
+        tracker.setMaxNumClusters(100);
+        if (!tracker.isPreferenceStored("clusterMassDecayUs")) {
+            tracker.setClusterMassDecayTauUs(2000);
         }
+        tracker.setPathsEnabled(true);
         tracker.setClusterLoggingMethod(RectangularClusterTracker.ClusterLoggingMethod.LogClusters);
 
         // statistics
 //        raindropHistogram = new SimpleHistogram(0, 1, 10, 0);
-        stats = new DescriptiveStatistics(10000); // limit to this many drops in dataset for now
+        stats = new DescriptiveStatistics(10000); // limit to this many drops in dataset for now, to bound memory leak
     }
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
+        maybeAddListeners(chip);
         getEnclosedFilterChain().filterPacket(in);
         return in;
     }
@@ -104,10 +112,12 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater {
     public void resetFilter() {
         enclosedFilterChain.reset();
         stats.clear();
+        initialized=false;
         statisticsStartTimestamp = Integer.MIN_VALUE;
         statisticsCurrentTimestamp = Integer.MIN_VALUE;
     }
 
+    
     @Override
     public void initFilter() {
         tracker.initFilter();
@@ -158,12 +168,12 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater {
     }
 
     private String computeSummaryStatistics() {
-        int deltaTimestamp=statisticsCurrentTimestamp-statisticsStartTimestamp;
-        float deltaTimeS=deltaTimestamp*1e-6f;
-        int n=(int)stats.getN();
-        float rateHz=n/deltaTimeS;
+        int deltaTimestamp = statisticsCurrentTimestamp - statisticsStartTimestamp;
+        float deltaTimeS = deltaTimestamp * 1e-6f;
+        int n = (int) stats.getN();
+        float rateHz = n / deltaTimeS;
         String s = String.format("%d drops\n%.2f+/-%.2f pixels mean radius\n%.2fHz rate",
-                n, 
+                n,
                 stats.getMean(),
                 stats.getStandardDeviation(),
                 rateHz);
@@ -211,33 +221,49 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater {
             }
 
             @Override
+            protected ClusterPathPoint createPoint(float x, float y, int t) {
+                final RaindropPoint point = (RaindropPoint) RaindropPoint.createPoint(x, y, t);
+                point.setRadiusPixels(getAverageEventXDistance()); // for recording width of droplet in sheet
+                point.setnEvents(numEvents);
+                return point;
+            }
+
+            @Override
             protected void updateAverageEventDistance(float m) {
                 super.updateAverageEventDistance(m);
-                if (getAverageEventDistance() > maxRadius) {
-                    maxRadius = getAverageEventDistance();
+                if (getAverageEventXDistance() > maxRadius) {
+                    maxRadius = getAverageEventXDistance();
                 }
             }
 
+            /**
+             * Overrides the prune() method to store in statistics the maximum
+             * size of raindrop when cluster disappears
+             *
+             */
             @Override
             protected void prune() {
                 // called when cluster finally pruned away
                 if (isWasEverVisible()) {
-                    if(Float.isNaN(maxRadius) || Float.isInfinite(maxRadius)){
-                        log.warning("radius is NaN or Infinite, not adding this droplet");
+                    if (Float.isNaN(maxRadius) || Float.isInfinite(maxRadius)) {
+//                        log.warning("radius is NaN or Infinite, not adding this droplet");
                         return;
                     }
                     stats.addValue(maxRadius);
-                    if (statisticsStartTimestamp < tracker.lastTimestamp) {
+                    if (!initialized) {
                         statisticsStartTimestamp = tracker.lastTimestamp;
                         statisticsCurrentTimestamp = tracker.lastTimestamp;
+                        initialized=true;
                     } else {
                         statisticsCurrentTimestamp = tracker.lastTimestamp;
                     }
                 }
             }
 
-        }
+        } // RaindropCluster
 
-    }
+    } // RaindropTracker
+    
+    
 
-}
+} // RaindropCounter
