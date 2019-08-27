@@ -46,8 +46,6 @@ public class RefractoryFilter extends AbstractNoiseFilter implements Observer, P
     private boolean passShortISIsEnabled = prefs().getBoolean("RefractoryFilter.passShortISIsEnabled", false);
     int[][] lastTimestamps;
 
-    private boolean addedViewerPropertyChangeListener = false; // TODO promote these to base EventFilter class
-    private boolean addTimeStampsResetPropertyChangeListener = false;
 
     public RefractoryFilter(AEChip chip) {
         super(chip);
@@ -202,45 +200,6 @@ public class RefractoryFilter extends AbstractNoiseFilter implements Observer, P
         getSupport().firePropertyChange("passShortISIsEnabled", old, passShortISIsEnabled);
     }
 
-    private void maybeAddListeners(AEChip chip) { // TODO promote to EventFilter
-        if (chip.getAeViewer() != null) {
-            if (!addedViewerPropertyChangeListener) {
-                chip.getAeViewer().addPropertyChangeListener(this);
-                addedViewerPropertyChangeListener = true;
-            }
-            if (!addTimeStampsResetPropertyChangeListener) {
-                chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
-                addTimeStampsResetPropertyChangeListener = true;
-            }
-        }
-    }
 
-    /**
-     * Unfortunately we need to add ourselves as listeners for these property
-     * changes because the resetFilter is only called when the user rewinds, not
-     * for reminds to IN marker in a file playback. This messes up some event
-     * filters.
-     *
-     * @param evt
-     */
-    @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        if (this.filterEnabled) {
-            switch (evt.getPropertyName()) {
-                case AEViewer.EVENT_TIMESTAMPS_RESET:
-                case AEInputStream.EVENT_REWOUND:
-                    resetFilter();
-                    break;
-                case AEViewer.EVENT_FILEOPEN:
-                    log.info("File Open");
-                    AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
-                    AEFileInputStreamInterface in = (player.getAEInputStream());
-                    in.getSupport().addPropertyChangeListener(this);
-                    // Treat FileOpen same as a rewind
-                    resetFilter();
-                    break;
-            }
-        }
-    }
 
 }
