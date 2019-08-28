@@ -31,7 +31,7 @@ import net.sf.jaer.util.EngineeringFormat;
  *
  * @author tobid
  */
-@Description("Plays DVS/DAVIS recordings (with APS frames) at constant frame duration or constant DVS event number per frame")
+@Description("Plays DVS/DAVIS recordings (with APS frames) at constant frame duration or constant DVS event count or time interval per frame")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
 
@@ -78,12 +78,15 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
         }
         while (leftOverIterator.hasNext()) {
             BasicEvent e = leftOverIterator.next();
-            BasicEvent eout = outItr.nextOutput();
-            eout.copyFrom(e);
+            if (!(e.isFilteredOut())) {
+                BasicEvent eout = outItr.nextOutput();
+                eout.copyFrom(e);
+            }
         }
         leftOverEvents.clear();
         while (i.hasNext()) {
             BasicEvent e = i.next();
+            if ((e.isFilteredOut())) continue;
             BasicEvent eout = outItr.nextOutput();
             eout.copyFrom(e);
 
@@ -92,7 +95,7 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
                     case ConstantEventNumber:
                         eventCounter++;
                         packetDurationUs = eout.getTimestamp() - firstEventTimestamp;
-                        if ((eventCounter >= constantEventNumber && (minPacketDurationUs > 0 && packetDurationUs > minPacketDurationUs))
+                        if ((eventCounter >= constantEventNumber || (minPacketDurationUs > 0 && packetDurationUs > minPacketDurationUs))
                                 || (maxPacketDurationUs > 0 && (packetDurationUs >= maxPacketDurationUs))) {
                             resetPacket = true;
                             packetEventCount = eventCounter;
@@ -110,6 +113,7 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
                         }
                         break;
                     case ConstantFrameDuration:
+                        throw new RuntimeException("ConstantFrameDuration not yet implemented, sorry :-(");
                 }
             }
         }
