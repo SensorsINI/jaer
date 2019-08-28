@@ -251,11 +251,12 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
              *
              */
             @Override
-            protected void prune() {
+            protected void onPruning() {
                 // called when cluster finally pruned away
                 if (isWasEverVisible()) {
+//                    log.info("logging droplet "+this);
                     if (Float.isNaN(maxRadius) || Float.isInfinite(maxRadius)) {
-//                        log.warning("radius is NaN or Infinite, not adding this droplet");
+                        log.warning("radius is NaN or Infinite, not adding this droplet");
                         return;
                     }
                     stats.addValue(maxRadius);
