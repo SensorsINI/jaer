@@ -68,6 +68,7 @@ import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.lang.reflect.Field;
 import java.util.logging.Level;
+import net.sf.jaer.graphics.AEViewer.PlayMode;
 
 /**
  * Superclass for classes that paint rendered AE data to graphics devices.
@@ -725,11 +726,11 @@ public class ChipCanvas implements GLEventListener, Observer {
     public void init(final GLAutoDrawable drawable) {
         // drawable.setGL(new DebugGL(drawable.getGL()));
         drawable.setAutoSwapBufferMode(true);
-        GL2 gl=null;
+        GL2 gl = null;
         try {
             gl = drawable.getGL().getGL2();
         } catch (com.jogamp.opengl.GLException e) {
-            log.log(Level.SEVERE,"Cannot make a frame that is GL2 capable; you might need to update your graphics driver",e);
+            log.log(Level.SEVERE, "Cannot make a frame that is GL2 capable; you might need to update your graphics driver", e);
             return;
         }
 
@@ -1478,21 +1479,23 @@ public class ChipCanvas implements GLEventListener, Observer {
             if (((AEChip) chip).getAeViewer() != null) {
                 aeViewer = ((AEChip) chip).getAeViewer();
             }
-            if (aeViewer != null && aeViewer.getPlayerControls() != null && aeViewer.getPlayerControls().isSliderBeingAdjusted()) {
+            if (aeViewer != null && aeViewer.getPlayerControls() != null
+                    && (aeViewer.getPlayerControls().isSliderBeingAdjusted()
+                    || ((aeViewer.getPlayMode() == PlayMode.PLAYBACK) && !(aeViewer.getAePlayer().isPlayingForwards())))) {
                 return;
             }
-            final FilterChain chain = ((AEChip) chip).getFilterChain();
-            if (chain != null) {
-                for (final EventFilter f : chain) {
-                    if (!f.isAnnotationEnabled()) {
-                        continue;
-                    }
-                    final FrameAnnotater a = (FrameAnnotater) f;
-                    drawAnnotationsIncludingEnclosed(f, a, drawable);
-                }
-            }
-
         }
+        final FilterChain chain = ((AEChip) chip).getFilterChain();
+        if (chain != null) {
+            for (final EventFilter f : chain) {
+                if (!f.isAnnotationEnabled()) {
+                    continue;
+                }
+                final FrameAnnotater a = (FrameAnnotater) f;
+                drawAnnotationsIncludingEnclosed(f, a, drawable);
+            }
+        }
+
     }
 
     /**

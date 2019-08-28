@@ -155,7 +155,7 @@ public class MicroscopeTrackerRCT extends RectangularClusterTracker {
 
 		// update average velocity when Cluster vanishes
 		@Override
-		protected void prune() {
+		protected void onPruning() {
 			if (followGlobalMeanVelocity) {
 				updateGlobalMeanVelocity();
 			}
