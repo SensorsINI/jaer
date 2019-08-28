@@ -87,14 +87,23 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
         onEventFilter.setStartType(1);
         onEventFilter.setEndType(1);
 
-        tracker.setShowClusterRadius(true);
-        tracker.setShowClusterMass(true);
         tracker.setMaxNumClusters(100);
+        tracker.setPathsEnabled(true);
+        tracker.setDontMergeEver(true);
+        tracker.setHighwayPerspectiveEnabled(false);
+        tracker.setColorClustersDifferentlyEnabled(false);
+        tracker.setUseVelocity(false);
+        tracker.setDontMergeEver(true);
+        tracker.setEnableClusterExitPurging(false);
+        tracker.setClusterLoggingMethod(RectangularClusterTracker.ClusterLoggingMethod.LogClusters);
+       
+        if (!tracker.isPreferenceStored("showClusterRadius")) {
+            tracker.setShowClusterRadius(true);
+        }
+        tracker.setShowClusterMass(true);
         if (!tracker.isPreferenceStored("clusterMassDecayUs")) {
             tracker.setClusterMassDecayTauUs(2000);
         }
-        tracker.setPathsEnabled(true);
-        tracker.setClusterLoggingMethod(RectangularClusterTracker.ClusterLoggingMethod.LogClusters);
 
         // statistics
 //        raindropHistogram = new SimpleHistogram(0, 1, 10, 0);
