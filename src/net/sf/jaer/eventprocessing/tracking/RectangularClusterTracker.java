@@ -199,7 +199,9 @@ public class RectangularClusterTracker extends EventFilter2D
         }
     }
 
-    /** timestamp that is updated for each cluster that is updated */
+    /**
+     * timestamp that is updated for each cluster that is updated
+     */
     protected int lastTimestamp = 0;
 
     protected int clusterCounter = 0; // keeps track of absolute cluster number
@@ -598,7 +600,7 @@ public class RectangularClusterTracker extends EventFilter2D
         }
 
         /**
-         * loggs the cluster history to the loggging using the clusterLogger
+         * logs the cluster history to the logging using the clusterLogger
          */
         private void logClusterHistory(Cluster c) {
             PrintStream s = clusterLogger.getLogStream();
@@ -739,7 +741,6 @@ public class RectangularClusterTracker extends EventFilter2D
                 // it if there
                 // is something funny about the timestamps
                 pruneList.add(c);
-                c.prune();
                 // String reason=null;
                 // if(t0>t) reason="time went backwards";
                 // else if(massTooSmall) reason="mass is too small and cluster has existed at least
@@ -751,14 +752,28 @@ public class RectangularClusterTracker extends EventFilter2D
             // if(t0>t1){
             // logg.warning("last cluster timestamp is later than last packet timestamp");
             // }
-        }
+        } // clusters
+        
         if (logDataEnabled && (clusterLogger != null) && (clusterLoggingMethod == ClusterLoggingMethod.LogClusters)
                 && !pruneList.isEmpty()) {
             clusterLogger.logClusterHistories(pruneList);
         }
 
+        for (Cluster c : pruneList) {
+            if (c == null) {
+                continue;
+            }
+//            if(c.getClusterNumber()==1){
+//                log.info("first cluster"); 
+//            }
+            c.onPruning();
+        }
+
         clusters.removeAll(pruneList);
         for (Cluster c : pruneList) {
+            if (c == null) {
+                continue;
+            }
             fastClusterFinder.removeCluster(c);
             c = null;
         }
@@ -1137,8 +1152,8 @@ public class RectangularClusterTracker extends EventFilter2D
          * First and last timestamp of cluster. <code>firstEventTimestamp</code>
          * is updated when cluster becomes visible.
          * <code>lastEventTimestamp</code> is the last time the cluster was
-         * touched either by an event or by some other timestamped update, e.g. null 
-         * {@link #updateClusterList(net.sf.jaer.event.EventPacket, int)
+         * touched either by an event or by some other timestamped update, e.g.
+         * null null null null         {@link #updateClusterList(net.sf.jaer.event.EventPacket, int)
 		 * }.
          *
          * @see #isVisible()
@@ -1368,8 +1383,8 @@ public class RectangularClusterTracker extends EventFilter2D
             vyFilter = stronger.vyFilter;
             avgEventRate = stronger.avgEventRate;
             avgISI = stronger.avgISI;
-            hasObtainedSupport = stronger.hasObtainedSupport;
-            visibilityFlag = stronger.visibilityFlag;
+            hasObtainedSupport = one.hasObtainedSupport || two.hasObtainedSupport; // if either was ever visible then mark merged wasEverVisible
+            visibilityFlag = one.visibilityFlag || two.visibilityFlag; // make it visible if either visible
             setAspectRatio(stronger.getAspectRatio());
 
             // Color c1=one.getColor(), c2=two.getColor();
@@ -1453,7 +1468,16 @@ public class RectangularClusterTracker extends EventFilter2D
             setAspectRatio(((1 - mixingFactor) * oldAspectRatio) + (mixingFactor * newAspectRatio));
         }
 
+        /**
+         * updates average event distance from cluster center.
+         *
+         * @param m mixing factor that weight how much to use current distance
+         * from center (m) and old value (1-m)
+         */
         protected void updateAverageEventDistance(float m) {
+            if (Float.isNaN(averageEventDistance)) {
+                log.warning("distance is NaN");
+            }
             float m1 = 1 - m;
             //m is specified when calling this method, it is the mixing factor.
             averageEventDistance = (m1 * averageEventDistance) + (m * distanceToLastEvent);
@@ -1542,7 +1566,7 @@ public class RectangularClusterTracker extends EventFilter2D
             int lx = (int) location.x, ly = (int) location.y;
             int sx = chip.getSizeX(), sy = chip.getSizeY();
 
-            return ((lx <= 0) || (lx >= sx) || (ly <= 0) || (ly >= sy)); // always prune if cluster center is outside
+            return ((lx <= 0) || (lx >= sx) || (ly <= 0) || (ly >= sy)); // always onPruning if cluster center is outside
             // array, e.g. from velocityPPT prediction
         }
 
@@ -1647,7 +1671,7 @@ public class RectangularClusterTracker extends EventFilter2D
             // TelluridePatchExtractor.setClusterID((int) hashCode());
             // TelluridePatchExtractor.printToFile();
             // //----------------------------------------------------------------//
-            if (visibilityFlag) {
+            if (isWasEverVisible()) {
                 gl.glColor3fv(rgb, 0);
                 gl.glLineWidth(BOX_LINE_WIDTH);
             } else {
@@ -1670,7 +1694,7 @@ public class RectangularClusterTracker extends EventFilter2D
                 DrawGL.drawVector(gl, 0, 0, velocityPPS.x, velocityPPS.y, 2, velocityVectorScaling);
             }
             if (showClusterRadius) {
-                DrawGL.drawCircle(gl, 0, 0, 3*getAverageEventDistance(), 32);
+                DrawGL.drawCircle(gl, 0, 0, 3 * getAverageEventDistance(), 32);
             }
             gl.glPopMatrix();
 
@@ -2100,12 +2124,14 @@ public class RectangularClusterTracker extends EventFilter2D
          * hasObtainedSupport flags are set by this check.
          * <p>
          * A cluster is set visible if both of following are true
-         * numEvents>thresholdMassForVisibleCluster AND getMassNow()>thresholdMassForVisibleCluster.
+         * numEvents>thresholdMassForVisibleCluster AND
+         * getMassNow()>thresholdMassForVisibleCluster.
          * <p>
-         Also, if useVelocity is set, then it must be that speed < thresholdVelocityForVisibleCluster
+         * Also, if useVelocity is set, then it must be that speed <
+         * thresholdVelocityForVisibleCluster
          *
          * @see #isVisible()
-         * @see #getMassNow() 
+         * @see #getMassNow()
          * @param t the current timestamp
          * @return true if cluster is visible
          */
@@ -2116,7 +2142,7 @@ public class RectangularClusterTracker extends EventFilter2D
             // as I see here this is not the case! Instead we check only for the number of Events this cluster has
             // gathered
             if ((numEvents < thresholdMassForVisibleCluster)
-                    || ((numEvents > thresholdMassForVisibleCluster) && (getMassNow(t)< thresholdMassForVisibleCluster))) {
+                    || ((numEvents > thresholdMassForVisibleCluster) && (getMassNow(t) < thresholdMassForVisibleCluster))) {
                 ret = false;
             }
             if (useVelocity) {
@@ -2130,7 +2156,7 @@ public class RectangularClusterTracker extends EventFilter2D
                 birthLocation.x = location.x;
                 birthLocation.y = location.y; // reset location of birth to presumably less noisy current location.
             }
-            hasObtainedSupport = ret;
+            hasObtainedSupport = (hasObtainedSupport || ret);
             visibilityFlag = ret;
             return ret;
         }
@@ -2152,7 +2178,7 @@ public class RectangularClusterTracker extends EventFilter2D
          * Flags whether this cluster was ever 'visible', i.e. had ever obtained
          * sufficient support to be marked visible.
          *
-         * @return true if it was ever visible.
+         * @return true if it was ever visible; i.e. hasObtainedSupport==true.
          */
         final public boolean isWasEverVisible() {
             return hasObtainedSupport;
@@ -2389,11 +2415,11 @@ public class RectangularClusterTracker extends EventFilter2D
         }
 
         /**
-         * prune is called when the cluster is about to be pruned from the list
-         * of clusters. By default no special action is taken. Subclasses can
-         * override this method to take a special action on pruning.
+         * onPruning is called when the cluster is about to be pruned from the
+         * list of clusters. By default no special action is taken. Subclasses
+         * can override this method to take a special action on pruning.
          */
-        protected void prune() {
+        protected void onPruning() {
         }
 
         /**
