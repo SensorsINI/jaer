@@ -4639,9 +4639,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             switch (evt.getPropertyName()) {
                 case AEInputStream.EVENT_REWOUND:
                     log.info("rewind");
-                    for(PropertyChangeListener p:getSupport().getPropertyChangeListeners()){
-                        log.info("Listener: "+p);
-                    }
+//                    for(PropertyChangeListener p:getSupport().getPropertyChangeListeners()){
+//                        log.info("Listener: "+p);
+//                    }
                     
                     getSupport().firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());
                     break;
