@@ -2098,19 +2098,25 @@ public class RectangularClusterTracker extends EventFilter2D
          * Sets the flag of cluster visibility (check is separated from check
          * for efficiency because this operation is costly.) birthLocation and
          * hasObtainedSupport flags are set by this check.
+         * <p>
+         * A cluster is set visible if both of following are true
+         * numEvents>thresholdMassForVisibleCluster AND getMassNow()>thresholdMassForVisibleCluster.
+         * <p>
+         Also, if useVelocity is set, then it must be that speed < thresholdVelocityForVisibleCluster
          *
          * @see #isVisible()
+         * @see #getMassNow() 
          * @param t the current timestamp
          * @return true if cluster is visible
          */
         public boolean checkAndSetClusterVisibilityFlag(int t) {
             boolean ret = true;
-            // TODO: In the tooltip it is pormissed that the thresholdMassForVisibleCluster is
+            // TODO: In the tooltip it is promised that the thresholdMassForVisibleCluster is
             // checking the MASS of the cluster to determine if its visible. However as far
             // as I see here this is not the case! Instead we check only for the number of Events this cluster has
             // gathered
             if ((numEvents < thresholdMassForVisibleCluster)
-                    || ((numEvents > thresholdMassForVisibleCluster) && (getMass() < thresholdMassForVisibleCluster))) {
+                    || ((numEvents > thresholdMassForVisibleCluster) && (getMassNow(t)< thresholdMassForVisibleCluster))) {
                 ret = false;
             }
             if (useVelocity) {
