@@ -1670,7 +1670,7 @@ public class RectangularClusterTracker extends EventFilter2D
                 DrawGL.drawVector(gl, 0, 0, velocityPPS.x, velocityPPS.y, 2, velocityVectorScaling);
             }
             if (showClusterRadius) {
-                DrawGL.drawCircle(gl, 0, 0, getRadius(), 32);
+                DrawGL.drawCircle(gl, 0, 0, 3*getAverageEventDistance(), 32);
             }
             gl.glPopMatrix();
 
