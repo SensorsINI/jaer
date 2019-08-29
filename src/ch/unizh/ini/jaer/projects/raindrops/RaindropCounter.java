@@ -40,6 +40,7 @@ import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.EngineeringFormat;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 /**
@@ -59,6 +60,15 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
     private int statisticsStartTimestamp = Integer.MIN_VALUE, statisticsCurrentTimestamp = Integer.MIN_VALUE;
     private boolean initialized = false;
     private DescriptiveStatistics stats; // from Apache, useful class to measure statistics
+    private float dropRateHz;  // average rate of raindrops
+    private float totalVolumeLiters = 0; // integrated from droplet size 
+    private float workingDistanceM = getFloat("workingDistanceM", 0.5f);
+    private float lensFocalLengthMm = getFloat("lensFocalLengthMm", 100);
+    private float sheetAngleDeg = getFloat("sheetAngleDeg", 30);
+    private float metersPerPixel = Float.NaN;
+    private float collectionAreaM2 = Float.NaN;
+    private float totalRainRateLiterPerSqMPerS;
+    private EngineeringFormat engFmt = new EngineeringFormat();
 
     public RaindropCounter(AEChip chip) {
         super(chip);
@@ -71,13 +81,16 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
         enclosedFilterChain.add(tracker);
         setEnclosedFilterChain(enclosedFilterChain);
         // tooltips
-        final String sizing = "Sizing", mov = "Movement", life = "Lifetime", disp = "Display", global = TOOLTIP_GROUP_GLOBAL,
-                update = "Update", logg = "Logging", pi = "PI Controller";
+        final String sizing = "Sizing", life = "Lifetime", disp = "Display", global = TOOLTIP_GROUP_GLOBAL,
+                update = "Update", logg = "Logging", opt = "Optics";
         setPropertyTooltip(sizing, "clusterSize", "size (starting) in fraction of chip max size");
         setPropertyTooltip(disp, "showAllClusters", "shows all clusters, not just those with sufficient support");
         setPropertyTooltip(life, "thresholdMassForVisibleCluster",
                 "Cluster needs this \"mass\" to be visible. Mass increments with each event and decays with e-folding time constant of clusterMassDecayTauUs. Use \"showAllClusters\" to diagnose fleeting clusters.");
         setPropertyTooltip(logg, "logging", "toggles cluster logging to Matlab script file according to method (see logDataEnabled in RectangularClusterTracker)");
+        setPropertyTooltip(opt, "workingDistanceM", "distance to laser sheet in meters");
+        setPropertyTooltip(opt, "lensFocalLengthMm", "lens focal length in mm");
+        setPropertyTooltip(opt, "sheetAngleDeg", "angle of camera to sheet (vertical would be 90)");
         setPropertyTooltip("showFolderInDesktop", "Opens the folder containging the last-written log file");
 
 // reasonable defaults
@@ -96,7 +109,7 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
         tracker.setDontMergeEver(true);
         tracker.setEnableClusterExitPurging(false);
         tracker.setClusterLoggingMethod(RectangularClusterTracker.ClusterLoggingMethod.LogClusters);
-       
+
         if (!tracker.isPreferenceStored("showClusterRadius")) {
             tracker.setShowClusterRadius(true);
         }
@@ -107,7 +120,15 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
 
         // statistics
 //        raindropHistogram = new SimpleHistogram(0, 1, 10, 0);
-        stats = new DescriptiveStatistics(10000); // limit to this many drops in dataset for now, to bound memory leak
+        stats = new DescriptiveStatistics(1000000); // limit to this many drops in dataset for now, to bound memory leak
+
+    }
+
+    private void computeGeometry() {
+        metersPerPixel = workingDistanceM * (1e-6f * chip.getPixelWidthUm()) / (lensFocalLengthMm * 1e-3f);
+
+        float pixelEffectiveCollectionAreaM2 = (float) (metersPerPixel * metersPerPixel / Math.sin((Math.PI/180)*sheetAngleDeg));
+        collectionAreaM2 = chip.getNumPixels() * pixelEffectiveCollectionAreaM2;
     }
 
     @Override
@@ -121,12 +142,14 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
     public void resetFilter() {
         enclosedFilterChain.reset();
         stats.clear();
-        initialized=false;
+        initialized = false;
         statisticsStartTimestamp = Integer.MIN_VALUE;
         statisticsCurrentTimestamp = Integer.MIN_VALUE;
+        totalVolumeLiters = 0;
+        totalRainRateLiterPerSqMPerS=0;
+        dropRateHz = 0;
     }
 
-    
     @Override
     public void initFilter() {
         tracker.initFilter();
@@ -177,17 +200,70 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
     }
 
     private String computeSummaryStatistics() {
+        computeGeometry();
         int deltaTimestamp = statisticsCurrentTimestamp - statisticsStartTimestamp;
         float deltaTimeS = deltaTimestamp * 1e-6f;
         int n = (int) stats.getN();
-        float rateHz = n / deltaTimeS;
-        String s = String.format("%d drops\n%.2f+/-%.2f pixels mean radius\n%.2fHz rate",
+        dropRateHz = n / deltaTimeS;
+        totalRainRateLiterPerSqMPerS = totalVolumeLiters / collectionAreaM2 / deltaTimeS;
+        engFmt.setPrecision(2);
+        String s = String.format("%d drops\n%.2f+/-%.2f pixels mean width\n%.2fHz rate\n%s total liters\n%s liters/m^2/s",
                 n,
                 stats.getMean(),
                 stats.getStandardDeviation(),
-                rateHz);
+                dropRateHz,
+                engFmt.format(totalVolumeLiters),
+                engFmt.format(totalRainRateLiterPerSqMPerS));
         return s;
     }
+
+    /**
+     * @return the workingDistanceM
+     */
+    public float getWorkingDistanceM() {
+        return workingDistanceM;
+    }
+
+    /**
+     * @param workingDistanceM the workingDistanceM to set
+     */
+    public void setWorkingDistanceM(float workingDistanceM) {
+        this.workingDistanceM = workingDistanceM;
+        putFloat("workingDistanceM", workingDistanceM);
+        computeGeometry();
+    }
+
+    /**
+     * @return the lensFocalLengthMm
+     */
+    public float getLensFocalLengthMm() {
+        return lensFocalLengthMm;
+    }
+
+    /**
+     * @param lensFocalLengthMm the lensFocalLengthMm to set
+     */
+    public void setLensFocalLengthMm(float lensFocalLengthMm) {
+        this.lensFocalLengthMm = lensFocalLengthMm;
+        putFloat("lensFocalLengthMm", lensFocalLengthMm);
+        computeGeometry();
+    }
+
+    /**
+     * @return the sheetAngleDeg
+     */
+    public float getSheetAngleDeg() {
+        return sheetAngleDeg;
+    }
+
+    /**
+     * @param sheetAngleDeg the sheetAngleDeg to set
+     */
+    public void setSheetAngleDeg(float sheetAngleDeg) {
+        this.sheetAngleDeg = sheetAngleDeg;
+        putFloat("sheetAngleDeg", sheetAngleDeg);
+    }
+
 
     private class RaindropTracker extends RectangularClusterTracker {
 
@@ -212,8 +288,8 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
 
         public class RaindropCluster extends RectangularClusterTracker.Cluster {
 
-            private float maxRadius = 0;
-
+            private float maxRadiusPixels = 0;
+  
             public RaindropCluster() {
             }
 
@@ -240,9 +316,25 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
             @Override
             protected void updateAverageEventDistance(float m) {
                 super.updateAverageEventDistance(m);
-                if (getAverageEventXDistance() > maxRadius) {
-                    maxRadius = getAverageEventXDistance();
+                if (getAverageEventXDistance() > maxRadiusPixels) {
+                    maxRadiusPixels = getAverageEventXDistance();
                 }
+            }
+
+            /**
+             * Computes and returns the droplet volume in m^3 assuming spherical
+             * and has radius as measured by max appearance radius width
+             *
+             * @return volume in liters of this droplet
+             */
+            public float computeVolumeLiters() {
+                // a liter is 1000 ml
+                // 1 ml = 1cm^3
+                float radiusM = maxRadiusPixels * metersPerPixel;
+                // compute volume in liters of this droplet.
+                // assume sphere. Compute volume in cm^3=ml. Then multiply by 1e-3 to get liters.
+                float volumeLiters = (float) (Math.PI * 4 / 3 * Math.pow(1e2 * radiusM, 3)) * 1e-3f; // hope this is correct 
+                return volumeLiters;
             }
 
             /**
@@ -255,15 +347,16 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
                 // called when cluster finally pruned away
                 if (isWasEverVisible()) {
 //                    log.info("logging droplet "+this);
-                    if (Float.isNaN(maxRadius) || Float.isInfinite(maxRadius)) {
+                    if (Float.isNaN(maxRadiusPixels) || Float.isInfinite(maxRadiusPixels)) {
                         log.warning("radius is NaN or Infinite, not adding this droplet");
                         return;
                     }
-                    stats.addValue(maxRadius);
+                    stats.addValue(maxRadiusPixels);
+                    totalVolumeLiters += computeVolumeLiters();
                     if (!initialized) {
                         statisticsStartTimestamp = tracker.lastTimestamp;
                         statisticsCurrentTimestamp = tracker.lastTimestamp;
-                        initialized=true;
+                        initialized = true;
                     } else {
                         statisticsCurrentTimestamp = tracker.lastTimestamp;
                     }
@@ -273,7 +366,5 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
         } // RaindropCluster
 
     } // RaindropTracker
-    
-    
 
 } // RaindropCounter
