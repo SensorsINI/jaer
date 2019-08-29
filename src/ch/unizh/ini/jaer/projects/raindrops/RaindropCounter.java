@@ -60,8 +60,13 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
     private int statisticsStartTimestamp = Integer.MIN_VALUE, statisticsCurrentTimestamp = Integer.MIN_VALUE;
     private boolean initialized = false;
     private DescriptiveStatistics stats; // from Apache, useful class to measure statistics
+    private int totalNumberDroplets = 0;
     private float dropRateHz;  // average rate of raindrops
     private float totalVolumeLiters = 0; // integrated from droplet size 
+    private float totalInches = 0;
+    private float totalMm = 0;
+    private float inchesPerHour = 0;
+    private float mmPerHour = 0;
     private float workingDistanceM = getFloat("workingDistanceM", 0.5f);
     private float lensFocalLengthMm = getFloat("lensFocalLengthMm", 100);
     private float sheetAngleDeg = getFloat("sheetAngleDeg", 30);
@@ -127,7 +132,7 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
     private void computeGeometry() {
         metersPerPixel = workingDistanceM * (1e-6f * chip.getPixelWidthUm()) / (lensFocalLengthMm * 1e-3f);
 
-        float pixelEffectiveCollectionAreaM2 = (float) (metersPerPixel * metersPerPixel / Math.sin((Math.PI/180)*sheetAngleDeg));
+        float pixelEffectiveCollectionAreaM2 = (float) (metersPerPixel * metersPerPixel / Math.sin((Math.PI / 180) * sheetAngleDeg));
         collectionAreaM2 = chip.getNumPixels() * pixelEffectiveCollectionAreaM2;
     }
 
@@ -135,6 +140,7 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         maybeAddListeners(chip);
         getEnclosedFilterChain().filterPacket(in);
+        computeSummaryStatistics();
         return in;
     }
 
@@ -145,9 +151,14 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
         initialized = false;
         statisticsStartTimestamp = Integer.MIN_VALUE;
         statisticsCurrentTimestamp = Integer.MIN_VALUE;
+        totalNumberDroplets = 0;
         totalVolumeLiters = 0;
-        totalRainRateLiterPerSqMPerS=0;
+        totalRainRateLiterPerSqMPerS = 0;
         dropRateHz = 0;
+        totalInches = 0;
+        totalMm = 0;
+        inchesPerHour = 0;
+        mmPerHour = 0;
     }
 
     @Override
@@ -157,7 +168,7 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        String s = computeSummaryStatistics();
+        String s = generateSummaryStatisticsString();
         MultilineAnnotationTextRenderer.setScale(.4f);
         MultilineAnnotationTextRenderer.resetToYPositionPixels(.6f * chip.getSizeY());
         MultilineAnnotationTextRenderer.renderMultilineString(s);
@@ -199,21 +210,40 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
         tracker.doShowFolderInDesktop();
     }
 
-    private String computeSummaryStatistics() {
+    private void computeSummaryStatistics() {
         computeGeometry();
         int deltaTimestamp = statisticsCurrentTimestamp - statisticsStartTimestamp;
-        float deltaTimeS = deltaTimestamp * 1e-6f;
-        int n = (int) stats.getN();
-        dropRateHz = n / deltaTimeS;
-        totalRainRateLiterPerSqMPerS = totalVolumeLiters / collectionAreaM2 / deltaTimeS;
+        if(deltaTimestamp<=0) return;
+        float measurementTimeS = deltaTimestamp * 1e-6f;
+        totalNumberDroplets = (int) stats.getN();
+        dropRateHz = totalNumberDroplets / measurementTimeS;
+
+        // already computed totalVolumeLiters in RaindropCluster.onPruning()
+        totalRainRateLiterPerSqMPerS = totalVolumeLiters / collectionAreaM2 / measurementTimeS;
+        totalMm = totalVolumeLiters / collectionAreaM2;// stoichiometry says that we just divide these two to get mm that have fallen
+        float hours = measurementTimeS / 3600f;
+        mmPerHour = totalMm / hours;
+        totalInches = totalMm / 25.4f;
+        inchesPerHour = totalInches / hours;
+
+    }
+
+    private String generateSummaryStatisticsString() {
         engFmt.setPrecision(2);
-        String s = String.format("%d drops\n%.2f+/-%.2f pixels mean width\n%.2fHz rate\n%s total liters\n%s liters/m^2/s",
-                n,
+        String s = String.format("%d drops\n%.2f+/-%.2f pixels mean width\n%.2fHz rate\n%s total liters\n%s liters/m^2/s"
+                + "\n%s mm total (%s mm/h)"
+                + "\n%s inches total (%s inches/h)",
+                totalNumberDroplets,
                 stats.getMean(),
                 stats.getStandardDeviation(),
                 dropRateHz,
                 engFmt.format(totalVolumeLiters),
-                engFmt.format(totalRainRateLiterPerSqMPerS));
+                engFmt.format(totalRainRateLiterPerSqMPerS),
+                engFmt.format(totalMm),
+                engFmt.format(mmPerHour),
+                engFmt.format(totalInches),
+                engFmt.format(inchesPerHour)
+        );
         return s;
     }
 
@@ -264,7 +294,6 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
         putFloat("sheetAngleDeg", sheetAngleDeg);
     }
 
-
     private class RaindropTracker extends RectangularClusterTracker {
 
         public RaindropTracker(AEChip chip) {
@@ -289,7 +318,7 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
         public class RaindropCluster extends RectangularClusterTracker.Cluster {
 
             private float maxRadiusPixels = 0;
-  
+
             public RaindropCluster() {
             }
 
