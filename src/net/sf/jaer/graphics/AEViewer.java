@@ -2426,7 +2426,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         // returns delta time in ms of the current packet, or 0 if there is less than two events
         private float getDtMs(EventPacket packet) {
-            int numEvents = 0;
             if ((packet == null) || ((numEvents = packet.getSize()) < 2)) {
                 return 0;
             }
