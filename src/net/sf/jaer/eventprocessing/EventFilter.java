@@ -22,9 +22,15 @@ import javax.swing.SwingUtilities;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLException;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.PropertyTooltipSupport;
@@ -56,7 +62,7 @@ import net.sf.jaer.util.PropertyTooltipSupport;
  * @author tobi
  */
 @Description("Base event processing class")
-public abstract class EventFilter extends Observable implements HasPropertyTooltips {
+public abstract class EventFilter extends Observable implements HasPropertyTooltips, PropertyChangeListener {
 
     /**
      * URL for jAER wiki help page for event filters
@@ -77,6 +83,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @see setEnclosed
      */
     private Preferences prefs = null; // default null, constructed when AEChip is known Preferences.userNodeForPackage(EventFilter.class);
+
     /**
      * Provides change support, e.g. for enabled state. Filters can cause their
      * FilterPanel GUI control for a property to update if they fire a
@@ -85,6 +92,10 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * inform each other about changes in state.
      */
     protected PropertyChangeSupport support = new PropertyChangeSupport(this);
+
+    private boolean addedViewerPropertyChangeListener = false; 
+    private boolean addTimeStampsResetPropertyChangeListener = false;
+
     /**
      * All filters can log to this logger
      */
@@ -159,9 +170,11 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     abstract public void resetFilter();
 
     /**
-     * Can be used for lazy allocation and initialization of memory. It is called when the base class EventFilter2D gets
-     * a PropertyChangeEvent AEChip.EVENT_SIZE_SET, and after the EventFilter is added to the chip's FilterChain via the
-     * ClassChooserDialog, when filterChain.contructPreferredFilters() is called.
+     * Can be used for lazy allocation and initialization of memory. It is
+     * called when the base class EventFilter2D gets a PropertyChangeEvent
+     * AEChip.EVENT_SIZE_SET, and after the EventFilter is added to the chip's
+     * FilterChain via the ClassChooserDialog, when
+     * filterChain.contructPreferredFilters() is called.
      */
     abstract public void initFilter();
 
@@ -455,6 +468,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 
     /**
      * Checks if a preference value exists.
+     *
      * @param key - the filter preference key header is prepended.
      * @return true if a non-null value exists
      * @since 1.6.0
@@ -474,7 +488,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         SwingUtilities.invokeLater(new Runnable() {
             // outside swing thread, must do this
             @Override
-			public void run() {
+            public void run() {
                 JOptionPane.showMessageDialog(chip.getFilterFrame(), msg, title, JOptionPane.PLAIN_MESSAGE);
             }
         });
@@ -491,10 +505,61 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         SwingUtilities.invokeLater(new Runnable() {
             // outside swing thread, must do this
             @Override
-			public void run() {
+            public void run() {
                 JOptionPane.showMessageDialog(chip.getFilterFrame(), msg, title, JOptionPane.WARNING_MESSAGE);
             }
         });
+    }
+
+    /** Use this method at start of e.g. EventFilter.filterPacket() to add the property change listeners if needed.
+     * 
+     * @param chip 
+     * @see #propertyChange(java.beans.PropertyChangeEvent) 
+     */
+    protected void maybeAddListeners(AEChip chip) {
+        if (chip.getAeViewer() != null) {
+            if (!addedViewerPropertyChangeListener) {
+                chip.getAeViewer().getSupport().addPropertyChangeListener(this);
+                addedViewerPropertyChangeListener = true;
+            }
+            if (!addTimeStampsResetPropertyChangeListener) {
+                chip.getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
+                addTimeStampsResetPropertyChangeListener = true;
+            }
+        }
+    }
+
+    /**
+     * Handles PropertyChangeEvent sent to us from various sources. 
+     * Unfortunately we need to add ourselves as listeners for these property
+     * changes. Use maybeAddListeners in filterPacket to ensure PropertyChangeEvent are sent to us.
+     * <p>
+     * The default implementation handles
+     * <code>AEInputStreamEVENT_REWOUND</code> and
+     * <code>AEViewer.EVENT_TIMESTAMPS_RESET</code> by resetting filter. It
+     * handles <code>AEViewer.EVENT_FILEOPEN</code> by adding the filter to the
+     * AEFileInputStream.
+     *
+     * @param evt
+     * @see #maybeAddListeners(net.sf.jaer.chip.AEChip) 
+     */
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (this.filterEnabled) {
+            switch (evt.getPropertyName()) {
+                case AEViewer.EVENT_TIMESTAMPS_RESET:
+                case AEInputStream.EVENT_REWOUND:
+                    resetFilter();
+                    break;
+                case AEViewer.EVENT_FILEOPEN:
+                    log.info("File Open");
+                    AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
+                    AEFileInputStreamInterface in = player.getAEInputStream();
+                    in.getSupport().addPropertyChangeListener(this);
+                    // Treat FileOpen same as a rewind
+                    resetFilter();
+                    break;
+            }
+        }
     }
 
     /**
@@ -641,10 +706,13 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * Returns if the property preference has previously been stored. Can be
      * used to set a default value for a property if it has not yet been
      * initialized.
+     * <p>
+     * For example, to check if a parameter deltaTime has already been set by
+     * user, use <code>isPreferenceStored("deltaTime")</code>.
      *
      * @return true is a String "getString" on the key returns non-null.
      */
-    protected boolean isPreferenceStored(String key) {
+    public boolean isPreferenceStored(String key) {
         return getString(key, null) != null;
     }
 
@@ -1053,9 +1121,10 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * class of filter
      *
      * @param filterClass the class of the filter to be searched for
-     * @return the last instance of the class of filter, or null if there is no instance
+     * @return the last instance of the class of filter, or null if there is no
+     * instance
      */
-    protected  EventFilter findFilter(Class<? extends EventFilter> filterClass) {
+    protected EventFilter findFilter(Class<? extends EventFilter> filterClass) {
         EventFilter rtn = null;
         for (EventFilter f : chip.getFilterChain()) {
             if (f.getClass() == filterClass) {

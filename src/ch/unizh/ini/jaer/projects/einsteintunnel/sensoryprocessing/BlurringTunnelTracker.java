@@ -1066,13 +1066,13 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 			if(path.size() > 3){
 				LowpassFilter2D lpf = new LowpassFilter2D();
 				lpf.setTauMs(tauLPFMs);
-				Point2D.Float pt = lpf.filter(path.get(path.size()-1).x, path.get(path.size()-1).y, path.get(path.size()-1).t);
+				Point2D.Float pt = lpf.filter(path.get(path.size()-1).x, path.get(path.size()-1).y, path.get(path.size()-1).getT());
 				pt = lpf.filter(location.x, location.y, t);
 
-				newPath = new ClusterPathPoint(pt.x, pt.y, t, 1);
+				newPath = ClusterPathPoint.createPoint(pt.x, pt.y, t);
 			}
 			else {
-				newPath = new ClusterPathPoint(location.x, location.y, t, 1);
+				newPath = ClusterPathPoint.createPoint(location.x, location.y, t);
 			}
 
 			newPath.setStereoDisparity(disparity);
@@ -1306,7 +1306,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 					removeOldestPoint(); // discard data beyond range length
 				}
 				n = n > length ? length : n;  // n grows to max length
-				float dt = p.t - firstUpdateTimestamp; // t is time since cluster formed, limits absolute t for numerics
+				float dt = p.getT() - firstUpdateTimestamp; // t is time since cluster formed, limits absolute t for numerics
 				st += dt;
 				sx += p.x;
 				sy += p.y;
@@ -1336,7 +1336,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 				// takes away from summary states the oldest point
 				ClusterPathPoint p = points.get(points.size() - length - 1);
 				// if points has 5 points (0-4), length=3, then remove points(5-3-1)=points(1) leaving 2-4 which is correct
-				float dt = p.t - firstUpdateTimestamp;
+				float dt = p.getT() - firstUpdateTimestamp;
 				st -= dt;
 				sx -= p.x;
 				sy -= p.y;
@@ -1488,7 +1488,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 			for ( Cluster c:clusters ){
 				tmpNeuronGroup = null;
 				Iterator itr = ngCollection.iterator();
-				int updateInterval = msg.timestamp - c.getPath().get(c.getPath().size()-1).t;
+				int updateInterval = msg.timestamp - c.getPath().get(c.getPath().size()-1).getT();
 
 				if(!c.dead){
 					while ( itr.hasNext() ){

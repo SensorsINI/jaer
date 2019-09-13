@@ -353,7 +353,7 @@ public abstract class AbstractDavisCNN {
         private int getIndex(int channel, int x, int y) {
             int idx = x * channel + y * (NUM_CHANNELS * getWidth()) + y;
             if (idx < 0 || idx >= values.length) {
-                throw new java.lang.ArrayIndexOutOfBoundsException(String.format("index channel=%, x=%d, y=%d is out of bounds of frame which has channels=%d, width=%d, height=%d", channel, x, y, NUM_CHANNELS, getWidth(), getHeight()));
+                throw new java.lang.ArrayIndexOutOfBoundsException(String.format("index channel=%d, x=%d, y=%d is out of bounds of frame which has #channels=%d, width=%d, height=%d", channel, x, y, NUM_CHANNELS, getWidth(), getHeight()));
             }
             return idx;
         }

@@ -109,8 +109,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     protected TextRenderer textRenderer = null;
     private AbstractDavisCNN.APSDVSFrame apsDvsFrame = null;
     protected Tensor output = null;
-    //public float[][][] resHeatMap = null;//new float[][][];//[260][344][13];
-    public float[] resHeatMap = null;//[260*344*13];
+    public float[] resHeatMap = null;
     protected int maxFrameAccumulationTimeToProcessMs = getInt("maxFrameAccumulationTimeToProcessUs", 0);
 
     public AbstractDavisCNNProcessor(AEChip chip) {
@@ -122,41 +121,41 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
             frameExtractor.getSupport().addPropertyChangeListener(this);
         }
         setEnclosedFilterChain(chain);
-        String deb = "5. Debug", disp = "2. Display", anal = "3. Analysis", tf = "0. Tensorflow", input = "1. Input";
+        String deb = "5. Debug", disp = "2. Display", anal = "4. Analysis", tf = "0. Tensorflow", input = "1. Input";
         setPropertyTooltip("loadNetwork", "Load an XML or PB file containing a CNN");
-        setPropertyTooltip("loadLabels", "Load labels for output units");
-        setPropertyTooltip(disp, "showOutputAsBarChart", "displays activity of output units as bar chart, where height indicates activation");
-        setPropertyTooltip(disp, "showKernels", "draw all the network kernels (once) in a new JFrame");
-        setPropertyTooltip(disp, "toggleShowActivations", "toggle showing network activations (by default just input and output layers)");
-        setPropertyTooltip(disp, "showTop5Labels", "(requires labels to be loaded) Show the top 5 classification results");
-        setPropertyTooltip(disp, "showTop1Label", "(requires labels to be loaded) Show the top 1 classification result");
-        setPropertyTooltip(disp, "showActivations", "draws the network activations in a separate JFrame");
-        setPropertyTooltip(disp, "hideSubsamplingLayers", "hides layers that are subsampling conv layers");
-        setPropertyTooltip(disp, "hideConvLayers", "hides conv layers");
-        setPropertyTooltip(disp, "normalizeActivationDisplayGlobally", "normalizes the activations of layers globally across features");
-        setPropertyTooltip(disp, "normalizeKernelDisplayWeightsGlobally", "normalizes the weights globally across layer");
+        //setPropertyTooltip("loadLabels", "Load labels for output units");
+        //setPropertyTooltip(disp, "showOutputAsBarChart", "displays activity of output units as bar chart, where height indicates activation");
+        //setPropertyTooltip(disp, "showKernels", "draw all the network kernels (once) in a new JFrame");
+        //setPropertyTooltip(disp, "toggleShowActivations", "toggle showing network activations (by default just input and output layers)");
+        //setPropertyTooltip(disp, "showTop5Labels", "(requires labels to be loaded) Show the top 5 classification results");
+        //setPropertyTooltip(disp, "showTop1Label", "(requires labels to be loaded) Show the top 1 classification result");
+        //setPropertyTooltip(disp, "showActivations", "draws the network activations in a separate JFrame");
+        //setPropertyTooltip(disp, "hideSubsamplingLayers", "hides layers that are subsampling conv layers");
+        //setPropertyTooltip(disp, "hideConvLayers", "hides conv layers");
+        //setPropertyTooltip(disp, "normalizeActivationDisplayGlobally", "normalizes the activations of layers globally across features");
+        //setPropertyTooltip(disp, "normalizeKernelDisplayWeightsGlobally", "normalizes the weights globally across layer");
+        //setPropertyTooltip(deb, "inputClampedTo1", "clamps network input image to fixed value (1) for debugging");
         setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame along with estimated operations count (MAC=2OPS)");
-        setPropertyTooltip(deb, "inputClampedTo1", "clamps network input image to fixed value (1) for debugging");
-        setPropertyTooltip(deb, "inputClampedToIncreasingIntegers", "clamps network input image to idx of matrix, increasing integers, for debugging");
+        //setPropertyTooltip(deb, "inputClampedToIncreasingIntegers", "clamps network input image to idx of matrix, increasing integers, for debugging");
         setPropertyTooltip(deb, "printActivations", "prints out activations of CNN layers for debugging; by default shows input and output; combine with hideConvLayers and hideSubsamplingLayers to show more layers");
         setPropertyTooltip(deb, "printWeights", "prints out weights of APS net layers for debugging");
-        setPropertyTooltip(anal, "softMaxOutput", "normalizes the final outputs using softmax; use for ReLu final layer to display output in 0-1 range");
-        setPropertyTooltip(anal, "processAPSFrames", "sends APS frames to convnet");
+        //setPropertyTooltip(anal, "softMaxOutput", "normalizes the final outputs using softmax; use for ReLu final layer to display output in 0-1 range");
+        //setPropertyTooltip(anal, "processAPSFrames", "sends APS frames to convnet");
         setPropertyTooltip(anal, "processDVSTimeSlices", "sends DVS time slices to convnet");
-        setPropertyTooltip(anal, "processAPSDVSFrames", "sends 2-channel APS and DVS frame input to CNN to process each time either APS or DVS frame is updated");
-        setPropertyTooltip(anal, "processAPSDVSTogetherInAPSNet", "sends APS frames and DVS time slices to single convnet");
-        setPropertyTooltip(anal, "zeroPadding", "CNN uses zero padding; must be set properly according to CNN to run CNN");
+        //setPropertyTooltip(anal, "processAPSDVSFrames", "sends 2-channel APS and DVS frame input to CNN to process each time either APS or DVS frame is updated");
+        //setPropertyTooltip(anal, "processAPSDVSTogetherInAPSNet", "sends APS frames and DVS time slices to single convnet");
+        //setPropertyTooltip(anal, "zeroPadding", "CNN uses zero padding; must be set properly according to CNN to run CNN");
         setPropertyTooltip(anal, "processingTimeLimitMs", "<html>time limit for processing packet in ms to process OF events (events still accumulate). <br> Set to 0 to disable. <p>Alternative to the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events");
         setPropertyTooltip(anal, "maxFrameAccumulationTimeToProcessMs", "maximum time in ms for accumulated DvsFrame to process it; set this to a value of e.g. 300ms to avoid processing DVS frames from very slow movements. Set to 0 to disable.");
-        setPropertyTooltip(tf, "makeRGBFrames", "(TensorFlow only) Tells the CNN to make RGB input from grayscale DVS/APS frames; use it with a network configured for RGB input");
+        //setPropertyTooltip(tf, "makeRGBFrames", "(TensorFlow only) Tells the CNN to make RGB input from grayscale DVS/APS frames; use it with a network configured for RGB input");
         setPropertyTooltip(tf, "lastManuallyLoadedNetwork", "last network we manually loaded");
         setPropertyTooltip(tf, "inputLayerName", "(TensorFlow only) Input layer; parse it from loading the network and examining console output for layers for lines starting with ****");
         setPropertyTooltip(tf, "outputLayerName", "(TensorFlow only) Output layer; parse it from loading the network and examining console output for layers for lines starting with ****");
-        setPropertyTooltip(tf, "imageMean", "(TensorFlow only, only for APS frames) Input image pixel value mean; the APS frames have this mean value, typically on scale 0-255. The jaer frames typically have mean value in range 0-1.");
-        setPropertyTooltip(input, "imageWidth", "(TensorFlow only, only for APS frames) Input image width; the APS frames are scaled to this width in pixels");
-        setPropertyTooltip(input, "imageHeight", "(TensorFlow only, only for APS frames) Input image height; the APS frames are scaled to this height in pixels");
-        setPropertyTooltip(input, "imageScale", "(TensorFlow only, only for APS frames) Input image pixel value scaling; the APS frames are scaled by this value, e.g. 255 for imagenet images. The jaer units are typically 0-1 range.");
-        setPropertyTooltip(input, "loadInputSpecification", "Load the .yaml file that specifies the network input cropping and format (DVS/APS) etc");
+        //setPropertyTooltip(tf, "imageMean", "(TensorFlow only, only for APS frames) Input image pixel value mean; the APS frames have this mean value, typically on scale 0-255. The jaer frames typically have mean value in range 0-1.");
+        //setPropertyTooltip(input, "imageWidth", "(TensorFlow only, only for APS frames) Input image width; the APS frames are scaled to this width in pixels");
+        //setPropertyTooltip(input, "imageHeight", "(TensorFlow only, only for APS frames) Input image height; the APS frames are scaled to this height in pixels");
+        //setPropertyTooltip(input, "imageScale", "(TensorFlow only, only for APS frames) Input image pixel value scaling; the APS frames are scaled by this value, e.g. 255 for imagenet images. The jaer units are typically 0-1 range.");
+        //setPropertyTooltip(input, "loadInputSpecification", "Load the .yaml file that specifies the network input cropping and format (DVS/APS) etc");
         setPropertyTooltip(input, "frameCutRight", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
         setPropertyTooltip(input, "frameCutLeft", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
         setPropertyTooltip(input, "frameCutBottom", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
@@ -233,15 +232,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         }
     }
 
+/*
     public synchronized void doLoadInputSpecification() {
-//        if (apsDvsNet == null) {
-//            JOptionPane.showMessageDialog(chip.getFilterFrame(), "null CNN - load a DavisCNNTensorFlow first", "Error - no network", JOptionPane.ERROR_MESSAGE);
-//            return;
-//        }
-//        if (!(apsDvsNet instanceof DavisCNNTensorFlow)) {
-//            JOptionPane.showMessageDialog(chip.getFilterFrame(), apsDvsNet.toString() + " is not a DavisCNNTensorFlow type; cannot load layer specification for it", "Error", JOptionPane.ERROR_MESSAGE);
-//            return;
-//        }
         File file = null;
         file = openFileDialogAndGetFile("Choose the YAML file specifying the input cropping and input layer size for the CNN",
                 KEY_INPUTSPECIFICATION_FILENAME,
@@ -256,9 +248,10 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
             Logger.getLogger(DavisClassifierCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load YAML " + ex + ". See console for logging.", "Bad YAML file", JOptionPane.ERROR_MESSAGE);
         }
-
     }
-
+*/
+    
+    
     /*
         @tobi, I've uploaded the converted tensorflow model to NAS.
         it's located at HongmingYuhuangTobiTraxxas
@@ -350,6 +343,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
 
     }
 
+    
+    /*
     public synchronized void doLoadLabels() {
         File file = null;
         file = openFileDialogAndGetFile("Choose a labels file, one label per line", KEY_LABELS_FILENAME, "", "labelsFile.txt", "txt");
@@ -366,32 +361,6 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         }
     }
 
-    //    /**
-    //     * Loads a convolutional neural network (CNN) trained using DeapLearnToolbox
-    //     * for Matlab (https://github.com/rasmusbergpalm/DeepLearnToolbox) that was
-    //     * exported using Danny Neil's XML Matlab script cnntoxml.m.
-    //     *
-    //     */
-    //    public void doLoadDVSTimesliceNetworkFromXML() {
-    //        JFileChooser c = new JFileChooser(lastDVSNetXMLFilename);
-    //        FileFilter filt = new FileNameExtensionFilter("XML File", "xml");
-    //        c.addChoosableFileFilter(filt);
-    //        c.setSelectedFile(new File(lastDVSNetXMLFilename));
-    //        int ret = c.showOpenDialog(chip.getAeViewer());
-    //        if (ret != JFileChooser.APPROVE_OPTION) {
-    //            return;
-    //        }
-    //        lastDVSNetXMLFilename = c.getSelectedFile().toString();
-    //        putString("lastDVSNetXMLFilename", lastDVSNetXMLFilename);
-    //        dvsNet.loadNetwork(c.getSelectedFile());
-    //        dvsFramer = new DvsFramer(dvsNet.inputLayer.dimx, dvsNet.inputLayer.dimy, getDvsColorScale());
-    //    }
-    // debug only
-    //    public void doSetNetworkToUniformValues() {
-    //        if (apsDvsNet != null) {
-    //            apsDvsNet.setNetworkToUniformValues(uniformWeight, uniformBias);
-    //        }
-    //    }
     public void doShowKernels() {
         if (apsDvsNet != null) {
             if (!apsDvsNet.networkRanOnce) {
@@ -419,6 +388,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     public void doToggleShowActivations() {
         setShowActivations(!isShowActivations());
     }
+    */
 
     @Override
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -655,7 +625,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1f);
             MultilineAnnotationTextRenderer.setScale(.3f);
             MultilineAnnotationTextRenderer.renderMultilineString(apsDvsNet.getNetname());
-            if (measurePerformance && performanceString != null /*&& !performanceString.equals(lastPerformanceString)*/) {
+            if ((measurePerformance == true) && (performanceString != null) /*&& !performanceString.equals(lastPerformanceString)*/) {
                 MultilineAnnotationTextRenderer.renderMultilineString(performanceString);
                 lastPerformanceString = performanceString;
             }
@@ -837,6 +807,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         putBoolean("measurePerformance", measurePerformance);
     }
 
+    
+    /*
     public boolean isHideSubsamplingLayers() {
         if (apsDvsNet == null) {
             return true;
@@ -848,6 +820,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         apsDvsNet.setHideSubsamplingLayers(hideSubsamplingLayers);
         //        dvsNet.setHideSubsamplingLayers(hideSubsamplingLayers);
     }
+    
+    
 
     public boolean isHideConvLayers() {
         if (apsDvsNet == null) {
@@ -860,6 +834,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         apsDvsNet.setHideConvLayers(hideConvLayers);
         //        dvsNet.setHideConvLayers(hideConvLayers);
     }
+    */
+    
 
     /**
      * @return the processDVSTimeSlices
@@ -953,7 +929,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         }
         apsDvsNet.setPrintWeights(printWeights);
     }
-
+/*
     public boolean isSoftMaxOutput() {
         if (apsDvsNet == null) {
             return softMaxOutput;
@@ -970,18 +946,20 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         }
         apsDvsNet.setSoftMaxOutput(softMaxOutput);
         getSupport().firePropertyChange("softMaxOutput", old, softMaxOutput); //update GUI
-    }
+    }*/
 
     /**
      * @return the zeroPadding
      */
+    /*
     public boolean isZeroPadding() {
         return zeroPadding;
-    }
+    }/*
 
     /**
      * @param zeroPadding the zeroPadding to set
      */
+    /*
     public void setZeroPadding(boolean zeroPadding) {
         this.zeroPadding = zeroPadding;
         putBoolean("zeroPadding", zeroPadding);
@@ -989,7 +967,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
             return;
         }
         apsDvsNet.setZeroPadding(zeroPadding);
-    }
+    }*/
 
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
@@ -1097,6 +1075,8 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         putInt("imageHeight", imageHeight);
     }
 
+    
+    
     /**
      * @return the imageMean
      */

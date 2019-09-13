@@ -222,7 +222,7 @@ public abstract class AbstractAEPlayer {
             }
             setTimesliceUs((int) newTimeSlice);
         }
-        log.info("new time and event slice durations are "+getTimesliceUs()+" us and "+getPacketSizeEvents()+"events");
+        log.info("new time and event slice durations are " + getTimesliceUs() + " us and " + getPacketSizeEvents() + "events");
     }
 
     /**
@@ -249,7 +249,7 @@ public abstract class AbstractAEPlayer {
         if (Math.abs(getTimesliceUs()) < 1) {
             setTimesliceUs((int) Math.signum(getTimesliceUs()));
         }
-        log.info("new time and event slice durations are "+getTimesliceUs()+" us and "+getPacketSizeEvents()+"events");
+        log.info("new time and event slice durations are " + getTimesliceUs() + " us and " + getPacketSizeEvents() + "events");
     }
 
     public void jogForwards() {
@@ -261,10 +261,10 @@ public abstract class AbstractAEPlayer {
         jogOccuring = true;
         jogPacketsLeft -= jogPacketCount;
     }
-    
-    public void cancelJog(){
-        jogOccuring=false;
-        jogPacketsLeft=0;
+
+    public void cancelJog() {
+        jogOccuring = false;
+        jogPacketsLeft = 0;
     }
 
     /**
@@ -391,6 +391,11 @@ public abstract class AbstractAEPlayer {
     public void toggleDirection() {
         setPacketSizeEvents(getPacketSizeEvents() * -1);
         setTimesliceUs(getTimesliceUs() * -1);
+        if (getPlaybackDirection() == PlaybackDirection.Forward) {
+            setPlaybackDirection(PlaybackDirection.Backward);
+        } else {
+            setPlaybackDirection(PlaybackDirection.Forward);
+        }
     }
 
     /**
@@ -465,9 +470,7 @@ public abstract class AbstractAEPlayer {
 
     public void setPlaybackDirection(PlaybackDirection direction) {
         PlaybackDirection old = playbackDirection;
-        if (direction != this.playbackDirection) {
-            toggleDirection();
-        }
+        
         this.playbackDirection = direction;
         support.firePropertyChange(EVENT_PLAYBACKDIRECTION, old, this.playbackDirection);
     }

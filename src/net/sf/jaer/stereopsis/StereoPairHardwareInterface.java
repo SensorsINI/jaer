@@ -69,7 +69,7 @@ public class StereoPairHardwareInterface implements AEMonitorInterface,ReaderBuf
     }
     /** Initial capacity of output buffer that is reused for outputting merged event stream */
     public final int INITIAL_CAPACITY = CypressFX2.AE_BUFFER_SIZE;
-
+    
     public StereoPairHardwareInterface (AEMonitorInterface left,AEMonitorInterface right){
         aemonLeft = left;
         aemonRight = right;

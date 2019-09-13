@@ -122,6 +122,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter impleme
             final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy);
             if ((x < 0) || (x >= sx) || (y < 0) || (y >= sy)) {
                 e.setFilteredOut(true);
+                filteredOutEventCount++;
                 continue;
             }
             int ax = x >> activityBinDimBits, ay = y >> activityBinDimBits;
@@ -133,6 +134,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter impleme
                     continue;
                 } else {
                     e.setFilteredOut(true);
+                    filteredOutEventCount++;
                     continue;
                 }
             }

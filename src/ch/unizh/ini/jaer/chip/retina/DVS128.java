@@ -72,7 +72,7 @@ import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DVS128 extends AETemporalConstastRetina implements Serializable, Observer, RemoteControlled {
 
-    private JMenu dvs128Menu = null;
+    protected JMenu dvs128Menu = null;
     private JMenuItem arrayResetMenuItem = null, syncEnabledMenuItem = null;
     private JMenuItem setArrayResetMenuItem = null;
     private JMenu ledMenu = null;
@@ -270,78 +270,81 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             if (syncEnabledMenuItem == null) {
                 syncEnabledMenuItem = new JCheckBoxMenuItem("Timestamp master / Enable sync event input");
                 syncEnabledMenuItem.setToolTipText("<html>Sets this device as timestamp master and enables sync event generation on external IN pin falling edges (disables slave clock input).<br>Falling edges inject special sync events with raw event address " + HexString.toString(CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK) + " (see logging output for cooked special event address)<br>These events are not rendered but are logged and can be used to synchronize an external signal to the recorded data.<br>If you are only using one camera, enable this option.<br>If you want to synchronize two DVS128, disable this option in one of the cameras and connect the OUT pin of the master to the IN pin of the slave and also connect the two GND pins.");
-                HasSyncEventOutput h = (HasSyncEventOutput) getHardwareInterface();
+                if (getHardwareInterface() instanceof HasSyncEventOutput) {
+                    HasSyncEventOutput h = (HasSyncEventOutput) getHardwareInterface();
 
-                syncEnabledMenuItem.addActionListener(new ActionListener() {
+                    syncEnabledMenuItem.addActionListener(new ActionListener() {
 
-                    @Override
-                    public void actionPerformed(ActionEvent evt) {
-                        HardwareInterface hw = getHardwareInterface();
-                        if (hw == null) {
-                            log.warning("null hardware interface");
-                            return;
+                        @Override
+                        public void actionPerformed(ActionEvent evt) {
+                            HardwareInterface hw = getHardwareInterface();
+                            if (hw == null) {
+                                log.warning("null hardware interface");
+                                return;
+                            }
+                            if (!(hw instanceof HasSyncEventOutput)) {
+                                log.warning("cannot change sync enabled state of " + hw + " (class " + hw.getClass() + "), interface doesn't implement HasSyncEventOutput");
+                                return;
+                            }
+                            log.info("setting sync enabled");
+                            ((HasSyncEventOutput) hw).setSyncEventEnabled(((AbstractButton) evt.getSource()).isSelected());
                         }
-                        if (!(hw instanceof HasSyncEventOutput)) {
-                            log.warning("cannot change sync enabled state of " + hw + " (class " + hw.getClass() + "), interface doesn't implement HasSyncEventOutput");
-                            return;
-                        }
-                        log.info("setting sync enabled");
-                        ((HasSyncEventOutput) hw).setSyncEventEnabled(((AbstractButton) evt.getSource()).isSelected());
-                    }
-                });
-                dvs128Menu.add(syncEnabledMenuItem);
+                    });
+                    dvs128Menu.add(syncEnabledMenuItem);
+                }
             }
 
             if (ledMenu == null) {
                 ledMenu = new JMenu("LED control");
                 ledMenu.getPopupMenu().setLightWeightPopupEnabled(false);
                 ledMenu.setToolTipText("LED control");
-                final HasLEDControl h = (HasLEDControl) getHardwareInterface();
-                ledOnBut = new JRadioButtonMenuItem("Turn LED on");
-                ledOffBut = new JRadioButtonMenuItem("Turn LED off");
-                ledFlashingBut = new JRadioButtonMenuItem("Make LED flash");
-                final ButtonGroup group = new ButtonGroup();
-                group.add(ledOnBut);
-                group.add(ledOffBut);
-                group.add(ledFlashingBut);
-                ledMenu.add(ledOffBut);
-                ledMenu.add(ledOnBut);
-                ledMenu.add(ledFlashingBut);
+                if (getHardwareInterface() instanceof HasLEDControl) {
+                    final HasLEDControl h = (HasLEDControl) getHardwareInterface();
+                    ledOnBut = new JRadioButtonMenuItem("Turn LED on");
+                    ledOffBut = new JRadioButtonMenuItem("Turn LED off");
+                    ledFlashingBut = new JRadioButtonMenuItem("Make LED flash");
+                    final ButtonGroup group = new ButtonGroup();
+                    group.add(ledOnBut);
+                    group.add(ledOffBut);
+                    group.add(ledFlashingBut);
+                    ledMenu.add(ledOffBut);
+                    ledMenu.add(ledOnBut);
+                    ledMenu.add(ledFlashingBut);
 
-                ActionListener ledListener = new ActionListener() {
+                    ActionListener ledListener = new ActionListener() {
 
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        HardwareInterface hw = getHardwareInterface();
-                        if (hw == null) {
-                            log.warning("null hardware interface");
-                            return;
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            HardwareInterface hw = getHardwareInterface();
+                            if (hw == null) {
+                                log.warning("null hardware interface");
+                                return;
+                            }
+                            if (!(hw instanceof HasLEDControl)) {
+                                log.warning("cannot set LED of " + hw + " (class " + hw.getClass() + "), interface doesn't implement HasLEDControl");
+                                return;
+                            }
+                            HasLEDControl h = (HasLEDControl) hw;
+                            if (e.getSource() == ledOffBut) {
+                                h.setLEDState(0, LEDState.OFF);
+                            } else if (e.getSource() == ledOnBut) {
+                                h.setLEDState(0, LEDState.ON);
+                            } else if (e.getSource() == ledFlashingBut) {
+                                h.setLEDState(0, LEDState.FLASHING);
+                            }
                         }
-                        if (!(hw instanceof HasLEDControl)) {
-                            log.warning("cannot set LED of " + hw + " (class " + hw.getClass() + "), interface doesn't implement HasLEDControl");
-                            return;
-                        }
-                        HasLEDControl h = (HasLEDControl) hw;
-                        if (e.getSource() == ledOffBut) {
-                            h.setLEDState(0, LEDState.OFF);
-                        } else if (e.getSource() == ledOnBut) {
-                            h.setLEDState(0, LEDState.ON);
-                        } else if (e.getSource() == ledFlashingBut) {
-                            h.setLEDState(0, LEDState.FLASHING);
-                        }
-                    }
-                };
+                    };
 
-                ledOffBut.addActionListener(ledListener);
-                ledOnBut.addActionListener(ledListener);
-                ledFlashingBut.addActionListener(ledListener);
+                    ledOffBut.addActionListener(ledListener);
+                    ledOnBut.addActionListener(ledListener);
+                    ledFlashingBut.addActionListener(ledListener);
 
-                dvs128Menu.add(ledMenu);
+                    dvs128Menu.add(ledMenu);
+                }
+                if (getAeViewer() != null) {
+                    getAeViewer().addMenu(dvs128Menu);
+                }
             }
-            if (getAeViewer() != null) {
-                getAeViewer().addMenu(dvs128Menu);
-            }
-
         } else // disable menu
         if (dvs128Menu != null) {
             getAeViewer().removeMenu(dvs128Menu);
@@ -885,17 +888,19 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         }
 
-        /** see https://ieeexplore.ieee.org/document/7962235 fig 1 */
-        private final float KAPPA_N = .7f, KAPPA_P = 0.7f, CAP_RATIO = 22, THR_FAC=((KAPPA_N / (KAPPA_P * KAPPA_P)) / CAP_RATIO);
+        /**
+         * see https://ieeexplore.ieee.org/document/7962235 fig 1
+         */
+        private final float KAPPA_N = .7f, KAPPA_P = 0.7f, CAP_RATIO = 22, THR_FAC = ((KAPPA_N / (KAPPA_P * KAPPA_P)) / CAP_RATIO);
 
         @Override
         public float getOnThresholdLogE() {
-            return (float)  (THR_FAC* Math.log(diffOn.getCurrent()/diff.getCurrent()));
+            return (float) (THR_FAC * Math.log(diffOn.getCurrent() / diff.getCurrent()));
         }
 
         @Override
         public float getOffThresholdLogE() {
-            return (float)  (THR_FAC* Math.log(diffOff.getCurrent()/diff.getCurrent()));
+            return (float) (THR_FAC * Math.log(diffOff.getCurrent() / diff.getCurrent()));
         }
     } // DVS128Biasgen
 

@@ -26,8 +26,7 @@ import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
  *
  * @author tobi/rapha
  */
-public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen implements
-        HasUpdatableFirmware, HasResettablePixelArray, HasSyncEventOutput, HasLEDControl {
+public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen implements CypressFX2DVS128HardwareInterfaceInterface  {
 
     public final static String FIRMWARE_FILENAME_DVS128_XSVF = "/net/sf/jaer/hardwareinterface/usb/cypressfx2/dvs128CPLD.xsvf";
     private static Preferences prefs = Preferences.userNodeForPackage(CypressFX2DVS128HardwareInterface.class);
@@ -300,52 +299,4 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
         return arrayResetEnabled;
     }
 
-    /** Updates the firmware by downloading to the board's EEPROM.
-     * The firmware filename is hardcoded. TODO fix this hardcoding.
-    This method starts a background thread which pauses acquisition of data
-    and pops up progress monitors.
-     * @throws doesn't actually throw anything, so there's no way for the caller to know if the update succeeded.
-     */
-    @Override
-	synchronized public void updateFirmware() throws HardwareInterfaceException {
-        //TODO no exceptions thrown
-        Thread T = new Thread("FirmwareUpdater") {
-
-            @Override
-            public void run() {
-                try {
-                    getChip().getAeViewer().setPaused(true);
-                    setEventAcquisitionEnabled(false);
-                    writeCPLDfirmware(FIRMWARE_FILENAME_DVS128_XSVF);
-                    log.info("New firmware written to CPLD");
-                    byte[] fw;
-                    try {
-                        // TODO fix hardcoded firmware file
-                        fw = loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_DVS128_IIC);
-                    } catch (java.io.IOException e) {
-                        e.printStackTrace();
-                        throw new HardwareInterfaceException("Could not load firmware file ");
-                    }
-                    setEventAcquisitionEnabled(false);
-                    writeEEPROM(0, fw);
-                    log.info("New firmware written to EEPROM");
-                    close();
-                    //setEventAcquisitionEnabled(true);
-                    JOptionPane.showMessageDialog(chip.getAeViewer(), "Update successful - unplug and replug the device to activate new firmware", "Firmware update complete", JOptionPane.INFORMATION_MESSAGE);
-
-                } catch (Exception e) {
-                    log.warning("Firmware update failed: " + e.getMessage());
-                    JOptionPane.showMessageDialog(chip.getAeViewer(), "Update failed: " + e.toString(), "Firmware update failed", JOptionPane.WARNING_MESSAGE);
-                } finally {
-                    getChip().getAeViewer().setPaused(false);
-                }
-            }
-        };
-        T.start();
-    }
-
-    @Override
-    public int getVersion() {
-        return getDID();
-    }
 }

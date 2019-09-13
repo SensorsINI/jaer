@@ -91,7 +91,7 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!addedPropertyChangeListener) {
             addedPropertyChangeListener = true;
-            chip.getAeViewer().addPropertyChangeListener(this);
+            chip.getAeViewer().getSupport().addPropertyChangeListener(this);
         }
         if (chip.getAeViewer().getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
             return in;

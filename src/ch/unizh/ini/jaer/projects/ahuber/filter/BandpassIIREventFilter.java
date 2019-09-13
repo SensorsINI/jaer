@@ -196,7 +196,7 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
         checkMemory();
         if (!addedViewerPropertyChangeListener) {
             if (chip.getAeViewer() != null) {
-                chip.getAeViewer().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+                chip.getAeViewer().getSupport().addPropertyChangeListener(this); // AEViewer refires these events for convenience
                 addedViewerPropertyChangeListener = true;
             }
         }

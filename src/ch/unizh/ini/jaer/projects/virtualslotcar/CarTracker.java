@@ -196,7 +196,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
     @Override
     synchronized protected EventPacket track(EventPacket in) {
         boolean updatedClusterList = false;
-        crashedCar = null; // before possible prune operation that could set this field to non-null
+        crashedCar = null; // before possible onPruning operation that could set this field to non-null
         EventPacket filtered = getEnclosedFilterChain().filterPacket(in);
 
         // record cluster locations before packet is processed
@@ -610,13 +610,13 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
         }
 
         @Override
-        protected void prune() {
-            super.prune();
+        protected void onPruning() {
+            super.onPruning();
             determineIfcrashed();
         }
 
         private void determineIfcrashed() {
-			// called from prune in super, when cluster is about to be deleted.
+			// called from onPruning in super, when cluster is about to be deleted.
             // first check to see if there a nearby cluster that might take over the car cluster role.
             // if there is a cluster then just leave crashed=false;
             //            for(Cluster c:clusters){
