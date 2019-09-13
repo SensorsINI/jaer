@@ -226,7 +226,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
             String key = prefsEnabledKey();
             prefs.putBoolean(key, enabled);
         }
-        support.firePropertyChange("filterEnabled", new Boolean(wasEnabled), new Boolean(enabled));
+        support.firePropertyChange("filterEnabled", wasEnabled,enabled);
     }
 
     /**
