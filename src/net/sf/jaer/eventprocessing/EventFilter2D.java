@@ -119,9 +119,7 @@ abstract public class EventFilter2D extends EventFilter implements PropertyChang
             out = new EventPacket(outClass);
             try {
                 out.setEventPrototype(outClass.newInstance());
-            } catch (InstantiationException ex) {
-                Logger.getLogger(EventFilter2D.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (IllegalAccessException ex) {
+            } catch (InstantiationException | IllegalAccessException | SecurityException ex) {
                 Logger.getLogger(EventFilter2D.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
