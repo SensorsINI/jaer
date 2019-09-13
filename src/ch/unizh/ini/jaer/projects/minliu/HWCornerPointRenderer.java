@@ -72,20 +72,20 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
             if (hwCornerRet != swCornerRet) {
                 wrongCornerNum++;
             }
-//            if (swCornerRet == 0) {
-////                e.setFilteredOut(true);        
-//            } else {
-//                // corner event
-//                cornerEvents.add(e);
-//            }
-            if ((hwCornerRet) == 0) {
-//                e.setFilteredOut(true);
-            }
-            else
-            {
+            if (swCornerRet == 0) {
+//                e.setFilteredOut(true);        
+            } else {
                 // corner event
-              cornerEvents.add(e);
+                cornerEvents.add(e);
             }
+//            if ((hwCornerRet) == 0) {
+//                e.setFilteredOut(true);
+//            }
+//            else
+//            {
+//                // corner event
+//              cornerEvents.add(e);
+//            }
         }
 //        if (wrongCornerNum != 0)
 //        {
