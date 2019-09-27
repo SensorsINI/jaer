@@ -804,7 +804,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 		ColorMode old = this.colorMode;
 		this.colorMode = colorMode;
 		prefs.put("ChipRenderer.colorMode", colorMode.name());
-		log.info("set colorMode=" + colorMode);
+		log.info(this.getClass().getSimpleName()+": colorMode=" + colorMode);
 		getSupport().firePropertyChange(EVENT_COLOR_MODE_CHANGE, old, colorMode);
 		// if (method<0 || method >NUM_METHODS-1) throw new RuntimeException("no such rendering method "+method);
 		// this.method = method;

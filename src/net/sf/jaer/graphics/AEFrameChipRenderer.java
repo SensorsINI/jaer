@@ -612,21 +612,21 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             map[index + 3] = 1.0f;
         } else { // contrast, red/green
              final float scale = (1.0f / colorScale);
-            map[index + 3] = scale; // alpha
+            map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
            if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
-                map[index] += onColor[0];
-                map[index + 1] += onColor[1];
-                map[index + 2] += onColor[2]; 
-//                map[index] += scale*onColor[0];
-//                map[index + 1] += scale*onColor[1];
-//                map[index + 2] += scale*onColor[2]; 
+//                map[index] += onColor[0];
+//                map[index + 1] += onColor[1];
+//                map[index + 2] += onColor[2]; 
+                map[index] += scale*onColor[0];
+                map[index + 1] += scale*onColor[1];
+                map[index + 2] += scale*onColor[2]; 
             } else {
-                map[index] += offColor[0];
-                map[index + 1] += offColor[1];
-                map[index + 2] += offColor[2];
-//                map[index] += scale*offColor[0];
-//                map[index + 1] += scale*offColor[1];
-//                map[index + 2] += scale*offColor[2];
+//                map[index] += offColor[0];
+//                map[index + 1] += offColor[1];
+//                map[index + 2] += offColor[2];
+                map[index] += scale*offColor[0];
+                map[index + 1] += scale*offColor[1];
+                map[index + 2] += scale*offColor[2];
             }
 
         }
