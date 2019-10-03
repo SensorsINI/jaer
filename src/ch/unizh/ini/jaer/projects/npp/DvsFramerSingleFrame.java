@@ -66,7 +66,7 @@ public class DvsFramerSingleFrame extends DvsFramer {
      * @param srcWidth width of originating source sensor, e.g. 240 for DAVIS240
      * @param srcHeight height of source address space
      */
-    synchronized public void addEvent(PolarityEvent e) {
+    public void addEvent(PolarityEvent e) {
         // find element here that contains this event
         if (e.isSpecial() || e.isFilteredOut()) {
             return;
