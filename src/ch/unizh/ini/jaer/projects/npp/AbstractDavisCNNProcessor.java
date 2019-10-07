@@ -185,7 +185,11 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
         String name = getString(key, defaultFile);
         JFileChooser c = new JFileChooser(name);
         File f = new File(name);
-        c.setCurrentDirectory(new File(getString(key, "")));
+        String cp = getClass().getName();
+        cp = cp.substring(0, cp.lastIndexOf('.'));
+        // find src folder with the class, try to start with this folder if key has not been stored
+        String path = "src" + File.separator + cp.replace('.', File.separatorChar);
+        c.setCurrentDirectory(new File(getString(key, path)));
         c.setToolTipText(tip);
         FileFilter filt = new FileNameExtensionFilter(type, ext);
         c.setFileSelectionMode(JFileChooser.FILES_ONLY);
