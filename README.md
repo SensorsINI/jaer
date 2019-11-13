@@ -27,6 +27,10 @@ Please use our GitHub bug tracker to report issues and bugs, or our Google Group
 * **BUG TRACKER:** https://github.com/SensorsINI/jaer/issues/
 * **USER FORUM:** https://groups.google.com/d/forum/jaer-users/
 
+See also
+* **DAVIS-USERS user forum:** https://groups.google.com/forum/#!forum/davis-users
+* **inivation support pages:** https://inivation.com/support/
+
 ![DVS128 cameras](/images/dvs128cameras.jpg)
 
 ![Hotel bar scene with DAVIS140C](/images/HotelBarDavis.png)
