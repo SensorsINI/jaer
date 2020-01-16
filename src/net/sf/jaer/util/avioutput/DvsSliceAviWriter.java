@@ -555,8 +555,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     }
 
     public static final String USAGE = "java DvsSliceAviWriter \n"
-            + "     [-aechip=aechipclassname (either shortcut dvs128, davis240c or davis346mini, or fully qualified class name, e.g. eu.seebetter.ini.chips.davis.DAVIS240C)] "
-            + "     [-width=36] [-height=36] [-quality=.9] [-format=PNG|JPG|RLE|RAW] [-framerate=30] [-grayscale=200] "
+            + "     [-aechip=aechipclassname (either shortcut dvs128, davis240c or davis346mini, or fully qualified class name, e.g. eu.seebetter.ini.chips.davis.DAVIS240C)] \n"
+            + "     [-width=36] [-height=36] [-quality=.9] [-format=PNG|JPG|RLE|RAW] [-framerate=30] [-grayscale=200] \n"
             + "     [-writedvssliceonapsframe=false] \n"
             + "     [-writetimecodefile=true] \n"
             + "     [-writeapsframes=false] \n"
@@ -564,8 +564,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             + "     [-writedvseventstotextfile=false] \n"
             + "     [-writetargetlocations=false] \n"
             + "     [-timeslicemethod=EventCount|TimeIntervalUs] [-numevents=2000] [-framedurationus=10000]\n"
-            + "     [-rectify=false] [-normalize=true] [-showoutput=true]  [-maxframes=0] "
-            + "     [-enablefilters=false] "
+            + "     [-rectify=false] [-normalize=true] [-showoutput=true]  [-maxframes=0] \n "
+            + "     [-enablefilters=false] \n"
             + "         inputFile.aedat [outputfile.avi]"
             + "\n"
             + "numevents and framedurationus are exclusively possible\n"
