@@ -48,6 +48,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -564,6 +565,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             + "     [-writetargetlocations=false] \n"
             + "     [-timeslicemethod=EventCount|TimeIntervalUs] [-numevents=2000] [-framedurationus=10000]\n"
             + "     [-rectify=false] [-normalize=true] [-showoutput=true]  [-maxframes=0] "
+            + "     [-enablefilters=false] "
             + "         inputFile.aedat [outputfile.avi]"
             + "\n"
             + "numevents and framedurationus are exclusively possible\n"
@@ -574,6 +576,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
 
     public static void main(String[] args) {
         // make hashmap of common chip classes
+        boolean enableFilters = false;
         chipClassesMap.put("dvs128", "ch.unizh.ini.jaer.chip.retina.DVS128");
         chipClassesMap.put("davis240c", "eu.seebetter.ini.chips.davis.DAVIS240C");
         chipClassesMap.put("davis346blue", "eu.seebetter.ini.chips.davis.Davis346blue");
@@ -583,6 +586,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         // uses last settings of everything
         // java DvsSliceAviWriter inputFile.aedat outputfile.avi
         Options opt = new Options(args, 1, 2);
+        opt.getSet().addOption("enablefilters", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("aechip", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("width", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("height", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
@@ -798,6 +802,12 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             writer.setShowOutput(b);
         }
 
+        if (opt.getSet().isSet("enablefilters")) {
+            enableFilters = Boolean.parseBoolean(opt.getSet().getOption("enablefilters").getResultValue(0));
+        } else {
+            writer.setMaxFrames(0);
+        }
+
         if (opt.getSet().isSet("maxframes")) {
             try {
                 int n = Integer.parseInt(opt.getSet().getOption("maxframes").getResultValue(0));
@@ -824,6 +834,13 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         EventExtractor2D extractor = chip.getEventExtractor();
         System.out.println(String.format("Frames written: "));
 
+        FilterChain filterChain = chip.getFilterChain();
+        if (filterChain != null && enableFilters) {
+            for (EventFilter f : filterChain) {
+                f.setPreferredEnabledState();
+            }
+        }
+
         // need an object here to register as propertychange listener for the rewind event
         // generated when reading the file and getting to the end,
         // since the AEFileInputStream will not generate end of file exceptions
@@ -842,6 +859,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             try {
                 aeRaw = ais.readPacketByNumber(writer.getDvsFrame().getDvsEventsPerFrame()); // read at most this many events to avoid writing duplicate frames at end of movie from start of file, which would happen automatically by
                 EventPacket cooked = extractor.extractPacket(aeRaw);
+                if (enableFilters && filterChain != null) {
+                    cooked = chip.getFilterChain().filterPacket(cooked);
+                }
                 writer.filterPacket(cooked);
                 int numFramesWritten = writer.getFramesWritten();
                 if (numFramesWritten >= (lastNumFramesWritten + 500)) {
