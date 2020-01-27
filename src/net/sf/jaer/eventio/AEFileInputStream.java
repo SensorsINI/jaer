@@ -383,6 +383,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             if (position == markOut) { // TODO check exceptions here for markOut set before markIn
                 getSupport().firePropertyChange(AEInputStream.EVENT_EOF, null, position());
                 if (repeat) {
+                    log.info("calling rewind at end of mark in AEFileInputStream");
                     rewind();
                     return readEventForwards();
                 } else {
