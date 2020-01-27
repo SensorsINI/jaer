@@ -66,8 +66,8 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 public class Info extends EventFilter2D implements FrameAnnotater, PropertyChangeListener, Observer {
 
     private AEFileInputStreamInterface aeFileInputStream = null; // current recorded file input stream
-    private DateTimeFormatter dateTimeFormatter=DateTimeFormatter.ISO_DATE_TIME;
-    private DateTimeFormatter timeFormat=DateTimeFormatter.ISO_TIME;
+    private DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ISO_DATE_TIME;
+    private DateTimeFormatter timeFormat = DateTimeFormatter.ISO_TIME;
     private boolean analogClock = getPrefs().getBoolean("Info.analogClock", true);
     private boolean digitalClock = getPrefs().getBoolean("Info.digitalClock", true);
     private boolean date = getPrefs().getBoolean("Info.date", true);
@@ -87,6 +87,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 //    volatile private float eventRateMeasured = 0; // volatile, also shared
     private boolean addedViewerPropertyChangeListener = false; // need flag because viewer doesn't exist on creation
     private boolean eventRate = getBoolean("eventRate", true);
+    private volatile boolean resetTimeEnabled = false;  // user for doResetTime
+    private boolean resetTimeOnRewind = getBoolean("resetTimeOnRewind", false);
 
     private TypedEventRateEstimator typedEventRateEstimator;
     private HashMap<EventRateEstimator, RateHistory> rateHistories = new HashMap();
@@ -100,6 +102,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private long accumulatedDVSEventCount = 0, accumulatedAPSSampleCount = 0, accumulatedIMUSampleCount = 0;
     private long accumulatedDVSOnEventCount = 0, accumulatedDVSOffEventCount = 0;
     private long accumulateTimeUs = 0;
+    private boolean resetTimeOnNextPacket = false;
 
     /**
      * computes the absolute time (since 1970) or relative time (in file) given
@@ -395,6 +398,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         setPropertyTooltip("maxSamples", "maximum number of samples before clearing rate history");
         setPropertyTooltip("logStatistics", "<html>enables logging of any activiated statistics (e.g. event rate) to a log file <br>written to the startup folder (host/java). <p>See the logging output for the file location.");
         setPropertyTooltip("showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
+        setPropertyTooltip("resetTimeOnRewind", "Resets the clock with each rewind to show relative time on stopwatch.");
     }
     private boolean increaseWrappingCorrectionOnNextPacket = false;
 
@@ -411,6 +415,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 clearRateHistories();
                 resetAccumulatedStatistics();
                 setLogStatistics(false);
+                if (resetTimeOnRewind) {
+                    resetTimeEnabled = true;
+                }
             } else if (evt.getPropertyName().equals(AEInputStream.EVENT_WRAPPED_TIME)) {
                 increaseWrappingCorrectionOnNextPacket = true;
                 //                System.out.println("property change in Info that is wrap time event");
@@ -427,16 +434,16 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         } else if (evt.getSource() instanceof AEViewer) {
             if (evt.getPropertyName().equals(AEViewer.EVENT_FILEOPEN)) { // TODO don't get this because AEViewer doesn't refire event from AEPlayer and we don't get this on initial fileopen because this filter has not yet been run so we have not added ourselves to the viewer
                 // new value is file name
-                aeFileInputStream=chip.getAeViewer().getAePlayer().getAEInputStream();
+                aeFileInputStream = chip.getAeViewer().getAePlayer().getAEInputStream();
                 getAbsoluteStartingTimeMsFromFile();
                 for (RateHistory r : rateHistories.values()) {
                     r.clear();
                 }
             } else if (evt.getPropertyName().equals(AEViewer.EVENT_ACCUMULATE_ENABLED)) {
                 resetAccumulatedStatistics();
-            }else if (evt.getPropertyName().equals(AEViewer.EVENT_PLAYMODE)) {
-                if(AEViewer.PlayMode.valueOf((String)evt.getNewValue())==AEViewer.PlayMode.LIVE){
-                    aeFileInputStream=null; // TODO not best coding; forces local timezone for live playback
+            } else if (evt.getPropertyName().equals(AEViewer.EVENT_PLAYMODE)) {
+                if (AEViewer.PlayMode.valueOf((String) evt.getNewValue()) == AEViewer.PlayMode.LIVE) {
+                    aeFileInputStream = null; // TODO not best coding; forces local timezone for live playback
                 }
             }
         } else if (evt.getSource() instanceof EventRateEstimator) {
@@ -508,17 +515,15 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 getAbsoluteStartingTimeMsFromFile();
             }
         }
-        if ((in != null) && (in.getSize() > 0)) {
-            if (resetTimeEnabled) {
-                resetTimeEnabled = false;
-                dataFileTimestampStartTimeUs = in.getFirstTimestamp();
-            }
-
+//        if ((in != null) && (in.getSize() > 0)) {
+//
+//        }
+        if (resetTimeOnNextPacket) {
+            resetTimeOnNextPacket = false;  //awkward to deal with rewind in AEFileInputStream that called it for the last packet in time section, not first at start
+            log.info("restting time to packet first timestamp in Info");
+            dataFileTimestampStartTimeUs = in.getFirstTimestamp();
         }
         in = getEnclosedFilterChain().filterPacket(in);
-        long relativeTimeInFileMs = (in.getLastTimestamp() - dataFileTimestampStartTimeUs) / 1000;
-
-        clockTimeMs = computeDisplayTime(relativeTimeInFileMs);
 
         // if the reader generated a bigwrap, then it told us already, before we processed this packet.
         // This msg said that the *next* packet will be wrapped.
@@ -553,6 +558,13 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             accumulatedDVSEventCount += in.getSize();
         }
         accumulateTimeUs += in.getDurationUs();
+
+        long relativeTimeInFileMs = (in.getLastTimestamp() - dataFileTimestampStartTimeUs) / 1000;
+        clockTimeMs = computeDisplayTime(relativeTimeInFileMs);
+        if (resetTimeEnabled) {
+            resetTimeEnabled = false;
+            resetTimeOnNextPacket = true;
+        }
         return in;
     }
 
@@ -583,14 +595,17 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     private void drawClock(GL2 gl, long t) {
         final int radius = 20, hourLen = 10, minLen = 18, secLen = 19, msLen = 7;
-        Instant instant=Instant.ofEpochMilli(t);
-        ZonedDateTime zdt=null;
-        if(aeFileInputStream!=null && aeFileInputStream.getZoneId()!=null){
-            zdt=ZonedDateTime.ofInstant(instant, aeFileInputStream.getZoneId());
-        }else{
-            zdt=ZonedDateTime.ofInstant(instant, ZoneId.systemDefault());
+        ZonedDateTime zdt = null;
+        Instant instant = Instant.ofEpochMilli(t);
+
+        if (aeFileInputStream != null && aeFileInputStream.getZoneId() != null) {
+            zdt = ZonedDateTime.ofInstant(instant, aeFileInputStream.getZoneId());
+        } else if (absoluteTime) {
+            zdt = ZonedDateTime.ofInstant(instant, ZoneId.systemDefault());
+        } else {
+            zdt = ZonedDateTime.ofInstant(instant, ZoneId.of("GMT"));
         }
-        final int hour = zdt.getHour()%12;
+        final int hour = zdt.getHour() % 12;
         final int hourofday = zdt.getHour();
 
         if ((hourofday > 18) || (hourofday < 6)) {
@@ -620,7 +635,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 gl.glLineWidth(1f);
                 gl.glBegin(GL.GL_LINES);
                 gl.glVertex2f(0, 0);
-                double a = (2 * Math.PI * zdt.getNano()/100000) / 1000;
+                double a = (2 * Math.PI * zdt.getNano() / 100000) / 1000;
                 float x = msLen * (float) Math.sin(a);
                 float y = msLen * (float) Math.cos(a);
                 gl.glVertex2f(x, y);
@@ -666,7 +681,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             GLUT glut = chip.getCanvas().getGlut();
             if (date) {
                 glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, dateTimeFormatter.format(zdt));
-            }else{
+            } else {
                 glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, timeFormat.format(zdt));
             }
             gl.glPopMatrix();
@@ -846,7 +861,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         putBoolean("eventRate", eventRate);
         getSupport().firePropertyChange("eventRate", old, eventRate);
     }
-    private volatile boolean resetTimeEnabled = false;
 
     /**
      * Reset the time zero marker to the next packet's first timestamp
@@ -937,6 +951,21 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         this.maxSamples = maxSamples;
         putInt("maxSamples", maxSamples);
         getSupport().firePropertyChange("maxSamples", old, maxSamples);
+    }
+
+    /**
+     * @return the resetTimeOnRewind
+     */
+    public boolean isResetTimeOnRewind() {
+        return resetTimeOnRewind;
+    }
+
+    /**
+     * @param resetTimeOnRewind the resetTimeOnRewind to set
+     */
+    public void setResetTimeOnRewind(boolean resetTimeOnRewind) {
+        this.resetTimeOnRewind = resetTimeOnRewind;
+        putBoolean("resetTimeOnRewind", resetTimeOnRewind);
     }
 
 }
