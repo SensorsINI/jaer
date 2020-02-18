@@ -95,7 +95,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!chipPropertyChangeListenerAdded) {
             if (chip.getAeViewer() != null) {
-                chip.getAeViewer().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
+                chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
                 chipPropertyChangeListenerAdded = true;
             }
         }
