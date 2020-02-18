@@ -132,7 +132,6 @@ public class JAERViewer {
 
         multistartmode = multimode;
 
- 
         // GLProfile and GLCapabilities should be equal across all shared GL drawable/context.
         // tobi implemented this from user guide for JOGL that suggests a shared drawable context for all uses of JOGL
         GLProfile.initSingleton(); // recommneded by https://sites.google.com/site/justinscsstuff/jogl-tutorial-2 especially for linux systems
@@ -252,7 +251,6 @@ public class JAERViewer {
         }
 
     }
-
 
     private static class SplashHandler extends java.util.logging.Handler {
 
@@ -449,7 +447,16 @@ public class JAERViewer {
             // log.info("not zeroing all board timestamps because they are specified electrically synchronized");
         }
         for (AEViewer v : viewers) {
+            v.setPaused(true);
+
+        }
+
+        for (AEViewer v : viewers) {
             File f = v.startLogging();
+
+        }
+        for (AEViewer v : viewers) {
+            v.setPaused(false);
 
         }
 
@@ -775,8 +782,7 @@ public class JAERViewer {
 //            SwingUtilities.invokeLater(new MultiLauncher());
     }
 
-    
-        /**
+    /**
      * The main launcher for AEViewer's.
      *
      * @param args the first argument can be a recorded AE data filename (.dat)
@@ -792,7 +798,7 @@ public class JAERViewer {
 
         //init static fields
         log = Logger.getLogger("JAERViewer");
- 
+
         final java.awt.SplashScreen splash = java.awt.SplashScreen.getSplashScreen();
         if (splash != null) {
             new SplashHandler(splash);
