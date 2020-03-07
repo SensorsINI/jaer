@@ -658,9 +658,19 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								final byte misc10Code = (byte) ((data & 0x0C00) >>> 10);
 
 								switch (misc10Code) {
-									case 0:
-										// APS Exposure Information, ignore for now.
+                                                                    	case 0:	                         
+                                                            			// APS Exposure Information, ignore for now.
 										break;
+									case 1:                 
+                                                                                // Used by davis346Zynq to send hardware ip calculation result
+                                                                                // Every hw_ip result is appened to the x address.
+                                                                                // Current eventCounter is already added by 1 while extracting x address,
+                                                                                // thus we need to substract 1 here.
+                                                                                if(eventCounter >= 1)
+                                                                                {
+                                                                                    buffer.getAddresses()[eventCounter - 1] |= data & 0x3ff;        
+                                                                                }   
+                                                                                break;
 
 									default:
 										CypressFX3.log.severe("Caught Misc10 event that can't be handled.");
