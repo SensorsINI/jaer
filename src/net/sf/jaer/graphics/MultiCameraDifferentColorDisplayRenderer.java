@@ -29,7 +29,7 @@ import java.util.BitSet;
  *
  * @author Gemma
  */
-public class MultiCameraDifferentColorDisplayRenderer extends AEFrameChipRenderer{
+public class MultiCameraDifferentColorDisplayRenderer extends DavisRenderer{
     
     int camera;
     int numCam=1; //default value

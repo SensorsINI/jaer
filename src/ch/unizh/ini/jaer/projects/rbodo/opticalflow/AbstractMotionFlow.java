@@ -5,7 +5,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.graphics.AEChipRenderer;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.util.jama.Matrix;
 
 /**
@@ -61,8 +61,8 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable); //To change body of generated methods, choose Tools | Templates.
         if (showTimestampMap) {
-            AEFrameChipRenderer renderer;
-            renderer = (AEFrameChipRenderer) chip.getRenderer();
+            DavisRenderer renderer;
+            renderer = (DavisRenderer) chip.getRenderer();
             renderer.setExternalRenderer(true);
             renderer.resetAnnotationFrame(0.0f);
             renderer.setAnnotateAlpha(showTimestampMapAlpha);
@@ -244,8 +244,8 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
         this.showTimestampMapAlpha = showTimestampMapAlpha;
         AEChipRenderer renderer;
         renderer = (AEChipRenderer) chip.getRenderer();
-        if (renderer instanceof AEFrameChipRenderer) {
-            AEFrameChipRenderer frameRenderer = (AEFrameChipRenderer) renderer;
+        if (renderer instanceof DavisRenderer) {
+            DavisRenderer frameRenderer = (DavisRenderer) renderer;
             frameRenderer.setAnnotateAlpha(showTimestampMapAlpha);
         }
     }

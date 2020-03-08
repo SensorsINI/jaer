@@ -20,7 +20,7 @@ import net.sf.jaer.event.EventPacket;
  *
  * @author tobi
  */
-public class BinocularDVSRenderer extends AEFrameChipRenderer{
+public class BinocularDVSRenderer extends DavisRenderer{
     protected float disparityColors[][];
     protected int NOF_DISPARITY_COLORS = 32;
     protected int minValue = Integer.MAX_VALUE;

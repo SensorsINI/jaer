@@ -10,7 +10,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 @Description("Davis208PixelParade base class for 208x192 pixel sensitive APS-DVS DAVIS sensor")
@@ -28,7 +28,7 @@ public class Davis208PixelParade extends DavisBaseCamera {
 
         setBiasgen(davisConfig = new Davis208PixelParadeConfig(this));
 
-        davisRenderer = new AEFrameChipRenderer(this);
+        davisRenderer = new DavisRenderer(this);
         davisRenderer.setMaxADC(DavisChip.MAX_ADC);
         setRenderer(davisRenderer);
 

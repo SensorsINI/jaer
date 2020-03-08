@@ -29,7 +29,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
@@ -176,7 +176,7 @@ public class DavisDeepLearnCnnProcessor_HJ extends EventFilter2D implements Prop
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!addedPropertyChangeListener) {
-            ((AEFrameChipRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
+            ((DavisRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(DavisRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
             addedPropertyChangeListener = true;
         }
 //        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsDvsNet on each frame in PropertyChangeListener
@@ -258,7 +258,7 @@ public class DavisDeepLearnCnnProcessor_HJ extends EventFilter2D implements Prop
             if (measurePerformance) {
                 startTime = System.nanoTime();
             }
-            float[] outputs = apsDvsNet.processDownsampledFrame((AEFrameChipRenderer) (chip.getRenderer()));
+            float[] outputs = apsDvsNet.processDownsampledFrame((DavisRenderer) (chip.getRenderer()));
             if (measurePerformance) {
                 long dt = System.nanoTime() - startTime;
                 float ms = 1e-6f * dt;

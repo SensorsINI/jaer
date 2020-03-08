@@ -44,7 +44,7 @@ import net.sf.jaer.graphics.ImageDisplay;
 import com.jogamp.opengl.GL2;
 
 import ch.unizh.ini.jaer.projects.npp.TensorFlow.GraphBuilder;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 
 /**
  * Runs a CNN using tensorflow
@@ -318,7 +318,7 @@ public class DavisCNNTensorFlow extends AbstractDavisCNN {
     }
 
     @Override
-    public float[] processInputPatchFrame(AEFrameChipRenderer frame, int offX, int offY) {
+    public float[] processInputPatchFrame(DavisRenderer frame, int offX, int offY) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 

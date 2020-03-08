@@ -41,7 +41,7 @@ import net.sf.jaer.util.filter.ParticleFilter.DynamicEvaluator;
 import net.sf.jaer.util.filter.ParticleFilter.MeasurmentEvaluator;
 import net.sf.jaer.util.filter.ParticleFilter.ParticleFilter;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.util.filter.ParticleFilter.AverageEvaluator;
 import net.sf.jaer.util.filter.ParticleFilter.Particle;
@@ -88,7 +88,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
     private List<Boolean> enableFlg = new ArrayList<Boolean>(); // enable flag for the measurement
     private List<Double> measurementWeight = new ArrayList<Double>();
 
-    // private final AEFrameChipRenderer renderer;
+    // private final DavisRenderer renderer;
 
     
     public ParticleFilterTracking(AEChip chip) {

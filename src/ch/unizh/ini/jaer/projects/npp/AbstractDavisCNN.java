@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.logging.Logger;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.util.EngineeringFormat;
 import org.tensorflow.Tensor;
 
@@ -139,7 +139,7 @@ public abstract class AbstractDavisCNN {
      * @return the vector of output values
      * @see #getActivations
      */
-    abstract public float[] processInputPatchFrame(AEFrameChipRenderer frame, int offX, int offY);
+    abstract public float[] processInputPatchFrame(DavisRenderer frame, int offX, int offY);
 
     abstract public InputLayer getInputLayer();
 

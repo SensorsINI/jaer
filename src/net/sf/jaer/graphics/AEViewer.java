@@ -1996,7 +1996,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 skipPacketsRenderingNumberCurrent = 0;
                 return;
             }
-            if ((renderer instanceof AEFrameChipRenderer) && ((AEFrameChipRenderer) renderer).isDisplayFrames()) {
+            if ((renderer instanceof DavisRenderer) && ((DavisRenderer) renderer).isDisplayFrames()) {
                 return; // don't skip rendering frames since this will chop frames up and corrupt them
             }
             if (skipPacketsRenderingLowpassFilter == null) {

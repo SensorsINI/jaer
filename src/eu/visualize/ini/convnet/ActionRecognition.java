@@ -27,7 +27,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.MultiCameraApsDvsEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
@@ -91,7 +91,7 @@ public class ActionRecognition extends DavisClassifierCNNProcessor implements Pr
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
 
         if (!addedPropertyChangeListener) {
-            ((AEFrameChipRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
+            ((DavisRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(DavisRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
             addedPropertyChangeListener = true;
         }
 //        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsDvsNet on each frame in PropertyChangeListener

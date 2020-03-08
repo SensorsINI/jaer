@@ -25,7 +25,7 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GL2ES3;
 
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.util.EngineeringFormat;
 
@@ -134,7 +134,7 @@ public class DeepLearnCnnNetwork_HJ {
      * @return the vector of output values
      * @see #getActivations
      */
-    public float[] processDownsampledFrame(AEFrameChipRenderer frame) {
+    public float[] processDownsampledFrame(DavisRenderer frame) {
         if (inputLayer == null) {
             return null;
         }
@@ -153,7 +153,7 @@ public class DeepLearnCnnNetwork_HJ {
      * @return the vector of output values
      * @see #getActivations
      */
-    public float[] processInputPatchFrame(AEFrameChipRenderer frame, int offX, int offY) {
+    public float[] processInputPatchFrame(DavisRenderer frame, int offX, int offY) {
 
         inputLayer.processInputFramePatch(frame, offX, offY);
         setLastInputTypeProcessedWasApsFrame(true);
@@ -462,7 +462,7 @@ public class DeepLearnCnnNetwork_HJ {
          * @param renderer the image comes from this image displayed in AEViewer
          * @return the vector of input layer activations
          */
-        public float[] processDownsampledFrame(AEFrameChipRenderer renderer) {
+        public float[] processDownsampledFrame(DavisRenderer renderer) {
 //            if (frame == null || frameWidth == 0 || (frame.length / type.samplesPerPixel()) % frameWidth != 0) {
 //                throw new IllegalArgumentException("input frame is null or frame array length is not a multiple of width=" + frameWidth);
 //            }
@@ -509,7 +509,7 @@ public class DeepLearnCnnNetwork_HJ {
          * @param yOffset y offset of tye patch
          * @return the vector of input layer activations
          */
-        public float[] processInputFramePatch(AEFrameChipRenderer renderer, int xOffset, int yOffset) {
+        public float[] processInputFramePatch(DavisRenderer renderer, int xOffset, int yOffset) {
 //            if (frame == null || frameWidth == 0 || (frame.length / type.samplesPerPixel()) % frameWidth != 0) {
 //                throw new IllegalArgumentException("input frame is null or frame array length is not a multiple of width=" + frameWidth);
 //            }

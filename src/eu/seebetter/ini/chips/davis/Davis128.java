@@ -5,7 +5,7 @@ import java.awt.Point;
 import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 @Description("Davis128 base class for 128x128 pixel sensitive APS-DVS DAVIS sensor")
@@ -23,7 +23,7 @@ public class Davis128 extends DavisBaseCamera {
 
 		setBiasgen(davisConfig = new DavisTowerBaseConfig(this));
 
-		davisRenderer = new AEFrameChipRenderer(this);
+		davisRenderer = new DavisRenderer(this);
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(davisRenderer);
 

@@ -21,7 +21,7 @@ import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.util.SpikeSound;
 
 /**
- * Superclass for classes that render AEs to a memory buffer so that they can be
+ * Superclass for classes that render DVS and other sensor/chip AEs to a memory buffer so that they can be
  * painted on the screen. Note these classes do not actually render to the
  * graphics device; They take AEPacket's and render them to a pixmap memory
  * buffer that later gets painted by a ChipCanvas. The method chosen (by user
@@ -78,7 +78,8 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 		ColorTime("Events are colored according to time within displayed slice, with red coding old events and green coding new events"),
 		GrayTime("Events are colored according to time within displayed slice, with white coding old events and black coding new events"),
 		HotCode("Events counts are colored blue to red, blue=0, red=full scale"),
-		WhiteBackground("Events counts (unsigned) are dark on white background");
+		WhiteBackground("Events counts (unsigned) are dark on white background"),
+		ComplementaryFilter("Events are reconstructed using bandpass event filter");
 		public String description;
 
 		ColorMode(String description) {
@@ -153,6 +154,8 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 	protected boolean subsamplingEnabled = prefs.getBoolean("ChipRenderer.subsamplingEnabled", false);
 	protected float[][] timeColors;
 	protected int specialCount = 0;
+        
+        
 
 	public AEChipRenderer(AEChip chip) {
 		super(chip);

@@ -21,7 +21,7 @@ import net.sf.jaer.event.MultiCameraApsDvsEvent;
  * Displays events from different cameras in separate window in the same AEViewer
  * @author Gemma
  */
-public class MultiViewerFromMultiCamera extends AEFrameChipRenderer{
+public class MultiViewerFromMultiCamera extends DavisRenderer{
     
 //    public Point2D.Float translationPixels = new Point2D.Float(0, 0); 
 //    final float rotationRad=0.0f;

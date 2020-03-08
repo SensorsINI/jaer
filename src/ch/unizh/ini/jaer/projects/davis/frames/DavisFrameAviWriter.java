@@ -19,7 +19,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.util.avioutput.AbstractAviWriter;
 
 /**
@@ -37,7 +37,7 @@ public class DavisFrameAviWriter extends AbstractAviWriter {
 //    ApsFrameExtractor apsFrameExtractor;
     DavisChip apsDvsChip = null;
     private boolean rendererPropertyChangeListenerAdded=false;
-    private AEFrameChipRenderer renderer=null;
+    private DavisRenderer renderer=null;
 
     public DavisFrameAviWriter(AEChip chip) {
         super(chip);
@@ -57,7 +57,7 @@ public class DavisFrameAviWriter extends AbstractAviWriter {
         super.filterPacket(in); // adds propertychangelistener for rewind event
         if(!rendererPropertyChangeListenerAdded){
             rendererPropertyChangeListenerAdded=true;
-            renderer=(AEFrameChipRenderer)chip.getRenderer();
+            renderer=(DavisRenderer)chip.getRenderer();
             renderer.getSupport().addPropertyChangeListener(this);
         }
         apsDvsChip = (DavisChip) chip;
@@ -78,9 +78,9 @@ public class DavisFrameAviWriter extends AbstractAviWriter {
     @Override
     synchronized public void propertyChange(PropertyChangeEvent evt) {
         if ((getAviOutputStream() != null && isWriteEnabled())
-                && (evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)
+                && (evt.getPropertyName() == DavisRenderer.EVENT_NEW_FRAME_AVAILBLE)
                 && !chip.getAeViewer().isPaused()) {
-            FloatBuffer frame = ((AEFrameChipRenderer)chip.getRenderer()).getPixmap();
+            FloatBuffer frame = ((DavisRenderer)chip.getRenderer()).getPixmap();
 
             BufferedImage bufferedImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_3BYTE_BGR);
             WritableRaster raster = bufferedImage.getRaster();

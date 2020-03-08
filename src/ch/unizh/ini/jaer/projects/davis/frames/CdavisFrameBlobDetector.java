@@ -46,7 +46,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
@@ -88,7 +88,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     private final RectangularClusterTracker tracker;
     private boolean saved=false;
 
-    private AEFrameChipRenderer renderer=null;
+    private DavisRenderer renderer=null;
     private boolean rendererPropertyChangeListenerAdded=false;
     DavisChip apsDvsChip = null;
 //    RectangularClusterTracker.Cluster blobs = null;
@@ -166,7 +166,7 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!rendererPropertyChangeListenerAdded){
             rendererPropertyChangeListenerAdded=true;
-            renderer=(AEFrameChipRenderer)chip.getRenderer();
+            renderer=(DavisRenderer)chip.getRenderer();
             renderer.getSupport().addPropertyChangeListener(this);
         }
         apsDvsChip = (DavisChip) chip;
@@ -178,11 +178,11 @@ public class CdavisFrameBlobDetector extends EventFilter2D implements FrameAnnot
     @Override
     synchronized public void propertyChange(PropertyChangeEvent evt) {
 //        if(!isFilterEnabled()) return;
-        if ((evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)
+        if ((evt.getPropertyName() == DavisRenderer.EVENT_NEW_FRAME_AVAILBLE)
                 && !chip.getAeViewer().isPaused() && colorBlobDetectionEnabled) {
-            FloatBuffer lastFrameBuffer = ((AEFrameChipRenderer)chip.getRenderer()).getPixmap();
+            FloatBuffer lastFrameBuffer = ((DavisRenderer)chip.getRenderer()).getPixmap();
             //int sx=chip.getSizeX(), sy=chip.getSizeY();
-            AEFrameChipRenderer r=((AEFrameChipRenderer)chip.getRenderer());
+            DavisRenderer r=((DavisRenderer)chip.getRenderer());
             // rewrite frame to avoid padding for texture
             for (int x = 0; x < sx; x++) {
                 for (int y = 0; y < sy; y++) {

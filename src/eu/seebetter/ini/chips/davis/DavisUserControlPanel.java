@@ -21,7 +21,7 @@ import net.sf.jaer.biasgen.PotTweaker;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.graphics.AEChipRenderer;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 
 /**
  * Wraps some key apsDVS sensor control in more user-friendly control panel.
@@ -86,7 +86,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             imuVisibleCB.setSelected(config.isDisplayImu());
             imuEnabledCB.setSelected(config.isImuEnabled());
         }
-        contrastController = ((AEFrameChipRenderer) ((AEChip) chip).getRenderer()).getContrastController();
+        contrastController = ((DavisRenderer) ((AEChip) chip).getRenderer()).getContrastController();
         contrastController.addObserver(this); // get updates from contrast controller
         contrastSp.setValue(contrastController.getContrast());
         contrastSp.setEnabled(!contrastController.isUseAutoContrast());

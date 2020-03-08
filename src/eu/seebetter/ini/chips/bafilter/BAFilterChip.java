@@ -6,7 +6,7 @@ import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 /**
@@ -30,7 +30,7 @@ public class BAFilterChip extends DavisBaseCamera {
 
 		setBiasgen(davisConfig = new BAFilterChipConfig(this));
 
-		davisRenderer = new AEFrameChipRenderer(this);
+		davisRenderer = new DavisRenderer(this);
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(davisRenderer);
 

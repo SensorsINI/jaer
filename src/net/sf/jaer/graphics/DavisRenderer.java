@@ -31,7 +31,7 @@ import net.sf.jaer.util.histogram.SimpleHistogram;
 
 /**
  * Class adapted from AEChipRenderer to render not only AE events but also
- * frames.
+ * frames, from most DAVIS cameras. Some cameras subclass this class.
  *
  * The frame buffer is RGBA so four bytes per pixel. The rendering uses a
  * texture which is a power of two multiple of image size, so watch out for
@@ -44,7 +44,7 @@ import net.sf.jaer.util.histogram.SimpleHistogram;
  * @author christian, tobi
  * @see ChipRendererDisplayMethod
  */
-public class AEFrameChipRenderer extends AEChipRenderer {
+public class DavisRenderer extends AEChipRenderer {
 
     /**
      * PropertyChange events
@@ -123,11 +123,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private boolean displayAnnotation = false;
 
     /**
-     * downsampling of DVS to speed up rendering at high frame rate
+     * Downsampling of DVS to speed up rendering at high frame rate
      */
     private int dvsDownsamplingValue = 0, dvsDownsamplingCount = 0;
 
-    public AEFrameChipRenderer(final AEChip chip) {
+    public DavisRenderer(final AEChip chip) {
         super(chip);
 
         if (chip.getNumPixels() == 0) {
@@ -354,7 +354,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         setSpecialCount(0);
 
         if (!(packetAPS.getEventPrototype() instanceof ApsDvsEvent)) {
-            if ((warningCount++ % AEFrameChipRenderer.WARNING_INTERVAL) == 0) {
+            if ((warningCount++ % DavisRenderer.WARNING_INTERVAL) == 0) {
                 log.warning("wrong input event class, got " + packetAPS.getEventPrototype() + " but we need to have " + ApsDvsEvent.class);
             }
             return;
@@ -526,7 +526,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             contrastController.endFrame(minValue, maxValue, timestampFrameEnd);
         }
 
-        getSupport().firePropertyChange(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, null, this);
+        getSupport().firePropertyChange(DavisRenderer.EVENT_NEW_FRAME_AVAILBLE, null, this);
     }
 
     /**
@@ -668,10 +668,10 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     protected void checkPixmapAllocation() {
         if ((sizeX != chip.getSizeX()) || (sizeY != chip.getSizeY())) {
             sizeX = chip.getSizeX();
-            textureWidth = AEFrameChipRenderer.ceilingPow2(sizeX);
+            textureWidth = DavisRenderer.ceilingPow2(sizeX);
 
             sizeY = chip.getSizeY();
-            textureHeight = AEFrameChipRenderer.ceilingPow2(sizeY);
+            textureHeight = DavisRenderer.ceilingPow2(sizeY);
         }
 
         final int n = 4 * textureWidth * textureHeight;

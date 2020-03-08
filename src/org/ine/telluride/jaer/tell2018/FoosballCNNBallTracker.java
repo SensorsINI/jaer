@@ -30,7 +30,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.graphics.AEChipRenderer;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -176,8 +176,8 @@ public class FoosballCNNBallTracker extends DavisClassifierCNNProcessor implemen
             annotateAlpha = 0.0f;
         }
         this.annotateAlpha = annotateAlpha;
-        if (renderer != null && renderer instanceof AEFrameChipRenderer) {
-            AEFrameChipRenderer frameRenderer = (AEFrameChipRenderer) renderer;
+        if (renderer != null && renderer instanceof DavisRenderer) {
+            DavisRenderer frameRenderer = (DavisRenderer) renderer;
             frameRenderer.setAnnotateAlpha(annotateAlpha);
         }
     }

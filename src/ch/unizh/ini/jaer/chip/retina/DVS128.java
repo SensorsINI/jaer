@@ -41,7 +41,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface;
@@ -79,7 +79,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
     private JRadioButtonMenuItem ledOnBut, ledOffBut, ledFlashingBut;
     public static final String CMD_TWEAK_THESHOLD = "threshold", CMD_TWEAK_ONOFF_BALANCE = "balance", CMD_TWEAK_BANDWIDTH = "bandwidth", CMD_TWEAK_MAX_FIRING_RATE = "maxfiringrate";
     private Biasgen dvs128Biasgen;
-    private AEFrameChipRenderer dvsRenderer;
+    private DavisRenderer dvsRenderer;
     private ChipRendererDisplayMethodRGBA dvsDisplayMethod = null;
 //    JComponent helpMenuItem1 = null, helpMenuItem2 = null, helpMenuItem3 = null;
 //    public static final String HELP_URL_HARDWARE_USER_GUIDE = "http://inilabs.com/support/hardware/";
@@ -113,7 +113,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         if (!dvs128Biasgen.isInitialized()) {
             maybeLoadDefaultPreferences();  // call *after* biasgen is built so that we check for unitialized biases as well.
         }//        if(c!=null)c.setBorderSpacePixels(5);// make border smaller than default
-        dvsRenderer = new AEFrameChipRenderer(this);
+        dvsRenderer = new DavisRenderer(this);
         setRenderer(dvsRenderer);
 
         dvsDisplayMethod = new ChipRendererDisplayMethodRGBA(this.getCanvas());

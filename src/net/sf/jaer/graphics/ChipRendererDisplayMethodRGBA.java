@@ -28,7 +28,8 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import net.sf.jaer.util.TextRendererScale;
 
 /**
- * Renders using OpenGL the RGB histogram values from Chip2DRenderer.
+ * Displays using OpenGL the RGB histogram values from Chip2DRenderer. The DVS cameras use this class directly, while
+ * DAVIS cameras subclass it to add frame and other (e.g. IMU) rendering)
  *
  * @author Christian Brandli
  * @see net.sf.jaer.graphics.Chip2DRenderer
@@ -68,10 +69,6 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 		return gray;
 	}
 
-	public boolean isUndistortEnabled = false;
-	public Mat cameraMatrix;
-	public Mat distCoeffs;
-
 	private void displayQuad(final GLAutoDrawable drawable) {
 		final Chip2DRenderer renderer = getChipCanvas().getRenderer();
 		final FloatBuffer pixmap = renderer.getPixmap();
@@ -82,8 +79,8 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 		boolean displayFrames = true;
 		boolean displayAnnotation = false;
 
-		if (renderer instanceof AEFrameChipRenderer) {
-			final AEFrameChipRenderer frameRenderer = (AEFrameChipRenderer) renderer;
+		if (renderer instanceof DavisRenderer) {
+			final DavisRenderer frameRenderer = (DavisRenderer) renderer;
 			dvsEventsMap = frameRenderer.getDvsEventsMap();
 //			offMap = frameRenderer.getOffMap();
 			annotateMap = frameRenderer.getAnnotateMap();

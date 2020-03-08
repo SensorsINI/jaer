@@ -22,7 +22,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
@@ -105,7 +105,7 @@ public class LabyrinthDavisTrackFilter extends EventFilter2D implements FrameAnn
         if (isShowBlockedPixels() && lastFrame != null) {
 
             int sx = chip.getSizeX(), sy = chip.getSizeY();
-            AEFrameChipRenderer renderer = (AEFrameChipRenderer) davisChip.getRenderer();
+            DavisRenderer renderer = (DavisRenderer) davisChip.getRenderer();
             renderer.setDisplayAnnotation(true);
             renderer.setAnnotateAlpha(1);
             for (int y = 0; y < sy; y++) {
@@ -121,7 +121,7 @@ public class LabyrinthDavisTrackFilter extends EventFilter2D implements FrameAnn
                 }
             }
         } else {
-            AEFrameChipRenderer renderer = (AEFrameChipRenderer) davisChip.getRenderer();
+            DavisRenderer renderer = (DavisRenderer) davisChip.getRenderer();
             renderer.setDisplayAnnotation(false);
         }
     }
@@ -200,7 +200,7 @@ public class LabyrinthDavisTrackFilter extends EventFilter2D implements FrameAnn
         super.setFilterEnabled(yes); //To change body of generated methods, choose Tools | Templates.
         if (!yes) {
             try {
-                AEFrameChipRenderer renderer = (AEFrameChipRenderer) davisChip.getRenderer();
+                DavisRenderer renderer = (DavisRenderer) davisChip.getRenderer();
                 renderer.clearAnnotationMap();
             } catch (Exception e) {
                 log.warning(e.toString());

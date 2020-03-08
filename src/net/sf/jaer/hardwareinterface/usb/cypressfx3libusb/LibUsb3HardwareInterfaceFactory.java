@@ -101,7 +101,6 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
 			status = LibUsb.kernelDriverActive(devHandle, 0);
 
 			LibUsb.close(devHandle);
-
 			if (((status == LibUsb.ERROR_NOT_SUPPORTED) || (status == LibUsb.SUCCESS)) && vidPidToClassMap.containsKey(vidPid)) {
 				// This is a VID/PID combination we support, so let's add the
 				// device to the compatible

@@ -42,7 +42,7 @@ import net.sf.jaer.eventprocessing.filter.RotateFilter;
 import net.sf.jaer.eventprocessing.filter.XYTypeFilter;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.filter.MedianLowpassFilter;
@@ -132,7 +132,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!addedPropertyChangeListener) {
-            ((AEFrameChipRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
+            ((DavisRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(DavisRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
             addedPropertyChangeListener = true;
         }
         out = getEnclosedFilterChain().filterPacket(in);
@@ -474,7 +474,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE) {
+        if (evt.getPropertyName() == DavisRenderer.EVENT_NEW_FRAME_AVAILBLE) {
             staticBallTracker.locateBall();
         }
     }
@@ -536,7 +536,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
             if (!staticBallTrackerEnabled) {
                 return;
             }
-            AEFrameChipRenderer renderer = (AEFrameChipRenderer) (chip.getRenderer());
+            DavisRenderer renderer = (DavisRenderer) (chip.getRenderer());
             int dim = 36; // (int) (ballRadiusPixels * 2 * SUBFRAME_DIMENSION_PIXELS_MULTIPLE_OF_BALL_DIAMETER);
             if ((subFrame == null) || (subFrame.dim != dim)) {
                 subFrame = new SubFrame(dim);
@@ -567,7 +567,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
 
             }
 
-            private void fill(AEFrameChipRenderer renderer) {
+            private void fill(DavisRenderer renderer) {
                 int sy = chip.getSizeY();
                 int sx = chip.getSizeX();
                 if (captureBackground) {

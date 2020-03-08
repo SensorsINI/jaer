@@ -40,7 +40,7 @@ import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceControlsCF;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import net.sf.jaer.stereopsis.MultiCameraBiasgenHardwareInterface;
@@ -1131,8 +1131,8 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
          * @return the contrastContoller
          */
         public DavisVideoContrastController getContrastContoller() {
-            if (((AEChip) getChip()).getRenderer() instanceof AEFrameChipRenderer) {
-                return ((AEFrameChipRenderer) (((AEChip) getChip()).getRenderer())).getContrastController();
+            if (((AEChip) getChip()).getRenderer() instanceof DavisRenderer) {
+                return ((DavisRenderer) (((AEChip) getChip()).getRenderer())).getContrastController();
             }
 
             throw new RuntimeException("Cannot return a video contrast controller for the image output for the current renderer, which is "

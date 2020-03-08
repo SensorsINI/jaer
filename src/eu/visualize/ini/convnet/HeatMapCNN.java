@@ -28,7 +28,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /* import can be generated automatically
@@ -64,7 +64,7 @@ public class HeatMapCNN extends DavisClassifierCNNProcessor{
     }
     private int filterx = 0, filtery = 0;  // Output location
 
-//    private final AEFrameChipRenderer renderer;
+//    private final DavisRenderer renderer;
 
     public HeatMapCNN(AEChip chip) {
         super(chip);
@@ -82,7 +82,7 @@ public class HeatMapCNN extends DavisClassifierCNNProcessor{
         Arrays.fill(heatMap, 0.0f);
         apsDvsNet.getSupport().addPropertyChangeListener(DavisCNNPureJava.EVENT_MADE_DECISION, this);
 //        dvsNet.getSupport().addPropertyChangeListener(DavisCNNPureJava.EVENT_MADE_DECISION, this);
-//        renderer = (AEFrameChipRenderer) chip.getRenderer();
+//        renderer = (DavisRenderer) chip.getRenderer();
     }
 // initialization
 
@@ -235,7 +235,7 @@ public class HeatMapCNN extends DavisClassifierCNNProcessor{
         if(! filterEnabled) {
             return;
         }
-        if (evt.getPropertyName().equals(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)) {
+        if (evt.getPropertyName().equals(DavisRenderer.EVENT_NEW_FRAME_AVAILBLE)) {
             if ((apsDvsNet != null) && processAPSFrames) {
                 long startTime = 0;
                 if (measurePerformance) {
@@ -261,7 +261,7 @@ public class HeatMapCNN extends DavisClassifierCNNProcessor{
 
                    for (int i=0; i< 2; i++ ){
                        for (int j = 0; j< 2; j++){
-                           float[] outputs = apsDvsNet.processInputPatchFrame((AEFrameChipRenderer) (chip.getRenderer()), centerx[i], centery[j]);
+                           float[] outputs = apsDvsNet.processInputPatchFrame((DavisRenderer) (chip.getRenderer()), centerx[i], centery[j]);
                            heatMap[idx]=outputs[0];
                            idx++;
                        }
@@ -270,7 +270,7 @@ public class HeatMapCNN extends DavisClassifierCNNProcessor{
                 } else {
                     for(int x = dimx2; x< (chip.getSizeX()-dimx2); x+= strideX){
                         for(int y = dimy2; y< (chip.getSizeY()-dimy2); y+= strideY){
-                            float[] outputs = apsDvsNet.processInputPatchFrame((AEFrameChipRenderer) (chip.getRenderer()), x, y);
+                            float[] outputs = apsDvsNet.processInputPatchFrame((DavisRenderer) (chip.getRenderer()), x, y);
                             // apsDvsNet.drawActivations();
                             heatMap[idx]=outputs[0];
                             idx++;

@@ -57,7 +57,7 @@ import net.sf.jaer.eventprocessing.EventFilter;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.ImageDisplay;
 import org.apache.commons.io.FilenameUtils;

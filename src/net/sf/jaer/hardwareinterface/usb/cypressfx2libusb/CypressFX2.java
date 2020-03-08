@@ -41,7 +41,7 @@ import org.usb4java.DeviceHandle;
 import org.usb4java.LibUsb;
 
 /**
- * Devices that use the CypressFX2 and the USBIO driver, e.g. the DVS retinas,
+ * Devices that use the CypressFX2 and the libusb driver, e.g. the DVS retinas,
  * the USBAERmini2. This class should not
  * normally be constructed but rather a subclass that overrides
  * the AEReader should be used.

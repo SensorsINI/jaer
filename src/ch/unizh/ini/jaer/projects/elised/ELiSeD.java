@@ -27,7 +27,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.graphics.AEChipRenderer;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.TobiLogger;
@@ -1124,8 +1124,8 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
             annotateAlpha = 0.0f;
         }
         this.annotateAlpha = annotateAlpha;
-        if (renderer != null && renderer instanceof AEFrameChipRenderer) {
-            AEFrameChipRenderer frameRenderer = (AEFrameChipRenderer) renderer;
+        if (renderer != null && renderer instanceof DavisRenderer) {
+            DavisRenderer frameRenderer = (DavisRenderer) renderer;
             frameRenderer.setAnnotateAlpha(annotateAlpha);
         }
     }

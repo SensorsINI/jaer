@@ -47,7 +47,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
@@ -76,7 +76,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
     private final DavisDisplayMethod davisDisplayMethod;
     protected DavisConfig davisConfig;
-    protected AEFrameChipRenderer davisRenderer;
+    protected DavisRenderer davisRenderer;
     private final AutoExposureController autoExposureController;
 
     private int autoshotThresholdEvents = getPrefs().getInt("DavisBaseCamera.autoshotThresholdEvents", 0);
@@ -404,7 +404,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         int lastImuTs = 0; // DEBUG
 
         /**
-         * extracts the meaning of the raw events.
+         * Extracts event objects from the int32 timestamp/address data.
          *
          * @param in the raw events, can be null
          * @return out the processed events. these are partially processed
@@ -443,6 +443,11 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             for (int i = 0; i < n; i++) { // TODO implement skipBy/subsampling, but without missing the frame start/end
                 // events and still delivering frames
                 final int data = datas[i];
+                
+                // IMU samples are handled using ApsDvsEvents by having a field in each ApsDvsEvent that holds a possible ImuSample.
+                // The ImuSample is newed for each new sample. This is not super efficient but only occurs at max 1kHz.
+                // It does mean that the IMUSamples will build up in the ApsDvsEvent objects (which are reused), so the IMUSample
+                // field is set to null when the event is not an ImuSample
 
                 if ((incompleteIMUSampleException != null) || ((DavisChip.ADDRESS_TYPE_IMU & data) == DavisChip.ADDRESS_TYPE_IMU)) {
                     if (IMUSample.extractSampleTypeCode(data) == 0) { // / only start getting an IMUSample at code 0,
@@ -480,25 +485,22 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 } // not part of IMU sample follows
                 else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_DVS) {
                     // DVS event
-                    final ApsDvsEvent e = nextApsDvsEvent(outItr); // imu sample possibly contained here set to null by
-                    // this method
+                    final ApsDvsEvent e = nextApsDvsEvent(outItr); // imu sample possibly contained here set to null by this method
+                    e.setReadoutType(ReadoutType.DVS);
+                    e.setImuSample(null);
                     if ((data & DavisChip.EXTERNAL_INPUT_EVENT_ADDR) != 0) { // tobi changed to detect just bit set to transmit rising falling and pulse events
 //                    if ((data & DavisChip.EVENT_TYPE_MASK) == DavisChip.EXTERNAL_INPUT_EVENT_ADDR) {
-                        e.setReadoutType(ReadoutType.DVS);
                         e.setSpecial(true);
 
                         e.address = data;
                         e.timestamp = (timestamps[i]);
                     } else {
-                        e.setReadoutType(ReadoutType.DVS);
-
                         e.address = data;
                         e.timestamp = (timestamps[i]);
                         e.polarity = (data & DavisChip.POLMASK) == DavisChip.POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
                         e.type = (byte) ((data & DavisChip.POLMASK) == DavisChip.POLMASK ? 1 : 0);
                         e.x = (short) (sx1 - ((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
                         e.y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
-
                         // autoshot triggering
                         autoshotEventsSinceLastShot++; // number DVS events captured here
                     }
@@ -558,6 +560,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
                     final ApsDvsEvent e = nextApsDvsEvent(outItr);
                     e.setReadoutType(readoutType);
+                    e.setImuSample(null);
                     e.setAdcSample(data & DavisChip.ADC_DATA_MASK);
                     e.address = data;
                     e.timestamp = timestamp;
@@ -1084,10 +1087,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             }
 
             // draw sample histogram
-            if (isShowImageHistogram() && getDavisConfig().isDisplayFrames() && (renderer instanceof AEFrameChipRenderer)) {
+            if (isShowImageHistogram() && getDavisConfig().isDisplayFrames() && (renderer instanceof DavisRenderer)) {
                 // System.out.println("drawing hist");
                 final int size = 100;
-                final AbstractHistogram hist = ((AEFrameChipRenderer) renderer).getAdcSampleValueHistogram();
+                final AbstractHistogram hist = ((DavisRenderer) renderer).getAdcSampleValueHistogram();
                 final GL2 gl = drawable.getGL().getGL2();
                 gl.glPushAttrib(GL.GL_COLOR_BUFFER_BIT);
                 gl.glColor3f(0, 0, 1);
@@ -1385,7 +1388,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     }
 
     /**
-     * Used to appendCopy custom Menu items and keyboard accelerators for DAVIS
+     * Used to append custom Menu items and keyboard accelerators for DAVIS
      * cameras
      */
     abstract public class DavisMenuAction extends AbstractAction {
@@ -1482,7 +1485,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            DavisVideoContrastController controller = ((AEFrameChipRenderer) getRenderer()).getContrastController();
+            DavisVideoContrastController controller = ((DavisRenderer) getRenderer()).getContrastController();
             controller.setUseAutoContrast(!controller.isUseAutoContrast());
             log.info("autoContrast = " + controller.isUseAutoContrast());
             davisDisplayMethod.showStatusChangeText("autoContrast = " + controller.isUseAutoContrast());

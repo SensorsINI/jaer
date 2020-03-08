@@ -199,11 +199,13 @@ public class ApsDvsEvent extends PolarityEvent {
 	}
 
 	/**
-	 * Sets the associated IMUSample and ReadoutType.IMU. If imuSample==null, then ReadoutType is set to
-	 * ReadoutType.Null
+	 * Sets the associated IMUSample and ReadoutType.IMU. 
+         * If imuSample==null && ReadoutType==IMU then ReadoutType is set to
+	 * ReadoutType.Null, otherwise it is left untouched. This way, a null IMU sample can be set, 
+         * allowing garbage collection of IMU samples, but setting it null will not affect existing other ReadoutType 
+         * events.
 	 *
-	 * @param imuSample
-	 *            the imuSample to set
+	 * @param imuSample the imuSample to set
 	 */
 	public void setImuSample(final IMUSample imuSample) {
 		this.imuSample = imuSample;
@@ -211,7 +213,7 @@ public class ApsDvsEvent extends PolarityEvent {
 		if (imuSample != null) {
 			setReadoutType(ReadoutType.IMU);
 		}
-		else {
+                else if(getReadoutType()==ReadoutType.IMU) {
 			setReadoutType(ReadoutType.Null);
 		}
 	}

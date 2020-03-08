@@ -5,7 +5,7 @@ import java.awt.Point;
 import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 @Description("DAVIS346 346x260 pixel APS-DVS DAVIS USB 3.0 sensor (red case)")
@@ -15,7 +15,7 @@ public class Davis346red extends Davis346BaseCamera {
 		setName("Davis346red");
 		setDefaultPreferencesFile("biasgenSettings/Davis346b/DAVIS346red.xml");
 
-		davisRenderer = new AEFrameChipRenderer(this);
+		davisRenderer = new DavisRenderer(this);
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(davisRenderer);
 

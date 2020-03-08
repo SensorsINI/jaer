@@ -51,7 +51,7 @@ import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.graphics.AEChipRenderer;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -79,7 +79,7 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
     protected float heatmapAlpha = getFloat("heatmapAlpha", 0.8f);
     
     AEChipRenderer renderer = null;
-//    AEFrameChipRenderer frameRenderer = null; // needed for display heatmap?
+//    DavisRenderer frameRenderer = null; // needed for display heatmap?
     float xTarget = Float.NaN;
     float nbTarget = 0;
     float yTarget = Float.NaN;
@@ -239,7 +239,7 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
         AEChipRenderer renderer = (AEChipRenderer) chip.getRenderer();
         GL2 gl = drawable.getGL().getGL2();
         
-        AEFrameChipRenderer frameRenderer = (AEFrameChipRenderer) chip.getRenderer(); // for heatmap
+        DavisRenderer frameRenderer = (DavisRenderer) chip.getRenderer(); // for heatmap
         
         
         if (apsDvsNet != null && apsDvsNet.getNetname() != null) {

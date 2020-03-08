@@ -14,7 +14,7 @@ import net.sf.jaer.event.MultiCameraEvent;
  *
  * @author Gemma
  */
-public class MulticameraDavisRenderer extends AEFrameChipRenderer{
+public class MulticameraDavisRenderer extends DavisRenderer{
     
     protected float disparityColors[][];
     protected int NOF_DISPARITY_COLORS = 32;

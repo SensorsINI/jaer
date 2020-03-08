@@ -20,7 +20,7 @@ import eu.seebetter.ini.chips.davis.Davis240Config;
 import java.awt.Point;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.Chip;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.MultiCameraDifferentColorDisplayRenderer;
 import net.sf.jaer.graphics.MultiViewerFromMultiCamera;
 

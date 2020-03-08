@@ -7,7 +7,7 @@ package eu.seebetter.ini.chips.davis;
 
 import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.Description;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 /**
@@ -40,7 +40,7 @@ abstract public class DAVIS240BaseCamera extends DavisBaseCamera {
 
 		setBiasgen(davisConfig = new Davis240Config(this));
 
-		davisRenderer = new AEFrameChipRenderer(this);
+		davisRenderer = new DavisRenderer(this);
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(davisRenderer);
 	}

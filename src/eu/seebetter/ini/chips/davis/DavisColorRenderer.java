@@ -19,12 +19,12 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.event.orientation.OrientationEventInterface;
 import net.sf.jaer.graphics.AEChipRenderer;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.util.histogram.SimpleHistogram;
 
 /**
- * Class adapted from AEFrameChipRenderer to render CDAVIS=rgbDAVIS output.
+ * Class adapted from DavisRenderer to render CDAVIS=rgbDAVIS output.
  *
  * The frame buffer is RGBA so four bytes per pixel. The rendering uses a
  * texture which is a power of two multiple of image size, so watch out for
@@ -34,8 +34,8 @@ import net.sf.jaer.util.histogram.SimpleHistogram;
  * @author christian, tobi
  * @see ChipRendererDisplayMethod
  */
-public class DavisColorRenderer extends AEFrameChipRenderer {
-	// Special pixel arrangement, where DVS is only found once every four pixels.
+public class DavisColorRenderer extends DavisRenderer {
+	// Special pixel arrangement, where DVS is only found once every four pixels, as in Chenghan Li CDAVIS
 	private final boolean isDVSQuarterOfAPS;
 
 	// Color filter pattern arrangement.
@@ -164,7 +164,7 @@ public class DavisColorRenderer extends AEFrameChipRenderer {
 
 		// Change colors of DVS if SeparatyAPSByColor is selected: instead of Red/Green
 		// for all, each quarter has its own color based on the pixel color.
-		if (!isDVSQuarterOfAPS && isSeparateAPSByColor()) {
+		if (!isDVSQuarterOfAPS /*&& isSeparateAPSByColor()*/) {
 			switch (((ApsDvsEvent) e).getColorFilter()) {
 				case R:
 					// Red
