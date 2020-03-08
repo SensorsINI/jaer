@@ -83,8 +83,7 @@ public class Davis346Zynq extends Davis346BaseCamera {
             // including timestamp wrap events and timestamp resets.
             // The datas array holds the data, which consists of a mixture of AEs and ADC values.
             // Here we extract the datas and leave the timestamps alone.
-            // TODO entire rendering / processing approach is not very efficient now
-            for (int i = 0; i < n; i++) { // TODO implement skipBy/subsampling, but without missing the frame start/end
+            for (int i = 0; i < n; i++) { 
                 // events and still delivering frames
                 final int data = datas[i];
 
