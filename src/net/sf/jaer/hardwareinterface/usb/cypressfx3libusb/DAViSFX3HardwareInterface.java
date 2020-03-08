@@ -654,7 +654,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 								break;
 
-							case 6: // Misc 10bit data.
+							case 6:  // Misc 10bit data.
 								final byte misc10Code = (byte) ((data & 0x0C00) >>> 10);
 
 								switch (misc10Code) {
