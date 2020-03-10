@@ -21,6 +21,7 @@ import java.awt.geom.Rectangle2D;
 public final class DrawGL {
 
     private static TextRenderer textRenderer = null;
+    static final float RAD_TO_DEG = (float) (180 / Math.PI);
 
     /**
      * Don't let anyone instantiate this class.
@@ -90,12 +91,11 @@ public final class DrawGL {
     }
 
     public static void drawBox(GL2 gl, float centerX, float centerY, float width, float height, float angle) {
-        final float r2d = (float) (180 / Math.PI);
         final float w = width / 2, h = height / 2;
 
         gl.glTranslatef(centerX, centerY, 0);
         if (angle != 0) {
-            gl.glRotatef(angle * r2d, 0, 0, 1);
+            gl.glRotatef(angle * RAD_TO_DEG, 0, 0, 1);
         }
 
         gl.glBegin(GL.GL_LINE_LOOP);
@@ -172,25 +172,29 @@ public final class DrawGL {
         gl.glVertex2f(lengthX * scale, lengthY * scale);
         gl.glEnd();
     }
-    
-    /** Draws a string using TextRenderer.draw
-     * 
+
+    /**
+     * Draws a string using TextRenderer.draw
+     *
      * @param drawable surface
      * @param fontSize typically 12 to 36
-     * @param x fractional pixel array x position, e.g. .5f for center, 0 for left edge
-     * @param y fractional y pixel array position, e.g. 0 for bottom of view, 1 for top
-     * @param alignmentX 0 for left aligned, .5 for centered, 1 for right aligned
+     * @param x fractional pixel array x position, e.g. .5f for center, 0 for
+     * left edge
+     * @param y fractional y pixel array position, e.g. 0 for bottom of view, 1
+     * for top
+     * @param alignmentX 0 for left aligned, .5 for centered, 1 for right
+     * aligned
      * @param color, e.g. Color.red
      * @param s the string to draw
      */
     public static void drawString(GLAutoDrawable drawable, int fontSize, float x, float y, float alignmentX, Color color, String s) {
-        if (textRenderer == null || textRenderer.getFont().getSize()!=fontSize) {
+        if (textRenderer == null || textRenderer.getFont().getSize() != fontSize) {
             textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, false);
         }
         textRenderer.beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
         textRenderer.setColor(color);
         Rectangle2D r = textRenderer.getBounds(s);
-        textRenderer.draw(s, (int)((x*drawable.getSurfaceWidth() ) - alignmentX*r.getWidth()), (int) (y * drawable.getSurfaceHeight()));
+        textRenderer.draw(s, (int) ((x * drawable.getSurfaceWidth()) - alignmentX * r.getWidth()), (int) (y * drawable.getSurfaceHeight()));
         textRenderer.endRendering();
     }
 
