@@ -58,6 +58,15 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
     {-4, 1}, {-3, 2}, {-2, 3}, {-1, 4}};
 
     private boolean enFilterOut = getBoolean("enFilterOut", false); 
+    private boolean enCompareSWandHW = getBoolean("enFilterOut", false); 
+
+    public boolean isEnCompareSWandHW() {
+        return enCompareSWandHW;
+    }
+
+    public void setEnCompareSWandHW(boolean enCompareSWandHW) {
+        this.enCompareSWandHW = enCompareSWandHW;
+    }
 
     public boolean isEnFilterOut() {
         return enFilterOut;
@@ -96,21 +105,29 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
         int falsePositiveNum = 0;
         for (BasicEvent e : in) {
             PolarityEvent ein = (PolarityEvent) e;
-            int swCornerRet = FastDetectorisFeature(ein) ? 1 : 0;
+            int swCornerRet = 0;
+            if(isEnCompareSWandHW() || getCalcMethod() == CalcMethod.SW_EFAST)
+            {
+                swCornerRet = FastDetectorisFeature(ein) ? 1 : 0;            
+            }
             int hwCornerRet = (e.getAddress() & 1);
-            if (hwCornerRet != swCornerRet) {
-                wrongCornerNum++;
-            }
-            if (swCornerRet == 1 && hwCornerRet == 0)
+            if(isEnCompareSWandHW())
             {
-                falseNegativeNum++;
-//                log.info(String.format("This event is (%d, %d)", e.x, e.y));
+                if (hwCornerRet != swCornerRet) {
+                    wrongCornerNum++;
+                }               
+            
+                if (swCornerRet == 1 && hwCornerRet == 0)
+                {
+                    falseNegativeNum++;
+    //                log.info(String.format("This event is (%d, %d)", e.x, e.y));
+                }
+                if (hwCornerRet == 1 && swCornerRet == 0)
+                {
+                    falsePositiveNum++;
+                }
             }
-            if (hwCornerRet == 1 && swCornerRet == 0)
-            {
-                falsePositiveNum++;
-            }
-            if(this.calcMethod == CalcMethod.SW_EFAST)
+            if(getCalcMethod() == CalcMethod.SW_EFAST)
             {
                 if (swCornerRet == 0) {
                     if(enFilterOut)
@@ -145,29 +162,16 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
             }
         }
         
-//        // do non-max suppression on the hcr
-//        nonmax nmOp = new nonmax();
-//        nmOp.init(hcr, width, height);
-//        double nm[] = nmOp.process();
-//        
-//        for(int x = 0; x < width; x++) {
-//            progress++;
-//            for(int y = 0 ; y < height; y++) {
-//                    if((nm[y * width + x]) == 0) val = ((input[y * width + x]&0xff) + 255) / 2;//hcr[y * width + x];//&0xff;
-//                    else {
-//                            //System.out.println("Got value " + (nm[y * width + x]&0xff));
-//                            val = 0;
-//
-//                    }
-//                    //val = hcr[y * width + x];
-//                    output[y * width + x] = 0xff000000 | ((int)(val) << 16 | (int)(val) << 8 | (int)(val));
-//            }				
-//        }
-        if (wrongCornerNum != 0)
+
+        if(isEnCompareSWandHW())
         {
-//            log.warning(String.format("The packet contained %d events and detected %d FPN corners and %d FNN corners.", in.getSize(), falsePositiveNum, falseNegativeNum));            
-//            log.warning(String.format("The sw detected %d corners and the hw detected %d corners.", swCornerRet, hwCornerRet));
+            if (wrongCornerNum != 0)
+            {
+            //            log.warning(String.format("The packet contained %d events and detected %d FPN corners and %d FNN corners.", in.getSize(), falsePositiveNum, falseNegativeNum));            
+            //            log.warning(String.format("The sw detected %d corners and the hw detected %d corners.", swCornerRet, hwCornerRet));
+            }           
         }
+
 
         return in;
     }
