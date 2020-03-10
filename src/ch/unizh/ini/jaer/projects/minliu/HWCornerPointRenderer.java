@@ -28,6 +28,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
@@ -41,7 +42,7 @@ import net.sf.jaer.util.DrawGL;
         + "Liu, M., and Kao, W., and Delbruck, T. (2019). <a href=\"http://openaccess.thecvf.com/content_CVPRW_2019/papers/EventVision/Liu_Live_Demonstration_A_Real-Time_Event-Based_Fast_Corner_Detection_Demo_Based_CVPRW_2019_paper.pdf\">Live Demonstration: A Real-Time Event-Based Fast Corner Detection Demo Based on FPGA</a>.<br>.")
 public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotater {
 
-    private ArrayList<BasicEvent> cornerEvents = new ArrayList(100);
+    private ArrayList<BasicEvent> cornerEvents = new ArrayList(1000);
     private double[][][] sae_ = null;
     private static final int INNER_SIZE = 16;
     private static final int OUTER_SIZE = 20;
@@ -56,6 +57,32 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
     {-2, -3}, {-3, -2}, {-4, -1}, {-4, 0},
     {-4, 1}, {-3, 2}, {-2, 3}, {-1, 4}};
 
+    private boolean enFilterOut = getBoolean("enFilterOut", false); 
+
+    public boolean isEnFilterOut() {
+        return enFilterOut;
+    }
+
+    public void setEnFilterOut(boolean enFilterOut) {
+        this.enFilterOut = enFilterOut;
+        putBoolean("enFilterOut", enFilterOut);
+    }
+    public enum CalcMethod {
+        HW_EFAST, SW_EFAST
+    };
+    private CalcMethod calcMethod = CalcMethod.valueOf(getString("sliceMethod", CalcMethod.SW_EFAST.toString()));
+
+    public CalcMethod getCalcMethod() {
+        return calcMethod;
+    }
+
+    public void setCalcMethod(CalcMethod calcMethod) {
+        CalcMethod old = this.calcMethod;
+        this.calcMethod = calcMethod;
+        putString("calcMethod", calcMethod.toString());
+        getSupport().firePropertyChange("calcMethod", old, this.calcMethod);
+    }
+    
     public HWCornerPointRenderer(AEChip chip) {
         super(chip);
         sae_ = new double[2][500][500];
@@ -65,6 +92,8 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         cornerEvents.clear();
         int wrongCornerNum = 0;
+        int falseNegativeNum = 0;
+        int falsePositiveNum = 0;
         for (BasicEvent e : in) {
             PolarityEvent ein = (PolarityEvent) e;
             int swCornerRet = FastDetectorisFeature(ein) ? 1 : 0;
@@ -72,25 +101,73 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
             if (hwCornerRet != swCornerRet) {
                 wrongCornerNum++;
             }
-            if (swCornerRet == 0) {
-//                e.setFilteredOut(true);        
-            } else {
-                // corner event
-                cornerEvents.add(e);
+            if (swCornerRet == 1 && hwCornerRet == 0)
+            {
+                falseNegativeNum++;
+//                log.info(String.format("This event is (%d, %d)", e.x, e.y));
             }
-//            if ((hwCornerRet) == 0) {
-//                e.setFilteredOut(true);
-//            }
-//            else
-//            {
-//                // corner event
-//              cornerEvents.add(e);
-//            }
+            if (hwCornerRet == 1 && swCornerRet == 0)
+            {
+                falsePositiveNum++;
+            }
+            if(this.calcMethod == CalcMethod.SW_EFAST)
+            {
+                if (swCornerRet == 0) {
+                    if(enFilterOut)
+                    {
+                        e.setFilteredOut(true);        
+                    }
+                    else
+                    {
+                        e.setFilteredOut(false);
+                    }
+                } else {
+                    // corner event
+                    cornerEvents.add(e);
+                }                
+            }
+            else
+            {
+                if ((hwCornerRet) == 0) {
+                    if(enFilterOut)
+                    {
+                        e.setFilteredOut(true);        
+                    }
+                    else
+                    {
+                        e.setFilteredOut(false);
+                    }                }
+                else
+                {
+                    // corner event
+                  cornerEvents.add(e);
+                }               
+            }
         }
-//        if (wrongCornerNum != 0)
-//        {
-//            log.warning(String.format("Detected %d wrong corners.", wrongCornerNum));            
+        
+//        // do non-max suppression on the hcr
+//        nonmax nmOp = new nonmax();
+//        nmOp.init(hcr, width, height);
+//        double nm[] = nmOp.process();
+//        
+//        for(int x = 0; x < width; x++) {
+//            progress++;
+//            for(int y = 0 ; y < height; y++) {
+//                    if((nm[y * width + x]) == 0) val = ((input[y * width + x]&0xff) + 255) / 2;//hcr[y * width + x];//&0xff;
+//                    else {
+//                            //System.out.println("Got value " + (nm[y * width + x]&0xff));
+//                            val = 0;
+//
+//                    }
+//                    //val = hcr[y * width + x];
+//                    output[y * width + x] = 0xff000000 | ((int)(val) << 16 | (int)(val) << 8 | (int)(val));
+//            }				
 //        }
+        if (wrongCornerNum != 0)
+        {
+//            log.warning(String.format("The packet contained %d events and detected %d FPN corners and %d FNN corners.", in.getSize(), falsePositiveNum, falseNegativeNum));            
+//            log.warning(String.format("The sw detected %d corners and the hw detected %d corners.", swCornerRet, hwCornerRet));
+        }
 
         return in;
     }
@@ -147,14 +224,14 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
 
         final int max_scale = 1;
         // only check if not too close to border
-        final int cs = max_scale * 20;
+        final int cs = max_scale * 6;
         if (pix_x < cs || pix_x >= this.getChip().getSizeX() - cs - 4
                 || pix_y < cs || pix_y >= this.getChip().getSizeY() - cs - 4) {
             found_streak = false;
             return found_streak;
         }
 
-        final int pol = 0;
+        final int pol = polarity.equals(Polarity.Off) ? 0 :0;
 
         // update SAE
         sae_[pol][pix_x][pix_y] = timesmp;
