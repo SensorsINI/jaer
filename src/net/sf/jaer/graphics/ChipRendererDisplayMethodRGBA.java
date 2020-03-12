@@ -103,12 +103,6 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
         getChipCanvas().checkGLError(gl, glu, "before quad");
 
         gl.glDisable(GL.GL_DEPTH_TEST);
-        // define blending of layers for APS, DVS and annotation. 
-        // we want that gray stays gray but that the APS is not washed out by adding DVS events 
-//		gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA); //GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
-//		gl.glEnable(GL.GL_BLEND);
-
-//                gl.glDisable(GL.GL_BLEND);
         final int nearestFilter = GL.GL_NEAREST;
         // Tobi: changed to GL_NEAREST so that pixels are not interpolated but
         // rather are rendered exactly as they come from data no matter
@@ -132,7 +126,6 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
             gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, pixmap);
 
             gl.glEnable(GL.GL_TEXTURE_2D);
-            gl.glBindTexture(GL.GL_TEXTURE_2D, 0);
             drawPolygon(gl, width, height);
             gl.glDisable(GL.GL_TEXTURE_2D);
             gl.glPopMatrix();
