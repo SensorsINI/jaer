@@ -1053,6 +1053,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         private static final int FONTSIZE = 24;
         private static final int FRAME_COUNTER_BAR_LENGTH_FRAMES = 10;
+        private boolean checkedCameraPresent=false; // flag to check if camera present at least once
 
 //        private TextRenderer exposureRenderer = null; // memory hog
         public DavisDisplayMethod(final DavisBaseCamera chip) {
@@ -1070,7 +1071,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 exposureTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, DavisDisplayMethod.FONTSIZE), true, true);
             }
 
-            if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
+            if (!checkedCameraPresent && (getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
                 final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
 
                 if (fx3HwIntf.isTimestampMaster() == false) {
@@ -1080,6 +1081,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     exposureTextRenderer.end3DRendering();
                 }
             }
+            checkedCameraPresent=true; // tobi: only check once
 
             if ((getDavisConfig().getVideoControl() != null) && getDavisConfig().getVideoControl().isDisplayFrames()) {
                 final GL2 gl = drawable.getGL().getGL2();

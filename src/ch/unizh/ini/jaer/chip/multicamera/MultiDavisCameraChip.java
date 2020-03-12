@@ -313,7 +313,7 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
      */
     public class Extractor extends DavisBaseCamera.DavisEventExtractor {
        
-        
+        DavisEventExtractor davisEventExtractor=null;
         public Extractor(MultiDavisCameraChip chip) {
             super(chip); // they are the same type
         }
@@ -342,7 +342,10 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
             }
 
             OutputEventIterator outItr = out.outputIterator();
-            EventPacket davisExtractedPacket = new DavisEventExtractor((DavisBaseCamera) chip).extractPacket(in);
+            if (davisEventExtractor == null) {
+                davisEventExtractor = new DavisEventExtractor((DavisBaseCamera) chip); // tobi: lazy construct to make sure all fields initialized (like array size)
+            }
+            EventPacket davisExtractedPacket = davisEventExtractor.extractPacket(in);
             
             int n =in.getNumEvents();//davisExtractedPacket.getSize();
             
@@ -438,9 +441,9 @@ abstract public class MultiDavisCameraChip extends DavisBaseCamera implements Mu
         }
         int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
         
-        log.info(n + " interfaces found!");
-        if (n <1) {
-            log.warning( " couldn't build MultiCameraHardwareInterface hardware interface because only " + n + " camera is available and at least 2 cameras are needed");
+        log.info(n + " cameras found");
+        if (n <2) {
+            log.warning( " couldn't build MultiCameraHardwareInterface hardware interface because only " + n + " camera is available and at least "+NUM_CAMERAS+" cameras are needed for this instance");
             hardwareInterface= HardwareInterfaceFactory.instance().getInterface(n);
             
             try{
