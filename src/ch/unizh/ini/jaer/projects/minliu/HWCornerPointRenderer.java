@@ -18,17 +18,20 @@
  */
 package ch.unizh.ini.jaer.projects.minliu;
 
+import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Random;
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
-import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
@@ -40,6 +43,7 @@ import net.sf.jaer.util.DrawGL;
  */
 @Description("<html>This is the a viwer for demo FPGA eFAST as demonstrated in CVPR2019 EventVision Workshop. The java version of eFAST is also implemented here.<br>"
         + "Liu, M., and Kao, W., and Delbruck, T. (2019). <a href=\"http://openaccess.thecvf.com/content_CVPRW_2019/papers/EventVision/Liu_Live_Demonstration_A_Real-Time_Event-Based_Fast_Corner_Detection_Demo_Based_CVPRW_2019_paper.pdf\">Live Demonstration: A Real-Time Event-Based Fast Corner Detection Demo Based on FPGA</a>.<br>.")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotater {
 
     private ArrayList<BasicEvent> cornerEvents = new ArrayList(1000);
@@ -57,8 +61,8 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
     {-2, -3}, {-3, -2}, {-4, -1}, {-4, 0},
     {-4, 1}, {-3, 2}, {-2, 3}, {-1, 4}};
 
-    private boolean enFilterOut = getBoolean("enFilterOut", false); 
-    private boolean enCompareSWandHW = getBoolean("enFilterOut", false); 
+    private boolean enFilterOut = getBoolean("enFilterOut", false);
+    private boolean enCompareSWandHW = getBoolean("enFilterOut", false);
 
     public boolean isEnCompareSWandHW() {
         return enCompareSWandHW;
@@ -76,6 +80,7 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
         this.enFilterOut = enFilterOut;
         putBoolean("enFilterOut", enFilterOut);
     }
+
     public enum CalcMethod {
         HW_EFAST, SW_EFAST
     };
@@ -91,10 +96,13 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
         putString("calcMethod", calcMethod.toString());
         getSupport().firePropertyChange("calcMethod", old, this.calcMethod);
     }
-    
+
     public HWCornerPointRenderer(AEChip chip) {
         super(chip);
         sae_ = new double[2][500][500];
+        setPropertyTooltip("calcMethod", "method for getting keypoints; software or by rendering hardware events");
+        setPropertyTooltip("enFilterOut", "enable to filter out DVS events and only pass keypoint events");
+        setPropertyTooltip("enCompareSWandHW", "enable to compare software and hardware keypoints");
     }
 
     @Override
@@ -106,72 +114,54 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
         for (BasicEvent e : in) {
             PolarityEvent ein = (PolarityEvent) e;
             int swCornerRet = 0;
-            if(isEnCompareSWandHW() || getCalcMethod() == CalcMethod.SW_EFAST)
-            {
-                swCornerRet = FastDetectorisFeature(ein) ? 1 : 0;            
+            if (isEnCompareSWandHW() || getCalcMethod() == CalcMethod.SW_EFAST) {
+                swCornerRet = FastDetectorisFeature(ein) ? 1 : 0;
             }
             int hwCornerRet = (e.getAddress() & 1);
-            if(isEnCompareSWandHW())
-            {
+            if (isEnCompareSWandHW()) {
                 if (hwCornerRet != swCornerRet) {
                     wrongCornerNum++;
-                }               
-            
-                if (swCornerRet == 1 && hwCornerRet == 0)
-                {
-                    falseNegativeNum++;
-    //                log.info(String.format("This event is (%d, %d)", e.x, e.y));
                 }
-                if (hwCornerRet == 1 && swCornerRet == 0)
-                {
+
+                if (swCornerRet == 1 && hwCornerRet == 0) {
+                    falseNegativeNum++;
+                    //                log.info(String.format("This event is (%d, %d)", e.x, e.y));
+                }
+                if (hwCornerRet == 1 && swCornerRet == 0) {
                     falsePositiveNum++;
                 }
             }
-            if(getCalcMethod() == CalcMethod.SW_EFAST)
-            {
+            if (getCalcMethod() == CalcMethod.SW_EFAST) {
                 if (swCornerRet == 0) {
-                    if(enFilterOut)
-                    {
-                        e.setFilteredOut(true);        
-                    }
-                    else
-                    {
+                    if (enFilterOut) {
+                        e.setFilteredOut(true);
+                    } else {
                         e.setFilteredOut(false);
                     }
                 } else {
                     // corner event
                     cornerEvents.add(e);
-                }                
-            }
-            else
-            {
+                }
+            } else {
                 if ((hwCornerRet) == 0) {
-                    if(enFilterOut)
-                    {
-                        e.setFilteredOut(true);        
-                    }
-                    else
-                    {
+                    if (enFilterOut) {
+                        e.setFilteredOut(true);
+                    } else {
                         e.setFilteredOut(false);
-                    }                }
-                else
-                {
+                    }
+                } else {
                     // corner event
-                  cornerEvents.add(e);
-                }               
+                    cornerEvents.add(e);
+                }
             }
         }
-        
 
-        if(isEnCompareSWandHW())
-        {
-            if (wrongCornerNum != 0)
-            {
-            //            log.warning(String.format("The packet contained %d events and detected %d FPN corners and %d FNN corners.", in.getSize(), falsePositiveNum, falseNegativeNum));            
-            //            log.warning(String.format("The sw detected %d corners and the hw detected %d corners.", swCornerRet, hwCornerRet));
-            }           
+        if (isEnCompareSWandHW()) {
+            if (wrongCornerNum != 0) {
+                //            log.warning(String.format("The packet contained %d events and detected %d FPN corners and %d FNN corners.", in.getSize(), falsePositiveNum, falseNegativeNum));            
+                //            log.warning(String.format("The sw detected %d corners and the hw detected %d corners.", swCornerRet, hwCornerRet));
+            }
         }
-
 
         return in;
     }
@@ -197,21 +187,21 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
-        gl.glColor3f(1, 0, 0);
+        try {
+            gl.glEnable(GL2.GL_BLEND);
+            gl.glBlendFunc(GL2.GL_SRC_ALPHA, GL2.GL_CONSTANT_ALPHA);
+            gl.glBlendEquation(GL2.GL_FUNC_ADD); // use additive color here to just brighten the pixels already there
+            gl.glBlendColor(1, 1, 1, 1);
+        } catch (final GLException e) {
+            e.printStackTrace();
+        }
+        gl.glColor4f(1f, 0, 0, .2f);
         for (BasicEvent e : cornerEvents) {
-//            if (e.x > chip.getSizeX() || e.y > chip.getSizeY()) {
-//                log.warning(e + " is outside array");
-//            }
-//            DrawGL.drawCircle(gl, e.x, e.y, 2 /*radius*/, 16);
             gl.glPushMatrix();
-            DrawGL.drawBox(gl, e.x, e.y, 4,4,0);
-//
-//            DrawGL.drawLine(gl, e.x - 2, e.y, 4, 0, 2);
-//            gl.glPopMatrix();
-//            gl.glPushMatrix();
-//            DrawGL.drawLine(gl, e.x, e.y - 2, 0, 4, 2);
+            DrawGL.drawBox(gl, e.x, e.y, 4, 4, 0);
             gl.glPopMatrix();
         }
+        gl.glDisable(GL2.GL_BLEND);
     }
 
     boolean FastDetectorisFeature(PolarityEvent ein) {
@@ -235,7 +225,7 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
             return found_streak;
         }
 
-        final int pol = polarity.equals(Polarity.Off) ? 0 :0;
+        final int pol = polarity.equals(Polarity.Off) ? 0 : 0;
 
         // update SAE
         sae_[pol][pix_x][pix_y] = timesmp;
