@@ -79,7 +79,8 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 		GrayTime("Events are colored according to time within displayed slice, with white coding old events and black coding new events"),
 		HotCode("Events counts are colored blue to red, blue=0, red=full scale"),
 		WhiteBackground("Events counts (unsigned) are dark on white background"),
-		ComplementaryFilter("Events are reconstructed using bandpass event filter");
+//		ComplementaryFilter("Events are reconstructed using bandpass event filter")
+                ;
 		public String description;
 
 		ColorMode(String description) {
