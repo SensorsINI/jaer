@@ -214,7 +214,7 @@ public class DavisRenderer extends AEChipRenderer {
 
         grayBuffer.rewind();
         // Fill maps with fully transparent values
-        Arrays.fill(grayBuffer.array(), grayValue);
+        Arrays.fill(grayBuffer.array(), 0);
         System.arraycopy(grayBuffer.array(), 0, dvsEventsMap.array(), 0, n);
 //        System.arraycopy(grayBuffer.array(), 0, offMap.array(), 0, n);
         // if(displayAnnotation) Arrays.fill(annotateMap.array(), 0);
