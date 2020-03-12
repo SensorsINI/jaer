@@ -90,22 +90,36 @@ public final class DrawGL {
         gl.glEnd();
     }
 
-    public static void drawBox(GL2 gl, float centerX, float centerY, float width, float height, float angle) {
-        final float w = width / 2, h = height / 2;
+    private static int boxDisplayListId = 0;
+    private static float boxLastW, boxLastH;
+
+    public static void drawBox(final GL2 gl, final float centerX, final float centerY, final float width, final float height, final float angle) {
 
         gl.glTranslatef(centerX, centerY, 0);
         if (angle != 0) {
             gl.glRotatef(angle * RAD_TO_DEG, 0, 0, 1);
         }
 
-        gl.glBegin(GL.GL_LINE_LOOP);
-        {
-            gl.glVertex2f(-w, -h);
-            gl.glVertex2f(+w, -h);
-            gl.glVertex2f(+w, +h);
-            gl.glVertex2f(-w, +h);
+        if (boxDisplayListId == 0 || width != 2*boxLastW || height != 2*boxLastH) {
+            if (boxDisplayListId != 0) {
+                gl.glDeleteLists(boxDisplayListId, 1);
+            }
+            boxDisplayListId = gl.glGenLists(1);
+            gl.glNewList(boxDisplayListId, GL2.GL_COMPILE);
+            boxLastW = width / 2;
+            boxLastH = height / 2;
+            gl.glBegin(GL.GL_LINE_LOOP);
+            {
+                gl.glVertex2f(-boxLastW, -boxLastH);
+                gl.glVertex2f(+boxLastW, -boxLastH);
+                gl.glVertex2f(+boxLastW, +boxLastH);
+                gl.glVertex2f(-boxLastW, +boxLastH);
+            }
+            gl.glEnd();
+            gl.glEndList();
         }
-        gl.glEnd();
+        gl.glCallList(boxDisplayListId);
+
     }
 
     /**
