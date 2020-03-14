@@ -16,12 +16,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301  USA
  */
-package net.sf.jaer.util.textoutput;
+package net.sf.jaer.util.textio;
 
-import com.jogamp.opengl.GLAutoDrawable;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.Desktop;
-import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -30,8 +28,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
@@ -43,10 +39,9 @@ import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
-import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
-import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
  * "Writes out text format files with DVS and IMU data from DAVIS and DVS
@@ -59,18 +54,16 @@ import net.sf.jaer.graphics.FrameAnnotater;
         + " <p>Previous filtering affects the output. "
         + "<p>Output format is compatible with <a href=\"http://rpg.ifi.uzh.ch/davis_data.html\">rpg.ifi.uzh.ch/davis_data.html</a>")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements PropertyChangeListener {
+public class DavisTextOutputWriter extends AbstractDavisTextIo implements PropertyChangeListener {
 
     private boolean dvsEvents = getBoolean("dvsEvents", true);
 //    private boolean apsFrames = getBoolean("apsFrames", false);
     private boolean imuSamples = getBoolean("imuSamples", false);
-    protected final int LOG_EVERY_THIS_MANY_EVENTS = 1000; // for logging concole messages
     private ArrayList<PrintWriter> writers = new ArrayList();
     private PrintWriter dvsWriter = null, imuWriter = null, apsWriter = null, timecodeWriter = null;
     protected static String DEFAULT_FILENAME = "jAER.txt";
     protected String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
     protected File lastFile = null;
-    protected int eventsWritten = 0;
     protected static final String TIMECODE_SUFFIX = "-timecode.txt";
     protected File timecodeFile = null;
     protected boolean closeOnRewind = getBoolean("closeOnRewind", true);
@@ -79,7 +72,6 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
     private boolean chipPropertyChangeListenerAdded = false;
     protected int maxEvents = getInt("maxEvents", 0);
     protected ArrayList<String> additionalComments = new ArrayList();
-    private boolean writeOnlyWhenMousePressed = getBoolean("writeOnlyWhenMousePressed", false);
     protected volatile boolean writeEnabled = false;
 
     public DavisTextOutputWriter(AEChip chip) {
@@ -89,7 +81,6 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
         setPropertyTooltip("closeOnRewind", "closes recording on rewind event, to allow unattended operation");
         setPropertyTooltip("rewindBeforeRecording", "rewinds file before recording");
         setPropertyTooltip("maxEvents", "file is automatically closed after this many events (in total, of any type) have been written; set to 0 to disable");
-        setPropertyTooltip("eventsWritten", "READONLY, shows number of events written");
         setPropertyTooltip("showFolderInDesktop", "Opens the folder containging the last-written file");
         setPropertyTooltip("writeOnlyWhenMousePressed", "If selected, then the events are are saved only when the mouse is pressed in the AEViewer window");
         setPropertyTooltip("writeEnabled", "Selects if writing events is enabled. Use this to temporarily disable output, or in conjunction with writeOnlyWhenMousePressed");
@@ -97,7 +88,6 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
         setPropertyTooltip("dvsEvents", "write dvs events as one per line with format one per line timestamp(us) x y polarity(0=off,1=on)");
         setPropertyTooltip("imuSamples", "write IMU samples as one per line with format one measurement per line: timestamp(us) ax(g) ay(g) az(g) gx(d/s) gy(d/s) gz(d/s)");
         setPropertyTooltip("apsFrames", "write APS frames with format TBD");
-        setShowCrossHairCursor(false);
         additionalComments.add("jAER DAVIS/DVS camera text file output");
 
     }
@@ -138,17 +128,12 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
             if (!davis) { // pure DVS
                 PolarityEvent ae = (PolarityEvent) be;
                 if (dvsEvents && dvsWriter != null) {
-                    // One event per line (timestamp x y polarity) as in RPG events.txt
-                    dvsWriter.println(String.format("%d %d %d %d", ae.timestamp, ae.x, ae.y, ae.polarity == PolarityEvent.Polarity.Off ? 0 : 1));
-                    incrementCountAndMaybeCloseOutput(be);
+                    writeDvsEvent(ae);
                 }
             } else { // davis type
                 ApsDvsEvent ae = (ApsDvsEvent) be;
                 if (dvsEvents && dvsWriter != null && ae.isDVSEvent()) {
-                    // One event per line (timestamp x y polarity) as in RPG events.txt
-                    dvsWriter.println(String.format("%d %d %d %d", ae.timestamp, ae.x, ae.y, ae.polarity == PolarityEvent.Polarity.Off ? 0 : 1));
-                    incrementCountAndMaybeCloseOutput(be);
-                    lastTimestampWritten = ae.timestamp;
+                    writeDvsEvent(ae);
                 } else if (imuSamples && imuWriter != null && ae.isImuSample()) {
                     IMUSample i = ae.getImuSample();
                     imuWriter.println(String.format("%d %f %f %f %f %f %f", ae.timestamp,
@@ -159,11 +144,6 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
             }
 
         }
-//        } catch (IOException ex) {
-//            Logger.getLogger(DavisTextOutputWriter.class.getName()).log(Level.SEVERE, null, ex);
-//            showWarningDialogInSwingThread(ex.toString(), "Error writing");
-//            doCloseFiles();
-//        }
         for (PrintWriter p : writers) {
             if (p.checkError()) {
                 log.warning("Eror occured writing to file, closing all files");
@@ -172,6 +152,34 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
             }
         }
         return in;
+    }
+    
+    private int polValue(Polarity p){
+        if(useSignedPolarity){
+            return p==Polarity.Off?-1:1;
+        }else{
+            return p==Polarity.Off?0:1;
+        }
+    }
+
+    private void writeDvsEvent(PolarityEvent ae) {
+        // One event per line (timestamp x y polarity) as in RPG events.txt
+        if (useCSV) {
+            if (useUsTimestamps) {
+                dvsWriter.println(String.format("%d,%d,%d,%d", ae.timestamp, ae.x, ae.y, polValue(ae.polarity)));
+
+            } else {
+                dvsWriter.println(String.format("%f,%d,%d,%d", 1e-6f * ae.timestamp, ae.x, ae.y, polValue(ae.polarity)));
+            }
+        } else {
+            if (useUsTimestamps) {
+                dvsWriter.println(String.format("%d %d %d %d", ae.timestamp, ae.x, ae.y, polValue(ae.polarity)));
+            } else {
+                dvsWriter.println(String.format("%f %d %d %d", 1e-6f * ae.timestamp, ae.x, ae.y, polValue(ae.polarity)));
+            }
+        }
+        incrementCountAndMaybeCloseOutput(ae);
+        lastTimestampWritten = ae.timestamp;
     }
 
     /**
@@ -187,7 +195,7 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
     public PrintWriter openWriter(File f) throws IOException {
         PrintWriter writer = new PrintWriter(f);
         lastFile = f;
-        setEventsWritten(0);
+        setEventsProcessed(0);
         if (additionalComments != null) {
             for (String s : additionalComments) {
                 writer.println("# " + s);
@@ -327,7 +335,7 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
         setWriteEnabled(false);
         if (!isFilesOpen()) {
             log.info("No files open, nothing to close");
-            setEventsWritten(0);
+            setEventsProcessed(0);
             return;
         }
         try {
@@ -338,9 +346,9 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
             dvsWriter = null;
             imuWriter = null;
             apsWriter = null;
-            log.info("total " + eventsWritten + " events were written to files " + lastFileName + "-XXX.txt");
-            showPlainMessageDialogInSwingThread("Closed files " + lastFileName + " after " + eventsWritten + " events were written", "Files closed");
-            setEventsWritten(0);
+            log.info("total " + eventsProcessed + " events were written to files " + lastFileName + "-XXX.txt");
+            showPlainMessageDialogInSwingThread("Closed files " + lastFileName + " after " + eventsProcessed + " events were written", "Files closed");
+            setEventsProcessed(0);
         } catch (Exception ex) {
             log.warning(ex.toString());
             ex.printStackTrace();
@@ -363,39 +371,9 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
         putBoolean("rewindBeforeRecording", rewindBeforeRecording);
     }
 
-//    /**
-//     * Turns gl to BufferedImage with fixed format
-//     *
-//     * @param gl
-//     * @param w
-//     * @param h
-//     * @return
-//     */
-//    protected BufferedImage toImage(GL2 gl, int w, int h) {
-//
-//        gl.glReadBuffer(GL.GL_FRONT); // or GL.GL_BACK
-//        ByteBuffer glBB = Buffers.newDirectByteBuffer(4 * w * h);
-//        gl.glReadPixels(0, 0, w, h, GL2.GL_BGRA, GL.GL_BYTE, glBB);
-//
-//        BufferedImage bi = new BufferedImage(w, h, BufferedImage.TYPE_INT_BGR);
-//        int[] bd = ((DataBufferInt) bi.getRaster().getDataBuffer()).getData();
-//
-//        for (int y = 0; y < h; y++) {
-//            for (int x = 0; x < w; x++) {
-//                int b = 2 * glBB.get();
-//                int g = 2 * glBB.get();
-//                int r = 2 * glBB.get();
-//                int a = glBB.get(); // not using
-//
-//                bd[(h - y - 1) * w + x] = (b << 16) | (g << 8) | r | 0xFF000000;
-//            }
-//        }
-//
-//        return bi;
-//    }
     protected void writeTimecode(int timestamp) throws IOException {
         if (timecodeWriter != null) {
-            timecodeWriter.println(String.format("%d %d", eventsWritten, timestamp));
+            timecodeWriter.println(String.format("%d %d", eventsProcessed, timestamp));
         }
     }
 
@@ -405,14 +383,14 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
                     lastTimestampWritten, be.timestamp, (be.timestamp - lastTimestampWritten)));
         }
         lastTimestampWritten = be.timestamp;
-        eventsWritten++;
-        if (maxEvents > 0 && eventsWritten >= maxEvents && isFilesOpen()) {
+        eventsProcessed++;
+        if (maxEvents > 0 && eventsProcessed >= maxEvents && isFilesOpen()) {
             log.info("wrote maxEvents=" + maxEvents + " events; closing files");
             doCloseFiles();
         }
-        if (isFilesOpen() && eventsWritten % LOG_EVERY_THIS_MANY_EVENTS == 0) {
-            log.info(String.format("wrote %d events", eventsWritten));
-            getSupport().firePropertyChange("eventsWritten", null, eventsWritten);
+        if (isFilesOpen() && eventsProcessed % LOG_EVERY_THIS_MANY_EVENTS == 0) {
+            log.info(String.format("wrote %d events", eventsProcessed));
+            getSupport().firePropertyChange("eventsWritten", null, eventsProcessed);
         }
     }
 
@@ -436,10 +414,10 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
     }
 
     /**
-     * @return the eventsWritten
+     * @return the eventsProcessed
      */
-    public int getEventsWritten() {
-        return eventsWritten;
+    public int getEventsProcessed() {
+        return eventsProcessed;
     }
 
     /**
@@ -455,17 +433,6 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
     public void setCloseOnRewind(boolean closeOnRewind) {
         this.closeOnRewind = closeOnRewind;
         putBoolean("closeOnRewind", closeOnRewind);
-    }
-
-    /**
-     * @param eventsWritten the eventsWritten to set
-     */
-    public void setEventsWritten(int eventsWritten) {
-        int old = this.eventsWritten;
-        this.eventsWritten = eventsWritten;
-        if (eventsWritten % LOG_EVERY_THIS_MANY_EVENTS == 0) {
-            getSupport().firePropertyChange("eventsWritten", old, eventsWritten);
-        }
     }
 
     @Override
@@ -501,35 +468,6 @@ public class DavisTextOutputWriter extends EventFilter2DMouseAdaptor implements 
      */
     public File getFile() {
         return lastFile;
-    }
-
-    /**
-     * @return the writeOnlyWhenMousePressed
-     */
-    public boolean isWriteOnlyWhenMousePressed() {
-        return writeOnlyWhenMousePressed;
-    }
-
-    /**
-     * @param writeOnlyWhenMousePressed the writeOnlyWhenMousePressed to set
-     */
-    public void setWriteOnlyWhenMousePressed(boolean writeOnlyWhenMousePressed) {
-        this.writeOnlyWhenMousePressed = writeOnlyWhenMousePressed;
-        putBoolean("writeOnlyWhenMousePressed", writeOnlyWhenMousePressed);
-    }
-
-    @Override
-    public void mouseReleased(MouseEvent e) {
-        if (writeOnlyWhenMousePressed) {
-            setWriteEnabled(false);
-        }
-    }
-
-    @Override
-    public void mousePressed(MouseEvent e) {
-        if (writeOnlyWhenMousePressed) {
-            setWriteEnabled(true);
-        }
     }
 
     public boolean isWriteEnabled() {

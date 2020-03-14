@@ -535,18 +535,9 @@ public class DavisRenderer extends AEChipRenderer {
      * @param index 0-(size of pixel array-1) of pixel
      */
     protected void updateEventMaps(final PolarityEvent e) {
-//        if (dvsDownsamplingCount++ < dvsDownsamplingValue) {
-//            return;
-//        }
         dvsDownsamplingCount = 0;
         float[] map;
-//        if (packet.getNumCellTypes() > 2) {
-            map = dvsEventsMap.array();
-//        } else if (e.polarity == Polarity.On) {
-//            map = dvsEventsMap.array();
-//        } else {
-//            map = offMap.array();
-//        }
+        map = dvsEventsMap.array();
 
         final int index = getIndex(e);
         if ((index < 0) || (index >= map.length)) {
@@ -614,21 +605,14 @@ public class DavisRenderer extends AEChipRenderer {
              final float scale = (1.0f / colorScale);
             map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
            if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
-//                map[index] += onColor[0];
-//                map[index + 1] += onColor[1];
-//                map[index + 2] += onColor[2]; 
                 map[index] += scale*onColor[0];
                 map[index + 1] += scale*onColor[1];
                 map[index + 2] += scale*onColor[2]; 
             } else {
-//                map[index] += offColor[0];
-//                map[index + 1] += offColor[1];
-//                map[index + 2] += offColor[2];
                 map[index] += scale*offColor[0];
                 map[index + 1] += scale*offColor[1];
                 map[index + 2] += scale*offColor[2];
             }
-
         }
     }
 

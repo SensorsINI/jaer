@@ -1035,23 +1035,6 @@
                 </Property>
               </Properties>
             </Component>
-            <Component class="javax.swing.JToggleButton" name="multiModeButton">
-              <Properties>
-                <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
-                  <Font name="Tahoma" size="10" style="0"/>
-                </Property>
-                <Property name="mnemonic" type="int" value="108"/>
-                <Property name="text" type="java.lang.String" value="Multi-Input Mode"/>
-                <Property name="toolTipText" type="java.lang.String" value="Starts or stops logging or relogging"/>
-                <Property name="alignmentY" type="float" value="0.0"/>
-                <Property name="margin" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
-                  <Insets value="[2, 2, 2, 2]"/>
-                </Property>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="multiModeButtonActionPerformed"/>
-              </Events>
-            </Component>
             <Container class="javax.swing.JPanel" name="playerControlPanel">
               <Properties>
                 <Property name="toolTipText" type="java.lang.String" value=""/>

@@ -45,7 +45,6 @@ import javax.swing.SwingUtilities;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
-import net.sf.jaer.graphics.GlobalViewer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.util.LoggingThreadGroup;
@@ -109,7 +108,6 @@ public class JAERViewer {
     private SyncPlayer syncPlayer = new SyncPlayer(null, this); // TODO ugly, create here and then recreate later
     protected static final String JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY = "JAERViewer.viewerChipClassNames";
 
-    public GlobalViewer globalViewer = new GlobalViewer();
 
     // Internal switch: go into multiple-display mode right away?
     boolean multistartmode = false;
@@ -143,9 +141,6 @@ public class JAERViewer {
         sharedDrawable.display(); // triggers GLContext object creation and native realization. sharedDrawable is a static variable that can be used by all AEViewers and file preview dialogs
         log.info("JOGL version information: " + JoglVersion.getInstance().toString());
 
-//        if(true){
-//        throw new RuntimeException("test exception");
-//        }
         windowSaver = new WindowSaver(this, prefs);
         // WindowSaver calls for determining screen insets (e.g. Windows Taskbar) could cause problems on different OS's
         Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver, AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events
@@ -208,10 +203,6 @@ public class JAERViewer {
 
         @Override
         public void run() {
-            if (multistartmode) {
-                setViewMode(true);
-                return;
-            }
 
             // try to load a list of previous chip classes that running in viewers and then reOGloopen them
             ArrayList<String> classNames = null;
@@ -337,35 +328,7 @@ public class JAERViewer {
         buildMenus(aEViewer);
     }
 
-    public void saveSetup(File f) {
-        JOptionPane.showMessageDialog(null, "Saving viewer setup not implemented yet - please request this feature.");
-
-//        File setupFile;
-//            JFileChooser fileChooser=new JFileChooser();
-//            String lastFilePath=prefs.get("JAERViewer.lastFile",""); // get the last folder
-//            File cwd=new File(lastFilePath);
-//            fileChooser.setCurrentDirectory(cwd); // sets the working directory of the chooser
-//            int retValue=fileChooser.showOpenDialog(null);
-//            if(retValue==JFileChooser.APPROVE_OPTION){
-//                try{
-//                    setupFile=fileChooser.getSelectedFile();
-////                    if(lastFile!=null) recentFiles.addFile(lastFile);
-//
-//                    lastFilePath=setupFile.getPath();
-//                    prefs.put("JAERViewer.lastFile",lastFilePath);
-//                }catch(FileNotFoundException fnf){
-//                    fnf.printStackTrace();
-//                }
-//            }
-//            fileChooser=null;
-    }
-
-    public void loadSetup(File f) {
-        JOptionPane.showMessageDialog(null, "Loading viewer setup Not implemented yet - please request this feature");
-    }
-
     void buildMenus(AEViewer v) {
-//        log.info("building AEViewer sync menus");
         JMenu m = v.getFileMenu();
 
         ToggleLoggingAction action = new ToggleLoggingAction(v);
@@ -654,133 +617,6 @@ public class JAERViewer {
     public void setPlayBack(boolean playBack) {
         this.playBack = playBack;
     }
-//    // not using anymore, instead using Java 6 SplashScreen functionality - tobi oct 2011
-//    private Thread showSplash() {
-//        Thread splashThread = new Thread() {
-//
-//            public void run() {
-//                try {
-//                    ClassLoader cl = this.getClass().getClassLoader();
-//                    URL splashImageURL = cl.getResource(SPLASH_IMAGE);
-//                    //            System.out.println("splashImageURL="+splashImageURL);
-//                    Image splashImage = Toolkit.getDefaultToolkit().getImage(splashImageURL);
-//                    GifViewerWindow splash = new GifViewerWindow(splashImage);
-//                    MediaTracker mt = new MediaTracker(splash.window);
-//                    mt.addImage(splashImage, 0);
-//                    try {
-//                        mt.waitForID(0);
-//                    } catch (InterruptedException ex) {
-//                        log.warning("wait for splash image interrupted");
-//                        return;
-//                    }
-//                    int h = splashImage.getHeight(splash.frame);
-//                    int w = splashImage.getWidth(splash.window);
-//                    splash.centerAndSetVisible(w, h);
-//                    splash.toFront();
-//                    try {
-//                        Thread.currentThread().sleep(SPLASH_DURATION);
-//                    } catch (InterruptedException e) {
-//                    }
-//                    GifViewerWindow.hideGifFile(splash);
-//                } catch (Exception io) {
-//                    log.warning("can't show splash image " + SPLASH_IMAGE);
-//                }
-//            }
-//        };
-//        splashThread.start();
-//        return splashThread; // call interrupt on it to abort showing
-//    }
-
-    //</editor-fold>
-//    public void launchMultiModeViewer()
-//    {
-//        // Below lines added to to display problem when reusing open ones
-//        for (AEViewer v:viewers)
-//        {   v.setEnabled(false);
-//            v.dispose();
-//        }
-//        viewers.clear();
-//
-//
-//        Runnable multiLaunch=new Runnable(){
-//
-//            @Override
-//            public void run() {
-//                new JAERViewer(true);
-//            }
-//
-//        };
-//
-//
-//        if (SwingUtilities.isEventDispatchThread())
-//        {   multiLaunch.run();
-//        }
-//        else
-//            SwingUtilities.invokeLater(multiLaunch);
-//
-//
-//
-//    }
-    public void setViewMode(final boolean multi) {
-
-        class MultiLauncher implements Runnable {
-//        SwingUtilities.invokeLater(new Runnable(){
-
-            @Override
-            public void run() {
-
-                if (multi) {
-
-                    int nInterfaces = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
-
-                    // Open however many viewers need to be opened
-                    int vsize = viewers.size();
-                    for (int i = 0; i < (nInterfaces - vsize); i++) {
-                        new AEViewer(JAERViewer.this);
-                    }
-
-                    // Set one inteface per viewer
-                    for (int i = 0; i < viewers.size(); i++) {
-                        AEViewer v = viewers.get(i);
-                        HardwareInterface hi = HardwareInterfaceFactory.instance().getInterface(i);
-                        Class guess = AEViewer.hardwareInterface2chipClassName(hi);
-                        if (guess != null) {
-                            v.setAeChipClass(guess);
-                        }
-
-                        v.getChip().setHardwareInterface(hi);
-//                        v.setVisible(true);
-                    }
-
-                    globalViewer.setJaerViewer(JAERViewer.this);
-
-                    globalViewer.start();
-
-                    globalViewer.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-                } else {
-
-                    for (AEViewer v : viewers) {
-                        v.setVisible(true);
-
-                    }
-
-                }
-
-            }
-        }
-
-        if (SwingUtilities.isEventDispatchThread()) {
-            MultiLauncher m = new MultiLauncher();
-            m.run();
-        } else {
-            SwingUtilities.invokeLater(new MultiLauncher());
-        }
-
-//        else
-//            SwingUtilities.
-//            SwingUtilities.invokeLater(new MultiLauncher());
-    }
 
     /**
      * The main launcher for AEViewer's.
@@ -789,9 +625,6 @@ public class JAERViewer {
      * with full path; the viewer will play this file
      */
     public static void main(String[] args) {
-        //redirect output to DataViewer window
-        // should be before any logger is initialized
-//        globalDataViewer.redirectStreams(); // tobi removed because AEViewerConsoleOutputFrame replaces this logging output
 
         Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("jAER UncaughtExceptionHandler");
         Thread.setDefaultUncaughtExceptionHandler(handler);
@@ -828,11 +661,6 @@ public class JAERViewer {
             }
         }
 
-//            String exepath = System.getProperty("exepath");
-//            if ( exepath != null ){
-//                System.out.println("exepath (set from JSmooth launcher) = " + exepath);
-//            }
-//        }
         if (args.length > 0) {
             log.info("starting with args[0]=" + args[0] + " in working directory=" + System.getProperty("user.dir"));
             final File f = new File(args[0]);

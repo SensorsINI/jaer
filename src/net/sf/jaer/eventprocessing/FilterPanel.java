@@ -61,7 +61,6 @@ import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import net.sf.jaer.graphics.GlobalViewer;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
@@ -181,7 +180,6 @@ import net.sf.jaer.util.EngineeringFormat;
  * <pre>
  * final String size="Size", tim="Timing";
  *
- * setPropertyTooltip(disp,"showGlobalEnabled", "shows line of average orientation");
  * setPropertyTooltip(tim,"minDtThreshold", "Coincidence time, events that pass this coincidence test are considerd for orientation output");
  * setPropertyTooltip(tim,"dtRejectMultiplier", "reject delta times more than this factor times minDtThreshold to reduce noise");
  * setPropertyTooltip(tim,"dtRejectThreshold", "reject delta times more than this time in us to reduce effect of very old events");
@@ -1661,20 +1659,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             p.invalidate();
         }
 
-        boolean globalEnable = false; // For compatibility with new version
         invalidate();
         Container c = getTopLevelAncestor();
         if (c == null) {
             return;
-        } else if (c instanceof GlobalViewer) // Added for compatibility with multi-input mode
-        {
-            c = ((GlobalViewer) c).getFilterPane();
-            globalEnable = true;
-
-        }
+        } 
 
         // TODO fix bug here with enclosed filters not showing up if they are enclosed in enclosed filter, unless they are declared as enclosed
-        if (!getFilter().isEnclosed() && ((c instanceof Window) || globalEnable)) {
+        if (!getFilter().isEnclosed() && ((c instanceof Window))) {
             if (c instanceof FilterFrame) {
                 // hide all filters except one that is being modified, *unless* we are an enclosed filter
                 FilterFrame<FilterPanel> ff = (FilterFrame) c;

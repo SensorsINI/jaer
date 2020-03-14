@@ -1683,7 +1683,7 @@ public class RectangularClusterTracker extends EventFilter2D
             if (isUseEllipticalClusters()) {
                 DrawGL.drawEllipse(gl, 0, 0, radiusX, radiusY, angle, 15);
             } else {
-                DrawGL.drawBox(gl, 0, 0, radiusX * 2, radiusY * 2, angle); // Radius*2 because we need width and height
+                DrawGL.drawBox(gl, 0, 0, (int)radiusX * 2, (int)radiusY * 2, angle); // Radius*2 because we need width and height # tobi casted to int to reduce making gl draw lists in DrawBox
             }
             if ((angle != 0) || dynamicAngleEnabled) {
                 DrawGL.drawLine(gl, 0, 0, radiusX, 0, 1);

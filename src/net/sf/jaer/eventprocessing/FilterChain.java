@@ -202,8 +202,8 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             resetPerformanceMeasurementStatistics = false;
         }
         for (EventFilter2D f : this) {
-            if (!f.isFilterEnabled() || in == null) {
-                continue;  // tobi added so that each filter doesn't need to check if enabled and non-null packet
+            if (!f.isFilterEnabled()) {
+                continue; 
             }
             if (measurePerformanceEnabled) {
                 if (f.perf == null) {

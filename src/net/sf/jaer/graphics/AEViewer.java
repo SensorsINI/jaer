@@ -195,8 +195,11 @@ import net.sf.jaer.util.filter.LowpassFilter;
 public class AEViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener, ExceptionListener, RemoteControlled {
 
     /**
-     * PropertyChangeEvent fired from this AEViewer to the PropertyChangeSupport that is part of AEViewer. <b>This support is different than the Java AWT property change support</b>.
-     * @see #getSupport() 
+     * PropertyChangeEvent fired from this AEViewer to the PropertyChangeSupport
+     * that is part of AEViewer. <b>This support is different than the Java AWT
+     * property change support</b>.
+     *
+     * @see #getSupport()
      */
     public static final String EVENT_PLAYMODE = "playmode",
             EVENT_FILEOPEN = "fileopen",
@@ -206,7 +209,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             EVENT_TIMESTAMPS_RESET = "timestampsReset",
             EVENT_CHECK_NONMONOTONIC_TIMESTAMPS = "checkNonMonotonicTimestamps",
             EVENT_ACCUMULATE_ENABLED = "accumulateEnabled";
-    private PropertyChangeSupport support =new PropertyChangeSupport(this);
+    private PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     public static final String HELP_URL_JAER_HOME = "https://github.com/SensorsINI/jaer";
     public static final String HELP_URL_USER_GUIDE = "https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing";
@@ -326,13 +329,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /**
      * PropertyChangeSupport for events like file opening, file rewind, etc.
+     *
      * @return the support
      * @see AEViewer#EVENT_FILEOPEN etc
      */
     public PropertyChangeSupport getSupport() {
         return support;
     }
-    
+
     /**
      * Default port number for remote control of this AEViewer.
      *
@@ -562,11 +566,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * Modes of viewing: WAITING means waiting for device or for playback or
      * remote, LIVE means showing a hardware interface, PLAYBACK means playing
      * back a recorded file, SEQUENCING means sequencing a file out on a
-     * sequencer device, REMOTE means playing a remote stream of AEs
+     * sequencer device, REMOTE means playing a remote stream of AEs,
+     * FILTER_INPUT means input comes from an EventFilter.
      */
     public enum PlayMode {
 
-        WAITING, LIVE, PLAYBACK, SEQUENCING, REMOTE
+        WAITING, LIVE, PLAYBACK, SEQUENCING, REMOTE, FILTER_INPUT
     }
     volatile private PlayMode playMode = PlayMode.WAITING;
     public static Preferences prefs = Preferences.userNodeForPackage(AEViewer.class);
@@ -599,12 +604,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     // number of packets to skip over rendering, used to speed up real time processing
     private int skipPacketsRenderingNumberMax = prefs.getInt("AEViewer.skipPacketsRenderingNumber", 0), skipPacketsRenderingNumberCurrent = 0;
     private int skipPacketsRenderingCount = 0; // this is counter for skipping rendering cycles; set to zero to render first packet always
-    private DropTarget dropTarget;
     private File draggedFile;
     private boolean loggingPlaybackImmediatelyEnabled = prefs.getBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", false);
     private boolean enableFiltersOnStartup = prefs.getBoolean("AEViewer.enableFiltersOnStartup", false);
     private long loggingTimeLimit = 0, loggingStartTime = System.currentTimeMillis();
-    private boolean stereoModeEnabled = false;
     private boolean logFilteredEventsEnabled = prefs.getBoolean("AEViewer.logFilteredEventsEnabled", false);
     private DynamicFontSizeJLabel statisticsLabel;
     private boolean filterFrameBuilt = false; // flag to signal that the frame should be rebuilt when initially shown or when chip is changed
@@ -833,8 +836,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         //        });
         setFocusable(true);
         requestFocus();
-        //        viewLoop = new ViewLoop(); // declared final for synchronization
-        dropTarget = new DropTarget(getImagePanel(), this);
 
         fixLoggingControls();
 
@@ -1172,6 +1173,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             case REMOTE:
                 ts = "REMOTE - " + getAeChipClass().getSimpleName() + " - AEViewer";
                 break;
+            case FILTER_INPUT:
+                ts = "FILTER_INPUT - " + getAeChipClass().getSimpleName() + " - AEViewer";
+                break;
             default:
                 ts = "Unknown state";
         }
@@ -1264,7 +1268,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aemon.close();
             }
             makeCanvas();
-            //            setTitleAccordingToState(); // called anyhow in ViewLoop.run
             Component[] devMenuComps = deviceMenu.getMenuComponents();
             for (Component devMenuComp : devMenuComps) {
                 if (devMenuComp instanceof JRadioButtonMenuItem) {
@@ -1309,7 +1312,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             getSupport().firePropertyChange(EVENT_CHIP, oldChip, getChip());
 
             chip.onRegistration();
-            setTitleAccordingToState();
 
         } catch (Exception e) {
             log.log(Level.SEVERE, e.toString(), e);
@@ -1609,7 +1611,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     private void openAEMonitor() {
         synchronized (viewLoop) { // TODO grabs lock on viewLoop so that other methods, e.g. startPlayback, which also grab this lock, will not race to set playMode. touchy design.
-            if (getPlayMode() == PlayMode.PLAYBACK) { // don't open hardware if playing a file
+            if (getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) { // don't open hardware if playing a file
                 return;
             }
             if ((aemon != null) && aemon.isOpen()) {
@@ -1732,12 +1734,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     //    volatile boolean stop=false; // volatile because multiple threads will access
     int renderCount = 0;
     int numEvents;
-    AEPacketRaw aeRaw;
-    //    AEPacket2D ae;
-    private EventPacket packet;
-    //    EventPacket packetFiltered;
+    private AEPacketRaw aeRaw; // the raw packet (just timestamps and addresses) recieved from hardware, network, or file input
+    private EventPacket packet; // the cooked packet (with BasicEvent or subclass objects) of data
     boolean skipRender = false;
-    //    volatile private boolean paused=false; // multiple threads will access
     boolean overrunOccurred = false;
     int tickUs = 1;
     public AEPlayer aePlayer = new AEPlayer(this);
@@ -1751,67 +1750,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     class ViewLoop extends Thread {
 
         Graphics2D g = null;
-        //        volatile boolean rerenderOtherComponents=false;
-        //        volatile boolean renderImageEnabled=true;
         volatile boolean singleStepEnabled = false, doSingleStep = false;
         int numRawEvents, numFilteredEvents;
-        //                volatile boolean rerenderFlagDone=false; // used by view loop to signal to other methods that it has finished a rendering. view loop sets this true after each loop.
+        private EngineeringFormat engFmt = new EngineeringFormat();
+        private long beforeTime = 0, afterTime;
+        volatile boolean stop = false;
+        private LowpassFilter skipPacketsRenderingLowpassFilter = null;
 
         public ViewLoop() {
             super();
             setName("AEViewer.ViewLoop");
-        }
-
-        private void renderPacket(EventPacket ae) {
-            if (aePlayer.isChoosingFile() || (ae == null) || (!isRenderBlankFramesEnabled() && (ae.getSize() == 0))) {
-                return;
-            } // don't render while filechooser is active
-//            boolean subsamplingEnabled = getRenderer().isSubsamplingEnabled();
-            //            if (isPaused()) {
-            //                getRenderer().setSubsamplingEnabled(false);
-            //            } // not needed and always overwrites the preference value
-            if (!(getRenderer().isAccumulateEnabled() && isPaused())) {
-                getRenderer().render(packet);
-            }
-            //            if (isPaused()) {
-            //                getRenderer().setSubsamplingEnabled(subsamplingEnabled);
-            //            }
-            //            if(renderImageEnabled) {
-            if (isActiveRenderingEnabled()) {
-                chipCanvas.paintFrame(); // actively paint frame now, either with OpenGL or Java2D, depending on switch
-            } else {
-                //                log.info("repaint by "+1000/frameRater.getDesiredFPS()+" ms");
-                chipCanvas.repaint();
-                //                chipCanvas.repaint(1000 / frameRater.getDesiredFPS()); // ask for repaint within frame time
-            }
-
-        } // renderEvents
-
-        private EventPacket extractPacket(AEPacketRaw aeRaw) {
-            boolean subsamplingEnabled = getRenderer().isSubsamplingEnabled();
-            if (isPaused()) {
-                extractor.setSubsamplingEnabled(false);
-            }
-            AEViewer.this.extractor = AEViewer.this.chip.getEventExtractor();   // Jaer3BufferParser will update the extractor in the chip, so we should monitor this value all the time
-            EventPacket packet = extractor.extractPacket(aeRaw);
-            packet.setRawPacket(aeRaw);
-            if (isPaused()) {
-                extractor.setSubsamplingEnabled(subsamplingEnabled);
-            }
-
-            return packet;
-        }
-        private EngineeringFormat engFmt = new EngineeringFormat();
-        private long beforeTime = 0, afterTime;
-        volatile boolean stop = false;
-
-        /**
-         * Sets the stop flag so that the ViewLoop exits the run method on the
-         * next iteration.
-         *
-         */
-        public void stopThread() {
-            stop = true;
         }
 
         /**
@@ -1821,8 +1769,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         public void run() { // don't know why this needs to be thread-safe
             /* TODO synchronized tobi removed sync because it was causing deadlocks on exit. */
 
-            //            BasicEvent lastEvent=new BasicEvent();
-            while (!isVisible() && !globalized) {
+            while (!isVisible()) {
                 try {
                     log.info("sleeping until isVisible()==true");
                     Thread.sleep(1000); // sleep to let components realize on screen - may be crashing opengl on nvidia drivers if we draw to unrealized components
@@ -1830,11 +1777,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
             while (stop == false/*&& !isInterrupted()*/) { // the only way to break out of the run loop is either setting stop true or by some uncaught exception.
-                // now getString the data to be displayed
+                setTitleAccordingToState();
                 if (!isPaused() || (isSingleStep() && !isInterrupted())) { // we check interrupted to make sure we are not getting data after being interrupted
-                    //                    if(isSingleStep()){
-                    //                        log.info("getting data for single step");
-                    //                    }
                     // if !paused we always get data. below, if singleStepEnabled, we set paused after getting data.
                     // when the user unpauses via menu, we disable singleStepEnabled
                     // another flag, doSingleStep, tells loop to do a single data acquisition and then pause again
@@ -1842,42 +1786,45 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     getFrameRater().takeBefore();
 
                     // Grab input from one of various sources
-                    boolean skipTheRest = grabInput();
+                    if (getPlayMode() == PlayMode.FILTER_INPUT) {
+                        try {
+                            if (packet == null) {
+                                packet = new EventPacket(chip.getEventClass());
+                            }
+                            packet = filterChain.filterPacket(packet);
+                            numEvents = packet.getSize();
+                        } catch (Exception e) {
+                            log.warning("Caught " + e + ", disabling all filters. See following stack trace.");
+                            log.log(Level.SEVERE, e.toString(), e);
 
-                    // If there's nothing to do:
-                    if (skipTheRest) {
-                        continue;
-                    }
+                            log.log(Level.WARNING, "Filter exception", e);
+                            for (EventFilter f : filterChain) {
+                                f.setFilterEnabled(false);
+                            }
+                        }
 
-                    numRawEvents = aeRaw.getNumEvents();
+                    } else {
+                        boolean noData = grabInput();
 
-                    // new style packet with reused event objects
-                    // if(aeRaw.getNumEvents()>0){ // we should always extract even if the packet is empty to be sure we get a valid packet!
-                    packet = extractPacket(aeRaw);
-                    if (packet == null) {
-                        log.warning("packet became null after extracting events from raw input packet");
-                        continue;
-                    }
-                    numEvents = packet.getSize();
-
-                    //  synchronized(packet.class()){}
-                    //                    System.out.println(packet.getEventClass());
-                    // Monotonicity test code
-                    //                    for (int i = 0; i < packet.getSize(); i++) {
-                    //                        BasicEvent currentEvent = packet.getEvent(i);
-                    //                        if ((lastEvent != null) && (currentEvent.timestamp < lastEvent.timestamp)) {
-                    //                            System.out.println("TimeStamp Nonmonotonicity: "+currentEvent.timestamp+" < "+ lastEvent.timestamp);
-                    //                        }
-                    //                        lastEvent.copyFrom(currentEvent);
-                    //                    }
-                    // Filter Packet (unless part of global viewer, in which case it's done later)
-                    if (!globalized) {
-                        skipTheRest = filterPacket();
-                        if (skipTheRest) {
+                        // If there's nothing to do:
+                        if (noData) {
                             continue;
                         }
-                    }
 
+                        numRawEvents = aeRaw.getNumEvents();
+                        packet = extractPacket(aeRaw);
+                        if (packet == null) {
+                            log.warning("packet became null after extracting events from raw input packet");
+                            continue;
+                        }
+                        numEvents = packet.getSize();
+
+                        noData = filterPacket();
+                        if (noData) {
+                            continue;
+                        }
+
+                    }
                     chip.setLastData(packet);// set the rendered data for use by various methods
 
                     // if we are logging data to disk do it here
@@ -1892,18 +1839,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
 
                     singleStepDone();
-                    //                    if (packet.isEmpty() && !isRenderBlankFramesEnabled()) {
-                    //                        // log.info("blank frame, not rendering it");
-                    //                        fpsDelay();
-                    //                        continue;
-                    //                    }
-
-                    // Don't know what this is for
-                    if (numEvents == 0) {
-                        noEventCounter++;
-                    } else {
-                        noEventCounter = 0;
-                    }
 
                 } // if (!isPaused() || isSingleStep())
 
@@ -1932,26 +1867,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 getFrameRater().takeAfter();
                 renderCount++;
 
-                //--------------------------------------------------------
-                // Peter's addition: Enable write to global
-                if (globalized) {
-
-                    try {
-                        waitFlag.await();
-
-                    } catch (InterruptedException ex) {
-                        Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
-                    } catch (BrokenBarrierException ex) {
-                        Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-
-                }
-
-                //--------------------------------------------------------
-                //                System.out.println("Viewer Loop end");
                 fpsDelay();
 
-                //                rerenderFlagDone=true;
             } // while (stop == false): end of run() loop - main loop of AEViewer.ViewLoop
 
             // Loop Cleanup
@@ -1966,30 +1883,46 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 unicastInput.close();
             }
 
-            // <editor-fold desc="Some Vestigal Organs.">
-            //            if(windowSaver!=null)
-            //                try {
-            //                    windowSaver.saveSettings();
-            //                } catch (IOException e) {
-            //                    e.printStackTrace();
-            //                }
-            //            chipCanvas.getCanvas().setVisible(false);
-            //            remove(chipCanvas.getCanvas());
-            //            if (getJaerViewer() != null) {
-            //                log.info("removing " + AEViewer.this + " viewer from caviar viewer list");
-            //                getJaerViewer().removeViewer(AEViewer.this); // we want to remove the viewer, not this inner class
-            //            }
-            ////            dispose();
-            //
-            //            if (getJaerViewer() == null || getJaerViewer().getViewers().isEmpty()) {
-            //                if (biasgenFrame != null && biasgenFrame.isModificationsSaved()) {
-            //                    System.exit(0);
-            //                }
-            //            }
-            // </editor-fold>
         } // viewLoop.run()
 
-        private LowpassFilter skipPacketsRenderingLowpassFilter = null;
+        private void renderPacket(EventPacket ae) {
+            if (aePlayer.isChoosingFile() || (ae == null) || (!isRenderBlankFramesEnabled() && (ae.getSize() == 0))) {
+                return;
+            } // don't render while filechooser is active
+            if (!(getRenderer().isAccumulateEnabled() && isPaused())) {
+                getRenderer().render(packet);
+            }
+            if (isActiveRenderingEnabled()) {
+                chipCanvas.paintFrame(); // actively paint frame now, either with OpenGL or Java2D, depending on switch
+            } else {
+                chipCanvas.repaint();
+            }
+
+        } // renderEvents
+
+        private EventPacket extractPacket(AEPacketRaw aeRaw) {
+            boolean subsamplingEnabled = getRenderer().isSubsamplingEnabled();
+            if (isPaused()) {
+                extractor.setSubsamplingEnabled(false);
+            }
+            AEViewer.this.extractor = AEViewer.this.chip.getEventExtractor();   // Jaer3BufferParser will update the extractor in the chip, so we should monitor this value all the time
+            EventPacket packet = extractor.extractPacket(aeRaw);
+            packet.setRawPacket(aeRaw);
+            if (isPaused()) {
+                extractor.setSubsamplingEnabled(subsamplingEnabled);
+            }
+
+            return packet;
+        }
+
+        /**
+         * Sets the stop flag so that the ViewLoop exits the run method on the
+         * next iteration.
+         *
+         */
+        public void stopThread() {
+            stop = true;
+        }
 
         private void adaptRenderSkipping() {
             if (!skipPacketsRenderingCheckBoxMenuItem.isSelected()) {
@@ -2031,7 +1964,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          * e.g. a file, live sensor input, etc.
          *
          * @return returns false if there are no error and data was acquired,
-         * true if there is no input and the code should continue from here and
+         * true if there is no data and the code should continue from here and
          * skip future processing
          */
         private boolean grabInput() {
@@ -2070,30 +2003,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                     overrunOccurred = aemon.overrunOccurred();
                     try {
-                        // try to getString an event to avoid rendering empty (black) frames
-                        //                                int triesLeft = 15;
-                        //                                do {
-                        //                                    if (!isInterrupted()) {
                         aemon = (AEMonitorInterface) chip.getHardwareInterface(); // TODOkeep setting aemon to be chip's interface, this is kludge
                         if (aemon == null) {
                             log.warning("AEViewer.ViewLoop.run(): AEMonitorInterface became null during acquisition");
                             throw new HardwareInterfaceException("hardware interface became null");
                         }
                         aeRaw = aemon.acquireAvailableEventsFromDriver();
-                        //                                        System.out.println("got "+aeRaw);
-                        //                                    }
-
-                        //                                    if (aeRaw.getNumEvents() > 0) {
-                        //                                        break;
-                        //                                    }
-                        //                                    System.out.print("."); System.out.flush();
-                        //                                    try {
-                        //                                        Thread.currentThread().sleep(3);
-                        //                                    } catch (InterruptedException e) {
-                        //                                        log.warning("LIVE attempt to getString data loop interrupted");
-                        //                                    }
-                        //                                } while (triesLeft-- > 0);
-                        ////                                if(aeRaw.getNumEvents()==0) {System.out.print("0 events ..."); System.out.flush();}
                     } catch (HardwareInterfaceException e) {
                         if (stop) {
                             break; // break out of loop if this aquisition thread got HardwareInterfaceException because we are exiting
@@ -2116,12 +2031,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                     break;
                 case PLAYBACK:
-                    //                            Thread thisThread=Thread.currentThread();
-                    //                            System.out.println("thread "+thisThread+" getting events for renderCount="+renderCount);
                     aeRaw = getAePlayer().getNextPacket(aePlayer);
                     getAePlayer().adjustTimesliceForRealtimePlayback();
                     overrunOccurred = false;
-                    //                            System.out.println("."); System.out.flush();
                     break;
                 case REMOTE:
                     if (unicastInputEnabled) {
@@ -2199,7 +2111,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                     break;
                 case WAITING:
-                    //                          notify(); // notify waiter on this thread that we have gone to WAITING state
                     if (unicastInputEnabled || multicastInputEnabled || socketInputEnabled) {
                         // if were were playing back a recording and a remote interface is active, then we go back to it here.
                         setPlayMode(PlayMode.REMOTE);
@@ -2217,7 +2128,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                         return true;
                     }
-            } // playMode switch to getString data
+                case FILTER_INPUT:
+                    // input is coming from some EventFilter
+                    fpsDelay();
+                    return false; // no error, but return true so that we don't assume that raw packet was captured
+            } // playMode switch
 
             // If input is null, delay and continue
             if (aeRaw == null) {
@@ -2237,11 +2152,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          */
         boolean filterPacket() {
 
-            if (playerControls.isSliderBeingAdjusted() || getAePlayer().getPlaybackDirection()==AbstractAEPlayer.PlaybackDirection.Backward) {
+            if (playerControls.isSliderBeingAdjusted() || getAePlayer().getPlaybackDirection() == AbstractAEPlayer.PlaybackDirection.Backward) {
                 return false; // don't run filters if user is manipulating position or playing backwards
             }
             // filter events, do processing on them in rendering loop here
-            if ((filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING) || (playMode != PlayMode.LIVE)) {
+            if ((filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING) || (getPlayMode() != PlayMode.LIVE)) {
                 try {
                     packet = filterChain.filterPacket(packet);
                 } catch (Exception e) {
@@ -2306,9 +2221,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          * Write data to output streams Returns true if the run loop should
          * break.
          *
-         * @return
+         * @return true to break out of loop, e.g. there is error, false is OK
          */
-        boolean writeOutputStreams() {
+        private boolean writeOutputStreams() {
             // write to network socket if a client has opened a socket to us
             // we serve up events on this socket
 
@@ -2477,22 +2392,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         if (aemon == null) {
                             return;
                         }
-                        //                    ratekeps=aemon.getEstimatedEventRate()/1000f;
                         if (packet.getSize() > 0) { // only update time if there is an event in the packet
                             thisTime = packet.getLastTimestamp() * aemon.getTimestampTickUs() * 1e-6f;
                         }
-                        //                        thisTimeString = String.format("%5.3fs ",packet.getLastTimestamp() * aemon.getTimestampTickUs() * 1e-6f);
                         break;
                     case PLAYBACK:
-                        //                    if(ae.getNumEvents()>2) ratekeps=(float)ae.getNumEvents()/(float)dtMs;
-                        //                    if(packet.getSize()>2) ratekeps=(float)packet.getSize()/(float)dtMs;
-                        //                        thisTimeString = String.format("%5.3fs",getAePlayer().getTime() * 1e-6f); // hack here, we don't know timestamp from data file, we assume 1us
-                        thisTime = packet.getLastTimestamp() * 1e-6f; // just use the raw timestamp from the data file, but this will not account for wrapping.
-                        // doesn't do the right thing when playing back by constant number of events
-                        //                        timeSliceString=String.format("%10ss",engFmt.format(getAePlayer().getTimesliceUs()*1e-6f));
-                        break;
+                    case FILTER_INPUT:
                     case REMOTE:
-                        thisTime = packet.getLastTimestamp() * 1e-6f;
+                        thisTime = packet.getLastTimestamp() * 1e-6f; // just use the raw timestamp from the data file, but this will not account for wrapping.
                         break;
                 }
                 String thisTimeString = String.format("%5.3fs ", thisTime);
@@ -2947,7 +2854,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         biasesToggleButton = new javax.swing.JToggleButton();
         filtersToggleButton = new javax.swing.JToggleButton();
         loggingButton = new javax.swing.JToggleButton();
-        multiModeButton = new javax.swing.JToggleButton();
         playerControlPanel = new javax.swing.JPanel();
         jPanel1 = new javax.swing.JPanel();
         statusTextField = new javax.swing.JTextField();
@@ -3061,8 +2967,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
         setTitle("AEViewer");
         addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override
-			public void windowClosing(java.awt.event.WindowEvent evt) {
+            public void windowClosing(java.awt.event.WindowEvent evt) {
                 formWindowClosing(evt);
             }
         });
@@ -3075,8 +2980,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         imagePanel.setFocusable(false);
         imagePanel.setPreferredSize(new java.awt.Dimension(200, 200));
         imagePanel.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
-            @Override
-			public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
+            public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
                 imagePanelMouseWheelMoved(evt);
             }
         });
@@ -3094,8 +2998,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         biasesToggleButton.setAlignmentY(0.0F);
         biasesToggleButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         biasesToggleButton.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 biasesToggleButtonActionPerformed(evt);
             }
         });
@@ -3107,8 +3010,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         filtersToggleButton.setAlignmentY(0.0F);
         filtersToggleButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         filtersToggleButton.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 filtersToggleButtonActionPerformed(evt);
             }
         });
@@ -3121,20 +3023,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         loggingButton.setAlignmentY(0.0F);
         loggingButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         buttonsPanel.add(loggingButton);
-
-        multiModeButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
-        multiModeButton.setMnemonic('l');
-        multiModeButton.setText("Multi-Input Mode");
-        multiModeButton.setToolTipText("Starts or stops logging or relogging");
-        multiModeButton.setAlignmentY(0.0F);
-        multiModeButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
-        multiModeButton.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
-                multiModeButtonActionPerformed(evt);
-            }
-        });
-        buttonsPanel.add(multiModeButton);
 
         playerControlPanel.setToolTipText("");
         playerControlPanel.setAlignmentY(0.0F);
@@ -3160,8 +3048,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         showConsoleOutputButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         showConsoleOutputButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
         showConsoleOutputButton.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 showConsoleOutputButtonActionPerformed(evt);
             }
         });
@@ -3178,22 +3065,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         new TriangleSquareWindowsCornerIcon();
         resizeLabel.setToolTipText("Resizes window");
         resizeLabel.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-			public void mouseEntered(java.awt.event.MouseEvent evt) {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
                 resizeLabelMouseEntered(evt);
             }
-            @Override
-			public void mouseExited(java.awt.event.MouseEvent evt) {
+            public void mouseExited(java.awt.event.MouseEvent evt) {
                 resizeLabelMouseExited(evt);
             }
-            @Override
-			public void mousePressed(java.awt.event.MouseEvent evt) {
+            public void mousePressed(java.awt.event.MouseEvent evt) {
                 resizeLabelMousePressed(evt);
             }
         });
         resizeLabel.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
-            @Override
-			public void mouseDragged(java.awt.event.MouseEvent evt) {
+            public void mouseDragged(java.awt.event.MouseEvent evt) {
                 resizeLabelMouseDragged(evt);
             }
         });
@@ -3211,8 +3094,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         newViewerMenuItem.setText("New viewer");
         newViewerMenuItem.setToolTipText("Opens a new viewer");
         newViewerMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 newViewerMenuItemActionPerformed(evt);
             }
         });
@@ -3223,8 +3105,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         openMenuItem.setText("Open logged data file...");
         openMenuItem.setToolTipText("Opens a logged data file for playback");
         openMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 openMenuItemActionPerformed(evt);
             }
         });
@@ -3235,8 +3116,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         closeMenuItem.setText("Close");
         closeMenuItem.setToolTipText("Closes this viewer or the playing data file");
         closeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 closeMenuItemActionPerformed(evt);
             }
         });
@@ -3246,8 +3126,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         timestampResetBitmaskMenuItem.setText("dummy, set in constructor");
         timestampResetBitmaskMenuItem.setToolTipText("Setting a bitmask here will memorize and subtract timestamps when address  & bitmask != 0");
         timestampResetBitmaskMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 timestampResetBitmaskMenuItemActionPerformed(evt);
             }
         });
@@ -3262,8 +3141,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         loggingPlaybackImmediatelyCheckBoxMenuItem.setText("Playback logged data immediately after logging enabled");
         loggingPlaybackImmediatelyCheckBoxMenuItem.setToolTipText("If enabled, logged data plays back immediately");
         loggingPlaybackImmediatelyCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 loggingPlaybackImmediatelyCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3272,8 +3150,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         loggingSetTimelimitMenuItem.setText("Set logging time limit...");
         loggingSetTimelimitMenuItem.setToolTipText("Sets a time limit for logging");
         loggingSetTimelimitMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 loggingSetTimelimitMenuItemActionPerformed(evt);
             }
         });
@@ -3282,8 +3159,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         logFilteredEventsCheckBoxMenuItem.setText("Enable filtering of logged or network output events");
         logFilteredEventsCheckBoxMenuItem.setToolTipText("Logging or network writes apply active filters first (reduces file size or network traffi)");
         logFilteredEventsCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 logFilteredEventsCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3297,8 +3173,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         openSocketInputStreamMenuItem.setText("Open remote server input stream socket...");
         openSocketInputStreamMenuItem.setToolTipText("Opens a remote connection for stream (TCP) packets of  events ");
         openSocketInputStreamMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 openSocketInputStreamMenuItemActionPerformed(evt);
             }
         });
@@ -3307,8 +3182,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         openSocketOutputStreamMenuItem.setText("Open remote server output stream socket...");
         openSocketOutputStreamMenuItem.setToolTipText("Opens a remote connection for stream (TCP) packets of  events ");
         openSocketOutputStreamMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 openSocketOutputStreamMenuItemActionPerformed(evt);
             }
         });
@@ -3318,8 +3192,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         reopenSocketInputStreamMenuItem.setText("Reopen last or preferred stream socket input stream");
         reopenSocketInputStreamMenuItem.setToolTipText("After an input socket has been opened (and preferences set), this quickly closes and reopens it");
         reopenSocketInputStreamMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 reopenSocketInputStreamMenuItemActionPerformed(evt);
             }
         });
@@ -3328,8 +3201,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         serverSocketOptionsMenuItem.setText("Stream socket server options...");
         serverSocketOptionsMenuItem.setToolTipText("Sets options for server sockets");
         serverSocketOptionsMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 serverSocketOptionsMenuItemActionPerformed(evt);
             }
         });
@@ -3340,8 +3212,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         multicastOutputEnabledCheckBoxMenuItem.setText("Enable Multicast (UDP) AE Output");
         multicastOutputEnabledCheckBoxMenuItem.setToolTipText("<html>Enable multicast AE output (datagrams)<br><strong>Warning! Will flood network if there are no listeners.</strong></html>");
         multicastOutputEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 multicastOutputEnabledCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3351,8 +3222,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         openMulticastInputMenuItem.setText("Enable Multicast (UDP) AE input");
         openMulticastInputMenuItem.setToolTipText("Enable multicast AE input (datagrams)");
         openMulticastInputMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 openMulticastInputMenuItemActionPerformed(evt);
             }
         });
@@ -3363,8 +3233,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         unicastOutputEnabledCheckBoxMenuItem.setText("Enable unicast datagram (UDP) output...");
         unicastOutputEnabledCheckBoxMenuItem.setToolTipText("Enables unicast datagram (UDP) outputs to a single receiver");
         unicastOutputEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 unicastOutputEnabledCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3374,8 +3243,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         openUnicastInputMenuItem.setText("Open Unicast (UDP) remote AE input...");
         openUnicastInputMenuItem.setToolTipText("Opens a remote UDP unicast AE input");
         openUnicastInputMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 openUnicastInputMenuItemActionPerformed(evt);
             }
         });
@@ -3384,8 +3252,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         openBlockingQueueInputMenuItem.setText("Enable BlockingQueue input from another viewer");
         openBlockingQueueInputMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 openBlockingQueueInputMenuItemActionPerformed(evt);
             }
         });
@@ -3398,8 +3265,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         syncEnabledCheckBoxMenuItem.setText("Synchronized logging/playback enabled");
         syncEnabledCheckBoxMenuItem.setToolTipText("All viwers start/stop logging in synchrony and playback times are synchronized");
         syncEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 syncEnabledCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3410,8 +3276,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setText("Check for non-monotonic time in input streams");
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setToolTipText("If enabled, nonmonotonic time stamps are checked for in input streams from file or network");
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3423,8 +3288,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         exitMenuItem.setText("Exit");
         exitMenuItem.setToolTipText("Exits all viewers");
         exitMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 exitMenuItemActionPerformed(evt);
             }
         });
@@ -3440,8 +3304,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewBiasesMenuItem.setText("Biases/HW Configuration");
         viewBiasesMenuItem.setToolTipText("Shows chip or board configuration controls");
         viewBiasesMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewBiasesMenuItemActionPerformed(evt);
             }
         });
@@ -3455,8 +3318,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewFiltersMenuItem.setText("Filters");
         viewFiltersMenuItem.setToolTipText("Shows filter controls");
         viewFiltersMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewFiltersMenuItemActionPerformed(evt);
             }
         });
@@ -3465,8 +3327,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         enableFiltersOnStartupCheckBoxMenuItem.setText("Enable filters on startup");
         enableFiltersOnStartupCheckBoxMenuItem.setToolTipText("Enables creation of event processing filters on startup");
         enableFiltersOnStartupCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 enableFiltersOnStartupCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3481,8 +3342,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewActiveRenderingEnabledMenuItem.setText("Active rendering enabled");
         viewActiveRenderingEnabledMenuItem.setToolTipText("Enables active display of each rendered frame if enabled.\nIf disabled, then  chipCanvas.repaint(1000 / frameRater.getDesiredFPS()) is called for repaint.");
         viewActiveRenderingEnabledMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewActiveRenderingEnabledMenuItemActionPerformed(evt);
             }
         });
@@ -3491,8 +3351,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewRenderBlankFramesCheckBoxMenuItem.setText("Render blank frames");
         viewRenderBlankFramesCheckBoxMenuItem.setToolTipText("If enabled, frames without events are rendered");
         viewRenderBlankFramesCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewRenderBlankFramesCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3502,14 +3361,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         skipPacketsRenderingCheckBoxMenuItem.setText("Enable adaptive render skipping");
         skipPacketsRenderingCheckBoxMenuItem.setToolTipText("Enables skipping rendering of packets to speed up frame rate");
         skipPacketsRenderingCheckBoxMenuItem.addChangeListener(new javax.swing.event.ChangeListener() {
-            @Override
-			public void stateChanged(javax.swing.event.ChangeEvent evt) {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 skipPacketsRenderingCheckBoxMenuItemStateChanged(evt);
             }
         });
         skipPacketsRenderingCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 skipPacketsRenderingCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3522,8 +3379,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         cycleColorRenderingMethodMenuItem.setText("Cycle color rendering mode");
         cycleColorRenderingMethodMenuItem.setToolTipText("Changes rendering mode (gray, contrast, RG, color-time)");
         cycleColorRenderingMethodMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cycleColorRenderingMethodMenuItemActionPerformed(evt);
             }
         });
@@ -3532,8 +3388,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         increaseContrastMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_UP, 0));
         increaseContrastMenuItem.setText("Increase contrast");
         increaseContrastMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 increaseContrastMenuItemActionPerformed(evt);
             }
         });
@@ -3542,8 +3397,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         decreaseContrastMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_DOWN, 0));
         decreaseContrastMenuItem.setText("Decrease contrast");
         decreaseContrastMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 decreaseContrastMenuItemActionPerformed(evt);
             }
         });
@@ -3553,8 +3407,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         autoscaleContrastEnabledCheckBoxMenuItem.setText("Autoscale contrast enabled");
         autoscaleContrastEnabledCheckBoxMenuItem.setToolTipText("Tries to autoscale histogram values");
         autoscaleContrastEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 autoscaleContrastEnabledCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3564,8 +3417,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         calibrationStartStop.setText("Start Calibration");
         calibrationStartStop.setToolTipText("Hold uniform surface in front of lens and start calibration. Wait a few seconds and stop calibration.");
         calibrationStartStop.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 calibrationStartStopActionPerformed(evt);
             }
         });
@@ -3576,8 +3428,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         cycleDisplayMethodButton.setText("Cycle display method");
         cycleDisplayMethodButton.setToolTipText("Cycles the display method");
         cycleDisplayMethodButton.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cycleDisplayMethodButtonActionPerformed(evt);
             }
         });
@@ -3591,8 +3442,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         acccumulateImageEnabledCheckBoxMenuItem.setText("Accumulate image");
         acccumulateImageEnabledCheckBoxMenuItem.setToolTipText("Rendered data accumulates over 2d hisograms");
         acccumulateImageEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 acccumulateImageEnabledCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3601,8 +3451,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewIgnorePolarityCheckBoxMenuItem.setText("Ignore cell type");
         viewIgnorePolarityCheckBoxMenuItem.setToolTipText("Throws away cells type for rendering");
         viewIgnorePolarityCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewIgnorePolarityCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3612,8 +3461,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         increaseFrameRateMenuItem.setText("Increase rendering frame rate");
         increaseFrameRateMenuItem.setToolTipText("Increases frames/second target for rendering");
         increaseFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 increaseFrameRateMenuItemActionPerformed(evt);
             }
         });
@@ -3623,8 +3471,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         decreaseFrameRateMenuItem.setText("Decrease rendering frame rate");
         decreaseFrameRateMenuItem.setToolTipText("Decreases frames/second target for rendering");
         decreaseFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 decreaseFrameRateMenuItemActionPerformed(evt);
             }
         });
@@ -3634,8 +3481,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setFrameRateMenuItem.setText("Set rendering rate...");
         setFrameRateMenuItem.setToolTipText("Opens dialog to set the rendering (animation) target rate in frames/sec (fps)");
         setFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 setFrameRateMenuItemActionPerformed(evt);
             }
         });
@@ -3644,8 +3490,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         pauseRenderingCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_SPACE, 0));
         pauseRenderingCheckBoxMenuItem.setText("Paused");
         pauseRenderingCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 pauseRenderingCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3654,8 +3499,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewSingleStepMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PERIOD, 0));
         viewSingleStepMenuItem.setText("Single step");
         viewSingleStepMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewSingleStepMenuItemActionPerformed(evt);
             }
         });
@@ -3664,8 +3508,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         zeroTimestampsMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_0, 0));
         zeroTimestampsMenuItem.setText("Zero timestamps");
         zeroTimestampsMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 zeroTimestampsMenuItemActionPerformed(evt);
             }
         });
@@ -3677,8 +3520,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         increasePlaybackSpeedMenuItem.setToolTipText("Makes the time slice longer");
         increasePlaybackSpeedMenuItem.setEnabled(false);
         increasePlaybackSpeedMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 increasePlaybackSpeedMenuItemActionPerformed(evt);
             }
         });
@@ -3689,8 +3531,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         decreasePlaybackSpeedMenuItem.setToolTipText("Makes the time slice shorter");
         decreasePlaybackSpeedMenuItem.setEnabled(false);
         decreasePlaybackSpeedMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 decreasePlaybackSpeedMenuItemActionPerformed(evt);
             }
         });
@@ -3700,8 +3541,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         rewindPlaybackMenuItem.setText("Rewind");
         rewindPlaybackMenuItem.setEnabled(false);
         rewindPlaybackMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 rewindPlaybackMenuItemActionPerformed(evt);
             }
         });
@@ -3712,8 +3552,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         flextimePlaybackEnabledCheckBoxMenuItem.setToolTipText("Enables playback with constant number of events");
         flextimePlaybackEnabledCheckBoxMenuItem.setEnabled(false);
         flextimePlaybackEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 flextimePlaybackEnabledCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3723,8 +3562,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         togglePlaybackDirectionMenuItem.setText("Toggle playback direction");
         togglePlaybackDirectionMenuItem.setEnabled(false);
         togglePlaybackDirectionMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 togglePlaybackDirectionMenuItemActionPerformed(evt);
             }
         });
@@ -3733,8 +3571,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         forwardNMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_RIGHT, java.awt.event.InputEvent.SHIFT_MASK | java.awt.event.InputEvent.CTRL_MASK));
         forwardNMI.setText("Forward N packets");
         forwardNMI.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 forwardNMIActionPerformed(evt);
             }
         });
@@ -3743,8 +3580,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         rewindNMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_LEFT, java.awt.event.InputEvent.SHIFT_MASK | java.awt.event.InputEvent.CTRL_MASK));
         rewindNMI.setText("Rewind N packets");
         rewindNMI.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 rewindNMIActionPerformed(evt);
             }
         });
@@ -3752,8 +3588,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         setFwdRewindNCount.setText("Set forward/rewind N...");
         setFwdRewindNCount.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 setFwdRewindNCountActionPerformed(evt);
             }
         });
@@ -3763,8 +3598,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setMarkInMI.setText("Set IN marker");
         setMarkInMI.setToolTipText("If playing back file, it rewinds to this position");
         setMarkInMI.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 setMarkInMIActionPerformed(evt);
             }
         });
@@ -3774,8 +3608,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setMarkOutMI.setText("Set OUT marker");
         setMarkOutMI.setToolTipText("If playing back recording, it plays to this marker");
         setMarkOutMI.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 setMarkOutMIActionPerformed(evt);
             }
         });
@@ -3785,8 +3618,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         clearMarksMI.setText("Clear IN and OUT markers");
         clearMarksMI.setToolTipText("Clears the IN and OUT markers for playing back a section of a recording");
         clearMarksMI.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 clearMarksMIActionPerformed(evt);
             }
         });
@@ -3797,8 +3629,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         zoomInMenuItem.setText("Zoom in");
         zoomInMenuItem.setToolTipText("Zooms in around mouse point");
         zoomInMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 zoomInMenuItemActionPerformed(evt);
             }
         });
@@ -3808,8 +3639,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         zoomOutMenuItem.setText("Zoom out");
         zoomOutMenuItem.setToolTipText("Zooms out around mouse point");
         zoomOutMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 zoomOutMenuItemActionPerformed(evt);
             }
         });
@@ -3819,8 +3649,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         zoomCenterMenuItem.setText("Center display here");
         zoomCenterMenuItem.setToolTipText("Centers display on mouse point");
         zoomCenterMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 zoomCenterMenuItemActionPerformed(evt);
             }
         });
@@ -3830,8 +3659,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         unzoomMenuItem.setText("Unzoom");
         unzoomMenuItem.setToolTipText("Goes to default display zooming");
         unzoomMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 unzoomMenuItemActionPerformed(evt);
             }
         });
@@ -3840,8 +3668,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setBorderSpaceMenuItem.setText("Set border space...");
         setBorderSpaceMenuItem.setToolTipText("Set the border space around the chip canvas in pixels");
         setBorderSpaceMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 setBorderSpaceMenuItemActionPerformed(evt);
             }
         });
@@ -3858,8 +3685,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         customizeDevicesMenuItem.setText("Customize AEChip Menu...");
         customizeDevicesMenuItem.setToolTipText("Let's you customize which AEChip's are available. If your device does not appear, then find it and add it using this option.");
         customizeDevicesMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 customizeDevicesMenuItemActionPerformed(evt);
             }
         });
@@ -3871,28 +3697,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         interfaceMenu.setText("Interface");
         interfaceMenu.setToolTipText("Select the HW interface to use");
         interfaceMenu.addMenuListener(new javax.swing.event.MenuListener() {
-            @Override
-			public void menuCanceled(javax.swing.event.MenuEvent evt) {
+            public void menuCanceled(javax.swing.event.MenuEvent evt) {
             }
-            @Override
-			public void menuDeselected(javax.swing.event.MenuEvent evt) {
+            public void menuDeselected(javax.swing.event.MenuEvent evt) {
             }
-            @Override
-			public void menuSelected(javax.swing.event.MenuEvent evt) {
+            public void menuSelected(javax.swing.event.MenuEvent evt) {
                 interfaceMenuMenuSelected(evt);
             }
         });
 
         refreshInterfaceMenuItem.setText("Refresh");
         refreshInterfaceMenuItem.addComponentListener(new java.awt.event.ComponentAdapter() {
-            @Override
-			public void componentShown(java.awt.event.ComponentEvent evt) {
+            public void componentShown(java.awt.event.ComponentEvent evt) {
                 refreshInterfaceMenuItemComponentShown(evt);
             }
         });
         refreshInterfaceMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 refreshInterfaceMenuItemActionPerformed(evt);
             }
         });
@@ -3907,8 +3728,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         increaseBufferSizeMenuItem.setText("Increase host side USB buffer size");
         increaseBufferSizeMenuItem.setToolTipText("Increases the host USB fifo size. This buffer is used to buffer the data delivered by kernel-level USB host contoller. Decrease if you want lower latency servicing under high data rates from the device.");
         increaseBufferSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 increaseBufferSizeMenuItemActionPerformed(evt);
             }
         });
@@ -3917,8 +3737,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         decreaseBufferSizeMenuItem.setText("Decrease hardware buffer size");
         decreaseBufferSizeMenuItem.setToolTipText("Decreases the host USB fifo size");
         decreaseBufferSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 decreaseBufferSizeMenuItemActionPerformed(evt);
             }
         });
@@ -3927,8 +3746,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         increaseNumBuffersMenuItem.setText("Increase number of hardware buffers");
         increaseNumBuffersMenuItem.setToolTipText("Increases the host number of host USB read buffers. Increase this value if your data is very bursty, with intervals of high data rate.");
         increaseNumBuffersMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 increaseNumBuffersMenuItemActionPerformed(evt);
             }
         });
@@ -3937,8 +3755,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         decreaseNumBuffersMenuItem.setText("Decrease num hardware buffers");
         decreaseNumBuffersMenuItem.setToolTipText("Decreases the host number of USB read buffers");
         decreaseNumBuffersMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 decreaseNumBuffersMenuItemActionPerformed(evt);
             }
         });
@@ -3949,8 +3766,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         changeAEBufferSizeMenuItem.setText("Set rendering AE buffer size");
         changeAEBufferSizeMenuItem.setToolTipText("sets size of host raw event buffers used for render/capture data exchnage");
         changeAEBufferSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 changeAEBufferSizeMenuItemActionPerformed(evt);
             }
         });
@@ -3962,8 +3778,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         printUSBStatisticsCBMI.setText("Show USB statistics");
         printUSBStatisticsCBMI.setToolTipText("Prints statistics about USB packet sizes and packet intervals to System.out (only visible in standard console, not built in logging console)");
         printUSBStatisticsCBMI.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 printUSBStatisticsCBMIActionPerformed(evt);
             }
         });
@@ -3981,8 +3796,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         sequenceMenuItem.setActionCommand("start");
         sequenceMenuItem.setEnabled(false);
         sequenceMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 sequenceMenuItemActionPerformed(evt);
             }
         });
@@ -3991,8 +3805,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         enableMissedEventsCheckBox.setText("Enable Missed Events");
         enableMissedEventsCheckBox.setEnabled(false);
         enableMissedEventsCheckBox.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 enableMissedEventsCheckBoxActionPerformed(evt);
             }
         });
@@ -4002,8 +3815,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         monSeqMissedEventsMenuItem.setToolTipText("If the device is a monitor, this will show how many events were missed");
         monSeqMissedEventsMenuItem.setEnabled(false);
         monSeqMissedEventsMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 monSeqMissedEventsMenuItemActionPerformed(evt);
             }
         });
@@ -4016,8 +3828,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         monSeqOpMode0.setSelected(true);
         monSeqOpMode0.setText("1 microsecond ");
         monSeqOpMode0.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 monSeqOpMode0ActionPerformed(evt);
             }
         });
@@ -4026,8 +3837,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         monSeqOpModeButtonGroup.add(monSeqOpMode1);
         monSeqOpMode1.setText("0.2 microsecond");
         monSeqOpMode1.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 monSeqOpMode1ActionPerformed(evt);
             }
         });
@@ -4044,8 +3854,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         aboutMenuItem.setText("About");
         aboutMenuItem.setToolTipText("Version information");
         aboutMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 aboutMenuItemActionPerformed(evt);
             }
         });
@@ -4641,7 +4450,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                    for(PropertyChangeListener p:getSupport().getPropertyChangeListeners()){
 //                        log.info("Listener: "+p);
 //                    }
-                    
+
                     getSupport().firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());
                     break;
                 case AEInputStream.EVENT_POSITION:
@@ -4755,9 +4564,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     biasesToggleButton.setSelected(yes);
                     biasgen = chip.getBiasgen();
                 } catch (Exception e) {
-                	StringWriter writer = new StringWriter();
-                	PrintWriter printWriter= new PrintWriter(writer);
-                	e.printStackTrace(printWriter);
+                    StringWriter writer = new StringWriter();
+                    PrintWriter printWriter = new PrintWriter(writer);
+                    e.printStackTrace(printWriter);
 
                     log.warning("Caught exception when trying to set up Biasgen: " + e.toString() + " - Stacktrace: " + writer.toString());
                 }
@@ -4785,7 +4594,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         SwingUtilities.invokeLater(new Runnable() { // made this a runnable to run later to fix possible race problems - tobi
             @Override
             public void run() {//        System.out.println("fixing logging controls, loggingEnabled="+loggingEnabled);
-                if ((playMode != PlayMode.REMOTE) && ((aemon == null) || ((aemon != null) && !aemon.isOpen())) && (playMode != PlayMode.PLAYBACK)) {
+                if ((getPlayMode() != PlayMode.REMOTE) && ((aemon == null) || ((aemon != null) && !aemon.isOpen())) && (getPlayMode() != PlayMode.PLAYBACK)) {
                     // we can log from live input or from playing file (e.g. after refiltering it) or we can log network data
                     // TODO: not ideal logic here, too confusing
                     loggingButton.setEnabled(false);
@@ -4797,7 +4606,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     loggingMenuItem.setEnabled(true);
                 }
 
-                if (!loggingEnabled && (playMode == PlayMode.PLAYBACK)) {
+                if (!loggingEnabled && (getPlayMode() == PlayMode.PLAYBACK)) {
                     loggingButton.setText("Start Re-logging");
                     loggingMenuItem.setText("Start re-logging data");
                 } else if (loggingEnabled) {
@@ -4863,10 +4672,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         try {
             loggingFile = new File(filename);
-//			loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), AEFileOutputStream.OUTPUT_BUFFER_SIZE), chip); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
             loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile), chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
 
-            if (playMode == PlayMode.PLAYBACK) { // appendCopy change listener for rewind to stop logging
+            if (getPlayMode() == PlayMode.PLAYBACK) { // change listener for rewind to stop logging
                 getAePlayer().getAEInputStream().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, new PropertyChangeListener() {
 
                     @Override
@@ -5245,12 +5053,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             //    jaerViewer.globalDataViewer.setVisible(!jaerViewer.globalDataViewer.isVisible());
             loggingHandler.getConsoleWindow().setVisible(!loggingHandler.getConsoleWindow().isVisible());
 	}//GEN-LAST:event_showConsoleOutputButtonActionPerformed
-
-	private void multiModeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_multiModeButtonActionPerformed
-            // TODO appendCopy your handling code here:
-            jaerViewer.setViewMode(true);
-            //        jaerViewer.launchMultiModeViewer();
-	}//GEN-LAST:event_multiModeButtonActionPerformed
 
 	private void pauseRenderingCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pauseRenderingCheckBoxMenuItemActionPerformed
             setPaused(pauseRenderingCheckBoxMenuItem.isSelected());
@@ -5860,7 +5662,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             extractor.setSubsampleThresholdEventCount(getRenderer().getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
         }
-
     }
 
     public boolean isRenderBlankFramesEnabled() {
@@ -5870,7 +5671,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setRenderBlankFramesEnabled(boolean renderBlankFramesEnabled) {
         this.renderBlankFramesEnabled = renderBlankFramesEnabled;
         prefs.putBoolean("AEViewer.renderBlankFramesEnabled", renderBlankFramesEnabled);
-        //        log.info("renderBlankFramesEnabled="+renderBlankFramesEnabled);
     }
 
     public javax.swing.JMenu getFileMenu() {
@@ -5933,6 +5733,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Gets the current EventPacket (cooked event objects)
+     *
+     * @return he current EventPacket (cooked event objects)
+     */
+    public EventPacket getEventPacket() {
+        return packet;
+    }
+
+    /**
+     * Sets the current event packet
+     *
+     * @param packet
+     */
+    public void setEventPacket(EventPacket packet) {
+        this.packet = packet;
+    }
+
+    /**
      * Sets mode, LIVE, PLAYBACK, WAITING, etc, sets window title, and fires
      * property change event
      *
@@ -5941,7 +5759,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setPlayMode(PlayMode playMode) {
         // TODO there can be a race condition where user tries to open file, this sets
         // playMode to PLAYBACK but run() method in ViewLoop sets it back to WAITING or LIVE
-        if (this.playMode.equals(playMode)) {
+        if (getPlayMode().equals(playMode)) {
             return;
         }
         final PlayMode oldMode = this.playMode;
@@ -5949,19 +5767,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         synchronized (viewLoop) {
             this.playMode = playMode;
-            if (globalized) {
-                getJaerViewer().globalViewer.refreshPlayingLocks();
-            }
             interruptViewloop();
         }
-        //        if(this.playMode==PlayMode.WAITING){
-        //            log.info("went to waiting state");
-        //        }
         setTitleAccordingToState();
         fixLoggingControls();
         getSupport().firePropertyChange(EVENT_PLAYMODE, oldMode.toString(), playMode.toString());
-        // won't fire if old and new are the same,
-        // e.g. playing a file and then start playing a new one
     }
 
     public boolean isLogFilteredEventsEnabled() {
@@ -6095,128 +5905,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return chip.getRenderer();
     }
 
-    public CyclicBarrier waitFlag;
-    public boolean globalized;
-
-    Ambassador ambassador = new Ambassador();
-
-    /**
-     * Return the ambassador object from this AEViewer. It contains the methods
-     * for communication between threads
-     *
-     * @return
-     */
-    public Ambassador getAmbassador() {
-        return ambassador;
-    }
-
-    /**
-     * This class allows the AEviewer to serve as a global communicator.
-     */
-    public class Ambassador implements PacketStream {
-
-        int id;    // Number identifying this viewer
-
-        JPanel displayPanel;
-
-        public PlayMode getMode() {
-            return getPlayMode();
-        }
-
-        public void setID(int ident) {
-            id = ident;
-        }
-
-        public void resetTimeStamps() {
-            zeroTimestamps();
-        }
-
-        public JMenuBar getToolBar() {
-            JMenuBar jt = new JMenuBar();
-            //            JMenu jm=new JMenu("Interface");
-            //            buildInterfaceMenu(jm);
-
-            jt.add(fileMenu);
-            jt.add(viewMenu);
-            //jt.appendCopy(deviceMenu);
-            jt.add(interfaceMenu);
-            jt.add(controlMenu);
-            jt.add(monSeqMenu);
-
-            return jt;
-        }
-
-        public void setPanel(JPanel imagePanel) {
-            //            imagePanel.
-
-            //            Component canv=chip.getCanvas().getCanvas();
-            //
-            //            canv.getParent().remove(canv);
-            //
-            //            canv.setBounds(imagePanel.getBounds());
-            ////            imagePanel.appendCopy(chip.getCanvas().getCanvas());
-            //
-            //            displayPanel=imagePanel;
-            //            imagePanel.appendCopy(canv);
-            //
-            //
-            //            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public void setSemaphore(CyclicBarrier barr) {
-            waitFlag = barr;
-        }
-
-        /**
-         * Set the viewer as being "watched". This means its loop is
-         * synchronized with the global loop
-         *
-         * @param displayed
-         */
-        public void setWatched(boolean displayed) {
-            globalized = displayed;
-        }
-
-        //        @Override
-        public Component getPanel() {
-            //            return getRootPane();
-            return chip.getCanvas().getCanvas();
-            //            return displayPanel;
-            //            return chip.getCanvas().getCanvas();
-        }
-
-        @Override
-        public EventPacket getPacket() {
-            return packet;
-        }
-
-        @Override
-        public String getName() {
-
-            return "V" + id + ": " + chip.getClass().getSimpleName();
-        }
-
-        @Override
-        public boolean isReady() {
-            return true; // AEViewer streams are always considered ready.
-        }
-
-        public void display() {   //chip.getRenderer().render(packet);
-            viewLoop.renderPacket(packet);
-        }
-
-        @Override
-        public boolean process() {
-            throw new UnsupportedOperationException("This call should never be made");
-        }
-
-        //        @Override
-        //        public void setDisplayEnabled(boolean state) {
-        //            // TODO: disable rendering
-        //        }
-    }
-
     /**
      * This method takes in an hardware interface and tries to find the
      * appropriate chip class. You could use it before initializing an AEViewer.
@@ -6243,9 +5931,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-//    private void launchFlashy() {
-//        JOptionPane.showMessageDialog(this, "<html>Launching flashy from jAER is not supported yet. <p>See the Help menu", "Not supported yet", JOptionPane.WARNING_MESSAGE);
-//    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuItem aboutMenuItem;
@@ -6319,7 +6004,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JRadioButtonMenuItem monSeqOpMode1;
     private javax.swing.ButtonGroup monSeqOpModeButtonGroup;
     private javax.swing.JMenu monSeqOperationModeMenu;
-    private javax.swing.JToggleButton multiModeButton;
     private javax.swing.JCheckBoxMenuItem multicastOutputEnabledCheckBoxMenuItem;
     private javax.swing.JSeparator networkSeparator;
     private javax.swing.JMenuItem newViewerMenuItem;

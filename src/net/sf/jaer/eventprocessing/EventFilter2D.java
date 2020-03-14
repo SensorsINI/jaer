@@ -239,8 +239,11 @@ abstract public class EventFilter2D extends EventFilter implements PropertyChang
     }
 
     /**
-     * Base method to handle PropertyChangeEvent. It call super.propertyChange() and then initFilter() when the AEChip size is changed, allowing filters
-     * to allocate memory or do other initialization. Subclasses can override to add more PropertyChangeEvent handling e.g from AEViewer or AEFileInputStream.
+     * Base method to handle PropertyChangeEvent. It call super.propertyChange()
+     * and then initFilter() when the AEChip size is changed, allowing filters
+     * to allocate memory or do other initialization. Subclasses can override to
+     * add more PropertyChangeEvent handling e.g from AEViewer or
+     * AEFileInputStream.
      *
      * @param evt the PropertyChangeEvent, by jAER convention it is a constant
      * starting with EVENT_
@@ -250,10 +253,10 @@ abstract public class EventFilter2D extends EventFilter implements PropertyChang
         super.propertyChange(evt);
         switch (evt.getPropertyName()) {
             case AEChip.EVENT_SIZE_SET:
-                try{
+                try {
                     initFilter();
-                }catch(Exception e){
-                    log.log(Level.SEVERE, "For EventFilter2D "+this.getClass()+ " caught exception in initFilter(): "+e.toString(), e);
+                } catch (Exception e) {
+                    log.log(Level.SEVERE, "For EventFilter2D " + this.getClass() + " caught exception in initFilter(): " + e.toString(), e);
                 }
                 break;
             default:
@@ -311,12 +314,7 @@ abstract public class EventFilter2D extends EventFilter implements PropertyChang
      */
     public void addDisplay(Component disp) {
         customDisplays.add(disp);
-
-        if (this.getChip().getAeViewer().globalized) {
-            this.getChip().getAeViewer().getJaerViewer().globalViewer.addDisplayWriter(disp);
-        } else {
-            this.getChip().getAeViewer().getImagePanel().add(disp, BorderLayout.EAST);
-        }
+        this.getChip().getAeViewer().getImagePanel().add(disp, BorderLayout.EAST);
     }
 
     /**
@@ -327,14 +325,8 @@ abstract public class EventFilter2D extends EventFilter implements PropertyChang
             return;
         }
 
-        if (this.getChip().getAeViewer().globalized) {
-            for (Component c : customDisplays) {
-                this.getChip().getAeViewer().getJaerViewer().globalViewer.removeDisplay(c);
-            }
-        } else {
-            for (Component c : customDisplays) {
-                this.getChip().getAeViewer().getImagePanel().remove(c);
-            }
+        for (Component c : customDisplays) {
+            this.getChip().getAeViewer().getImagePanel().remove(c);
         }
     }
 
@@ -342,10 +334,7 @@ abstract public class EventFilter2D extends EventFilter implements PropertyChang
      * Add a panel to the filter controls
      */
     public void addControls(JPanel controls) {
-//        this.getChip().getAeViewer().getJaerViewer().globalViewer.addControlsToFilter(controls, this);
-
         getControlPanel().addCustomControls(controls);
-
     }
 
     /**
@@ -366,17 +355,12 @@ abstract public class EventFilter2D extends EventFilter implements PropertyChang
             return null;
         }
 
-        if (this.getChip().getAeViewer().globalized) {
-            return this.getChip().getAeViewer().getJaerViewer().globalViewer.procNet.getControlPanelFromFilter(this);
-        } else // Backwards compatibility
-        {
-            if (this.getChip().getAeViewer().getFilterFrame() == null) {
-                return null;
-            } else {
-                return this.getChip().getAeViewer().getFilterFrame().getFilterPanelForFilter(this);
-            }
-
+        if (this.getChip().getAeViewer().getFilterFrame() == null) {
+            return null;
+        } else {
+            return this.getChip().getAeViewer().getFilterFrame().getFilterPanelForFilter(this);
         }
+
     }
 
     // </editor-fold>
