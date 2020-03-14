@@ -90,8 +90,9 @@ public class DavisRenderer extends AEChipRenderer {
     protected float[] onColor, offColor;
 
     /**
-     * The linear buffer of RGBA pixel colors of image frame brightness values. These maps are used e.g. in ChipRendererDisplayMethodRGBA to 
-     * draw the textures for each event type separately.
+     * The linear buffer of RGBA pixel colors of image frame brightness values.
+     * These maps are used e.g. in ChipRendererDisplayMethodRGBA to draw the
+     * textures for each event type separately.
      */
     protected FloatBuffer pixBuffer;
     protected FloatBuffer dvsEventsMap;
@@ -150,7 +151,7 @@ public class DavisRenderer extends AEChipRenderer {
     }
 
     /**
-     * Overridden to make gray buffer special for bDVS array
+     * Overridden to make gray buffer special for DAVIS cameras
      */
     @Override
     protected void resetPixmapGrayLevel(final float value) {
@@ -192,7 +193,7 @@ public class DavisRenderer extends AEChipRenderer {
                 }
             }
         }
-        grayValue=value;
+        grayValue = value;
         grayBuffer.rewind();
         System.arraycopy(grayBuffer.array(), 0, pixmap.array(), 0, n);
         System.arraycopy(grayBuffer.array(), 0, pixBuffer.array(), 0, n);
@@ -209,21 +210,14 @@ public class DavisRenderer extends AEChipRenderer {
         checkPixmapAllocation();
         final int n = 4 * textureWidth * textureHeight;
         if ((grayBuffer == null) || (grayBuffer.capacity() != n)) {
+            // Fill maps with fully transparent values
             grayBuffer = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
+            Arrays.fill(grayBuffer.array(), 0);
         }
-
         grayBuffer.rewind();
-        // Fill maps with fully transparent values
-        Arrays.fill(grayBuffer.array(), 0);
         System.arraycopy(grayBuffer.array(), 0, dvsEventsMap.array(), 0, n);
-//        System.arraycopy(grayBuffer.array(), 0, offMap.array(), 0, n);
-        // if(displayAnnotation) Arrays.fill(annotateMap.array(), 0);
-
-        grayBuffer.rewind();
         dvsEventsMap.rewind();
-//        offMap.rewind();
         dvsEventsMap.limit(n);
-//        offMap.limit(n);
     }
 
     public synchronized void clearAnnotationMap() {
@@ -578,7 +572,7 @@ public class DavisRenderer extends AEChipRenderer {
             map[index + 1] = timeColors[ind][1];
             map[index + 2] = timeColors[ind][2];
             map[index + 3] = 0.5f;
-        } else if (colorMode == ColorMode.HotCode ) {
+        } else if (colorMode == ColorMode.HotCode) {
             final float alpha = map[index + 3] + (1.0f / colorScale);
             map[index + 3] = normalizeEvent(alpha);
             int ind = (int) Math.floor(((AEChipRenderer.NUM_TIME_COLORS - 1) * alpha));
@@ -601,17 +595,40 @@ public class DavisRenderer extends AEChipRenderer {
             map[index + 1] = v;
             map[index + 2] = v;
             map[index + 3] = 1.0f;
-        } else { // contrast, red/green
-             final float scale = (1.0f / colorScale);
-            map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
-           if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
-                map[index] += scale*onColor[0];
-                map[index + 1] += scale*onColor[1];
-                map[index + 2] += scale*onColor[2]; 
+        } else if (colorMode == ColorMode.GrayLevel || colorMode == ColorMode.Contrast) {
+            if (map[index + 3] == 0) { // nothing there yet
+                map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
+                map[index] = 0.5f;
+                map[index + 1] = 0.5f;
+                map[index + 2] = 0.5f; // gray level
+            }
+            if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
+                map[index] += colorContrastAdditiveValue;
+                map[index + 1] += colorContrastAdditiveValue;
+                map[index + 2] += colorContrastAdditiveValue;
             } else {
-                map[index] += scale*offColor[0];
-                map[index + 1] += scale*offColor[1];
-                map[index + 2] += scale*offColor[2];
+                map[index] -= colorContrastAdditiveValue;
+                map[index + 1] -= colorContrastAdditiveValue;
+                map[index + 2] -= colorContrastAdditiveValue;
+            }
+        } else if (colorMode == ColorMode.RedGreen) {
+            map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
+            if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
+                map[index + 1] += colorContrastAdditiveValue; // green up from black 0
+            } else {
+                map[index] += colorContrastAdditiveValue; // red up
+            }
+        } else if (colorMode == ColorMode.WhiteBackground) {
+            map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
+            if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
+                map[index + 1] += colorContrastAdditiveValue; // green up, others down
+                map[index] -= colorContrastAdditiveValue; // red up
+                map[index+2] -= colorContrastAdditiveValue; // red up
+                
+            } else {
+                map[index] += colorContrastAdditiveValue; // red up, others down
+                map[index+1] -= colorContrastAdditiveValue; // red up
+                map[index+2] -= colorContrastAdditiveValue; // red up
             }
         }
     }
@@ -670,27 +687,6 @@ public class DavisRenderer extends AEChipRenderer {
     }
 
     /**
-     * Overrides color scale setting to NOT update the stored accumulated pixmap
-     * when the color scale is changed.
-     *
-     *
-     */
-    @Override
-    synchronized public void setColorScale(int colorScale) {
-        final int old = this.colorScale;
-
-        if (colorScale < 1) {
-            colorScale = 1;
-        } else if (colorScale > 128) {
-            colorScale = 128;
-        }
-
-        this.colorScale = colorScale;
-        prefs.putInt("Chip2DRenderer.colorScale", colorScale);
-        getSupport().firePropertyChange(AEChipRenderer.EVENT_COLOR_SCALE_CHANGE, old, colorScale);
-    }
-
-    /**
      * computes power of two value that is equal to or greater than argument
      *
      * @param n value, e.g. 3
@@ -727,7 +723,6 @@ public class DavisRenderer extends AEChipRenderer {
 //        checkPixmapAllocation();
 //        return offMap;
 //    }
-
     /**
      * Returns pixmap for annotated pixels
      *
@@ -757,9 +752,9 @@ public class DavisRenderer extends AEChipRenderer {
 
     /**
      * Overridden to return ON and OFF map values as R and G channels. B channel
-     * is returned as well and might have value as well depending on rendering mode.
-     * Note that this method returns rendering of events; it
-     * disregards APS frame values.
+     * is returned as well and might have value as well depending on rendering
+     * mode. Note that this method returns rendering of events; it disregards
+     * APS frame values.
      *
      * @param x
      * @param y
@@ -768,7 +763,7 @@ public class DavisRenderer extends AEChipRenderer {
     public float[] getDvsRenderedValuesAtPixel(final int x, final int y) {
         final int k = getPixMapIndex(x, y);
         final float[] f = new float[3];
-        f[0] = dvsEventsMap.get(k );
+        f[0] = dvsEventsMap.get(k);
         f[1] = dvsEventsMap.get(k + 1);
         f[2] = dvsEventsMap.get(k + 2);
 //        f[2] = 0; // return alpha channel which is the ON and OFF value that is rendered (RGB are 1 for ON and OFF maps)
@@ -964,12 +959,12 @@ public class DavisRenderer extends AEChipRenderer {
     public float getGrayValue() {
         if (isDisplayFrames() || (colorMode == ColorMode.Contrast) || (colorMode == ColorMode.GrayLevel)) {
             grayValue = 0.5f;
-        } else if (colorMode == ColorMode.GrayTime ) {
+        } else if (colorMode == ColorMode.GrayTime) {
             grayValue = 1.0f;
-        } else if (colorMode == ColorMode.WhiteBackground){
+        } else if (colorMode == ColorMode.WhiteBackground) {
             grayValue = 1f;
         } else {
-            grayValue=0;
+            grayValue = 0;
         }
 
         return grayValue;

@@ -53,6 +53,12 @@ public class Chip2DRenderer implements Observer {
      * the number of events for full scale saturated color
      */
     protected int colorScale; // set in constructor to preference value so that eventContrast also gets set
+
+    /**
+     * value to add or subtract to pixel color for ON/OFF events, set by
+     * setColorScale()
+     */
+    protected float colorContrastAdditiveValue;
     /**
      * the contrast attributed to an event, either level is multiplied or
      * divided by this value depending on polarity of event. Gets set by
@@ -66,6 +72,32 @@ public class Chip2DRenderer implements Observer {
      * is at position starting at 3*(chip.getSizeX()).
      */
     protected FloatBuffer pixmap;
+
+//    public void setPixmapPosition(int x, int y) {
+//        pixmap.position(3 * (x + y * sizeX));
+//    }
+//    private float pixmapGrayValue = 0;
+    /**
+     * Buffer from whence the pixmap gray values come, ordered by RGB/row/col.
+     * The first 3 elements are the RBB float values of the LL pixel (x=0,y=0).
+     * The next 3 are the RGB of the second pixel from the left in the bottom
+     * row (x=1,y=0). Pixel (0,1) is at position starting at
+     * 3*(chip.getSizeX()).
+     */
+    protected FloatBuffer grayBuffer;
+
+    public Chip2DRenderer() {
+        setColorScale(prefs.getInt("Chip2DRenderer.colorScale", 2)); // tobi changed default to 2 events full scale Apr 2013
+    }
+
+    public Chip2DRenderer(Chip2D chip) {
+        this();
+        this.chip = chip;
+        sizeX = chip.getSizeX();
+        sizeY = chip.getSizeY();
+        chip.addObserver(this);
+
+    }
 
     /**
      * The rendered pixel map, ordered by RGB/row/col. The first 3 elements are
@@ -152,19 +184,6 @@ public class Chip2DRenderer implements Observer {
         pixmap.put(index + 2, value[2]);
     }
 
-//    public void setPixmapPosition(int x, int y) {
-//        pixmap.position(3 * (x + y * sizeX));
-//    }
-//    private float pixmapGrayValue = 0;
-    /**
-     * Buffer from whence the pixmap gray values come, ordered by RGB/row/col.
-     * The first 3 elements are the RBB float values of the LL pixel (x=0,y=0).
-     * The next 3 are the RGB of the second pixel from the left in the bottom
-     * row (x=1,y=0). Pixel (0,1) is at position starting at
-     * 3*(chip.getSizeX()).
-     */
-    protected FloatBuffer grayBuffer;
-
     /**
      * Resets the pixmap values to a gray level
      *
@@ -223,19 +242,6 @@ public class Chip2DRenderer implements Observer {
      * responsible for maintaining this
      */
     protected int selectedPixelEventCount = 0;
-
-    public Chip2DRenderer() {
-        setColorScale(prefs.getInt("Chip2DRenderer.colorScale", 2)); // tobi changed default to 2 events full scale Apr 2013
-    }
-
-    public Chip2DRenderer(Chip2D chip) {
-        this();
-        this.chip = chip;
-        sizeX = chip.getSizeX();
-        sizeY = chip.getSizeY();
-        chip.addObserver(this);
-
-    }
 
     /**
      * decrease contrast
@@ -374,6 +380,7 @@ public class Chip2DRenderer implements Observer {
         this.colorScale = colorScale;
         // we set eventContrast so that colorScale events takes us from .5 to 1, i.e., .5*(eventContrast^cs)=1, so eventContrast=2^(1/cs)
         eventContrast = (float) (Math.pow(2, 1.0 / colorScale)); // e.g. cs=1, eventContrast=2, cs=2, eventContrast=2^0.5, etc
+        colorContrastAdditiveValue = 1f / colorScale;
         prefs.putInt("Chip2DRenderer.colorScale", colorScale);
     }
 
