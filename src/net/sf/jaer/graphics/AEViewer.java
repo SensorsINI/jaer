@@ -583,7 +583,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     EventFilter2D filter1 = null, filter2 = null;
     private AEChipRenderer renderer = null;
     AEMonitorInterface aemon = null;
-    private final ViewLoop viewLoop = new ViewLoop();
+    private ViewLoop viewLoop = new ViewLoop();
     FilterChain filterChain = null;
     private FilterFrame filterFrame = null;
     RecentFiles recentFiles = null;
@@ -870,6 +870,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aeServerSocket = null;
             }
         }
+        viewLoop=new ViewLoop();
         viewLoop.start();
 
         // appendCopy remote control commands
@@ -1734,8 +1735,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     //    volatile boolean stop=false; // volatile because multiple threads will access
     int renderCount = 0;
     int numEvents;
-    private AEPacketRaw aeRaw; // the raw packet (just timestamps and addresses) recieved from hardware, network, or file input
-    private EventPacket packet; // the cooked packet (with BasicEvent or subclass objects) of data
+//    private AEPacketRaw rawPacket; // the raw packet (just timestamps and addresses) recieved from hardware, network, or file input
+//    private EventPacket packet; // the cooked packet (with BasicEvent or subclass objects) of data
     boolean skipRender = false;
     boolean overrunOccurred = false;
     int tickUs = 1;
@@ -1756,6 +1757,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         private long beforeTime = 0, afterTime;
         volatile boolean stop = false;
         private LowpassFilter skipPacketsRenderingLowpassFilter = null;
+        private AEPacketRaw emptyRawPacket;
+        private EventPacket emptyCookedPacket;
 
         public ViewLoop() {
             super();
@@ -1767,8 +1770,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          */
         @Override
         public void run() { // don't know why this needs to be thread-safe
-            /* TODO synchronized tobi removed sync because it was causing deadlocks on exit. */
-
+            emptyCookedPacket = new EventPacket(chip.getEventClass());
+            emptyRawPacket = new AEPacketRaw(0);
+            EventPacket cookedPacket = new EventPacket(chip.getEventClass());
+            AEPacketRaw rawPacket = new AEPacketRaw();
             while (!isVisible()) {
                 try {
                     log.info("sleeping until isVisible()==true");
@@ -1778,6 +1783,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             while (stop == false/*&& !isInterrupted()*/) { // the only way to break out of the run loop is either setting stop true or by some uncaught exception.
                 setTitleAccordingToState();
+                fpsDelay(); // delay at start so all the below that breaks out of loop still has a delay to avoid CPU hog
                 if (!isPaused() || (isSingleStep() && !isInterrupted())) { // we check interrupted to make sure we are not getting data after being interrupted
                     // if !paused we always get data. below, if singleStepEnabled, we set paused after getting data.
                     // when the user unpauses via menu, we disable singleStepEnabled
@@ -1788,11 +1794,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     // Grab input from one of various sources
                     if (getPlayMode() == PlayMode.FILTER_INPUT) {
                         try {
-                            if (packet == null) {
-                                packet = new EventPacket(chip.getEventClass());
+                            if (cookedPacket == null) {
+                                cookedPacket = new EventPacket(chip.getEventClass());
                             }
-                            packet = filterChain.filterPacket(packet);
-                            numEvents = packet.getSize();
+                            cookedPacket = filterChain.filterPacket(cookedPacket);
+                            rawPacket = getChip().getEventExtractor().reconstructRawPacket(cookedPacket); // so that we can log or stream to network
+                            numEvents = cookedPacket.getSize();
                         } catch (Exception e) {
                             log.warning("Caught " + e + ", disabling all filters. See following stack trace.");
                             log.log(Level.SEVERE, e.toString(), e);
@@ -1804,36 +1811,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
 
                     } else {
-                        boolean noData = grabInput();
+                        rawPacket = grabInput();
 
-                        // If there's nothing to do:
-                        if (noData) {
-                            continue;
-                        }
-
-                        numRawEvents = aeRaw.getNumEvents();
-                        packet = extractPacket(aeRaw);
-                        if (packet == null) {
+                        numRawEvents = rawPacket.getNumEvents();
+                        cookedPacket = extractPacket(rawPacket);
+                        if (cookedPacket == null) {
                             log.warning("packet became null after extracting events from raw input packet");
                             continue;
                         }
-                        numEvents = packet.getSize();
+                        numEvents = cookedPacket.getSize();
 
-                        noData = filterPacket();
-                        if (noData) {
-                            continue;
-                        }
+                        cookedPacket = filterPacket(cookedPacket);
 
                     }
-                    chip.setLastData(packet);// set the rendered data for use by various methods
+                    chip.setLastData(cookedPacket);// set the rendered data for use by various methods
 
                     // if we are logging data to disk do it here
                     if (loggingEnabled) {
-                        logPacket();
+                        logPacket(rawPacket, cookedPacket);
                     }
 
                     // Write the ouput to whatever streams need it
-                    boolean breakout = writeOutputStreams();
+                    boolean breakout = writeOutputStreams(rawPacket, cookedPacket);
                     if (breakout) {
                         break;
                     }
@@ -1844,10 +1843,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                 adaptRenderSkipping(); // try to keep up with desired frame rate
 
-                if ((packet != null) && (skipPacketsRenderingCount-- <= 0)) {
+                if ((cookedPacket != null) && (skipPacketsRenderingCount-- <= 0)) {
                     // we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
                     try {
-                        renderPacket(packet);
+                        renderPacket(cookedPacket);
                     } catch (RuntimeException e) {
                         String cause = " unknown cause";
                         if (e.getCause() != null) {
@@ -1856,19 +1855,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         log.warning("caught " + e.toString() + " caused by " + cause);
                         log.log(Level.SEVERE, e.toString(), e);
                     }
-                    if (packet == null) {
+                    if (cookedPacket == null) {
                         log.warning("packet became null after rendering");
                         continue;
                     }
-                    numFilteredEvents = packet.getSizeNotFilteredOut();
-                    makeStatisticsLabel(packet);
+                    numFilteredEvents = cookedPacket.getSizeNotFilteredOut();
+                    makeStatisticsLabel(cookedPacket);
                     skipPacketsRenderingCount = skipPacketsRenderingCheckBoxMenuItem.isSelected() ? skipPacketsRenderingNumberCurrent : 0;
                 }
                 getFrameRater().takeAfter();
                 renderCount++;
-
-                fpsDelay();
-
             } // while (stop == false): end of run() loop - main loop of AEViewer.ViewLoop
 
             // Loop Cleanup
@@ -1885,12 +1881,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         } // viewLoop.run()
 
-        private void renderPacket(EventPacket ae) {
-            if (aePlayer.isChoosingFile() || (ae == null) || (!isRenderBlankFramesEnabled() && (ae.getSize() == 0))) {
+        private void renderPacket(EventPacket cookedPacket) {
+            if (aePlayer.isChoosingFile() || (cookedPacket == null) || (!isRenderBlankFramesEnabled() && (cookedPacket.getSize() == 0))) {
                 return;
             } // don't render while filechooser is active
             if (!(getRenderer().isAccumulateEnabled() && isPaused())) {
-                getRenderer().render(packet);
+                getRenderer().render(cookedPacket);
             }
             if (isActiveRenderingEnabled()) {
                 chipCanvas.paintFrame(); // actively paint frame now, either with OpenGL or Java2D, depending on switch
@@ -1967,7 +1963,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          * true if there is no data and the code should continue from here and
          * skip future processing
          */
-        private boolean grabInput() {
+        private AEPacketRaw grabInput() {
 
             switch (getPlayMode()) {
                 case SEQUENCING:
@@ -1988,7 +1984,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     sliderDontProcess = true;
                     playerControls.getPlayerSlider().setValue(position);
                     if (!(chip.getHardwareInterface() instanceof AEMonitorInterface)) {
-                        return true; // if we're a monitor plus sequencer than go on to monitor events, otherwise break out since there are no events to monitor
+                        return emptyRawPacket; // if we're a monitor plus sequencer than go on to monitor events, otherwise break out since there are no events to monitor
                     }
                 case LIVE:
                     openAEMonitor();
@@ -1999,7 +1995,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         } catch (InterruptedException e) {
                             log.warning("LIVE openAEMonitor sleep interrupted");
                         }
-                        return true;
+                        return emptyRawPacket;
                     }
                     overrunOccurred = aemon.overrunOccurred();
                     try {
@@ -2008,7 +2004,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             log.warning("AEViewer.ViewLoop.run(): AEMonitorInterface became null during acquisition");
                             throw new HardwareInterfaceException("hardware interface became null");
                         }
-                        aeRaw = aemon.acquireAvailableEventsFromDriver();
+                        return aemon.acquireAvailableEventsFromDriver();
                     } catch (HardwareInterfaceException e) {
                         if (stop) {
                             break; // break out of loop if this aquisition thread got HardwareInterfaceException because we are exiting
@@ -2021,27 +2017,25 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         nullifyHardware();
                         stopMe();
 
-                        return true;
+                        return emptyRawPacket;
                     } catch (ClassCastException cce) {
                         setPlayMode(PlayMode.WAITING);
                         log.warning("Interface changed out from under us: " + cce.toString());
                         log.log(Level.SEVERE, cce.toString(), cce);
                         nullifyHardware();
-                        return true;
+                        return emptyRawPacket;
                     }
-                    break;
                 case PLAYBACK:
-                    aeRaw = getAePlayer().getNextPacket(aePlayer);
                     getAePlayer().adjustTimesliceForRealtimePlayback();
                     overrunOccurred = false;
-                    break;
+                    return getAePlayer().getNextPacket(aePlayer);
                 case REMOTE:
                     if (unicastInputEnabled) {
                         if (unicastInput == null) {
                             log.warning("null unicastInput, going to WAITING state");
                             setPlayMode(PlayMode.WAITING);
                         } else {
-                            aeRaw = unicastInput.readPacket();  // TODO should throw interruptedexception
+                            return unicastInput.readPacket();  // TODO should throw interruptedexception
                         }
                     }
                     if (socketInputEnabled) {
@@ -2051,7 +2045,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             socketInputEnabled = false;
                         } else {
                             try {
-                                aeRaw = getAeSocket().readPacket(); // reads a packet if there is data available // TODO should throw interrupted excpetion
+                                return getAeSocket().readPacket(); // reads a packet if there is data available // TODO should throw interrupted excpetion
                             } catch (IOException e) {
                                 if (stop) {
                                     break;
@@ -2078,7 +2072,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             log.warning("null aeMulticastInput, going to WAITING state");
                             setPlayMode(PlayMode.WAITING);
                         } else {
-                            aeRaw = aeMulticastInput.readPacket();
+                            return aeMulticastInput.readPacket();
                         }
                     }
                     if (blockingQueueInputEnabled) {
@@ -2086,11 +2080,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             log.warning("null blockingQueueInput, going to WAITING state");
                             setPlayMode(PlayMode.WAITING);
                         } else {
-                            //                                    try {
-                            //                                        aeRaw = (AEPacketRaw) getBlockingQueueInput().take();
-                            //                                    } catch (InterruptedException ex) {
-                            //                                        Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
-                            //                                    }
                             Collection<AEPacketRaw> tempPackets = new ArrayList<AEPacketRaw>();
                             getBlockingQueueInput().drainTo(tempPackets);
                             int numOfCochleaPackets = 0;  // TODO make more general mechanism of merging streams
@@ -2104,9 +2093,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     }
                                 }
                             }
-                            //log.info(String.format("remote received %d cochlea and %d retina packets.",numOfCochleaPackets,numOfRetinaPackets));
-                            aeRaw = new AEPacketRaw(tempPackets);
-
+                            return new AEPacketRaw(tempPackets);
                         }
                     }
                     break;
@@ -2114,33 +2101,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if (unicastInputEnabled || multicastInputEnabled || socketInputEnabled) {
                         // if were were playing back a recording and a remote interface is active, then we go back to it here.
                         setPlayMode(PlayMode.REMOTE);
-                        break;
+                        return emptyRawPacket;
                     }
                     openAEMonitor();
                     if ((aemon == null) || !aemon.isOpen()) {
                         statisticsLabel.setText("Choose desired HardwareInterface from Interface menu");
-                        //                                setPlayMode(PlayMode.WAITING); // we don't need to set it again
 
                         try {
                             Thread.sleep(600);
                         } catch (InterruptedException e) {
                             log.info("WAITING interrupted");
                         }
-                        return true;
+                        return emptyRawPacket;
                     }
                 case FILTER_INPUT:
                     // input is coming from some EventFilter
                     fpsDelay();
-                    return false; // no error, but return true so that we don't assume that raw packet was captured
+                    return emptyRawPacket; // no error, but return true so that we don't assume that raw packet was captured
             } // playMode switch
 
-            // If input is null, delay and continue
-            if (aeRaw == null) {
-                fpsDelay();
-                return true;
-            }
-
-            return false;  // false means there was no error, so go on to process the raw packet
+            return emptyRawPacket;
         }
 
         /**
@@ -2150,15 +2130,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          *
          * @return true if packet is null, otherwise false.
          */
-        boolean filterPacket() {
+        private EventPacket filterPacket(EventPacket inputPacket) {
 
             if (playerControls.isSliderBeingAdjusted() || getAePlayer().getPlaybackDirection() == AbstractAEPlayer.PlaybackDirection.Backward) {
-                return false; // don't run filters if user is manipulating position or playing backwards
+                return emptyCookedPacket; // don't run filters if user is manipulating position or playing backwards
             }
             // filter events, do processing on them in rendering loop here
             if ((filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING) || (getPlayMode() != PlayMode.LIVE)) {
                 try {
-                    packet = filterChain.filterPacket(packet);
+                    return filterChain.filterPacket(inputPacket);
                 } catch (Exception e) {
                     log.warning("Caught " + e + ", disabling all filters. See following stack trace.");
                     log.log(Level.SEVERE, e.toString(), e);
@@ -2168,22 +2148,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         f.setFilterEnabled(false);
                     }
                 }
-                if (packet == null) {
-                    //   log.warning("null packet after filtering");
-                    return true;
-                }
             }
-            return false;
+            return emptyCookedPacket;
         }
 
-        void logPacket() {
+        void logPacket(AEPacketRaw rawPacket, EventPacket cookedPacket) {
             synchronized (loggingOutputStream) {
                 try {
                     if (!isLogFilteredEventsEnabled()) {
-                        loggingOutputStream.writePacket(aeRaw); // log all events
+                        loggingOutputStream.writePacket(rawPacket); // log all events
                     } else {
                         // log the reconstructed packet after filtering
-                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
+                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(cookedPacket);
                         loggingOutputStream.writePacket(aeRawRecon);
                     }
                 } catch (IOException e) {
@@ -2223,7 +2199,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          *
          * @return true to break out of loop, e.g. there is error, false is OK
          */
-        private boolean writeOutputStreams() {
+        private boolean writeOutputStreams(AEPacketRaw rawPacket, EventPacket cookedPacket) {
             // write to network socket if a client has opened a socket to us
             // we serve up events on this socket
 
@@ -2231,14 +2207,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 AESocket s = getAeServerSocket().getAESocket();
                 try {
                     if (!isLogFilteredEventsEnabled()) {
-                        s.writePacket(aeRaw);
+                        s.writePacket(rawPacket);
                     } else {
                         // send the reconstructed packet after filtering
-                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
+                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(cookedPacket);
                         s.writePacket(aeRawRecon);
                     }
                 } catch (IOException e) {
-                    log.warning("sending packet " + aeRaw + " from " + this + " to " + s + " failed, closing socket");
+                    log.warning("sending packet " + rawPacket + " from " + this + " to " + s + " failed, closing socket");
                     try {
                         s.close();
                     } catch (IOException e2) {
@@ -2258,10 +2234,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 } else {
                     try {
                         if (!isLogFilteredEventsEnabled()) {
-                            getAeSocketClient().writePacket(aeRaw);
+                            getAeSocketClient().writePacket(rawPacket);
                         } else {
                             // send the reconstructed packet after filtering
-                            AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
+                            AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(cookedPacket);
                             getAeSocketClient().writePacket(aeRawRecon);
                         }
                         // reads a packet if there is data available // TODO should throw interrupted excpetion
@@ -2290,10 +2266,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (multicastOutputEnabled && (aeMulticastOutput != null)) {
                 try {
                     if (!isLogFilteredEventsEnabled()) {
-                        aeMulticastOutput.writePacket(aeRaw);
+                        aeMulticastOutput.writePacket(rawPacket);
                     } else {
                         // log the reconstructed packet after filtering
-                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
+                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(cookedPacket);
                         aeMulticastOutput.writePacket(aeRawRecon);
                     }
                 } catch (IOException e) {
@@ -2305,12 +2281,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (unicastOutputEnabled && (unicastOutput != null)) {
                 try {
                     if (!isLogFilteredEventsEnabled()) {
-                        unicastOutput.writePacket(aeRaw);
+                        unicastOutput.writePacket(rawPacket);
                     } else {
                         // log the reconstructed packet after filtering.
                         // TODO handle reconstructed packet with filtering that transforms events. At present the original raw addresses are sent out, so e.g. rotation will not appear
                         // in the output.
-                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
+                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(cookedPacket);
                         unicastOutput.writePacket(aeRawRecon);
                     }
                 } catch (IOException e) {
@@ -5730,24 +5706,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public PlayMode getPlayMode() {
         return playMode;
-    }
-
-    /**
-     * Gets the current EventPacket (cooked event objects)
-     *
-     * @return he current EventPacket (cooked event objects)
-     */
-    public EventPacket getEventPacket() {
-        return packet;
-    }
-
-    /**
-     * Sets the current event packet
-     *
-     * @param packet
-     */
-    public void setEventPacket(EventPacket packet) {
-        this.packet = packet;
     }
 
     /**

@@ -79,7 +79,6 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         out = readPacket(in);
         eventsProcessed += out.getSize();
-        getChip().getAeViewer().setEventPacket(out);
         return out;
     }
 
