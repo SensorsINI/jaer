@@ -772,6 +772,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     /**
+     * @return 
      * @see AEChipRenderer#typeColors
      */
     public Color[] getTypeColors() {
@@ -779,6 +780,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     /**
+     * @param typeColors
      * @see AEChipRenderer#typeColors
      */
     public void setTypeColors(Color[] typeColors) {
