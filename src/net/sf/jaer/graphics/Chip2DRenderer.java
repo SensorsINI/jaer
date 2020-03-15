@@ -1,7 +1,5 @@
 package net.sf.jaer.graphics;
 
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
@@ -9,7 +7,6 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
-import net.sf.jaer.chip.AEChip;
 
 import net.sf.jaer.chip.Chip2D;
 
@@ -31,7 +28,7 @@ public class Chip2DRenderer implements Observer {
     public PropertyChangeSupport getSupport() {
         return support;
     }
-    protected static Logger log = Logger.getLogger(Chip2DRenderer.class.getSimpleName());
+    protected static final Logger log = Logger.getLogger(Chip2DRenderer.class.getSimpleName());
     private int sizeX, sizeY;
     protected Preferences prefs = Preferences.userNodeForPackage(Chip2DRenderer.class);
     /**
@@ -43,7 +40,7 @@ public class Chip2DRenderer implements Observer {
      * cycle. True to accumulate.
      */
     protected boolean accumulateEnabled = false;
-    protected ArrayList<FrameAnnotater> annotators = new ArrayList<FrameAnnotater>();
+    protected ArrayList<FrameAnnotater> annotators = new ArrayList<>();
     protected int autoScaleValue = 1;
     /**
      * false for manual scaling, true for auto-scaling of contrast
@@ -245,6 +242,7 @@ public class Chip2DRenderer implements Observer {
 
     /**
      * decrease contrast
+     * @return new color scale
      */
     public int decreaseContrast() {
         int cs = getColorScale();
@@ -282,6 +280,7 @@ public class Chip2DRenderer implements Observer {
     /**
      * A single pixel can be selected via the mouse and this returns the x pixel
      * value.
+     * @return 
      */
     public short getXsel() {
         return xsel;
@@ -290,6 +289,7 @@ public class Chip2DRenderer implements Observer {
     /**
      * A single pixel can be selected via the mouse and this returns the y pixel
      * value.
+     * @return 
      */
     public short getYsel() {
         return ysel;
@@ -297,6 +297,7 @@ public class Chip2DRenderer implements Observer {
 
     /**
      * increase image contrast
+     * @return new color scale
      */
     public int increaseContrast() {
         int cs = getColorScale();
@@ -369,6 +370,7 @@ public class Chip2DRenderer implements Observer {
     /**
      * set the color scale. 1 means a single event is full scale, 2 means a
      * single event is half scale, etc. only applies to some rendering methods.
+     * @param colorScale the new color scale.
      */
     public void setColorScale(int colorScale) {
         if (colorScale < 1) {
