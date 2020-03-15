@@ -57,8 +57,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
     // for logging concole messages
     private BufferedReader dvsReader = null;
     private int lastTimestampRead = Integer.MIN_VALUE, lastPacketLastTimestamp = Integer.MIN_VALUE;
-    boolean noEventsReadYet = true; // set false when new file is opened
-    private boolean writeOnlyWhenMousePressed = getBoolean("writeOnlyWhenMousePressed", false);
+    private boolean noEventsReadYet = true; // set false when new file is opened
     private ApsDvsEventPacket outputPacket = null;
     int maxX = chip.getSizeX(), maxY = chip.getSizeY();
 
@@ -104,9 +103,8 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
      * writing to this stream.
      *
      * @param f the file
-     * @param additionalComments additional comments to be written to timecode
-     * file, Comment header characters are added if not supplied.
      * @return the stream, or null if IOException occurs
+     * @throws java.io.IOException
      *
      */
     public BufferedReader openReader(File f) throws IOException {
@@ -159,9 +157,8 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
                 dvsReader.close();
             }
             setEventsProcessed(0);
-        } catch (Exception ex) {
+        } catch (IOException ex) {
             log.warning(ex.toString());
-            ex.printStackTrace();
         } finally {
             dvsReader = null;
         }
@@ -282,7 +279,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         noEventsReadYet = false;
     }
 
-    private final String lineinfo(String line) {
+    private String lineinfo(String line) {
         return String.format("Line #%d: \"%s\"", lastLineNumber, line);
     }
 
