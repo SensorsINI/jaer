@@ -1004,7 +1004,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private ArrayList<String> chipClassNames;
     private ArrayList<Class> chipClasses;
 
-    @SuppressWarnings("unchecked")
     void getChipClassPrefs() {
         // Deserialize from a byte array
         try {
