@@ -70,6 +70,7 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
 
     public void setEnCompareSWandHW(boolean enCompareSWandHW) {
         this.enCompareSWandHW = enCompareSWandHW;
+        putBoolean("enCompareSWandHW", enCompareSWandHW);
     }
 
     public boolean isEnFilterOut() {
