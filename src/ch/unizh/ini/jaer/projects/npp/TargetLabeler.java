@@ -162,7 +162,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         try {
             mapDataFilenameToTargetFilename = (HashMap<String, String>) PrefObj.getObject(getPrefs(), "TargetLabeler.hashmap");
         } catch (Exception e) {
-            log.info("Could not read previous map from data files to target location files: "+e.toString());
+            log.info("Could not read previous map from data files to target location files: " + e.toString());
         }
     }
 
@@ -340,6 +340,12 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     synchronized public void doClearLocations() {
+        if (targetLocations.size() > 0) {
+            int ret = JOptionPane.showConfirmDialog(getChip().getFilterFrame(), "Are you sure you want to clear the "+targetLocations.size() +" target locations?");
+            if (ret == JOptionPane.NO_OPTION || ret == JOptionPane.CANCEL_OPTION) {
+                return;
+            }
+        }
         targetLocations.clear();
         minSampleTimestamp = Integer.MAX_VALUE;
         maxSampleTimestamp = Integer.MIN_VALUE;
@@ -951,7 +957,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             try {
                 PrefObj.putObject(getPrefs(), "TargetLabeler.hashmap", mapDataFilenameToTargetFilename);
             } catch (Exception e) {
-                log.warning("Could not store map from data files to target location files, got "+e.toString());
+                log.warning("Could not store map from data files to target location files, got " + e.toString());
             }
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't save locations", JOptionPane.WARNING_MESSAGE, null);
