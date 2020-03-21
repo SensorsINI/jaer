@@ -341,7 +341,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     synchronized public void doClearLocations() {
         if (targetLocations.size() > 0) {
-            int ret = JOptionPane.showConfirmDialog(getChip().getFilterFrame(), "Are you sure you want to clear the "+targetLocations.size() +" target locations?");
+            int ret = JOptionPane.showConfirmDialog(getChip().getFilterFrame(), "Are you sure you want to clear the " + targetLocations.size() + " target locations?");
             if (ret == JOptionPane.NO_OPTION || ret == JOptionPane.CANCEL_OPTION) {
                 return;
             }
@@ -514,12 +514,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         if (chip.getAeViewer() == null || chip.getAeViewer().getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
             return in;
         }
-        if (!propertyChangeListenerAdded) {
-            if (chip.getAeViewer() != null) {
-                chip.getAeViewer().getSupport().addPropertyChangeListener(this);
-                propertyChangeListenerAdded = true;
-            }
-        }
+        checkPropertyChangeListenersAdded();
         int nCurrentTargets = currentTargets.size();
 //        currentTargets.clear();
         boolean addedSample = false;
@@ -587,6 +582,15 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             fixLabeledFraction();
         }
         return in;
+    }
+
+    private void checkPropertyChangeListenersAdded() {
+        if (!propertyChangeListenerAdded) {
+            if (chip.getAeViewer() != null) {
+                chip.getAeViewer().getSupport().addPropertyChangeListener(this);
+                propertyChangeListenerAdded = true;
+            }
+        }
     }
 
     /**
@@ -1139,7 +1143,10 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes); //To change body of generated methods, choose Tools | Templates.
-        fixLabeledFraction();
+        if (yes) {
+            fixLabeledFraction();
+            checkPropertyChangeListenersAdded();
+        }
     }
 
     /**
