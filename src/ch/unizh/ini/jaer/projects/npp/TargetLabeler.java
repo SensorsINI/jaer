@@ -285,20 +285,22 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             textRenderer.setColor(1, 1, 1, 1);
         }
         MultilineAnnotationTextRenderer.setColor(Color.CYAN);
-        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
         MultilineAnnotationTextRenderer.setScale(.2f);
         StringBuilder sb = new StringBuilder();
         if (showHelpText) {
 //            sb.append("Shift+!Ctrl + mouse position: Specify no target present\nClt+Shift + mouse position: Specify currentTargetTypeID is present at mouse location\nShift+Alt: specify new radius for current targets");
             sb.append("Clt+Shift + mouse position: Specify currentTargetTypeID is present at mouse location\nShift+!Ctrl + mouse position: Specify no target present");
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
             MultilineAnnotationTextRenderer.renderMultilineString(sb.toString());
         }
         if (showStatistics) {
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);
             MultilineAnnotationTextRenderer.renderMultilineString(String.format("%d TargetLocation labels specified\nFirst label time: %.1fs, Last label time: %.1fs\nCurrent frame number: %d\nCurrent # labels within maxTimeLastTargetLocationValidUs: %d",
                     targetLocations.size(),
                     minSampleTimestamp * 1e-6f,
                     maxSampleTimestamp * 1e-6f, getCurrentFrameNumber(),
                     currentTargets.size()));
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .65f);
             if (shiftPressed && !ctlPressed && !altPressed) {
                 MultilineAnnotationTextRenderer.renderMultilineString("Specifying no target");
             } else if (shiftPressed && ctlPressed && !altPressed) {
@@ -509,7 +511,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if (chip.getAeViewer()==null || chip.getAeViewer().getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
+        if (chip.getAeViewer() == null || chip.getAeViewer().getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
             return in;
         }
         if (!propertyChangeListenerAdded) {
@@ -614,13 +616,13 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     public SimultaneouTargetLocations findTargetsBeforeTimestamp(int timestamp) {
-        if(targetLocations==null){
+        if (targetLocations == null) {
             log.warning("null targetLocations, nothing to find");
             return null;
         }
         Map.Entry<Integer, SimultaneouTargetLocations> nextBack = targetLocations.floorEntry(timestamp);
-        if(nextBack==null){
-            log.warning("no target found before timestamp "+timestamp);
+        if (nextBack == null) {
+            log.warning("no target found before timestamp " + timestamp);
             return null;
         }
         return nextBack.getValue();
@@ -949,8 +951,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             writer.write(String.format("#!TargetLocations-3.0\n"));
             writer.write(String.format("# target locations\n"));
             writer.write(String.format("# written %s\n", new Date().toString()));
-            if(chip.getAeViewer().getAePlayer().getAEInputStream()!=null){
-                File srcFile=chip.getAeViewer().getAePlayer().getAEInputStream().getFile();
+            if (chip.getAeViewer().getAePlayer().getAEInputStream() != null) {
+                File srcFile = chip.getAeViewer().getAePlayer().getAEInputStream().getFile();
                 writer.write(String.format("# File: %s\n", srcFile.toString()));
             }
 //            writer.write("# maxTargets=" + maxTargets+"\n");
@@ -958,7 +960,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             writer.write(String.format("# AviFrameNumber only valid for DvsSliceAviWriter\n"));
             for (Map.Entry<Integer, SimultaneouTargetLocations> entry : targetLocations.entrySet()) {
                 for (TargetLocation l : entry.getValue()) {
-                    l.write(writer,-1);
+                    l.write(writer, -1);
                 }
             }
             writer.close();
@@ -1260,7 +1262,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 fixLabeledFraction();
                 warnSave = true;
                 if (evt.getNewValue() instanceof AEFileInputStream) {
-                    AEFileInputStream is=(AEFileInputStream)evt.getNewValue();
+                    AEFileInputStream is = (AEFileInputStream) evt.getNewValue();
                     is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_POSITION, this);
                     File f = is.getFile();
                     lastDataFilename = f.getPath();
