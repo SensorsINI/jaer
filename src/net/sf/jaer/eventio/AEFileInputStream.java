@@ -933,7 +933,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         try {
             readEventForwards();
         } catch (Exception e) {
-            e.printStackTrace();
+            log.warning("When changing fractional position, got "+e.toString());
         }
     }
 
