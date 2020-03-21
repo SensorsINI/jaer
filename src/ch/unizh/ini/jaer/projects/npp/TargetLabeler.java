@@ -75,6 +75,7 @@ import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.PrefObj;
 
 /**
  * Labels location of target using mouse GUI in recorded data for later
@@ -159,16 +160,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         Arrays.fill(labeledFractions, false);
         Arrays.fill(targetPresentInFractions, false);
         try {
-            byte[] bytes = getPrefs().getByteArray("TargetLabeler.hashmap", null);
-            if (bytes != null) {
-                ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
-                mapDataFilenameToTargetFilename = (HashMap<String, String>) in.readObject();
-                in.close();
-                log.info("loaded mapDataFilenameToTargetFilename: " + mapDataFilenameToTargetFilename.size() + " entries");
-            } else {
-            }
+            mapDataFilenameToTargetFilename = (HashMap<String, String>) PrefObj.getObject(getPrefs(), "TargetLabeler.hashmap");
         } catch (Exception e) {
-            e.printStackTrace();
+            log.info("Could not read previous map from data files to target location files: "+e.toString());
         }
     }
 
@@ -516,7 +510,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         }
         if (!propertyChangeListenerAdded) {
             if (chip.getAeViewer() != null) {
-                chip.getAeViewer().addPropertyChangeListener(this);
+                chip.getAeViewer().getSupport().addPropertyChangeListener(this);
                 propertyChangeListenerAdded = true;
             }
         }
@@ -887,17 +881,10 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
         private void draw(GLAutoDrawable drawable, GL2 gl, float linewidth) {
 
-//            if (getTargetLocation() != null && getTargetLocation().location == null) {
-//                textRenderer.beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
-//                textRenderer.draw("Target not visible", chip.getSizeX() / 2, chip.getSizeY() / 2);
-//                textRenderer.endRendering();
-//                return;
-//            }
             gl.glPushMatrix();
             gl.glTranslatef(location.x, location.y, 0f);
             float[] compArray = new float[4];
             gl.glColor3fv(targetTypeColors[targetClassID % targetTypeColors.length].getColorComponents(compArray), 0);
-//            gl.glColor4f(0, 1, 0, .5f);
             gl.glLineWidth(linewidth);
             gl.glBegin(GL.GL_LINE_LOOP);
             gl.glVertex2f(-width / 2, -height / 2);
@@ -905,14 +892,6 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             gl.glVertex2f(+width / 2, +height / 2);
             gl.glVertex2f(-width / 2, +height / 2);
             gl.glEnd();
-//            if (mouseQuad == null) {
-//                mouseQuad = glu.gluNewQuadric();
-//            }
-//            glu.gluQuadricDrawStyle(mouseQuad, GLU.GLU_LINE);
-//            //glu.gluDisk(mouseQuad, getTargetRadius(), getTargetRadius(), 32, 1);
-//            int maxDim = Math.max(width, height);
-//            glu.gluDisk(mouseQuad, maxDim / 2, (maxDim / 2) + 0.1, 32, 1);
-            //getTargetRadius(), getTargetRadius() + 1, 32, 1);
             gl.glPopMatrix();
         }
 
@@ -968,17 +947,11 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             if (f.getPath() != null) {
                 mapDataFilenameToTargetFilename.put(lastDataFilename, f.getPath());
             }
+            // Serialize to a byte array
             try {
-                // Serialize to a byte array
-                ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                ObjectOutput oos = new ObjectOutputStream(bos);
-                oos.writeObject(mapDataFilenameToTargetFilename);
-                oos.close();
-                // Get the bytes of the serialized object
-                byte[] buf = bos.toByteArray();
-                getPrefs().putByteArray("TargetLabeler.hashmap", buf);
+                PrefObj.putObject(getPrefs(), "TargetLabeler.hashmap", mapDataFilenameToTargetFilename);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.warning("Could not store map from data files to target location files, got "+e.toString());
             }
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't save locations", JOptionPane.WARNING_MESSAGE, null);
@@ -1163,19 +1136,6 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         fixLabeledFraction();
     }
 
-//    /**
-//     * @return the maxTargets
-//     */
-//    public int getMaxTargets() {
-//        return maxTargets;
-//    }
-//
-//    /**
-//     * @param maxTargets the maxTargets to set
-//     */
-//    public void setMaxTargets(int maxTargets) {
-//        this.maxTargets = maxTargets;
-//    }
     /**
      * @return the currentTargetTypeID
      */
