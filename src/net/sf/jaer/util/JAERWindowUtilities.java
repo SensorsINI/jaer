@@ -37,7 +37,7 @@ public class JAERWindowUtilities {
     private static int lowerInset = WINDOWS_TASK_BAR_HEIGHT; // filled in from windows screen inset
     private static Logger log = Logger.getLogger("JAERWindowUtilities");
 //    private static int resizeCounter=0;
-    final static int STOP_TRYING_THRESHOLD = 30;  // after this many calls on same window, give up, some feedback loop with underlying window manager such as Windows tablet mode
+    final static int STOP_TRYING_THRESHOLD = 5;  // after this many calls on same window, give up, some feedback loop with underlying window manager such as Windows tablet mode
     private final static HashMap<JFrame, Integer> resizingCountMap = new HashMap<JFrame, Integer>();
 
     /**
@@ -81,7 +81,7 @@ public class JAERWindowUtilities {
             // determine the height of the windows taskbar by this roundabout proceedure
             // TODO tobi removed this because it was causing a runtime native code exception using NVIDIA 181.22 driver with win xp
             // replaced by hardcoded lowerInset
-            lowerInset = 64;
+            lowerInset = 100;
 
             Rectangle windowBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
             if (windowBounds != null) {
@@ -115,15 +115,17 @@ public class JAERWindowUtilities {
 //        frame.setLocation(x,y); // don't move it, just contrain size
             final boolean resize2 = resize;
             final int w2 = w, h2 = h, x2 = x, y2 = y;
-            SwingUtilities.invokeLater(new Runnable() {
-                public void run() {
-                    frame.setLocation(x2, y2);
-                    if (resize2 && !(frame instanceof WindowSaver.DontResize)) {
-                        frame.setSize(new Dimension(w2, h2));
-                    }
+            if (resize) {
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run() {
+                        frame.setLocation(x2, y2);
+                        if (resize2 && !(frame instanceof WindowSaver.DontResize)) {
+                            frame.setSize(new Dimension(w2, h2));
+                        }
 //                    frame.validate();
-                }
-            });
+                    }
+                });
+            }
         } catch (IllegalComponentStateException e) {
             log.warning(e.toString() + ": not constraining window size to screen");
             return;
