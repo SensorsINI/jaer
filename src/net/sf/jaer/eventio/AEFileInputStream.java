@@ -215,9 +215,11 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     private static AEChip LAST_CHIP = null; // It's a static value, so it will always store the last AEFileInputStream's chip
     private static EventExtractor2D LAST_EVENT_EXTRACTOR = null; // This value saves the last chip's extractor, it's always associated with the last chip
-    
-    /** The ZoneID of this file as parsed from the filename */
-    private ZoneId zoneId=ZoneId.systemDefault();
+
+    /**
+     * The ZoneID of this file as parsed from the filename
+     */
+    private ZoneId zoneId = ZoneId.systemDefault();
 
     /**
      * Creates a new instance of AEInputStream
@@ -933,7 +935,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         try {
             readEventForwards();
         } catch (Exception e) {
-            log.warning("When changing fractional position, got "+e.toString());
+            log.warning("When changing fractional position, got " + e.toString());
         }
     }
 
@@ -1434,8 +1436,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         String s;
         // System.out.println("File header:");
         while ((s = readHeaderLine(bufferedHeaderReader)) != null) {
-            header.add(s);
-            parseFileFormatVersion(s);
+            if (s != null) {
+                header.add(s);
+                parseFileFormatVersion(s);
+            }
+        }
+        if (header.isEmpty()) {
+            log.warning("Empty header for file " + file);
         }
         // we don't map yet until we know eventSize
         StringBuilder sb = new StringBuilder();
@@ -1460,11 +1467,17 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      */
     protected void parseFileFormatVersion(String s) {
         float version = 1f;
+        if (s == null) {
+            log.warning("null String, returning");
+            return;
+        }
         if (s.startsWith(AEDataFile.DATA_FILE_FORMAT_HEADER)) { // # stripped off by readHeaderLine
             try {
                 version = Float.parseFloat(s.substring(AEDataFile.DATA_FILE_FORMAT_HEADER.length()));
             } catch (NumberFormatException numberFormatException) {
                 log.warning("While parsing header line " + s + " got " + numberFormatException.toString());
+            } catch (NullPointerException npe) {
+                log.warning("Caught NullPointerException for " + s);
             }
             if (Math.floor(version) == 1) { // #!AER-DAT-1.0
                 addressType = Short.TYPE;
@@ -1613,16 +1626,20 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     /**
      * When the file is opened, the filename is parsed to try to extract the
-     * date and time the file was created from the filename. This method returns time since the epoch, in universal time.
+     * date and time the file was created from the filename. This method returns
+     * time since the epoch, in universal time.
      *
-     * @return the time logging was started in ms since 1970, in GMT universal time
+     * @return the time logging was started in ms since 1970, in GMT universal
+     * time
      */
     public long getAbsoluteStartingTimeMs() {
         return absoluteStartingTimeMs;
     }
-    
-    /** Returns the ZoneID of this file */
-    public ZoneId getZoneId(){
+
+    /**
+     * Returns the ZoneID of this file
+     */
+    public ZoneId getZoneId() {
         return zoneId;
     }
 
@@ -1632,9 +1649,11 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     /**
      * Parses the filename to extract the file logging date from the name of the
-     * file. Files are named, e.g. "Davis346cBSI-2018-08-23T22-36-22+0200-00000000-15772 836km.aedat". The datetime format is
-     * specified in AEDataFile.YYYY_M_MDD_TH_HMMSS_Z. Z is the time zone offset. The next thing is the device serial number. Finally there is the 
-     * comment added by convention by user.
+     * file. Files are named, e.g.
+     * "Davis346cBSI-2018-08-23T22-36-22+0200-00000000-15772 836km.aedat". The
+     * datetime format is specified in AEDataFile.YYYY_M_MDD_TH_HMMSS_Z. Z is
+     * the time zone offset. The next thing is the device serial number. Finally
+     * there is the comment added by convention by user.
      *
      * @return start of logging time in ms, i.e., in "java" time, since 1970
      */
@@ -1646,19 +1665,19 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             String fn = f.getName();
             String dateStr = fn.substring(fn.indexOf('-') + 1); // guess that datestamp is right after first - which
             // follows Chip classname, but which include -SN and other text, which is serial number of camera and other trailing text annotation
-            dateStr=dateStr.substring(0, 24);
-            try{
-                DateTimeFormatter dtf=DateTimeFormatter.ofPattern(AEDataFile.YYYY_M_MDD_TH_HMMSS_Z).withResolverStyle(ResolverStyle.SMART);
-                ZonedDateTime zdt=ZonedDateTime.parse(dateStr,dtf);
-                zoneId=zdt.getZone();
-                return zdt.toEpochSecond()*1000;
-            }catch(DateTimeParseException e){
-                log.warning("could not parse a ZonedDateTime from "+dateStr+": "+e);
+            dateStr = dateStr.substring(0, 24);
+            try {
+                DateTimeFormatter dtf = DateTimeFormatter.ofPattern(AEDataFile.YYYY_M_MDD_TH_HMMSS_Z).withResolverStyle(ResolverStyle.SMART);
+                ZonedDateTime zdt = ZonedDateTime.parse(dateStr, dtf);
+                zoneId = zdt.getZone();
+                return zdt.toEpochSecond() * 1000;
+            } catch (DateTimeParseException e) {
+                log.warning("could not parse a ZonedDateTime from " + dateStr + ": " + e);
             }
             DateFormat sdf = AEDataFile.DATE_FORMAT;
             Date date = sdf.parse(dateStr);
             Calendar cal = sdf.getCalendar();
-            log.info(fn + " has from file name the absolute starting date of " + date.toString() + " with time zone "+cal.getTimeZone().toString());
+            log.info(fn + " has from file name the absolute starting date of " + date.toString() + " with time zone " + cal.getTimeZone().toString());
             return date.getTime();
         } catch (Exception e) {
             log.warning(e.toString());
