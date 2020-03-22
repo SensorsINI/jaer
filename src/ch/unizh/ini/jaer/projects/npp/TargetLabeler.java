@@ -129,7 +129,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     // file statistics
     private long firstInputStreamTimestamp = 0, lastInputStreamTimestamp = 0, inputStreamDuration = 0;
     private long filePositionEvents = 0, fileLengthEvents = 0;
-    private int filePositionTimestamp = 0;
+    private volatile int filePositionTimestamp = 0;
     private boolean warnSave = true;
 
     protected boolean eraseSamplesEnabled = false;
@@ -585,10 +585,18 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     private void checkPropertyChangeListenersAdded() {
-        if (!propertyChangeListenerAdded) {
-            if (chip.getAeViewer() != null) {
+        if (chip.getAeViewer() != null) {
+            boolean weAreThere = false;
+            PropertyChangeListener[] pcls = chip.getAeViewer().getSupport().getPropertyChangeListeners();
+            for (PropertyChangeListener p : pcls) {
+                if (p == this) {
+                    weAreThere = true;
+                }
+            }
+
+            if (!weAreThere) {
                 chip.getAeViewer().getSupport().addPropertyChangeListener(this);
-                propertyChangeListenerAdded = true;
+                log.info("added " + this + " as PropertyChangeListener to AEviewer");
             }
         }
     }
@@ -663,11 +671,12 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     @Override
     public void resetFilter() {
-
+        checkPropertyChangeListenersAdded();
     }
 
     @Override
     public void initFilter() {
+        checkPropertyChangeListenersAdded();
     }
 
     /**
@@ -1231,7 +1240,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     }
                 }
                 break;
-            case AEInputStream.EVENT_INIT:
+            case AEInputStream.EVENT_INIT: // if file is opened before we get enabled then we never get this event
                 fixLabeledFraction();
                 warnSave = true;
                 if (evt.getNewValue() instanceof AEFileInputStream) {
