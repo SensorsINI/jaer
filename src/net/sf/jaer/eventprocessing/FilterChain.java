@@ -203,7 +203,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         }
         for (EventFilter2D f : this) {
             if (!f.isFilterEnabled()) {
-                continue; 
+                continue;
             }
             if (measurePerformanceEnabled) {
                 if (f.perf == null) {
@@ -403,8 +403,8 @@ public class FilterChain extends LinkedList<EventFilter2D> {
                     log.warning(e.toString() + ": couldn't construct filter " + s + " for chip " + chip.getClass().getName() + " : " + e.toString() + " will remove this filter from Preferences");
                     toRemove.add(s);
                     if (e.getCause() != null) {
-                         Throwable t = e.getCause();
-                        log.warning("cause of previous exception was " + t.toString()); 
+                        Throwable t = e.getCause();
+                        log.warning("cause of previous exception was " + t.toString());
                         t.printStackTrace();
                     }
                 } catch (NoClassDefFoundError err) {
@@ -430,12 +430,25 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         } catch (Exception e) {
             log.warning(e.getMessage());
         }
+        initFilters();
+    }
+
+    /** 
+     * Initializes all filters in the chain by calling initFilter() on each of them, 
+     * including each filter's enclosed filter chain
+     * @see EventFilter#initFilter() 
+     */
+    public void initFilters() {
         // call initFilter on all filters in the chain
-        for(EventFilter f:this){
-            try{
-                f.initFilter();
-            }catch(Exception e){
-                log.log(Level.WARNING,"Exception initializing filter "+f+": "+e.toString(),e);
+        for (EventFilter f : this) {
+            try {
+                f.initFilter(); // initialize each enclosed filter TODO only goes one level deep\
+                FilterChain efc=f.getEnclosedFilterChain();
+                if (efc != null && !efc.isEmpty()) {
+                    efc.initFilters();
+                }
+            } catch (Exception e) {
+                log.log(Level.WARNING, "Exception initializing filter " + f + ": " + e.toString(), e);
             }
         }
     }
