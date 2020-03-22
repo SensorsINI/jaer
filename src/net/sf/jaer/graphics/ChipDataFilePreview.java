@@ -106,8 +106,8 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             return false;
         }
     }
-    
-    boolean isHdf5File (File f) {
+
+    boolean isHdf5File(File f) {
         if (f == null) {
             return false;
         }
@@ -170,14 +170,16 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                     // see http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4715154
                     // http://bugs.sun.com/bugdatabase/view_bug.do;:YfiG?bug_id=4724038
                 }
-                ais = new AEFileInputStream(file,chip);
                 try {
+                    ais = new AEFileInputStream(file, chip);
                     ais.rewind();
+                    fileSizeString = fmt.format(ais.size()) + " events " + fmt.format(ais.getDurationUs() / 1e6f) + " s";
                 } catch (IOException e) {
+                    log.warning("Caught " + e.toString() + " trying to open file " + file);
+
                 }
-                fileSizeString = fmt.format(ais.size()) + " events " + fmt.format(ais.getDurationUs() / 1e6f) + " s";
             } else {
-                if(hdf5FileEnabled) {
+                if (hdf5FileEnabled) {
                     if (hafir != null) {
                         hafir.closeResources();
                         hafir = null;
@@ -269,7 +271,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                 }
                 if (aeRaw != null) {
                     extractor = chip.getEventExtractor();  // Desipte extrator is initiliazed at first, if jAER 3.0 file used, then Jaer3BufferParser
-                                                           // will update the extrator, so we need to update this value here.
+                    // will update the extrator, so we need to update this value here.
                     ae = extractor.extractPacket(aeRaw);
                 }
             }
@@ -282,21 +284,21 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             }
         } else {
             if (hdf5FileEnabled) {
-                int packetTotalNum = (int)hafir.getFileDims()[0];
-                if (packetNum >= 100)  {
+                int packetTotalNum = (int) hafir.getFileDims()[0];
+                if (packetNum >= 100) {
                     packetNum = 0;
                 }
                 hafir.readRowData(packetNum);
                 ae = hafir.extractPacket(packetNum);
                 renderer.render(ae);
-                packetNum ++;
+                packetNum++;
                 ArrayList<FrameAnnotater> annotators = canvas.getDisplayMethod().getAnnotators();
                 canvas.getDisplayMethod().setAnnotators(null);
                 canvas.paintFrame();
                 canvas.getDisplayMethod().setAnnotators(annotators);
             } else {
                 fileSizeString = indexFileString;
-                g2.clearRect(0, 0, getWidth(), getHeight());                
+                g2.clearRect(0, 0, getWidth(), getHeight());
             }
 
         }
