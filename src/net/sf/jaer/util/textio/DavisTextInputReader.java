@@ -60,6 +60,8 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
     private boolean noEventsReadYet = true; // set false when new file is opened
     private ApsDvsEventPacket outputPacket = null;
     int maxX = chip.getSizeX(), maxY = chip.getSizeY();
+    private boolean weWereNeverEnabled=true; // Tobi added this hack to work around the problem that if we are included in FilterChain but not enabled,
+    // we set PlayMode to WAITING even if a file is currently playing back
 
     public DavisTextInputReader(AEChip chip) {
         super(chip);
@@ -93,7 +95,8 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         super.setFilterEnabled(yes);
         if (yes) {
             getChip().getAeViewer().setPlayMode(AEViewer.PlayMode.FILTER_INPUT); // TODO may not work
-        } else {
+            weWereNeverEnabled=false;
+        } else if(!weWereNeverEnabled ) {
             getChip().getAeViewer().setPlayMode(AEViewer.PlayMode.WAITING); // TODO may not work
         }
     }
