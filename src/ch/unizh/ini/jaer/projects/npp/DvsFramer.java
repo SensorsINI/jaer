@@ -141,8 +141,8 @@ abstract public class DvsFramer extends EventFilter2D {
         try {
             timeSliceMethod = TimeSliceMethod.valueOf(getString("timeSliceMethod", TimeSliceMethod.EventCount.toString()));
         } catch (IllegalArgumentException e) {
-            log.warning("Unknown preference for timeSliceMethod; reverting to default Eventcount: "+e.toString());
-            timeSliceMethod=TimeSliceMethod.EventCount;
+            log.warning("Unknown preference for timeSliceMethod; reverting to default Eventcount: " + e.toString());
+            timeSliceMethod = TimeSliceMethod.EventCount;
         }
         setPropertyTooltip("dvsEventsPerFrame", "Used with timeSliceMethod TimeInterval: number of DVS events accumulated to subsampled ROI to fill the frame");
         setPropertyTooltip("showFrames", "shows the fully exposed (accumulated with events) frames in a separate window");
@@ -223,7 +223,9 @@ abstract public class DvsFramer extends EventFilter2D {
      * @param dvsGrayScale the dvsGrayScale to set
      */
     public void setDvsGrayScale(int dvsGrayScale) {
-        if(dvsGrayScale<1) dvsGrayScale=1;
+        if (dvsGrayScale < 1) {
+            dvsGrayScale = 1;
+        }
         this.dvsGrayScale = dvsGrayScale;
         dvsGrayScaleRecip = 1f / dvsGrayScale;
         putInt("dvsGrayScale", dvsGrayScale);
@@ -326,8 +328,8 @@ abstract public class DvsFramer extends EventFilter2D {
     public boolean isNormalizeDVSForZsNullhop() {
         return normalizeDVSForZsNullhop;
     }
-    
-        /**
+
+    /**
      * @return the normalizeFrame
      */
     public boolean isNormalizeFrame() {
@@ -341,7 +343,6 @@ abstract public class DvsFramer extends EventFilter2D {
         this.normalizeFrame = normalizeFrame;
         putBoolean("normalizeFrame", normalizeFrame);
     }
-
 
     /**
      * @param normalizeDVSForZsNullhop the normalizeDVSForZsNullhop to set
@@ -389,12 +390,12 @@ abstract public class DvsFramer extends EventFilter2D {
         getSupport().firePropertyChange("outputImageHeight", old, this.outputImageHeight);
     }
 
-     public void doSetOutputImageToFullFrame(){
+    public void doSetOutputImageToFullFrame() {
         setOutputImageHeight(chip.getSizeY());
         setOutputImageWidth(chip.getSizeX());
     }
 
-   /**
+    /**
      * @return the frameCutBottom
      */
     public int getFrameCutBottom() {
@@ -487,7 +488,7 @@ abstract public class DvsFramer extends EventFilter2D {
 
         @Override
         public String toString() {
-            return "DvsFrame{" + "width=" + width + ", height=" + height + ", accumulatedEventCount=" + accumulatedEventCount+ ", durationUs=" + durationUs + ", mostOffCount=" + mostOffCount + ", mostOnCount=" + mostOnCount + ", sparsity=" + sparsity + ", filled=" + filled + '}';
+            return "DvsFrame{" + "width=" + width + ", height=" + height + ", accumulatedEventCount=" + accumulatedEventCount + ", durationUs=" + durationUs + ", mostOffCount=" + mostOffCount + ", mostOnCount=" + mostOnCount + ", sparsity=" + sparsity + ", filled=" + filled + '}';
         }
 
         public void clear() {
@@ -580,14 +581,13 @@ abstract public class DvsFramer extends EventFilter2D {
                     }
                     break;
                 case TimeIntervalUs:
-                    if (durationUs<0 || durationUs >= getTimeDurationUsPerFrame()) {
+                    if (durationUs < 0 || durationUs >= getTimeDurationUsPerFrame()) {
                         filled = true;
                     }
                     break;
                 default:
-                    log.warning("method "+timeSliceMethod+" not yet implemented, disabling filter");
-                    showWarningDialogInSwingThread("DvsFramer method "+timeSliceMethod+" not yet implemented, disabling filter", "DvsFramer");
                     setFilterEnabled(false);
+                    log.warning("method " + timeSliceMethod + " not yet implemented, disabled filter");
             }
             if (filled) {
                 normalizeFrame();
@@ -738,7 +738,9 @@ abstract public class DvsFramer extends EventFilter2D {
          * range 0-1 using 3-sigma values, as is used in CNNNetwork.
          */
         public void normalizeFrame() {
-            if(!normalizeFrame) return;
+            if (!normalizeFrame) {
+                return;
+            }
             final float zeroValue = getZeroCountPixelValue(), fullscale = 1 - zeroValue;
             // net trained gets 0-1 range inputs, so make our input so
             int n = eventSum.length;
@@ -840,7 +842,7 @@ abstract public class DvsFramer extends EventFilter2D {
                 showWarningDialogInSwingThread("zero output DVS frame size; please set width and height", "DvsFramer");
                 return false;
             }
-            if (pixmap == null || pixmap.length != getNumPixels() || eventSum==null) {
+            if (pixmap == null || pixmap.length != getNumPixels() || eventSum == null) {
                 pixmap = new float[getNumPixels()];
                 eventSum = new int[getNumPixels()];
                 clear();
@@ -910,8 +912,9 @@ abstract public class DvsFramer extends EventFilter2D {
             this.filled = filled;
         }
 
-        /** Returns accumulation time in us
-         * 
+        /**
+         * Returns accumulation time in us
+         *
          * @return time for accumulating this frame in us
          */
         public int getDurationUs() {
@@ -948,6 +951,11 @@ abstract public class DvsFramer extends EventFilter2D {
      * @param timeSliceMethod the timeSliceMethod to set
      */
     public void setTimeSliceMethod(TimeSliceMethod timeSliceMethod) {
+        if (timeSliceMethod == TimeSliceMethod.AreaEvent) {
+            showWarningDialogInSwingThread("DvsFramer method " + timeSliceMethod + " not yet implemented, ignoring", "DvsFramer");
+            getSupport().firePropertyChange("timeSliceMethod", timeSliceMethod, this.timeSliceMethod);
+            return;
+        }
         this.timeSliceMethod = timeSliceMethod;
         putString("timeSliceMethod", timeSliceMethod.toString());
     }
@@ -966,13 +974,15 @@ abstract public class DvsFramer extends EventFilter2D {
         this.timeDurationUsPerFrame = timeDurationUsPerFrame;
         putInt("timeDurationUsPerFrame", timeDurationUsPerFrame);
     }
-    
-    /** Subclasses can override this method to check reasonable parameters.
-     * This method should throw an exception after informing users that parameters are not reasonable.
-     * 
+
+    /**
+     * Subclasses can override this method to check reasonable parameters. This
+     * method should throw an exception after informing users that parameters
+     * are not reasonable.
+     *
      */
-    public void checkParameters(){
-       
+    public void checkParameters() {
+
     }
 
 }
