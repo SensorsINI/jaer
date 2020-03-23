@@ -76,8 +76,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     private volatile boolean newApsFrameAvailable = false;
     private int endOfFrameTimestamp = Integer.MIN_VALUE, lastTimestamp = 0;
     protected boolean writeDvsSliceImageOnApsFrame = getBoolean("writeDvsSliceImageOnApsFrame", false);
-    private boolean writeDvsFrames = getBoolean("writeDvsFrames", true);
-    private boolean writeApsFrames = getBoolean("writeApsFrames", false);
+    protected boolean writeDvsFrames = getBoolean("writeDvsFrames", true);
+    protected boolean writeApsFrames = getBoolean("writeApsFrames", false);
+//    protected boolean writeLatestApsDvsTogether = getBoolean("writeLatestApsDvsTogether", false); // happens anyhow since memory of image buffer is never cleared
     private boolean writeTargetLocations = getBoolean("writeTargetLocations", true);
     private boolean writeDvsEventsToTextFile = getBoolean("writeDvsEventsToTextFile", false);
     protected static final String EVENTS_SUFFIX = "-events.txt";
@@ -113,8 +114,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         setPropertyTooltip("showOutput", "shows output in JFrame/ImageDisplay");
         setPropertyTooltip("frameRateEstimatorTimeConstantMs", "time constant of lowpass filter that shows average DVS slice frame rate");
         setPropertyTooltip("writeDvsSliceImageOnApsFrame", "<html>write DVS slice image for each APS frame end event (dvsMinEvents ignored).<br>The frame is written at the end of frame APS event.<br><b>Warning: to capture all frames, ensure that playback time slices are slow enough that all frames are rendered</b>");
-        setPropertyTooltip("writeApsFrames", "<html>write APS frames to file<br><b>Warning: to capture all frames, ensure that playback time slices are slow enough that all frames are rendered</b>");
-        setPropertyTooltip("writeDvsFrames", "<html>write DVS frames to file<br>");
+        setPropertyTooltip("writeApsFrames", "<html>write APS frames to file. Frame is written to LEFT half of image if DVS frames also on.<br><b>Warning: to capture all frames, ensure that playback time slices are slow enough that all frames are rendered</b>");
+        setPropertyTooltip("writeDvsFrames", "<html>write DVS frames to file. Frame is written to RIGHT half of image if APS frames also on.<br>");
+//        setPropertyTooltip("writeLatestApsDvsTogether", "<html>If writeDvsFrames and writeApsFrames, ,<br>duplicate most recent frame from each modality in each AVI file output frame. <br>If off, other half frame is black (all zeros|)<br>");
         setPropertyTooltip("writeTargetLocations", "<html>If TargetLabeler has locations, write them to a file named XXX-targetlocations.txt<br>");
         setPropertyTooltip("writeDvsEventsToTextFile", "<html>write DVS events to text file, one event per line, timestamp, x, y, pol<br>");
         setPropertyTooltip("showStatistics", "shows statistics of DVS frame (most off and on counts, frame rate, sparsity)");
@@ -159,7 +161,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 }
                 dvsFrame.normalizeFrame();
                 maybeShowOutput(dvsFrame);
-                if (writeDvsFrames && (getAviOutputStream() != null) && isWriteEnabled()) {
+                if (isWriteDvsFrames() && (getAviOutputStream() != null) && isWriteEnabled()) {
                     BufferedImage bi = toImage(dvsFrame);
                     try {
                         writeTimecode(e.timestamp);
@@ -274,15 +276,15 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     }
 
     private int getOutputImageWidth() {
-        return (writeApsFrames && writeDvsFrames) ? dvsFrame.getOutputImageWidth() * 2 : dvsFrame.getOutputImageWidth();
+        return (isWriteApsFrames() && isWriteDvsFrames()) ? dvsFrame.getOutputImageWidth() * 2 : dvsFrame.getOutputImageWidth();
     }
 
     private int getOutputImageHeight() {
-        return (writeApsFrames && writeDvsFrames) ? dvsFrame.getOutputImageHeight() * 2 : dvsFrame.getOutputImageHeight();
+        return (isWriteApsFrames() && isWriteDvsFrames()) ? dvsFrame.getOutputImageHeight() : dvsFrame.getOutputImageHeight();  // same height if both outputs on or not
     }
 
     private int getDvsStartingX() {
-        return (writeApsFrames && writeDvsFrames) ? dvsFrame.getOutputImageWidth() : 0;
+        return (isWriteApsFrames() && isWriteDvsFrames()) ? dvsFrame.getOutputImageWidth() : 0;
     }
 
     protected void writeEvent(PolarityEvent e) throws IOException {
@@ -401,13 +403,16 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             throw new RuntimeException("null aviOutputImage; output has not yet been opened");
         }
         int[] bd = ((DataBufferInt) aviOutputImage.getRaster().getDataBuffer()).getData();
-
-        for (int y = 0; y < dvsFrame.getOutputImageHeight(); y++) {
-            for (int x = 0; x < dvsFrame.getOutputImageWidth(); x++) {
+        final int dvsOutputImageHeight = dvsFrame.getOutputImageHeight();
+        final int dvsOutputImageWidth = dvsFrame.getOutputImageWidth();
+        final int dvsStartingX = getDvsStartingX();
+        final int outputImageWidth = getOutputImageWidth();
+        for (int y = 0; y < dvsOutputImageHeight; y++) {
+            for (int x = 0; x < dvsOutputImageWidth; x++) {
                 int b = (int) (255 * dvsFramer.getValueAtPixel(x, y));
                 int g = b;
                 int r = b;
-                int idx = ((dvsFrame.getOutputImageHeight() - y - 1) * getOutputImageWidth()) + x + getDvsStartingX(); // DVS image is right half
+                int idx = ((dvsOutputImageHeight - y - 1) * outputImageWidth) + x + dvsStartingX; // DVS image is right half if both on
                 if (idx >= bd.length) {
                     throw new RuntimeException(String.format("index %d out of bounds for x=%d y=%d", idx, x, y));
                 }
@@ -520,7 +525,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if ((evt.getPropertyName() == ApsFrameExtractor.EVENT_NEW_FRAME)) {
             endOfFrameTimestamp = frameExtractor.getLastFrameTimestamp();
             newApsFrameAvailable = true;
-            if (writeApsFrames && (getAviOutputStream() != null) && isWriteEnabled()
+            if (isWriteApsFrames() && (getAviOutputStream() != null) && isWriteEnabled()
                     && ((chip.getAeViewer() == null) || !chip.getAeViewer().isPaused())) {
                 BufferedImage bi = toImage(frameExtractor);
                 try {
@@ -1004,6 +1009,21 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         this.writeApsFrames = writeApsFrames;
         putBoolean("writeApsFrames", writeApsFrames);
     }
+
+//    /**
+//     * @return the writeLatestApsDvsTogether
+//     */
+//    public boolean isWriteLatestApsDvsTogether() {
+//        return writeLatestApsDvsTogether;
+//    }
+//
+//    /**
+//     * @param writeLatestApsDvsTogether the writeLatestApsDvsTogether to set
+//     */
+//    public void setWriteLatestApsDvsTogether(boolean writeLatestApsDvsTogether) {
+//        this.writeLatestApsDvsTogether = writeLatestApsDvsTogether;
+//        putBoolean("writeLatestApsDvsTogether", writeLatestApsDvsTogether);
+//    }
 
     /**
      * @return the writeDvsEventsToTextFile
