@@ -79,6 +79,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     protected boolean writeDvsFrames = getBoolean("writeDvsFrames", true);
     protected boolean writeApsFrames = getBoolean("writeApsFrames", false);
 //    protected boolean writeLatestApsDvsTogether = getBoolean("writeLatestApsDvsTogether", false); // happens anyhow since memory of image buffer is never cleared
+    protected boolean writeAPSDVSToRGChannels = getBoolean("writeAPSDVSToRGChannels", false); // happens anyhow since memory of image buffer is never cleared
     private boolean writeTargetLocations = getBoolean("writeTargetLocations", true);
     private boolean writeDvsEventsToTextFile = getBoolean("writeDvsEventsToTextFile", false);
     protected static final String EVENTS_SUFFIX = "-events.txt";
@@ -117,6 +118,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         setPropertyTooltip("writeApsFrames", "<html>write APS frames to file. Frame is written to LEFT half of image if DVS frames also on.<br><b>Warning: to capture all frames, ensure that playback time slices are slow enough that all frames are rendered</b>");
         setPropertyTooltip("writeDvsFrames", "<html>write DVS frames to file. Frame is written to RIGHT half of image if APS frames also on.<br>");
 //        setPropertyTooltip("writeLatestApsDvsTogether", "<html>If writeDvsFrames and writeApsFrames, ,<br>duplicate most recent frame from each modality in each AVI file output frame. <br>If off, other half frame is black (all zeros|)<br>");
+        setPropertyTooltip("writeAPSDVSToRGChannels", "<html>If writeDvsFrames and writeApsFrames, ,<br>writes to RG of RGB channels on single frame size output. <br>If off, outputs are written to left (APS) and right (DVS)<br>");
         setPropertyTooltip("writeTargetLocations", "<html>If TargetLabeler has locations, write them to a file named XXX-targetlocations.txt<br>");
         setPropertyTooltip("writeDvsEventsToTextFile", "<html>write DVS events to text file, one event per line, timestamp, x, y, pol<br>");
         setPropertyTooltip("showStatistics", "shows statistics of DVS frame (most off and on counts, frame rate, sparsity)");
@@ -276,15 +278,16 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     }
 
     private int getOutputImageWidth() {
-        return (isWriteApsFrames() && isWriteDvsFrames()) ? dvsFrame.getOutputImageWidth() * 2 : dvsFrame.getOutputImageWidth();
+        return (!isWriteAPSDVSToRGChannels() && isWriteApsFrames() && isWriteDvsFrames()) ? dvsFrame.getOutputImageWidth() * 2 : dvsFrame.getOutputImageWidth(); // 2X wide if both outputs and not RG channels
     }
 
     private int getOutputImageHeight() {
-        return (isWriteApsFrames() && isWriteDvsFrames()) ? dvsFrame.getOutputImageHeight() : dvsFrame.getOutputImageHeight();  // same height if both outputs on or not
+        return dvsFrame.getOutputImageHeight();
+//        return (isWriteApsFrames() && isWriteDvsFrames()) ? dvsFrame.getOutputImageHeight() : dvsFrame.getOutputImageHeight();  // same height if both outputs on or not
     }
 
     private int getDvsStartingX() {
-        return (isWriteApsFrames() && isWriteDvsFrames()) ? dvsFrame.getOutputImageWidth() : 0;
+        return (!isWriteAPSDVSToRGChannels() && isWriteApsFrames() && isWriteDvsFrames()) ? dvsFrame.getOutputImageWidth() : 0;
     }
 
     protected void writeEvent(PolarityEvent e) throws IOException {
@@ -407,16 +410,22 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         final int dvsOutputImageWidth = dvsFrame.getOutputImageWidth();
         final int dvsStartingX = getDvsStartingX();
         final int outputImageWidth = getOutputImageWidth();
+        final boolean rg = isWriteAPSDVSToRGChannels();
         for (int y = 0; y < dvsOutputImageHeight; y++) {
             for (int x = 0; x < dvsOutputImageWidth; x++) {
-                int b = (int) (255 * dvsFramer.getValueAtPixel(x, y));
-                int g = b;
-                int r = b;
+                int g = (int) (255 * dvsFramer.getValueAtPixel(x, y));
+                int b = rg ? 0 : g;
+                int r = rg ? 0 : g;
                 int idx = ((dvsOutputImageHeight - y - 1) * outputImageWidth) + x + dvsStartingX; // DVS image is right half if both on
                 if (idx >= bd.length) {
                     throw new RuntimeException(String.format("index %d out of bounds for x=%d y=%d", idx, x, y));
                 }
-                bd[idx] = (b << 16) | (g << 8) | r | 0xFF000000;
+                if (!rg) {
+                    bd[idx] = (b << 16) | (g << 8) | r | 0xFF000000; // if RG combined output, mask to just overwrite green channel
+                } else {
+                    bd[idx] &= (0xFF << 8); // clear G channel
+                    bd[idx] |= (g << 8); // just G channel overwritten
+                }
             }
         }
 
@@ -425,20 +434,32 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     }
 
     private BufferedImage toImage(ApsFrameExtractor frameExtractor) {
+        if (aviOutputImage == null) {
+            throw new RuntimeException("aviOutputImage is null, was not initialized");
+        }
         int[] bd = ((DataBufferInt) aviOutputImage.getRaster().getDataBuffer()).getData();
-        int srcwidth = chip.getSizeX(), srcheight = chip.getSizeY(), targetwidth = dvsFrame.getOutputImageWidth(), targetheight = dvsFrame.getOutputImageHeight();
+        int srcwidth = chip.getSizeX(), srcheight = chip.getSizeY();
+        final int dvsOutputImageWidth = dvsFrame.getOutputImageWidth();
+        final int outputImageHeight = dvsFrame.getOutputImageHeight();
+        final int outputImageWidth = getOutputImageWidth();
         float[] frame = frameExtractor.getNewFrame();
-        for (int y = 0; y < dvsFrame.getOutputImageHeight(); y++) {
-            for (int x = 0; x < dvsFrame.getOutputImageWidth(); x++) {
-                int xsrc = (int) Math.floor((x * (float) srcwidth) / targetwidth), ysrc = (int) Math.floor((y * (float) srcheight) / targetheight);
-                int b = (int) (255 * frame[frameExtractor.getIndex(xsrc, ysrc)]); // TODO simplest possible downsampling, can do better with linear or bilinear interpolation but code more complex
-                int g = b;
-                int r = b;
-                int idx = ((dvsFrame.getOutputImageHeight() - y - 1) * getOutputImageWidth()) + x + 0; // aps image is left half if combined
+        final boolean rg = isWriteAPSDVSToRGChannels();
+        for (int y = 0; y < outputImageHeight; y++) {
+            for (int x = 0; x < dvsOutputImageWidth; x++) {
+                int xsrc = (int) Math.floor((x * (float) srcwidth) / dvsOutputImageWidth), ysrc = (int) Math.floor((y * (float) srcheight) / outputImageHeight);
+                int r = (int) (255 * frame[frameExtractor.getIndex(xsrc, ysrc)]); // TODO simplest possible downsampling, can do better with linear or bilinear interpolation but code more complex
+                int g = rg ? 0 : r;
+                int b = rg ? 0 : r;
+                int idx = ((outputImageHeight - y - 1) * outputImageWidth) + x + 0; // aps image is left half if combined
                 if (idx >= bd.length) {
                     throw new RuntimeException(String.format("index %d out of bounds for x=%d y=%d", idx, x, y));
                 }
-                bd[idx] = (b << 16) | (g << 8) | r | 0xFF000000;
+                if (!rg) {
+                    bd[idx] = (b << 16) | (g << 8) | r | 0xFF000000;
+                }else{
+                    bd[idx] &= ~0xFF; // clear red channel
+                    bd[idx] |=  r | 0xFF000000;
+                }
             }
         }
 
@@ -1010,6 +1031,21 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         putBoolean("writeApsFrames", writeApsFrames);
     }
 
+    /**
+     * @return the writeAPSDVSToRGChannels
+     */
+    public boolean isWriteAPSDVSToRGChannels() {
+        return writeAPSDVSToRGChannels;
+    }
+
+    /**
+     * @param writeAPSDVSToRGChannels the writeAPSDVSToRGChannels to set
+     */
+    public void setWriteAPSDVSToRGChannels(boolean writeAPSDVSToRGChannels) {
+        this.writeAPSDVSToRGChannels = writeAPSDVSToRGChannels;
+        putBoolean("writeAPSDVSToRGChannels", writeAPSDVSToRGChannels);
+    }
+
 //    /**
 //     * @return the writeLatestApsDvsTogether
 //     */
@@ -1024,7 +1060,6 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
 //        this.writeLatestApsDvsTogether = writeLatestApsDvsTogether;
 //        putBoolean("writeLatestApsDvsTogether", writeLatestApsDvsTogether);
 //    }
-
     /**
      * @return the writeDvsEventsToTextFile
      */
