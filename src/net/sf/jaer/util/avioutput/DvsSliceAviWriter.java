@@ -423,7 +423,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 if (!rg) {
                     bd[idx] = (b << 16) | (g << 8) | r | 0xFF000000; // if RG combined output, mask to just overwrite green channel
                 } else {
-                    bd[idx] &= (0xFF << 8); // clear G channel
+                    bd[idx] &= (~(0xFF << 8)); // clear G channel
                     bd[idx] |= (g << 8); // just G channel overwritten
                 }
             }
