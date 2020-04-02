@@ -1811,6 +1811,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     } else {
                         rawPacket = grabInput();
+                        if(rawPacket==null){
+                            log.warning("null rawPacket, should not happen");
+                            continue;
+                        }
 
                         numRawEvents = rawPacket.getNumEvents();
                         cookedPacket = extractPacket(rawPacket);
@@ -2132,7 +2136,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         private EventPacket filterPacket(EventPacket inputPacket) {
 
             if (playerControls.isSliderBeingAdjusted() || getAePlayer().getPlaybackDirection() == AbstractAEPlayer.PlaybackDirection.Backward) {
-                return emptyCookedPacket; // don't run filters if user is manipulating position or playing backwards
+                return inputPacket; // don't run filters if user is manipulating position or playing backwards
             }
             // filter events, do processing on them in rendering loop here
             if ((filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING) || (getPlayMode() != PlayMode.LIVE)) {
