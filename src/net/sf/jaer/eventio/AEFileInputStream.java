@@ -1558,6 +1558,16 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //        }
 
         // specifically, the end of header section is line "#End Of ASCII Header" followed by CRLF
+        if(s.startsWith(AEDataFile.DATA_START_TIME_SYSTEMCURRENT_TIME_MILLIS)){
+            try{
+                String timeString=s.substring(AEDataFile.DATA_START_TIME_SYSTEMCURRENT_TIME_MILLIS.length());
+                long startTimeEpochMs=Long.parseLong(timeString);
+                log.info("read  data starting time since epoch is ms "+startTimeEpochMs+" which is "+new Date(startTimeEpochMs));
+                setAbsoluteStartingTimeMs(startTimeEpochMs);
+            }catch(NumberFormatException e){
+                log.warning("Got line "+s+" but could not parse starting time since epoch in ms from it");
+            }
+        }
         if (s.toLowerCase().equals(AEDataFile.END_OF_HEADER_STRING.toLowerCase())) {
             numHeaderLines++;
             headerOffset += s.length() + NUMBER_LINE_SEPARATORS + 1; // adds comment char (1) and trailing CRLF (2) plus the string length,
@@ -1654,6 +1664,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * datetime format is specified in AEDataFile.YYYY_M_MDD_TH_HMMSS_Z. Z is
      * the time zone offset. The next thing is the device serial number. Finally
      * there is the comment added by convention by user.
+     * 
+     * Newer AEDAT-2.0 files also have a comment just before data starts that records the absolute time in ms since epcoh
      *
      * @return start of logging time in ms, i.e., in "java" time, since 1970
      */

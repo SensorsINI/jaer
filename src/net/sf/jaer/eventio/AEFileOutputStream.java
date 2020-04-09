@@ -44,7 +44,7 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 
     private int eventCounter = 0;
     private String dataFileVersionNumber;
- 
+
     /**
      * Creates a new instance of AEOutputStream and writes the header. If there
      * is any IOException a stack trace is printed.
@@ -53,8 +53,10 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
      * <code>new BufferedOutputStream(new FileOutputStream(File f)</code>.
      * @param chip (optionally) provide the chip used and write out additional
      * header info
-     * @param dataFileVersionNum provide the AEDAT file data format string,  e.g. "2.0", "3.0", or "3.1". ("2.0" is standard AEDAT file format for pre-caer records and is most stable))
-
+     * @param dataFileVersionNum provide the AEDAT file data format string, e.g.
+     * "2.0", "3.0", or "3.1". ("2.0" is standard AEDAT file format for pre-caer
+     * records and is most stable))
+     *
      * @throws java.io.IOException thrown when write to file failed
      */
     public AEFileOutputStream(final OutputStream os, final AEChip chip, String dataFileVersionNum) throws IOException {
@@ -68,7 +70,7 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
             writeHeaderLine(" Creation date: " + new Date());
             writeHeaderLine(" Creation time: System.currentTimeMillis() " + System.currentTimeMillis());
             writeHeaderLine(" User name: " + System.getProperty("user.name"));
-            String computerName=null;
+            String computerName = null;
             try {
                 computerName = InetAddress.getLocalHost().getHostName();
             } catch (Exception ex) {
@@ -82,7 +84,7 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
             }
 
             chip.writeAdditionalAEFileOutputStreamHeader(this);
-            writeHeaderLine(" DataStartTime: System.currentTimeMillis() " + System.currentTimeMillis());
+            writeHeaderLine(DATA_START_TIME_SYSTEMCURRENT_TIME_MILLIS + System.currentTimeMillis());
             writeHeaderLine(END_OF_HEADER_STRING);
 
             if (os instanceof FileOutputStream) {
@@ -148,7 +150,7 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
         // writeByte(AEDataFile.EOL[0]); // '\r'
         // writeByte(AEDataFile.EOL[1]); // '\n'
     }
-    
+
     /**
      * Writes the raw (device) address-event packet out as sequence of
      * address/timestamps, just as they came as input from the device. The
@@ -163,8 +165,8 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
         if (ae == null) {
             return;
         }
-        
-        if(!dataFileVersionNumber.equals("2.0") && !dataFileVersionNumber.equals("3.1")) {
+
+        if (!dataFileVersionNumber.equals("2.0") && !dataFileVersionNumber.equals("3.1")) {
             log.warning("The file version is not supported.");
             return;
         }
@@ -195,7 +197,7 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 
         // Check the data file version, if it's 2.0, then it just put addr and timestamp in sequence. 
         // If it's 3.1, then we should add packet header for every different event types.
-        if(dataFileVersionNumber.equals("2.0")) {
+        if (dataFileVersionNumber.equals("2.0")) {
             for (int i = startIdx; i < n; i++) {
                 byteBuf.putInt(addr[i]);
                 byteBuf.putInt(ts[i]);
@@ -209,7 +211,7 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
                 }
             }
 
-            wrotePacket = true;            
+            wrotePacket = true;
         }
 
     }

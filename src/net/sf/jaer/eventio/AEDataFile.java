@@ -32,6 +32,8 @@ public interface AEDataFile {
     public static final String OLD_INDEX_FILE_EXTENSION = ".index"; // changed from .dat Apr 2010
     /** Used to mark end of header block after 15.11.2016. Next line starts binary data. */
     public static final String END_OF_HEADER_STRING="End Of ASCII Header";
+    /** line starting with this string is written just before data block starts */
+    public static final String DATA_START_TIME_SYSTEMCURRENT_TIME_MILLIS = " DataStartTime: System.currentTimeMillis() ";
 
     /** The leading comment character for data files, "#" */
     public static final char COMMENT_CHAR = '#';
