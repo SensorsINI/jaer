@@ -349,16 +349,16 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 ClassNameTF.setText(fullclassname);
 
                 if (develStatus == DevelopmentStatus.Status.Experimental) {
-                    foreground = Color.ORANGE;
+                    foreground = Color.BLACK;
                     develStatusTF.setText(develStatus.toString());
                 } else if (develStatus == DevelopmentStatus.Status.InDevelopment) {
-                    foreground = Color.PINK;
+                    foreground = Color.BLACK;
                     develStatusTF.setText(develStatus.toString());
                 } else if (develStatus == DevelopmentStatus.Status.Stable) {
-                    foreground = Color.BLUE;
+                    foreground = Color. BLACK;
                     develStatusTF.setText(develStatus.toString());
                 } else {
-                    foreground = Color.LIGHT_GRAY;
+                    foreground = Color.BLACK;
                     develStatusTF.setText("unknown");
                 }
 
@@ -381,7 +381,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 if (develStatus == DevelopmentStatus.Status.Experimental) {
                     foreground = Color.ORANGE.darker();
                 } else if (develStatus == DevelopmentStatus.Status.InDevelopment) {
-                    foreground = Color.YELLOW;
+                    foreground = Color.DARK_GRAY;
                 } else if (develStatus == DevelopmentStatus.Status.Stable) {
                     foreground = Color.BLUE;
                 } else {
