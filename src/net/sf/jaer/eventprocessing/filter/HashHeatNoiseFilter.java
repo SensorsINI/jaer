@@ -6,6 +6,7 @@ package net.sf.jaer.eventprocessing.filter;
 import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.Random;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -13,13 +14,13 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
- * An filter that filters out noise according to Guo, S., Z. Kang, L. Wang, S. Li, and W. Xu. 2020. 
- * “HashHeat: An O(C) Complexity Hashing-Based Filter for Dynamic Vision Sensor.” 
- * In 2020 25th Asia and South Pacific Design Automation Conference (ASP-DAC), 452–57. 
- * ieeexplore.ieee.org. https://doi.org/10.1109/ASP-DAC47756.2020.9045268.
+ * An filter that filters out noise according to Guo, S., Z. Kang, L. Wang, S.
+ * Li, and W. Xu. 2020. “HashHeat: An O(C) Complexity Hashing-Based Filter for
+ * Dynamic Vision Sensor.” In 2020 25th Asia and South Pacific Design Automation
+ * Conference (ASP-DAC), 452–57. ieeexplore.ieee.org.
+ * https://doi.org/10.1109/ASP-DAC47756.2020.9045268.
  *
  * @author Shssha Guo, tobi
  */
@@ -28,7 +29,6 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
         + "In 2020 25th Asia and South Pacific Design Automation Conference (ASP-DAC), 452–57. ieeexplore.ieee.org. https://doi.org/10.1109/ASP-DAC47756.2020.9045268..")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer {
-
 
     /**
      * the time in timestamp ticks (1us at present) that a spike needs to be
@@ -48,18 +48,21 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
     private int ts = 0; // used to reset filter
     private int sx;
     private int sy;
-    private final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
-    
-    private int randomSeed=getInt("randomSeed",0); // seed for hash functions
-    private int numHashFunctions=getInt("numHashFunctions",4);
-    private int mArrayLength=getInt("mArrayLength",128);
-    private int mArrayBits=getInt("mArrayBits",8);
-    private int eventCountWindow=getInt("eventCountWindow",5000);
+    private final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
 
-    private int[][] hashCooeficients;
-    private int[][] mArrays;
-    private int mArrayResetEventCount=0;
-    
+    protected int randomSeed = getInt("randomSeed", 0); // seed for hash functions
+    protected int numHashFunctions = getInt("numHashFunctions", 4);
+    protected int mArrayLength = getInt("mArrayLength", 128);
+    protected int mArrayBits = getInt("mArrayBits", 8);
+    protected int eventCountWindow = getInt("eventCountWindow", 5000);
+    protected float thresholdCorrelationFactor = getFloat("thresholdCorrelationFactor", .1f);
+
+    private int[][] hashCooeficients; // indexed by [hashfunctoin][coefficient, coefficient for x,y,t,b]
+    private int[][] mArrays; // indexed by hashfunction output
+    private int mArrayResetEventCount = 0; // count of events after which to reset the array
+    private final int NUM_HASH_COEFFICIENTS = 4; // x,y,t,b
+    private final int MAX_HASH_FUNCTION_COEFFICIENT_VALUE=16; // TODO what is bound on coefficient? Is it signed?
+
     public HashHeatNoiseFilter(AEChip chip) {
         super(chip);
         chip.addObserver(this);
@@ -71,9 +74,9 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
         setPropertyTooltip("mArrayLength", "number of bins of hash function output histogram");
         setPropertyTooltip("mArrayBits", "number of bits in each mArrayHistogramBin");
         setPropertyTooltip("eventCountWindow", "constant-count window length in events");
+        setPropertyTooltip("thresholdCorrelationFactor", "an event is correlated (not noise) if the hash functeion output histogram bin count is above this fraction of standard");
     }
 
-    
     /**
      * filters in to out. if filtering is enabled, the number of out may be less
      * than the number putString in
@@ -84,9 +87,6 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
      */
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        if (lastTimesMap == null) {
-            allocateMemory(chip);
-        }
         totalEventCount = 0;
         filteredOutEventCount = 0;
 
@@ -151,12 +151,14 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
 
     @Override
     public final void initFilter() {
-        allocateMemory(chip);
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
+        allocateMemory(chip);
     }
 
     private void allocateMemory(AEChip chip) {
+        generateHashFunctions();
+        mArrays = new int[numHashFunctions][mArrayLength];
         if ((chip != null) && (chip.getNumCells() > 0)) {
             lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()];
             for (int[] arrayRow : lastTimesMap) {
@@ -165,10 +167,24 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
         }
     }
 
+    private void generateHashFunctions() {
+        hashCooeficients = new int[numHashFunctions][NUM_HASH_COEFFICIENTS];
+        Random r = new Random(randomSeed);
+        for(int i=0;i<numHashFunctions;i++){
+            for(int j=0;j<NUM_HASH_COEFFICIENTS;j++){
+                hashCooeficients[i][j]=r.nextInt(MAX_HASH_FUNCTION_COEFFICIENT_VALUE);
+            }
+        }
+        StringBuilder s=new StringBuilder("Hash functions are\n");
+        for(int i=0;i<numHashFunctions;i++){
+                s.append(String.format("%dx + %dy +%dt+%d\n",hashCooeficients[i][0], hashCooeficients[i][1], hashCooeficients[i][2], hashCooeficients[i][3])) ;
+        }
+        log.info(s.toString());
+    }
+
     public Object getFilterState() {
         return lastTimesMap;
     }
-
 
     // <editor-fold defaultstate="collapsed" desc="getter-setter for --SubsampleBy--">
     public int getSubsampleBy() {
@@ -208,6 +224,96 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
     public void setLetFirstEventThrough(boolean letFirstEventThrough) {
         this.letFirstEventThrough = letFirstEventThrough;
         putBoolean("letFirstEventThrough", letFirstEventThrough);
+    }
+
+    /**
+     * @return the randomSeed
+     */
+    public int getRandomSeed() {
+        return randomSeed;
+    }
+
+    /**
+     * @param randomSeed the randomSeed to set
+     */
+    public void setRandomSeed(int randomSeed) {
+        this.randomSeed = randomSeed;
+        putInt("randomSeed", randomSeed);
+    }
+
+    /**
+     * @return the numHashFunctions
+     */
+    public int getNumHashFunctions() {
+        return numHashFunctions;
+    }
+
+    /**
+     * @param numHashFunctions the numHashFunctions to set
+     */
+    public void setNumHashFunctions(int numHashFunctions) {
+        this.numHashFunctions = numHashFunctions;
+        putInt("numHashFunctions", numHashFunctions);
+    }
+
+    /**
+     * @return the mArrayLength
+     */
+    public int getmArrayLength() {
+        return mArrayLength;
+    }
+
+    /**
+     * @param mArrayLength the mArrayLength to set
+     */
+    public void setmArrayLength(int mArrayLength) {
+        this.mArrayLength = mArrayLength;
+        putInt("mArrayLength", mArrayLength);
+    }
+
+    /**
+     * @return the mArrayBits
+     */
+    public int getmArrayBits() {
+        return mArrayBits;
+    }
+
+    /**
+     * @param mArrayBits the mArrayBits to set
+     */
+    public void setmArrayBits(int mArrayBits) {
+        this.mArrayBits = mArrayBits;
+        putInt("mArrayBits", mArrayBits);
+    }
+
+    /**
+     * @return the eventCountWindow
+     */
+    public int getEventCountWindow() {
+        return eventCountWindow;
+    }
+
+    /**
+     * @param eventCountWindow the eventCountWindow to set
+     */
+    public void setEventCountWindow(int eventCountWindow) {
+        this.eventCountWindow = eventCountWindow;
+        putInt("eventCountWindow", eventCountWindow);
+    }
+
+    /**
+     * @return the thresholdCorrelationFactor
+     */
+    public float getThresholdCorrelationFactor() {
+        return thresholdCorrelationFactor;
+    }
+
+    /**
+     * @param thresholdCorrelationFactor the thresholdCorrelationFactor to set
+     */
+    public void setThresholdCorrelationFactor(float thresholdCorrelationFactor) {
+        this.thresholdCorrelationFactor = thresholdCorrelationFactor;
+        putFloat("thresholdCorrelationFactor", thresholdCorrelationFactor);
     }
 
 }
