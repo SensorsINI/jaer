@@ -61,7 +61,7 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
     private int[][] mArrays; // indexed by hashfunction output
     private int mArrayResetEventCount = 0; // count of events after which to reset the array
     private final int NUM_HASH_COEFFICIENTS = 4; // x,y,t,b
-    private final int MAX_HASH_FUNCTION_COEFFICIENT_VALUE=16; // TODO what is bound on coefficient? Is it signed?
+    private final int MAX_HASH_FUNCTION_COEFFICIENT_VALUE = 16; // TODO what is bound on coefficient? Is it signed?
 
     public HashHeatNoiseFilter(AEChip chip) {
         super(chip);
@@ -75,6 +75,27 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
         setPropertyTooltip("mArrayBits", "number of bits in each mArrayHistogramBin");
         setPropertyTooltip("eventCountWindow", "constant-count window length in events");
         setPropertyTooltip("thresholdCorrelationFactor", "an event is correlated (not noise) if the hash functeion output histogram bin count is above this fraction of standard");
+    }
+
+    /** filter a single event
+     * 
+     * @param x
+     * @param y
+     * @param ts
+     * @return true to filter out this event 
+     */
+    private boolean filterEvent(short x, short y, int ts) {
+        final int maxCount=(1<<mArrayBits);
+        // compute hashes and accumulate to m arrays
+        for(int i=0;i<numHashFunctions;i++){
+            int[] h=hashCooeficients[i];
+            int hash=(x*h[0]+y*h[1]+ts*h[2]+h[3]) % mArrayLength;
+            int count=mArrays[i][hash];
+            count++;
+            count=count>maxCount?maxCount:count; // clip count to max value by its number of bits
+        }
+        // determine of the event is filtered out or not
+        return false; // TODO implementation missing
     }
 
     /**
@@ -108,30 +129,32 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
                 continue;
             }
 
-            ts = e.timestamp;
+            ts = e.timestamp; // TODO how do we get our timestamp for hashing computation?  is it by relative time?
             int lastT = lastTimesMap[x][y];
             int deltaT = (ts - lastT);
 
-            if (false) {
+            boolean filterOut = filterEvent(x, y, ts);
+
+            if (filterOut) {
                 e.setFilteredOut(true);
                 filteredOutEventCount++;
             }
 
-            // For each event write the event's timestamp into the
-            // lastTimesMap array at neighboring locations lastTimesMap[x][y]=ts;
-            // Don't write to ourselves, we need support from neighbor for
-            // next event.
-            // Bounds checking here to avoid throwing expensive exceptions.
-            if (((x > 0) && (x < sx)) && ((y > 0) && (y < sy))) {
-                lastTimesMap[x - 1][y] = ts;
-                lastTimesMap[x + 1][y] = ts;
-                lastTimesMap[x][y - 1] = ts;
-                lastTimesMap[x][y + 1] = ts;
-                lastTimesMap[x - 1][y - 1] = ts;
-                lastTimesMap[x + 1][y + 1] = ts;
-                lastTimesMap[x - 1][y + 1] = ts;
-                lastTimesMap[x + 1][y - 1] = ts;
-            }
+//            // For each event write the event's timestamp into the
+//            // lastTimesMap array at neighboring locations lastTimesMap[x][y]=ts;
+//            // Don't write to ourselves, we need support from neighbor for
+//            // next event.
+//            // Bounds checking here to avoid throwing expensive exceptions.
+//            if (((x > 0) && (x < sx)) && ((y > 0) && (y < sy))) {
+//                lastTimesMap[x - 1][y] = ts;
+//                lastTimesMap[x + 1][y] = ts;
+//                lastTimesMap[x][y - 1] = ts;
+//                lastTimesMap[x][y + 1] = ts;
+//                lastTimesMap[x - 1][y - 1] = ts;
+//                lastTimesMap[x + 1][y + 1] = ts;
+//                lastTimesMap[x - 1][y + 1] = ts;
+//                lastTimesMap[x + 1][y - 1] = ts;
+//            }
         }
 
         return in;
@@ -139,7 +162,7 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
 
     @Override
     public synchronized final void resetFilter() {
- 
+
     }
 
     @Override
@@ -170,14 +193,14 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
     private void generateHashFunctions() {
         hashCooeficients = new int[numHashFunctions][NUM_HASH_COEFFICIENTS];
         Random r = new Random(randomSeed);
-        for(int i=0;i<numHashFunctions;i++){
-            for(int j=0;j<NUM_HASH_COEFFICIENTS;j++){
-                hashCooeficients[i][j]=r.nextInt(MAX_HASH_FUNCTION_COEFFICIENT_VALUE);
+        for (int i = 0; i < numHashFunctions; i++) {
+            for (int j = 0; j < NUM_HASH_COEFFICIENTS; j++) {
+                hashCooeficients[i][j] = r.nextInt(MAX_HASH_FUNCTION_COEFFICIENT_VALUE);
             }
         }
-        StringBuilder s=new StringBuilder("Hash functions are\n");
-        for(int i=0;i<numHashFunctions;i++){
-                s.append(String.format("%dx + %dy +%dt+%d\n",hashCooeficients[i][0], hashCooeficients[i][1], hashCooeficients[i][2], hashCooeficients[i][3])) ;
+        StringBuilder s = new StringBuilder("Hash functions are\n");
+        for (int i = 0; i < numHashFunctions; i++) {
+            s.append(String.format("%dx + %dy +%dt+%d\n", hashCooeficients[i][0], hashCooeficients[i][1], hashCooeficients[i][2], hashCooeficients[i][3]));
         }
         log.info(s.toString());
     }
