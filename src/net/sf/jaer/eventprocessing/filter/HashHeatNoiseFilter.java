@@ -56,6 +56,10 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
     private int mArrayBits=getInt("mArrayBits",8);
     private int eventCountWindow=getInt("eventCountWindow",5000);
 
+    private int[][] hashCooeficients;
+    private int[][] mArrays;
+    private int mArrayResetEventCount=0;
+    
     public HashHeatNoiseFilter(AEChip chip) {
         super(chip);
         chip.addObserver(this);
@@ -81,7 +85,7 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
         if (lastTimesMap == null) {
-            allocateMaps(chip);
+            allocateMemory(chip);
         }
         totalEventCount = 0;
         filteredOutEventCount = 0;
@@ -147,12 +151,12 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
 
     @Override
     public final void initFilter() {
-        allocateMaps(chip);
+        allocateMemory(chip);
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
     }
 
-    private void allocateMaps(AEChip chip) {
+    private void allocateMemory(AEChip chip) {
         if ((chip != null) && (chip.getNumCells() > 0)) {
             lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()];
             for (int[] arrayRow : lastTimesMap) {
