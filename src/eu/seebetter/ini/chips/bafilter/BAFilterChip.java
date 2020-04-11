@@ -11,6 +11,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 /**
  * BA Filter chip class, to display filtered output
+ * @author Hongjie Liu and Tobi Delbruck ca . 2015
  */
 @Description("Background Activity filter chip (AERCorrFilter)")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
