@@ -37,7 +37,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  *
  * @author Tobi Delbruck
  */
-@Description("filters noise based on Khodamoradi and Kastner 2018 IEEE emerging topics paper")
+@Description("filters noise based on IEEE emerging topics paper Khodamoradi, A., and R. Kastner. 2018. “O(N)-Space Spatiotemporal Filter for Reducing Noise in Neuromorphic Vision Sensors.” IEEE Transactions on Emerging Topics in Computing PP (99): 1–1. https://doi.org/10.1109/TETC.2017.2788865.")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implements FrameAnnotater {
 

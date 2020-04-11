@@ -28,9 +28,10 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * subsampling bit shift.
  *
  * @author tobi, with discussion with Moritz Milde, Dave Karpul, Elisabetta
- * chicca, Chiara Bartolozzi Telluride 2017
+ * Chicca, Chiara Bartolozzi Telluride 2017
  */
-@Description("Filters out uncorrelated noise events")
+@Description("Filters out uncorrelated noise events based on work at Telluride 2017 with discussion with Moritz Milde, Dave Karpul, Elisabetta\n" +
+" * Chicca, and Chiara Bartolozzi ")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter implements Observer {
 
