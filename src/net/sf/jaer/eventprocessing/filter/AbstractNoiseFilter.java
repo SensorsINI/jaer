@@ -38,7 +38,8 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 
     public AbstractNoiseFilter(AEChip chip) {
         super(chip);
-    }
+        setPropertyTooltip("showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
+   }
 
     /**
      * @return the showFilteringStatistics
