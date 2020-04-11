@@ -86,6 +86,7 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
      */
     private boolean filterEvent(short x, short y, int ts) {
         final int maxCount=(1<<mArrayBits);
+        // TODO compute threshold here?
         // compute hashes and accumulate to m arrays
         for(int i=0;i<numHashFunctions;i++){
             int[] h=hashCooeficients[i];
@@ -93,6 +94,7 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
             int count=mArrays[i][hash];
             count++;
             count=count>maxCount?maxCount:count; // clip count to max value by its number of bits
+            mArrays[i][hash]=count; // TODO if above threshold, maybe note this?
         }
         // determine of the event is filtered out or not
         return false; // TODO implementation missing
