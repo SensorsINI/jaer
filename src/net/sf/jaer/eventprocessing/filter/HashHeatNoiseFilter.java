@@ -139,7 +139,7 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
 
     @Override
     public synchronized final void resetFilter() {
-        initFilter();
+ 
     }
 
     @Override
@@ -239,6 +239,7 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
     public void setRandomSeed(int randomSeed) {
         this.randomSeed = randomSeed;
         putInt("randomSeed", randomSeed);
+        generateHashFunctions();
     }
 
     /**
@@ -251,9 +252,10 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
     /**
      * @param numHashFunctions the numHashFunctions to set
      */
-    public void setNumHashFunctions(int numHashFunctions) {
+    synchronized public void setNumHashFunctions(int numHashFunctions) {
         this.numHashFunctions = numHashFunctions;
         putInt("numHashFunctions", numHashFunctions);
+        allocateMemory(chip);
     }
 
     /**
@@ -266,9 +268,10 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
     /**
      * @param mArrayLength the mArrayLength to set
      */
-    public void setmArrayLength(int mArrayLength) {
+    synchronized public void setmArrayLength(int mArrayLength) {
         this.mArrayLength = mArrayLength;
         putInt("mArrayLength", mArrayLength);
+        allocateMemory(chip);
     }
 
     /**
