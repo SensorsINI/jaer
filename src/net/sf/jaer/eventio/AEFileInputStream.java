@@ -1635,7 +1635,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     /**
-     * When the file is opened, the filename is parsed to try to extract the
+     * When the file is opened, the filename and the header section are parsed to try to extract the
      * date and time the file was created from the filename. This method returns
      * time since the epoch, in universal time.
      *
