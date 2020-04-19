@@ -24,6 +24,20 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
  * Abstract class for text IO filters for DAVIS cameras.
+ * 
+ * The RPG DVS text file datatset looks like this. Each line has (time(float s), x, y, polarity (0=off,1=on)
+ * <pre>
+ * 0.000000000 33 39 1
+0.000011001 158 145 1
+0.000050000 88 143 0
+0.000055000 174 154 0
+0.000080001 112 139 1
+0.000123000 136 171 0
+0.000130001 173 90 0
+0.000139001 106 140 0
+0.000148001 192 79 1
+* </pre>
+* 
  *
  * @author Tobi
  */
