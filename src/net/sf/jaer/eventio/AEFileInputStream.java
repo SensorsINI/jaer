@@ -1062,8 +1062,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     @Override
     public void close() throws IOException {
         super.close();
-        fileChannel.close();
+        if(fileChannel!=null) fileChannel.close();
         fileChannel = null;
+        if(fileInputStream!=null) fileInputStream.close(); // should have been done by super(), but file seems to be kept open
         System.gc();
         System.runFinalization(); // try to free memory mapped file buffers so file can be deleted....
     }
