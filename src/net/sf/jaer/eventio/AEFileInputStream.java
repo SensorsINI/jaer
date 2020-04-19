@@ -1677,6 +1677,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             String fn = f.getName();
             String dateStr = fn.substring(fn.indexOf('-') + 1); // guess that datestamp is right after first - which
             // follows Chip classname, but which include -SN and other text, which is serial number of camera and other trailing text annotation
+            if(dateStr.length()<25){
+                log.warning(f.getName()+" name is too short to hold date/time string, not trying to parse time from it");
+                return 0;
+            }
             dateStr = dateStr.substring(0, 24);
             try {
                 DateTimeFormatter dtf = DateTimeFormatter.ofPattern(AEDataFile.YYYY_M_MDD_TH_HMMSS_Z).withResolverStyle(ResolverStyle.SMART);
