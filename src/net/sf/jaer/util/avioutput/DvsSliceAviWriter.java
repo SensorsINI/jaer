@@ -587,6 +587,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             + "     [-writetimecodefile=true] \n"
             + "     [-writeapsframes=false] \n"
             + "     [-writedvsframes=true] \n"
+            + "     [-writeapstorgchannel=true] \n"
             + "     [-writedvseventstotextfile=false] \n"
             + "     [-writetargetlocations=false] \n"
             + "     [-timeslicemethod=EventCount|TimeIntervalUs] [-numevents=2000] [-framedurationus=10000]\n"
@@ -623,6 +624,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         opt.getSet().addOption("writedvssliceonapsframe", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("writedvsframes", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("writeapsframes", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("writeapstorgchannel", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("writedvseventstotextfile", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("writetimecodefile", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("numevents", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
@@ -811,6 +813,11 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if (opt.getSet().isSet("rectify")) {
             boolean b = Boolean.parseBoolean(opt.getSet().getOption("rectify").getResultValue(0));
             writer.getDvsFrame().setRectifyPolarities(b);
+        }
+
+        if (opt.getSet().isSet("writeapstorgchannel")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writeapstorgchannel").getResultValue(0));
+            writer.setWriteAPSDVSToRGChannels(b);
         }
 
         if (opt.getSet().isSet("normalize")) {
