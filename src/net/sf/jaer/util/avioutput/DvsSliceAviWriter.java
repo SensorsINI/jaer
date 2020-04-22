@@ -865,7 +865,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         }
 
         EventExtractor2D extractor = chip.getEventExtractor();
-        System.out.println(String.format("Frames written: "));
+        System.out.print(String.format("Frames written: \n"));
 
         FilterChain filterChain = chip.getFilterChain();
         if (filterChain != null && enableFilters) {
@@ -899,7 +899,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 int numFramesWritten = writer.getFramesWritten();
                 if (numFramesWritten >= (lastNumFramesWritten + 500)) {
                     lastNumFramesWritten = numFramesWritten;
-                    System.out.println(String.format("%d frames", numFramesWritten));
+                    System.out.print(String.format("%d frames            \r", numFramesWritten));
                 }
                 if ((writer.getMaxFrames() > 0) && (writer.getFramesWritten() >= writer.getMaxFrames())) {
                     break;
@@ -931,7 +931,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         writer.setShowOutput(false);
         writer.setCloseOnRewind(oldCloseOnRewind);
         writer.doCloseFile();
-        System.out.println(String.format("Settings: aechip=%s\nwidth=%d height=%d quality=%f format=%s framerate=%d grayscale=%d\n"
+        System.out.println(String.format("\nSettings: aechip=%s\nwidth=%d height=%d quality=%f format=%s framerate=%d grayscale=%d\n"
                 + "writeapsframes=%s writedvsframes=%s\n"
                 + "writedvssliceonapsframe=%s writetimecodefile=%s\n"
                 + "timeslicemethod=%s numevents=%d framedurationus=%d\n"
