@@ -250,7 +250,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     public String toString() {
         EngineeringFormat fmt = new EngineeringFormat();
         String s = "AEInputStream with size=" + fmt.format(size()) + " events, firstTimestamp=" + getFirstTimestamp() + " lastTimestamp="
-                + getLastTimestamp() + " duration=" + fmt.format(getDurationUs() / 1e6f) + " s" + " event rate="
+                + getLastTimestamp() + " duration=" + fmt.format(getDurationUs() / 1e6f) + "s" + " event rate="
                 + fmt.format(size() / (getDurationUs() / 1e6f)) + " eps";
         return s;
     }
