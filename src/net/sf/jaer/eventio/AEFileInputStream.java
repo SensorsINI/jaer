@@ -18,6 +18,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -31,7 +33,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
-import static java.time.temporal.TemporalQueries.zoneId;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -1058,13 +1059,59 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     public boolean isMarkOutSet() {
         return markOut != size();
     }
+    
+    // https://stackoverflow.com/questions/2972986/how-to-unmap-a-file-from-memory-mapped-using-filechannel-in-java
+    private static void closeDirectBuffer(ByteBuffer cb) {
+        if (cb == null || !cb.isDirect()) {
+            return;
+        }
+        // we could use this type cast and call functions without reflection code,
+        // but static import from sun.* package is risky for non-SUN virtual machine.
+        //try { ((sun.nio.ch.DirectBuffer)cb).cleaner().clean(); } catch (Exception ex) { }
+
+        // JavaSpecVer: 1.6, 1.7, 1.8, 9, 10
+        boolean isOldJDK = System.getProperty("java.specification.version", "99").startsWith("1.");
+        try {
+            if (isOldJDK) {
+                java.lang.reflect.Method cleaner = cb.getClass().getMethod("cleaner");
+                cleaner.setAccessible(true);
+                Method clean = Class.forName("sun.misc.Cleaner").getMethod("clean");
+                clean.setAccessible(true);
+                clean.invoke(cleaner.invoke(cb));
+            } else {
+                Class unsafeClass;
+                try {
+                    unsafeClass = Class.forName("sun.misc.Unsafe");
+                } catch (Exception ex) {
+                    // jdk.internal.misc.Unsafe doesn't yet have an invokeCleaner() method,
+                    // but that method should be added if sun.misc.Unsafe is removed.
+                    unsafeClass = Class.forName("jdk.internal.misc.Unsafe");
+                }
+                Method clean = unsafeClass.getMethod("invokeCleaner", ByteBuffer.class);
+                clean.setAccessible(true);
+                Field theUnsafeField = unsafeClass.getDeclaredField("theUnsafe");
+                theUnsafeField.setAccessible(true);
+                Object theUnsafe = theUnsafeField.get(null);
+                clean.invoke(theUnsafe, cb);
+            }
+        } catch (Exception ex) {
+        }
+        cb = null;
+    }
 
     @Override
     public void close() throws IOException {
         super.close();
-        if(fileChannel!=null) fileChannel.close();
-        fileChannel = null;
-        if(fileInputStream!=null) fileInputStream.close(); // should have been done by super(), but file seems to be kept open
+        if (fileChannel != null) {
+            if(getByteBuffer()!=null){
+                closeDirectBuffer(getByteBuffer());
+            }
+            fileChannel.close();
+            fileChannel = null;
+        }
+        if (fileInputStream != null) {
+            fileInputStream.close(); // should have been done by super(), but file seems to be kept open
+        }
         System.gc();
         System.runFinalization(); // try to free memory mapped file buffers so file can be deleted....
     }
