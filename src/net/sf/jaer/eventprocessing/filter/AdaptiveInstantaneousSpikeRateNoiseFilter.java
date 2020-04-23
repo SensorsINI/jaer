@@ -39,8 +39,16 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
      * x and y are shifted right by one bit
      */
     private int subsampleBy = getInt("subsampleBy", 0);
-
+    
+    
     int[][] lastTimesMap;
+    private int firstEventTime;
+    private int lastEventTime;
+    private float timeThr = 0;
+    protected int eventCountWindow = getInt("eventCountWindow", 5000);
+    protected float scaleFactor = getFloat("scaleFactor", 10);
+//    private int dtUs = getInt("dtUs", 10000);
+    
     private int ts = 0; // used to reset filter
     private int sx;
     private int sy;
@@ -52,6 +60,8 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
         initFilter();
         setPropertyTooltip("subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
         setPropertyTooltip("letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
+        setPropertyTooltip("eventCountWindow", "constant-count window length in events");
+        setPropertyTooltip("scaleFactor", "scaling factor for adjusting the filter, if too noise, make this bigger, if too little events, make this smaller");
     }
 
     /**
@@ -66,6 +76,7 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
     synchronized public EventPacket filterPacket(EventPacket in) {
         if (lastTimesMap == null) {
             allocateMaps(chip);
+            timeThr = (sx+1) * (sy+1) / ((1 << subsampleBy << subsampleBy) * eventCountWindow);
         }
         totalEventCount = 0;
         filteredOutEventCount = 0;
@@ -80,7 +91,16 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
             if (e.isSpecial()) {
                 continue;
             }
-
+            
+            ts = e.timestamp;
+            if (totalEventCount == 0){
+                firstEventTime = ts;
+            }else if (totalEventCount == (eventCountWindow - 1)){
+                lastEventTime = ts;
+                int TD = lastEventTime - firstEventTime;
+                System.out.printf("the nmuber is: %d %d %d %d\n", totalEventCount, TD, sx, sy);
+                timeThr = TD * (sx+1) * (sy+1) / (float)((1 << subsampleBy << subsampleBy) * eventCountWindow * scaleFactor);           
+            }
             totalEventCount++;
             short x = (short) (e.x >>> subsampleBy), y = (short) (e.y >>> subsampleBy);
             if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
@@ -88,30 +108,19 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
                 continue;
             }
 
-            ts = e.timestamp;
+            
             int lastT = lastTimesMap[x][y];
             int deltaT = (ts - lastT);
+            
 
-            if (false) {
+            if (!((deltaT <= timeThr)) && !(letFirstEventThrough && lastT == DEFAULT_TIMESTAMP)) {
+//            if (!((deltaT <= timeThr) && (lastT != DEFAULT_TIMESTAMP)) && !(letFirstEventThrough && lastT == DEFAULT_TIMESTAMP)) {
+//                System.out.printf("the number is: %d %.2f",deltaT, timeThr);
                 e.setFilteredOut(true);
                 filteredOutEventCount++;
             }
-
-            // For each event write the event's timestamp into the
-            // lastTimesMap array at neighboring locations lastTimesMap[x][y]=ts;
-            // Don't write to ourselves, we need support from neighbor for
-            // next event.
-            // Bounds checking here to avoid throwing expensive exceptions.
-            if (((x > 0) && (x < sx)) && ((y > 0) && (y < sy))) {
-                lastTimesMap[x - 1][y] = ts;
-                lastTimesMap[x + 1][y] = ts;
-                lastTimesMap[x][y - 1] = ts;
-                lastTimesMap[x][y + 1] = ts;
-                lastTimesMap[x - 1][y - 1] = ts;
-                lastTimesMap[x + 1][y + 1] = ts;
-                lastTimesMap[x - 1][y + 1] = ts;
-                lastTimesMap[x + 1][y - 1] = ts;
-            }
+            
+            lastTimesMap[x][y] = ts; // x,y is already subsampled by subsample
         }
 
         return in;
@@ -119,7 +128,7 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
 
     @Override
     public synchronized final void resetFilter() {
-        initFilter();
+//        initFilter();
     }
 
     @Override
@@ -134,6 +143,7 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
         allocateMaps(chip);
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
+//        System.out.printf("the number is: %d %d\n",sx, sy);
     }
 
     private void allocateMaps(AEChip chip) {
@@ -188,6 +198,37 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
     public void setLetFirstEventThrough(boolean letFirstEventThrough) {
         this.letFirstEventThrough = letFirstEventThrough;
         putBoolean("letFirstEventThrough", letFirstEventThrough);
+    }
+    
+    
+    /**
+     * @return the eventCountWindow
+     */
+    public int getEventCountWindow() {
+        return eventCountWindow;
+    }
+
+    /**
+     * @param eventCountWindow the eventCountWindow to set
+     */
+    public void setEventCountWindow(int eventCountWindow) {
+        this.eventCountWindow = eventCountWindow;
+        putInt("eventCountWindow", eventCountWindow);
+    }
+    
+    /**
+     * @return the randomSeed
+     */
+    public float getScaleFactor() {
+        return scaleFactor;
+    }
+
+    /**
+     * @param scaleFactor the scaleFactor to set
+     */
+    public void setScaleFactor(float scaleFactor) {
+        this.scaleFactor = scaleFactor;
+        putDouble("scaleFactor", scaleFactor);
     }
 
 }
