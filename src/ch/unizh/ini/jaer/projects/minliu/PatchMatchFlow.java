@@ -47,7 +47,9 @@ import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.TimeLimiter;
+import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -209,7 +211,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private ImageDisplay sliceBitmapImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
     private Legend sliceBitmapImageDisplayLegend;
     private static final String LEGEND_SLICES = "G: Slice t-d\nR: Slice t-2d";
-
+    private HWCornerPointRenderer keypointFilter = null;
     /**
      * A PropertyChangeEvent with this value is fired when the slices has been
      * rotated. The oldValue is t-2d slice. The newValue is the t-d slice.
@@ -220,6 +222,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     public PatchMatchFlow(AEChip chip) {
         super(chip);
+
+        getEnclosedFilterChain().clear();
+//        getEnclosedFilterChain().add(new SpatioTemporalCorrelationFilter(chip));
+        keypointFilter = new HWCornerPointRenderer(chip);
+        getEnclosedFilterChain().add(keypointFilter);
 
         setSliceDurationUs(getSliceDurationUs());   // 40ms is good for the start of the slice duration adatative since 4ms is too fast and 500ms is too slow.
         setDefaultScalesToCompute();
@@ -304,9 +311,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        if (cameraCalibration != null && cameraCalibration.isFilterEnabled()) {
-            in = cameraCalibration.filterPacket(in);
-        }
+
+        in = getEnclosedFilterChain().filterPacket(in);
+
         setupFilter(in);
         checkArrays();
         if (processingTimeLimitMs > 0) {
@@ -338,6 +345,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             if ((o instanceof ApsDvsEvent) && ((ApsDvsEvent) o).isApsData()) {
                 continue;
             }
+
             PolarityEvent ein = (PolarityEvent) o;
 
             if (!extractEventInfo(o)) {
@@ -418,7 +426,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    result.dx = result.dx / dtj;
 //                    result.dy = result.dy / dtj;
 //                    break;
-            
+
             }
             if (result == null || result.sadValue == Float.MAX_VALUE) {
                 continue; // maybe some property change caused this
@@ -1078,6 +1086,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                log.info("area count stats "+sb.toString());
             }
         }
+        // detect if keypoint here
+        boolean isCorner = ((e.getAddress() & 1) == 1);
+        if (!isCorner) {
+            return false;
+        }
+
         if (timeLimiter.isTimedOut()) {
             nSkipped++;
             return false;
@@ -2441,8 +2455,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         float scale = 1f / getSliceMaxValue();
         sliceBitmapImageDisplay.clearImage();
         int d1 = sliceIndex(1), d2 = sliceIndex(2);
-        if(showSlicesScale>=numScales){
-            showSlicesScale=numScales-1;
+        if (showSlicesScale >= numScales) {
+            showSlicesScale = numScales - 1;
         }
         for (int x = 0; x < sizex >> showSlicesScale; x++) {
             for (int y = 0; y < sizey >> showSlicesScale; y++) {
