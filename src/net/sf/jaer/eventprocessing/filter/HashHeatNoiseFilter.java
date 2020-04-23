@@ -195,8 +195,8 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
                     sum = sum+num;
                 }
 //                System.out.printf(" mArray at first event %d %d\n", totalEventCount, sum);
-                mArrays = new int[mArrayLength];
-                Arrays.fill(mArrays, 0);
+                mArrays = new int[mArrayLength]; // this should be in the "else if" block
+                Arrays.fill(mArrays, 0); // this should be in the "else if" block
                 mArrayThr = mArrayThrInit;
                 firstts = e.timestamp;
 //                sum = 0;
@@ -205,7 +205,9 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
 //                    sum = sum+num;
 //                }
 //                System.out.printf(" mArray at first event reset %d %d %f\n", totalEventCount, sum, mArrayThrInit);
-            } else if (totalEventCount == (eventCountWindow - 1)){
+            } else if (totalEventCount == (eventCountWindow - 1)){ // should be the last event of a frame
+                mArrays = new int[mArrayLength]; // the program can't be executed here
+                Arrays.fill(mArrays, 0); // the program can't be executed here
                 System.out.printf(" filteredOutEventCount %d\n", filteredOutEventCount);
             }
 
