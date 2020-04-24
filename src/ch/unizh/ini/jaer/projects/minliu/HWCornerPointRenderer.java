@@ -33,6 +33,8 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.filter.HashHeatNoiseFilter;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
 
@@ -63,47 +65,39 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
 
     private boolean enFilterOut = getBoolean("enFilterOut", false);
     private boolean enCompareSWandHW = getBoolean("enFilterOut", false);
+    private HashHeatNoiseFilter HashHeatNoiseFilterInst = null;
 
-    public boolean isEnCompareSWandHW() {
-        return enCompareSWandHW;
-    }
+    private int[][] cornerSlice = null;
+    private boolean enShowOriginalCorners = getBoolean("enShowOriginalCorners", false);
+    private boolean enDeoiseCorners = getBoolean("enDeoiseCorners", false);
+    private int threshold = getInt("threshold", 10);
 
-    public void setEnCompareSWandHW(boolean enCompareSWandHW) {
-        this.enCompareSWandHW = enCompareSWandHW;
-        putBoolean("enCompareSWandHW", enCompareSWandHW);
-    }
-
-    public boolean isEnFilterOut() {
-        return enFilterOut;
-    }
-
-    public void setEnFilterOut(boolean enFilterOut) {
-        this.enFilterOut = enFilterOut;
-        putBoolean("enFilterOut", enFilterOut);
-    }
+    private int subsample = getInt("subsample", 3);
 
     public enum CalcMethod {
         HW_EFAST, SW_EFAST
     };
     private CalcMethod calcMethod = CalcMethod.valueOf(getString("sliceMethod", CalcMethod.SW_EFAST.toString()));
 
-    public CalcMethod getCalcMethod() {
-        return calcMethod;
-    }
-
-    public void setCalcMethod(CalcMethod calcMethod) {
-        CalcMethod old = this.calcMethod;
-        this.calcMethod = calcMethod;
-        putString("calcMethod", calcMethod.toString());
-        getSupport().firePropertyChange("calcMethod", old, this.calcMethod);
-    }
-
     public HWCornerPointRenderer(AEChip chip) {
         super(chip);
         sae_ = new double[2][500][500];
-        setPropertyTooltip("calcMethod", "method for getting keypoints; software or by rendering hardware events");
-        setPropertyTooltip("enFilterOut", "enable to filter out DVS events and only pass keypoint events");
-        setPropertyTooltip("enCompareSWandHW", "enable to compare software and hardware keypoints");
+        cornerSlice = new int[256][256];
+
+//        HashHeatNoiseFilterInst = new HashHeatNoiseFilter(chip);        
+//        FilterChain chain = new FilterChain(chip);
+//        chain.add(HashHeatNoiseFilterInst);
+//        setEnclosedFilterChain(chain);
+        String strBasic = "0a: General configuration";
+        setPropertyTooltip(strBasic, "calcMethod", "method for getting keypoints; software or by rendering hardware events");
+        setPropertyTooltip(strBasic, "enFilterOut", "enable to filter out DVS events and only pass keypoint events");
+        setPropertyTooltip(strBasic, "enCompareSWandHW", "enable to compare software and hardware keypoints");
+        
+        String strDenoise = "0b: Block matching display";
+        setPropertyTooltip(strDenoise, "enDeoiseCorners", "enable to denoise the corners");
+        setPropertyTooltip(strDenoise, "enShowOriginalCorners", "enable to show the original corners before denoise");   
+        setPropertyTooltip(strDenoise, "subsample", "subsample value to determine the area for non-maximum supression");
+        setPropertyTooltip(strDenoise, "threshold", "threshold for non-maximum supression");   
     }
 
     @Override
@@ -112,6 +106,15 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
         int wrongCornerNum = 0;
         int falseNegativeNum = 0;
         int falsePositiveNum = 0;
+        
+        for(int xIdx = 0; xIdx < 100; xIdx++)
+        {
+            for(int yIdx = 0; yIdx < 100; yIdx++)
+            {
+                cornerSlice[xIdx][yIdx] = 0;
+            }
+        }
+        
         for (BasicEvent e : in) {
             PolarityEvent ein = (PolarityEvent) e;
             int swCornerRet = 0;
@@ -157,7 +160,52 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
                 }
             }
         }
+        
+        // Remove outlier corners
+        if(enDeoiseCorners)
+        {
+            for(int cornerCnt = 0; cornerCnt < cornerEvents.size(); cornerCnt++)
+            {
+                int cornerX = cornerEvents.get(cornerCnt).x;
+                int cornerY = cornerEvents.get(cornerCnt).y;
+                cornerSlice[cornerX >> subsample][cornerY >> subsample] += 1;
+            }
 
+            for(int xIdx = 0; xIdx < 100; xIdx++)
+            {
+                for(int yIdx = 0; yIdx < 100; yIdx++)
+                {
+                    final int xIndex = xIdx;
+                    final int yIndex = yIdx;
+                    if(cornerSlice[xIdx][yIdx] < threshold)
+                    {
+                        cornerEvents.removeIf(e -> xIndex == (e.x >> subsample) && yIndex == (e.y >> subsample));
+                    }
+                }
+            }                
+
+            for (BasicEvent e : in) {
+                PolarityEvent ein = (PolarityEvent) e;
+
+                if(cornerSlice[(e.x >> subsample)][(e.y >> subsample)] < threshold)
+                {
+                    if (enFilterOut && !enShowOriginalCorners) {
+                        ein.setFilteredOut(true);
+                    } else {
+                        ein.setFilteredOut(false);
+                    }      
+                    ein.setAddress(ein.getAddress()&0);
+                }
+                else
+                {
+                    ein.setAddress(ein.getAddress()|1);
+                }
+            }
+        }
+        
+//        HashHeatNoiseFilterInst.setEventCountWindow(cornerEvents.size());
+//        in = getEnclosedFilterChain().filterPacket(in);
+         
         if (isEnCompareSWandHW()) {
             if (wrongCornerNum != 0) {
                 //            log.warning(String.format("The packet contained %d events and detected %d FPN corners and %d FNN corners.", in.getSize(), falsePositiveNum, falseNegativeNum));            
@@ -332,4 +380,79 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
         return found_streak;
     }
 
+    public CalcMethod getCalcMethod() {
+        return calcMethod;
+    }
+
+    public void setCalcMethod(CalcMethod calcMethod) {
+        CalcMethod old = this.calcMethod;
+        this.calcMethod = calcMethod;
+        putString("calcMethod", calcMethod.toString());
+        getSupport().firePropertyChange("calcMethod", old, this.calcMethod);
+    }
+    
+    public boolean isEnShowOriginalCorners() {
+        return enShowOriginalCorners;
+    }
+
+    public void setEnShowOriginalCorners(boolean enShowOriginalCorners) {
+        boolean old = this.enShowOriginalCorners;
+        this.enShowOriginalCorners = enShowOriginalCorners;           
+        putBoolean("enShowOriginalCorners", enShowOriginalCorners);
+        getSupport().firePropertyChange("enShowOriginalCorners", old, this.enShowOriginalCorners);
+    }
+
+    public boolean isEnDeoiseCorners() {
+        return enDeoiseCorners;
+    }
+
+    public void setEnDeoiseCorners(boolean enDeoiseCorners) {
+        if(enDeoiseCorners == false)
+        {
+            this.setEnShowOriginalCorners(false);
+        }
+        this.enDeoiseCorners = enDeoiseCorners;
+        putBoolean("enDeoiseCorners", enDeoiseCorners);
+    }
+
+    public boolean isEnCompareSWandHW() {
+        return enCompareSWandHW;
+    }
+
+    public void setEnCompareSWandHW(boolean enCompareSWandHW) {
+        this.enCompareSWandHW = enCompareSWandHW;
+        putBoolean("enCompareSWandHW", enCompareSWandHW);
+    }
+
+    public boolean isEnFilterOut() {
+        return enFilterOut;
+    }
+
+    public void setEnFilterOut(boolean enFilterOut) {
+        this.enFilterOut = enFilterOut;
+        putBoolean("enFilterOut", enFilterOut);
+    }
+
+
+    public int getThreshold() {
+        return threshold;
+    }
+
+    public void setThreshold(int threshold) {
+        int old = this.threshold;
+        this.threshold = threshold;    
+        putInt("threshold", threshold);
+        getSupport().firePropertyChange("threshold", old, this.threshold);
+    }
+    
+    public int getSubsample() {
+        return subsample;
+    }
+
+    public void setSubsample(int subsample) {
+        int old = this.subsample;
+        this.subsample = subsample;
+        putInt("sliceMaxValue", subsample);
+        getSupport().firePropertyChange("subsample", old, this.subsample); 
+    }
 }

@@ -78,7 +78,7 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
             allocateMaps(chip);
             timeThr = (sx+1) * (sy+1) / ((1 << subsampleBy << subsampleBy) * eventCountWindow);
         }
-        totalEventCount = 0;
+//        totalEventCount = 0;
         filteredOutEventCount = 0;
 
         // for each event only keep it if it is within dt of the last time
@@ -95,11 +95,7 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
             ts = e.timestamp;
             if (totalEventCount == 0){
                 firstEventTime = ts;
-            }else if (totalEventCount == (eventCountWindow - 1)){
-                lastEventTime = ts;
-                int TD = lastEventTime - firstEventTime;
-                System.out.printf("the nmuber is: %d %d %d %d\n", totalEventCount, TD, sx, sy);
-                timeThr = TD * (sx+1) * (sy+1) / (float)((1 << subsampleBy << subsampleBy) * eventCountWindow * scaleFactor);           
+                System.out.printf("the start  is: %d %d %d\n", totalEventCount, sx, sy);
             }
             totalEventCount++;
             short x = (short) (e.x >>> subsampleBy), y = (short) (e.y >>> subsampleBy);
@@ -118,6 +114,14 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
 //                System.out.printf("the number is: %d %.2f",deltaT, timeThr);
                 e.setFilteredOut(true);
                 filteredOutEventCount++;
+            }
+            
+            if (totalEventCount == (eventCountWindow)){
+                lastEventTime = ts;
+                int TD = lastEventTime - firstEventTime;
+                System.out.printf("the end  is: %d %d %d %d\n", totalEventCount, TD, sx, sy);
+                timeThr = TD * (sx+1) * (sy+1) / (float)((1 << subsampleBy << subsampleBy) * eventCountWindow * scaleFactor);    
+                totalEventCount = 0;
             }
             
             lastTimesMap[x][y] = ts; // x,y is already subsampled by subsample

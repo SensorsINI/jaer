@@ -173,7 +173,7 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
      */
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        totalEventCount = 0;
+//        totalEventCount = 0;
         filteredOutEventCount = 0;
         int firstts = 0;
 
@@ -194,22 +194,12 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
                 for( int num : mArrays) {
                     sum = sum+num;
                 }
-//                System.out.printf(" mArray at first event %d %d\n", totalEventCount, sum);
-                mArrays = new int[mArrayLength]; // this should be in the "else if" block
-                Arrays.fill(mArrays, 0); // this should be in the "else if" block
-                mArrayThr = mArrayThrInit;
+                System.out.printf(" mArray at first event %d %d\n", totalEventCount, sum);
+//                mArrays = new int[mArrayLength]; // this should be in the "else if" block
+//                Arrays.fill(mArrays, 0); // this should be in the "else if" block
+//                mArrayThr = mArrayThrInit;
                 firstts = e.timestamp;
-//                sum = 0;
-//                //Advanced for loop
-//                for( int num : mArrays) {
-//                    sum = sum+num;
-//                }
-//                System.out.printf(" mArray at first event reset %d %d %f\n", totalEventCount, sum, mArrayThrInit);
-            } else if (totalEventCount == (eventCountWindow - 1)){ // should be the last event of a frame
-                mArrays = new int[mArrayLength]; // the program can't be executed here
-                Arrays.fill(mArrays, 0); // the program can't be executed here
-                System.out.printf(" filteredOutEventCount %d\n", filteredOutEventCount);
-            }
+            } 
 
             totalEventCount++;
             short x = (short) (e.x >>> subsampleBy), y = (short) (e.y >>> subsampleBy);
@@ -233,22 +223,21 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
                 mArrayThr = totalEventCount * numHashFunctions * 2 / mArrayLength;
             }
             boolean filterOut = filterEvent(x, y, (ts-firstts));
-            
-//                int sum = 0;
-//                //Advanced for loop
-//                for( int num : mArrays) {
-//                    sum = sum+num;
-//                }
-//                System.out.printf(" mArray at last event %d %d\n", totalEventCount, sum);
-//                Arrays.fill(mArrays, 0);
-//            }
-
-            
+    
             if (filterOut) {
                 
                 e.setFilteredOut(true);
                 filteredOutEventCount++;
                 
+            }
+            
+            if (totalEventCount == (eventCountWindow)){ // should be the last event of a frame
+                // reset the marray
+                mArrays = new int[mArrayLength];  
+                Arrays.fill(mArrays, 0); 
+                mArrayThr = mArrayThrInit;
+                System.out.printf(" filteredOutEventCount %d %d\n", totalEventCount, filteredOutEventCount);
+                totalEventCount = 0;
             }
             
             
@@ -296,10 +285,15 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
     private void generateHashFunctions() {
         hashCooeficients = new double[numHashFunctions][NUM_HASH_COEFFICIENTS];
         if ((loadHashFunctions == 1) && (numHashFunctions == 4) ){
-            double[][] paralist = {{0.3714,-0.2256,1.1174,0.2551},
-                    {0.0326,0.5525,1.1006,0.9593},
-                    {0.0859,-1.4916,-0.7423,0.2575},
-                    {2.3505,-0.6156,0.7481,0.2435}};
+            double[][] paralist =  {{-0.1241, 1.4897, 1.4090, 0.9595},
+                    {0.6715, -1.2075, 0.7172, 0.9340},
+                    {0.4889, 1.0347, 0.7269, 0.3922},
+                    {0.2939,-0.7873, 0.8884, 0.0318}};
+
+//            {{0.3714,-0.2256,1.1174,0.2551},
+//                    {0.0326,0.5525,1.1006,0.9593},
+//                    {0.0859,-1.4916,-0.7423,0.2575},
+//                    {2.3505,-0.6156,0.7481,0.2435}};
             
             hashCooeficients = paralist;
         
