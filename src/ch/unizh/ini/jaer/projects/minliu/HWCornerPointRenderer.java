@@ -70,6 +70,9 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
     private int[][] cornerSlice = null;
     private boolean enShowOriginalCorners = getBoolean("enShowOriginalCorners", false);
     private boolean enDeoiseCorners = getBoolean("enDeoiseCorners", false);
+    private int threshold = getInt("threshold", 10);
+
+    private int subsample = getInt("subsample", 3);
 
     public enum CalcMethod {
         HW_EFAST, SW_EFAST
@@ -79,7 +82,7 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
     public HWCornerPointRenderer(AEChip chip) {
         super(chip);
         sae_ = new double[2][500][500];
-        cornerSlice = new int[184][130];
+        cornerSlice = new int[256][256];
 
 //        HashHeatNoiseFilterInst = new HashHeatNoiseFilter(chip);        
 //        FilterChain chain = new FilterChain(chip);
@@ -92,7 +95,9 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
         
         String strDenoise = "0b: Block matching display";
         setPropertyTooltip(strDenoise, "enDeoiseCorners", "enable to denoise the corners");
-        setPropertyTooltip(strDenoise, "enShowOriginalCorners", "enable to show the original corners before denoise");        
+        setPropertyTooltip(strDenoise, "enShowOriginalCorners", "enable to show the original corners before denoise");   
+        setPropertyTooltip(strDenoise, "subsample", "subsample value to determine the area for non-maximum supression");
+        setPropertyTooltip(strDenoise, "threshold", "threshold for non-maximum supression");   
     }
 
     @Override
@@ -163,7 +168,7 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
             {
                 int cornerX = cornerEvents.get(cornerCnt).x;
                 int cornerY = cornerEvents.get(cornerCnt).y;
-                cornerSlice[cornerX >> 3][cornerY >> 3] += 1;
+                cornerSlice[cornerX >> subsample][cornerY >> subsample] += 1;
             }
 
             for(int xIdx = 0; xIdx < 100; xIdx++)
@@ -172,9 +177,9 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
                 {
                     final int xIndex = xIdx;
                     final int yIndex = yIdx;
-                    if(cornerSlice[xIdx][yIdx] < 10)
+                    if(cornerSlice[xIdx][yIdx] < threshold)
                     {
-                        cornerEvents.removeIf(e -> xIndex == (e.x >> 3) && yIndex == (e.y >> 3));
+                        cornerEvents.removeIf(e -> xIndex == (e.x >> subsample) && yIndex == (e.y >> subsample));
                     }
                 }
             }                
@@ -182,7 +187,7 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
             for (BasicEvent e : in) {
                 PolarityEvent ein = (PolarityEvent) e;
 
-                if(cornerSlice[(e.x >> 3)][(e.y >> 3)] < 10)
+                if(cornerSlice[(e.x >> subsample)][(e.y >> subsample)] < threshold)
                 {
                     if (enFilterOut && !enShowOriginalCorners) {
                         ein.setFilteredOut(true);
@@ -426,5 +431,28 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
     public void setEnFilterOut(boolean enFilterOut) {
         this.enFilterOut = enFilterOut;
         putBoolean("enFilterOut", enFilterOut);
+    }
+
+
+    public int getThreshold() {
+        return threshold;
+    }
+
+    public void setThreshold(int threshold) {
+        int old = this.threshold;
+        this.threshold = threshold;    
+        putInt("threshold", threshold);
+        getSupport().firePropertyChange("threshold", old, this.threshold);
+    }
+    
+    public int getSubsample() {
+        return subsample;
+    }
+
+    public void setSubsample(int subsample) {
+        int old = this.subsample;
+        this.subsample = subsample;
+        putInt("sliceMaxValue", subsample);
+        getSupport().firePropertyChange("subsample", old, this.subsample); 
     }
 }
