@@ -604,6 +604,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     // number of packets to skip over rendering, used to speed up real time processing
     private int skipPacketsRenderingNumberMax = prefs.getInt("AEViewer.skipPacketsRenderingNumber", 0), skipPacketsRenderingNumberCurrent = 0;
     private int skipPacketsRenderingCount = 0; // this is counter for skipping rendering cycles; set to zero to render first packet always
+    private DropTarget myDraggedFileDropTarget=null; // added back after losing somehow
     private File draggedFile;
     private boolean loggingPlaybackImmediatelyEnabled = prefs.getBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", false);
     private boolean enableFiltersOnStartup = prefs.getBoolean("AEViewer.enableFiltersOnStartup", false);
@@ -838,6 +839,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         requestFocus();
 
         fixLoggingControls();
+        
+        myDraggedFileDropTarget=new DropTarget(getImagePanel(), this); // add support for dragged file onto display, lost somehow. AEViewer is the listener via drag events
 
         // init menu items that are checkboxes to correct initial state
         viewActiveRenderingEnabledMenuItem.setSelected(isActiveRenderingEnabled());
