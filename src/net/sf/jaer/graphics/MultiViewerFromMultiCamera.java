@@ -7,7 +7,6 @@ package net.sf.jaer.graphics;
 
 
 import ch.unizh.ini.jaer.chip.multicamera.MultiDavisCameraChip;
-import com.sun.media.jfxmedia.logging.Logger;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
 import java.awt.Frame;

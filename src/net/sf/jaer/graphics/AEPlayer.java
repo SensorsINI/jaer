@@ -367,6 +367,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     // so that slider is updated when position changes
                     viewer.setPlaybackControlsEnabledState(true);
                     viewer.fixLoggingControls();
+                    try{
+                        viewer.getChip().getRenderer().resetFrame(0);
+                    }catch(Exception e){
+                        log.warning("tried to reset renderer but caught "+e.toString());
+                    }
                     // TODO we grab the monitor for the viewLoop here, any other thread which may change playmode should also grab it
                     if ((viewer.aemon != null) && viewer.aemon.isOpen()) {
                         try {
