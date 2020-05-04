@@ -136,13 +136,14 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
                 setCursorColor(END_COLOR);
             }
         }
-        super.annotate(drawable); //To change body of generated methods, choose Tools | Templates.
+//        super.annotate(drawable); // TODO messes up so no OFF events show, don't know why
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushMatrix();
         drawCursor(gl, getStartPoint(), START_COLOR);
         drawCursor(gl, getEndPoint(), END_COLOR);
         gl.glPopMatrix(); // must push pop since drawCursor translates?
         if (getStartPoint() != null && getEndPoint() != null) {
+            gl.glPushMatrix();
             gl.glColor3f(1, 1, 0);
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(getStartPoint().x, getStartPoint().y);
@@ -150,15 +151,19 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
             gl.glEnd();
 
             String s = String.format("Speed: %s pps (%.0fpix/%ss), dx/dy=%d/%d", engFmt.format(speedPps), distance, engFmt.format(1e-6f * deltaTimestamp), (int) Math.abs(endPoint.x - startPoint.x), (int) Math.abs(endPoint.y - startPoint.y));
-             drawString(drawable, s);
+            drawString(drawable, s);
+            gl.glPopMatrix(); // must push pop since drawCursor translates?
         } else if (getStartPoint() != null) {
             String s = String.format("Left click for end point. Time from IN mark: %ss", engFmt.format(1e-6f * (currentTimestamp - getStartPoint().t)));
+            gl.glPushMatrix();
             drawString(drawable, s);
+            gl.glPopMatrix(); // must push pop since drawCursor translates?
 
         } else {
             String s = "Left click for start point";
+            gl.glPushMatrix();
             drawString(drawable, s);
-
+            gl.glPopMatrix(); // must push pop since drawCursor translates?
         }
     }
 
@@ -170,10 +175,10 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
         if (p == null) {
             return;
         }
-        checkBlend(gl);
+//        checkBlend(gl); // no OFF events show after setting blending here, interaction with blending in the display method???
+        gl.glPushMatrix();
         gl.glColor4fv(color, 0);
         gl.glLineWidth(3f);
-        gl.glPushMatrix();
         gl.glTranslatef(p.x, p.y, 0);
         gl.glBegin(GL2.GL_LINES);
         gl.glVertex2f(0, -CURSOR_SIZE_CHIP_PIXELS / 2);
