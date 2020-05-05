@@ -239,6 +239,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         // Labels for setPropertyTooltip.
         setPropertyTooltip("startLoggingMotionVectorEvents", "starts saving motion vector events to a human readable file");
         setPropertyTooltip("stopLoggingMotionVectorEvents", "stops logging motion vector events to a human readable file");
+        setPropertyTooltip("startLoggingGlobalMotionFlows", "starts saving global motion flow vectors to a human readable file");
+        setPropertyTooltip("stopLoggingGlobalMotionFlows", "stops logging global motion flow vectors to a human readable file");
         setPropertyTooltip("printStatistics", "<html> Prints to console as log output a single instance of statistics collected since <b>measureAccuracy</b> was selected. (These statistics are reset when the filter is reset, e.g. at rewind.)");
         setPropertyTooltip(measureTT, "measureAccuracy", "<html> Writes a txt file with various motion statistics, by comparing the ground truth <br>(either estimated online using an embedded IMUFlow or loaded from file) <br> with the measured optical flow events.  <br>This measurment function is called for every event to assign the local ground truth<br> (vxGT,vyGT) at location (x,y) a value from the imported ground truth field (vxGTframe,vyGTframe).");
         setPropertyTooltip(measureTT, "measureProcessingTime", "writes a text file with timestamp filename with the packet's mean processing time of an event. Processing time is also logged to console.");
@@ -914,6 +916,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             gl.glRasterPos2i(chip.getSizeX() / 2, offset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     motionFlowStatistics.endpointErrorAbs.graphicsString("AEE(abs):", "pps"));
+            motionFlowStatistics.endpointErrorAbs.clear();
             gl.glPopMatrix();
             gl.glPushMatrix();
             gl.glRasterPos2i(chip.getSizeX() / 2, 2 * offset);
@@ -1145,7 +1148,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         motionVectorEventLogger.setEnabled(false);
         motionVectorEventLogger = null;
     }
-
+    
     protected void logMotionVectorEvents(EventPacket ep) {
         if (motionVectorEventLogger == null) {
             return;
@@ -1154,6 +1157,38 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         for (Object o : ep) {
 
         }
+    }
+
+    synchronized public void doStartLoggingGlobalMotionFlows() {
+        if (motionFlowStatistics.globalMotionVectorLogger != null && motionFlowStatistics.globalMotionVectorLogger.isEnabled()) {
+            log.info("logging already started");
+            return;
+        }
+        String filename = null, filepath = null;
+        final JFileChooser fc = new JFileChooser();
+        fc.setCurrentDirectory(new File(getString("lastFile", System.getProperty("user.dir"))));  // defaults to startup runtime folder
+        fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        fc.setSelectedFile(new File(getString("lastFile", System.getProperty("user.dir"))));
+        fc.setDialogTitle("Select folder and base file name for the logged global flows data");
+        int ret = fc.showOpenDialog(chip.getAeViewer() != null && chip.getAeViewer().getFilterFrame() != null ? chip.getAeViewer().getFilterFrame() : null);
+        if (ret == JFileChooser.APPROVE_OPTION) {
+            File file = fc.getSelectedFile();
+            putString("lastFile", file.toString());
+            motionFlowStatistics.globalMotionVectorLogger = new TobiLogger(file.getPath(), "Global flows output from normal optical flow method");
+            motionFlowStatistics.globalMotionVectorLogger.setNanotimeEnabled(false);
+            motionFlowStatistics.globalMotionVectorLogger.setHeaderLine("system_time(ms) timestamp(us) meanGlobalVx(pps) meanGlobalVy(pps)");
+            motionFlowStatistics.globalMotionVectorLogger.setEnabled(true);
+        } else {
+            log.info("Cancelled logging global flows");
+        }
+    }
+
+    synchronized public void doStopLoggingGlobalMotionFlows() {
+        if (motionFlowStatistics.globalMotionVectorLogger == null) {
+            return;
+        }
+        motionFlowStatistics.globalMotionVectorLogger.setEnabled(false);
+        motionFlowStatistics.globalMotionVectorLogger = null;
     }
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --speedControlEnabled--">

@@ -359,7 +359,10 @@ public class MotionFlowStatistics {
             globalFlows.add((double)meanGlobalVy);
 
             //globalVxList.add(new MLDouble("vy", meanGlobalVy));
-//            globalMotionVectorLogger.log(meanGlobalVx + " " + meanGlobalVy);
+            if (globalMotionVectorLogger != null && globalMotionVectorLogger.isEnabled()) {
+                String s = String.format("%d %.3g %.3g", currentTs, meanGlobalVx, meanGlobalVy);
+                globalMotionVectorLogger.log(s);
+            }
             // Call resets here because global motion should in general not
             // be averaged over more than one packet.
             globalVx.clear();

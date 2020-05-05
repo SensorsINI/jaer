@@ -74,6 +74,9 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
 
     private int subsample = getInt("subsample", 3);
 
+    private int evCounter = 0;
+    private int evCounterThreshold = getInt("evCounterThreshold", 1000);
+
     public enum CalcMethod {
         HW_EFAST, SW_EFAST
     };
@@ -455,4 +458,16 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
         putInt("sliceMaxValue", subsample);
         getSupport().firePropertyChange("subsample", old, this.subsample); 
     }
+
+    public int getEvCounterThreshold() {
+        return evCounterThreshold;
+    }
+
+    public void setEvCounterThreshold(int evCounterThreshold) {
+        int old = this.evCounterThreshold;
+        this.evCounterThreshold = evCounterThreshold;
+        putInt("evCounterThreshold", evCounterThreshold);
+        getSupport().firePropertyChange("evCounterThreshold", old, this.evCounterThreshold); 
+    }
+        
 }
