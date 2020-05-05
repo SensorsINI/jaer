@@ -15,4 +15,4 @@ java \
 -splash:images/SplashScreen.gif \
 -Dsun.java2d.uiScale=2.5 \
 -Djava.util.logging.config.file="$DIR/conf/Logging.properties" -Dsun.java2d.noddraw=true -Dsun.java2d.opengl=false \
-net.sf.jaer.JAERViewer
+net.sf.jaer.JAERViewer "$@"

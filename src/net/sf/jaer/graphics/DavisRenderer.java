@@ -205,7 +205,10 @@ public class DavisRenderer extends AEChipRenderer {
         resetMaps();
     }
 
-    protected void resetMaps() {
+    /** Resets all the maps to default gray values
+     * 
+     */
+    public void resetMaps() {
         setColors();
         checkPixmapAllocation();
         final int n = 4 * textureWidth * textureHeight;

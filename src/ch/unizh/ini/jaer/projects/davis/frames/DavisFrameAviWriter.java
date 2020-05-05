@@ -14,6 +14,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import eu.seebetter.ini.chips.DavisChip;
+import javax.swing.JOptionPane;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -108,8 +109,12 @@ public class DavisFrameAviWriter extends AbstractAviWriter {
                 Logger.getLogger(DavisFrameAviWriter.class.getName()).log(Level.SEVERE, null, ex);
             }
         } else if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
-            doCloseFile();
-        }
+             if (!ignoreRewinwdEventFlag && closeOnRewind && getAviOutputStream()!=null) {
+                doCloseFile();
+                JOptionPane.showMessageDialog(chip.getAeViewer(), "Closed file" + lastFileName + " on Rewind event after " + framesWritten + " frames were written");
+            }
+            ignoreRewinwdEventFlag = false;
+       }
     }
 
 }

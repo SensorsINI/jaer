@@ -195,9 +195,6 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
                     sum = sum+num;
                 }
                 System.out.printf(" mArray at first event %d %d\n", totalEventCount, sum);
-//                mArrays = new int[mArrayLength]; // this should be in the "else if" block
-//                Arrays.fill(mArrays, 0); // this should be in the "else if" block
-//                mArrayThr = mArrayThrInit;
                 firstts = e.timestamp;
             } 
 
@@ -213,9 +210,12 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
             int lastT = lastTimesMap[x][y];
             lastTimesMap[x][y] = ts;
             
-            if (letFirstEventThrough && lastT == firstts) {
+            if (totalEventCount == 1){
                 continue;
             }
+//            if (letFirstEventThrough && lastT == firstts) {
+//                continue;
+//            }
 //            int deltaT = (ts - lastT);
             
             
@@ -236,7 +236,7 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
                 mArrays = new int[mArrayLength];  
                 Arrays.fill(mArrays, 0); 
                 mArrayThr = mArrayThrInit;
-                System.out.printf(" filteredOutEventCount %d %d\n", totalEventCount, filteredOutEventCount);
+//                System.out.printf(" filteredOutEventCount %d %d\n", totalEventCount, filteredOutEventCount);
                 totalEventCount = 0;
             }
             
@@ -285,7 +285,18 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
     private void generateHashFunctions() {
         hashCooeficients = new double[numHashFunctions][NUM_HASH_COEFFICIENTS];
         if ((loadHashFunctions == 1) && (numHashFunctions == 4) ){
-            double[][] paralist =  {{-0.1241, 1.4897, 1.4090, 0.9595},
+            double[][] paralist =   
+//            {{0.4517, -0.1303, 0.1837, 0.2963},
+//                    {0.8620, -1.3617, 0.4550, 0.1835},
+//                    {-0.3349, 0.5528, 1.0391, 0.0811},
+//                    {1.2607, 0.6601, -0.0679, 0.4359}};
+            
+//            {{0.8284, 0.2177, -1.9092, 0.3909},
+//                    {-0.3020, 1.8136, 0.9149, 0.4857},
+//                    {1.3094, -1.0447, -0.3483, 0.9274},
+//                    {1.5024, 0.7304, 0.4908, 0.3433}};
+            
+            {{-0.1241, 1.4897, 1.4090, 0.9595},
                     {0.6715, -1.2075, 0.7172, 0.9340},
                     {0.4889, 1.0347, 0.7269, 0.3922},
                     {0.2939,-0.7873, 0.8884, 0.0318}};

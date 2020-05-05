@@ -44,7 +44,7 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
     int[][] lastTimesMap;
     private int firstEventTime;
     private int lastEventTime;
-    private float timeThr = 0;
+    private int timeThr = 0;
     protected int eventCountWindow = getInt("eventCountWindow", 5000);
     protected float scaleFactor = getFloat("scaleFactor", 10);
 //    private int dtUs = getInt("dtUs", 10000);
@@ -53,6 +53,11 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
     private int sx;
     private int sy;
     private final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
+    
+    private int lasttd = 0;
+    private int frameid = 0;
+    
+    private int basicThr = 0;
 
     public AdaptiveInstantaneousSpikeRateNoiseFilter(AEChip chip) {
         super(chip);
@@ -72,11 +77,16 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
      * @return the processed events, may be fewer in number. filtering may occur
      * in place in the in packet.
      */
+    
+
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
         if (lastTimesMap == null) {
             allocateMaps(chip);
-            timeThr = (sx+1) * (sy+1) / ((1 << subsampleBy << subsampleBy) * eventCountWindow);
+//            System.out.printf("after allocate  is: %d\n", (1 << subsampleBy << subsampleBy));
+            basicThr = (int) (sx+1) * (sy+1) / ((1 << subsampleBy << subsampleBy) * eventCountWindow);
+            frameid = 0;
+            timeThr = basicThr;
         }
 //        totalEventCount = 0;
         filteredOutEventCount = 0;
@@ -85,6 +95,7 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
         // an event happened in the direct neighborhood
         for (Object eIn : in) {
             if (eIn == null) {
+                frameid = 0;
                 break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
             }
             BasicEvent e = (BasicEvent) eIn;
@@ -95,7 +106,6 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
             ts = e.timestamp;
             if (totalEventCount == 0){
                 firstEventTime = ts;
-                System.out.printf("the start  is: %d %d %d\n", totalEventCount, sx, sy);
             }
             totalEventCount++;
             short x = (short) (e.x >>> subsampleBy), y = (short) (e.y >>> subsampleBy);
@@ -103,24 +113,27 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
                 filteredOutEventCount++;
                 continue;
             }
-
             
             int lastT = lastTimesMap[x][y];
             int deltaT = (ts - lastT);
             
-
-            if (!((deltaT <= timeThr)) && !(letFirstEventThrough && lastT == DEFAULT_TIMESTAMP)) {
-//            if (!((deltaT <= timeThr) && (lastT != DEFAULT_TIMESTAMP)) && !(letFirstEventThrough && lastT == DEFAULT_TIMESTAMP)) {
-//                System.out.printf("the number is: %d %.2f",deltaT, timeThr);
+            int myflag = 1;
+            if (deltaT > timeThr){
                 e.setFilteredOut(true);
                 filteredOutEventCount++;
+                myflag = 0;
             }
+            
+//            System.out.printf("every event is: %d %x %x %d %d %d %d %d %d\n", totalEventCount, e.x, e.y, e.timestamp, x,y, lastT, deltaT, myflag);
             
             if (totalEventCount == (eventCountWindow)){
                 lastEventTime = ts;
                 int TD = lastEventTime - firstEventTime;
-                System.out.printf("the end  is: %d %d %d %d\n", totalEventCount, TD, sx, sy);
-                timeThr = TD * (sx+1) * (sy+1) / (float)((1 << subsampleBy << subsampleBy) * eventCountWindow * scaleFactor);    
+                frameid += 1;
+                int sf = (1 << subsampleBy << subsampleBy);
+                System.out.printf("the end  is: %d %d %d %d %d %d %d %d\n", totalEventCount, frameid, TD, firstEventTime, lastEventTime, totalEventCount - filteredOutEventCount, (1 << subsampleBy << subsampleBy), (int) timeThr);
+//                timeThr = Math.round( (TD * (sx+1) * (sy+1) / (sf * eventCountWindow * scaleFactor))); 
+                timeThr = (int) (TD * basicThr / scaleFactor); // basicThr is the fixed part of the thr, once the eventCountWindow is fixed
                 totalEventCount = 0;
             }
             
@@ -147,6 +160,9 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
         allocateMaps(chip);
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
+        frameid=0;
+        basicThr = (int) (sx+1) * (sy+1) / ((1 << subsampleBy << subsampleBy) * eventCountWindow);
+        timeThr = basicThr;
 //        System.out.printf("the number is: %d %d\n",sx, sy);
     }
 
@@ -154,7 +170,7 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
         if ((chip != null) && (chip.getNumCells() > 0)) {
             lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()];
             for (int[] arrayRow : lastTimesMap) {
-                Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
+                Arrays.fill(arrayRow, 0);
             }
         }
     }

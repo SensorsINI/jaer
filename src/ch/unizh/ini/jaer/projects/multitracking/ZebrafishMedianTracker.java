@@ -6,19 +6,15 @@
 
 package ch.unizh.ini.jaer.projects.multitracking;
 
-import ch.unizh.ini.jaer.chip.multicamera.MultiDVS128CameraChip;
-import ch.unizh.ini.jaer.chip.multicamera.MultiDavisCameraChip;
-import ch.unizh.ini.jaer.chip.retina.DVS128;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.util.Iterator;
 import java.util.logging.LogManager;
-import javafx.scene.paint.Color;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.MultiCameraApsDvsEvent;
-import net.sf.jaer.event.MultiCameraEvent;
 import net.sf.jaer.eventprocessing.tracking.MedianTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
 
@@ -119,7 +115,7 @@ public class ZebrafishMedianTracker extends MedianTracker implements FrameAnnota
         for (int c=0; c<numCameras; c++){
             medianTrackers[c].annotate(drawable);
             Float hue= (float) c*360/numCameras; // conversion in hue value, dependindin on the number of cameras
-            Color color=Color.hsb(hue, 0.5f, 1f);
+            Color color=Color.yellow;
             gl.glColor3d(color.getRed(), color.getGreen(), color.getBlue());
             gl.glLineWidth(4);
             gl.glBegin(GL2.GL_LINE_LOOP);

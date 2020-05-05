@@ -83,14 +83,14 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
             if (p == null) {
                 return;
             }
-            checkBlend(gl);
+//            checkBlend(gl);
+            gl.glPushMatrix();
             if (cursorColor != null && cursorColor.length == 4) {
                 gl.glColor4fv(cursorColor, 0);
             } else {
                 gl.glColor4f(1f, 1f, 1f, 1);
             }
             gl.glLineWidth(3f);
-            gl.glPushMatrix();
             gl.glTranslatef(p.x, p.y, 0);
             gl.glBegin(GL2.GL_LINES);
             gl.glVertex2f(0, -CURSOR_SIZE_CHIP_PIXELS / 2);
