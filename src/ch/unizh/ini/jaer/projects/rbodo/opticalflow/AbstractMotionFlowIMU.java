@@ -325,6 +325,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             }
             if (!addTimeStampsResetPropertyChangeListener) {
                 chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
+                chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
                 addTimeStampsResetPropertyChangeListener = true;
             }
         }
