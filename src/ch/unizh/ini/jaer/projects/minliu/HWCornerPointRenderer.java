@@ -22,9 +22,12 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLException;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.logging.Level;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -32,6 +35,8 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
+import net.sf.jaer.eventio.AEInputStream;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.HashHeatNoiseFilter;
@@ -46,7 +51,7 @@ import net.sf.jaer.util.DrawGL;
 @Description("<html>This is the a viwer for demo FPGA eFAST as demonstrated in CVPR2019 EventVision Workshop. The java version of eFAST is also implemented here.<br>"
         + "Liu, M., and Kao, W., and Delbruck, T. (2019). <a href=\"http://openaccess.thecvf.com/content_CVPRW_2019/papers/EventVision/Liu_Live_Demonstration_A_Real-Time_Event-Based_Fast_Corner_Detection_Demo_Based_CVPRW_2019_paper.pdf\">Live Demonstration: A Real-Time Event-Based Fast Corner Detection Demo Based on FPGA</a>.<br>.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotater {
+public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
 
     private ArrayList<BasicEvent> cornerEvents = new ArrayList(1000);
     private double[][][] sae_ = null;
@@ -74,6 +79,10 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
 
     private int subsample = getInt("subsample", 3);
 
+    private int evCounter = 0;
+    private int evCounterThreshold = getInt("evCounterThreshold", 1000);
+    private boolean addPropertyChangeListener = false;
+
     public enum CalcMethod {
         HW_EFAST, SW_EFAST
     };
@@ -97,7 +106,7 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
         setPropertyTooltip(strDenoise, "enDeoiseCorners", "enable to denoise the corners");
         setPropertyTooltip(strDenoise, "enShowOriginalCorners", "enable to show the original corners before denoise");   
         setPropertyTooltip(strDenoise, "subsample", "subsample value to determine the area for non-maximum supression");
-        setPropertyTooltip(strDenoise, "threshold", "threshold for non-maximum supression");   
+        setPropertyTooltip(strDenoise, "threshold", "threshold for non-maximum supression");           
     }
 
     @Override
@@ -106,6 +115,13 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
         int wrongCornerNum = 0;
         int falseNegativeNum = 0;
         int falsePositiveNum = 0;
+
+        // Bind property change events. This code should be put after AEViewer is constructed and only bind one time.
+        if(chip.getAeViewer() != null && !addPropertyChangeListener)
+        {
+            addPropertyChangeListener = true;
+            chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);                                
+        }
         
         for(int xIdx = 0; xIdx < 100; xIdx++)
         {
@@ -222,6 +238,7 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
         if (sae_ == null) {
             return;  // on reset maybe chip is not set yet
         }
+
         for (double[][] b : sae_) {
             for (double[] row : b) {
                 Arrays.fill(row, (double) 0);
@@ -245,7 +262,7 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
         } catch (final GLException e) {
             e.printStackTrace();
         }
-        gl.glColor4f(1f, 0, 0, .2f);
+        gl.glColor4f(1f, 0, 0, 0.6f);
         for (BasicEvent e : cornerEvents) {
             gl.glPushMatrix();
             DrawGL.drawBox(gl, e.x, e.y, 4, 4, 0);
@@ -261,10 +278,10 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
         int pix_y = ein.y;
         int timesmp = ein.timestamp;
         Polarity polarity = ein.polarity;
-        if (polarity.equals(Polarity.Off)) {
-            found_streak = false;
-            return found_streak;
-        }
+//        if (polarity.equals(Polarity.Off)) {
+//            found_streak = false;
+//            return found_streak;
+//        }
 
         final int max_scale = 1;
         // only check if not too close to border
@@ -275,7 +292,7 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
             return found_streak;
         }
 
-        final int pol = polarity.equals(Polarity.Off) ? 0 : 0;
+        final int pol = polarity.equals(Polarity.Off) ? 0 : 1;
 
         // update SAE
         sae_[pol][pix_x][pix_y] = timesmp;
@@ -455,4 +472,16 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
         putInt("sliceMaxValue", subsample);
         getSupport().firePropertyChange("subsample", old, this.subsample); 
     }
+
+    public int getEvCounterThreshold() {
+        return evCounterThreshold;
+    }
+
+    public void setEvCounterThreshold(int evCounterThreshold) {
+        int old = this.evCounterThreshold;
+        this.evCounterThreshold = evCounterThreshold;
+        putInt("evCounterThreshold", evCounterThreshold);
+        getSupport().firePropertyChange("evCounterThreshold", old, this.evCounterThreshold); 
+    }
+        
 }

@@ -219,6 +219,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     public static final String EVENT_NEW_SLICES = "eventNewSlices";
 
     TobiLogger sadValueLogger = new TobiLogger("sadvalues", "sadvalue,scale"); // TODO debug
+    
+    private boolean calcOFonCornersEnabled = getBoolean("calcOFonCornersEnabled", false);
 
     public PatchMatchFlow(AEChip chip) {
         super(chip);
@@ -282,6 +284,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         setPropertyTooltip(patchTT, "scalesToCompute", "Scales to compute, e.g. 1,2; blank for all scales. 0 is full resolution, 1 is subsampled 2x2, etc");
         setPropertyTooltip(patchTT, "defaults", "Sets reasonable defaults");
         setPropertyTooltip(patchTT, "enableImuTimesliceLogging", "Logs IMU and rate gyro");
+        setPropertyTooltip(patchTT, "calcOFonCornersEnabled", "Calculate OF based on corners or not");
 
         String patchDispTT = "0b: Block matching display";
         setPropertyTooltip(patchDispTT, "showSlices", "enables displaying the entire bitmaps slices (the current slices)");
@@ -1088,7 +1091,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         // detect if keypoint here
         boolean isCorner = ((e.getAddress() & 1) == 1);
-        if (!isCorner) {
+        if (calcOFonCornersEnabled && !isCorner) {
             return false;
         }
 
@@ -2858,4 +2861,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         this.showSlicesScale = showSlicesScale;
     }
 
+    public boolean isCalcOFonCornersEnabled() {
+        return calcOFonCornersEnabled;
+    }
+
+    public void setCalcOFonCornersEnabled(boolean calcOFonCornersEnabled) {
+        this.calcOFonCornersEnabled = calcOFonCornersEnabled;
+        putBoolean("calcOFonCornersEnabled", calcOFonCornersEnabled);
+    }
 }
