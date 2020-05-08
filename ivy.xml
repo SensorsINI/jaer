@@ -23,7 +23,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 MA 02110-1301  USA
 -->
-<ivy-module version="2.0" xmlns:m="http://ant.apache.org/ivy/maven">
+<ivy-module version="2.0" xmlns:m="https://ant.apache.org/ivy/maven">
     <info organisation="org.jaerproject" module="jaer" />
 
     <dependencies>
@@ -64,7 +64,7 @@ MA 02110-1301  USA
             <artifact name="jogl-all" type="jar" ext="jar" m:classifier="natives-windows-amd64"/>
         </dependency>
  
-        
+<!--        <dependency org="javax.xml.bind" name="jaxb-api" rev="2.3.1" />   need for java 14.0-->
         <dependency org="org.swinglabs" name="swing-layout" rev="1.0.3" />
         <dependency org="org.jdesktop" name="beansbinding" rev="1.2.1" />
         
@@ -133,11 +133,11 @@ MA 02110-1301  USA
         <!--tensorflow has native libraries, but handled fine with this dependeny - see https://www.tensorflow.org/install/lang_java -->
         <!--if having trouble loading the DLL, you might have to downgrade locally to version 1.5.0-->
         <!--make sure to delete newer versions of libtensorflow* and tensorflow* from lib/-->
-        <dependency org="org.tensorflow" name="tensorflow" rev="1.12.0" />
+        <dependency org="org.tensorflow" name="tensorflow" rev="1.14.0" />
         
         <!--to use GPU if you have an Nvida GPU installed, comment line above and use lines below with appropriate version of tensor flow. 
         You have to separately install Cuda toolkit  for this to work - see https://developer.nvidia.com/cuda-toolkit -->
-<!--        <dependency org="org.tensorflow" name="libtensorflow_jni_gpu" rev="1.12.0" />-->
+        <dependency org="org.tensorflow" name="libtensorflow_jni_gpu" rev="1.14.0" />
         <!--<dependency org="org.tensorflow" name="libtensorflow" rev="1.12.0" />-->
         
         
