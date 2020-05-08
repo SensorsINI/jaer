@@ -136,7 +136,10 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
             int swCornerRet = 0;
             if (isEnCompareSWandHW() || getCalcMethod() == CalcMethod.SW_EFAST) {
                 swCornerRet = FastDetectorisFeature(ein) ? 1 : 0;
-                ein.setAddress(ein.getAddress()|1); // set LSB hack since when event is DVS, then bits 0-9 are zero. TODO messes up APS samples
+                if(swCornerRet == 1)
+                {
+                    ein.setAddress(ein.getAddress()|1); // set LSB hack since when event is DVS, then bits 0-9 are zero. TODO messes up APS samples                    
+                }
             }
             int hwCornerRet = (e.getAddress() & 1);
             if (isEnCompareSWandHW()) {
