@@ -19,15 +19,17 @@ import net.sf.jaer.event.TypedEvent;
  *
  * @author tobi
  */
-@Description("Estimates event rates of TypedEvent in a packet. Expensive because it splits\n" +
-" * up data to temporary packets to estimate rate.")
+@Description("Estimates event rates of TypedEvent in a packet. Expensive because it splits\n"
+        + " * up data to temporary packets to estimate rate.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class TypedEventRateEstimator extends EventRateEstimator {
+
+    public static final String EVENT_MEASURE_INDIVIDUAL_TYPES_CHANGED = "measureIndividualTypesEnabled";
 
     private int numCellTypes = 0;
     private EventPacket<? extends BasicEvent>[] typedEventPackets = null;
     protected EventRateEstimator[] eventRateEstimators = null;
-    protected boolean measureIndividualTypesEnabled = getBoolean("measureIndividualTypesEnabled", true);
+    public boolean measureIndividualTypesEnabled = getBoolean("measureIndividualTypesEnabled", true);
 
     public TypedEventRateEstimator(AEChip chip) {
         super(chip);
@@ -176,8 +178,10 @@ public class TypedEventRateEstimator extends EventRateEstimator {
      * set
      */
     public void setMeasureIndividualTypesEnabled(boolean measureIndividualTypesEnabled) {
+        boolean old = this.measureIndividualTypesEnabled;
         this.measureIndividualTypesEnabled = measureIndividualTypesEnabled;
         putBoolean("measureIndividualTypesEnabled", measureIndividualTypesEnabled);
+        getSupport().firePropertyChange(EVENT_MEASURE_INDIVIDUAL_TYPES_CHANGED, old, this.measureIndividualTypesEnabled);
     }
 
     /**

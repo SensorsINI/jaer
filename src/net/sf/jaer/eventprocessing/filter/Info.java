@@ -377,6 +377,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         xyTypeFilter = new XYTypeFilter(chip);
         typedEventRateEstimator = new TypedEventRateEstimator(chip);
         typedEventRateEstimator.getSupport().addPropertyChangeListener(EventRateEstimator.EVENT_RATE_UPDATE, this);
+        typedEventRateEstimator.getSupport().addPropertyChangeListener(TypedEventRateEstimator.EVENT_MEASURE_INDIVIDUAL_TYPES_CHANGED, this);
 
         FilterChain fc = new FilterChain(chip);
         fc.add(xyTypeFilter);
@@ -447,7 +448,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 }
             }
         } else if (evt.getSource() instanceof EventRateEstimator) {
-            if (evt.getPropertyName().equals(EventRateEstimator.EVENT_RATE_UPDATE)) {
+            if (evt.getPropertyName().equals(TypedEventRateEstimator.EVENT_MEASURE_INDIVIDUAL_TYPES_CHANGED)) {
+                rateHistories.clear();
+                rateHistories.put(typedEventRateEstimator, new RateHistory());
+            } else if (evt.getPropertyName().equals(EventRateEstimator.EVENT_RATE_UPDATE)) {
                 UpdateMessage msg = (UpdateMessage) evt.getNewValue();
                 //        System.out.println("dt=" + (msg.timestamp - lastUpdateTime)/1000+" ms");
                 // for large files, the relativeTimeInFileMs wraps around after 2G us and then every 4G us
@@ -467,13 +471,21 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 if (showRateTrace) {
                     if (rateHistories == null || typedEventRateEstimator.getNumCellTypes() != rateHistories.values().size()) {
                         rateHistories.clear();
-                        EventRateEstimator[] r = typedEventRateEstimator.getEventRateEstimators();
-                        for (int i = 0; i < r.length; i++) {
-                            RateHistory h = new RateHistory();
-                            rateHistories.put(r[i], h);
+                        if (typedEventRateEstimator.isMeasureIndividualTypesEnabled()) {
+                            EventRateEstimator[] r = typedEventRateEstimator.getEventRateEstimators();
+                            for (int i = 0; i < r.length; i++) {
+                                RateHistory h = new RateHistory();
+                                rateHistories.put(r[i], h);
+                            }
+                        } else {
+                            rateHistories.put(typedEventRateEstimator, new RateHistory());
                         }
                     }
-                    rateHistories.get(msg.source).addSample(updateTimeMs, ((EventRateEstimator) msg.source).getFilteredEventRate());
+                    if (!typedEventRateEstimator.isMeasureIndividualTypesEnabled()) {
+                        rateHistories.get(typedEventRateEstimator).addSample(updateTimeMs, typedEventRateEstimator.getFilteredEventRate());
+                    }else{
+                        rateHistories.get(msg.source).addSample(updateTimeMs, ((EventRateEstimator) msg.source).getFilteredEventRate());
+                    }
                 }
                 if (logStatistics) {
                     String s = String.format("%20d\t%20.2g", updateTimeMs, typedEventRateEstimator.getFilteredEventRate());
