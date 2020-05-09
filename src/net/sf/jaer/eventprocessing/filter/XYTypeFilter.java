@@ -147,21 +147,21 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
             return in;
         }
 
-        Iterator itr=null;
-        if(in instanceof ApsDvsEventPacket){
-            itr=((ApsDvsEventPacket)in).fullIterator();
-        }else{
-            itr=in.inputIterator();
+        Iterator itr = null;
+        if (in instanceof ApsDvsEventPacket) {
+            itr = ((ApsDvsEventPacket) in).fullIterator();
+        } else {
+            itr = in.inputIterator();
         }
         // for each event only write it to the tmp buffers if it matches
-        while(itr.hasNext()){
+        while (itr.hasNext()) {
 //        for (Object obj : in) {
             BasicEvent e = (BasicEvent) (itr.next());
-            if (e.isFilteredOut() || (e instanceof ApsDvsEvent && !((ApsDvsEvent)e).isDVSEvent())) {
+            if (e.isFilteredOut() || (e instanceof ApsDvsEvent && !((ApsDvsEvent) e).isDVSEvent())) {
                 continue;
             }
             block(e);
-            
+
             if (multiSelectionEnabled) {
                 if (selectionList.isEmpty()) {
                     return in;
@@ -169,7 +169,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
                 if (!invertEnabled) {
                     for (SelectionRectangle r : selectionList) {
                         if (r.contains(e)) {
-                            pass( e);
+                            pass(e);
                             break;
                         }
                     }
@@ -181,7 +181,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
                         }
                     }
                     if (!blocked) {
-                        pass( e);
+                        pass(e);
                     }
 
                 }
@@ -200,7 +200,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
                     }
                     pass(te);
                 } else {
-                    pass( e);
+                    pass(e);
                 }
             } else {
                 // if we pass all outside tests then any test pass event
@@ -230,12 +230,11 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
 //    private void pass(OutputEventIterator outItr, TypedEvent te) {
 //        outItr.nextOutput().copyFrom(te);
 //    }
-    
-    private void pass(BasicEvent e){
+    private void pass(BasicEvent e) {
         e.setFilteredOut(false);
     }
-    
-    private void block(BasicEvent e){
+
+    private void block(BasicEvent e) {
         e.setFilteredOut(true);
     }
 
@@ -572,6 +571,40 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
 
     }
 
+    /**
+     * returns the number of selected cells.
+     *
+     * @return the number of selected cells (number of pixels * type range)
+     */
+    public int getNumCellsSelected() {
+        return getNumPixelsSelected() * getNumTypesSelected();
+    }
+
+    /**
+     * returns the number of selected pixels, including no selection (all
+     * pixels) and multi-selection rectangles.
+     *
+     * @return the number of selected pixels
+     */
+    public int getNumPixelsSelected() {
+        if (!isMultiSelectionEnabled()) {
+            int dx = (isXEnabled() ? (int) Math.abs(getEndX() - getStartX()) : getChip().getSizeX());
+            int dy = (isYEnabled() ? (int) Math.abs(getEndY() - getStartY()) : getChip().getSizeY());
+            int npix = dx * dy;
+            return npix;
+        } else {
+            int npix = 0;
+            for (SelectionRectangle r : selectionList) {
+                npix += r.getNumPixels();
+            }
+            return npix;
+        }
+    }
+
+    private int getNumTypesSelected() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
     private class SelectionRectangle extends Rectangle implements Serializable {
 
         public SelectionRectangle(int x, int y, int width, int height) {
@@ -580,6 +613,10 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
 
         public boolean contains(BasicEvent e) {
             return contains(e.x, e.y);
+        }
+
+        public int getNumPixels() {
+            return width * height;
         }
 
         private void draw(GL2 gl) {

@@ -708,22 +708,27 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         gl.glColor3f(1, 1, 1);
         int font = GLUT.BITMAP_9_BY_15;
         GLUT glut = chip.getCanvas().getGlut();
+        int npix = getChip().getNumPixels();
+        if (xyTypeFilter.isFilterEnabled()) {
+            npix = xyTypeFilter.getNumPixelsSelected();
+        }
         int nbars = typedEventRateEstimator.isMeasureIndividualTypesEnabled() ? ntypes : 1;
         for (int i = 0; i < nbars; i++) {
-            final float rate = typedEventRateEstimator.getFilteredEventRate(i);
+            final float totalRate = typedEventRateEstimator.getFilteredEventRate(i);
+            final float perPixelRate = totalRate / npix;
             float bary = yorig - (ystep * i);
             gl.glRasterPos3f(xpos, bary, 0);
             String s = null;
             if (typedEventRateEstimator.isMeasureIndividualTypesEnabled()) {
-                s = String.format("Type %d: %10s", i, engFmt.format(rate) + " Hz");
+                s = String.format("Type %d: %8s Hz (%8s Hz/pixel)", i, engFmt.format(totalRate), engFmt.format(perPixelRate));
             } else {
-                s = String.format("All %d types: %10s", ntypes, engFmt.format(rate) + " Hz");
+                s = String.format("All %d types: %8s Hz (%8s Hz/pixel) ", ntypes, engFmt.format(totalRate), engFmt.format(perPixelRate));
             }
             // get the string length in screen pixels , divide by chip array in screen pixels,
             // and multiply by number of pixels to get string length in screen pixels.
             float sw = (glut.glutBitmapLength(font, s) / w) * sx;
             glut.glutBitmapString(font, s);
-            gl.glRectf(xpos + sw, bary + barh, xpos + sw + ((rate * sx) / getEventRateScaleMax()), bary);
+            gl.glRectf(xpos + sw, bary + barh, xpos + sw + ((totalRate * sx) / getEventRateScaleMax()), bary);
         }
         gl.glPopMatrix();
 
@@ -798,7 +803,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             s.append('x');
         }
         int font = GLUT.BITMAP_9_BY_15;
-        String s2 = String.format("Time factor: %10s", engFmt.format(timeExpansion) + s);
+        String s2 = String.format("Time factor: %8s", engFmt.format(timeExpansion) + s);
 
         float sw = (glut.glutBitmapLength(font, s2) / (float) w) * sx;
         gl.glRasterPos3f(0, yorig, 0);
