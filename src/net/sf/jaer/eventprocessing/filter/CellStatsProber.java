@@ -111,7 +111,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         currentAddress = new int[chip.getNumCellTypes()];
         Arrays.fill(currentAddress, -1);
         chip.addObserver(this);
-        final String h = "ISIs", e = "Event rate", l = "Latency", c = "Count", g="General";
+        final String h = "ISIs", e = "Event rate", l = "Latency", c = "Count", g = "General";
         setPropertyTooltip(h, "isiHistEnabled", "enable histogramming interspike intervals");
         setPropertyTooltip(h, "isiMinUs", "min ISI in us");
         setPropertyTooltip(h, "isiMaxUs", "max ISI in us");
@@ -820,7 +820,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 
         @Override
         public String toString() {
-            return String.format("ROI %6d pix, tot. %10d ev, %15s eps tot, %15s eps/pix", nPixels, count, engFmt.format(filteredRatePerPixel*nPixels), engFmt.format(filteredRatePerPixel));
+            return String.format("ROI %6d pix, tot. %10d ev, %15s eps tot, %15s eps/pix", nPixels, count, engFmt.format(filteredRatePerPixel * nPixels), engFmt.format(filteredRatePerPixel));
         }
 
         /**
@@ -863,8 +863,9 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 if (ypos < (chip.getSizeY() / 2)) {
                     ypos = chip.getSizeY() / 2;
                 }
-                renderer.draw3D(toString(), 1,ypos, 0, scale); // TODO fix string n lines
+                renderer.draw3D(toString(), 1, ypos, 0, scale); // TODO fix string n lines
             }
+            renderer.end3DRendering();
             if (countDVSEventsBetweenExternalPinEvents) {
                 MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .4f);
                 MultilineAnnotationTextRenderer.setScale(.25f);
@@ -872,13 +873,14 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 MultilineAnnotationTextRenderer.renderMultilineString(eventCountAfterExternalPinEvents.toString());
             }
             // ... more draw commands, color changes, etc.
-            renderer.end3DRendering();
 
             // draw hist
             if (isiHistEnabled || showLatencyHistogramToExternalInputEvents) {
-                renderer.draw3D(String.format("%d", isiMinUs), -1, -6, 0, scale);
-                renderer.draw3D(String.format("%d", isiMaxUs), chip.getSizeX() - 8, -6, 0, scale);
+                renderer.begin3DRendering();
+                renderer.draw3D(String.format("%ss", engFmt.format(1e-6f * isiMinUs)), -1, -6, 0, scale);
+                renderer.draw3D(String.format("%ss", engFmt.format(1e-6f * isiMaxUs)), chip.getSizeX() - 8, -6, 0, scale);
                 renderer.draw3D(logISIEnabled ? "log" : "linear", -15, -6, 0, scale);
+                renderer.end3DRendering();
 
                 {
                     if (individualISIsEnabled) {
@@ -926,8 +928,10 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                                     .exp((((float) currentMousePoint.x / chip.getSizeX()) * (stats.logIsiMax - stats.logIsiMin))
                                             + stats.logIsiMin);
                         }
-                        gl.glColor3fv(SELECT_COLOR, 0);
-                        renderer.draw3D(String.format("%.0f us", binTime), currentMousePoint.x, -6, 0, scale);
+                        renderer.begin3DRendering();
+                        renderer.setColor(SELECT_COLOR[0], SELECT_COLOR[1], SELECT_COLOR[2], SELECT_COLOR[3]);
+                        renderer.draw3D(String.format("%ss", engFmt.format(1e-6f * binTime)), currentMousePoint.x, -12, 0, scale);
+                        renderer.end3DRendering();
                         gl.glLineWidth(3);
                         gl.glColor3fv(SELECT_COLOR, 0);
                         gl.glBegin(GL.GL_LINES);
@@ -937,6 +941,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                     }
                 }
             }
+
         }
 
         private void play() {
@@ -1187,7 +1192,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                         break;
                 }
             }
-            
+
             @Override
             public String toString() {
                 int n = selection == null ? chip.getNumPixels() : selection.height * selection.width;
@@ -1220,21 +1225,23 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
              * @param phase the phase to set
              */
             public void setPhase(Phase phase) {
-                Phase old=this.phase;
+                Phase old = this.phase;
                 this.phase = phase;
-                if(old!=this.phase){
+                if (old != this.phase) {
                     maybeSetRendererAccumulation();
                 }
             }
-            
-            void maybeSetRendererAccumulation(){
-                if(chip.getRenderer()==null) return;
-                AEChipRenderer renderer=chip.getRenderer();
-                if(!accumulateEventsOnEachPhase){
+
+            void maybeSetRendererAccumulation() {
+                if (chip.getRenderer() == null) {
+                    return;
+                }
+                AEChipRenderer renderer = chip.getRenderer();
+                if (!accumulateEventsOnEachPhase) {
                     renderer.setAccumulateEnabled(false);
                     return;
                 }
-                switch(phase){
+                switch (phase) {
                     case Rising:
                     case Falling:
                         renderer.resetFrame(renderer.getGrayValue());
@@ -1289,7 +1296,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
      */
     public void setAccumulateEventsOnEachPhase(boolean accumulateEventsOnEachPhase) {
         this.accumulateEventsOnEachPhase = accumulateEventsOnEachPhase;
-        putBoolean("accumulateEventsOnEachPhase",accumulateEventsOnEachPhase);
+        putBoolean("accumulateEventsOnEachPhase", accumulateEventsOnEachPhase);
     }
 
     /**
