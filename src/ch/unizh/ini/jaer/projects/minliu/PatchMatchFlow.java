@@ -384,19 +384,23 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     if (!accumulateEvent(ein)) { // maybe skip events here
                         break;
                     }
-                    SADResult sliceResult;
+                    SADResult sliceResult = new SADResult();
                     minDistScale = 0;
 
+                    if(ein.timestamp == 295622392)
+                    {
+                        int tmp = 1;
+                    }
                     // Sorts scalesToComputeArray[] in descending order
                     Arrays.sort(scalesToComputeArray, Collections.reverseOrder());
 
                     for (int scale : scalesToComputeArray) {
                         if (scale >= numScales) {
-                            log.warning("scale " + scale + " is out of range of " + numScales + "; fix scalesToCompute for example by clearing it");
-                            break;
+//                            log.warning("scale " + scale + " is out of range of " + numScales + "; fix scalesToCompute for example by clearing it");
+//                            break;
                         }
-                        int dx_init = ((result != null) && !isNotSufficientlyAccurate(result)) ? (result.dx >> scale) : 0;
-                        int dy_init = ((result != null) && !isNotSufficientlyAccurate(result)) ? (result.dx >> scale) : 0;
+                        int dx_init = ((result != null) && !isNotSufficientlyAccurate(sliceResult)) ? (sliceResult.dx >> scale) : 0;
+                        int dy_init = ((result != null) && !isNotSufficientlyAccurate(sliceResult)) ? (sliceResult.dy >> scale) : 0;
 //                        dx_init = 0;
 //                        dy_init = 0;
                         // The reason why we inverse dx_init, dy_init i is the offset is pointing from previous slice to current slice.
@@ -442,6 +446,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             vx = result.vx;
             vy = result.vy;
             v = (float) Math.sqrt((vx * vx) + (vy * vy));
+            if(Math.abs(vy) >= 5)
+            {
+                int tmp = 0;
+            }
             // TODO debug
             StringBuilder sadValsString = new StringBuilder();
             for (int k = 0; k < sadVals.length - 1; k++) {
@@ -457,12 +465,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 final SADResult thisResult = result;
                 final PolarityEvent thisEvent = ein;
                 final byte[][][][] thisSlices = slices;
-                SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
+//                SwingUtilities.invokeLater(new Runnable() {
+//                    @Override
+//                    public void run() {
                         drawMatching(thisResult, thisEvent, thisSlices); // ein.x >> result.scale, ein.y >> result.scale, (int) result.dx >> result.scale, (int) result.dy >> result.scale, slices[sliceIndex(1)][result.scale], slices[sliceIndex(2)][result.scale], result.scale);
-                    }
-                });
+//                    }
+//                });
             }
 
             if (resultHistogram != null) {
@@ -486,6 +494,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         adaptEventSkipping();
         if (rewindFlg) {
             rewindFlg = false;
+            
+            for (byte[][][] b : slices) {
+                clearSlice(b);
+            }
+
+            currentSliceIdx = 0;  // start by filling slice 0
+            currentSlice = slices[currentSliceIdx];
+
             sliceLastTs = Integer.MAX_VALUE;
 
         }
@@ -865,14 +881,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (slices == null) {
             return;  // on reset maybe chip is not set yet
         }
-        for (byte[][][] b : slices) {
-            clearSlice(b);
-        }
-
-        currentSliceIdx = 0;  // start by filling slice 0
-        currentSlice = slices[currentSliceIdx];
-
-        sliceLastTs = Integer.MAX_VALUE;
+//        for (byte[][][] b : slices) {
+//            clearSlice(b);
+//        }
+//
+//        currentSliceIdx = 0;  // start by filling slice 0
+//        currentSlice = slices[currentSliceIdx];
+//
+//        sliceLastTs = Integer.MAX_VALUE;
         rewindFlg = true;
         if (adaptiveEventSkippingUpdateCounterLPFilter != null) {
             adaptiveEventSkippingUpdateCounterLPFilter.reset();
@@ -901,7 +917,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      */
     private boolean maybeRotateSlices() {
         int dt = ts - sliceLastTs;
-        if (dt < 0 || rewindFlg) { // handle timestamp wrapping
+        if (dt < 0) { // handle timestamp wrapping
 //        System.out.println("rotated slices at ");
 //        System.out.println("rotated slices with dt= "+dt);
             rotateSlices();
@@ -1311,6 +1327,29 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 }
                 break;
             case FullSearch:
+                if(x == 34 && y == 129)
+                {
+                    System.out.printf("Refblock is: \n");
+                    int xscale = (x >> subSampleBy);
+                    int yscale = (y >> subSampleBy);
+                    for (int xx =  xscale - r; xx <= (xscale + r); xx++) {
+                        for (int yy = yscale - r; yy <= (yscale + r); yy++) {
+                            System.out.printf("%d\t", curSlice[subSampleBy][xx][yy]);
+                        }
+                        System.out.printf("\n");
+                    }
+                    System.out.printf("\n");
+
+                    System.out.printf("Tagblock is: \n");
+                    for (int xx =  xscale + dx_init - r - searchDistance; xx <= (xscale + dx_init + r + searchDistance); xx++) {
+                        for (int yy = yscale + dy_init - r - searchDistance; yy <= (yscale + dy_init + r + searchDistance); yy++) {
+                            System.out.printf("%d\t", prevSlice[subSampleBy][xx][yy]);
+                        }
+                        System.out.printf("\n");
+                    }
+                    System.out.printf("\n");                    
+                }
+                                
                 for (dx = -searchDistance; dx <= searchDistance; dx++) {
                     for (dy = -searchDistance; dy <= searchDistance; dy++) {
                         sum = sadDistance(x, y, dx_init + dx, dy_init + dy, curSlice, prevSlice, subSampleBy);
@@ -2384,13 +2423,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 /* Reset the image first */
                 blockMatchingImageDisplay.clearImage();
                 /* Rendering the reference patch in t-imuWarningDialog slice, it's on the center with color red */
-                for (int i = searchDistance; i < (blockDimension + searchDistance); i++) {
-                    for (int j = searchDistance; j < (blockDimension + searchDistance); j++) {
-                        float[] f = blockMatchingImageDisplay.getPixmapRGB(i, j);
-                        f[0] = scale * Math.abs(refBlock[((x - (blockDimension / 2)) + i) - searchDistance][((y - (blockDimension / 2)) + j) - searchDistance]);
-                        blockMatchingImageDisplay.setPixmapRGB(i, j, f);
-                    }
-                }
+//                for (int i = searchDistance; i < (blockDimension + searchDistance); i++) {
+//                    for (int j = searchDistance; j < (blockDimension + searchDistance); j++) {
+//                        float[] f = blockMatchingImageDisplay.getPixmapRGB(i, j);
+//                        f[0] = scale * Math.abs(refBlock[((x - (blockDimension / 2)) + i) - searchDistance][((y - (blockDimension / 2)) + j) - searchDistance]);
+//                        blockMatchingImageDisplay.setPixmapRGB(i, j, f);
+//                    }
+//                }
 
                 /* Rendering the area within search distance in t-2d slice, it's full of the whole search area with color green */
                 for (int i = 0; i < ((2 * radius) + 1); i++) {
@@ -2402,13 +2441,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 }
 
                 /* Rendering the best matching patch in t-2d slice, it's on the shifted position related to the center location with color blue */
-                for (int i = searchDistance + dx; i < (blockDimension + searchDistance + dx); i++) {
-                    for (int j = searchDistance + dy; j < (blockDimension + searchDistance + dy); j++) {
-                        float[] f = blockMatchingImageDisplay.getPixmapRGB(i, j);
-                        f[2] = scale * Math.abs(searchBlock[((x - (blockDimension / 2)) + i) - searchDistance][((y - (blockDimension / 2)) + j) - searchDistance]);
-                        blockMatchingImageDisplay.setPixmapRGB(i, j, f);
-                    }
-                }
+//                for (int i = searchDistance + dx; i < (blockDimension + searchDistance + dx); i++) {
+//                    for (int j = searchDistance + dy; j < (blockDimension + searchDistance + dy); j++) {
+//                        float[] f = blockMatchingImageDisplay.getPixmapRGB(i, j);
+//                        f[2] = scale * Math.abs(searchBlock[((x - (blockDimension / 2)) + i) - searchDistance][((y - (blockDimension / 2)) + j) - searchDistance]);
+//                        blockMatchingImageDisplay.setPixmapRGB(i, j, f);
+//                    }
+//                }
                 if (blockMatchingDisplayLegend != null) {
                     blockMatchingDisplayLegend.s
                             = LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH
