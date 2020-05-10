@@ -42,6 +42,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.graphics.AEViewer;
 
 /**
  * "Writes out text format files with DVS and IMU data from DAVIS and DVS
@@ -76,7 +77,7 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
 
     public DavisTextOutputWriter(AEChip chip) {
         super(chip);
-        setPropertyTooltip("startRecordingAndSaveAs", "Opens the output file and starts writing to it. The text file is in format timestamp x y polarity, with polarity ");
+        setPropertyTooltip("startRecordingAndSaveAs", "Opens the output file and starts writing to it. The text file is in format timestamp x y polarity. Timestamp and polarity options are set by options useUsTimestamps and useSignedPolarity");
         setPropertyTooltip("closeFiles", "Closes the output file if it is open.");
         setPropertyTooltip("closeOnRewind", "closes recording on rewind event, to allow unattended operation");
         setPropertyTooltip("rewindBeforeRecording", "rewinds file before recording");
@@ -153,12 +154,12 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
         }
         return in;
     }
-    
-    private int polValue(Polarity p){
-        if(useSignedPolarity){
-            return p==Polarity.Off?-1:1;
-        }else{
-            return p==Polarity.Off?0:1;
+
+    private int polValue(Polarity p) {
+        if (useSignedPolarity) {
+            return p == Polarity.Off ? -1 : 1;
+        } else {
+            return p == Polarity.Off ? 0 : 1;
         }
     }
 
@@ -300,6 +301,10 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
         if (basename.toLowerCase().endsWith(".txt")) {
             basename = basename.substring(0, basename.length() - 4);
         }
+        if (basename.toLowerCase().endsWith("-events")) {
+            basename = basename.substring(0, basename.length() - 7);
+        }
+        
         lastFileName = basename;
         putString("lastFileName", lastFileName);
 
@@ -308,8 +313,9 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
                 String fn = basename + "-events.txt";
                 if (checkFileExists(fn)) {
                     dvsWriter = openWriter(new File(fn));
-                    dvsWriter.println("# dvs-events: One event per line:  timestamp(us) x y polarity(0=off,1=on)");
-
+                    String tsStr=useUsTimestamps?"timestamp(int32 us)":"timestamp(float s)";
+                    String polStr=useSignedPolarity?"polarity(off/on=-1/+1)":"polarity(off/on=0/1)";
+                    dvsWriter.println(String.format("# dvs-events: One event per line:  %s x y %s",tsStr,polStr));
                 }
             }
             if (imuSamples) {
@@ -442,6 +448,8 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
                 doCloseFiles();
             }
             ignoreRewinwdEventFlag = false;
+        }else if(evt.getPropertyName()==AEViewer.EVENT_FILEOPEN){
+            getChip().getAeInputStream().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND,this);
         }
     }
 
@@ -512,6 +520,7 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
 
     @Override
     public void initFilter() {
+        getChip().getAeViewer().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
     }
 
 }
