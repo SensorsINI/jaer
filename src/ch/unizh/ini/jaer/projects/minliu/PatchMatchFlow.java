@@ -202,9 +202,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int eventCounter = 0;
     private int sliceLastTs = Integer.MAX_VALUE;
 
-    private JFrame blockMatchingFrame, blockMatchingFrameTarget = null;
-    private ImageDisplay blockMatchingImageDisplay, blockMatchingImageDisplayTarget; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
-    private Legend blockMatchingDisplayLegend, blockMatchingDisplayLegendTarget;
+    private JFrame blockMatchingFrame[] = new JFrame[3];
+    private JFrame blockMatchingFrameTarget[] = new JFrame[3];
+    private ImageDisplay blockMatchingImageDisplay[] = new ImageDisplay[3];
+    private ImageDisplay blockMatchingImageDisplayTarget[] = new ImageDisplay[3]; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+    private Legend blockMatchingDisplayLegend[] = new Legend[3];
+    private Legend blockMatchingDisplayLegendTarget[] = new Legend[3];  
     private static final String LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH = "G: search area\nR: ref block area\nB: best match";
 
     private JFrame sliceBitMapFrame = null;
@@ -372,6 +375,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             SADResult result = null;
 
             float[] sadVals = new float[numScales]; // TODO debug
+            int[] dxInitVals = new int[numScales];
+            int[] dyInitVals = new int[numScales];
+            
             switch (patchCompareMethod) {
                 case SAD:
                     boolean rotated = maybeRotateSlices();
@@ -387,7 +393,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         break;
                     }
                     
-                    if(ein.timestamp == 295717762)
+                    if(ein.timestamp == 296004143)
                     {
                         int tmp = 1;
                     }
@@ -413,13 +419,26 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                        sliceSummedSADValues[sliceIndex(scale + 2)] += sliceResult.sadValue; // accumulate SAD for this past slice
 //                        sliceSummedSADCounts[sliceIndex(scale + 2)]++; // accumulate SAD count for this past slice
                         // sliceSummedSADValues should end up filling 2 values for 4 slices 
-                        if ((result == null) || (sliceResult.sadValue < result.sadValue)) {
-                            result = sliceResult; // result holds the overall min sad result
-                            minDistScale = scale;
-                        }
+
                         sadVals[scale] = sliceResult.sadValue; // TODO debug 
+                        dxInitVals[scale] = dx_init;
+                        dyInitVals[scale] = dy_init;
+
+//                        if(sliceResult.sadValue >= this.maxAllowedSadDistance)
+//                        {
+//                            break;
+//                        }
+//                        else
+//                        {
+                            if ((result == null) || (sliceResult.sadValue < result.sadValue)) {
+                                result = sliceResult; // result holds the overall min sad result
+                                minDistScale = scale;
+                            }
+//                        }
 //                        result=sliceResult; // TODO tobi: override the absolute minimum to always use the finest scale result, which has been guided by coarser scales
                     }
+//                    result = sliceResult;
+//                    minDistScale = 0;
                     float dt = (sliceDeltaTimeUs(2) * 1e-6f);
                     if (result != null) {
                         result.vx = result.dx / dt; // hack, convert to pix/second
@@ -469,16 +488,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                SwingUtilities.invokeLater(new Runnable() {
 //                    @Override
 //                    public void run() {
-                        drawMatching(thisResult, thisEvent, thisSlices); // ein.x >> result.scale, ein.y >> result.scale, (int) result.dx >> result.scale, (int) result.dy >> result.scale, slices[sliceIndex(1)][result.scale], slices[sliceIndex(2)][result.scale], result.scale);
+                        drawMatching(thisResult, thisEvent, thisSlices, sadVals, dxInitVals, dyInitVals); // ein.x >> result.scale, ein.y >> result.scale, (int) result.dx >> result.scale, (int) result.dy >> result.scale, slices[sliceIndex(1)][result.scale], slices[sliceIndex(2)][result.scale], result.scale);
 //                    }
 //                });
             }
             
-            if(Math.abs(vy) >= 5)
+            if(result.dy != 0)
             {
                 int tmp = 0;
             }            
-            if(ein.timestamp == 295717762)
+            if(ein.timestamp == 296740229)
             {
                 int tmp = 1;
             }
@@ -1204,8 +1223,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         // Make sure both ref block and past slice block are in bounds on all sides or there'll be arrayIndexOutOfBoundary exception.
         // Also we don't want to match ref block only on inner sides or there will be a bias towards motion towards middle
-        if (xsub - r - searchDistance < 0 || xsub + r + searchDistance >= w
-                || ysub - r - searchDistance < 0 || ysub + r + searchDistance >= h) {
+        if (xsub - r - searchDistance < 0 || xsub + r + searchDistance >= 1 * w
+                || ysub - r - searchDistance < 0 || ysub + r + searchDistance >= 1 * h) {
             result.sadValue = Float.MAX_VALUE; // return very large distance for this match so it is not selected
             result.scale = subSampleBy;
             return result;
@@ -1336,7 +1355,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     DSDy = result.dy;
                 }
                 break;
-            case FullSearch:
+            case FullSearch:                               
+                for (dx = -searchDistance; dx <= searchDistance; dx++) {
+                    for (dy = -searchDistance; dy <= searchDistance; dy++) {
+                        sum = sadDistance(x, y, dx_init + dx, dy_init + dy, curSlice, prevSlice, subSampleBy);
+                        sumArray[dx + searchDistance][dy + searchDistance] = sum;
+                        if (sum < minSum) {
+                            minSum = sum;
+                            result.dx = -dx - dx_init; // minus is because result points to the past slice and motion is in the other direction
+                            result.dy = -dy - dy_init;
+                            result.sadValue = minSum;
+                        }
+                    }
+                }
+                
                 if((e.getAddress() & 1) == 1)
                 {
                     System.out.printf("Scale %d with Refblock is: \n", subSampleBy);
@@ -1357,21 +1389,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         }
                         System.out.printf("\n");
                     }
+                    System.out.printf("result is %s: ", result.toString());
                     System.out.printf("\n");                    
-                }
-                                
-                for (dx = -searchDistance; dx <= searchDistance; dx++) {
-                    for (dy = -searchDistance; dy <= searchDistance; dy++) {
-                        sum = sadDistance(x, y, dx_init + dx, dy_init + dy, curSlice, prevSlice, subSampleBy);
-                        sumArray[dx + searchDistance][dy + searchDistance] = sum;
-                        if (sum < minSum) {
-                            minSum = sum;
-                            result.dx = -dx - dx_init; // minus is because result points to the past slice and motion is in the other direction
-                            result.dy = -dy - dy_init;
-                            result.sadValue = minSum;
-                        }
-                    }
-                }
+                }     
+                
                 if (outputSearchErrorInfo) {
                     FSCnt += 1;
                     FSDx = result.dx;
@@ -2131,7 +2152,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 slices = new byte[numSlices][numScales][][];
                 for (int n = 0; n < numSlices; n++) {
                     for (int s = 0; s < numScales; s++) {
-                        int nx = (subSizeX >> s) + 1, ny = (subSizeY >> s) + 1;
+                        int nx = (subSizeX >> s) + 1 + blockDimension, ny = (subSizeY >> s) + 1 + blockDimension;
                         if (slices[n][s] == null || slices[n][s].length != nx
                                 || slices[n][s][0] == null || slices[n][s][0].length != ny) {
                             slices[n][s] = new byte[nx][ny];
@@ -2379,149 +2400,152 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
      * @param searchBlock
      * @param subSampleBy
      */
-    synchronized private void drawMatching(SADResult result, PolarityEvent ein, byte[][][][] slices) {
+    synchronized private void drawMatching(SADResult result, PolarityEvent ein, byte[][][][] slices, float[] sadVals, int[] dxInitVals, int[] dyInitVals) {
 //    synchronized private void drawMatching(int x, int y, int dx, int dy, byte[][] refBlock, byte[][] searchBlock, int subSampleBy) {
-        int x = ein.x >> result.scale, y = ein.y >> result.scale;
-        int dx = (int) result.dx >> result.scale, dy = (int) result.dy >> result.scale;
-        byte[][] refBlock = slices[sliceIndex(1)][result.scale], searchBlock = slices[sliceIndex(2)][result.scale];
-        int subSampleBy = result.scale;
-        Legend sadLegend = null;
-          
-        int dimNew = blockDimension + (2 * (searchDistance));
-        if (blockMatchingFrame == null) {
-            String windowName = "Block matches";
-            blockMatchingFrame = new JFrame(windowName);
-            blockMatchingFrame.setLayout(new BoxLayout(blockMatchingFrame.getContentPane(), BoxLayout.Y_AXIS));
-            blockMatchingFrame.setPreferredSize(new Dimension(600, 600));
-            JPanel panel = new JPanel();
-            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
-            blockMatchingImageDisplay = ImageDisplay.createOpenGLCanvas();
-            blockMatchingImageDisplay.setBorderSpacePixels(10);
-            blockMatchingImageDisplay.setImageSize(dimNew, dimNew);
-            blockMatchingImageDisplay.setSize(200, 200);
-            blockMatchingImageDisplay.setGrayValue(0);
-            blockMatchingDisplayLegend = blockMatchingImageDisplay.addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
-            panel.add(blockMatchingImageDisplay);
+        for(int dispIdx = 0; dispIdx < numScales; dispIdx++)
+        {
+            result.scale = dispIdx;
+            int x = ein.x >> result.scale, y = ein.y >> result.scale;
+            int dx = (int) result.dx >> result.scale, dy = (int) result.dy >> result.scale;
+            byte[][] refBlock = slices[sliceIndex(1)][result.scale], searchBlock = slices[sliceIndex(2)][result.scale];
+            int subSampleBy = result.scale;
+            Legend sadLegend = null;
 
-            blockMatchingFrame.getContentPane().add(panel);
-            blockMatchingFrame.pack();
-            blockMatchingFrame.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosing(WindowEvent e) {
-                    setShowBlockMatches(false);
-                }
-            });
-        }
-        if (!blockMatchingFrame.isVisible()) {
-            blockMatchingFrame.setVisible(true);
-        }
-        
-        if (blockMatchingFrameTarget == null) {
-            String windowName = "Block matches";
-            blockMatchingFrameTarget = new JFrame(windowName);
-            blockMatchingFrameTarget.setLayout(new BoxLayout(blockMatchingFrameTarget.getContentPane(), BoxLayout.Y_AXIS));
-            blockMatchingFrameTarget.setPreferredSize(new Dimension(600, 600));
-            JPanel panel = new JPanel();
-            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
-            blockMatchingImageDisplayTarget = ImageDisplay.createOpenGLCanvas();
-            blockMatchingImageDisplayTarget.setBorderSpacePixels(10);
-            blockMatchingImageDisplayTarget.setImageSize(dimNew, dimNew);
-            blockMatchingImageDisplayTarget.setSize(200, 200);
-            blockMatchingImageDisplayTarget.setGrayValue(0);
-            blockMatchingDisplayLegendTarget = blockMatchingImageDisplayTarget.addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
-            panel.add(blockMatchingImageDisplayTarget);
+            int dimNew = blockDimension + (2 * (searchDistance));
+            if (blockMatchingFrame[dispIdx] == null) {
+                String windowName = "Ref Block " + dispIdx;
+                blockMatchingFrame[dispIdx] = new JFrame(windowName);
+                blockMatchingFrame[dispIdx].setLayout(new BoxLayout(blockMatchingFrame[dispIdx].getContentPane(), BoxLayout.Y_AXIS));
+                blockMatchingFrame[dispIdx].setPreferredSize(new Dimension(600, 600));
+                JPanel panel = new JPanel();
+                panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+                blockMatchingImageDisplay[dispIdx] = ImageDisplay.createOpenGLCanvas();
+                blockMatchingImageDisplay[dispIdx].setBorderSpacePixels(10);
+                blockMatchingImageDisplay[dispIdx].setImageSize(dimNew, dimNew);
+                blockMatchingImageDisplay[dispIdx].setSize(200, 200);
+                blockMatchingImageDisplay[dispIdx].setGrayValue(0);
+                blockMatchingDisplayLegend[dispIdx] = blockMatchingImageDisplay[dispIdx].addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
+                panel.add(blockMatchingImageDisplay[dispIdx]);
 
-            blockMatchingFrameTarget.getContentPane().add(panel);
-            blockMatchingFrameTarget.pack();
-            blockMatchingFrameTarget.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosing(WindowEvent e) {
-                    setShowBlockMatches(false);
-                }
-            });
-        }
-        if (!blockMatchingFrameTarget.isVisible()) {
-            blockMatchingFrameTarget.setVisible(true);
-        }
-        final int radius = (blockDimension / 2) + searchDistance;
-
-        float scale = 1f / getSliceMaxValue();
-        try {
-//            if ((x >= radius) && ((x + radius) < subSizeX)
-//                    && (y >= radius) && ((y + radius) < subSizeY))
-            {
-
-            if (dimNew != blockMatchingImageDisplay.getWidth()) {
-                dim = dimNew;
-                blockMatchingImageDisplay.setImageSize(dimNew, dimNew);
-                blockMatchingImageDisplay.clearLegends();
-                blockMatchingDisplayLegend = blockMatchingImageDisplay.addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
-            }
-
-            if (dimNew != blockMatchingImageDisplayTarget.getWidth()) {
-                dim = dimNew;
-                blockMatchingImageDisplayTarget.setImageSize(dimNew, dimNew);
-                blockMatchingImageDisplayTarget.clearLegends();
-                blockMatchingDisplayLegendTarget = blockMatchingImageDisplayTarget.addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
-            }
-//        TextRenderer textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 12));
-
-                if (blockMatchingDisplayLegend != null) {
-                    blockMatchingDisplayLegend.s
-                            = LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH
-                            + "\nScale: "
-                            + subSampleBy
-                            + "\nSAD: "
-                            + engFmt.format(result.sadValue)
-                            + "\nTimestamp: "
-                            + ein.timestamp;
-                }                
-                if (blockMatchingDisplayLegendTarget != null) {
-                    blockMatchingDisplayLegendTarget.s
-                            = LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH
-                            + "\nx: "
-                            + ein.x
-                            + "\ny: "
-                            + ein.y;
-                } 
-                
-                /* Reset the image first */
-                blockMatchingImageDisplay.clearImage();
-                blockMatchingImageDisplayTarget.clearImage();
-
-                /* Rendering the reference patch in t-imuWarningDialog slice, it's on the center with color red */
-                for (int i = searchDistance; i < (blockDimension + searchDistance); i++) {
-                    for (int j = searchDistance; j < (blockDimension + searchDistance); j++) {
-                        float[] f = blockMatchingImageDisplay.getPixmapRGB(i, j);
-                        f[0] = scale * Math.abs(refBlock[((x - (blockDimension / 2)) + i) - searchDistance][((y - (blockDimension / 2)) + j) - searchDistance]);
-                        blockMatchingImageDisplay.setPixmapRGB(i, j, f);
+                blockMatchingFrame[dispIdx].getContentPane().add(panel);
+                blockMatchingFrame[dispIdx].pack();
+                blockMatchingFrame[dispIdx].addWindowListener(new WindowAdapter() {
+                    @Override
+                    public void windowClosing(WindowEvent e) {
+                        setShowBlockMatches(false);
                     }
-                }
-
-                /* Rendering the area within search distance in t-2d slice, it's full of the whole search area with color green */
-                for (int i = 0; i < ((2 * radius) + 1); i++) {
-                    for (int j = 0; j < ((2 * radius) + 1); j++) {
-                        float[] f = blockMatchingImageDisplayTarget.getPixmapRGB(i, j);
-                        f[1] = scale * Math.abs(searchBlock[(x - radius) + i][(y - radius) + j]);
-                        blockMatchingImageDisplayTarget.setPixmapRGB(i, j, f);
-                    }
-                }
-
-                /* Rendering the best matching patch in t-2d slice, it's on the shifted position related to the center location with color blue */
-//                for (int i = searchDistance + dx; i < (blockDimension + searchDistance + dx); i++) {
-//                    for (int j = searchDistance + dy; j < (blockDimension + searchDistance + dy); j++) {
-//                        float[] f = blockMatchingImageDisplay.getPixmapRGB(i, j);
-//                        f[2] = scale * Math.abs(searchBlock[((x - (blockDimension / 2)) + i) - searchDistance][((y - (blockDimension / 2)) + j) - searchDistance]);
-//                        blockMatchingImageDisplay.setPixmapRGB(i, j, f);
-//                    }
-//                }               
+                });
             }
-        } catch (ArrayIndexOutOfBoundsException e) {
+            if (!blockMatchingFrame[dispIdx].isVisible()) {
+                blockMatchingFrame[dispIdx].setVisible(true);
+            }
 
+            if (blockMatchingFrameTarget[dispIdx] == null) {
+                String windowName = "Target Block " + dispIdx;
+                blockMatchingFrameTarget[dispIdx] = new JFrame(windowName);
+                blockMatchingFrameTarget[dispIdx].setLayout(new BoxLayout(blockMatchingFrameTarget[dispIdx].getContentPane(), BoxLayout.Y_AXIS));
+                blockMatchingFrameTarget[dispIdx].setPreferredSize(new Dimension(600, 600));
+                JPanel panel = new JPanel();
+                panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+                blockMatchingImageDisplayTarget[dispIdx] = ImageDisplay.createOpenGLCanvas();
+                blockMatchingImageDisplayTarget[dispIdx].setBorderSpacePixels(10);
+                blockMatchingImageDisplayTarget[dispIdx].setImageSize(dimNew, dimNew);
+                blockMatchingImageDisplayTarget[dispIdx].setSize(200, 200);
+                blockMatchingImageDisplayTarget[dispIdx].setGrayValue(0);
+                blockMatchingDisplayLegendTarget[dispIdx] = blockMatchingImageDisplayTarget[dispIdx].addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
+                panel.add(blockMatchingImageDisplayTarget[dispIdx]);
+
+                blockMatchingFrameTarget[dispIdx].getContentPane().add(panel);
+                blockMatchingFrameTarget[dispIdx].pack();
+                blockMatchingFrameTarget[dispIdx].addWindowListener(new WindowAdapter() {
+                    @Override
+                    public void windowClosing(WindowEvent e) {
+                        setShowBlockMatches(false);
+                    }
+                });
+            }
+            if (!blockMatchingFrameTarget[dispIdx].isVisible()) {
+                blockMatchingFrameTarget[dispIdx].setVisible(true);
+            }
+            final int radius = (blockDimension / 2) + searchDistance;
+
+            float scale = 1f / getSliceMaxValue();
+            try {
+    //            if ((x >= radius) && ((x + radius) < subSizeX)
+    //                    && (y >= radius) && ((y + radius) < subSizeY))
+                {
+
+                if (dimNew != blockMatchingImageDisplay[dispIdx].getWidth()) {
+                    dim = dimNew;
+                    blockMatchingImageDisplay[dispIdx].setImageSize(dimNew, dimNew);
+                    blockMatchingImageDisplay[dispIdx].clearLegends();
+                    blockMatchingDisplayLegend[dispIdx] = blockMatchingImageDisplay[dispIdx].addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
+                }
+
+                if (dimNew != blockMatchingImageDisplayTarget[dispIdx].getWidth()) {
+                    dim = dimNew;
+                    blockMatchingImageDisplayTarget[dispIdx].setImageSize(dimNew, dimNew);
+                    blockMatchingImageDisplayTarget[dispIdx].clearLegends();
+                    blockMatchingDisplayLegendTarget[dispIdx] = blockMatchingImageDisplayTarget[dispIdx].addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
+                }
+    //        TextRenderer textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 12));
+
+                    if (blockMatchingDisplayLegend[dispIdx] != null) {
+                        blockMatchingDisplayLegend[dispIdx].s
+                                = "R: ref block area"
+                                + "\nScale: "
+                                + subSampleBy
+                                + "\nSAD: "
+                                + engFmt.format(sadVals[dispIdx])
+                                + "\nTimestamp: " + ein.timestamp;
+                    }                
+                    if (blockMatchingDisplayLegendTarget[dispIdx] != null) {
+                        blockMatchingDisplayLegendTarget[dispIdx].s
+                                = "G: search area"
+                                + "\nx: " + ein.x 
+                                + "\ny: " + ein.y
+                                + "\ndx_init: " + dxInitVals[dispIdx]
+                                + "\ndy_init: " + dyInitVals[dispIdx];
+                    } 
+
+                    /* Reset the image first */
+                    blockMatchingImageDisplay[dispIdx].clearImage();
+                    blockMatchingImageDisplayTarget[dispIdx].clearImage();
+
+                    /* Rendering the reference patch in t-imuWarningDialog slice, it's on the center with color red */
+                    for (int i = searchDistance; i < (blockDimension + searchDistance); i++) {
+                        for (int j = searchDistance; j < (blockDimension + searchDistance); j++) {
+                            float[] f = blockMatchingImageDisplay[dispIdx].getPixmapRGB(i, j);
+                            f[0] = scale * Math.abs(refBlock[((x - (blockDimension / 2)) + i) - searchDistance][((y - (blockDimension / 2)) + j) - searchDistance]);
+                            blockMatchingImageDisplay[dispIdx].setPixmapRGB(i, j, f);
+                        }
+                    }
+
+                    /* Rendering the area within search distance in t-2d slice, it's full of the whole search area with color green */
+                    for (int i = 0; i < ((2 * radius) + 1); i++) {
+                        for (int j = 0; j < ((2 * radius) + 1); j++) {
+                            float[] f = blockMatchingImageDisplayTarget[dispIdx].getPixmapRGB(i, j);
+                            f[1] = scale * Math.abs(searchBlock[(x - dxInitVals[dispIdx] - radius) + i][(y - dyInitVals[dispIdx] - radius) + j]);
+                            blockMatchingImageDisplayTarget[dispIdx].setPixmapRGB(i, j, f);
+                        }
+                    }
+
+                    /* Rendering the best matching patch in t-2d slice, it's on the shifted position related to the center location with color blue */
+//                    for (int i = searchDistance + dx; i < (blockDimension + searchDistance + dx); i++) {
+//                        for (int j = searchDistance + dy; j < (blockDimension + searchDistance + dy); j++) {
+//                            float[] f = blockMatchingImageDisplayTarget[dispIdx].getPixmapRGB(i, j);
+//                            f[2] = scale * Math.abs(searchBlock[((x - (blockDimension / 2)) + i) - searchDistance][((y - (blockDimension / 2)) + j) - searchDistance]);
+//                            blockMatchingImageDisplayTarget[dispIdx].setPixmapRGB(i, j, f);
+//                        }
+//                    }               
+                }
+            } catch (ArrayIndexOutOfBoundsException e) {
+
+            }
+
+            blockMatchingImageDisplay[dispIdx].repaint();
+            blockMatchingImageDisplayTarget[dispIdx].repaint();
         }
-
-        blockMatchingImageDisplay.repaint();
-        blockMatchingImageDisplayTarget.repaint();
     }
 
     private void drawSlices(byte[][][][] slices) {
