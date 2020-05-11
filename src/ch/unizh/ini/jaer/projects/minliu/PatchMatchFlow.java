@@ -437,8 +437,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                        }
 //                        result=sliceResult; // TODO tobi: override the absolute minimum to always use the finest scale result, which has been guided by coarser scales
                     }
-//                    result = sliceResult;
-//                    minDistScale = 0;
+                    result = sliceResult;
+                    minDistScale = 0;
                     float dt = (sliceDeltaTimeUs(2) * 1e-6f);
                     if (result != null) {
                         result.vx = result.dx / dt; // hack, convert to pix/second
@@ -1218,7 +1218,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         final int xsub = (x >> subSampleBy) + dx_init;
         final int ysub = (y >> subSampleBy) + dy_init;
-        final int r = ((blockDimension) / 2);
+        final int r = ((blockDimension) / 2) << (2 - subSampleBy);
         int w = subSizeX >> subSampleBy, h = subSizeY >> subSampleBy;
 
         // Make sure both ref block and past slice block are in bounds on all sides or there'll be arrayIndexOutOfBoundary exception.
@@ -1470,7 +1470,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             final int subsampleBy) {
         final int x = xfull >> subsampleBy;
         final int y = yfull >> subsampleBy;
-        final int r = ((blockDimension) / 2);
+        final int r = ((blockDimension) / 2) << (2 - subsampleBy);
 //        int w = subSizeX >> subsampleBy, h = subSizeY >> subsampleBy;
 //        int adx = dx > 0 ? dx : -dx; // abs val of dx and dy, to compute limits
 //        int ady = dy > 0 ? dy : -dy;
@@ -2411,7 +2411,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             int subSampleBy = result.scale;
             Legend sadLegend = null;
 
-            int dimNew = blockDimension + (2 * (searchDistance));
+            final int refRadius = (blockDimension / 2) << (2 - result.scale);
+            int dimNew = refRadius * 2 + 1 + (2 * (searchDistance));
             if (blockMatchingFrame[dispIdx] == null) {
                 String windowName = "Ref Block " + dispIdx;
                 blockMatchingFrame[dispIdx] = new JFrame(windowName);
@@ -2467,7 +2468,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             if (!blockMatchingFrameTarget[dispIdx].isVisible()) {
                 blockMatchingFrameTarget[dispIdx].setVisible(true);
             }
-            final int radius = (blockDimension / 2) + searchDistance;
+            final int radius = (refRadius) + searchDistance;
 
             float scale = 1f / getSliceMaxValue();
             try {
@@ -2513,10 +2514,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     blockMatchingImageDisplayTarget[dispIdx].clearImage();
 
                     /* Rendering the reference patch in t-imuWarningDialog slice, it's on the center with color red */
-                    for (int i = searchDistance; i < (blockDimension + searchDistance); i++) {
-                        for (int j = searchDistance; j < (blockDimension + searchDistance); j++) {
+                    for (int i = searchDistance; i < (refRadius *2 + 1 + searchDistance); i++) {
+                        for (int j = searchDistance; j < (refRadius * 2 + 1 + searchDistance); j++) {
                             float[] f = blockMatchingImageDisplay[dispIdx].getPixmapRGB(i, j);
-                            f[0] = scale * Math.abs(refBlock[((x - (blockDimension / 2)) + i) - searchDistance][((y - (blockDimension / 2)) + j) - searchDistance]);
+                            f[0] = scale * Math.abs(refBlock[((x - (refRadius)) + i) - searchDistance][((y - (refRadius)) + j) - searchDistance]);
                             blockMatchingImageDisplay[dispIdx].setPixmapRGB(i, j, f);
                         }
                     }
