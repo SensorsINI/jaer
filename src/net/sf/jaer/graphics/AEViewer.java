@@ -5136,7 +5136,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } else {
                 try {
                     unicastInput = new AEUnicastInput(chip);
-                    addPropertyChangeListener(EVENT_PAUSED, unicastInput);
+                    getSupport().addPropertyChangeListener(EVENT_PAUSED, unicastInput);
                     AEUnicastDialog dlg
                             = new AEUnicastDialog(this, true, unicastInput);
                     dlg.setVisible(true);
