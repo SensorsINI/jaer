@@ -33,6 +33,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.StringTokenizer;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -58,6 +59,7 @@ import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.filter.LowpassFilter;
+import org.apache.commons.lang3.ArrayUtils;
 
 /**
  * Uses patch matching to measureTT local optical flow. <b>Not</b> gradient
@@ -209,11 +211,28 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private Legend blockMatchingDisplayLegend[] = new Legend[numScales];
     private Legend blockMatchingDisplayLegendTarget[] = new Legend[numScales];  
     private static final String LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH = "G: search area\nR: ref block area\nB: best match";
-
+    
     private JFrame sliceBitMapFrame = null;
     private ImageDisplay sliceBitmapImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
     private Legend sliceBitmapImageDisplayLegend;
     private static final String LEGEND_SLICES = "G: Slice t-d\nR: Slice t-2d";
+
+    private JFrame timeStampBlockFrame = null;
+    private ImageDisplay timeStampBlockImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+    private Legend timeStampBlockImageDisplayLegend;
+    private static final String TIME_STAMP_BLOCK_LEGEND_SLICES = "R: Inner Circle\nB: Outer Circle\nG: Current event";
+    private static final int innerCircle[][] = {{0, 3}, {1, 3}, {2, 2}, {3, 1},
+    {3, 0}, {3, -1}, {2, -2}, {1, -3},
+    {0, -3}, {-1, -3}, {-2, -2}, {-3, -1},
+    {-3, 0}, {-3, 1}, {-2, 2}, {-1, 3}};
+    private static final int outerCircle[][] = {{0, 4}, {1, 4}, {2, 3}, {3, 2},
+    {4, 1}, {4, 0}, {4, -1}, {3, -2},
+    {2, -3}, {1, -4}, {0, -4}, {-1, -4},
+    {-2, -3}, {-3, -2}, {-4, -1}, {-4, 0},
+    {-4, 1}, {-3, 2}, {-2, 3}, {-1, 4}};    
+    int innerTsValue[] = new int[16];
+    int outerTsValue[] = new int[20]; 
+
     private HWCornerPointRenderer keypointFilter = null;
     /**
      * A PropertyChangeEvent with this value is fired when the slices has been
@@ -489,6 +508,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    @Override
 //                    public void run() {
                         drawMatching(thisResult, thisEvent, thisSlices, sadVals, dxInitVals, dyInitVals); // ein.x >> result.scale, ein.y >> result.scale, (int) result.dx >> result.scale, (int) result.dy >> result.scale, slices[sliceIndex(1)][result.scale], slices[sliceIndex(2)][result.scale], result.scale);
+                        drawTimeStampBlock(thisEvent);
 //                    }
 //                });
             }
@@ -2406,7 +2426,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         {
             int x = ein.x >> dispIdx, y = ein.y >> dispIdx;
             int dx = (int) result.dx >> dispIdx, dy = (int) result.dy >> dispIdx;
-            byte[][] refBlock = slices[sliceIndex(1)][dispIdx], searchBlock = slices[sliceIndex(2)][dispIdx];
+            byte[][] refBlock = slices[sliceIndex(0)][dispIdx], searchBlock = slices[sliceIndex(1)][dispIdx];
             int subSampleBy = dispIdx;
             Legend sadLegend = null;
 
@@ -2548,6 +2568,89 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
     }
 
+    synchronized private void drawTimeStampBlock(PolarityEvent ein)
+    {
+        int dim = 11;
+        int eX = ein.x, eY = ein.y, eType = ein.type;
+
+        if (timeStampBlockFrame == null) {
+            String windowName = "TSBlock";
+            timeStampBlockFrame = new JFrame(windowName);
+            timeStampBlockFrame.setLayout(new BoxLayout(timeStampBlockFrame.getContentPane(), BoxLayout.Y_AXIS));
+            timeStampBlockFrame.setPreferredSize(new Dimension(600, 600));
+            JPanel panel = new JPanel();
+            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+            timeStampBlockImageDisplay = ImageDisplay.createOpenGLCanvas();
+            timeStampBlockImageDisplay.setBorderSpacePixels(10);
+            timeStampBlockImageDisplay.setImageSize(dim, dim);
+            timeStampBlockImageDisplay.setSize(200, 200);
+            timeStampBlockImageDisplay.setGrayValue(0);
+            timeStampBlockImageDisplayLegend = timeStampBlockImageDisplay.addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
+            panel.add(timeStampBlockImageDisplay);
+
+            timeStampBlockFrame.getContentPane().add(panel);
+            timeStampBlockFrame.pack();
+            timeStampBlockFrame.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    setShowSlices(false);
+                }
+            });
+        }
+        if (!timeStampBlockFrame.isVisible()) {
+            timeStampBlockFrame.setVisible(true);
+        }
+
+        timeStampBlockImageDisplay.clearImage();
+        
+        int xInnerOffset[] = new int[16];
+        int yInnerOffset[] = new int[16];                
+        for(int i = 0; i < 16; i++)
+        {
+            xInnerOffset[i] = innerCircle[i][0];
+            yInnerOffset[i] = innerCircle[i][1];
+            innerTsValue[i] = lastTimesMap[eX + xInnerOffset[i]][eY + yInnerOffset[i]][type];
+            if(innerTsValue[i] == 0x80000000) innerTsValue[i] = 0;
+        }
+        
+        int xOuterOffset[] = new int[20];
+        int yOuterOffset[] = new int[20];                
+        for(int i = 0; i < 20; i++)
+        {
+            xOuterOffset[i] = outerCircle[i][0];
+            yOuterOffset[i] = outerCircle[i][1];
+            outerTsValue[i] = lastTimesMap[eX + xOuterOffset[i]][eY + yOuterOffset[i]][type];
+            if(outerTsValue[i] == 0x80000000) outerTsValue[i] = 0;
+        }        
+        
+        List innerList = Arrays.asList(ArrayUtils.toObject(innerTsValue));
+        int innerMax = (int) Collections.max(innerList);
+        int innerMin = (int) Collections.min(innerList);
+        float innerScale = 1f / (innerMax - innerMin);
+
+        List outerList = Arrays.asList(ArrayUtils.toObject(outerTsValue));
+        int outerMax = (int) Collections.max(outerList);
+        int outerMin = (int) Collections.min(outerList);
+        float outerScale = 1f / (outerMax - outerMin);
+        
+        timeStampBlockImageDisplay.setPixmapRGB(dim/2, dim/2, 0, 1, 0);
+        for(int i = 0; i < 16; i++)
+        {
+            timeStampBlockImageDisplay.setPixmapRGB(xInnerOffset[i] + dim/2, yInnerOffset[i] + dim/2, innerScale * (innerTsValue[i] - innerMin), 0, 0);
+        }
+        for(int i = 0; i < 20; i++)
+        {
+            timeStampBlockImageDisplay.setPixmapRGB(xOuterOffset[i] + dim/2, yOuterOffset[i] + dim/2, 0, 0, outerScale * (outerTsValue[i] - outerMin));
+        }
+        
+        if (timeStampBlockImageDisplayLegend != null) {
+            timeStampBlockImageDisplayLegend.s
+                    = TIME_STAMP_BLOCK_LEGEND_SLICES;
+        }
+
+        timeStampBlockImageDisplay.repaint();        
+    }
+        
     private void drawSlices(byte[][][][] slices) {
 //        log.info("drawing slices");
         if (sliceBitMapFrame == null) {
