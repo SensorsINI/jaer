@@ -594,9 +594,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private FrameRater frameRater = new FrameRater();
     ChipCanvas chipCanvas;
     volatile boolean loggingEnabled = false;
-    /**
-     * The date formatter used by AEViewer for logged data files
-     */
     private File loggingFile;
     AEFileOutputStream loggingOutputStream;
     private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", true);
@@ -1359,11 +1356,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /**
      * This method sets the "current file" which sets the field, the preferences
      * of the last file, and the window title. It does not actually start
-     * playing the file. That is done by the AEPlayer that calls startPlayback() on the file.
-     * 
-     * setCurrentFile() fires PropertyChange AEViewer.EVENT_FILEOPEN with the oldFile and currentFile passed to listeners.
+ playing the file. That is done by the AEPlayer that calls startPlayback() on the file.
+ 
+ setInputFile() fires PropertyChange AEViewer.EVENT_FILEOPEN with the oldFile and currentFile passed to listeners.
      */
-    protected void setCurrentFile(File f) {
+    protected void setInputFile(File f) {
         currentFile = new File(f.getPath());
         File oldFile=lastFile;
         lastFile = currentFile;
@@ -1379,7 +1376,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @return the File
      * @see PlayMode
      */
-    public File getCurrentFile() {
+    public File getInputFile() {
         return currentFile;
     }
 
@@ -3953,11 +3950,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void sequenceFile(File file) {
         try {
-            setCurrentFile(file);
             AEFileInputStream fileAEInputStream = new AEFileInputStream(file, getChip());
             fileAEInputStream.setFile(file);
             fileAEInputStream.setRepeat(aePlayer.isRepeat());
             fileAEInputStream.setNonMonotonicTimeExceptionsChecked(false); // the code below has to take care about non-monotonic time anyway
+            setInputFile(file);
 
             int numberOfEvents = (int) fileAEInputStream.size();
 
@@ -4674,7 +4671,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                 });
             }
-            setCurrentFile(loggingFile);
             loggingEnabled = true;
 
             fixLoggingControls();

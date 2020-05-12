@@ -205,7 +205,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public ZoneId getZoneId() {
-        if(aeFileInputStream!=null) return aeFileInputStream.getZoneId(); else return ZoneId.systemDefault();
+        if (aeFileInputStream != null) {
+            return aeFileInputStream.getZoneId();
+        } else {
+            return ZoneId.systemDefault();
+        }
     }
 
     public class FileDeleter extends KeyAdapter implements PropertyChangeListener {
@@ -316,9 +320,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             }
             return;
         }
-//            System.out.println("AEViewer.starting playback for DAT file "+file);
-        viewer.setCurrentFile(file);
-        
+
         int tries = 20;
         while ((viewer.getChip() == null) && (tries-- > 0)) {
             log.info("null AEChip in AEViewer, waiting... " + tries);
@@ -368,10 +370,10 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     // so that slider is updated when position changes
                     viewer.setPlaybackControlsEnabledState(true);
                     viewer.fixLoggingControls();
-                    try{
+                    try {
                         viewer.getChip().getRenderer().resetFrame(0);
-                    }catch(Exception e){
-                        log.warning("tried to reset renderer but caught "+e.toString());
+                    } catch (Exception e) {
+                        log.warning("tried to reset renderer but caught " + e.toString());
                     }
                     // TODO we grab the monitor for the viewLoop here, any other thread which may change playmode should also grab it
                     if ((viewer.aemon != null) && viewer.aemon.isOpen()) {
@@ -399,6 +401,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 } finally {
                     if (viewer != null) {
                         setPaused(false);
+                        viewer.setInputFile(file);
                         viewer.setCursor(Cursor.getDefaultCursor());
                     }
                 }
