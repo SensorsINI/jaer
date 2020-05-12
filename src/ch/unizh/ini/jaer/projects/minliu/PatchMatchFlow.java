@@ -151,6 +151,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private boolean enableImuTimesliceLogging = false;
     private TobiLogger imuTimesliceLogger = null;
     private volatile boolean resetOFHistogramFlag; // signals to reset the OF histogram after it is rendered
+    
+    private float cornerThr = getFloat("cornerThr", 0.3f);
 
     public enum PatchCompareMethod {
         /*JaccardDistance,*/ /*HammingDistance*/
@@ -250,7 +252,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         getEnclosedFilterChain().clear();
 //        getEnclosedFilterChain().add(new SpatioTemporalCorrelationFilter(chip));
         keypointFilter = new HWCornerPointRenderer(chip);
-        getEnclosedFilterChain().add(keypointFilter);
+//        getEnclosedFilterChain().add(keypointFilter);
 
         setSliceDurationUs(getSliceDurationUs());   // 40ms is good for the start of the slice duration adatative since 4ms is too fast and 500ms is too slow.
         setDefaultScalesToCompute();
@@ -408,15 +410,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                        log.warning("event out of range");
 //                        continue;
 //                    }
-                    if (!accumulateEvent(ein)) { // maybe skip events here
+                    
+                    if(ein.timestamp == 19951014)
+                    {
+                         int tmp = 1;
+                    }
+                    
+                    if (!accumulateEvent(ein) && ein.timestamp != 19951014) { // maybe skip events here
                         break;
                     }
-                    
-                    if(ein.timestamp == 296004143)
-                    {
-                        int tmp = 1;
-                    }
-                    
+ 
                     SADResult sliceResult = new SADResult();
                     minDistScale = 0;
 
@@ -512,12 +515,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    }
 //                });
             }
-            
-            if(Math.abs(result.dy) >= 3)
-            {
-                int tmp = 0;
-            }            
-            if(ein.timestamp == 295914282)
+                       
+            if(ein.timestamp == 19947748)
             {
                 int tmp = 1;
             }
@@ -534,7 +533,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    resultAngleHistogramMax = v;
 //                }
 //            }
+            double oldGlobalMeanVx = motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean();
             processGoodEvent();
+            double newGlobalMeanVx = motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean();
+            if(Math.abs(newGlobalMeanVx - oldGlobalMeanVx) >= 30)
+            {
+                int tmp = 0;
+            }
             lastGoodSadResult.set(result);
 
         }
@@ -1156,6 +1161,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         // detect if keypoint here
         boolean isCorner = ((e.getAddress() & 1) == 1);
+        isCorner = PatchFastDetectorisFeature(e);
         if (calcOFonCornersEnabled && !isCorner) {
             return false;
         }
@@ -1375,21 +1381,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     DSDy = result.dy;
                 }
                 break;
-            case FullSearch:                               
-                for (dx = -searchDistance; dx <= searchDistance; dx++) {
-                    for (dy = -searchDistance; dy <= searchDistance; dy++) {
-                        sum = sadDistance(x, y, dx_init + dx, dy_init + dy, curSlice, prevSlice, subSampleBy);
-                        sumArray[dx + searchDistance][dy + searchDistance] = sum;
-                        if (sum < minSum) {
-                            minSum = sum;
-                            result.dx = -dx - dx_init; // minus is because result points to the past slice and motion is in the other direction
-                            result.dy = -dy - dy_init;
-                            result.sadValue = minSum;
-                        }
-                    }
-                }
-                
-                if((e.getAddress() & 1) == 1)
+            case FullSearch:    
+//                if((e.getAddress() & 1) == 1)
                 {
                     System.out.printf("Scale %d with Refblock is: \n", subSampleBy);
                     int xscale = (x >> subSampleBy);
@@ -1408,10 +1401,23 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                             System.out.printf("%d\t", prevSlice[subSampleBy][xx][yy]);
                         }
                         System.out.printf("\n");
+                    }                  
+                } 
+                
+                for (dx = -searchDistance; dx <= searchDistance; dx++) {
+                    for (dy = -searchDistance; dy <= searchDistance; dy++) {
+                        sum = sadDistance(x, y, dx_init + dx, dy_init + dy, curSlice, prevSlice, subSampleBy);
+                        sumArray[dx + searchDistance][dy + searchDistance] = sum;
+                        if (sum < minSum) {
+                            minSum = sum;
+                            result.dx = -dx - dx_init; // minus is because result points to the past slice and motion is in the other direction
+                            result.dy = -dy - dy_init;
+                            result.sadValue = minSum;
+                        }
                     }
-                    System.out.printf("result is %s: ", result.toString());
-                    System.out.printf("\n");                    
-                }     
+                }
+                
+                System.out.printf("result is %s: \n", result.toString());
                 
                 if (outputSearchErrorInfo) {
                     FSCnt += 1;
@@ -2426,7 +2432,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         {
             int x = ein.x >> dispIdx, y = ein.y >> dispIdx;
             int dx = (int) result.dx >> dispIdx, dy = (int) result.dy >> dispIdx;
-            byte[][] refBlock = slices[sliceIndex(0)][dispIdx], searchBlock = slices[sliceIndex(1)][dispIdx];
+            byte[][] refBlock = slices[sliceIndex(1)][dispIdx], searchBlock = slices[sliceIndex(2)][dispIdx];
             int subSampleBy = dispIdx;
             Legend sadLegend = null;
 
@@ -2571,10 +2577,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     synchronized private void drawTimeStampBlock(PolarityEvent ein)
     {
         int dim = 11;
-        int eX = ein.x, eY = ein.y, eType = ein.type;
+        int sliceScale = 2;
+        int eX = ein.x >> sliceScale, eY = ein.y >> sliceScale, eType = ein.type;
 
         if (timeStampBlockFrame == null) {
-            String windowName = "TSBlock";
+            String windowName = "FASTCornerBlock";
             timeStampBlockFrame = new JFrame(windowName);
             timeStampBlockFrame.setLayout(new BoxLayout(timeStampBlockFrame.getContentPane(), BoxLayout.Y_AXIS));
             timeStampBlockFrame.setPreferredSize(new Dimension(600, 600));
@@ -2609,7 +2616,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         {
             xInnerOffset[i] = innerCircle[i][0];
             yInnerOffset[i] = innerCircle[i][1];
-            innerTsValue[i] = lastTimesMap[eX + xInnerOffset[i]][eY + yInnerOffset[i]][type];
+            innerTsValue[i] = slices[sliceIndex(1)][sliceScale][eX + xInnerOffset[i]][eY + yInnerOffset[i]];
             if(innerTsValue[i] == 0x80000000) innerTsValue[i] = 0;
         }
         
@@ -2619,7 +2626,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         {
             xOuterOffset[i] = outerCircle[i][0];
             yOuterOffset[i] = outerCircle[i][1];
-            outerTsValue[i] = lastTimesMap[eX + xOuterOffset[i]][eY + yOuterOffset[i]][type];
+            outerTsValue[i] = slices[sliceIndex(1)][sliceScale][eX + xOuterOffset[i]][eY + yOuterOffset[i]];
             if(outerTsValue[i] == 0x80000000) outerTsValue[i] = 0;
         }        
         
@@ -2633,14 +2640,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         int outerMin = (int) Collections.min(outerList);
         float outerScale = 1f / (outerMax - outerMin);
         
-        timeStampBlockImageDisplay.setPixmapRGB(dim/2, dim/2, 0, 1, 0);
+        float scale = 1f / getSliceMaxValue();
+        timeStampBlockImageDisplay.setPixmapRGB(dim/2, dim/2, 0, slices[sliceIndex(1)][sliceScale][eX][eY] * scale , 0);
         for(int i = 0; i < 16; i++)
         {
-            timeStampBlockImageDisplay.setPixmapRGB(xInnerOffset[i] + dim/2, yInnerOffset[i] + dim/2, innerScale * (innerTsValue[i] - innerMin), 0, 0);
+            timeStampBlockImageDisplay.setPixmapRGB(xInnerOffset[i] + dim/2, yInnerOffset[i] + dim/2, scale * (innerTsValue[i]), 0, 0);
         }
         for(int i = 0; i < 20; i++)
         {
-            timeStampBlockImageDisplay.setPixmapRGB(xOuterOffset[i] + dim/2, yOuterOffset[i] + dim/2, 0, 0, outerScale * (outerTsValue[i] - outerMin));
+            timeStampBlockImageDisplay.setPixmapRGB(xOuterOffset[i] + dim/2, yOuterOffset[i] + dim/2, 0, 0, scale * (outerTsValue[i]));
         }
         
         if (timeStampBlockImageDisplayLegend != null) {
@@ -3095,4 +3103,173 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         this.calcOFonCornersEnabled = calcOFonCornersEnabled;
         putBoolean("calcOFonCornersEnabled", calcOFonCornersEnabled);
     }
+
+    public float getCornerThr() {
+        return cornerThr;
+    }
+
+    public void setCornerThr(float cornerThr) {
+        this.cornerThr = cornerThr;
+        if(this.cornerThr > 1) this.cornerThr = 1;
+        putFloat("cornerThr", cornerThr);
+    }
+    
+    boolean PatchFastDetectorisFeature(PolarityEvent ein) {
+        boolean found_streak = false;
+
+        int scale = 2;
+        int pix_x = ein.x >> scale;
+        int pix_y = ein.y >> scale;
+        
+        // only check if not too close to border
+        if (pix_x < 4 || pix_x >= (getChip().getSizeX() >> scale) - 4
+                || pix_y < 4 || pix_y >= (getChip().getSizeY() >> scale) - 4) {
+            found_streak = false;
+            return found_streak;
+        }
+        
+        int circle3_[][] = innerCircle;
+        int circle4_[][] = outerCircle;
+        found_streak = false;
+
+        int centerValue = slices[sliceIndex(1)][scale][pix_x][pix_y];
+        int xInnerOffset[] = new int[16];
+        int yInnerOffset[] = new int[16];                
+        for(int i = 0; i < 16; i++)
+        {
+            xInnerOffset[i] = innerCircle[i][0];
+            yInnerOffset[i] = innerCircle[i][1];
+            innerTsValue[i] = slices[sliceIndex(1)][scale][pix_x + xInnerOffset[i]][pix_y + yInnerOffset[i]];
+        }
+        
+        int xOuterOffset[] = new int[20];
+        int yOuterOffset[] = new int[20];                
+        for(int i = 0; i < 20; i++)
+        {
+            xOuterOffset[i] = outerCircle[i][0];
+            yOuterOffset[i] = outerCircle[i][1];
+            outerTsValue[i] = slices[sliceIndex(1)][scale][pix_x + xOuterOffset[i]][pix_y + yOuterOffset[i]];
+        } 
+        
+        isFeatureOutterLoop:
+        for (int i = 0; i < 16; i++) {
+            FastDetectorisFeature_label2:
+            for (int streak_size = 9; streak_size <= 12; streak_size++) {
+                // check that streak event is larger than neighbor
+                if (Math.abs(slices[sliceIndex(1)][scale][pix_x + circle3_[i][0]][pix_y + circle3_[i][1]] - centerValue) < Math.abs(slices[sliceIndex(1)][scale][pix_x + circle3_[(i - 1 + 16) % 16][0]][pix_y + circle3_[(i - 1 + 16) % 16][1]] - centerValue)) {
+                    continue;
+                }
+
+                // check that streak event is larger than neighbor
+                if (Math.abs(slices[sliceIndex(1)][scale][pix_x + circle3_[(i + streak_size - 1) % 16][0]][pix_y + circle3_[(i + streak_size - 1) % 16][1]] - centerValue) < Math.abs(slices[sliceIndex(1)][scale][pix_x + circle3_[(i + streak_size) % 16][0]][pix_y + circle3_[(i + streak_size) % 16][1]] - centerValue)) {
+                    continue;
+                }
+
+                // find the smallest timestamp in corner min_t
+                double min_t = Math.abs(slices[sliceIndex(1)][scale][pix_x + circle3_[i][0]][pix_y + circle3_[i][1]] - centerValue);
+                boolean thrPassFlag = (min_t < cornerThr) ? false : true;
+                FastDetectorisFeature_label1:
+                for (int j = 1; j < streak_size; j++) {
+                    final double tj =  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle3_[(i + j) % 16][0]][pix_y + circle3_[(i + j) % 16][1]] - centerValue);
+                    
+                    if (tj < cornerThr * getSliceMaxValue())
+                    {
+                        thrPassFlag = false;
+                        break;
+                    }
+                    if (tj < min_t) {
+                        min_t = tj;
+                    } 
+                }
+                // Threshold checking failed.
+                if(!thrPassFlag)
+                {
+                    continue;
+                }
+
+                //check if corner timestamp is higher than corner
+                boolean did_break = false;
+                FastDetectorisFeature_label0:
+                for (int j = streak_size; j < 16; j++) {
+                    final double tj =  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle3_[(i + j) % 16][0]][pix_y + circle3_[(i + j) % 16][1]] - centerValue);
+
+                    if (tj >= min_t) {
+                        did_break = true;
+                        break;
+                    }
+                }
+
+                if (!did_break) {
+                    found_streak = true;
+                    break;
+                }
+            }
+
+            if (found_streak) {
+                break;
+            }
+        }
+
+        if (found_streak) {
+            found_streak = false;
+
+            FastDetectorisFeature_label6:
+            for (int i = 0; i < 20; i++) {
+                FastDetectorisFeature_label5:
+                for (int streak_size = 10; streak_size <= 14; streak_size++) {
+                    // check that first event is larger than neighbor
+                    if ( Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[i][0]][pix_y + circle4_[i][1]] - centerValue) <  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[(i - 1 + 20) % 20][0]][pix_y + circle4_[(i - 1 + 20) % 20][1]] - centerValue)) {
+                        continue;
+                    }
+
+                    // check that streak event is larger than neighbor
+                    if ( Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[(i + streak_size - 1) % 20][0]][pix_y + circle4_[(i + streak_size - 1) % 20][1]] - centerValue) <  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[(i + streak_size) % 20][0]][pix_y + circle4_[(i + streak_size) % 20][1]] - centerValue)) {
+                        continue;
+                    }
+
+                    double min_t =  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[i][0]][pix_y + circle4_[i][1]] - centerValue);
+                    boolean thrPassFlag = (min_t < cornerThr) ? false : true;
+                    FastDetectorisFeature_label4:
+                    for (int j = 1; j < streak_size; j++) {
+                        final double tj =  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[(i + j) % 20][0]][pix_y + circle4_[(i + j) % 20][1]] - centerValue);
+                        if (tj < cornerThr * getSliceMaxValue())
+                        {
+                            thrPassFlag = false;
+                            break;
+                        }
+                        if (tj < min_t) {
+                            min_t = tj;
+                        } 
+                    }
+                    // Threshold checking failed.
+                    if(!thrPassFlag)
+                    {
+                        continue;
+                    }
+                    
+                    boolean did_break = false;
+                    FastDetectorisFeature_label3:
+                    for (int j = streak_size; j < 20; j++) {
+                        final double tj =  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[(i + j) % 20][0]][pix_y + circle4_[(i + j) % 20][1]] - centerValue);
+                        if (tj >= min_t) {
+                            did_break = true;
+                            break;
+                        }
+                    }
+
+                    if (!did_break) {
+                        found_streak = true;
+                        break;
+                    }
+                }
+                if (found_streak) {
+                    break;
+                }
+            }
+
+        }
+
+        return found_streak;
+    }
+    
 }
