@@ -22,7 +22,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Observable;
-import java.util.Observer;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -51,7 +50,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  */
 @Description("Filters a region defined by x, y, and event type ranges")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Observer, MouseListener, MouseMotionListener {
+public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, MouseListener, MouseMotionListener {
 
     final private static float[] SELECT_COLOR = {.8f, 0, 0, .5f};
     private int startX = getPrefs().getInt("XYTypeFilter.startX", 0);
@@ -119,7 +118,6 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
         setPropertyTooltip("invertEnabled", "invert filtering to pass events outside selection");
         setPropertyTooltip("multiSelectionEnabled", "allows defining multiple regions to filter on");
 
-        doLoadMultiSelection();
     }
 
     /**
@@ -247,6 +245,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
 
     @Override
     public void initFilter() {
+        doLoadMultiSelection();
         resetFilter();
     }
 
@@ -428,10 +427,6 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
         gl.glEnd();
         gl.glPopMatrix();
 
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
     }
 
     public boolean isInvertEnabled() {

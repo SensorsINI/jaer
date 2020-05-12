@@ -17,7 +17,6 @@ import java.util.Date;
 import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.Observable;
-import java.util.Observer;
 import java.util.Random;
 
 import com.jogamp.opengl.GL;
@@ -38,7 +37,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author Philipp <hafliger@ifi.uio.no>
  */
 @Description("Tracks multiple objects using a particle filter approach")
-public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Observer{
+public class ParticleTracker extends EventFilter2D implements FrameAnnotater{
 	private java.util.List<Cluster> clusters = new LinkedList<Cluster>();
 	private int[][] lastCluster = new int[ 240 ][ 180 ];
 	private int[][] lastEvent = new int[ 240 ][ 180 ];
@@ -66,7 +65,6 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
 	public ParticleTracker (AEChip chip){
 		super(chip);
 		this.chip = chip;
-		chip.addObserver(this);
 		initFilter();
 		//setPropertyTooltip("maxClusters","max number of clusters");
 		setPropertyTooltip("clusterMinMass4Display","minimum mass of cluster for display or logging");
@@ -811,10 +809,6 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
 		return in;
 	}
 
-	@Override
-	public void update (Observable o,Object arg){
-		initFilter();
-	}
 
 	public void annotate (Graphics2D g){
 	}

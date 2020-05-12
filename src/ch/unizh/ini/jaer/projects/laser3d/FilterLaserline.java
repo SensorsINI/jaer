@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Observable;
-import java.util.Observer;
 import java.util.logging.Level;
 
 import com.jogamp.opengl.GL;
@@ -43,7 +42,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  */
 @Description("Filters a clocked laserline using a event histogram over several the most recent periods as score for new events")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class FilterLaserline extends EventFilter2D implements FrameAnnotater, Observer {
+public class FilterLaserline extends EventFilter2D implements FrameAnnotater {
 
     /*
      * Variables
@@ -149,7 +148,6 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater, Ob
         setPropertyTooltip(deb, "freezeScoreFunction", "Freeze the score function to see effect on performance.");
         setPropertyTooltip(deb, "showScoreFunctionHistograms", "Show  score function histograms.");
 
-        chip.addObserver(this);
     }
 
     @Override
@@ -840,14 +838,6 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater, Ob
     public void setEventBasedComputationEnabled(boolean eventBasedComputationEnabled) {
         this.eventBasedComputationEnabled = eventBasedComputationEnabled;
         putBoolean("eventBasedComputationEnabled", eventBasedComputationEnabled);
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
-        // comes from AEChip when sizes are set
-        if (chip.getNumPixels() == 0) {
-            return;
-        }
     }
 
     /**

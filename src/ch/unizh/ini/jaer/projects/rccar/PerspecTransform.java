@@ -2,7 +2,6 @@ package ch.unizh.ini.jaer.projects.rccar;
 
 import java.awt.Graphics2D;
 import java.util.Observable;
-import java.util.Observer;
 
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -23,7 +22,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * To transformation information is stored in look up matrices which redirect the events
  * Additionally the filter cuts of all events above the horizon which is approximated by a hyperbole
  */
-public class PerspecTransform extends EventFilter2D implements FrameAnnotater, Observer {
+public class PerspecTransform extends EventFilter2D implements FrameAnnotater {
     public boolean isGeneratingFilter(){ return false;}
     private int horizon=getPrefs().getInt("PerspecTransform.horizon",90);
     {setPropertyTooltip("horizon","the height of the horizon (in pixles)");}
@@ -250,9 +249,6 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
         }
         gl.glPopMatrix();
         
-    }
-    
-    public void update(Observable o, Object arg) {
     }
     
 }

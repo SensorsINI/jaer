@@ -380,9 +380,7 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
 
     @Override
     public void update(Observable o, Object arg) {
-        if (o instanceof AEChip && arg == AEChip.EVENT_NUM_CELL_TYPES) { // lazy construction, after the actual AEChip subclass has been constructed
-            initFilter();
-        } else if (o instanceof AEChip && chip.getBiasgen() != null) {
+        if (o instanceof AEChip && chip.getBiasgen() != null) {
             chip.getBiasgen().getSupport().addPropertyChangeListener(this);
         }
     }

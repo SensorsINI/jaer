@@ -7,7 +7,6 @@ package eu.visualize.ini.retinamodel;
 
 import java.awt.Font;
 import java.util.Observable;
-import java.util.Observer;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -28,7 +27,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
  *
  * @author tobi
  */
-public abstract class AbstractRetinaModelCell extends EventFilter2D implements FrameAnnotater, Observer {
+public abstract class AbstractRetinaModelCell extends EventFilter2D implements FrameAnnotater {
 
     protected boolean showSubunits = getBoolean("showSubunits", false);
     protected boolean showOutputCell = getBoolean("showOutputCell", false);
@@ -52,7 +51,6 @@ public abstract class AbstractRetinaModelCell extends EventFilter2D implements F
 
     public AbstractRetinaModelCell(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
         setPropertyTooltip("-showSubunits", "Enables showing subunit activity annotation over retina output");
         setPropertyTooltip("-subunitSubsamplingBits",
                 "Each subunit integrates events from 2^n by 2^n pixels, where n=subunitSubsamplingBits");
@@ -72,13 +70,6 @@ public abstract class AbstractRetinaModelCell extends EventFilter2D implements F
             quad = glu.gluNewQuadric();
         }
 
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
-        if ((arg != null) && ((arg == Chip2D.EVENT_SIZEX) || (arg == Chip2D.EVENT_SIZEY)) && (chip.getNumPixels() > 0)) {
-            initFilter();
-        }
     }
 
     /**

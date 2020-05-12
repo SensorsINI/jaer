@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Observable;
-import java.util.Observer;
 import java.util.Random;
 import java.util.logging.Level;
 
@@ -67,7 +66,7 @@ import redis.clients.jedis.Jedis;
 @Description("Ball tracker for a foosball table")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class TellurideFoosballTracker extends EventFilter2D
-    implements Observer, FrameAnnotater/* , PreferenceChangeListener */ {
+    implements FrameAnnotater/* , PreferenceChangeListener */ {
     
     // Jedis
     protected String host = "localhost";
@@ -216,7 +215,6 @@ public class TellurideFoosballTracker extends EventFilter2D
 	
 	public TellurideFoosballTracker(AEChip chip) {
 		super(chip);
-		chip.addObserver(this);
 		resetFilter();
         jedis = new Jedis(host); 
         System.out.println("Connection to server sucessfully"); 
@@ -1208,16 +1206,6 @@ public class TellurideFoosballTracker extends EventFilter2D
         }
         FIFOSize--;
 	}
-    
-	@Override
-	public void update(Observable o, Object arg) {
-		if (o == this) {
-			UpdateMessage msg = (UpdateMessage) arg;
-		}
-		else if (o instanceof AEChip) {
-			initFilter();
-		}
-	}   
     
     /**
      * @return the host

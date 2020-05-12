@@ -304,7 +304,7 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
         if (basename.toLowerCase().endsWith("-events")) {
             basename = basename.substring(0, basename.length() - 7);
         }
-        
+
         lastFileName = basename;
         putString("lastFileName", lastFileName);
 
@@ -313,9 +313,9 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
                 String fn = basename + "-events.txt";
                 if (checkFileExists(fn)) {
                     dvsWriter = openWriter(new File(fn));
-                    String tsStr=useUsTimestamps?"timestamp(int32 us)":"timestamp(float s)";
-                    String polStr=useSignedPolarity?"polarity(off/on=-1/+1)":"polarity(off/on=0/1)";
-                    dvsWriter.println(String.format("# dvs-events: One event per line:  %s x y %s",tsStr,polStr));
+                    String tsStr = useUsTimestamps ? "timestamp(int32 us)" : "timestamp(float s)";
+                    String polStr = useSignedPolarity ? "polarity(off/on=-1/+1)" : "polarity(off/on=0/1)";
+                    dvsWriter.println(String.format("# dvs-events: One event per line:  %s x y %s", tsStr, polStr));
                 }
             }
             if (imuSamples) {
@@ -448,8 +448,8 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
                 doCloseFiles();
             }
             ignoreRewinwdEventFlag = false;
-        }else if(evt.getPropertyName()==AEViewer.EVENT_FILEOPEN){
-            getChip().getAeInputStream().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND,this);
+        } else if (evt.getPropertyName() == AEViewer.EVENT_FILEOPEN) {
+            getChip().getAeInputStream().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         }
     }
 
@@ -520,7 +520,10 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
 
     @Override
     public void initFilter() {
-        getChip().getAeViewer().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
+        if (getChip().getAeViewer() == null) {
+            return;
+        }
+        getChip().getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
     }
 
 }

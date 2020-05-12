@@ -11,7 +11,6 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.util.Arrays;
 import java.util.Observable;
-import java.util.Observer;
 
 import javax.swing.JFrame;
 
@@ -36,7 +35,7 @@ import net.sf.jaer.DevelopmentStatus;
  */
 @Description("Only passes events from silicon cochlea with certain range of ISIs (interspike intervals)")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class ISIFilter extends EventFilter2D implements Observer {
+public class ISIFilter extends EventFilter2D {
 
     private int nBins = getPrefs().getInt("ISIFilter.nBins", 50);
     private int maxIsiUs = getPrefs().getInt("ISIFilter.maxIsiUs", 10000);
@@ -58,7 +57,6 @@ public class ISIFilter extends EventFilter2D implements Observer {
 
     public ISIFilter(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
         setPropertyTooltip("Plot properties","maxIsiUs", "maximim ISI in us, larger ISI's are discarded");
         setPropertyTooltip("Plot properties","minIsiUs", "minimum ISI in us, smaller ISI's are discarded");
         setPropertyTooltip("Plot properties","NBins", "number of histogram bins");
@@ -174,16 +172,6 @@ public class ISIFilter extends EventFilter2D implements Observer {
     @Override
     public void initFilter() {
         resetBins();
-    }
-
-    public void update(Observable o, Object arg) {
-        
-        // THIS FUNCTION CAUSES A NULL POINTER EXCEPTION WHEN CHANGING THE HARDWARE, SO I COMMENTED IT OUT
-        // -Peter
-        
-//        if (arg.equals(Chip2D.EVENT_SIZEX) || arg.equals(Chip2D.EVENT_SIZEY)) {
-//            resetBins();
-//        }
     }
 
     /**

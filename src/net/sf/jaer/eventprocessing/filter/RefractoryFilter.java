@@ -4,7 +4,6 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Arrays;
 import java.util.Observable;
-import java.util.Observer;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -28,7 +27,7 @@ import net.sf.jaer.graphics.AbstractAEPlayer;
  */
 @Description("Applies a refractory period to pixels so that they events only pass if there is sufficient time since the last event from that pixel")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class RefractoryFilter extends AbstractNoiseFilter implements Observer, PropertyChangeListener {
+public class RefractoryFilter extends AbstractNoiseFilter implements PropertyChangeListener {
 
     final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
     /**
@@ -49,7 +48,6 @@ public class RefractoryFilter extends AbstractNoiseFilter implements Observer, P
 
     public RefractoryFilter(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
         initFilter();
         resetFilter();
         setPropertyTooltip("refractoryPeriodUs", "Events with less than this delta time in us are blocked");
@@ -147,11 +145,6 @@ public class RefractoryFilter extends AbstractNoiseFilter implements Observer, P
     synchronized public void resetFilter() {
         // set all lastTimestamps to max value so that any event is soon enough, guarenteed to be less than it
         resetLastTimestamps();
-    }
-
-    public void update(Observable o, Object arg) {
-//        if(!isFilterEnabled()) return;
-        initFilter();
     }
 
     public void initFilter() {

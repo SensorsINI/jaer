@@ -9,7 +9,6 @@ import com.jogamp.opengl.util.gl2.GLUT;
 import java.beans.PropertyChangeEvent;
 import java.util.Arrays;
 import java.util.Observable;
-import java.util.Observer;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -33,7 +32,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 @Description("Filters out uncorrelated noise events based on work at Telluride 2017 with discussion with Moritz Milde, Dave Karpul, Elisabetta\n" +
 " * Chicca, and Chiara Bartolozzi ")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter implements Observer {
+public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     private final int MAX_DT = 100000, MIN_DT = 10;
     private final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
@@ -69,7 +68,6 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter impleme
 
     public SpatioTemporalCorrelationFilter(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
         initFilter();
         String filt = "1. basic params", adap = "2. AdaptiveFiltering", disp = "Display";
         setPropertyTooltip(filt, "dt", "Events with less than this delta time in us to neighbors pass through");
@@ -192,13 +190,6 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter impleme
     @Override
     public synchronized final void resetFilter() {
         initFilter();
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
-        if ((arg != null) && ((arg == Chip2D.EVENT_SIZEX) || (arg == Chip2D.EVENT_SIZEY))) {
-            resetFilter();
-        }
     }
 
     @Override

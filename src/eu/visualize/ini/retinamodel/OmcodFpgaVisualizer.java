@@ -1,6 +1,5 @@
 package eu.visualize.ini.retinamodel;
 
-import java.util.Observer;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -22,7 +21,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
 @Description("Plots the output of the FPGA OMCs")
 //@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 
-public class OmcodFpgaVisualizer extends AbstractRetinaModelCell implements FrameAnnotater, Observer {
+public class OmcodFpgaVisualizer extends AbstractRetinaModelCell implements FrameAnnotater {
 
     public RosNodePublisher RosNodePublisher = new RosNodePublisher();
     private final LowpassFilter isiFilter = new LowpassFilter(10);
@@ -55,7 +54,6 @@ public class OmcodFpgaVisualizer extends AbstractRetinaModelCell implements Fram
         this.lastTimeStampSpikeArray = new int[nxmax][nymax];
         this.lastSpikedOMC = new int[2];
         this.lastSpikedOMCArray = new int[3][2];
-        chip.addObserver(this);
         final String use = "Parameters";
         setPropertyTooltip(use, "switchTo9OMCs", "Switch to 9 OMC design visualization");
     }

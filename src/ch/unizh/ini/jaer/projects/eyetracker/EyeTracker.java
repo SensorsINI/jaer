@@ -18,7 +18,6 @@ import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
 import java.awt.geom.Point2D;
 import java.util.Observable;
-import java.util.Observer;
 
 import javax.swing.JFrame;
 import net.sf.jaer.Description;
@@ -40,7 +39,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  */
 @Description("Experimental pupil eye tracker")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotater {
+public class EyeTracker extends EventFilter2D implements FrameAnnotater {
 
 //    static Preferences prefs=Preferences.userNodeForPackage(EyeTracker.class);
 //    ChipRenderer renderer;
@@ -93,8 +92,6 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
      */
     public EyeTracker(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
-//        blinkDetector=new BlinkDetector();
         trackingQualityDetector = new TrackingQualityDetector();
         statComputer = new StatComputer();
         initFilter();
@@ -385,10 +382,6 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
         initFilter();
         position.x=chip.getSizeX()/2;
         position.y=chip.getSizeY()/2;
-    }
-
-    public void update(Observable o, Object arg) {
-        initFilter();
     }
 
     GLUquadric eyeQuad;

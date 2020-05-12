@@ -3,7 +3,6 @@ package ch.unizh.ini.jaer.projects.multitracking;
 import java.awt.event.ActionEvent;
 import java.util.LinkedList;
 import java.util.Observable;
-import java.util.Observer;
 import java.util.Vector;
 import java.util.concurrent.Semaphore;
 import java.util.prefs.Preferences;
@@ -35,7 +34,7 @@ import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.graphics.FrameAnnotater;
 
-public class Triangulation3DViewer extends DisplayMethod implements GLEventListener,FrameAnnotater, Observer {
+public class Triangulation3DViewer extends DisplayMethod implements GLEventListener,FrameAnnotater {
 	public Triangulation3DViewer(ChipCanvas parent) {
 		super(parent);
 
@@ -406,10 +405,6 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 		frame.setVisible( true );
 	}//end of main
 
-
-	@Override
-	public void update(Observable o, Object arg) {
-	}
 
 	private void translateRight(GLAutoDrawable drawable) {
 		final GL2 gl = drawable.getGL().getGL2();

@@ -57,9 +57,6 @@ public class SimpleOrientationFilter extends AbstractOrientationFilter{
      * @param chip */
     public SimpleOrientationFilter (AEChip chip){
         super(chip);
-        chip.addObserver(this);
-        
-        //Tooltips and Properties are defined in the AbstractOrientationFilter.
     }
 
     /** filters in to getOutputPacket(). 

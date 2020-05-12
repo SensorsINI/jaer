@@ -38,7 +38,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
 //****************************************************************************//
 
 //-- Main class OMCOD --------------------------------------------------------//
-public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Observer {
+public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater {
 
     private final OMCODModel OMCODModel = new OMCODModel();
     public RosNodePublisher RosNodePublisher = new RosNodePublisher();
@@ -150,7 +150,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         setEnclosedFilterChain(trackingFilterChain);
         trackingFilterChain.reset();
 
-        chip.addObserver(this);
         final String use = "1) Key Parameters", fix = "3) Fixed Parameters", disp = "2) Display", logging = "4) Logging";
 //------------------------------------------------------------------------------
         setPropertyTooltip(disp, "showSubunits", "Enables showing subunit activity annotation over retina output");

@@ -9,7 +9,6 @@ import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.geom.Point2D;
 import java.util.Arrays;
 import java.util.Observable;
-import java.util.Observer;
 import java.util.Random;
 
 import net.sf.jaer.Description;
@@ -44,7 +43,7 @@ import net.sf.jaer.util.VectorHistogram;
  */
 @Description("Abstract superclass for labelers that detect local orientation by spatio-temporal correlation")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-abstract public class AbstractOrientationFilter extends EventFilter2D implements Observer, FrameAnnotater {
+abstract public class AbstractOrientationFilter extends EventFilter2D implements FrameAnnotater {
 
     public static final int MAX_LENGTH = 6;
     /**
@@ -151,7 +150,6 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
      */
     public AbstractOrientationFilter(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
         // properties, tips and groups
         final String size = "Size", tim = "Timing", disp = "Display", hist = "ori history";
 
@@ -300,11 +298,6 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
     @Override
     public void initFilter() {
         resetFilter();
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
-        initFilter();
     }
 
     @Override

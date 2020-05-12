@@ -255,13 +255,6 @@ public class ApproachCell extends AbstractRetinaModelCell {
 
     }
 
-    @Override
-    public void update(Observable o, Object arg) {
-        if ((arg != null) && ((arg == Chip2D.EVENT_SIZEX) || (arg == Chip2D.EVENT_SIZEY)) && (chip.getNumPixels() > 0)) {
-            initFilter();
-        }
-    }
-
     // handles all subunits on and off
     private class Subunits {
 

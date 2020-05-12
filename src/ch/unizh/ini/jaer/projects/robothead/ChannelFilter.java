@@ -12,7 +12,6 @@ package ch.unizh.ini.jaer.projects.robothead;
 
 import java.util.Observable;
 
-import java.util.Observer;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -24,7 +23,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * @author jaeckeld
  */
 
-public class ChannelFilter extends EventFilter2D implements Observer{
+public class ChannelFilter extends EventFilter2D {
    
     private int chMin=getPrefs().getInt("ChannelFilter.chMin",1);
     private int chMax=getPrefs().getInt("ChannelFilter.chMax",32);
@@ -79,10 +78,6 @@ public class ChannelFilter extends EventFilter2D implements Observer{
         System.out.println("init!");
         
         
-    }
-    
-    public void update(Observable o, Object arg){
-        initFilter();
     }
     
     public int getChMin(){

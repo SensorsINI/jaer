@@ -11,7 +11,6 @@ package net.sf.jaer.stereopsis;
 
 import java.util.Arrays;
 import java.util.Observable;
-import java.util.Observer;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.orientation.BinocularDisparityEvent;
@@ -31,7 +30,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * Events are only matched if they have same polarity and orientation. 
  * @author Peter Hess
  */
-public class GlobalDisparityFilter2 extends EventFilter2D implements Observer {
+public class GlobalDisparityFilter2 extends EventFilter2D  {
     
     /** Global x direction disparity computed by method filter().
      * Positive disparity means that the object is far away (not sure if there are any conventions).
@@ -67,7 +66,6 @@ public class GlobalDisparityFilter2 extends EventFilter2D implements Observer {
         oriFilter = new SimpleOrientationFilter(chip);
         oriFilter.setFilterEnabled(true);
         setEnclosedFilter(oriFilter);
-        chip.addObserver(this);
         initFilter();
     }
     
@@ -123,10 +121,6 @@ public class GlobalDisparityFilter2 extends EventFilter2D implements Observer {
         return false;
     }
         
-    public void update(Observable o, Object arg) {
-        initFilter();
-    }
-    
     /** Set the scaling factor for the event correlation depending on time difference. */
     public synchronized void setDistFactor(float distFactor) {
         getPrefs().putFloat("GlobalXDisparityFilter2.distFactor", distFactor);

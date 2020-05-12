@@ -13,7 +13,6 @@ import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.Observable;
-import java.util.Observer;
 
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -35,7 +34,7 @@ import ch.unizh.ini.jaer.projects.labyrinthkalman.WeightedEvent;
  * @author Jan Funke
  */
 @Description("Circle tracker based on a hough transform")
-public class HoughCircleTracker extends EventFilter2D implements FrameAnnotater, Observer {
+public class HoughCircleTracker extends EventFilter2D implements FrameAnnotater {
 
 	// the Hough space
 	int cameraX;
@@ -80,7 +79,6 @@ public class HoughCircleTracker extends EventFilter2D implements FrameAnnotater,
 
 	public HoughCircleTracker(AEChip chip) {
 		super(chip);
-		chip.addObserver(this);
 		resetFilter();
 		setPropertyTooltip("radius","radius of circle in pixels");
 		setPropertyTooltip("bufferLength","number of events to consider when searching for new maximum location");
@@ -167,14 +165,6 @@ public class HoughCircleTracker extends EventFilter2D implements FrameAnnotater,
 	@Override
 	public void initFilter() {
 		resetFilter();
-	}
-
-	@Override
-	public void update(Observable o, Object arg) {
-		if(!isFilterEnabled()) {
-			return;
-		}
-		initFilter();
 	}
 
 	public boolean getLocDepression(){

@@ -81,6 +81,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     private Stats stats = new Stats();
     private boolean rateEnabled = getBoolean("rateEnabled", true);
     private boolean isiHistEnabled = getBoolean("isiHistEnabled", true);
+    private boolean freqHistEnabled = getBoolean("freqHistEnabled", false);
     private boolean separateEventTypes = getBoolean("separateEventTypes", true);
     private boolean logISIEnabled = getBoolean("logISIEnabled", false);
     private boolean spikeSoundEnabled = getBoolean("spikeSoundEnabled", true);
@@ -113,6 +114,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         chip.addObserver(this);
         final String h = "ISIs", e = "Event rate", l = "Latency", c = "Count", g = "General";
         setPropertyTooltip(h, "isiHistEnabled", "enable histogramming interspike intervals");
+        setPropertyTooltip(h, "freqHistEnabled", "isiHist also enabled, then show frequency histogram instead of ISI histogram");
         setPropertyTooltip(h, "isiMinUs", "min ISI in us");
         setPropertyTooltip(h, "isiMaxUs", "max ISI in us");
         setPropertyTooltip(h, "isiAutoScalingEnabled", "autoscale bounds for ISI histogram");
@@ -1312,6 +1314,21 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     public void setFreezeSelection(boolean freezeSelection) {
         this.freezeSelection = freezeSelection;
         putBoolean("freezeSelection", freezeSelection);
+    }
+
+    /**
+     * @return the freqHistEnabled
+     */
+    public boolean isFreqHistEnabled() {
+        return freqHistEnabled;
+    }
+
+    /**
+     * @param freqHistEnabled the freqHistEnabled to set
+     */
+    public void setFreqHistEnabled(boolean freqHistEnabled) {
+        this.freqHistEnabled = freqHistEnabled;
+        putBoolean("freqHistEnabled",freqHistEnabled);
     }
 
 }

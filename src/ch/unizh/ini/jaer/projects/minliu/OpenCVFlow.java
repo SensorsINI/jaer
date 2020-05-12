@@ -21,7 +21,6 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import java.util.List;
 import java.util.Observable;
-import java.util.Observer;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
@@ -81,7 +80,7 @@ import org.opencv.video.Video;
 @Description("Optical Flow methods based on OpenCV")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class OpenCVFlow extends AbstractMotionFlow
-        implements PropertyChangeListener, Observer /* Observer needed to get change events on chip construction */ {
+        implements PropertyChangeListener {
 
     static {
         String jvmVersion = System.getProperty("sun.arch.data.model");
@@ -156,7 +155,6 @@ public class OpenCVFlow extends AbstractMotionFlow
         RPos = Mat.eye(3, 3, CvType.CV_32F);
         apsFrameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);
         patchFlow.getSupport().addPropertyChangeListener(PatchMatchFlow.EVENT_NEW_SLICES, this);
-        chip.addObserver(this); // to allocate memory once chip size is known
     }
 
     @Override
@@ -259,15 +257,6 @@ public class OpenCVFlow extends AbstractMotionFlow
     @Override
     public void initFilter() {
         resetFilter();
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
-        if ((o != null) && (arg != null)) {
-            if ((o instanceof AEChip) && (arg.equals(Chip2D.EVENT_SIZEX) || arg.equals(Chip2D.EVENT_SIZEY))) {
-                initFilter();
-            }
-        }
     }
 
     @Override

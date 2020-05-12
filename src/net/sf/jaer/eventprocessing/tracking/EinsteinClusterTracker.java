@@ -18,7 +18,6 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Observable;
-import java.util.Observer;
 import java.util.Random;
 
 import com.jogamp.opengl.GL;
@@ -44,7 +43,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author tobi
  */
 @Description("Tracks multiple moving compact (not linear) objects")
-public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnotater, Observer /*, PreferenceChangeListener*/ {
+public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnotater {
 
 	//    private static Preferences prefs=Preferences.userNodeForPackage(RectangularClusterTracker.class);
 	//    PreferencesEditor editor;
@@ -112,7 +111,6 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
 		this.chip = chip;
 		renderer = chip.getRenderer();
 		initFilter();
-		chip.addObserver(this);
 		final String sizing="Sizing", optgy="Optical Gryo", movement="Movement", lifetime="Lifetime", disp="Display";
 
 		setPropertyTooltip(lifetime,"enableClusterExitPurging", "enables rapid purging of clusters that hit edge of scene");
@@ -1772,11 +1770,6 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
 	public void setColorClustersDifferentlyEnabled(boolean colorClustersDifferentlyEnabled) {
 		this.colorClustersDifferentlyEnabled = colorClustersDifferentlyEnabled;
 		getPrefs().putBoolean("RectangularClusterTracker.colorClustersDifferentlyEnabled", colorClustersDifferentlyEnabled);
-	}
-
-	@Override
-	public void update(Observable o, Object arg) {
-		initFilter();
 	}
 
 	public boolean isUseOnePolarityOnlyEnabled() {

@@ -11,10 +11,6 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.Rectangle2D;
-import java.beans.PropertyChangeEvent;
-import java.util.Arrays;
-import java.util.Observable;
-import java.util.Observer;
 import java.util.logging.Level;
 
 import javax.swing.BoxLayout;
@@ -29,15 +25,12 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import com.jogamp.opengl.GLException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.StringTokenizer;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.logging.Logger;
-import java.util.stream.IntStream;
 import javax.swing.SwingUtilities;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -47,9 +40,7 @@ import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEInputStream;
-import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.TimeLimiter;
-import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -68,7 +59,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
 @Description("<html>Computes optical flow with vector direction using adaptive time slice block matching (ABMOF) as published in<br>"
         + "Liu, M., and Delbruck, T. (2018). <a href=\"http://bmvc2018.org/contents/papers/0280.pdf\">Adaptive Time-Slice Block-Matching Optical Flow Algorithm for Dynamic Vision Sensors</a>.<br> in BMVC 2018 (Nescatle upon Tyne)")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class PatchMatchFlow extends AbstractMotionFlow implements Observer, FrameAnnotater {
+public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater {
 
     /* LDSP is Large Diamond Search Pattern, and SDSP mens Small Diamond Search Pattern.
        LDSP has 9 points and SDSP consists of 5 points.
@@ -249,7 +240,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             patchCompareMethod = PatchCompareMethod.SAD;
         }
 
-        chip.addObserver(this); // to allocate memory once chip size is known
         setPropertyTooltip(metricConfid, "maxAllowedSadDistance", "<html>SAD distance threshold for rejecting unresonable block matching result; <br> events with SAD distance larger than this value are rejected. <p>Lower value means it is harder to accept the event.");
         setPropertyTooltip(metricConfid, "validPixOccupancy", "<html>Threshold for valid pixel percent for each block; Range from 0 to 1. <p>If either matching block is less occupied than this fraction, no motion vector will be calculated.");
         setPropertyTooltip(metricConfid, "weightDistance", "<html>The confidence value consists of the distance and the dispersion; <br>weightDistance sets the weighting of the distance value compared with the dispersion value; Range from 0 to 1. <p>To count only e.g. hamming distance, set weighting to 1. <p> To count only dispersion, set to 0.");
@@ -879,17 +869,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         clearAreaCounts();
         clearNonGreedyRegions();
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
-        if (!isFilterEnabled()) {
-            return;
-        }
-        super.update(o, arg);
-        if ((o instanceof AEChip) && (chip.getNumPixels() > 0)) {
-            resetFilter();
-        }
     }
 
     private LowpassFilter speedFilter = new LowpassFilter();

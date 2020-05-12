@@ -430,7 +430,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         } catch (Exception e) {
             log.warning(e.getMessage());
         }
-        initFilters();
+//        initFilters(); // not a good place to call initFilters(), becauses subclases have not yet set their sizes or other needed information for most filters.
     }
 
     /** 

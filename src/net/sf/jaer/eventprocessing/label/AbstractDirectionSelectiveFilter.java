@@ -30,7 +30,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
 // class needs to be implemented, which is where the desc. and status. are used.
 @Description("Abstract base class for local motion optical flow by time-of-travel of orientation events")
 @DevelopmentStatus(DevelopmentStatus.Status.Abstract)
-abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D implements Observer, FrameAnnotater {
+abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D implements FrameAnnotater {
     protected static final int NUM_INPUT_TYPES = 8; // 4 orientations * 2 polarities
     protected static final int MAX_SEARCH_DISTANCE = 12;
 
@@ -82,7 +82,6 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
 
         motionVectors = new MotionVectors();
 
-        chip.addObserver(this);
         final String disp="Display";
         setPropertyTooltip(disp,"ppsScale", "scale of pixels per second to draw local and global motion vectors");
         setPropertyTooltip(disp,"showVectorsEnabled", "shows local motion vectors");
@@ -230,10 +229,6 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
 
     @Override public void initFilter() {
         resetFilter();
-    }
-
-    @Override public void update(Observable o, Object arg) {
-        initFilter();
     }
 
     /** Returns the 2-vector of global translational average motion.

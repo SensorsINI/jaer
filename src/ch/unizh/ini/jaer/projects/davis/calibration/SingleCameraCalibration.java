@@ -154,7 +154,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         filterChain.add(frameExtractor);
         frameExtractor.setExtRender(false);
         setEnclosedFilterChain(filterChain);
-        resetFilter();
         setPropertyTooltip("patternHeight", "height of chessboard calibration pattern in internal corner intersections, i.e. one less than number of squares");
         setPropertyTooltip("patternWidth", "width of chessboard calibration pattern in internal corner intersections, i.e. one less than number of squares");
         setPropertyTooltip("realtimePatternDetectionEnabled", "width of checkerboard calibration pattern in internal corner intersections");
@@ -229,7 +228,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                         log.info("captured frame " + nAcqFrames);
                     }
                 } else {
-                    if (--noPatternFoundWarningCount <0) {
+                    if (--noPatternFoundWarningCount < 0) {
                         log.warning("no pattern found; check pattern height and width numbers");
 //                        getChip().getCanvas().getDisplayMethod().showStatusChangeText("No pattern found; check pattern height/width?");
                         noPatternFoundWarningCount = noPatternFoundwarningSkipInterval;
@@ -540,7 +539,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     @Override
     public synchronized final void resetFilter() {
-        initFilter();
         filterChain.reset();
         patternFound = false;
         imageCounter = 0;
@@ -552,6 +550,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     public final void initFilter() {
         sx = chip.getSizeX();
         sy = chip.getSizeY();
+        if (!calibrated) {
+            loadCalibration();
+        }
+        resetFilter();
     }
 
     /**
@@ -1179,15 +1181,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     @Override
     public void update(Observable o, Object o1) {
-        if (o instanceof AEChip) {
-            if (chip.getNumPixels() > 0) {
-                sx = chip.getSizeX();
-                sy = chip.getSizeY(); // might not yet have been set in constructor
-                if (!calibrated) {
-                    loadCalibration();
-                }
-            }
-        }
     }
 
     /**

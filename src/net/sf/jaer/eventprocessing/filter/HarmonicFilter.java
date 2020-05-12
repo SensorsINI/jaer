@@ -7,7 +7,6 @@
 package net.sf.jaer.eventprocessing.filter;
 
 import java.util.Observable;
-import java.util.Observer;
 
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -49,7 +48,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
  * @author tobi
  */
 @Description("An AE filter that filters out boring events caused by global flickering illumination. This filter measures the global event activity to obtain the phase and amplitude of flicker. If the amplitude exceeds a threashold, then events around the peak activity are filtered away.")
-public class HarmonicFilter extends EventFilter2D implements Observer, FrameAnnotater {
+public class HarmonicFilter extends EventFilter2D implements FrameAnnotater {
 
     private boolean printStats = prefs().getBoolean("HarmonicFilter.printStats", true);
     private float threshold = getPrefs().getFloat("HarmonicFilter.threshold", 0.1f); // when value is less than this value, then we are crossing zero and don't pass events
@@ -61,7 +60,6 @@ public class HarmonicFilter extends EventFilter2D implements Observer, FrameAnno
     public HarmonicFilter(AEChip chip) {
         super(chip);
         resetFilter();
-        chip.addObserver(this);
         setPropertyTooltip("threshold", "increase to reduce # of events; when oscillator instantaneous value is within this value as fraction of amplitude, then events are blocked ");
         setPropertyTooltip("quality", "quality factor of osciallator, increase to sharpen around best freq");
         setPropertyTooltip("freq", "resonant frequency of oscillator in Hz; choose at observed fundamental");
@@ -80,10 +78,6 @@ public class HarmonicFilter extends EventFilter2D implements Observer, FrameAnno
         localPhases = new float[chip.getSizeX()][chip.getSizeY()][chip.getNumCellTypes()];
     }
 
-    @Override
-    public void update(Observable o, Object arg) {
-        initFilter();
-    }
 
     @Override
     public void initFilter() {

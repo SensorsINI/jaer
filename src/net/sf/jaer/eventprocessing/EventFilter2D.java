@@ -251,16 +251,17 @@ abstract public class EventFilter2D extends EventFilter implements PropertyChang
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         super.propertyChange(evt);
-        switch (evt.getPropertyName()) {
-            case AEChip.EVENT_SIZE_SET:
-                try {
-                    initFilter();
-                } catch (Exception e) {
-                    log.log(Level.SEVERE, "For EventFilter2D " + this.getClass() + " caught exception in initFilter(): " + e.toString(), e);
-                }
-                break;
-            default:
-        }
+// no need for this here, since initFilter() is called after chip is constructed and added to AEViewer
+//        switch (evt.getPropertyName()) {
+//            case AEChip.EVENT_SIZE_SET:
+//                try {
+//                    initFilter();
+//                } catch (Exception e) {
+//                    log.log(Level.SEVERE, "For EventFilter2D " + this.getClass() + " caught exception in initFilter(): " + e.toString(), e);
+//                }
+//                break;
+//            default:
+//        }
 
     }
 

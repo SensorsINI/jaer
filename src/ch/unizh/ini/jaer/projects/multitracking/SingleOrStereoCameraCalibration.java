@@ -34,7 +34,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Observable;
-import java.util.Observer;
 import java.util.Vector;
 import java.util.logging.Level;
 
@@ -99,7 +98,7 @@ import net.sf.jaer.util.TextRendererScale;
 @Description("Calibrates a single camera using DAVIS frames and OpenCV calibration methods")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 @SuppressWarnings( "deprecation" ) // tobi added for getFloatBuffer
-public class SingleOrStereoCameraCalibration extends EventFilter2D implements FrameAnnotater, Observer /* observes this to get informed about our size */ {
+public class SingleOrStereoCameraCalibration extends EventFilter2D implements FrameAnnotater {
 
 	private int sx; // set to chip.getWidth()
 	private int sy; // chip.getSizeY()
@@ -215,7 +214,6 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 
 	public SingleOrStereoCameraCalibration(AEChip chip) {
 		super(chip);
-		chip.addObserver(this);
 		frameExtractor = new ApsFrameExtractor(chip);
 		filterChain = new FilterChain(chip);
 		filterChain.add(frameExtractor);
@@ -1034,7 +1032,6 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 		for (AEViewer aev : arrayOfAEvi){
 			aev.setVisible(true);
 			AEChip chi = aev.getChip();
-			chi.addObserver(this);
 			chips.add(chi);
 //			System.out.println(chi.getAeViewer());
 			System.out.println(aev);
@@ -2773,17 +2770,6 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 	 */
 	public void setUndistortDVSevents(boolean undistortDVSevents) {
 		this.undistortDVSevents = undistortDVSevents;
-	}
-
-	@Override
-	public void update(Observable o, Object o1) {
-		if (o instanceof AEChip) {
-			if (chip.getNumPixels() > 0) {
-				sx = chip.getSizeX();
-				sy = chip.getSizeY(); // might not yet have been set in constructor
-				//loadCalibration();
-			}
-		}
 	}
 
 	/**

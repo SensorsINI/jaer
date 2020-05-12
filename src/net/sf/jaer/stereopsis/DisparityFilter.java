@@ -10,7 +10,6 @@ package net.sf.jaer.stereopsis;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Observable;
-import java.util.Observer;
 
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -43,7 +42,7 @@ import com.jogamp.opengl.util.gl2.GLUT;
  *
  * @author Peter Hess
  */
-public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Observer{
+public class DisparityFilter extends EventFilter2D implements FrameAnnotater{
     GLUT glut;
     int meanSearchRange;
     private int maxDisp = getPrefs().getInt("DisparityFilter.maxDisp",40);
@@ -72,7 +71,6 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
         oriFilter = new SimpleOrientationFilter(chip);
 //        oriFilter.setFilterEnabled(true); // this will set orientation filtering active next time program is started, so don't set it now
         setEnclosedFilter(oriFilter);
-        chip.addObserver(this);
         initFilter();
         setPropertyTooltip("distFactor","The larger this value, the more a time distance reduces matching");
         try{
@@ -291,11 +289,6 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
 
     public boolean isGeneratingFilter (){
         return false;
-    }
-
-    @Override
-	public void update (Observable o,Object arg){
-        initFilter();
     }
 
     /** Set the scaling factor for the event correlation depending on time difference. */

@@ -159,11 +159,6 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         setPropertyTooltip("fixFrameNumbers", "<html>Use this mode to replace the label frame numbers on existing labels during playback. <p>Make sure minTargetPointIntervalUs is not too large when using this mode. <p>This mode added to correct data that was incorrectly loaded from files in previous versions of TargetLabeler");
         Arrays.fill(labeledFractions, false);
         Arrays.fill(targetPresentInFractions, false);
-        try {
-            mapDataFilenameToTargetFilename = (HashMap<String, String>) PrefObj.getObject(getPrefs(), "TargetLabeler.hashmap");
-        } catch (Exception e) {
-            log.info("Could not read previous map from data files to target location files: " + e.toString());
-        }
     }
 
     @Override
@@ -677,7 +672,12 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     @Override
     public void initFilter() {
         checkPropertyChangeListenersAdded();
-    }
+         try {
+            mapDataFilenameToTargetFilename = (HashMap<String, String>) PrefObj.getObject(getPrefs(), "TargetLabeler.hashmap");
+        } catch (Exception e) {
+            log.info("Could not read previous map from data files to target location files: " + e.toString());
+        }
+   }
 
     /**
      * @return the minTargetPointIntervalUs

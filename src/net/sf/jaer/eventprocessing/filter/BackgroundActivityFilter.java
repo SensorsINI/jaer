@@ -5,7 +5,6 @@ package net.sf.jaer.eventprocessing.filter;
 
 import java.util.Arrays;
 import java.util.Observable;
-import java.util.Observer;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -24,7 +23,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  */
 @Description("Filters out uncorrelated background activity noise according to Delbruck, Tobi. 2008. “Frame-Free Dynamic Digital Vision.” In Proceedings of Intl. Symp. on Secure-Life Electronics, Advanced Electronics for Quality Life and Society, 1:21–26. Tokyo, Japan: Tokyo. https://drive.google.com/open?id=0BzvXOhBHjRheTS1rSVlZN0l2MDg.")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class BackgroundActivityFilter extends AbstractNoiseFilter implements Observer {
+public class BackgroundActivityFilter extends AbstractNoiseFilter {
 
     final int MAX_DT = 100000, MIN_DT = 10;
     final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
@@ -51,7 +50,6 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter implements Obs
 
     public BackgroundActivityFilter(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
         initFilter();
         setPropertyTooltip("dt", "Events with less than this delta time in us to neighbors pass through");
         setPropertyTooltip("subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
@@ -124,13 +122,6 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter implements Obs
     @Override
     public synchronized final void resetFilter() {
         initFilter();
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
-        if ((arg != null) && ((arg == Chip2D.EVENT_SIZEX) || (arg == Chip2D.EVENT_SIZEY))) {
-            resetFilter();
-        }
     }
 
     @Override

@@ -5,7 +5,6 @@ package net.sf.jaer.eventprocessing.filter;
 
 import java.util.Arrays;
 import java.util.Observable;
-import java.util.Observer;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -23,7 +22,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 @Description("Filters out uncorrelated background activity noise according to "
         + " instantaneous spike rate too low. The spike rate is set by statistics of constant-count buffers of past events")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
-public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilter implements Observer {
+public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilter {
 
 
     /**
@@ -61,7 +60,6 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
 
     public AdaptiveInstantaneousSpikeRateNoiseFilter(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
         initFilter();
         setPropertyTooltip("subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
         setPropertyTooltip("letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
@@ -146,13 +144,6 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
     @Override
     public synchronized final void resetFilter() {
 //        initFilter();
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
-        if ((arg != null) && ((arg == Chip2D.EVENT_SIZEX) || (arg == Chip2D.EVENT_SIZEY))) {
-            resetFilter();
-        }
     }
 
     @Override

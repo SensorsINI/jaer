@@ -12,7 +12,6 @@ package net.sf.jaer.eventprocessing.filter;
 
 import java.util.Arrays;
 import java.util.Observable;
-import java.util.Observer;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
@@ -35,7 +34,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * @author tobi
  */
 @Description("Outputs only events that are supported by a nearby event of the opposite polarity in the neighborhood.")
-public class OnOffProximityLineFilter extends EventFilter2D implements Observer  {
+public class OnOffProximityLineFilter extends EventFilter2D  {
     final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
     
     /** the time in timestamp ticks (1us at present) that a spike
@@ -56,8 +55,6 @@ public class OnOffProximityLineFilter extends EventFilter2D implements Observer 
     
     public OnOffProximityLineFilter(AEChip chip){
         super(chip);
-        chip.addObserver(this);
-//        initFilter();
     }
     
     void allocateMaps(AEChip chip){
@@ -147,13 +144,8 @@ public class OnOffProximityLineFilter extends EventFilter2D implements Observer 
     }
     
     
-    public void update(Observable o, Object arg) {
-//        if(!isFilterEnabled()) return;
-        resetFilter();
-    }
-    
     public void initFilter() {
-//        allocateMaps(chip);
+        resetFilter();
     }
     
     public int getSubsampleBy() {

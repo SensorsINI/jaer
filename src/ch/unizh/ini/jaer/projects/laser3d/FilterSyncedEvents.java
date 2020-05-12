@@ -8,7 +8,6 @@ package ch.unizh.ini.jaer.projects.laser3d;
 
 import java.util.Arrays;
 import java.util.Observable;
-import java.util.Observer;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -26,14 +25,12 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  */
 @Description("Filters out events, which are not in a specific timewindow")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class FilterSyncedEvents extends EventFilter2D implements Observer {
+public class FilterSyncedEvents extends EventFilter2D {
 
     /**
      * *******
-     * Options
-     * *******
+     * Options *******
      */
-
     /**
      *
      */
@@ -49,8 +46,7 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
 
     /**
      * *********************
-     * Variables
-     * *********************
+     * Variables *********************
      */
     private int DEFAULT_TIMESTAMP = 0; //Integer.MIN_VALUE;
     private int[][] lastOnTimestamps;
@@ -60,6 +56,7 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
 
     /**
      * Creates a new instance of FilterLaserLine
+     *
      * @param chip
      */
     public FilterSyncedEvents(AEChip chip) {
@@ -106,7 +103,7 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
 
                 if ((lastOnTimestamp >= (lastTriggerTimestamp + t0))
                         & (lastOnTimestamp < (lastTriggerTimestamp + t0 + t1))
-                        & (lastOffTimestamp > (lastTriggerTimestamp + (laserPeriod/2)))) {
+                        & (lastOffTimestamp > (lastTriggerTimestamp + (laserPeriod / 2)))) {
                     BasicEvent o = outItr.nextOutput();
                     o.copyFrom(pE);
                 }
@@ -179,11 +176,6 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
      */
     public Object getFilterState() {
         return null;
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
-        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     /**

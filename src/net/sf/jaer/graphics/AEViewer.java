@@ -1354,22 +1354,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             viewMenu.invalidate();
         }
 
-        //        validate();
-        //        pack();
-        // causes a lot of flashing ... Toolkit.getDefaultToolkit().setDynamicLayout(true); // dynamic resizing  -- see if this bombs!
     }
 
     /**
      * This method sets the "current file" which sets the field, the preferences
      * of the last file, and the window title. It does not actually start
-     * playing the file.
+     * playing the file. That is done by the AEPlayer that calls startPlayback() on the file.
+     * 
+     * setCurrentFile() fires PropertyChange AEViewer.EVENT_FILEOPEN with the oldFile and currentFile passed to listeners.
      */
     protected void setCurrentFile(File f) {
         currentFile = new File(f.getPath());
+        File oldFile=lastFile;
         lastFile = currentFile;
         prefs.put("AEViewer.lastFile", lastFile.toString());
-        //        System.out.println("putString AEViewer.lastFile="+lastFile);
         setTitleAccordingToState();
+        getSupport().firePropertyChange(AEViewer.EVENT_FILEOPEN,oldFile,currentFile);
     }
 
     /**
@@ -5643,6 +5643,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             renderer = chip.getRenderer();
 
             extractor.setSubsampleThresholdEventCount(getRenderer().getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
+            if(chip.getFilterChain()!=null){
+                chip.getFilterChain().initFilters(); // at this point AEChip is fully initialized, so asking all filters to initialize themselves makes sense
+            }
         }
     }
 

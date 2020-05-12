@@ -6,7 +6,6 @@ package eu.visualize.ini.retinamodel;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
-import java.util.Observer;
 import java.util.Random;
 
 import com.jogamp.opengl.GL2;
@@ -32,7 +31,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
  */
 @Description("Models object motion cell known from mouse and salamander retina")
 //@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAnnotater, Observer {
+public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAnnotater {
     private ObjectMotionCellModel objectMotionCellModel = new ObjectMotionCellModel();
     private float synapticWeight = getFloat("synapticWeight", 1f);
     private float centerExcitationToSurroundInhibitionRatio = getFloat("centerExcitationToSurroundInhibitionRatio", 0.4386f);
@@ -51,7 +50,6 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
 
         public ObjectMotionCell(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
         setPropertyTooltip("showSubunits", "Enables showing subunit activity annotation over retina output");
         setPropertyTooltip("showOutputCell", "Enables showing object motion cell activity annotation over retina output");
         setPropertyTooltip("subunitSubsamplingBits", "Each subunit integrates events from 2^n by 2^n pixels, where n=subunitSubsamplingBits");

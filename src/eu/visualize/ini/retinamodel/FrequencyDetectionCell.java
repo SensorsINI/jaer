@@ -6,7 +6,6 @@ package eu.visualize.ini.retinamodel;
 
 import java.awt.Font;
 import java.util.Observable;
-import java.util.Observer;
 import java.util.Random;
 
 import com.jogamp.opengl.GL2;
@@ -34,7 +33,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
  */
 @Description("Models a frequency detecting cell with scanning excitation line")
 //@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class FrequencyDetectionCell extends EventFilter2D implements FrameAnnotater, Observer {
+public class FrequencyDetectionCell extends EventFilter2D implements FrameAnnotater {
 
     private boolean showSubunits = getBoolean("showSubunits", true);
     private boolean showOutputCell = getBoolean("showOutputCell", true);
@@ -58,7 +57,6 @@ public class FrequencyDetectionCell extends EventFilter2D implements FrameAnnota
 
     public FrequencyDetectionCell(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
         setPropertyTooltip("showSubunits", "Enables showing subunit activity annotation over retina output");
         setPropertyTooltip("showOutputCell", "Enables showing object motion cell activity annotation over retina output");
         setPropertyTooltip("subunitSubsamplingBits", "Each subunit integrates events from 2^n by 2^n pixels, where n=subunitSubsamplingBits");
@@ -152,13 +150,6 @@ public class FrequencyDetectionCell extends EventFilter2D implements FrameAnnota
             subunits.render(gl);
         }
 
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
-        if ((arg != null) && ((arg == Chip2D.EVENT_SIZEX) || (arg == Chip2D.EVENT_SIZEY)) && (chip.getNumPixels() > 0)) {
-            initFilter();
-        }
     }
 
     /**

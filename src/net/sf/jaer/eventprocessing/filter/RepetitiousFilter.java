@@ -9,7 +9,6 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 import java.util.Observable;
-import java.util.Observer;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
@@ -37,7 +36,7 @@ Fires PropertyChangeEvent for the following
  * @author tobi
  */
 @Description("Filters out (or in) repetitious (boring) events")
-public class RepetitiousFilter extends EventFilter2D implements Observer{
+public class RepetitiousFilter extends EventFilter2D {
 
     /** factor different than previous dt for this cell to pass through filter */
     private int ratioShorter = getPrefs().getInt("RepetitiousFilter.ratioShorter",2);
@@ -59,7 +58,6 @@ public class RepetitiousFilter extends EventFilter2D implements Observer{
 
     public RepetitiousFilter (AEChip chip){
         super(chip);
-        chip.addObserver(this);
         setPropertyTooltip("ratioShorter","filter events with ISI shorter by this ratio");
         setPropertyTooltip("ratioLonger","filter events with ISI longer by this ratio");
         setPropertyTooltip("averagingSamples","Number of events to IIR-average over to compute ISI");
@@ -140,10 +138,6 @@ public class RepetitiousFilter extends EventFilter2D implements Observer{
         getSupport().firePropertyChange("ratioLonger",this.ratioLonger,ratioLonger);
         getPrefs().putInt("RepetitiousFilter.ratioLonger",ratioLonger);
         this.ratioLonger = ratioLonger;
-    }
-
-    public void update (Observable o,Object arg){
-        initFilter();
     }
 
     public void initFilter (){

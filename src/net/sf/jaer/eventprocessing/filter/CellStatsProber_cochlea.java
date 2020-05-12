@@ -17,7 +17,6 @@ import java.awt.event.MouseWheelEvent;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Observable;
-import java.util.Observer;
 import java.util.logging.Logger;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GL2GL3;
@@ -28,7 +27,6 @@ import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-//import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.ChipRendererDisplayMethod;
@@ -47,20 +45,22 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * This is part of jAER <a href="http://jaerproject.net/">jaerproject.net</a>,
  * licensed under the LGPL (<a
  * href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
- * 
- * Originally done for the DVS camera (see net.sf.jaer.eventprocessing.filter.CellStatsProber.java)
- * 
- * This filter does the same for the cochleaAMS1b sensor. 
+ *
+ * Originally done for the DVS camera (see
+ * net.sf.jaer.eventprocessing.filter.CellStatsProber.java)
+ *
+ * This filter does the same for the cochleaAMS1b sensor.
  * @editor Philipp
- * 
- * TODO:    -implement individual histograms for each cell
- *          -read out of every ISI bin (right now decaying falsifies the results)
- *          -correct use of "useRightEar" "useLeftEar"; at the moment if only one cell from right and one cell from left ear is chosen and one is not used there are too few events to create the histogram
- *          -non-pure tones are maybe not shown correctly
- * 
+ *
+ * TODO: -implement individual histograms for each cell -read out of every ISI
+ * bin (right now decaying falsifies the results) -correct use of "useRightEar"
+ * "useLeftEar"; at the moment if only one cell from right and one cell from
+ * left ear is chosen and one is not used there are too few events to create the
+ * histogram -non-pure tones are maybe not shown correctly
+ *
  */
 @Description("Collects and displays statistics for a selected range of pixels / cells")
-public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implements FrameAnnotater, MouseListener, MouseMotionListener, Observer {
+public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implements FrameAnnotater, MouseListener, MouseMotionListener {
 
     public static DevelopmentStatus getDevelopementStatus() {
         return DevelopmentStatus.Unknown;
@@ -109,7 +109,6 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
         }
         currentAddress = new int[chip.getNumCellTypes()];
         Arrays.fill(currentAddress, -1);
-        chip.addObserver(this);
         final String h = "ISIs", e = "Event rate";
         setPropertyTooltip(h, "isiHistEnabled", "enable histogramming interspike intervals");
         setPropertyTooltip(h, "isiMinUs", "min ISI in us");
@@ -149,7 +148,7 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
         stats.play();
 
     }
-    
+
     public float getAveragingDecay() {
         return averagingDecay;
     }
@@ -214,6 +213,8 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
 
     @Override
     public void initFilter() {
+        currentAddress = new int[chip.getNumCellTypes()];
+        Arrays.fill(currentAddress, -1);
     }
 
     @Override
@@ -409,26 +410,6 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
         return stats.isShowIndividualISIHistograms();
     }
 
-    @Override
-    synchronized public void update(Observable o, Object arg) {
-        currentAddress = new int[chip.getNumCellTypes()];
-        Arrays.fill(currentAddress, -1);
-    }
-
-	//    /**
-    //     * @return the separateEventTypes
-    //     */
-    //    public boolean isSeparateEventTypes() {
-    //        return separateEventTypes;
-    //    }
-    //
-    //    /**
-    //     * @param separateEventTypes the separateEventTypes to set
-    //     */
-    //    public void setSeparateEventTypes(boolean separateEventTypes) {
-    //        this.separateEventTypes = separateEventTypes;
-    //        putBoolean("separateEventTypes", separateEventTypes);
-    //    }
     /**
      * @return the logISIEnabled
      */
@@ -466,6 +447,7 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
     }
 
     private class Stats {
+
         private int lastTimestamp;
 
         public void setRateTauMs(float tauMs) {
@@ -480,7 +462,7 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
                 isiMaxUs = getInt("isiMaxUs", 100000),
                 isiNumBins = getInt("isiNumBins", 60);
         private double logIsiMin = isiMinUs <= 0 ? 0 : Math.log(isiMinUs), logIsiMax = Math.log(isiMaxUs);
-		//              private int[] bins = new int[isiNumBins];
+        //              private int[] bins = new int[isiNumBins];
         //        private int lessCount = 0, moreCount = 0;
         //        private int maxCount = 0;
         private boolean isiAutoScalingEnabled = getBoolean("isiAutoScalingEnabled", false);
@@ -515,11 +497,11 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
                     try {
                         CochleaAMSEvent i = (CochleaAMSEvent) e;
                         if (useLeftEar == false && i.getEar() == Ear.LEFT) {
-                                break;
-                            }
+                            break;
+                        }
                         if (useRightEar == false && i.getEar() == Ear.RIGHT) {
-                                break;
-                            }
+                            break;
+                        }
                         stats.count++;
                         if (isiHistEnabled) {
                             if (individualISIsEnabled) {
@@ -599,7 +581,7 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
             this.showIndividualISIHistograms = showIndividualISIHistograms;
             putBoolean("showIndividualISIHistograms", showIndividualISIHistograms);
         }
-        
+
         public int getLastTimestamp() {
             return lastTimestamp;
         }
@@ -611,7 +593,7 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
                 h.bins[j] = (int) (h.bins[j] * decayconstant);
             }
         }
-        
+
         public void updateTimeMoreLess(int timestamp, ISIHist h) {
             float avgDecay = averagingDecay * 1000000;
             if (h.lessCount != 0 && avgDecay != 0 && this.getLastTimestamp() - h.lessCountTimestamp > avgDecay) {
@@ -628,7 +610,7 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
 
             int[] bins = new int[isiNumBins];
             long[] binstimestamps = new long[isiNumBins];
-            int lessCount = 0, lessCountTimestamp = 0, moreCount = 0, moreCountTimestamp = 0; 
+            int lessCount = 0, lessCountTimestamp = 0, moreCount = 0, moreCountTimestamp = 0;
             int maxCount = 0;
             int lastT = 0, prevLastT = 0;
             boolean virgin = true;
@@ -638,7 +620,7 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
             public ISIHist(int addr) {
                 address = addr;
             }
-            
+
             Float maxBinValue() {
                 int maxBinCount = 0;
                 for (int i = 0; i < bins.length; i++) {
@@ -653,7 +635,7 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
                     return (float) Math.exp((maxBin * (stats.logIsiMax - stats.logIsiMin)) + stats.logIsiMin);
                 }
             }
-            
+
             void addEvent(BasicEvent e) {
                 if (virgin) {
                     lastT = e.timestamp;
@@ -694,11 +676,11 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
                 }
                 lastT = e.timestamp;
                 //counter++;
-             //   if(counter > 1000){
+                //   if(counter > 1000){
                 maxBinISI = maxBinValue();
                 maxBinValue = bins[maxBin];
-            //    counter = 0;
-            //    }
+                //    counter = 0;
+                //    }
             }
 
             /**
@@ -814,11 +796,11 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
             GL2 gl = drawable.getGL().getGL2();
 
             renderer.begin3DRendering();
-			//            renderer.beginRendering(drawable.getWidth(), drawable.getHeight());
+            //            renderer.beginRendering(drawable.getWidth(), drawable.getHeight());
             // optionally set the color
             renderer.setColor(1, 1, 1, 1f);
             if (rateEnabled) {
-                renderer.draw3D(toString(), -1 ,chip.getSizeY(), 0, .2f); // TODO fix string n lines
+                renderer.draw3D(toString(), -1, chip.getSizeY(), 0, .2f); // TODO fix string n lines
             }
             // ... more draw commands, color changes, etc.
             renderer.end3DRendering();
@@ -826,7 +808,7 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
             // draw hist
             if (isiHistEnabled) {
                 renderer.draw3D(String.format("%d", isiMinUs), -1, -5, 0, .2f);
-                renderer.draw3D(String.format("%d", isiMaxUs), chip.getSizeX()- (int) Math.floor(Math.log10(isiMaxUs)) -1, -5, 0, .2f); 
+                renderer.draw3D(String.format("%d", isiMaxUs), chip.getSizeX() - (int) Math.floor(Math.log10(isiMaxUs)) - 1, -5, 0, .2f);
                 renderer.draw3D(logISIEnabled ? "log" : "linear", -1, -7, 0, .2f);
 
                 if (individualISIsEnabled) {
@@ -1046,5 +1028,5 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
     public void setUseRightEar(boolean useRightEar) {
         getPrefs().putBoolean("useRightEar", useRightEar);
         this.useRightEar = useRightEar;
-    }         
+    }
 }

@@ -6,7 +6,6 @@
 package ch.unizh.ini.jaer.projects.labyrinthkalman;
 
 import java.util.Observable;
-import java.util.Observer;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -21,7 +20,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * probability proportional to (1/(k+1)) or so.
  * @author lorenz
  */
-public final class PixelExhaustion extends EventFilter2D implements Observer{
+public final class PixelExhaustion extends EventFilter2D {
     // exhaustion of each pixel
 	int cameraX;
 	int cameraY;
@@ -41,7 +40,6 @@ public final class PixelExhaustion extends EventFilter2D implements Observer{
 
 	public PixelExhaustion(AEChip chip) {
 		super(chip);
-		chip.addObserver(this);
 		resetFilter();
 	}
 
@@ -100,12 +98,6 @@ public final class PixelExhaustion extends EventFilter2D implements Observer{
 	public void initFilter() {
 		resetFilter();
 	}
-
-    @Override
-	public void update(Observable o, Object arg) {
-		if(!isFilterEnabled()) return;
-		initFilter();
-       }
 
         public float getDecay() {
             return decay;

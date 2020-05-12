@@ -55,9 +55,6 @@ public class ApsDvsOrientationFilter extends AbstractOrientationFilter{
      * @param chip */
     public ApsDvsOrientationFilter (AEChip chip){
         super(chip);
-        chip.addObserver(this);
-        
-        //Tooltips and Properties are defined in the AbstractOrientationFilter.
     }
 
     /** filters in to getOutputPacket(). 

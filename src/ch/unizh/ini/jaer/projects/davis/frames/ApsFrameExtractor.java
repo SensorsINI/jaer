@@ -57,8 +57,7 @@ import org.apache.commons.io.FilenameUtils;
  */
 @Description("Method to acquire a frame from a stream of APS sample events")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class ApsFrameExtractor extends EventFilter2D
-        implements Observer /* Observer needed to get change events on chip construction */ {
+public class ApsFrameExtractor extends EventFilter2D{
 
     private JFrame apsFrame = null;
     public ImageDisplay apsDisplay;
@@ -90,15 +89,6 @@ public class ApsFrameExtractor extends EventFilter2D
      */
     public static final String EVENT_NEW_FRAME = DavisRenderer.EVENT_NEW_FRAME_AVAILBLE;
     private int lastFrameTimestamp = -1;
-
-    @Override
-    public void update(final Observable o, final Object arg) {
-        if ((o != null) && (arg != null)) {
-            if ((o instanceof AEChip) && (arg.equals(Chip2D.EVENT_SIZEX) || arg.equals(Chip2D.EVENT_SIZEY))) {
-                initFilter();
-            }
-        }
-    }
 
     public static enum Extraction {
 
@@ -146,7 +136,6 @@ public class ApsFrameExtractor extends EventFilter2D
         setPropertyTooltip("extractionMethod",
                 "Method to extract a frame; CDSframe is the final result after subtracting signal from reset frame. Signal and reset frames are the raw sensor output before correlated double sampling.");
         setPropertyTooltip("showAPSFrameDisplay", "Shows the JFrame frame display if true");
-        chip.addObserver(this);
 
     }
 

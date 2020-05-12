@@ -76,7 +76,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
  */
 @Description("Computes optical flow with vector direction using block matching")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class Speedo extends AbstractMotionFlow implements Observer, FrameAnnotater {
+public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
 
     /* LDSP is Large Diamond Search Pattern, and SDSP mens Small Diamond Search Pattern.
        LDSP has 9 points and SDSP consists of 5 points.
@@ -247,7 +247,6 @@ public class Speedo extends AbstractMotionFlow implements Observer, FrameAnnotat
             patchCompareMethod = PatchCompareMethod.SAD;
         }
 
-        chip.addObserver(this); // to allocate memory once chip size is known
         setPropertyTooltip(metricConfid, "maxAllowedSadDistance", "<html>SAD distance threshold for rejecting unresonable block matching result; <br> events with SAD distance larger than this value are rejected. <p>Lower value means it is harder to accept the event.");
         setPropertyTooltip(metricConfid, "validPixOccupancy", "<html>Threshold for valid pixel percent for each block; Range from 0 to 1. <p>If either matching block is less occupied than this fraction, no motion vector will be calculated.");
         setPropertyTooltip(metricConfid, "weightDistance", "<html>The confidence value consists of the distance and the dispersion; <br>weightDistance sets the weighting of the distance value compared with the dispersion value; Range from 0 to 1. <p>To count only e.g. hamming distance, set weighting to 1. <p> To count only dispersion, set to 0.");
@@ -817,17 +816,6 @@ public class Speedo extends AbstractMotionFlow implements Observer, FrameAnnotat
         }
         clearAreaCounts();
         clearNonGreedyRegions();
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
-        if (!isFilterEnabled()) {
-            return;
-        }
-        super.update(o, arg);
-        if ((o instanceof AEChip) && (chip.getNumPixels() > 0)) {
-            resetFilter();
-        }
     }
 
     private LowpassFilter speedFilter = new LowpassFilter();

@@ -9,13 +9,12 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import java.util.Observable;
-import java.util.Observer;
 import java.util.Arrays;
 import java.util.Random;
 
 @Description("Models the AerCorr chip which detects and can be used to filter out uncorrelated activity")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class AerCorrFilter extends EventFilter2D implements Observer {
+public class AerCorrFilter extends EventFilter2D {
 
     final int MAX_Ileak = 1000000, MIN_Ileak = 1;
     final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
@@ -41,7 +40,6 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
 
     public AerCorrFilter(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
         initFilter();
         setPropertyTooltip("iLeakPicoAmps", "Set capacitor leak current in picoamps");
         setPropertyTooltip("subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
@@ -97,13 +95,6 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
     @Override
     public synchronized final void resetFilter() {
         initFilter();
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
-        if (arg != null && (arg == AEChip.EVENT_SIZEX || arg == AEChip.EVENT_SIZEY)) {
-            resetFilter();
-        }
     }
 
     @Override

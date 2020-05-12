@@ -5,7 +5,6 @@ package net.sf.jaer.eventprocessing.filter;
 
 import java.util.Arrays;
 import java.util.Observable;
-import java.util.Observer;
 import java.util.Random;
 
 import net.sf.jaer.Description;
@@ -28,7 +27,7 @@ import net.sf.jaer.event.EventPacket;
         + "Guo, S., Z. Kang, L. Wang, S. Li, and W. Xu. 2020. 'HashHeat: An O(C) Complexity Hashing-Based Filter for Dynamic Vision Sensor.' "
         + "In 2020 25th Asia and South Pacific Design Automation Conference (ASP-DAC), 452–57. ieeexplore.ieee.org. https://doi.org/10.1109/ASP-DAC47756.2020.9045268..")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
-public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer {
+public class HashHeatNoiseFilter extends AbstractNoiseFilter  {
 
     /**
      * the time in timestamp ticks (1us at present) that a spike needs to be
@@ -73,8 +72,6 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
     
     public HashHeatNoiseFilter(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
-        initFilter();
         setPropertyTooltip("subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
         setPropertyTooltip("letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
         setPropertyTooltip("randomSeed", "random seed for hash functions");
@@ -253,13 +250,6 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter implements Observer
         Arrays.fill(mArrays, 0);
 //        mArrayThrInit = 20;
         generateHashFunctions();
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
-        if ((arg != null) && ((arg == Chip2D.EVENT_SIZEX) || (arg == Chip2D.EVENT_SIZEY))) {
-            resetFilter();
-        }
     }
 
     @Override

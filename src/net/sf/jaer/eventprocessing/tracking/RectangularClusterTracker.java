@@ -2824,9 +2824,7 @@ public class RectangularClusterTracker extends EventFilter2D
         if (o == this) {
             UpdateMessage msg = (UpdateMessage) arg;
             updateClusterList(msg.timestamp);
-        } else if (o instanceof AEChip) {
-            initFilter();
-        }
+        } 
     }
 
     @Override

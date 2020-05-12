@@ -13,7 +13,6 @@ package net.sf.jaer.eventprocessing.tracking;
 
 import java.awt.Dimension;
 import java.util.Observable;
-import java.util.Observer;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -56,7 +55,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
  */
 @Description("Tracks a single line as used for line-following navigation or for lane tracking")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, LineDetector, Observer {
+public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, LineDetector {
 
     //    static Preferences prefs=Preferences.userNodeForPackage(HoughLineTracker.class);
     //    Line line=new Line();
@@ -99,7 +98,6 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
     public HoughLineTracker(AEChip chip) {
         super(chip);
         initFilter();
-        chip.addObserver(this);
         setPropertyTooltip("angleMixingFactor", "how much angle gets turned per packet");
         setPropertyTooltip("positionMixingFactor", "how much line position gets moved per packet");
         setPropertyTooltip("favorVerticalAngleRangeDeg", "range of angle on each side of vertical that is allowed for line");
@@ -449,21 +447,6 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
     public float getThetaDegFiltered() {
         return thetaDegFiltered;
     }
-
-    @Override
-    public void update(Observable o, Object arg) {
-        // chip may have changed, update ourselves
-        resetFilter();
-    }
-    //    public boolean isFavorVertical() {
-    //        return favorVertical;
-    //    }
-    //
-    //    public void setFavorVertical(boolean favorVertical) {
-    //        this.favorVertical = favorVertical;
-    //        getPrefs().putBoolean("LineTracker.favorVertical",favorVertical);
-    //    }
-    // returns range around 0 (vertical) that are allowed angles of line
 
     private int getAllowedThetaNumber(float favorVerticalAngleRangeDeg) {
         return Math.round((favorVerticalAngleRangeDeg / 180) * nTheta);

@@ -29,7 +29,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  */
 @Description("Only lets through events spatio-temporally correlated complementary types (e.g. corners)")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class TypeCoincidenceFilter extends EventFilter2D implements Observer, FrameAnnotater {
+public class TypeCoincidenceFilter extends EventFilter2D implements FrameAnnotater {
 
     /**
      * events must occur within this time along orientation in us to generate an
@@ -53,7 +53,6 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer, Fr
      */
     public TypeCoincidenceFilter(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
         resetFilter();
         setPropertyTooltip("dist", "distance in pixels to search for coincident events");
         setPropertyTooltip("minDtThreshold", "events must be this close in us to result in output");
@@ -101,11 +100,6 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer, Fr
     @Override
     public void initFilter() {
         resetFilter();
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
-        initFilter();
     }
 
     EventPacket<ApsDvsOrientationEvent> oriPacket;

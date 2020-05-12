@@ -10,7 +10,6 @@ import java.awt.Rectangle;
 import java.awt.event.MouseEvent;
 import java.util.Arrays;
 import java.util.Observable;
-import java.util.Observer;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -49,7 +48,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  */
 @Description("Collects and displays APS noise statistics for a selected range of pixels, including PTC (photon transfer characteristics) and temporal noise caused by kTC, 1/f or other noise. ")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements FrameAnnotater, Observer, PropertyChangeListener {
+public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements FrameAnnotater, PropertyChangeListener {
 
     ApsFrameExtractor frameExtractor;
     public boolean temporalNoiseEnabled = getBoolean("temporalNoiseEnabled", true);
@@ -78,7 +77,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     private float adcVref = getFloat("vreadcVreff", 1.5f);
     private int adcResolutionCounts = getInt("adcResolutionCounts", 1023);
     private boolean useZeroOriginForTemporalNoise = getBoolean("useZeroOriginForTemporalNoise", false);
-    private float lastMeasuredExposureMs=Float.NaN, lastExposureDelayMs=Float.NaN;
+    private float lastMeasuredExposureMs = Float.NaN, lastExposureDelayMs = Float.NaN;
 
     public ApsNoiseStatistics(AEChip chip) {
         super(chip);
@@ -93,7 +92,6 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         FilterChain chain = new FilterChain(chip);
         chain.add(frameExtractor);
         setEnclosedFilterChain(chain);
-        chip.addObserver(this);
         setPropertyTooltip("scaleHistogramsIncludingOverflow", "Scales histograms to include overflows for ISIs that are outside of range");
         setPropertyTooltip("histNumBins", "number of bins in the spatial (FPN) histogram");
         setPropertyTooltip("spatialHistogramEnabled", "shows the spatial (FPN) histogram for mouse-selected region");
@@ -215,6 +213,12 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 
     @Override
     public void initFilter() {
+        currentAddress = new int[chip.getNumCellTypes()];
+        Arrays.fill(currentAddress, -1);
+        frameExtractor.resetFilter();
+        if (chip.getBiasgen() != null) {
+            chip.getBiasgen().getSupport().addPropertyChangeListener(this);
+        }
     }
 
     private int min(int a, int b) {
@@ -345,22 +349,6 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     }
 
     /**
-     * Called when the chip size is known
-     *
-     * @param o
-     * @param arg
-     */
-    @Override
-    synchronized public void update(Observable o, Object arg) {
-        currentAddress = new int[chip.getNumCellTypes()];
-        Arrays.fill(currentAddress, -1);
-        frameExtractor.resetFilter();
-        if (chip.getBiasgen() != null) {
-            chip.getBiasgen().getSupport().addPropertyChangeListener(this);
-        }
-    }
-
-    /**
      * @return the selectionRectangle
      */
     public Rectangle getSelectionRectangle() {
@@ -385,23 +373,22 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (isFilterEnabled()&&  resetOnBiasChange && evt.getSource() instanceof AEChip 
-                && evt.getPropertyName() != DavisChip.PROPERTY_FRAME_RATE_HZ 
+        if (isFilterEnabled() && resetOnBiasChange && evt.getSource() instanceof AEChip
+                && evt.getPropertyName() != DavisChip.PROPERTY_FRAME_RATE_HZ
                 && evt.getPropertyName() != DavisChip.PROPERTY_MEASURED_EXPOSURE_MS
                 && evt.getPropertyName() != DavisVideoContrastController.AGC_VALUES) {
             resetFilter();
             log.info("statistics reset because of event " + evt.getPropertyName());
         }
-         if (isFilterEnabled() &&   evt.getSource() instanceof AEChip 
-                && evt.getPropertyName() == DavisChip.PROPERTY_MEASURED_EXPOSURE_MS
-                ) {
-             lastMeasuredExposureMs=(float)evt.getNewValue();
-             if(chip instanceof DavisChip){
-                 DavisChip davisChip=(DavisChip)chip;
-                 DavisConfig davisConfig=(DavisConfig)davisChip.getBiasgen();
-                 lastExposureDelayMs=davisConfig.getExposureDelayMs();
-             }
-         }
+        if (isFilterEnabled() && evt.getSource() instanceof AEChip
+                && evt.getPropertyName() == DavisChip.PROPERTY_MEASURED_EXPOSURE_MS) {
+            lastMeasuredExposureMs = (float) evt.getNewValue();
+            if (chip instanceof DavisChip) {
+                DavisChip davisChip = (DavisChip) chip;
+                DavisConfig davisConfig = (DavisConfig) davisChip.getBiasgen();
+                lastExposureDelayMs = davisConfig.getExposureDelayMs();
+            }
+        }
     }
 
     /**
@@ -465,11 +452,11 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
          * draws all statistics
          */
         void draw(GL2 gl) {
-            MultilineAnnotationTextRenderer.setColor(Color.CYAN);
-            MultilineAnnotationTextRenderer.setScale(((float)chip.getSizeX()/240)*.2f); // scaled to fit 240 sensor, scale up for larger sensors
+            MultilineAnnotationTextRenderer.setColor(Color.BLUE);
+            MultilineAnnotationTextRenderer.setScale(((float) chip.getSizeX() / 240) * .25f); // scaled to fit 240 sensor, scale up for larger sensors
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 0.8f);
             engFmt.setPrecision(2);
-            MultilineAnnotationTextRenderer.renderMultilineString(String.format("Exposure: set=%ss, measured=%ss",engFmt.format(lastExposureDelayMs*.001f),engFmt.format(lastMeasuredExposureMs*.001f)));
+            MultilineAnnotationTextRenderer.renderMultilineString(String.format("Exposure: set=%ss, measured=%ss", engFmt.format(lastExposureDelayMs * .001f), engFmt.format(lastMeasuredExposureMs * .001f)));
             apsHist.draw(gl);
             temporalNoise.draw(gl);
         }
@@ -613,6 +600,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 float kdn = (float) (meanvar / meanmean);
                 float keuV = kdn * adcVref / adcResolutionCounts * 1e6f;
                 String s = String.format("Temporal noise: %.1f+/-%.2f var=%.1f COV=%.1f%% var/mean=k=%.2f DN/e, k=%s uV/e N=%d", meanmean, rmsAC, meanvar, (100 * rmsAC) / meanmean, kdn, engFmt.format(keuV), nPixels);
+                MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .6f);
                 MultilineAnnotationTextRenderer.renderMultilineString(s);
 //
 //                renderer.begin3DRendering();
@@ -848,7 +836,10 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                         gl.glEnd();
                     }
                 }
-                MultilineAnnotationTextRenderer.renderMultilineString(String.format("Spatial histogram: mean=%.1f, std=%.3f, COV=%.3f%%", mean, std, cov * 100));
+                MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .7f);
+                float expRateDNperMs = mean / lastMeasuredExposureMs;
+                float expDNperMsStd = expRateDNperMs / lastMeasuredExposureMs;
+                MultilineAnnotationTextRenderer.renderMultilineString(String.format("Spatial histogram: mean=%.1f+/-%.3f DN (%.2f +/- %.3f DN/ms), COV=%.3f%%", mean, std, expRateDNperMs, expDNperMsStd, cov * 100));
 
             }
 

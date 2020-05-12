@@ -37,7 +37,7 @@ import net.sf.jaer.util.TobiLogger;
  * @author Tobi Delbruck
  */
 @Description("Low level ball controller for Labyrinth game")
-public class LabyrinthBallController extends EventFilter2DMouseAdaptor implements PropertyChangeListener, Observer, LabyrinthBallControllerInterface {
+public class LabyrinthBallController extends EventFilter2DMouseAdaptor implements PropertyChangeListener, LabyrinthBallControllerInterface {
 
     private int jiggleTimeMs = getInt("jiggleTimeMs", 1000);
 
@@ -97,7 +97,6 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
 //        handDetector = new HandDetector(chip);
         tracker = new LabyrinthBallTracker(chip, this);
-        tracker.addObserver(this);
         labyrinthHardware = new LabyrinthHardware(chip);
         labyrinthHardware.getSupport().addPropertyChangeListener(this);
 
@@ -479,22 +478,6 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         putFloat("integralGain", integralGain);
         iControl.setLocation(0, 0);
         computePoles();
-    }
-
-    /**
-     * Handles control for updates from the tracker.
-     *
-     * @param o the calling filter
-     * @param arg the UpdateMessage (or other message).
-     */
-    @Override
-    public void update(Observable o, Object arg) {
-        //        if (arg instanceof UpdateMessage) {
-        //            UpdateMessage m = (UpdateMessage) arg;
-        //            if (isControllerEnabled()) {
-        //                control(m.packet, timeUs());
-        //            }
-        //        }
     }
 
     int timeUs() {

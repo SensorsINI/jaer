@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Observable;
-import java.util.Observer;
 import java.util.logging.Level;
 import javax.swing.JFileChooser;
 import javax.swing.SwingUtilities;
@@ -57,7 +56,7 @@ import net.sf.jaer.util.filter.LowpassFilter3D.Point3D;
  */
 @Description("Abstract base class for motion optical flow.")
 @DevelopmentStatus(DevelopmentStatus.Status.Abstract)
-abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Observer, FrameAnnotater, PropertyChangeListener {
+abstract public class AbstractMotionFlowIMU extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
 
     // Observed motion flow.
     public static float vx, vy, v;
@@ -214,7 +213,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
 
     public AbstractMotionFlowIMU(AEChip chip) {
         super(chip);
-        addObservers(chip);
         imuFlowEstimator = new ImuFlowEstimator();
         dirPacket = new EventPacket(ApsDvsMotionOrientationEvent.class);
         filterClassName = getClass().getSimpleName();
@@ -311,10 +309,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 log.log(Level.WARNING, "Tried to select invalid logging folder named {0}", f);
             }
         }
-    }
-
-    public final void addObservers(AEChip chip) {
-        chip.addObserver(this);
     }
 
     public final void maybeAddListeners(AEChip chip) {
@@ -667,13 +661,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     @Override
     public void initFilter() {
         resetFilter();
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
-        if (chip.getNumPixels() > 0) {
-            initFilter();
-        }
     }
 
     @Override

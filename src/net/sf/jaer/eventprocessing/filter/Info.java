@@ -63,7 +63,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  */
 @Description("Adds useful information annotation to the display, e.g. date/time/event rate")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class Info extends EventFilter2D implements FrameAnnotater, PropertyChangeListener, Observer {
+public class Info extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
 
     private AEFileInputStreamInterface aeFileInputStream = null; // current recorded file input stream
     private DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ISO_DATE_TIME;
@@ -173,19 +173,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void doStopLogging() {
         setLogStatistics(false);
-    }
-//    private long lastUpdateTime = 0;
-//    private final int MAX_WARNINGS_AND_UPDATE_INTERVAL = 100;
-//    private int warningCount = 0;
-
-    /**
-     * make event rate statistics be computed throughout a large package which
-     * could span many seconds....
-     *
-     */
-    @Override
-    public void update(Observable o, Object arg) {
-
     }
 
     /**

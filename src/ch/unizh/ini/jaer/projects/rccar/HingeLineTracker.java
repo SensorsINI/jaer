@@ -10,7 +10,6 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.util.Arrays;
 import java.util.Observable;
-import java.util.Observer;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -41,7 +40,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * more excite the row cells
  *
  */
-public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, Observer, HingeDetector {
+public class HingeLineTracker extends EventFilter2D implements FrameAnnotater,HingeDetector {
 
 	private float hingeThreshold=getPrefs().getFloat("LineTracker.hingeThreshold",2.5f);
 	{setPropertyTooltip("hingeThreshold","the threshold for the hinge to react");}
@@ -569,12 +568,6 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
 	synchronized public void setShowRowWindow(boolean showRowWindow) {
 		this.showRowWindow = showRowWindow;
 	}
-
-	@Override
-	public void update(Observable o, Object arg){
-		resetFilter();
-	}
-
 
 	@Override
 	public float getPhi(){

@@ -13,7 +13,6 @@ package net.sf.jaer.eventprocessing.filter;
 
 import java.util.ArrayList;
 import java.util.Observable;
-import java.util.Observer;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -34,7 +33,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 "                o.nextOutput().copyFrom(e);\n" +
 "            }")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class SpatialBandpassFilter extends EventFilter2D implements Observer {
+public class SpatialBandpassFilter extends EventFilter2D {
 
     private int centerRadius = getPrefs().getInt("SpatialBandpassFilter.centerRadius", 0);
     private int surroundRadius = getPrefs().getInt("SpatialBandpassFilter.surroundRadius", 1);
@@ -52,9 +51,6 @@ public class SpatialBandpassFilter extends EventFilter2D implements Observer {
      */
     public SpatialBandpassFilter(AEChip c) {
         super(c);
-        chip.addObserver(this);
-//        initFilter(); // this happens in setFilterEnabled()
-//        resetFilter();
         setPropertyTooltip("dtSurround", "");
         setPropertyTooltip("centerRadius", "radius of center");
         setPropertyTooltip("surroundRadius", "radius of surrounding region");
@@ -79,10 +75,6 @@ public class SpatialBandpassFilter extends EventFilter2D implements Observer {
         initFilter();
     }
 
-    public void update(Observable o, Object arg) {
-        initFilter();
-    }
-
     synchronized public void initFilter() {
         computeOffsets();
     }
@@ -94,13 +86,10 @@ public class SpatialBandpassFilter extends EventFilter2D implements Observer {
     }
 
     void allocateMaps() {
-//        if(chip!=null && isFilterEnabled()){
         sizex = chip.getSizeX() - 1;
         sizey = chip.getSizeY() - 1; // minus 1 to avoid -1 in loop
-//        pad=(int)Math.max(centerRadius,surroundRadius);
         surroundTimestamps = new int[sizex + 1][sizey + 1];
         centerTimestamps = new int[sizex + 1][sizey + 1];
-//        }
     }
 
     // Offset is a relative position

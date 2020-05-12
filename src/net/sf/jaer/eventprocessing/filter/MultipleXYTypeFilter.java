@@ -9,7 +9,6 @@
 
 package net.sf.jaer.eventprocessing.filter;
 import java.util.Observable;
-import java.util.Observer;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -26,7 +25,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  *
  * @author Vaibhav Garg
  */
-public class MultipleXYTypeFilter extends EventFilter2D implements FrameAnnotater, Observer{
+public class MultipleXYTypeFilter extends EventFilter2D implements FrameAnnotater{
     public boolean isGeneratingFilter(){ return false;}
     //private int startX=getPrefs().getInt("MultipleXYTypeFilter.startX",0);
     //private int endX=getPrefs().getInt("MultipleXYTypeFilter.endX",0);
@@ -267,10 +266,6 @@ initFilter();
             }
             gl.glPopMatrix();
         }
-    }
-
-    @Override
-	public void update(Observable o, Object arg) {
     }
 
     public int getMaxBoxNum() {

@@ -3,7 +3,6 @@ package eu.visualize.ini.retinamodel;
 
 import java.io.FileOutputStream;
 import java.io.PrintStream;
-import java.util.Observer;
 import java.util.Random;
 
 import com.jogamp.opengl.GL;
@@ -36,7 +35,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
 //****************************************************************************//
 
 //-- Main class OmcodFpga --------------------------------------------------------//
-public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater, Observer {
+public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater {
 
     private final OmcodFpgaModel OmcodFpgaModel = new OmcodFpgaModel();
     public RosNodePublisher RosNodePublisher = new RosNodePublisher();
@@ -120,7 +119,6 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
         setEnclosedFilterChain(trackingFilterChain);
         trackingFilterChain.reset();
 
-        chip.addObserver(this);
         final String use = "1) Key Parameters", fix = "3) Fixed Parameters", disp = "2) Display", logging = "4) Logging";
         setPropertyTooltip(disp, "showSubunits", "Enables showing subunit activity annotation over retina output");
         setPropertyTooltip(disp, "showAllOMCoutputs", "Enables showing of all OMC outputs only");

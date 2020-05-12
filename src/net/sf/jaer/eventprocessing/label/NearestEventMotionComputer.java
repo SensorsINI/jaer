@@ -12,7 +12,6 @@ package net.sf.jaer.eventprocessing.label;
 
 import com.jogamp.opengl.GLAutoDrawable;
 import java.util.Observable;
-import java.util.Observer;
 
 
 import net.sf.jaer.Description;
@@ -33,7 +32,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author tobi
  */
 @Description("Computes motion based on nearest events - for particles")
-public class NearestEventMotionComputer extends EventFilter2D implements Observer, FrameAnnotater {
+public class NearestEventMotionComputer extends EventFilter2D implements FrameAnnotater {
        public boolean isGeneratingFilter(){ return true;}
 
     /** event must occur within this time in us to generate a motion event */
@@ -51,7 +50,6 @@ public class NearestEventMotionComputer extends EventFilter2D implements Observe
     /** Creates a new instance of NearestEventMotionComputer */
     public NearestEventMotionComputer(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
         resetFilter();
         setFilterEnabled(false);
     }
@@ -150,11 +148,6 @@ public class NearestEventMotionComputer extends EventFilter2D implements Observe
     @Override
 	public void initFilter() {
         resetFilter();
-    }
-
-    @Override
-	public void update(Observable o, Object arg) {
-        initFilter();
     }
 
     @Override

@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Map.Entry;
 import java.util.Observable;
-import java.util.Observer;
 import java.util.Scanner;
 import java.util.TreeMap;
 import javax.swing.JFileChooser;
@@ -50,7 +49,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 @Description("Displays tracking dataset bounding boxes as described in the Frontiers paper \"DVS Benchmark Datasets for\n"
         + " * Object Tracking, Action Recognition, and Object Recognition\"")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class YuhuangBoundingboxDisplay extends EventFilter2D implements FrameAnnotater, Observer, PropertyChangeListener {
+public class YuhuangBoundingboxDisplay extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
 
     private FileReader fileReader = null;
     private String gtFilename = getString("GTFilename", "gt.txt"), gtFilenameShort = null;
@@ -229,11 +228,6 @@ public class YuhuangBoundingboxDisplay extends EventFilter2D implements FrameAnn
         for (BoundingBox b : currentBoundingBoxes) {
             b.draw(gl);
         }
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
-
     }
 
     @Override

@@ -47,7 +47,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 
 @Description("Measures the frequency of vibrating structures")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class InstrumentStringFilter extends EventFilter2D implements Observer, FrameAnnotater {
+public class InstrumentStringFilter extends EventFilter2D implements FrameAnnotater {
 
 	final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
 
@@ -135,7 +135,6 @@ public class InstrumentStringFilter extends EventFilter2D implements Observer, F
 
     public InstrumentStringFilter(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
         initFilter();
         this.pixelsMap = new Pixel[chip.getSizeX()][chip.getSizeY()]; // We allocate a Pixel object per pixel of the DVS camera
         resetFilter();
@@ -545,15 +544,6 @@ public class InstrumentStringFilter extends EventFilter2D implements Observer, F
     }
 
     @Override
-    // @author Adrien: do not know what I do but Eclipse was yelling for this tag...
-    public void update(Observable o, Object arg) {
-        if ((arg != null) && ((arg == Chip2D.EVENT_SIZEX) || (arg == Chip2D.EVENT_SIZEY))) {
-            initFilter();
-        }
-    }
-
-    @Override
-    // @author Adrien: do not know what I do but Eclipse was yelling for this tag...
     public void initFilter() {
         allocateObjects(chip);
     }
