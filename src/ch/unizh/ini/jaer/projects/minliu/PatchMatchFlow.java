@@ -202,12 +202,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private int eventCounter = 0;
     private int sliceLastTs = Integer.MAX_VALUE;
 
-    private JFrame blockMatchingFrame[] = new JFrame[3];
-    private JFrame blockMatchingFrameTarget[] = new JFrame[3];
-    private ImageDisplay blockMatchingImageDisplay[] = new ImageDisplay[3];
-    private ImageDisplay blockMatchingImageDisplayTarget[] = new ImageDisplay[3]; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
-    private Legend blockMatchingDisplayLegend[] = new Legend[3];
-    private Legend blockMatchingDisplayLegendTarget[] = new Legend[3];  
+    private JFrame blockMatchingFrame[] = new JFrame[numScales];
+    private JFrame blockMatchingFrameTarget[] = new JFrame[numScales];
+    private ImageDisplay blockMatchingImageDisplay[] = new ImageDisplay[numScales];
+    private ImageDisplay blockMatchingImageDisplayTarget[] = new ImageDisplay[numScales]; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+    private Legend blockMatchingDisplayLegend[] = new Legend[numScales];
+    private Legend blockMatchingDisplayLegendTarget[] = new Legend[numScales];  
     private static final String LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH = "G: search area\nR: ref block area\nB: best match";
 
     private JFrame sliceBitMapFrame = null;
@@ -424,17 +424,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         dxInitVals[scale] = dx_init;
                         dyInitVals[scale] = dy_init;
 
-//                        if(sliceResult.sadValue >= this.maxAllowedSadDistance)
-//                        {
-//                            break;
-//                        }
-//                        else
-//                        {
+                        if(sliceResult.sadValue >= this.maxAllowedSadDistance)
+                        {
+                            break;
+                        }
+                        else
+                        {
                             if ((result == null) || (sliceResult.sadValue < result.sadValue)) {
                                 result = sliceResult; // result holds the overall min sad result
                                 minDistScale = scale;
                             }
-//                        }
+                        }
 //                        result=sliceResult; // TODO tobi: override the absolute minimum to always use the finest scale result, which has been guided by coarser scales
                     }
                     result = sliceResult;
@@ -493,11 +493,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                });
             }
             
-            if(result.dy != 0)
+            if(Math.abs(result.dy) >= 3)
             {
                 int tmp = 0;
             }            
-            if(ein.timestamp == 296740229)
+            if(ein.timestamp == 295914282)
             {
                 int tmp = 1;
             }
@@ -1218,7 +1218,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
         final int xsub = (x >> subSampleBy) + dx_init;
         final int ysub = (y >> subSampleBy) + dy_init;
-        final int r = ((blockDimension) / 2) << (2 - subSampleBy);
+        final int r = ((blockDimension) / 2) << (numScales - 1 - subSampleBy);
         int w = subSizeX >> subSampleBy, h = subSizeY >> subSampleBy;
 
         // Make sure both ref block and past slice block are in bounds on all sides or there'll be arrayIndexOutOfBoundary exception.
@@ -1470,7 +1470,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             final int subsampleBy) {
         final int x = xfull >> subsampleBy;
         final int y = yfull >> subsampleBy;
-        final int r = ((blockDimension) / 2) << (2 - subsampleBy);
+        final int r = ((blockDimension) / 2) << (numScales - 1 - subsampleBy);
 //        int w = subSizeX >> subsampleBy, h = subSizeY >> subsampleBy;
 //        int adx = dx > 0 ? dx : -dx; // abs val of dx and dy, to compute limits
 //        int ady = dy > 0 ? dy : -dy;
@@ -2404,14 +2404,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //    synchronized private void drawMatching(int x, int y, int dx, int dy, byte[][] refBlock, byte[][] searchBlock, int subSampleBy) {
         for(int dispIdx = 0; dispIdx < numScales; dispIdx++)
         {
-            result.scale = dispIdx;
-            int x = ein.x >> result.scale, y = ein.y >> result.scale;
-            int dx = (int) result.dx >> result.scale, dy = (int) result.dy >> result.scale;
-            byte[][] refBlock = slices[sliceIndex(1)][result.scale], searchBlock = slices[sliceIndex(2)][result.scale];
-            int subSampleBy = result.scale;
+            int x = ein.x >> dispIdx, y = ein.y >> dispIdx;
+            int dx = (int) result.dx >> dispIdx, dy = (int) result.dy >> dispIdx;
+            byte[][] refBlock = slices[sliceIndex(1)][dispIdx], searchBlock = slices[sliceIndex(2)][dispIdx];
+            int subSampleBy = dispIdx;
             Legend sadLegend = null;
 
-            final int refRadius = (blockDimension / 2) << (2 - result.scale);
+            final int refRadius = (blockDimension / 2) << (numScales - 1 - dispIdx);
             int dimNew = refRadius * 2 + 1 + (2 * (searchDistance));
             if (blockMatchingFrame[dispIdx] == null) {
                 String windowName = "Ref Block " + dispIdx;
