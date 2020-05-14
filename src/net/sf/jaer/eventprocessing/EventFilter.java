@@ -171,8 +171,8 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 
     /**
      * Can be used for lazy allocation and initialization of memory. It is
-     * called when the base class EventFilter2D gets a PropertyChangeEvent
-     * AEChip.EVENT_SIZE_SET, and after the EventFilter is added to the chip's
+     * called after the AEChip is constructed and preferred filters are added to the AEChip
+     * and after the EventFilter is added to the chip's
      * FilterChain via the ClassChooserDialog, when
      * filterChain.contructPreferredFilters() is called.
      */
