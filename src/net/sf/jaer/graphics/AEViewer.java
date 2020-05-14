@@ -601,7 +601,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     // number of packets to skip over rendering, used to speed up real time processing
     private int skipPacketsRenderingNumberMax = prefs.getInt("AEViewer.skipPacketsRenderingNumber", 0), skipPacketsRenderingNumberCurrent = 0;
     private int skipPacketsRenderingCount = 0; // this is counter for skipping rendering cycles; set to zero to render first packet always
-    private DropTarget myDraggedFileDropTarget=null; // added back after losing somehow
+    private DropTarget myDraggedFileDropTarget = null; // added back after losing somehow
     private File draggedFile;
     private boolean loggingPlaybackImmediatelyEnabled = prefs.getBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", false);
     private boolean enableFiltersOnStartup = prefs.getBoolean("AEViewer.enableFiltersOnStartup", false);
@@ -776,14 +776,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 File f = new File(evt.getActionCommand());
                 //                log.info("opening "+evt.getActionCommand());
                 try {
-                    if ((f != null) && f.isFile()) {
-                        getAePlayer().startPlayback(f); // TODO fix with progress monitor
-                        recentFiles.addFile(f);
-                    } else if ((f != null) && f.isDirectory()) {
-                        prefs.put("AEViewer.lastFile", f.getCanonicalPath());
-                        aePlayer.openAEInputFileDialog(); // TODO make into openFile method
-                        recentFiles.addFile(f);
-                    }
+                    openAedatInputFile(f);
                 } catch (Exception fnf) {
                     log.log(Level.WARNING, fnf.toString(), fnf);
                     recentFiles.removeFile(f);
@@ -836,8 +829,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         requestFocus();
 
         fixLoggingControls();
-        
-        myDraggedFileDropTarget=new DropTarget(getImagePanel(), this); // add support for dragged file onto display, lost somehow. AEViewer is the listener via drag events
+
+        myDraggedFileDropTarget = new DropTarget(getImagePanel(), this); // add support for dragged file onto display, lost somehow. AEViewer is the listener via drag events
 
         // init menu items that are checkboxes to correct initial state
         viewActiveRenderingEnabledMenuItem.setSelected(isActiveRenderingEnabled());
@@ -870,7 +863,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aeServerSocket = null;
             }
         }
-        viewLoop=new ViewLoop();
+        viewLoop = new ViewLoop();
         viewLoop.start();
 
         // appendCopy remote control commands
@@ -1162,7 +1155,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 ts = "LIVE - " + getAeChipClass().getSimpleName() + " - " + aemon + " - AEViewer";
                 break;
             case PLAYBACK:
-                ts = "PLAYING - " + (currentFile==null?"Null":currentFile.getName()) + " - " + getAeChipClass().getSimpleName() + " - AEViewer"; 
+                ts = "PLAYING - " + (currentFile == null ? "Null" : currentFile.getName()) + " - " + getAeChipClass().getSimpleName() + " - AEViewer";
                 break;
             case WAITING:
                 ts = "WAITING - " + getAeChipClass().getSimpleName() + " - AEViewer";
@@ -1356,17 +1349,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /**
      * This method sets the "current file" which sets the field, the preferences
      * of the last file, and the window title. It does not actually start
-        playing the file. That is done by the AEPlayer that calls startPlayback() on the file.
-
-        setInputFile() fires PropertyChange AEViewer.EVENT_FILEOPEN with the oldFile and currentFile passed to listeners.
+     * playing the file. That is done by the AEPlayer that calls startPlayback()
+     * on the file.
+     *
+     * setInputFile() fires PropertyChange AEViewer.EVENT_FILEOPEN with the
+     * oldFile and currentFile passed to listeners.
      */
     protected void setInputFile(File f) {
         currentFile = new File(f.getPath());
-        File oldFile=lastFile;
+        File oldFile = lastFile;
         lastFile = currentFile;
         prefs.put("AEViewer.lastFile", lastFile.toString());
         setTitleAccordingToState();
-        getSupport().firePropertyChange(AEViewer.EVENT_FILEOPEN,oldFile,currentFile);
+        getSupport().firePropertyChange(AEViewer.EVENT_FILEOPEN, oldFile, currentFile);
     }
 
     /**
@@ -1811,7 +1806,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     } else {
                         rawPacket = grabInput();
-                        if(rawPacket==null){
+                        if (rawPacket == null) {
                             log.warning("null rawPacket, should not happen");
                             continue;
                         }
@@ -5352,8 +5347,36 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_closeMenuItemActionPerformed
 
 	private void openMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openMenuItemActionPerformed
-            aePlayer.openAEInputFileDialog();
+        try {
+            openAedatInputFile(null);
+        } catch (IOException ex) {
+            Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InterruptedException ex) {
+            Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
+        }
 	}//GEN-LAST:event_openMenuItemActionPerformed
+
+    /**
+     * Centralized call to open an input file. The opened file is added the
+     * recentFiles list.
+     *
+     * @param f the input file. Pass null to open the file dialog with preview,
+     * etc. If f is a folder, then the file dialog opens.
+     * @throws IOException
+     * @throws InterruptedException if opening is interrupted somehow
+     */
+    public void openAedatInputFile(File f) throws IOException, InterruptedException{
+        if ((f != null) && f.isFile()) {
+            recentFiles.addFile(f);
+            getAePlayer().startPlayback(f); // TODO fix with progress monitor
+        } else if ((f != null) && f.isDirectory()) {
+            prefs.put("AEViewer.lastFile", f.getCanonicalPath());
+            recentFiles.addFile(f);
+            aePlayer.openAEInputFileDialog();
+        } else if(f==null){
+               aePlayer.openAEInputFileDialog();
+        }
+    }
 
 	private void newViewerMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newViewerMenuItemActionPerformed
             new AEViewer(jaerViewer).setVisible(true);
@@ -5640,7 +5663,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             renderer = chip.getRenderer();
 
             extractor.setSubsampleThresholdEventCount(getRenderer().getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
-            if(chip.getFilterChain()!=null){
+            if (chip.getFilterChain() != null) {
                 chip.getFilterChain().initFilters(); // at this point AEChip is fully initialized, so asking all filters to initialize themselves makes sense
             }
         }
