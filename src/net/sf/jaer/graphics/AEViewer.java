@@ -3888,6 +3888,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } finally {
                 //            setCursor(Cursor.getDefaultCursor());
             }
+            dlg.setLocationRelativeTo(this);
             dlg.setVisible(true);
             int ret = dlg.getReturnStatus();
             if (ret == ClassChooserDialog.RET_OK) {
