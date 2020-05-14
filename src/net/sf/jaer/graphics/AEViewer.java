@@ -781,7 +781,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         recentFiles.addFile(f);
                     } else if ((f != null) && f.isDirectory()) {
                         prefs.put("AEViewer.lastFile", f.getCanonicalPath());
-                        aePlayer.openAEInputFileDialog();
+                        aePlayer.openAEInputFileDialog(); // TODO make into openFile method
                         recentFiles.addFile(f);
                     }
                 } catch (Exception fnf) {
@@ -1162,7 +1162,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 ts = "LIVE - " + getAeChipClass().getSimpleName() + " - " + aemon + " - AEViewer";
                 break;
             case PLAYBACK:
-                ts = "PLAYING - " + currentFile.getName() + " - " + getAeChipClass().getSimpleName() + " - AEViewer";
+                ts = "PLAYING - " + (currentFile==null?"Null":currentFile.getName()) + " - " + getAeChipClass().getSimpleName() + " - AEViewer"; 
                 break;
             case WAITING:
                 ts = "WAITING - " + getAeChipClass().getSimpleName() + " - AEViewer";
@@ -1356,9 +1356,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /**
      * This method sets the "current file" which sets the field, the preferences
      * of the last file, and the window title. It does not actually start
- playing the file. That is done by the AEPlayer that calls startPlayback() on the file.
- 
- setInputFile() fires PropertyChange AEViewer.EVENT_FILEOPEN with the oldFile and currentFile passed to listeners.
+        playing the file. That is done by the AEPlayer that calls startPlayback() on the file.
+
+        setInputFile() fires PropertyChange AEViewer.EVENT_FILEOPEN with the oldFile and currentFile passed to listeners.
      */
     protected void setInputFile(File f) {
         currentFile = new File(f.getPath());

@@ -287,8 +287,8 @@ public class ApsFrameExtractor extends EventFilter2D{
         final String fn = "ApsFrame-" + AEDataFile.DATE_FORMAT.format(d) + "." + PNG;
         // if user is playing a file, use folder that file lives in
         String userDir = Paths.get(".").toAbsolutePath().normalize().toString();
-        if (chip.getAeViewer() != null && chip.getAeViewer().getAePlayer() != null && chip.getAeViewer().getPlayMode() == PlayMode.PLAYBACK && chip.getAeViewer().getCurrentFile() != null) {
-            userDir = chip.getAeViewer().getCurrentFile().getAbsolutePath();
+        if (chip.getAeViewer() != null && chip.getAeViewer().getAePlayer() != null && chip.getAeViewer().getPlayMode() == PlayMode.PLAYBACK && chip.getAeViewer().getInputFile() != null) {
+            userDir = chip.getAeViewer().getInputFile().getAbsolutePath();
         }
         File outputfile = new File(userDir + File.separator + fn);
         boolean done = false;
