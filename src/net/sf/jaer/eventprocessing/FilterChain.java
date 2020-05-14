@@ -461,6 +461,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         }
 
         ClassChooserDialog chooser = new ClassChooserDialog(chip.getFilterFrame(), EventFilter2D.class, currentFilterNames, chip.getDefaultEventFilterClassNames());
+        chooser.setLocationRelativeTo(chip.getFilterFrame());
         chooser.setVisible(true);
         if (chooser.getReturnStatus() == ClassChooserDialog.RET_OK) {
             Preferences prefs = chip.getPrefs(); // getString prefs for the Chip, not for the FilterChain class
