@@ -217,12 +217,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private JFrame sliceBitMapFrame = null;
     private ImageDisplay sliceBitmapImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
     private Legend sliceBitmapImageDisplayLegend;
-    private static final String LEGEND_SLICES = "G: Slice t-d\nR: Slice t-2d";
+    private static final String LEGEND_SLICES = "R: Slice t-d\nG: Slice t-2d";
 
     private JFrame timeStampBlockFrame = null;
     private ImageDisplay timeStampBlockImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
     private Legend timeStampBlockImageDisplayLegend;
     private static final String TIME_STAMP_BLOCK_LEGEND_SLICES = "R: Inner Circle\nB: Outer Circle\nG: Current event";
+    private static final int circle2[][] = {{0, 2}, {1, 2}, {2, 1}, {2, 0},
+    {2, -1}, {1, -2}, {0, -2}, {-1, -2},
+    {-2, -1}, {-2, 0}, {-2, 1}, {-1, 2}}; 
     private static final int innerCircle[][] = {{0, 3}, {1, 3}, {2, 2}, {3, 1},
     {3, 0}, {3, -1}, {2, -2}, {1, -3},
     {0, -3}, {-1, -3}, {-2, -2}, {-3, -1},
@@ -411,12 +414,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                        continue;
 //                    }
                     
-                    if(ein.timestamp == 80052629)
+                    if(ein.timestamp == 81160149)
                     {
                          int tmp = 1;
                     }
                     
-                    if (!accumulateEvent(ein) && ein.timestamp != 80052629) { // maybe skip events here
+                    if (!accumulateEvent(ein)) { // maybe skip events here
                         break;
                     }
  
@@ -521,7 +524,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             {
                 int tmp = 0;
             }
-            if(ein.timestamp == 80052629)
+            if(ein.timestamp == 81160149)
             {
                 int tmp = 1;
             }
@@ -2316,7 +2319,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     synchronized public void setShowSlices(boolean showSlices) {
         boolean old = this.showSlices;
         this.showSlices = showSlices;
-        getSupport().firePropertyChange("showSlices", old, this.showBlockMatches);
+        getSupport().firePropertyChange("showSlices", old, this.showSlices);
     }
 
     synchronized public void setOutputSearchErrorInfo(boolean outputSearchErrorInfo) {
@@ -2610,7 +2613,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (!timeStampBlockFrame.isVisible()) {
             timeStampBlockFrame.setVisible(true);
         }
-
+        
         timeStampBlockImageDisplay.clearImage();
         
         int xInnerOffset[] = new int[16];
@@ -2679,7 +2682,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
             sliceBitmapImageDisplay = ImageDisplay.createOpenGLCanvas();
             sliceBitmapImageDisplay.setBorderSpacePixels(10);
-            sliceBitmapImageDisplay.setImageSize(sizex, sizey);
+            sliceBitmapImageDisplay.setImageSize(sizex >> showSlicesScale, sizey >> showSlicesScale);
             sliceBitmapImageDisplay.setSize(200, 200);
             sliceBitmapImageDisplay.setGrayValue(0);
             sliceBitmapImageDisplayLegend = sliceBitmapImageDisplay.addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
@@ -2697,7 +2700,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (!sliceBitMapFrame.isVisible()) {
             sliceBitMapFrame.setVisible(true);
         }
-
+        
+        int dimNewX = sizex >> showSlicesScale;
+        int dimNewY = sizey >> showSlicesScale;
+        if (dimNewX != sliceBitmapImageDisplay.getWidth() || dimNewY != sliceBitmapImageDisplay.getHeight()) {
+            sliceBitmapImageDisplay.setImageSize(dimNewX, dimNewY);
+            sliceBitmapImageDisplay.clearLegends();
+            sliceBitmapImageDisplayLegend = sliceBitmapImageDisplay.addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
+        }
+        
         float scale = 1f / getSliceMaxValue();
         sliceBitmapImageDisplay.clearImage();
         int d1 = sliceIndex(1), d2 = sliceIndex(2);
@@ -2707,7 +2718,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         for (int x = 0; x < sizex >> showSlicesScale; x++) {
             for (int y = 0; y < sizey >> showSlicesScale; y++) {
                 // TODO only draw scale 0 (no subsampling) for now
-                sliceBitmapImageDisplay.setPixmapRGB(x, y, scale * slices[d2][showSlicesScale][x][y], scale * slices[d1][showSlicesScale][x][y], 0);
+                sliceBitmapImageDisplay.setPixmapRGB(x, y, scale * slices[d1][showSlicesScale][x][y], 0, 0);
             }
         }
         if (sliceBitmapImageDisplayLegend != null) {
@@ -3126,6 +3137,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     boolean PatchFastDetectorisFeature(PolarityEvent ein) {
         boolean found_streak = false;
 
+        int innerI = 0, outerI, innerStreakSize, outerStreakSize;
         int scale = numScales - 1;
         int pix_x = ein.x >> scale;
         int pix_y = ein.y >> scale;
@@ -3176,7 +3188,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                 // find the smallest timestamp in corner min_t
                 double min_t = Math.abs(slices[sliceIndex(1)][scale][pix_x + circle3_[i][0]][pix_y + circle3_[i][1]] - centerValue);
-                boolean thrPassFlag = (min_t < cornerThr) ? false : true;
+                boolean thrPassFlag = (min_t < cornerThr * getSliceMaxValue()) ? false : true;
                 FastDetectorisFeature_label1:
                 for (int j = 1; j < streak_size; j++) {
                     final double tj =  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle3_[(i + j) % 16][0]][pix_y + circle3_[(i + j) % 16][1]] - centerValue);
@@ -3210,6 +3222,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
                 if (!did_break) {
                     found_streak = true;
+                    innerI = i;
+                    innerStreakSize = streak_size;
                     break;
                 }
             }
@@ -3237,7 +3251,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     }
 
                     double min_t =  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[i][0]][pix_y + circle4_[i][1]] - centerValue);
-                    boolean thrPassFlag = (min_t < cornerThr) ? false : true;
+                    boolean thrPassFlag = (min_t < cornerThr * getSliceMaxValue()) ? false : true;
                     FastDetectorisFeature_label4:
                     for (int j = 1; j < streak_size; j++) {
                         final double tj =  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[(i + j) % 20][0]][pix_y + circle4_[(i + j) % 20][1]] - centerValue);
@@ -3267,8 +3281,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     }
 
                     if (!did_break) {
-                        found_streak = true;
-                        break;
+                        outerI = i;
+//                        if(outerI == innerI)
+//                        {
+                            found_streak = true;                        
+                            break;                            
+//                        }
+//                        else
+//                        {
+//                            continue;
+//                        }
                     }
                 }
                 if (found_streak) {
