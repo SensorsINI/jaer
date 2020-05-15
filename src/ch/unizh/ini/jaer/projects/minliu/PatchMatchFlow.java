@@ -252,7 +252,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         getEnclosedFilterChain().clear();
 //        getEnclosedFilterChain().add(new SpatioTemporalCorrelationFilter(chip));
         keypointFilter = new HWCornerPointRenderer(chip);
-//        getEnclosedFilterChain().add(keypointFilter);
+        getEnclosedFilterChain().add(keypointFilter);
 
         setSliceDurationUs(getSliceDurationUs());   // 40ms is good for the start of the slice duration adatative since 4ms is too fast and 500ms is too slow.
         setDefaultScalesToCompute();
@@ -383,13 +383,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 }
             }
             // block ENDS
-
-           if (isInvalidTimestamp()) {
-                continue;
-            }
             if (xyFilter()) {
                 continue;
             }
+           if (isInvalidTimestamp()) {
+                continue;
+            }
+
             countIn++;
 
             // compute flow
@@ -411,12 +411,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                        continue;
 //                    }
                     
-                    if(ein.timestamp == 19951014)
+                    if(ein.timestamp == 80052629)
                     {
                          int tmp = 1;
                     }
                     
-                    if (!accumulateEvent(ein) && ein.timestamp != 19951014) { // maybe skip events here
+                    if (!accumulateEvent(ein) && ein.timestamp != 80052629) { // maybe skip events here
                         break;
                     }
  
@@ -434,7 +434,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         int dx_init = ((result != null) && !isNotSufficientlyAccurate(sliceResult)) ? (sliceResult.dx >> scale) : 0;
                         int dy_init = ((result != null) && !isNotSufficientlyAccurate(sliceResult)) ? (sliceResult.dy >> scale) : 0;
 //                        dx_init = 0;
-//                        dy_init = 0;
+//                        dy_init = 0;                            
+
                         // The reason why we inverse dx_init, dy_init i is the offset is pointing from previous slice to current slice.
                         // The dx_init, dy_init are from the corse scale's result, and it is used as the finer scale's initial guess.
                         sliceResult = minSADDistance(ein.x, ein.y, -dx_init, -dy_init, slices[sliceIndex(1)], slices[sliceIndex(2)], scale); // from ref slice to past slice k+1, using scale 0,1,....
@@ -515,8 +516,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                    }
 //                });
             }
-                       
-            if(ein.timestamp == 19947748)
+
+            if(Math.abs(result.dy) >= 4)
+            {
+                int tmp = 0;
+            }
+            if(ein.timestamp == 80052629)
             {
                 int tmp = 1;
             }
@@ -1384,24 +1389,24 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             case FullSearch:    
 //                if((e.getAddress() & 1) == 1)
                 {
-                    System.out.printf("Scale %d with Refblock is: \n", subSampleBy);
-                    int xscale = (x >> subSampleBy);
-                    int yscale = (y >> subSampleBy);
-                    for (int xx =  xscale - r; xx <= (xscale + r); xx++) {
-                        for (int yy = yscale - r; yy <= (yscale + r); yy++) {
-                            System.out.printf("%d\t", curSlice[subSampleBy][xx][yy]);
-                        }
-                        System.out.printf("\n");
-                    }
-                    System.out.printf("\n");
-
-                    System.out.printf("Tagblock is: \n");
-                    for (int xx =  xscale + dx_init - r - searchDistance; xx <= (xscale + dx_init + r + searchDistance); xx++) {
-                        for (int yy = yscale + dy_init - r - searchDistance; yy <= (yscale + dy_init + r + searchDistance); yy++) {
-                            System.out.printf("%d\t", prevSlice[subSampleBy][xx][yy]);
-                        }
-                        System.out.printf("\n");
-                    }                  
+//                    System.out.printf("Scale %d with Refblock is: \n", subSampleBy);
+//                    int xscale = (x >> subSampleBy);
+//                    int yscale = (y >> subSampleBy);
+//                    for (int xx =  xscale - r; xx <= (xscale + r); xx++) {
+//                        for (int yy = yscale - r; yy <= (yscale + r); yy++) {
+//                            System.out.printf("%d\t", curSlice[subSampleBy][xx][yy]);
+//                        }
+//                        System.out.printf("\n");
+//                    }
+//                    System.out.printf("\n");
+//
+//                    System.out.printf("Tagblock is: \n");
+//                    for (int xx =  xscale + dx_init - r - searchDistance; xx <= (xscale + dx_init + r + searchDistance); xx++) {
+//                        for (int yy = yscale + dy_init - r - searchDistance; yy <= (yscale + dy_init + r + searchDistance); yy++) {
+//                            System.out.printf("%d\t", prevSlice[subSampleBy][xx][yy]);
+//                        }
+//                        System.out.printf("\n");
+//                    }                  
                 } 
                 
                 for (dx = -searchDistance; dx <= searchDistance; dx++) {
@@ -1417,7 +1422,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     }
                 }
                 
-                System.out.printf("result is %s: \n", result.toString());
+//                System.out.printf("result is %s: \n", result.toString());
                 
                 if (outputSearchErrorInfo) {
                     FSCnt += 1;
@@ -1555,9 +1560,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         // debug
 //        if(dx==-1 && dy==-1) return 0; else return Float.MAX_VALUE;
 
-        // normalize by dimesion of subsampling, with idea that subsampling increases SAD 
-        //by sqrt(area) because of Gaussian distribution of SAD values 
-        sumDist = sumDist >> (subsampleBy << 1);
+        sumDist = sumDist;
         final int blockDim = (2 * r) + 1;
 
         final int blockArea = (blockDim) * (blockDim); // TODO check math here for fraction correct with subsampling
@@ -2616,7 +2619,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         {
             xInnerOffset[i] = innerCircle[i][0];
             yInnerOffset[i] = innerCircle[i][1];
-            innerTsValue[i] = slices[sliceIndex(1)][sliceScale][eX + xInnerOffset[i]][eY + yInnerOffset[i]];
+            innerTsValue[i] = lastTimesMap[eX + xInnerOffset[i]][eY + yInnerOffset[i]][type];
+            innerTsValue[i] = slices[sliceIndex(1)][sliceScale][eX + xInnerOffset[i]][eY + yInnerOffset[i]];            
             if(innerTsValue[i] == 0x80000000) innerTsValue[i] = 0;
         }
         
@@ -2626,7 +2630,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         {
             xOuterOffset[i] = outerCircle[i][0];
             yOuterOffset[i] = outerCircle[i][1];
-            outerTsValue[i] = slices[sliceIndex(1)][sliceScale][eX + xOuterOffset[i]][eY + yOuterOffset[i]];
+            outerTsValue[i] = lastTimesMap[eX + xOuterOffset[i]][eY + yOuterOffset[i]][type];
+            outerTsValue[i] = slices[sliceIndex(1)][sliceScale][eX + xOuterOffset[i]][eY + yOuterOffset[i]];            
             if(outerTsValue[i] == 0x80000000) outerTsValue[i] = 0;
         }        
         
@@ -2641,13 +2646,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         float outerScale = 1f / (outerMax - outerMin);
         
         float scale = 1f / getSliceMaxValue();
+        timeStampBlockImageDisplay.setPixmapRGB(dim/2, dim/2, 0, lastTimesMap[eX][eY][type] * scale , 0);
         timeStampBlockImageDisplay.setPixmapRGB(dim/2, dim/2, 0, slices[sliceIndex(1)][sliceScale][eX][eY] * scale , 0);
+
         for(int i = 0; i < 16; i++)
         {
+            timeStampBlockImageDisplay.setPixmapRGB(xInnerOffset[i] + dim/2, yInnerOffset[i] + dim/2, innerScale * (innerTsValue[i] - innerMin), 0, 0);            
             timeStampBlockImageDisplay.setPixmapRGB(xInnerOffset[i] + dim/2, yInnerOffset[i] + dim/2, scale * (innerTsValue[i]), 0, 0);
         }
         for(int i = 0; i < 20; i++)
         {
+            timeStampBlockImageDisplay.setPixmapRGB(xOuterOffset[i] + dim/2, yOuterOffset[i] + dim/2, 0, 0, outerScale * (outerTsValue[i] - outerMin));            
             timeStampBlockImageDisplay.setPixmapRGB(xOuterOffset[i] + dim/2, yOuterOffset[i] + dim/2, 0, 0, scale * (outerTsValue[i]));
         }
         
@@ -3117,7 +3126,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     boolean PatchFastDetectorisFeature(PolarityEvent ein) {
         boolean found_streak = false;
 
-        int scale = 2;
+        int scale = numScales - 1;
         int pix_x = ein.x >> scale;
         int pix_y = ein.y >> scale;
         
@@ -3216,7 +3225,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             FastDetectorisFeature_label6:
             for (int i = 0; i < 20; i++) {
                 FastDetectorisFeature_label5:
-                for (int streak_size = 10; streak_size <= 14; streak_size++) {
+                for (int streak_size = 11; streak_size <= 14; streak_size++) {
                     // check that first event is larger than neighbor
                     if ( Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[i][0]][pix_y + circle4_[i][1]] - centerValue) <  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[(i - 1 + 20) % 20][0]][pix_y + circle4_[(i - 1 + 20) % 20][1]] - centerValue)) {
                         continue;
