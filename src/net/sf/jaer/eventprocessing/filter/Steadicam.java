@@ -140,7 +140,6 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     private int lastFrameNumber = 0;
     protected float imuLagMs = getFloat("imuLagMs", 0);
 
-    private boolean addedViewerPropertyChangeListener = false;
     ApsDvsEventPacket outputPacket = null;
     private Point centerOfRotation = null;
     private boolean centerOfRotationSelectionPending = false;
@@ -231,17 +230,6 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
 //    int lastImuTs=0; // debug
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
-        if (!addedViewerPropertyChangeListener) {
-            if (chip.getAeViewer() != null) {
-                chip.getAeViewer().addPropertyChangeListener(this);
-//				chip.getAeViewer().getAePlayer().getSupport().addPropertyChangeListener(this); // TODO might be duplicated callback
-                addedViewerPropertyChangeListener = true;
-            }
-        }
-        if (!addTimeStampsResetPropertyChangeListener) {
-            chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
-            addTimeStampsResetPropertyChangeListener = true;
-        }
         if (outputPacket == null) {
             outputPacket = new ApsDvsEventPacket(in.getEventClass());
         }
@@ -817,6 +805,9 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     public void initFilter() {
 //        panTilt = PanTilt.getLastInstance();
         resetFilter();
+        if (chip.getAeViewer() != null) {
+            chip.getAeViewer().getSupport().addPropertyChangeListener(this);
+        }
     }
 
     public boolean isFlipContrast() {
