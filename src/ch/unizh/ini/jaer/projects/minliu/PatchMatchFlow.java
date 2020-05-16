@@ -416,7 +416,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     
                     if(ein.timestamp == 81160149)
                     {
-                         int tmp = 1;
+//                        ein.y = (short)(ein.y + 4);
+                        int tmp = 1;
                     }
                     
                     if (!accumulateEvent(ein)) { // maybe skip events here
@@ -1390,26 +1391,26 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 }
                 break;
             case FullSearch:    
-//                if((e.getAddress() & 1) == 1)
+                if((e.timestamp) == 81160149)
                 {
-//                    System.out.printf("Scale %d with Refblock is: \n", subSampleBy);
-//                    int xscale = (x >> subSampleBy);
-//                    int yscale = (y >> subSampleBy);
-//                    for (int xx =  xscale - r; xx <= (xscale + r); xx++) {
-//                        for (int yy = yscale - r; yy <= (yscale + r); yy++) {
-//                            System.out.printf("%d\t", curSlice[subSampleBy][xx][yy]);
-//                        }
-//                        System.out.printf("\n");
-//                    }
-//                    System.out.printf("\n");
-//
-//                    System.out.printf("Tagblock is: \n");
-//                    for (int xx =  xscale + dx_init - r - searchDistance; xx <= (xscale + dx_init + r + searchDistance); xx++) {
-//                        for (int yy = yscale + dy_init - r - searchDistance; yy <= (yscale + dy_init + r + searchDistance); yy++) {
-//                            System.out.printf("%d\t", prevSlice[subSampleBy][xx][yy]);
-//                        }
-//                        System.out.printf("\n");
-//                    }                  
+                    System.out.printf("Scale %d with Refblock is: \n", subSampleBy);
+                    int xscale = (x >> subSampleBy);
+                    int yscale = (y >> subSampleBy);
+                    for (int xx =  xscale - r; xx <= (xscale + r); xx++) {
+                        for (int yy = yscale - r; yy <= (yscale + r); yy++) {
+                            System.out.printf("%d\t", curSlice[subSampleBy][xx][yy]);
+                        }
+                        System.out.printf("\n");
+                    }
+                    System.out.printf("\n");
+
+                    System.out.printf("Tagblock is: \n");
+                    for (int xx =  xscale + dx_init - r - searchDistance; xx <= (xscale + dx_init + r + searchDistance); xx++) {
+                        for (int yy = yscale + dy_init - r - searchDistance; yy <= (yscale + dy_init + r + searchDistance); yy++) {
+                            System.out.printf("%d\t", prevSlice[subSampleBy][xx][yy]);
+                        }
+                        System.out.printf("\n");
+                    }                  
                 } 
                 
                 for (dx = -searchDistance; dx <= searchDistance; dx++) {
@@ -3141,6 +3142,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         int scale = numScales - 1;
         int pix_x = ein.x >> scale;
         int pix_y = ein.y >> scale;
+                
+        byte featureSlice[][] = slices[sliceIndex(1)][scale];
+        final int innerSize = 16;
+        final int outerSize = 20;
         
         // only check if not too close to border
         if (pix_x < 4 || pix_x >= (getChip().getSizeX() >> scale) - 4
@@ -3153,14 +3158,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         int circle4_[][] = outerCircle;
         found_streak = false;
 
-        int centerValue = slices[sliceIndex(1)][scale][pix_x][pix_y];
+        int centerValue = featureSlice[pix_x][pix_y];
         int xInnerOffset[] = new int[16];
         int yInnerOffset[] = new int[16];                
         for(int i = 0; i < 16; i++)
         {
             xInnerOffset[i] = innerCircle[i][0];
             yInnerOffset[i] = innerCircle[i][1];
-            innerTsValue[i] = slices[sliceIndex(1)][scale][pix_x + xInnerOffset[i]][pix_y + yInnerOffset[i]];
+            innerTsValue[i] = featureSlice[pix_x + xInnerOffset[i]][pix_y + yInnerOffset[i]];
         }
         
         int xOuterOffset[] = new int[20];
@@ -3169,29 +3174,29 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         {
             xOuterOffset[i] = outerCircle[i][0];
             yOuterOffset[i] = outerCircle[i][1];
-            outerTsValue[i] = slices[sliceIndex(1)][scale][pix_x + xOuterOffset[i]][pix_y + yOuterOffset[i]];
+            outerTsValue[i] = featureSlice[pix_x + xOuterOffset[i]][pix_y + yOuterOffset[i]];
         } 
         
         isFeatureOutterLoop:
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < innerSize; i++) {
             FastDetectorisFeature_label2:
             for (int streak_size = 9; streak_size <= 12; streak_size++) {
                 // check that streak event is larger than neighbor
-                if (Math.abs(slices[sliceIndex(1)][scale][pix_x + circle3_[i][0]][pix_y + circle3_[i][1]] - centerValue) < Math.abs(slices[sliceIndex(1)][scale][pix_x + circle3_[(i - 1 + 16) % 16][0]][pix_y + circle3_[(i - 1 + 16) % 16][1]] - centerValue)) {
+                if (Math.abs(featureSlice[pix_x + circle3_[i][0]][pix_y + circle3_[i][1]] - centerValue) < Math.abs(featureSlice[pix_x + circle3_[(i - 1 + innerSize) % innerSize][0]][pix_y + circle3_[(i - 1 + innerSize) % innerSize][1]] - centerValue)) {
                     continue;
                 }
 
                 // check that streak event is larger than neighbor
-                if (Math.abs(slices[sliceIndex(1)][scale][pix_x + circle3_[(i + streak_size - 1) % 16][0]][pix_y + circle3_[(i + streak_size - 1) % 16][1]] - centerValue) < Math.abs(slices[sliceIndex(1)][scale][pix_x + circle3_[(i + streak_size) % 16][0]][pix_y + circle3_[(i + streak_size) % 16][1]] - centerValue)) {
+                if (Math.abs(featureSlice[pix_x + circle3_[(i + streak_size - 1) % innerSize][0]][pix_y + circle3_[(i + streak_size - 1) % innerSize][1]] - centerValue) < Math.abs(featureSlice[pix_x + circle3_[(i + streak_size) % innerSize][0]][pix_y + circle3_[(i + streak_size) % innerSize][1]] - centerValue)) {
                     continue;
                 }
 
                 // find the smallest timestamp in corner min_t
-                double min_t = Math.abs(slices[sliceIndex(1)][scale][pix_x + circle3_[i][0]][pix_y + circle3_[i][1]] - centerValue);
+                double min_t = Math.abs(featureSlice[pix_x + circle3_[i][0]][pix_y + circle3_[i][1]] - centerValue);
                 boolean thrPassFlag = (min_t < cornerThr * getSliceMaxValue()) ? false : true;
                 FastDetectorisFeature_label1:
                 for (int j = 1; j < streak_size; j++) {
-                    final double tj =  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle3_[(i + j) % 16][0]][pix_y + circle3_[(i + j) % 16][1]] - centerValue);
+                    final double tj =  Math.abs(featureSlice[pix_x + circle3_[(i + j) % innerSize][0]][pix_y + circle3_[(i + j) % innerSize][1]] - centerValue);
                     
                     if (tj < cornerThr * getSliceMaxValue())
                     {
@@ -3211,8 +3216,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                 //check if corner timestamp is higher than corner
                 boolean did_break = false;
                 FastDetectorisFeature_label0:
-                for (int j = streak_size; j < 16; j++) {
-                    final double tj =  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle3_[(i + j) % 16][0]][pix_y + circle3_[(i + j) % 16][1]] - centerValue);
+                for (int j = streak_size; j < innerSize; j++) {
+                    final double tj =  Math.abs(featureSlice[pix_x + circle3_[(i + j) % 16][0]][pix_y + circle3_[(i + j) % innerSize][1]] - centerValue);
 
                     if (tj >= min_t) {
                         did_break = true;
@@ -3237,24 +3242,24 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             found_streak = false;
 
             FastDetectorisFeature_label6:
-            for (int i = 0; i < 20; i++) {
+            for (int i = 0; i < outerSize; i++) {
                 FastDetectorisFeature_label5:
                 for (int streak_size = 11; streak_size <= 14; streak_size++) {
                     // check that first event is larger than neighbor
-                    if ( Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[i][0]][pix_y + circle4_[i][1]] - centerValue) <  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[(i - 1 + 20) % 20][0]][pix_y + circle4_[(i - 1 + 20) % 20][1]] - centerValue)) {
+                    if ( Math.abs(featureSlice[pix_x + circle4_[i][0]][pix_y + circle4_[i][1]] - centerValue) <  Math.abs(featureSlice[pix_x + circle4_[(i - 1 + outerSize) % outerSize][0]][pix_y + circle4_[(i - 1 + outerSize) % outerSize][1]] - centerValue)) {
                         continue;
                     }
 
                     // check that streak event is larger than neighbor
-                    if ( Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[(i + streak_size - 1) % 20][0]][pix_y + circle4_[(i + streak_size - 1) % 20][1]] - centerValue) <  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[(i + streak_size) % 20][0]][pix_y + circle4_[(i + streak_size) % 20][1]] - centerValue)) {
+                    if ( Math.abs(featureSlice[pix_x + circle4_[(i + streak_size - 1) % outerSize][0]][pix_y + circle4_[(i + streak_size - 1) % outerSize][1]] - centerValue) <  Math.abs(featureSlice[pix_x + circle4_[(i + streak_size) % outerSize][0]][pix_y + circle4_[(i + streak_size) % outerSize][1]] - centerValue)) {
                         continue;
                     }
 
-                    double min_t =  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[i][0]][pix_y + circle4_[i][1]] - centerValue);
+                    double min_t =  Math.abs(featureSlice[pix_x + circle4_[i][0]][pix_y + circle4_[i][1]] - centerValue);
                     boolean thrPassFlag = (min_t < cornerThr * getSliceMaxValue()) ? false : true;
                     FastDetectorisFeature_label4:
                     for (int j = 1; j < streak_size; j++) {
-                        final double tj =  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[(i + j) % 20][0]][pix_y + circle4_[(i + j) % 20][1]] - centerValue);
+                        final double tj =  Math.abs(featureSlice[pix_x + circle4_[(i + j) % outerSize][0]][pix_y + circle4_[(i + j) % outerSize][1]] - centerValue);
                         if (tj < cornerThr * getSliceMaxValue())
                         {
                             thrPassFlag = false;
@@ -3272,8 +3277,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     
                     boolean did_break = false;
                     FastDetectorisFeature_label3:
-                    for (int j = streak_size; j < 20; j++) {
-                        final double tj =  Math.abs(slices[sliceIndex(1)][scale][pix_x + circle4_[(i + j) % 20][0]][pix_y + circle4_[(i + j) % 20][1]] - centerValue);
+                    for (int j = streak_size; j < outerSize; j++) {
+                        final double tj =  Math.abs(featureSlice[pix_x + circle4_[(i + j) % outerSize][0]][pix_y + circle4_[(i + j) % outerSize][1]] - centerValue);
                         if (tj >= min_t) {
                             did_break = true;
                             break;
