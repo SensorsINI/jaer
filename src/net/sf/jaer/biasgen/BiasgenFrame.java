@@ -32,12 +32,12 @@ import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
+import net.sf.jaer.JaerConstants;
 
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
-import net.sf.jaer.util.ExceptionListener;
 import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.XMLFileFilter;
 
@@ -78,7 +78,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         }
         this.chip = chip;
         biasgen = chip.getBiasgen();
-		//        try {
+        //        try {
         //            UIManager.setLookAndFeel(
         //                    //new javax.swing.plaf.metal.MetalLookAndFeel()
         //                    UIManager.getSystemLookAndFeelClassName()
@@ -87,7 +87,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         //            e.printStackTrace();
         //        }
         initComponents();
-        //        HardwareInterfaceException.addExceptionListener(this);
+        setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE_HARDWARE)).getImage());
         fixUndoRedo();
         buildControlPanel(biasgen);
         setViewFunctionalBiasesEnabled(isViewFunctionalBiasesEnabled()); // adds it to the frame content panel - don't replace or we lose toolbar
@@ -148,8 +148,8 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 
         defaultFolder = System.getProperty("user.dir");
         try {
-            File f = new File(defaultFolder+ File.separator + "biasgenSettings");
-            defaultFolder = f.getPath() ;
+            File f = new File(defaultFolder + File.separator + "biasgenSettings");
+            defaultFolder = f.getPath();
         } catch (Exception e) {
         }
 
@@ -233,7 +233,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     }
 
     void resend() {
-		// if biasgen doesn't have a hardware interface, we try to open one here in case one was not opened. we don't do
+        // if biasgen doesn't have a hardware interface, we try to open one here in case one was not opened. we don't do
         // this in biasgen because we would get a storm of compleints on loading preferences, etc
         try {
             if (!biasgen.isOpen()) {
@@ -326,7 +326,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     public void importPreferencesDialog() {
         JFileChooser chooser = new JFileChooser();
         XMLFileFilter filter = new XmlAedatFileFilter();
-        
+
         String lastFilePath = prefs.get("BiasgenFrame.lastFile", defaultFolder);
         lastFile = new File(lastFilePath);
         chooser.setFileFilter(filter);
@@ -342,8 +342,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         }
         //        resend(); // shouldn't be necessary with the batch edit start/end in biasgen.importPreferences
     }
-
-  
 
     void setStatusMessage(String s) {
         statusTextField.setText(s);
@@ -735,7 +733,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 	}//GEN-LAST:event_saveMenuItemActionPerformed
 
 	private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
-		//        int ret=showInternalOptionDialog(
+            //        int ret=showInternalOptionDialog(
             //                Component parent,
             //                Object message,
             //                String title,

@@ -114,6 +114,10 @@ public class WindowSaver implements AWTEventListener {
      */
     public void loadSettings(final JFrame frame) throws IOException {
         boolean resize = false; // set true if window is too big for screen
+        if(frame instanceof DontRestore){
+            log.info("Frame implements DontRestore, not loading settings for it");
+            return;
+        }
         final String name = frame.getTitle().replaceAll(" ", "");
 
         // screen UL corner is 0,0
@@ -270,7 +274,7 @@ public class WindowSaver implements AWTEventListener {
 
     /**
      * This static method can be used to save the window x,y, position (but not
-     * size). This statis method saves the window origin but not the size, based
+     * size). This static method saves the window origin but not the size, based
      * on a classname-based key in the supplied preferences node.
      *
      * @param window the window to save for
@@ -291,8 +295,14 @@ public class WindowSaver implements AWTEventListener {
     }
 
     /**
-     * This marker interface can be implemented to avoid resizing the window
+     * This marker interface can be implemented to avoid resizing the JFrame
      */
     public interface DontResize {
+    }
+    
+    /**
+     * This marker interface can be implemented to avoid loading the stored settings for the JFRame
+     */
+    public interface DontRestore {
     }
 }

@@ -64,7 +64,7 @@ MA 02110-1301  USA
             <artifact name="jogl-all" type="jar" ext="jar" m:classifier="natives-windows-amd64"/>
         </dependency>
  
-<!--        <dependency org="javax.xml.bind" name="jaxb-api" rev="2.3.1" />   need for java 14.0-->
+        <!--        <dependency org="javax.xml.bind" name="jaxb-api" rev="2.3.1" />   need for java 14.0-->
         <dependency org="org.swinglabs" name="swing-layout" rev="1.0.3" />
         <dependency org="org.jdesktop" name="beansbinding" rev="1.2.1" />
         
@@ -150,6 +150,12 @@ MA 02110-1301  USA
         <dependency org="org.jblas" name="jblas" rev="1.2.4" />    
         <!--used in telluride for communicating to foosball-->    
         <dependency org="redis.clients" name="jedis" rev="2.9.0" />
+        
+        <!-- https://mvnrepository.com/artifact/org.eclipse.jgit/org.eclipse.jgit -->
+        <dependency org="org.eclipse.jgit" name="org.eclipse.jgit" rev="5.7.0.202003110725-r" />    
+        
+        <!-- for rebuild myself task in JaerUpdater -->
+        <dependency org="org.apache.ant" name="ant-commons-net" rev="1.10.8" />
         
     </dependencies>
 </ivy-module>

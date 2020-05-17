@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <exe4j version="6.0" transformSequenceNumber="2">
-  <directoryPresets config="C:/Users/Tobi Delbruck/Dropbox (Personal)/GitHub/SensorsINI/jaer/images" />
+  <directoryPresets config="H:/Dropbox (Personal)/GitHub/SensorsINI/jaer/images" />
   <application name="jaer1.6_win_x64" distributionSourceDir=".">
     <languages>
       <principalLanguage id="en" customLocalizationFile="" />
@@ -8,9 +8,9 @@
   </application>
   <executable name="jAERViewer_win64" type="1" iconSet="true" iconFile="jaer.ico" executableDir="." redirectStderr="false" stderrFile="error.log" stderrMode="overwrite" redirectStdout="false" stdoutFile="output.log" stdoutMode="overwrite" failOnStderrOutput="true" executableMode="1" changeWorkingDirectory="false" workingDirectory="." singleInstance="false" serviceStartType="2" serviceDependencies="" serviceDescription="" jreLocation="" executionLevel="asInvoker" checkConsoleParameter="false" globalSingleInstance="false" singleInstanceActivate="true" dpiAware="false" amd64="true">
     <messageSet />
-    <versionInfo include="true" fileVersion="" fileDescription="Launcher for AEViewer for jAER" legalCopyright="jAER Team, 2018" internalName="jAERViewer" productName="" companyName="University of Zurich, inilabs.com, inivation.com" productVersion="1.6.0" />
+    <versionInfo include="true" fileVersion="" fileDescription="Launcher for AEViewer for jAER" legalCopyright="jAER Team, 2018" internalName="jAERViewer" productName="" companyName="University of Zurich, inilabs.com, inivation.com" productVersion="1.7.6" />
   </executable>
-  <splashScreen show="true" width="527" height="314" bitmapFile="images/SplashScreen.gif" textOverlay="true">
+  <splashScreen show="true" width="527" height="314" bitmapFile="images/SplashScreen.png" textOverlay="true">
     <text>
       <statusLine x="413" y="259" text="" fontSize="14" fontColor="255,0,0" bold="false" />
       <versionLine x="416" y="285" text="version %VERSION%" fontSize="14" fontColor="255,51,51" bold="false" />

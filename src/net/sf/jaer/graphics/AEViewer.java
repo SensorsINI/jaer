@@ -61,8 +61,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
@@ -78,7 +76,6 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JSeparator;
 import javax.swing.SwingUtilities;
@@ -92,6 +89,8 @@ import eu.seebetter.ini.chips.davis.DAVIS240B;
 import eu.seebetter.ini.chips.davis.DAVIS240C;
 import eu.seebetter.ini.chips.davis.Davis640;
 import net.sf.jaer.JAERViewer;
+import net.sf.jaer.JaerConstants;
+import net.sf.jaer.JaerUpdaterFrame;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aesequencer.AEMonitorSequencerInterface;
@@ -122,7 +121,6 @@ import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.FilterFrame;
-import net.sf.jaer.eventprocessing.PacketStream;
 import net.sf.jaer.hardwareinterface.BlankDeviceException;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -256,10 +254,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public JComponent addHelpItem(JComponent menuItem) {
         int n = helpMenu.getItemCount();
-        if (n <= 2) {
+        if (n <= 4) {
             n = 0;
         } else {
-            n = n - 2;
+            n = n - 4;
         }
         helpMenu.add(menuItem, n);
         return menuItem;
@@ -712,6 +710,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setName("AEViewer");
 
         initComponents();
+        setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE_MAIN)).getImage());
+
         playerControls = new AePlayerAdvancedControlsPanel(this);
         playerControlPanel.add(playerControls, BorderLayout.NORTH);
         this.jaerViewer = jaerViewer;
@@ -788,7 +788,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             addHelpURLItem(HELP_URL_USER_GUIDE, "jAER user guide", "Opens the jAER user guide");
             addHelpURLItem(HELP_URL_HELP_FORUM, "jAER help forum", "Opens the help forum.  Post your questions and look for answers there.");
-            addHelpURLItem(HELP_URL_JAER_HOME, "jAER project home", "jAER project home");
+            addHelpURLItem(HELP_URL_JAER_HOME, "jAER project home", "jAER project home on Github");
 //            addHelpURLItem(HELP_URL_JAVADOC_WEB, "jAER javadoc", "jAER online javadoc (probably out of date)");
 
 //            addHelpItem(new JSeparator());
@@ -2821,6 +2821,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jProgressBar1 = new javax.swing.JProgressBar();
         renderModeButtonGroup = new javax.swing.ButtonGroup();
         monSeqOpModeButtonGroup = new javax.swing.ButtonGroup();
+        jMenuItem2 = new javax.swing.JMenuItem();
         statisticsPanel = new javax.swing.JPanel();
         imagePanel = new javax.swing.JPanel();
         bottomPanel = new javax.swing.JPanel();
@@ -2936,7 +2937,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         monSeqOpMode1 = new javax.swing.JRadioButtonMenuItem();
         helpMenu = new javax.swing.JMenu();
         jSeparator7 = new javax.swing.JSeparator();
+        updateMenuItem = new javax.swing.JMenuItem();
+        jSeparator6 = new javax.swing.JPopupMenu.Separator();
         aboutMenuItem = new javax.swing.JMenuItem();
+
+        jMenuItem2.setText("jMenuItem2");
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
         setTitle("AEViewer");
@@ -3825,6 +3830,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         helpMenu.setText("Help");
         helpMenu.add(jSeparator7);
 
+        updateMenuItem.setText("Update jAER....");
+        updateMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                updateMenuItemActionPerformed(evt);
+            }
+        });
+        helpMenu.add(updateMenuItem);
+        helpMenu.add(jSeparator6);
+
         aboutMenuItem.setText("About");
         aboutMenuItem.setToolTipText("Version information");
         aboutMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -4440,7 +4454,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
 	private void aboutMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_aboutMenuItemActionPerformed
-            new AEViewerAboutDialog(new javax.swing.JFrame(), true).setVisible(true);
+            AEViewerAboutDialog d = new AEViewerAboutDialog(this, true);
+            d.setLocationRelativeTo(this);
+            d.setVisible(true);
 	}//GEN-LAST:event_aboutMenuItemActionPerformed
 
     public void showFilters(boolean yes) {
@@ -5347,13 +5363,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_closeMenuItemActionPerformed
 
 	private void openMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openMenuItemActionPerformed
-        try {
-            openAedatInputFile(null);
-        } catch (IOException ex) {
-            Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (InterruptedException ex) {
-            Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
-        }
+            try {
+                openAedatInputFile(null);
+            } catch (IOException ex) {
+                Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (InterruptedException ex) {
+                Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
+            }
 	}//GEN-LAST:event_openMenuItemActionPerformed
 
     /**
@@ -5365,7 +5381,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @throws IOException
      * @throws InterruptedException if opening is interrupted somehow
      */
-    public void openAedatInputFile(File f) throws IOException, InterruptedException{
+    public void openAedatInputFile(File f) throws IOException, InterruptedException {
         if ((f != null) && f.isFile()) {
             recentFiles.addFile(f);
             getAePlayer().startPlayback(f); // TODO fix with progress monitor
@@ -5373,8 +5389,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             prefs.put("AEViewer.lastFile", f.getCanonicalPath());
             recentFiles.addFile(f);
             aePlayer.openAEInputFileDialog();
-        } else if(f==null){
-               aePlayer.openAEInputFileDialog();
+        } else if (f == null) {
+            aePlayer.openAEInputFileDialog();
         }
     }
 
@@ -5503,6 +5519,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             getAePlayer().jogForwards();
         }
     }//GEN-LAST:event_forwardNMIActionPerformed
+
+    private void updateMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updateMenuItemActionPerformed
+        JaerUpdaterFrame frame = new JaerUpdaterFrame();
+        frame.setLocationRelativeTo(this);
+        frame.setVisible(true);
+    }//GEN-LAST:event_updateMenuItemActionPerformed
 
     /**
      * Returns desired frame rate of FrameRater
@@ -5961,6 +5983,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem increaseNumBuffersMenuItem;
     private javax.swing.JMenuItem increasePlaybackSpeedMenuItem;
     private javax.swing.JMenu interfaceMenu;
+    private javax.swing.JMenuItem jMenuItem2;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JProgressBar jProgressBar1;
     private javax.swing.JSeparator jSeparator1;
@@ -5976,6 +5999,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JSeparator jSeparator3;
     private javax.swing.JSeparator jSeparator4;
     private javax.swing.JSeparator jSeparator5;
+    private javax.swing.JPopupMenu.Separator jSeparator6;
     private javax.swing.JSeparator jSeparator7;
     private javax.swing.JSeparator jSeparator8;
     private javax.swing.JSeparator jSeparator9;
@@ -6028,6 +6052,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem togglePlaybackDirectionMenuItem;
     private javax.swing.JCheckBoxMenuItem unicastOutputEnabledCheckBoxMenuItem;
     private javax.swing.JMenuItem unzoomMenuItem;
+    private javax.swing.JMenuItem updateMenuItem;
     private javax.swing.JCheckBoxMenuItem viewActiveRenderingEnabledMenuItem;
     private javax.swing.JMenuItem viewBiasesMenuItem;
     private javax.swing.JMenuItem viewFiltersMenuItem;

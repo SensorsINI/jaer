@@ -17,6 +17,7 @@ import java.util.Properties;
 import java.util.logging.Logger;
 
 import javax.swing.JOptionPane;
+import net.sf.jaer.JaerConstants;
 import org.apache.commons.io.IOUtils;
 
 /**
@@ -37,6 +38,7 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
     public AEViewerAboutDialog(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
+        setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE)).getImage());
         Properties props = new Properties();
         // when running from webstart  we are not allowed to open a file on the local file system, but we can
         // get a the contents of a resource, which in this case is the echo'ed date stamp written by ant on the last build
@@ -82,6 +84,7 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
         versionLabel = new javax.swing.JTextArea();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setIconImage(null);
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosing(java.awt.event.WindowEvent evt) {
                 closeDialog(evt);
@@ -166,7 +169,7 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
 
 	private void jaerProjectLinkLabelMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jaerProjectLinkLabelMouseClicked
             try {
-                showInBrowser(AEViewer.HELP_URL_USER_GUIDE);
+                showInBrowser(AEViewer.HELP_URL_JAER_HOME);
 
                 setCursor(Cursor.getDefaultCursor());
             } catch (Exception e) {

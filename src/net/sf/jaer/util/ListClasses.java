@@ -37,7 +37,7 @@ public class ListClasses {
      * avoid running into missing DLLs with JOGL.
      */
     public static final String[] IGNORED_CLASSPATH = {
-        "java", "javax",
+        "java", "javax", "META-INF",
         "com/sun", "com/oracle", "org/w3c", "org.omg", "org/xml", "sun", "oracle",
         "gnu/io", // added because we don't bother with the native code for I2C, parallel ports, etc
         "build/classes", // added to ignore classes not in jaer.jar and only temporarily built
@@ -48,7 +48,7 @@ public class ListClasses {
         "org/jdesktop", "de/thesycon", "com/kitfox", "org/uncommons",
         "de/ailis", "org/netbeans",
         "com/kitfox", "org/bytedeco", "org/usb4java", "org/openni",
-        "jogamp", "org/jogamp", "com/jogamp", "gluegen", "newt","ncsa.hdf.hdf5lib",
+        "jogamp", "org/jogamp", "com/jogamp", "gluegen", "newt","ncsa.hdf.hdf5lib", "ncsa.hdf",
         "lib", "org/tensorflow", "org/ros", "com/fasterxml", "ch/qos", "groovy/lang", "com/google", "groovy", "ch/systemsx"
     };
 

@@ -8,6 +8,11 @@
     </Component>
     <Component class="javax.swing.ButtonGroup" name="monSeqOpModeButtonGroup">
     </Component>
+    <Component class="javax.swing.JMenuItem" name="jMenuItem2">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="jMenuItem2"/>
+      </Properties>
+    </Component>
     <Menu class="javax.swing.JMenuBar" name="menuBar">
       <SubComponents>
         <Menu class="javax.swing.JMenu" name="fileMenu">
@@ -891,6 +896,16 @@
           </Properties>
           <SubComponents>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator7">
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="updateMenuItem">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Update jAER...."/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="updateMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator6">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="aboutMenuItem">
               <Properties>

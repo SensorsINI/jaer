@@ -29,7 +29,7 @@ is divided into following sections:
             </not>
         </condition>
     </fail>
-    <target depends="test,jar,javadoc" description="Build and test whole project." name="default"/>
+    <target depends="jar" description="Builds jar for jAER runtime." name="default"/>
     <!-- 
                 ======================
                 INITIALIZATION SECTION 

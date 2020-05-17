@@ -29,6 +29,7 @@ import javax.swing.KeyStroke;
 import javax.swing.border.Border;
 import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
+import net.sf.jaer.JaerConstants;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.graphics.AEViewer;
@@ -45,7 +46,6 @@ import net.sf.jaer.util.XMLFileFilter;
  *
  * @author tobi
  */
-
 public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFrame implements PropertyChangeListener/*, WindowSaver.DontResize*/ {
 
     // tobi commented out DontResize because the filter frame was extending below the bottom of screen, making it awkward to control properties for deep implementations
@@ -75,6 +75,8 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         chip.setFilterFrame(this);
         setName("FilterFrame");
         initComponents();
+        setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE_FILTERS)).getImage());
+
 //        fileMenu.remove(prefsEditorMenuItem); // TODO tobi hack to work around leftover item in form that was edited outside of netbeans
         rebuildContents();
         // from http://stackoverflow.com/questions/11533162/how-to-prevent-jscrollpane-from-scrolling-when-arrow-keys-are-pressed
