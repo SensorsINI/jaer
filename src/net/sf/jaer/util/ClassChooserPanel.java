@@ -167,7 +167,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             availClassJList.setModel(availClassesListModel);
             availClassJList.setCellRenderer(new MyCellRenderer());
 
-            addAction(availClassJList, new AddAction());
+//            addAction(availClassJList, new AddAction());
             filterAvailable(); // user typed while list is populated
             availClassesListModel.addListDataListener(new ListDataListener() {
                 @Override
@@ -998,6 +998,8 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         }
         int last = chosenClassesListModel.getSize() - 1;
+        int selectedIdx=classJList.getSelectedIndex();
+        if(selectedIdx>0) last=selectedIdx;
         chosenClassesListModel.add(last + 1, o);
         classJList.setSelectedIndex(last + 1);
     }//GEN-LAST:event_addClassButtonActionPerformed
