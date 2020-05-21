@@ -18,13 +18,21 @@
  */
 package net.sf.jaer;
 
+import java.awt.Cursor;
+import java.awt.Desktop;
+import java.net.URI;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.sf.jaer.util.WindowSaver.DontRestore;
 
 /**
  * Frame to run update operations on jAER
+ *
  * @author Tobi
  */
 public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore {
+
+    private static Logger log = Logger.getLogger("JaerUpdater");
 
     /**
      * Creates new form JaerUpdaterFrame
@@ -34,7 +42,19 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE)).getImage());
         gitPullButton.addActionListener(JaerUpdater.gitPullActionListener(this));
         antBuildButton.addActionListener(JaerUpdater.buildActionListener(this));
-        statusButton.addActionListener(JaerUpdater.gitCheckUpdatesActionListener(this));
+        statusButton.addActionListener(JaerUpdater.gitCFetchChangesActionListener(this));
+    }
+
+    private void showInBrowser(String url) {
+        if (!Desktop.isDesktopSupported()) {
+            log.warning("No Desktop support, can't show help from " + url);
+            return;
+        }
+        try {
+            Desktop.getDesktop().browse(new URI(url));
+        } catch (Exception ex) {
+            log.log(Level.WARNING, "Couldn't show " + url + "; caught " + ex, ex);
+        }
     }
 
     /**
@@ -53,20 +73,28 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
         jTextPane1 = new javax.swing.JTextPane();
         closeButton = new javax.swing.JButton();
         statusButton = new javax.swing.JButton();
+        jScrollPane3 = new javax.swing.JScrollPane();
+        jTextPane2 = new javax.swing.JTextPane();
+        jScrollPane4 = new javax.swing.JScrollPane();
+        jTextPane3 = new javax.swing.JTextPane();
+        jPanel1 = new javax.swing.JPanel();
+        jaerProjectLinkLabel = new javax.swing.JLabel();
+        seeReleasesButton = new javax.swing.JButton();
+        seeCommitsButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("jAER updater");
 
-        gitPullButton.setText("git pull");
+        gitPullButton.setText("Pull git changes");
 
-        antBuildButton.setText("ant jar");
+        antBuildButton.setText("Build jAER from source");
 
         jLabel1.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
         jLabel1.setText("jAER updater");
 
         jTextPane1.setEditable(false);
-        jTextPane1.setBackground(java.awt.Color.lightGray);
-        jTextPane1.setText("Check your code to see if there have been remote changes with \"git status\".\nUpdate your source code using \"git pull\" .\nRebuild it using ant with \"ant jar\".\nThe rebuild task can fail if you are running from jar file, since it will be in use.");
+        jTextPane1.setBackground(javax.swing.UIManager.getDefaults().getColor("Button.background"));
+        jTextPane1.setText("Check your code to see if there have been remote changes with \"git status\".");
         jScrollPane2.setViewportView(jTextPane1);
 
         closeButton.setText("Close");
@@ -76,28 +104,92 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
             }
         });
 
-        statusButton.setText("git status");
+        statusButton.setText("See git status");
+
+        jTextPane2.setEditable(false);
+        jTextPane2.setBackground(javax.swing.UIManager.getDefaults().getColor("Button.background"));
+        jTextPane2.setText("Rebuild from sources  using ant with \"ant jar\".\nThe rebuild task can fail if you are running from jar file, since it will be in use.");
+        jScrollPane3.setViewportView(jTextPane2);
+
+        jTextPane3.setEditable(false);
+        jTextPane3.setBackground(javax.swing.UIManager.getDefaults().getColor("Button.background"));
+        jTextPane3.setText("Update your source code using \"git pull\" .");
+        jScrollPane4.setViewportView(jTextPane3);
+
+        jaerProjectLinkLabel.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
+        jaerProjectLinkLabel.setText("<html> <em><a href=\"http://jaerproject.org\">jaerproject.org</a> </em></html>");
+        jaerProjectLinkLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jaerProjectLinkLabelMouseClicked(evt);
+            }
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                jaerProjectLinkLabelMouseEntered(evt);
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                jaerProjectLinkLabelMouseExited(evt);
+            }
+        });
+
+        seeReleasesButton.setText("See releases");
+        seeReleasesButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                seeReleasesButtonActionPerformed(evt);
+            }
+        });
+
+        seeCommitsButton.setText("See commits");
+        seeCommitsButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                seeCommitsButtonActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                .addContainerGap(23, Short.MAX_VALUE)
+                .addComponent(jaerProjectLinkLabel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(seeReleasesButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(seeCommitsButton)
+                .addGap(20, 20, 20))
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(32, 32, 32)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(seeReleasesButton)
+                    .addComponent(jaerProjectLinkLabel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(seeCommitsButton))
+                .addContainerGap(25, Short.MAX_VALUE))
+        );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 292, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(statusButton)
-                    .addComponent(gitPullButton)
-                    .addComponent(antBuildButton))
-                .addGap(0, 0, Short.MAX_VALUE))
-            .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
                         .addContainerGap()
                         .addComponent(jLabel1))
                     .addGroup(layout.createSequentialGroup()
-                        .addGap(145, 145, 145)
-                        .addComponent(closeButton)))
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                .addComponent(jScrollPane3)
+                                .addComponent(jScrollPane2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 416, Short.MAX_VALUE)
+                                .addComponent(jScrollPane4, javax.swing.GroupLayout.Alignment.LEADING))
+                            .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(closeButton)
+                            .addComponent(statusButton)
+                            .addComponent(gitPullButton)
+                            .addComponent(antBuildButton))))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
@@ -105,18 +197,25 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
             .addGroup(layout.createSequentialGroup()
                 .addComponent(jLabel1)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(statusButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jScrollPane2))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addComponent(statusButton)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(gitPullButton)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(antBuildButton)
-                        .addGap(34, 34, 34))
+                    .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(gitPullButton))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 129, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
-                .addComponent(closeButton)
+                        .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(layout.createSequentialGroup()
+                                .addGap(82, 82, 82)
+                                .addComponent(closeButton))))
+                    .addComponent(antBuildButton))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -126,6 +225,42 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
     private void closeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_closeButtonActionPerformed
         dispose();
     }//GEN-LAST:event_closeButtonActionPerformed
+
+    private void jaerProjectLinkLabelMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jaerProjectLinkLabelMouseClicked
+        try {
+            showInBrowser(JaerConstants.HELP_URL_JAER_HOME);
+
+            setCursor(Cursor.getDefaultCursor());
+        } catch (Exception e) {
+            log.warning(e.toString());
+        }
+    }//GEN-LAST:event_jaerProjectLinkLabelMouseClicked
+
+    private void jaerProjectLinkLabelMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jaerProjectLinkLabelMouseEntered
+        setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }//GEN-LAST:event_jaerProjectLinkLabelMouseEntered
+
+    private void jaerProjectLinkLabelMouseExited(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jaerProjectLinkLabelMouseExited
+        setCursor(Cursor.getDefaultCursor());
+    }//GEN-LAST:event_jaerProjectLinkLabelMouseExited
+
+    private void seeCommitsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_seeCommitsButtonActionPerformed
+        try {
+            showInBrowser(JaerConstants.JAER_COMMITS);
+            setCursor(Cursor.getDefaultCursor());
+        } catch (Exception e) {
+            log.warning(e.toString());
+        }
+    }//GEN-LAST:event_seeCommitsButtonActionPerformed
+
+    private void seeReleasesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_seeReleasesButtonActionPerformed
+        try {
+            showInBrowser(JaerConstants.JAER_RELEASES);
+            setCursor(Cursor.getDefaultCursor());
+        } catch (Exception e) {
+            log.warning(e.toString());
+        }
+    }//GEN-LAST:event_seeReleasesButtonActionPerformed
 
     /**
      * @param args the command line arguments
@@ -167,8 +302,16 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
     private javax.swing.JButton closeButton;
     private javax.swing.JButton gitPullButton;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JPanel jPanel1;
     private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JScrollPane jScrollPane3;
+    private javax.swing.JScrollPane jScrollPane4;
     private javax.swing.JTextPane jTextPane1;
+    private javax.swing.JTextPane jTextPane2;
+    private javax.swing.JTextPane jTextPane3;
+    private javax.swing.JLabel jaerProjectLinkLabel;
+    private javax.swing.JButton seeCommitsButton;
+    private javax.swing.JButton seeReleasesButton;
     private javax.swing.JButton statusButton;
     // End of variables declaration//GEN-END:variables
 }

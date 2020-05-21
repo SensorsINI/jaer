@@ -27,6 +27,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import net.sf.jaer.JaerConstants;
 
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AEViewerAboutDialog;
@@ -85,7 +86,7 @@ public class LoggingWindow extends JFrame {
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         try {
-                            showInBrowser(AEViewer.HELP_URL_HELP_FORUM);
+                            showInBrowser(JaerConstants.HELP_URL_HELP_FORUM);
                         } catch (Exception ex) {
                             System.err.println("couldn't browse to jaer user forum: " + ex.toString());
                         }
@@ -99,7 +100,7 @@ public class LoggingWindow extends JFrame {
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         try {
-                            showInBrowser(AEViewer.HELP_URL_JAER_HOME);
+                            showInBrowser(JaerConstants.HELP_URL_JAER_HOME);
                         } catch (Exception ex) {
                             System.err.println("couldn't go to jaer project homa: " + ex.toString());
                         }

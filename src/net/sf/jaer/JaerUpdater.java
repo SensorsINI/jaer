@@ -18,67 +18,73 @@
  */
 package net.sf.jaer;
 
-import java.awt.BorderLayout;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.LoggerContextListener;
+import ch.qos.logback.core.ConsoleAppender;
+import ch.qos.logback.core.OutputStreamAppender;
+import ch.qos.logback.core.util.StatusPrinter;
+import com.google.common.base.Splitter;
 import java.awt.Component;
-import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.util.logging.Handler;
 import java.util.logging.Logger;
-import javax.swing.JButton;
-import javax.swing.JFrame;
+import java.util.logging.SimpleFormatter;
+import java.util.logging.StreamHandler;
+import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
-import javax.swing.ProgressMonitor;
 import javax.swing.UIManager;
+import org.apache.commons.text.WordUtils;
 import org.apache.tools.ant.BuildEvent;
 import org.apache.tools.ant.BuildListener;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.ProjectHelper;
+import org.eclipse.jgit.api.DescribeCommand;
 import org.eclipse.jgit.api.FetchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PullCommand;
 import org.eclipse.jgit.api.PullResult;
-import org.eclipse.jgit.api.StatusCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.BatchingProgressMonitor;
-import org.eclipse.jgit.lib.TextProgressMonitor;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.FetchResult;
-import scala.collection.immutable.ListSet;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.LoggingEvent;
 
 /**
- * Handles self update and rebuild, via git and ant
+ * Handles self update git version/tag check, git pull, and ant rebuild, via
+ * JGit and ant.
  *
  * @author Tobi Delbruck (tobi@ini.uzh.ch)
  *
  */
 public class JaerUpdater {
 
-    public static final String JAER_HOME = "https://github.com/SensorsINI/jaer.git";
     private static Logger log = Logger.getLogger("JaerUpdater");
+    private static Preferences prefs = Preferences.userNodeForPackage(JaerUpdater.class);
 
+    /**
+     * Action listener that runs jAER ant build
+     *
+     * @param parent where progress dialog should be displayed over
+     * @return the listener
+     */
     public static ActionListener buildActionListener(Component parent) {
         UIManager.put("ProgressMonitor.progressText", "Build Progress");
 
         return (ActionEvent ae) -> {
             new Thread(() -> {
                 //creating ProgressMonitor instance
-                class ProgressCounter {
-
-                    int progress = 0;
-
-                    int inc() {
-                        return ++progress;
-                    }
-
-                    int inc(int amt) {
-                        return progress += amt;
-                    }
-                }
-                final ProgressCounter progressCounter = new ProgressCounter();
+                final ProgressCounter progressCounter = new ProgressCounter("build");
                 javax.swing.ProgressMonitor pm = new javax.swing.ProgressMonitor(parent, "Build Task",
-                        "Task starting", 0, 60000); // adjust for approximate build time
+                        "Build starting", 0, progressCounter.getEstimatedTotal()); // adjust for approximate build time
 
                 //decide after 100 millis whether to show popup or not
                 pm.setMillisToDecideToPopup(100);
@@ -89,38 +95,47 @@ public class JaerUpdater {
                 p.addBuildListener(new BuildListener() {
                     @Override
                     public void buildStarted(BuildEvent be) {
-                        pm.setNote(be.getMessage());
+                        String s = String.format("Build of %s started", be.getProject().getName());
+                        pm.setNote(wrap(s));
                         pm.setProgress(progressCounter.inc());
                     }
 
                     @Override
                     public void buildFinished(BuildEvent be) {
-                        pm.setNote(be.getMessage());
+                        String s = String.format("Build of %s finished", be.getProject().getName());
+                        pm.setNote(wrap(s));
+                        progressCounter.saveProgress();
                         pm.close();
                     }
 
                     @Override
                     public void targetStarted(BuildEvent be) {
-                        pm.setNote(be.getMessage());
+                        String s = String.format("Target %s started: description ", be.getTarget().getName(), be.getTarget().getDescription());
+                        pm.setNote(wrap(s));
                         pm.setProgress(progressCounter.inc(100));
                     }
 
                     @Override
                     public void targetFinished(BuildEvent be) {
-                        pm.setNote(be.getMessage());
+                        String s = String.format("Target %s finished: description ", be.getTarget().getName(), be.getTarget().getDescription());
+                        pm.setNote(wrap(s));
                         pm.setProgress(progressCounter.inc(100));
+                        progressCounter.saveProgress();
                     }
 
                     @Override
                     public void taskStarted(BuildEvent be) {
-                        pm.setNote(be.getMessage());
+                        String s = String.format("Task %s started, type %s", be.getTask().getTaskName(), be.getTask().getTaskType());
+                        pm.setNote(wrap(s));
                         pm.setProgress(progressCounter.inc(10));
                     }
 
                     @Override
                     public void taskFinished(BuildEvent be) {
-                        pm.setNote(be.getMessage());
+                        String s = String.format("Task %s finished, type %s", be.getTask().getTaskName(), be.getTask().getTaskType());
+                        pm.setNote(wrap(s));
                         pm.setProgress(progressCounter.inc(10));
+                        progressCounter.saveProgress();
                     }
 
                     @Override
@@ -137,7 +152,7 @@ public class JaerUpdater {
 
                 p.addReference("ant.projectHelper", helper);
                 helper.parse(p, buildFile);
-                pm.setNote("building jAER");
+                pm.setNote("Building jAER");
                 p.executeTarget(p.getDefaultTarget());
 
                 pm.setNote("Build finished");
@@ -149,42 +164,108 @@ public class JaerUpdater {
 
     }
 
+    private static String wrap(String s) {
+        s = "<HTML>" + WordUtils.wrap(s, 25);
+        return s;
+    }
+
+    /**
+     * Action listener that runs git pull
+     *
+     * @param parent display progress dialog over this component
+     * @return the listener
+     */
     public static ActionListener gitPullActionListener(Component parent) {
         return (ActionEvent ae) -> {
             new Thread(() -> {
+
+                class MyAppender extends OutputStreamAppender<ILoggingEvent> {
+
+                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                    javax.swing.ProgressMonitor pm;
+                    ProgressCounter pc;
+
+                    public MyAppender(javax.swing.ProgressMonitor pm, ProgressCounter pc) {
+                        this.pm = pm;
+                        this.pc = pc;
+                        setOutputStream(stream);
+                    }
+
+                    @Override
+                    protected void append(ILoggingEvent eventObject) {
+                        String formattedMessage = eventObject.getFormattedMessage();
+                        log.info(formattedMessage);
+                        formattedMessage = "<HTML>" + WordUtils.wrap(formattedMessage, 30);
+
+                        pm.setNote(wrap(formattedMessage));
+                        pc.inc();
+                        pm.setProgress(pc.getProgress());
+                        pm.setMaximum(pc.getEstimatedTotal());
+
+                    }
+
+                    @Override
+                    protected void writeOut(ILoggingEvent event) throws IOException {
+                        super.writeOut(event); //To change body of generated methods, choose Tools | Templates.
+                    }
+
+                }
+
+                org.slf4j.Logger gitLogger = (org.slf4j.Logger) org.slf4j.LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
+                final ProgressCounter progressCounter = new ProgressCounter("git.pull");
+                final javax.swing.ProgressMonitor pm = new javax.swing.ProgressMonitor(parent, "Update Task",
+                        "Task starting", 0, 100); // adjust for approximate build time
+                if (gitLogger instanceof ch.qos.logback.classic.Logger) {
+//                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+//                    Handler handler = new StreamHandler(stream, new SimpleFormatter());
+                    ch.qos.logback.classic.Logger logBackLogger = (ch.qos.logback.classic.Logger) gitLogger;
+                    LoggerContext context = logBackLogger.getLoggerContext();
+
+                    PatternLayoutEncoder logEncoder = new PatternLayoutEncoder();
+                    logEncoder.setContext(context);
+                    logEncoder.setPattern("%-12date{YYYY-MM-dd HH:mm:ss.SSS} %-5level - %msg%n");
+                    logEncoder.start();
+
+                    MyAppender appender = new MyAppender(pm, progressCounter);
+                    appender.setName("gitprogress");
+                    appender.setEncoder(logEncoder);
+                    appender.setContext(context);
+                    appender.start();
+                    logBackLogger.setAdditive(false);
+                    logBackLogger.addAppender(appender);
+                    StatusPrinter.print(context);
+
+                }
                 try (Git git = Git.open(new File("."))) {
 
                     final PullCommand pull = git.pull();
-                    
-                    final javax.swing.ProgressMonitor pm = new javax.swing.ProgressMonitor(parent, "Update Task",
-                            "Task starting", 0, 100); // adjust for approximate build time
 
                     //decide after 100 millis whether to show popup or not
-                    pm.setMillisToDecideToPopup(100);
+                    pm.setMillisToDecideToPopup(1);
                     //after deciding if predicted time is longer than 100 show popup
-                    pm.setMillisToPopup(100);
+                    pm.setMillisToPopup(1);
                     BatchingProgressMonitor antProgMon = new BatchingProgressMonitor() {
                         @Override
                         protected void onUpdate(String taskName, int workCurr) {
-                            pm.setNote(taskName);
+                            pm.setNote(wrap(taskName));
                             pm.setProgress(workCurr);
-                               if(pm.isCanceled()){
+                            if (pm.isCanceled()) {
                                 endTask();
                             }
                         }
 
                         @Override
                         protected void onEndTask(String taskName, int workCurr) {
-                            pm.setNote(taskName);
+                            pm.setNote(wrap(taskName));
                             pm.setProgress(workCurr);
                         }
 
                         @Override
                         protected void onUpdate(String taskName, int workCurr, int workTotal, int percentDone) {
-                            pm.setNote(taskName);
+                            pm.setNote(wrap(taskName));
                             pm.setMaximum(workTotal);
                             pm.setProgress(workCurr);
-                            if(pm.isCanceled()){
+                            if (pm.isCanceled()) {
                                 endTask();
                             }
                         }
@@ -194,8 +275,7 @@ public class JaerUpdater {
                             pm.close();
                         }
                     };
-                    
-                    
+
                     pull.setProgressMonitor(antProgMon);
                     antProgMon.beginTask("Beginning pull", org.eclipse.jgit.lib.ProgressMonitor.UNKNOWN);
                     pull.setRemote("origin");
@@ -203,7 +283,8 @@ public class JaerUpdater {
                     final PullResult result = pull.call();
                     antProgMon.endTask();
                     log.info("Git pull result: " + result.toString());
-                    JOptionPane.showMessageDialog(parent, result.toString(), "Pull result", JOptionPane.INFORMATION_MESSAGE);
+                    String s = WordUtils.wrap(result.toString(), 40);
+                    JOptionPane.showMessageDialog(parent, s.toString(), "Pull result", JOptionPane.INFORMATION_MESSAGE);
                 } catch (Exception e) {
                     log.warning(e.toString());
                     JOptionPane.showMessageDialog(parent, e.toString(), "Pull failed", JOptionPane.ERROR_MESSAGE);
@@ -212,7 +293,7 @@ public class JaerUpdater {
         };
     }
 
-        public static ActionListener gitCheckUpdatesActionListener(Component parent) {
+    public static ActionListener gitCFetchChangesActionListener(Component parent) {
         return (ae) -> {
             new Thread(() -> {
                 try (Git git = Git.open(new File("."))) {
@@ -220,6 +301,10 @@ public class JaerUpdater {
                     fetch.setRemote("origin");
                     FetchResult result = fetch.call();
                     log.info("Git fetch result: " + result.toString());
+                    String latestTag = getLatestTag(git);
+                    log.info(String.format("latest tag after fetch is %s", latestTag));
+                    JOptionPane.showMessageDialog(parent, String.format("lastest tag: %s", latestTag), "Latest tag", JOptionPane.INFORMATION_MESSAGE);
+
                 } catch (Exception e) {
                     log.warning(e.toString());
                     JOptionPane.showMessageDialog(parent, e.toString(), "Check failed", JOptionPane.ERROR_MESSAGE);
@@ -227,4 +312,91 @@ public class JaerUpdater {
             }).start();
         };
     }
+
+    private static String getLatestTag(Git git) throws GitAPIException, IOException {
+        DescribeCommand cmd = git.describe();
+        cmd.setTarget("HEAD");
+        String version = cmd.call();
+        log.info(String.format("latest tag found from git repo: %s", version));
+        writeVersionToVerFile(version);
+        return version;
+    }
+
+    /**
+     * Writes to global version file for About dialog and other purposes
+     *
+     * @param version
+     */
+    private static void writeVersionToVerFile(String version) throws IOException {
+        FileWriter writer = new FileWriter(JaerConstants.VERSION_FILE);
+        writer.write(version);
+        writer.close();
+    }
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        /* Set the Nimbus look and feel */
+        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+         */
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(JaerUpdaterFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(JaerUpdaterFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(JaerUpdaterFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(JaerUpdaterFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        //</editor-fold>
+
+        /* Create and display the form */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new JaerUpdaterFrame().setVisible(true);
+            }
+        });
+    }
+
+    private static class ProgressCounter {
+
+        String name = "";
+
+        public ProgressCounter(String name) {
+            this.name = name;
+        }
+
+        int progress = 0;
+
+        int inc() {
+            return ++progress;
+        }
+
+        int inc(int amt) {
+            return progress += amt;
+        }
+
+        int getProgress() {
+            return progress;
+        }
+
+        int getEstimatedTotal() {
+            return prefs.getInt("buildTotalProgressCount." + name, 80000);
+        }
+
+        void saveProgress() {
+            prefs.putInt("buildTotalProgressCount." + name, progress);
+        }
+    }
+
 }

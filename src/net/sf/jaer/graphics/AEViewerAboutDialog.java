@@ -169,7 +169,7 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
 
 	private void jaerProjectLinkLabelMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jaerProjectLinkLabelMouseClicked
             try {
-                showInBrowser(AEViewer.HELP_URL_JAER_HOME);
+                showInBrowser(JaerConstants.HELP_URL_JAER_HOME);
 
                 setCursor(Cursor.getDefaultCursor());
             } catch (Exception e) {

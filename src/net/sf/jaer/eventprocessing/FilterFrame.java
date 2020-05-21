@@ -719,7 +719,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 	}//GEN-LAST:event_jbuttonSelectFiltActionPerformed
 
 	private void jaerFilterHelpMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jaerFilterHelpMIActionPerformed
-            showInBrowser(AEViewer.HELP_URL_JAER_HOME);
+            showInBrowser(JaerConstants.HELP_URL_JAER_HOME);
 	}//GEN-LAST:event_jaerFilterHelpMIActionPerformed
 
     private void resetPerformanceMeasurementMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetPerformanceMeasurementMIActionPerformed

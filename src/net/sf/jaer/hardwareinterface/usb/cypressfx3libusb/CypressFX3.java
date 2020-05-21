@@ -34,6 +34,7 @@ import org.usb4java.LibUsb;
 import li.longi.USBTransferThread.RestrictedTransfer;
 import li.longi.USBTransferThread.RestrictedTransferCallback;
 import li.longi.USBTransferThread.USBTransferThread;
+import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -554,7 +555,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		if (needsUpdate) {
 			updateStringBuilder
-				.append("<p>Please update by following the Flashy documentation at <a href=\" " + AEViewer.HELP_USER_GUIDE_URL_FLASHY+"\">"+AEViewer.HELP_USER_GUIDE_URL_FLASHY+"</a></p>");
+				.append("<p>Please update by following the Flashy documentation at <a href=\" " + JaerConstants.HELP_USER_GUIDE_URL_FLASHY+"\">"+JaerConstants.HELP_USER_GUIDE_URL_FLASHY+"</a></p>");
                         updateStringBuilder.append("<p>Clicking OK will open this URL in browser</p>");
 			final String updateString = updateStringBuilder.toString();
 
@@ -564,7 +565,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 					JOptionPane.showMessageDialog(null, updateString);
                                         if(Desktop.isDesktopSupported()){
                                             try {
-                                                Desktop.getDesktop().browse(new URI(AEViewer.HELP_USER_GUIDE_URL_FLASHY));
+                                                Desktop.getDesktop().browse(new URI(JaerConstants.HELP_USER_GUIDE_URL_FLASHY));
                                             } catch (Exception ex) {
                                                 Logger.getLogger(CypressFX3.class.getName()).log(Level.WARNING, null, ex);
                                             }

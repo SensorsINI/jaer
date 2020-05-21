@@ -209,12 +209,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             EVENT_ACCUMULATE_ENABLED = "accumulateEnabled";
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
 
-    public static final String HELP_URL_JAER_HOME = "https://github.com/SensorsINI/jaer";
-    public static final String HELP_URL_USER_GUIDE = "https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing";
-    public static final String HELP_URL_HELP_FORUM = "https://groups.google.com/forum/#!forum/jaer-users";
-    public static final String HELP_USER_GUIDE_URL_FLASHY = "http://inivation.com/support/software/reflashing/";
-    public static final String HELP_URL_HARDWARE_USER_GUIDE = "http://www.inivation.com/support/hardware/";
-    public static String HELP_URL_JAVADOC;
     // note filenames cannot have spaces in them for browser to work easily, some problem with space encoding; %20 doesn't work as advertized.
 //    public static String HELP_USER_GUIDE_USB2_MINI = "/docs/USBAERmini2userguide.pdf";
 //    public static String HELP_USER_GUIDE_AER_CABLING = "/docs/AERHardwareAndCabling.pdf";
@@ -786,9 +780,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         // additional help
         try {
-            addHelpURLItem(HELP_URL_USER_GUIDE, "jAER user guide", "Opens the jAER user guide");
-            addHelpURLItem(HELP_URL_HELP_FORUM, "jAER help forum", "Opens the help forum.  Post your questions and look for answers there.");
-            addHelpURLItem(HELP_URL_JAER_HOME, "jAER project home", "jAER project home on Github");
+            addHelpURLItem(JaerConstants.HELP_URL_USER_GUIDE, "jAER user guide", "Opens the jAER user guide");
+            addHelpURLItem(JaerConstants.HELP_URL_HELP_FORUM, "jAER help forum", "Opens the help forum.  Post your questions and look for answers there.");
+            addHelpURLItem(JaerConstants.HELP_URL_JAER_HOME, "jAER project home", "jAER project home on Github");
 //            addHelpURLItem(HELP_URL_JAVADOC_WEB, "jAER javadoc", "jAER online javadoc (probably out of date)");
 
 //            addHelpItem(new JSeparator());
@@ -796,8 +790,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING), "AER protocol and cabling guide", "Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
 //            addHelpURLItem(pathToURL("/devices/pcbs/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
             addHelpItem(new JSeparator());
-            addHelpURLItem(HELP_URL_HARDWARE_USER_GUIDE, "Hardware user guides", "Guides for inivation hardware");
-            addHelpURLItem(HELP_USER_GUIDE_URL_FLASHY, "Flashy reflashing utility help", "Guide for reflashing firmware");
+            addHelpURLItem(JaerConstants.HELP_URL_HARDWARE_USER_GUIDE, "Hardware user guides", "Guides for inivation hardware");
+            addHelpURLItem(JaerConstants.HELP_USER_GUIDE_URL_FLASHY, "Flashy reflashing utility help", "Guide for reflashing firmware");
 //            addHelpURLItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
 //            addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING), "AER protocol and cabling guide", "Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
 //            addHelpURLItem(pathToURL("/devices/pcbs/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");

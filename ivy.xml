@@ -71,11 +71,14 @@ MA 02110-1301  USA
         <!--bag-reader-java-1.9.0 is here to obtain all of its dependencies, but we are using the fork at https://github.com/tobidelbruck/bag-reader-java currently-->
         <!--since our fixes were pulled, we can now use bag-reader-java 1.10.x-->
         <dependency org="com.github.swri-robotics" name="bag-reader-java" rev="1.10.0" />
-        <dependency org="org.apache.commons" name="commons-lang3" rev="3.7" />
+        <dependency org="org.apache.commons" name="commons-lang3" rev="3.10" />
         <dependency org="org.apache.commons" name="commons-math3" rev="3.6.1" />
         <dependency org="org.webjars.npm" name="semver" rev="5.4.1" />
         <dependency org="commons-net" name="commons-net" rev="3.6" />
         <dependency org="org.apache.directory.studio" name="org.apache.commons.io" rev="2.4" />
+        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-text -->
+        <dependency org="org.apache.commons" name="commons-text" rev="1.8"/>
+
         <dependency org="com.google.code.gson" name="gson" rev="2.8.2" />
         
         <dependency org="javax.mail" name="javax.mail-api" rev="1.6.0" />
