@@ -1,7 +1,7 @@
 # jAER
 Java tools for Address-Event Representation (AER) neuromorphic processing. 
 
-**Permanent links:** http://jaerproject.org or http://jaerproject.org
+**Permanent link:** http://jaerproject.org
 
 [![Build Status](https://travis-ci.org/SensorsINI/jaer.svg?branch=master)](https://travis-ci.org/SensorsINI/jaer)
 
@@ -12,9 +12,9 @@ Founded in 2007.
 
 ## Download
 
-You can find the latest releases at <https://github.com/SensorsINI/jaer/releases>.
+You can find the latest releases at <https://github.com/SensorsINI/jaer/releases>. 
 
-To build yourself, clone the repo and run
+You will get the best experience running from lastest bug fixes. To build yourself, use [ant](https://ant.apache.org/manual/install.html). Install JDK 1.8, clone the repo with git and run
 
     ant jar
 
