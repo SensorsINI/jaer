@@ -14,9 +14,11 @@ Founded in 2007.
 
 You can find the latest releases at <https://github.com/SensorsINI/jaer/releases>. These releasees do NOT include git information so they will not support self-update. If you want to update from a release, you need to get a new release.
 
-You will get the best experience running from lastest bug fixes. To build yourself, use [ant](https://ant.apache.org/manual/install.html). Install JDK 1.8, clone the repo with git and run
+You will get the best experience running from lastest bug fixes. To build yourself, see the user guide for IDE setup. Or you can use [ant](https://ant.apache.org/manual/install.html). Install JDK 1.8, clone the repo with git and run ant from command line as below.
 
     ant jar
+
+On linux installing ant should be very easy. On Windows it is still a pain since you will need to download zip, extract it, put it somewhere, and then set some enviroment variables. But once set up, updating can be done from the Help/Update jAER... menu.
 
 ## Support
 
