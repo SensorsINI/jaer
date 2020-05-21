@@ -34,6 +34,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.logging.Handler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
@@ -43,6 +48,7 @@ import javax.swing.JOptionPane;
 import javax.swing.UIManager;
 import org.apache.commons.text.WordUtils;
 import org.apache.tools.ant.BuildEvent;
+import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildListener;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.ProjectHelper;
@@ -53,7 +59,12 @@ import org.eclipse.jgit.api.PullCommand;
 import org.eclipse.jgit.api.PullResult;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.BatchingProgressMonitor;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevTag;
+import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.FetchResult;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.LoggingEvent;
@@ -144,21 +155,27 @@ public class JaerUpdater {
                         pm.setProgress(progressCounter.inc());
                     }
                 });
-                p.setUserProperty("ant.file", buildFile.getAbsolutePath());
+                try {
+                    log.info("Build file is " + buildFile.getAbsolutePath());
+                    p.setUserProperty("ant.file", buildFile.getAbsolutePath());
 
-                log.info("Build file is " + buildFile.getAbsolutePath());
-                p.init();
-                ProjectHelper helper = ProjectHelper.getProjectHelper();
+                    p.init();
+                    ProjectHelper helper = ProjectHelper.getProjectHelper();
 
-                p.addReference("ant.projectHelper", helper);
-                helper.parse(p, buildFile);
-                pm.setNote("Building jAER");
-                p.executeTarget(p.getDefaultTarget());
+                    p.addReference("ant.projectHelper", helper);
+                    helper.parse(p, buildFile);
+                    pm.setNote("Building jAER");
+                    p.executeTarget(p.getDefaultTarget());
 
-                pm.setNote("Build finished");
-                pm.close();
-                JOptionPane.showMessageDialog(parent, "Build finished", "Buld result", JOptionPane.INFORMATION_MESSAGE);
+                    pm.setNote("Build finished");
+                    pm.close();
+                    int ret = JOptionPane.showConfirmDialog(parent, "<html>Build finished. <p> Do you want to restart?", "Buld result", JOptionPane.INFORMATION_MESSAGE);
+                    if (ret == JOptionPane.YES_OPTION) {
+                        restart();
+                    }
+                } catch (BuildException e) {
 
+                }
             }).start();
         };
 
@@ -302,8 +319,10 @@ public class JaerUpdater {
                     FetchResult result = fetch.call();
                     log.info("Git fetch result: " + result.toString());
                     String latestTag = getLatestTag(git);
+                    String buildVersion = JaerConstants.getBuildVersion();
                     log.info(String.format("latest tag after fetch is %s", latestTag));
-                    JOptionPane.showMessageDialog(parent, String.format("lastest tag: %s", latestTag), "Latest tag", JOptionPane.INFORMATION_MESSAGE);
+                    String s = String.format("<html>Lastest remote release tag: %s \n\nYour build version info: \n%s", latestTag, buildVersion);
+                    JOptionPane.showMessageDialog(parent, s, "Latest tag", JOptionPane.INFORMATION_MESSAGE);
 
                 } catch (Exception e) {
                     log.warning(e.toString());
@@ -314,8 +333,46 @@ public class JaerUpdater {
     }
 
     private static String getLatestTag(Git git) throws GitAPIException, IOException {
+// open a cloned repository
+//        FileRepositoryBuilder builder = new FileRepositoryBuilder();
+//        Repository repository = builder.setGitDir(new File(".git"))
+//                .readEnvironment()
+//                .findGitDir()
+//                .build();
+//
+//        final RevWalk walk = new RevWalk(repository);
+//        List<Ref> refList = new Git(repository).tagList().call();
+
+//        List<Ref> refList = git.tagList().call();
+//        final RevWalk walk = new RevWalk(git.getRepository());
+//        RevTag rt;
+//        Collections.sort(refList, new Comparator<Ref>() {
+//            public int compare(Ref o1, Ref o2) {
+//                java.util.Date d1 = null;
+//                java.util.Date d2 = null;
+//                try {
+//                    d1 = walk.parseTag(o1.getObjectId()).getTaggerIdent().getWhen();
+//                    d2 = walk.parseTag(o2.getObjectId()).getTaggerIdent().getWhen();
+//
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//                return d1.compareTo(d2);
+//            }
+//        });
+
+//        List<Ref> list = git.tagList().call();
+//        ObjectId commitId = ObjectId.fromString("hash");
+//        Collection<ObjectId> commits = new LinkedList<ObjectId>();
+//        for (Ref tag : list) {
+//            ObjectId object = tag.getObjectId();
+//            if (object.equals(commitId)) {;
+//                commits.add(object);
+//            }
+//        }
         DescribeCommand cmd = git.describe();
-        cmd.setTarget("HEAD");
+//        cmd.setTarget("HEAD");
+        cmd.setTarget("origin/master");
         String version = cmd.call();
         log.info(String.format("latest tag found from git repo: %s", version));
         writeVersionToVerFile(version);
@@ -366,6 +423,10 @@ public class JaerUpdater {
                 new JaerUpdaterFrame().setVisible(true);
             }
         });
+    }
+
+    private static void restart() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     private static class ProgressCounter {

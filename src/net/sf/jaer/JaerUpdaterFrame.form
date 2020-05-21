@@ -96,8 +96,11 @@
     </Component>
     <Component class="javax.swing.JButton" name="antBuildButton">
       <Properties>
-        <Property name="text" type="java.lang.String" value="Build jAER from source"/>
+        <Property name="text" type="java.lang.String" value="Rebuild jAER from source"/>
       </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="antBuildButtonActionPerformed"/>
+      </Events>
     </Component>
     <Component class="javax.swing.JLabel" name="jLabel1">
       <Properties>

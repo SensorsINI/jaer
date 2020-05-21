@@ -325,7 +325,7 @@
         <echo message="&quot;:git describe&quot; output: " append="true" file="${buildversion.outputfile}" />
         <!-- run version command to get revision numnber -->
         <exec executable="git" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" append="true" searchpath="true">
-            <arg line="describe"/>
+            <arg line="describe --tags --abbrev=0"/>
         </exec>
         <echo message="${line.separator}" append="true" file="${buildversion.outputfile}" />
         <concat>

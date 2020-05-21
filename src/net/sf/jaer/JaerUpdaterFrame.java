@@ -87,7 +87,12 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
 
         gitPullButton.setText("Pull git changes");
 
-        antBuildButton.setText("Build jAER from source");
+        antBuildButton.setText("Rebuild jAER from source");
+        antBuildButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                antBuildButtonActionPerformed(evt);
+            }
+        });
 
         jLabel1.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
         jLabel1.setText("jAER updater");
@@ -261,6 +266,10 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
             log.warning(e.toString());
         }
     }//GEN-LAST:event_seeReleasesButtonActionPerformed
+
+    private void antBuildButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_antBuildButtonActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_antBuildButtonActionPerformed
 
     /**
      * @param args the command line arguments

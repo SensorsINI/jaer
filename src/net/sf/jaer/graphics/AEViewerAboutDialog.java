@@ -42,9 +42,7 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
         Properties props = new Properties();
         // when running from webstart  we are not allowed to open a file on the local file system, but we can
         // get a the contents of a resource, which in this case is the echo'ed date stamp written by ant on the last build
-        String dateModified = null;
         ClassLoader cl = this.getClass().getClassLoader(); // get this class'es class loader
-        //        System.out.println("cl="+cl);
         log.info("Loading version info from resource " + VERSION_FILE);
         URL versionURL = cl.getResource(VERSION_FILE); // get a URL to the time stamp file
         log.info("Version URL=" + versionURL);
