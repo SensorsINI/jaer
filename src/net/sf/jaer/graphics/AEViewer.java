@@ -795,7 +795,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            addHelpURLItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
 //            addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING), "AER protocol and cabling guide", "Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
 //            addHelpURLItem(pathToURL("/devices/pcbs/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
-            addHelpItem(new JSeparator());
+//            addHelpItem(new JSeparator());
         } catch (Exception e) {
             log.warning("could register help item: " + e.toString());
         }
