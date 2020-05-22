@@ -20,6 +20,8 @@ You will get the best experience running from lastest bug fixes. To build yourse
 
 On linux installing ant should be very easy. On Windows it is still a pain since you will need to download zip, extract it, put it somewhere, and then set some enviroment variables. But once set up, updating can be done from the Help/Update jAER... menu.
 
+NOTE: jAER is not working with java > 1.8 now. Do not bother with java 9,10,11, etc. yet.  You need Oracle JDK1.8. See User Guide for more information.
+
 ## Support
 
 Please use our GitHub bug tracker to report issues and bugs, or our Google Groups mailing list forum to ask questions.
