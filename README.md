@@ -1,7 +1,7 @@
 # jAER
 Java tools for Address-Event Representation (AER) neuromorphic processing. 
 
-**Permanent links:** http://jaerproject.org or http://jaerproject.org
+**Permanent link:** http://jaerproject.org
 
 [![Build Status](https://travis-ci.org/SensorsINI/jaer.svg?branch=master)](https://travis-ci.org/SensorsINI/jaer)
 
@@ -12,11 +12,15 @@ Founded in 2007.
 
 ## Download
 
-You can find the latest releases at <https://github.com/SensorsINI/jaer/releases>.
+You can find the latest releases at <https://github.com/SensorsINI/jaer/releases>. These releasees do NOT include git information so they will not support self-update. If you want to update from a release, you need to get a new release.
 
-To build yourself, clone the repo and run
+You will get the best experience running from lastest bug fixes. To build yourself, see the user guide for IDE setup. Or you can use [ant](https://ant.apache.org/manual/install.html). Install [JDK 1.8](https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html), clone the jAER repo with git and compile jAER using ant from command line as below, from root of jAER. The default target of build.xml for ant is to build the jaer.jar archive of comppiled classes:
 
-    ant jar
+    ant
+
+On linux installing ant should be very easy. On Windows it is still a pain since you will need to download zip, extract it, put it somewhere, and then set some enviroment variables. But once set up, updating can be done from the Help/Update jAER... menu.
+
+NOTE: jAER is not working with java > 1.8 now. Do not bother with java 9,10,11, etc. yet.  You need Oracle JDK1.8. See User Guide for more information.
 
 ## Support
 
