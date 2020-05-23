@@ -22,6 +22,14 @@ On linux installing ant should be very easy. On Windows it is still a pain since
 
 NOTE: jAER is not working with java > 1.8 now. Do not bother with java 9,10,11, etc. yet.  You need Oracle JDK1.8. See User Guide for more information.
 
+Converting release into working git folder. Once you convert your release, you can use IDE or ant to rebuild jAER.
+
+    cd jaer-dist
+    git init
+    git remote add origin https://github.com/SensorsINI/jaer.git
+    get fetch --depth=1
+    git checkout -t origin/master -f
+
 ## Support
 
 Please use our GitHub bug tracker to report issues and bugs, or our Google Groups mailing list forum to ask questions.
