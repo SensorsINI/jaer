@@ -18,6 +18,7 @@ import java.util.logging.Logger;
 
 import javax.swing.JOptionPane;
 import net.sf.jaer.JaerConstants;
+import net.sf.jaer.JaerUpdaterFrame;
 import org.apache.commons.io.IOUtils;
 
 /**
@@ -53,8 +54,8 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
                 //            JOptionPane.showMessageDialog(parent,"urlContents="+urlContents);
                 BufferedReader in = null;
                 if (urlContents instanceof InputStream) {
-                    StringWriter writer=new StringWriter();
-                    IOUtils.copy((InputStream)urlContents, writer, "UTF-8");
+                    StringWriter writer = new StringWriter();
+                    IOUtils.copy((InputStream) urlContents, writer, "UTF-8");
                     versionLabel.setText(writer.toString());
                 }
             } catch (Exception e) {
@@ -80,6 +81,7 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
         jaerProjectLinkLabel = new javax.swing.JLabel();
         jScrollPane1 = new javax.swing.JScrollPane();
         versionLabel = new javax.swing.JTextArea();
+        updatesButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setIconImage(null);
@@ -118,6 +120,13 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
         versionLabel.setRows(5);
         jScrollPane1.setViewportView(versionLabel);
 
+        updatesButton.setText("Check for updates...");
+        updatesButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                updatesButtonActionPerformed(evt);
+            }
+        });
+
         org.jdesktop.layout.GroupLayout layout = new org.jdesktop.layout.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -127,7 +136,9 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
                     .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
                         .add(77, 77, 77)
                         .add(jaerProjectLinkLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 219, Short.MAX_VALUE)
+                        .add(56, 56, 56)
+                        .add(updatesButton)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 30, Short.MAX_VALUE)
                         .add(okButton))
                     .add(layout.createSequentialGroup()
                         .addContainerGap()
@@ -145,7 +156,8 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(okButton)
-                    .add(jaerProjectLinkLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                    .add(jaerProjectLinkLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(updatesButton))
                 .addContainerGap())
         );
 
@@ -196,6 +208,13 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
             setCursor(Cursor.getDefaultCursor());
 	}//GEN-LAST:event_jaerProjectLinkLabelMouseExited
 
+    private void updatesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updatesButtonActionPerformed
+        dispose();
+        JaerUpdaterFrame frame = new JaerUpdaterFrame();
+        frame.setLocationRelativeTo(this);
+        frame.setVisible(true);
+    }//GEN-LAST:event_updatesButtonActionPerformed
+
     /**
      * @param args the command line arguments
      */
@@ -209,6 +228,7 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JLabel jaerProjectLinkLabel;
     private javax.swing.JButton okButton;
+    private javax.swing.JButton updatesButton;
     private javax.swing.JTextArea versionLabel;
     // End of variables declaration//GEN-END:variables
 

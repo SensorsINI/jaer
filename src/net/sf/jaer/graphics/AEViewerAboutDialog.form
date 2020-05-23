@@ -34,7 +34,9 @@
                   <Group type="102" alignment="1" attributes="0">
                       <EmptySpace min="-2" pref="77" max="-2" attributes="0"/>
                       <Component id="jaerProjectLinkLabel" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace pref="219" max="32767" attributes="0"/>
+                      <EmptySpace min="-2" pref="56" max="-2" attributes="0"/>
+                      <Component id="updatesButton" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace pref="30" max="32767" attributes="0"/>
                       <Component id="okButton" min="-2" max="-2" attributes="0"/>
                   </Group>
                   <Group type="102" alignment="0" attributes="0">
@@ -58,6 +60,7 @@
               <Group type="103" groupAlignment="3" attributes="0">
                   <Component id="okButton" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="jaerProjectLinkLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="updatesButton" alignment="3" min="-2" max="-2" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
           </Group>
@@ -110,5 +113,13 @@
         </Component>
       </SubComponents>
     </Container>
+    <Component class="javax.swing.JButton" name="updatesButton">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Check for updates..."/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="updatesButtonActionPerformed"/>
+      </Events>
+    </Component>
   </SubComponents>
 </Form>
