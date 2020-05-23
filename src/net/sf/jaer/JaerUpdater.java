@@ -18,15 +18,11 @@
  */
 package net.sf.jaer;
 
-import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.classic.spi.LoggerContextListener;
-import ch.qos.logback.core.ConsoleAppender;
 import ch.qos.logback.core.OutputStreamAppender;
 import ch.qos.logback.core.util.StatusPrinter;
-import com.google.common.base.Splitter;
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -34,15 +30,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedList;
+import java.util.Date;
 import java.util.List;
-import java.util.logging.Handler;
 import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
-import java.util.logging.StreamHandler;
 import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
 import javax.swing.UIManager;
@@ -55,19 +45,16 @@ import org.apache.tools.ant.ProjectHelper;
 import org.eclipse.jgit.api.DescribeCommand;
 import org.eclipse.jgit.api.FetchCommand;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.LogCommand;
 import org.eclipse.jgit.api.PullCommand;
 import org.eclipse.jgit.api.PullResult;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.BatchingProgressMonitor;
-import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevTag;
 import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.FetchResult;
-import org.slf4j.LoggerFactory;
-import org.slf4j.event.LoggingEvent;
 
 /**
  * Handles self update git version/tag check, git pull, and ant rebuild, via
@@ -171,7 +158,7 @@ public class JaerUpdater {
                     pm.close();
                     JOptionPane.showMessageDialog(parent, "<html>Build finished. <p> <b>Restart jAER to see changes.</b>", "Buld result", JOptionPane.INFORMATION_MESSAGE);
                 } catch (BuildException e) {
-                    JOptionPane.showMessageDialog(parent, "<html>Build error: <p> "+e.toString(), "Buld failed", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(parent, "<html>Build error: <p> " + e.toString(), "Buld failed", JOptionPane.ERROR_MESSAGE);
                 }
             }).start();
         };
@@ -330,50 +317,52 @@ public class JaerUpdater {
     }
 
     private static String getLatestTag(Git git) throws GitAPIException, IOException {
-// open a cloned repository
-//        FileRepositoryBuilder builder = new FileRepositoryBuilder();
-//        Repository repository = builder.setGitDir(new File(".git"))
-//                .readEnvironment()
-//                .findGitDir()
-//                .build();
-//
-//        final RevWalk walk = new RevWalk(repository);
-//        List<Ref> refList = new Git(repository).tagList().call();
 
+        DescribeCommand describe=git.describe();
+        describe.setTags(true);
+        String latestTagName=describe.call();
+        log.info("latest tag is named {}".format(latestTagName));
+        writeVersionToVerFile(latestTagName);
+        return latestTagName;
+        
+//        RevTag latestTag = null;
 //        List<Ref> refList = git.tagList().call();
-//        final RevWalk walk = new RevWalk(git.getRepository());
-//        RevTag rt;
-//        Collections.sort(refList, new Comparator<Ref>() {
-//            public int compare(Ref o1, Ref o2) {
-//                java.util.Date d1 = null;
-//                java.util.Date d2 = null;
-//                try {
-//                    d1 = walk.parseTag(o1.getObjectId()).getTaggerIdent().getWhen();
-//                    d2 = walk.parseTag(o2.getObjectId()).getTaggerIdent().getWhen();
-//
-//                } catch (IOException e) {
-//                    e.printStackTrace();
+//        
+//        StringBuilder sb = new StringBuilder("getLatestTag log\n");
+//        Date latest = new Date(0);
+//        // https://github.com/centic9/jgit-cookbook/blob/master/src/main/java/org/dstadler/jgit/porcelain/ListTags.java
+//        for (Ref ref : refList) {
+//            sb.append(String.format("tag name=%s objectId=%s\n", ref.getName(), ref.getObjectId().getName()));
+//            try {
+//                LogCommand gitLog = git.log();
+//                Ref peeledRef = git.getRepository().getRefDatabase().peel(ref);
+//                if (peeledRef.getPeeledObjectId() != null) {
+//                    gitLog.add(peeledRef.getPeeledObjectId());
+//                } else {
+//                    gitLog.add(ref.getObjectId());
 //                }
-//                return d1.compareTo(d2);
-//            }
-//        });
-
-//        List<Ref> list = git.tagList().call();
-//        ObjectId commitId = ObjectId.fromString("hash");
-//        Collection<ObjectId> commits = new LinkedList<ObjectId>();
-//        for (Ref tag : list) {
-//            ObjectId object = tag.getObjectId();
-//            if (object.equals(commitId)) {;
-//                commits.add(object);
+//                
+//                Iterable<RevCommit> logs = gitLog.call();
+//                for (RevCommit rev : logs) {
+//                    sb.append("Commit: " + rev + ", name: " + rev.getName() + ", id: " + rev.getId().getName() + "\n");
+//                }
+//
+//                RevWalk walk = new RevWalk(git.getRepository());
+//                RevTag revTag = walk.parseTag(ref.getObjectId());
+//                Date revDate = revTag.getTaggerIdent().getWhen();
+//                sb.append("tag named " + ref.getName() + " is dated " + revDate);
+//                if (revDate.after(latest)) {
+//                    latest = revDate;
+//                    latestTag = revTag;
+//                }
+//            } catch (Exception e) {
+//                log.fine("for " + ref.getName() + " caught " + e.toString());
 //            }
 //        }
-        DescribeCommand cmd = git.describe();
-//        cmd.setTarget("HEAD");
-        cmd.setTarget("origin/master");
-        String version = cmd.call();
-        log.info(String.format("latest tag found from git repo: %s", version));
-        writeVersionToVerFile(version);
-        return version;
+//        String latestTagName = latestTag.getTagName();
+//        log.info("latest tag is named {}, short description is {}".format(latestTagName, latestTag.getShortMessage()));
+//        writeVersionToVerFile(latestTagName);
+//        return latestTagName;
     }
 
     /**
