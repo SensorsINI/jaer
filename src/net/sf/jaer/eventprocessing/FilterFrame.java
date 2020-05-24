@@ -145,11 +145,11 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
         defaultFolder = System.getProperty("user.dir");
         try {
-            File f = new File(defaultFolder);
-            File f2 = new File(f.getParent());
-            File f3 = new File(f2.getParent());
-            defaultFolder = f3 + File.separator + "filterSettings";
+            File f = new File(defaultFolder + File.separator + "filterSettings");
+            defaultFolder = f.getPath();
+            log.info("default filter settings file path is " + defaultFolder);
         } catch (Exception e) {
+            log.warning("could not locate default folder for filter settings relative to starting folder, using startup folder");
         }
         //        log.info("defaultFolder="+defaultFolder);
         updateIntervalField.setText(engFmt.format(filterChain.getUpdateIntervalMs()));
@@ -611,6 +611,11 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             JFileChooser fileChooser = new JFileChooser();
             String lastFilePath = prefs.get("FilterFrame.lastFile", defaultFolder); // TODO seems to be same as for biases, should default to filterSettings folder of jAER
             lastFile = new File(lastFilePath);
+            if (!lastFile.exists()) {
+                log.warning("last file for filter settings " + lastFile + " does not exist, using " + defaultFolder);
+                lastFile = new File(defaultFolder);
+            }
+
             XMLFileFilter fileFilter = new XMLFileFilter();
             fileChooser.addChoosableFileFilter(fileFilter);
             fileChooser.setCurrentDirectory(lastFile); // sets the working directory of the chooser
