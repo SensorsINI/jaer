@@ -633,7 +633,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
             SwingUtilities.invokeAndWait(new Runnable() {
 
                 public void run() {
-                    final String WARNING_MESSAGE = "<html>No bias values or other hardware configuration have been set for " + getChip().getName() + ".<p> To remove this warning and to run your hardware you probably need to load confiruration (e.g. biases) for your hardware.<p>To load existing bias values, open Biases panel and load values using the File/Load settings menu item. <p>Settings are available in the folder <i>biasgenSettings</i><p>For the DVS128 sensor, using one of the <i>DVS128*.xml</i> files.<p>Or, to remove this message, set any bias to a non-zero value.</html>";
+                    final String WARNING_MESSAGE = "<html>No bias values or other hardware configuration have been set for " + getChip().getName() + ".<p> To remove this warning and to run your hardware you probably need to load confiruration (e.g. biases) for your hardware.<p>To load existing bias values, open Hardware Configuration panel and load values using the File/Load settings menu item. <p>Settings are available in the folder <i>biasgenSettings</i><p>Navigate to appropriate folder to load values from the XML file.<p>Or, to remove this message, set any bias to a non-zero value.</html>";
                     final String WARNING_TITLE = "Unitialized configuration for " + getChip().getName();
                     WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(container, true, WARNING_TITLE, WARNING_MESSAGE);
                     d.setVisible(true);
