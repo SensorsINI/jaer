@@ -150,6 +150,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         try {
             File f = new File(defaultFolder + File.separator + "biasgenSettings");
             defaultFolder = f.getPath();
+            log.info("default hardware configuration file path is "+defaultFolder);
         } catch (Exception e) {
         }
 
@@ -329,6 +330,10 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 
         String lastFilePath = prefs.get("BiasgenFrame.lastFile", defaultFolder);
         lastFile = new File(lastFilePath);
+        if(!lastFile.exists()){
+            log.warning("last file for hardware configuration "+lastFile+" does not exist, using "+defaultFolder);
+            lastFile=new File(defaultFolder);
+        }
         chooser.setFileFilter(filter);
         chooser.setCurrentDirectory(lastFile);
         int retValue = chooser.showOpenDialog(this);
