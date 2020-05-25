@@ -27,7 +27,7 @@ Converting release into working git folder. Once you convert your release, you c
     cd jaer-dist
     git init
     git remote add origin https://github.com/SensorsINI/jaer.git
-    get fetch --depth=1
+    git fetch --depth=1
     git checkout -t origin/master -f
 
 ## Support
