@@ -30,8 +30,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Date;
-import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
@@ -42,19 +41,19 @@ import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildListener;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.ProjectHelper;
+import org.eclipse.jgit.api.CheckoutCommand;
+import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.DescribeCommand;
 import org.eclipse.jgit.api.FetchCommand;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.LogCommand;
+import org.eclipse.jgit.api.InitCommand;
 import org.eclipse.jgit.api.PullCommand;
 import org.eclipse.jgit.api.PullResult;
+import org.eclipse.jgit.api.RemoteAddCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.BatchingProgressMonitor;
-import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevTag;
-import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.FetchResult;
+import org.eclipse.jgit.transport.URIish;
 
 /**
  * Handles self update git version/tag check, git pull, and ant rebuild, via
@@ -67,6 +66,19 @@ public class JaerUpdater {
 
     private static Logger log = Logger.getLogger("JaerUpdater");
     private static Preferences prefs = Preferences.userNodeForPackage(JaerUpdater.class);
+
+    public static void throwIoExceptionIfNoGit() throws IOException {
+        File f = new File(".git");
+        if (!f.exists()) {
+            log.warning("folder .git not found");
+            throw new IOException("folder .git does not exist at " + f.getAbsolutePath());
+        }
+        try (Git git = Git.open(new File("."))) {
+            log.info("successfully opened Git " + git.toString());
+        } catch (Exception e) {
+            throw new IOException(e.toString());
+        }
+    }
 
     /**
      * Action listener that runs jAER ant build
@@ -175,8 +187,10 @@ public class JaerUpdater {
      *
      * @param parent display progress dialog over this component
      * @return the listener
+     * @throws IOException if .git does not exist
      */
-    public static ActionListener gitPullActionListener(Component parent) {
+    public static ActionListener gitPullActionListener(Component parent) throws IOException {
+        throwIoExceptionIfNoGit();
         return (ActionEvent ae) -> {
             new Thread(() -> {
 
@@ -294,7 +308,8 @@ public class JaerUpdater {
         };
     }
 
-    public static ActionListener gitCFetchChangesActionListener(Component parent) {
+    public static ActionListener gitCFetchChangesActionListener(Component parent) throws IOException {
+        throwIoExceptionIfNoGit();
         return (ae) -> {
             new Thread(() -> {
                 try (Git git = Git.open(new File("."))) {
@@ -316,53 +331,65 @@ public class JaerUpdater {
         };
     }
 
+    /**
+     * Returns latest tag (i.e. release, e.g. 1.9.0)
+     *
+     * @param git
+     * @return
+     * @throws GitAPIException
+     * @throws IOException
+     */
     private static String getLatestTag(Git git) throws GitAPIException, IOException {
 
-        DescribeCommand describe=git.describe();
-        describe.setTags(true);
-        String latestTagName=describe.call();
+        DescribeCommand describe = git.describe();
+        describe.setTags(true); // must use this to get annotations that correspond to release tags, otherwise we only get old tags for some reason
+        String latestTagName = describe.call();
         log.info("latest tag is named {}".format(latestTagName));
         writeVersionToVerFile(latestTagName);
         return latestTagName;
-        
-//        RevTag latestTag = null;
-//        List<Ref> refList = git.tagList().call();
-//        
-//        StringBuilder sb = new StringBuilder("getLatestTag log\n");
-//        Date latest = new Date(0);
-//        // https://github.com/centic9/jgit-cookbook/blob/master/src/main/java/org/dstadler/jgit/porcelain/ListTags.java
-//        for (Ref ref : refList) {
-//            sb.append(String.format("tag name=%s objectId=%s\n", ref.getName(), ref.getObjectId().getName()));
-//            try {
-//                LogCommand gitLog = git.log();
-//                Ref peeledRef = git.getRepository().getRefDatabase().peel(ref);
-//                if (peeledRef.getPeeledObjectId() != null) {
-//                    gitLog.add(peeledRef.getPeeledObjectId());
-//                } else {
-//                    gitLog.add(ref.getObjectId());
-//                }
-//                
-//                Iterable<RevCommit> logs = gitLog.call();
-//                for (RevCommit rev : logs) {
-//                    sb.append("Commit: " + rev + ", name: " + rev.getName() + ", id: " + rev.getId().getName() + "\n");
-//                }
-//
-//                RevWalk walk = new RevWalk(git.getRepository());
-//                RevTag revTag = walk.parseTag(ref.getObjectId());
-//                Date revDate = revTag.getTaggerIdent().getWhen();
-//                sb.append("tag named " + ref.getName() + " is dated " + revDate);
-//                if (revDate.after(latest)) {
-//                    latest = revDate;
-//                    latestTag = revTag;
-//                }
-//            } catch (Exception e) {
-//                log.fine("for " + ref.getName() + " caught " + e.toString());
-//            }
-//        }
-//        String latestTagName = latestTag.getTagName();
-//        log.info("latest tag is named {}, short description is {}".format(latestTagName, latestTag.getShortMessage()));
-//        writeVersionToVerFile(latestTagName);
-//        return latestTagName;
+    }
+
+    public static ActionListener initReleaseForGitActionListener(JaerUpdaterFrame parent) throws IOException {
+        return (ActionEvent ae) -> {
+            new Thread(() -> {
+                try {
+                    throwIoExceptionIfNoGit();
+                    log.warning("git exists, will not try to initialize it");
+                    JOptionPane.showMessageDialog(parent, ".git folder already exists and can be opened, will not do anything", "Git already exists", JOptionPane.ERROR_MESSAGE);
+                    parent.setGitButtonsEnabled(true);
+                    return;
+                } catch (IOException ex) {
+                    log.info("git not found, proceeeding");
+                }
+                log.info("initializing git");
+                InitCommand gitInitCmd = Git.init();
+                try (Git git = gitInitCmd.call()) {
+                    RemoteAddCommand remoteAddCommand = git.remoteAdd();
+                    log.info("add remote origin");
+                    remoteAddCommand.setName("origin");
+                    remoteAddCommand.setUri(new URIish(JaerConstants.JAER_HOME));
+                    remoteAddCommand.call();
+                    log.info("fetching repöository");
+                    FetchCommand fetchCmd = git.fetch();
+                    fetchCmd.setRemote("origin");
+                    fetchCmd.setProgressMonitor(new GitProgressMonitor(parent, "Git fetch"));
+                    fetchCmd.call();
+                    log.info("checking out origin/master branch");
+                    CheckoutCommand checkoutCmd = git.checkout(); //https://stackoverflow.com/questions/12927163/jgit-checkout-a-remote-branch
+                    checkoutCmd.setCreateBranch(true);
+                    checkoutCmd.setForced(true); // don't overwrite local files unless they are different, but may overwrite some locally modified biases, scripts, or filter settings, if they were modified.
+                    checkoutCmd.setName("master");
+                    checkoutCmd.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.NOTRACK);
+                    checkoutCmd.setForceRefUpdate(true);
+                    checkoutCmd.setStartPoint("origin/master");
+                    checkoutCmd.setProgressMonitor(new GitProgressMonitor(parent, "Git checkout"));
+                    checkoutCmd.call();
+                } catch (Exception e) {
+                    log.warning(e.toString());
+                    JOptionPane.showMessageDialog(parent, e.toString(), "Initializing git failed", JOptionPane.ERROR_MESSAGE);
+                }
+            }).start();
+        };
     }
 
     /**
@@ -408,6 +435,46 @@ public class JaerUpdater {
 
         void saveProgress() {
             prefs.putInt("buildTotalProgressCount." + name, progress);
+        }
+    }
+
+    private static class GitProgressMonitor implements org.eclipse.jgit.lib.ProgressMonitor {
+
+        javax.swing.ProgressMonitor pm;
+
+        public GitProgressMonitor(Component parent, String name) {
+            this.pm = new javax.swing.ProgressMonitor(parent, name,
+                    name + " starting", 0, 100);
+        }
+
+        @Override
+        public void start(int totalTasks) {
+            pm.setNote("Starting work on " + totalTasks + " tasks");
+            pm.setMaximum(totalTasks);
+        }
+
+        @Override
+        public void beginTask(String title, int totalWork) {
+            pm.setNote("Start " + title + ": " + totalWork);
+            pm.setMaximum(totalWork);
+        }
+
+        @Override
+        public void update(int completed) {
+            pm.setNote(completed + "-");
+            pm.setProgress(completed);
+        }
+
+        @Override
+        public void endTask() {
+            pm.setNote("Done");
+            pm.close();
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return false;
+
         }
     }
 

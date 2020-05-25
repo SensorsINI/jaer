@@ -20,9 +20,11 @@ package net.sf.jaer;
 
 import java.awt.Cursor;
 import java.awt.Desktop;
+import java.io.IOException;
 import java.net.URI;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 import net.sf.jaer.util.WindowSaver.DontRestore;
 
 /**
@@ -35,15 +37,39 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
     private static Logger log = Logger.getLogger("JaerUpdater");
 
     /**
-     * Creates new form JaerUpdaterFrame
+     * Creates new form JaerUpdaterFrame. Make sure to run this from swing
+     * thread. See main() method.
      */
     public JaerUpdaterFrame() {
         initComponents();
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE)).getImage());
-        gitPullButton.addActionListener(JaerUpdater.gitPullActionListener(this));
-        antBuildButton.addActionListener(JaerUpdater.buildActionListener(this));
-        statusButton.addActionListener(JaerUpdater.gitCFetchChangesActionListener(this));
+        try {
+            setGitButtonsEnabled(false);
+//            initGitButton.setEnabled(false);
+            gitPullButton.addActionListener(JaerUpdater.gitPullActionListener(this));
+            antBuildButton.addActionListener(JaerUpdater.buildActionListener(this));
+            statusButton.addActionListener(JaerUpdater.gitCFetchChangesActionListener(this));
+            setGitButtonsEnabled(true);
+        } catch (IOException e) {
+            log.warning(e.toString());
+            JOptionPane.showMessageDialog(this.getParent(), "<html>.git folder not found or is corrupted; you must initialize git before any update operations."
+                    + "<p>It is expected if you are running jAER from a release, which does not include git information."
+                    + "<p>Click the jaerproject.org link in the Updater dialog to find out how to initialize your release to a working copy.", "git not set up", JOptionPane.WARNING_MESSAGE);
+//            try {
+//                initGitButton.setEnabled(true);
+//                initGitButton.addActionListener(JaerUpdater.initReleaseForGitActionListener(this));
+//            } catch (IOException ex) {
+//                Logger.getLogger(JaerUpdaterFrame.class.getName()).log(Level.SEVERE, null, ex);
+//            }
+        }
         pack();
+    }
+
+    public void setGitButtonsEnabled(boolean yes) {
+        gitPullButton.setEnabled(yes);
+        antBuildButton.setEnabled(yes);
+        statusButton.setEnabled(yes);
+//        initGitButton.setEnabled(!yes);
     }
 
     private void showInBrowser(String url) {
@@ -181,11 +207,6 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
         jScrollPane3.setViewportView(jTextPane2);
 
         antBuildButton.setText("Rebuild jAER from source");
-        antBuildButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                antBuildButtonActionPerformed(evt);
-            }
-        });
 
         gitPullButton.setText("Pull git changes");
 
@@ -202,7 +223,7 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 416, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 24, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 50, Short.MAX_VALUE)
                         .addComponent(antBuildButton))
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
@@ -211,12 +232,11 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
                         .addGap(18, 18, 18)
                         .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(statusButton, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(gitPullButton, javax.swing.GroupLayout.Alignment.TRAILING))))
+                            .addComponent(gitPullButton, javax.swing.GroupLayout.Alignment.TRAILING)))
+                    .addGroup(jPanel2Layout.createSequentialGroup()
+                        .addComponent(jScrollPane5, javax.swing.GroupLayout.PREFERRED_SIZE, 507, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
-            .addGroup(jPanel2Layout.createSequentialGroup()
-                .addGap(43, 43, 43)
-                .addComponent(jScrollPane5, javax.swing.GroupLayout.PREFERRED_SIZE, 507, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -234,7 +254,7 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(antBuildButton))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(40, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -251,10 +271,11 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
                         .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 390, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
             .addGroup(layout.createSequentialGroup()
+                .addGap(79, 79, 79)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(closeButton)
                     .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(0, 44, Short.MAX_VALUE))
+                .addGap(0, 0, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -264,11 +285,11 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
                     .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 37, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 22, Short.MAX_VALUE)
                 .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(18, 18, 18)
                 .addComponent(closeButton)
-                .addContainerGap(29, Short.MAX_VALUE))
+                .addContainerGap(15, Short.MAX_VALUE))
         );
 
         pack();
@@ -313,10 +334,6 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
             log.warning(e.toString());
         }
     }//GEN-LAST:event_seeReleasesButtonActionPerformed
-
-    private void antBuildButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_antBuildButtonActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_antBuildButtonActionPerformed
 
     /**
      * @param args the command line arguments
