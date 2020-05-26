@@ -326,6 +326,7 @@
         <Component class="javax.swing.JButton" name="initGitButton">
           <Properties>
             <Property name="text" type="java.lang.String" value="Initizalize release for Git"/>
+            <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Will clone jAER to a new temporary folder, and then copy missing files &lt;br&gt;&#xa;(including the .git folder) to your release folder. &#xa;&lt;p&gt;After this, you can compile an updated dist/jAER.jar that has most recent code."/>
           </Properties>
         </Component>
       </SubComponents>

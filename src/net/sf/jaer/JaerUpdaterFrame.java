@@ -63,6 +63,14 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
             }
         }
         pack();
+                
+        //debug only
+//        initGitButton.setEnabled(true);
+//        try {
+//            initGitButton.addActionListener(JaerUpdater.initReleaseForGitActionListener(this));
+//        } catch (IOException ex) {
+//            Logger.getLogger(JaerUpdaterFrame.class.getName()).log(Level.SEVERE, null, ex);
+//        }
 
     }
 
@@ -217,6 +225,7 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
         jScrollPane5.setViewportView(jTextPane5);
 
         initGitButton.setText("Initizalize release for Git");
+        initGitButton.setToolTipText("<html>Will clone jAER to a new temporary folder, and then copy missing files <br>\n(including the .git folder) to your release folder. \n<p>After this, you can compile an updated dist/jAER.jar that has most recent code.");
 
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);

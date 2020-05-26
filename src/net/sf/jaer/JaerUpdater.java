@@ -24,8 +24,12 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.OutputStreamAppender;
 import ch.qos.logback.core.util.StatusPrinter;
 import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileWriter;
@@ -39,11 +43,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.UIManager;
 import org.apache.commons.text.WordUtils;
 import org.apache.tools.ant.BuildEvent;
@@ -354,6 +361,7 @@ public class JaerUpdater {
     }
 
     public static ActionListener initReleaseForGitActionListener(JaerUpdaterFrame parent) throws IOException {
+        UIManager.put("ProgressMonitor.progressText", "Git Release Initialization Progress");
         return (ActionEvent ae) -> {
             new Thread(() -> {
                 try {
@@ -366,42 +374,65 @@ public class JaerUpdater {
                     log.info("git not found, proceeeding");
                 }
                 final Path source = Paths.get("jaer-clone");
+                // debug, copy to new folder, not here at root level
+//                final Path target = Paths.get("jaer-clone-copy");   // we will create .git and also copy all non-existing files to starting folder
                 final Path target = Paths.get(".");   // we will create .git and also copy all non-existing files to starting folder
-                try {
-                    log.info("cloning");
-                    CloneCommand cloneCmd = Git.cloneRepository();
-                    cloneCmd.setURI(JaerConstants.JAER_HOME);
-                    cloneCmd.setDirectory(source.toFile());
-                    cloneCmd.setProgressMonitor(new GitProgressMonitor(parent, "cloning " + JaerConstants.JAER_HOME));
-                    cloneCmd.call();
+                log.info("cloning");
+                parent.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));  
+                CloneCommand cloneCmd = Git.cloneRepository();
+                cloneCmd.setURI(JaerConstants.JAER_HOME);
+                cloneCmd.setDirectory(source.toFile());
+                GitProgressMonitor gpm=new GitProgressMonitor(parent, "cloning " + JaerConstants.JAER_HOME);
+                cloneCmd.setProgressMonitor(gpm);
+                try (Git git = cloneCmd.call()) {
+                    log.info("cloned " + git.toString());
                 } catch (Exception e) {
                     log.warning(e.toString());
                     JOptionPane.showMessageDialog(parent, e.toString(), "Cloning failed", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                if(gpm.isCancelled()){
+                    return;
                 }
 
-                try {
-                    log.info("copying non-existing files to release");
-                    // https://docs.oracle.com/javase/8/docs/api/java/nio/file/FileVisitor.html
-                    int estimatedCloneTotalFiles = prefs.getInt("JaerUpdaterFrame.estimatedCloneTotalFiles", 10000);
-                    javax.swing.ProgressMonitor pm = new javax.swing.ProgressMonitor(parent, "moving clone", source.toString(), 0, estimatedCloneTotalFiles);
-                    // copy new files/folder to targets
+                // copy new files/folder to targets
+                log.info("copying non-existing files to release");
+                // https://docs.oracle.com/javase/8/docs/api/java/nio/file/FileVisitor.html
+                int estimatedCloneTotalFiles = prefs.getInt("JaerUpdaterFrame.estimatedCloneTotalFiles", 10000);
+                javax.swing.ProgressMonitor pm = new javax.swing.ProgressMonitor(parent, "moving clone", source.toString(), 0, estimatedCloneTotalFiles);
+                Mover mover = new Mover(source, target, pm);
+                SwingWorker fileMover = new SwingWorker() {
+                    @Override
+                    protected Object doInBackground() throws Exception {
+                        try {
+                            Files.walkFileTree(source, mover);
+                            prefs.putInt("JaerUpdaterFrame.estimatedCloneTotalFiles", mover.fileCount);
+                            final String msg = String.format("moved %d files from %s to %s, skipped %d files", mover.filesAdded.size(), source, target, mover.filesSkipped.size());
+                            log.info(msg);
+                            JOptionPane.showMessageDialog(parent, msg, "Copying git clone done", JOptionPane.INFORMATION_MESSAGE);
+                            pm.close();
+                        } catch (Exception e) {
+                            log.warning(e.toString());
+                            JOptionPane.showMessageDialog(parent, e.toString(), "Copying git clone failed", JOptionPane.ERROR_MESSAGE);
 
-                    Mover mover = new Mover(source, target, pm);
-                    Files.walkFileTree(source, mover);
-                    prefs.putInt("JaerUpdaterFrame.estimatedCloneTotalFiles", mover.fileCount);
-                    final String msg = String.format("moved %d files from %s to %s, skipped %d files", mover.filesAdded.size(), source, target, mover.filesSkipped.size());
-                    log.info(msg);
-                    JOptionPane.showMessageDialog(parent, msg, "Copying git clone done", JOptionPane.INFORMATION_MESSAGE);
-                    pm.close();
-                } catch (Exception e) {
-                    log.warning(e.toString());
-                    JOptionPane.showMessageDialog(parent, e.toString(), "Copying git clone failed", JOptionPane.ERROR_MESSAGE);
-                }
+                        }
+                        return null;
+                    }
+
+                    @Override
+                    protected void done() {
+                        pm.close();
+                    }
+                };
+                fileMover.addPropertyChangeListener(mover);
+                fileMover.execute();
+                parent.setCursor(null);
+
             }).start();
         };
     }
 
-    static private class Mover extends SimpleFileVisitor<Path> {
+    static private class Mover extends SimpleFileVisitor<Path> implements PropertyChangeListener {
 
         Path source, target;
         int folderCount = 0, fileCount = 0;
@@ -412,14 +443,15 @@ public class JaerUpdater {
             this.source = source;
             this.target = target;
             this.pm = pm;
+            pm.setMillisToDecideToPopup(100);
         }
 
         @Override
         public FileVisitResult postVisitDirectory(Path dir, IOException ioe) throws IOException {
-            try{
+            try {
                 Files.delete(dir);
-            }catch(IOException e){
-                log.warning("could not delete folder "+dir+": caught "+e.toString());
+            } catch (IOException e) {
+                log.warning("could not delete folder " + dir + ": caught " + e.toString());
             }
             return FileVisitResult.CONTINUE;
         }
@@ -462,26 +494,44 @@ public class JaerUpdater {
             fileCount++;
             final Path targetFile = target.resolve(source.relativize(file));
             if (Files.exists(targetFile, LinkOption.NOFOLLOW_LINKS)) {
-                pm.setNote("skipping existing file " + file);
-                filesSkipped.add(file);
-                try{
-                    Files.delete(file);
-                }catch(IOException e){
-                    log.warning("could not delete source file "+file+" which already exists as target file "+targetFile);
+                FileTime srcTime = Files.getLastModifiedTime(file, LinkOption.NOFOLLOW_LINKS);
+                FileTime targetTime = Files.getLastModifiedTime(targetFile, LinkOption.NOFOLLOW_LINKS);
+                if (srcTime.compareTo(targetTime) < 0) {
+                    log.info(String.format("source file %s dated %s is older than target file %s dated %s, skipping it", file, srcTime.toString(), targetFile, targetTime.toString()));
+                    filesSkipped.add(file);
+                    pm.setProgress(fileCount);
+                    return FileVisitResult.CONTINUE;
                 }
-                pm.setProgress(fileCount);
-                return FileVisitResult.CONTINUE;
+                try {
+                    Files.delete(targetFile);
+                } catch (IOException e) {
+                    log.warning("could not delete target file that is older " + targetFile);
+                    return FileVisitResult.CONTINUE;
+                }
             }
             try {
                 filesAdded.add(file);
                 Files.copy(file, targetFile);
-                Files.delete(file);
                 pm.setProgress(fileCount);
-                return FileVisitResult.CONTINUE;
             } catch (IOException ex) {
                 log.warning("error copying/deleting file " + file + ": caught " + ex.toString());
-            } finally {
-                return FileVisitResult.CONTINUE;
+            }
+            try {
+                Files.delete(file);
+            } catch (IOException e) {
+                log.warning("could not delete source file " + file);
+            }
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public void propertyChange(PropertyChangeEvent evt) {
+            if ("progress" == evt.getPropertyName()) {
+                int progress = (Integer) evt.getNewValue();
+                pm.setProgress(progress);
+                String message
+                        = String.format("Completed %d%%.\n", progress);
+                pm.setNote(message);
             }
         }
     }
@@ -542,31 +592,42 @@ public class JaerUpdater {
 
         ProgressCounter pc;
         javax.swing.ProgressMonitor pm;
+        Component parent;
+        String name;
+        String taskTitle = null;
 
         public GitProgressMonitor(Component parent, String name) {
-            pc = new ProgressCounter(name);
-            this.pm = new javax.swing.ProgressMonitor(parent, name,
-                    "Starting " + name, 0, pc.getEstimatedTotal());
-            pm.setMillisToDecideToPopup(100);
+            this.parent = parent;
+            this.name = name;
 
         }
 
         @Override
         public void start(int totalTasks) {
+            this.pc = new ProgressCounter(name);
+            this.pm = new javax.swing.ProgressMonitor(parent, name,
+                    "Starting " + name, 0, pc.getEstimatedTotal());
+            pm.setMillisToDecideToPopup(100);
+            pm.setMillisToPopup(100);
             pm.setNote("Starting work on " + totalTasks + " tasks");
             pm.setMaximum(totalTasks);
         }
 
         @Override
         public void beginTask(String title, int totalWork) {
-            pm.setNote("Start " + title + ": " + totalWork);
+            this.pm = new javax.swing.ProgressMonitor(parent, name + ": " + title,
+                    "Starting " + title, 0, pc.getEstimatedTotal());
+            this.taskTitle = title;
+            this.pc = new ProgressCounter(taskTitle);
+            pm.setMillisToDecideToPopup(100);
+            pm.setNote("Starting task " + title + " with " + totalWork + " tasks");
             pm.setMaximum(totalWork);
         }
 
         @Override
         public void update(int completed) {
             pm.setProgress(pc.inc(completed));
-            pm.setNote("completed " + pc.progress + " / " + pm.getMaximum());
+            pm.setNote("completed " + pc.progress + " / " + pm.getMaximum() + " on " + taskTitle);
         }
 
         @Override
@@ -578,7 +639,7 @@ public class JaerUpdater {
 
         @Override
         public boolean isCancelled() {
-            return false;
+            return pm.isCanceled();
 
         }
     }
