@@ -45,7 +45,7 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE)).getImage());
         try {
             setGitButtonsEnabled(false);
-//            initGitButton.setEnabled(false);
+            initGitButton.setEnabled(false);
             gitPullButton.addActionListener(JaerUpdater.gitPullActionListener(this));
             antBuildButton.addActionListener(JaerUpdater.buildActionListener(this));
             statusButton.addActionListener(JaerUpdater.gitCFetchChangesActionListener(this));
@@ -55,21 +55,22 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
             JOptionPane.showMessageDialog(this.getParent(), "<html>.git folder not found or is corrupted; you must initialize git before any update operations."
                     + "<p>It is expected if you are running jAER from a release, which does not include git information."
                     + "<p>Click the jaerproject.org link in the Updater dialog to find out how to initialize your release to a working copy.", "git not set up", JOptionPane.WARNING_MESSAGE);
-//            try {
-//                initGitButton.setEnabled(true);
-//                initGitButton.addActionListener(JaerUpdater.initReleaseForGitActionListener(this));
-//            } catch (IOException ex) {
-//                Logger.getLogger(JaerUpdaterFrame.class.getName()).log(Level.SEVERE, null, ex);
-//            }
+            try {
+                initGitButton.setEnabled(true);
+                initGitButton.addActionListener(JaerUpdater.initReleaseForGitActionListener(this));
+            } catch (IOException ex) {
+                Logger.getLogger(JaerUpdaterFrame.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
         pack();
+
     }
 
     public void setGitButtonsEnabled(boolean yes) {
         gitPullButton.setEnabled(yes);
         antBuildButton.setEnabled(yes);
         statusButton.setEnabled(yes);
-//        initGitButton.setEnabled(!yes);
+        initGitButton.setEnabled(!yes);
     }
 
     private void showInBrowser(String url) {
@@ -113,6 +114,7 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
         gitPullButton = new javax.swing.JButton();
         jScrollPane5 = new javax.swing.JScrollPane();
         jTextPane5 = new javax.swing.JTextPane();
+        initGitButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("jAER updater");
@@ -214,6 +216,8 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
         jTextPane5.setText("You must be running jAER from a git clone for anything here to work.");
         jScrollPane5.setViewportView(jTextPane5);
 
+        initGitButton.setText("Initizalize release for Git");
+
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
@@ -223,7 +227,7 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 416, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 50, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(antBuildButton))
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
@@ -235,13 +239,17 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
                             .addComponent(gitPullButton, javax.swing.GroupLayout.Alignment.TRAILING)))
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addComponent(jScrollPane5, javax.swing.GroupLayout.PREFERRED_SIZE, 507, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(0, 0, Short.MAX_VALUE)))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(initGitButton)
+                        .addGap(8, 8, 8)))
                 .addContainerGap())
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel2Layout.createSequentialGroup()
-                .addComponent(jScrollPane5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(jScrollPane5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(initGitButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(statusButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -374,6 +382,7 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
     private javax.swing.JButton antBuildButton;
     private javax.swing.JButton closeButton;
     private javax.swing.JButton gitPullButton;
+    private javax.swing.JButton initGitButton;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;

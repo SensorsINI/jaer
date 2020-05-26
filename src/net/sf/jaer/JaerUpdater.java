@@ -30,7 +30,17 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.logging.Level;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.FileVisitOption;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
@@ -41,19 +51,15 @@ import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildListener;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.ProjectHelper;
-import org.eclipse.jgit.api.CheckoutCommand;
-import org.eclipse.jgit.api.CreateBranchCommand;
+import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.DescribeCommand;
 import org.eclipse.jgit.api.FetchCommand;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.InitCommand;
 import org.eclipse.jgit.api.PullCommand;
 import org.eclipse.jgit.api.PullResult;
-import org.eclipse.jgit.api.RemoteAddCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.BatchingProgressMonitor;
 import org.eclipse.jgit.transport.FetchResult;
-import org.eclipse.jgit.transport.URIish;
 
 /**
  * Handles self update git version/tag check, git pull, and ant rebuild, via
@@ -130,7 +136,6 @@ public class JaerUpdater {
                         String s = String.format("Target %s finished: description ", be.getTarget().getName(), be.getTarget().getDescription());
                         pm.setNote(wrap(s));
                         pm.setProgress(progressCounter.inc(100));
-                        progressCounter.saveProgress();
                     }
 
                     @Override
@@ -145,7 +150,6 @@ public class JaerUpdater {
                         String s = String.format("Task %s finished, type %s", be.getTask().getTaskName(), be.getTask().getTaskType());
                         pm.setNote(wrap(s));
                         pm.setProgress(progressCounter.inc(10));
-                        progressCounter.saveProgress();
                     }
 
                     @Override
@@ -361,35 +365,125 @@ public class JaerUpdater {
                 } catch (IOException ex) {
                     log.info("git not found, proceeeding");
                 }
-                log.info("initializing git");
-                InitCommand gitInitCmd = Git.init();
-                try (Git git = gitInitCmd.call()) {
-                    RemoteAddCommand remoteAddCommand = git.remoteAdd();
-                    log.info("add remote origin");
-                    remoteAddCommand.setName("origin");
-                    remoteAddCommand.setUri(new URIish(JaerConstants.JAER_HOME));
-                    remoteAddCommand.call();
-                    log.info("fetching repöository");
-                    FetchCommand fetchCmd = git.fetch();
-                    fetchCmd.setRemote("origin");
-                    fetchCmd.setProgressMonitor(new GitProgressMonitor(parent, "Git fetch"));
-                    fetchCmd.call();
-                    log.info("checking out origin/master branch");
-                    CheckoutCommand checkoutCmd = git.checkout(); //https://stackoverflow.com/questions/12927163/jgit-checkout-a-remote-branch
-                    checkoutCmd.setCreateBranch(true);
-                    checkoutCmd.setForced(true); // don't overwrite local files unless they are different, but may overwrite some locally modified biases, scripts, or filter settings, if they were modified.
-                    checkoutCmd.setName("master");
-                    checkoutCmd.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.NOTRACK);
-                    checkoutCmd.setForceRefUpdate(true);
-                    checkoutCmd.setStartPoint("origin/master");
-                    checkoutCmd.setProgressMonitor(new GitProgressMonitor(parent, "Git checkout"));
-                    checkoutCmd.call();
+                final Path source = Paths.get("jaer-clone");
+                final Path target = Paths.get(".");   // we will create .git and also copy all non-existing files to starting folder
+                try {
+                    log.info("cloning");
+                    CloneCommand cloneCmd = Git.cloneRepository();
+                    cloneCmd.setURI(JaerConstants.JAER_HOME);
+                    cloneCmd.setDirectory(source.toFile());
+                    cloneCmd.setProgressMonitor(new GitProgressMonitor(parent, "cloning " + JaerConstants.JAER_HOME));
+                    cloneCmd.call();
                 } catch (Exception e) {
                     log.warning(e.toString());
-                    JOptionPane.showMessageDialog(parent, e.toString(), "Initializing git failed", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(parent, e.toString(), "Cloning failed", JOptionPane.ERROR_MESSAGE);
+                }
+
+                try {
+                    log.info("copying non-existing files to release");
+                    // https://docs.oracle.com/javase/8/docs/api/java/nio/file/FileVisitor.html
+                    int estimatedCloneTotalFiles = prefs.getInt("JaerUpdaterFrame.estimatedCloneTotalFiles", 10000);
+                    javax.swing.ProgressMonitor pm = new javax.swing.ProgressMonitor(parent, "moving clone", source.toString(), 0, estimatedCloneTotalFiles);
+                    // copy new files/folder to targets
+
+                    Mover mover = new Mover(source, target, pm);
+                    Files.walkFileTree(source, mover);
+                    prefs.putInt("JaerUpdaterFrame.estimatedCloneTotalFiles", mover.fileCount);
+                    final String msg = String.format("moved %d files from %s to %s, skipped %d files", mover.filesAdded.size(), source, target, mover.filesSkipped.size());
+                    log.info(msg);
+                    JOptionPane.showMessageDialog(parent, msg, "Copying git clone done", JOptionPane.INFORMATION_MESSAGE);
+                    pm.close();
+                } catch (Exception e) {
+                    log.warning(e.toString());
+                    JOptionPane.showMessageDialog(parent, e.toString(), "Copying git clone failed", JOptionPane.ERROR_MESSAGE);
                 }
             }).start();
         };
+    }
+
+    static private class Mover extends SimpleFileVisitor<Path> {
+
+        Path source, target;
+        int folderCount = 0, fileCount = 0;
+        ArrayList<Path> filesAdded = new ArrayList(1000), filesSkipped = new ArrayList(1000);
+        javax.swing.ProgressMonitor pm;
+
+        Mover(Path source, Path target, javax.swing.ProgressMonitor pm) {
+            this.source = source;
+            this.target = target;
+            this.pm = pm;
+        }
+
+        @Override
+        public FileVisitResult postVisitDirectory(Path dir, IOException ioe) throws IOException {
+            try{
+                Files.delete(dir);
+            }catch(IOException e){
+                log.warning("could not delete folder "+dir+": caught "+e.toString());
+            }
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFileFailed(Path t, IOException ioe) throws IOException {
+            log.warning(String.format("failed to copy %s: caught %s", t.toAbsolutePath(), ioe.toString()));
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
+                throws IOException {
+            if (pm.isCanceled()) {
+                pm.close();
+                return FileVisitResult.TERMINATE;
+            }
+            folderCount++;
+            Path targetdir = target.resolve(source.relativize(dir));
+            if (Files.exists(targetdir, LinkOption.NOFOLLOW_LINKS)) {
+                pm.setNote("skipping existing folder " + dir);
+            } else {
+                try {
+                    pm.setNote("making folder " + targetdir);
+                    Files.copy(dir, targetdir);
+                } catch (FileAlreadyExistsException e) {
+                    log.warning("got " + e.toString());
+                }
+            }
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+                throws IOException {
+            if (pm.isCanceled()) {
+                pm.close();
+                return FileVisitResult.TERMINATE;
+            }
+            fileCount++;
+            final Path targetFile = target.resolve(source.relativize(file));
+            if (Files.exists(targetFile, LinkOption.NOFOLLOW_LINKS)) {
+                pm.setNote("skipping existing file " + file);
+                filesSkipped.add(file);
+                try{
+                    Files.delete(file);
+                }catch(IOException e){
+                    log.warning("could not delete source file "+file+" which already exists as target file "+targetFile);
+                }
+                pm.setProgress(fileCount);
+                return FileVisitResult.CONTINUE;
+            }
+            try {
+                filesAdded.add(file);
+                Files.copy(file, targetFile);
+                Files.delete(file);
+                pm.setProgress(fileCount);
+                return FileVisitResult.CONTINUE;
+            } catch (IOException ex) {
+                log.warning("error copying/deleting file " + file + ": caught " + ex.toString());
+            } finally {
+                return FileVisitResult.CONTINUE;
+            }
+        }
     }
 
     /**
@@ -434,17 +528,27 @@ public class JaerUpdater {
         }
 
         void saveProgress() {
-            prefs.putInt("buildTotalProgressCount." + name, progress);
+            prefs.putInt("totalProgressCount." + name, progress);
         }
+
+        @Override
+        public String toString() {
+            return "ProgressCounter{" + "name=" + name + ", progress=" + progress + ", estimatedTotal=" + getEstimatedTotal() + '}';
+        }
+
     }
 
     private static class GitProgressMonitor implements org.eclipse.jgit.lib.ProgressMonitor {
 
+        ProgressCounter pc;
         javax.swing.ProgressMonitor pm;
 
         public GitProgressMonitor(Component parent, String name) {
+            pc = new ProgressCounter(name);
             this.pm = new javax.swing.ProgressMonitor(parent, name,
-                    name + " starting", 0, 100);
+                    "Starting " + name, 0, pc.getEstimatedTotal());
+            pm.setMillisToDecideToPopup(100);
+
         }
 
         @Override
@@ -461,12 +565,13 @@ public class JaerUpdater {
 
         @Override
         public void update(int completed) {
-            pm.setNote(completed + "-");
-            pm.setProgress(completed);
+            pm.setProgress(pc.inc(completed));
+            pm.setNote("completed " + pc.progress + " / " + pm.getMaximum());
         }
 
         @Override
         public void endTask() {
+            pc.saveProgress();
             pm.setNote("Done");
             pm.close();
         }
