@@ -151,6 +151,9 @@ MA 02110-1301  USA
         <!--used in telluride for communicating to foosball-->    
         <dependency org="redis.clients" name="jedis" rev="2.9.0" />
         
+        <!-- used for numpy data file format npy and npz support in JVM -->
+        <dependency org="org.jetbrains.bio" name="npy" rev="0.3.3"/>      
+          
     </dependencies>
 </ivy-module>
 

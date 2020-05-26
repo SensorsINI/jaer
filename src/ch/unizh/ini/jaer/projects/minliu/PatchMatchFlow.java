@@ -251,8 +251,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
  
     int outerCircle[][] = circle2;        
     int outerCircleSize = outerCircle.length;        
-    int xOuterOffset[] = new int[outerCircleSize];
     int yOuterOffset[] = new int[outerCircleSize];  
+    int xOuterOffset[] = new int[outerCircleSize];
     int outerTsValue[] = new int[outerCircleSize]; 
         
     private HWCornerPointRenderer keypointFilter = null;
@@ -431,7 +431,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                        continue;
 //                    }
                     
-                    if(ein.timestamp == 80588764)
+                    if(ein.timestamp == 151322924)
                     {
 //                        ein.y = (short)(ein.y + 4);
                         int tmp = 1;
@@ -541,7 +541,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             if(Math.abs(result.dy) >= 4)
             {
                 int tmp = 0;
-            }
+            } 
             if(ein.timestamp == 80059493)
             {
                 int tmp = 1;
@@ -3176,7 +3176,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         final int innerSize = circle3_.length;
         final int outerSize = circle4_.length;
         
-        int innerStartX, innerEndX, innerStartY, innerEndY;
+        int innerStartX = 0, innerEndX = 0, innerStartY = 0, innerEndY = 0;
         int outerStartX, outerEndX, outerStartY, outerEndY;   
         
         // only check if not too close to border
@@ -3291,11 +3291,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        if (found_streak) 
         {
             found_streak_outer = false;
+            boolean exit_loop = false;
 
             FastDetectorisFeature_label6:
-            for (int i = 0; i < outerSize; i++) {
+            for (int streak_size = outerCircleSize - 1; streak_size >= 3; streak_size--) {
                 FastDetectorisFeature_label5:
-                for (int streak_size = outerCircleSize - 1; streak_size >= 3; streak_size--) {
+                for (int i = 0; i < outerSize; i++) {
                     // check that first event is larger than neighbor
                     if ( Math.abs(featureSlice[pix_x + circle4_[i][0]][pix_y + circle4_[i][1]] - centerValue) <  Math.abs(featureSlice[pix_x + circle4_[(i - 1 + outerSize) % outerSize][0]][pix_y + circle4_[(i - 1 + outerSize) % outerSize][1]] - centerValue)) {
                         continue;
@@ -3361,15 +3362,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         if(min_t - max_t != 15 || streak_size != 10)
                         {
 //                            found_streak_outer = false; 
-                        }                        
+                        }
+                        exit_loop = true;                        
                         break;
                     }
                 }
-                if (found_streak_outer) {
+                if (found_streak_outer || exit_loop) {
                     break;
                 }
             }
-
         }
 
         switch(cornerCircleSelection){

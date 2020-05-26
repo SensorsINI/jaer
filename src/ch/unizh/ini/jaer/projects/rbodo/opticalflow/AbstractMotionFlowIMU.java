@@ -16,9 +16,11 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Level;
@@ -46,6 +48,9 @@ import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.filter.LowpassFilter3D;
 import net.sf.jaer.util.filter.LowpassFilter3D.Point3D;
+import org.jetbrains.bio.npy.NpyArray;
+import org.jetbrains.bio.npy.NpzEntry;
+import org.jetbrains.bio.npy.NpzFile;
 
 /**
  * Abstract base class for motion flow filters. The filters that extend this
@@ -156,6 +161,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     double[][] vxGTframe, vyGTframe, tsGTframe;
     public float vxGT, vyGT, vGT;
     private boolean importedGTfromMatlab;
+    private boolean importedGTfromNPZ = false;
 
     // Discard events that are considerably faster than average
     private float avgSpeed = 0;
@@ -211,7 +217,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     protected SingleCameraCalibration cameraCalibration = null;
     int uidx;
     protected boolean useColorForMotionVectors = getBoolean("useColorForMotionVectors", true);
-
+    private int[] tsShape;
+    private float[] tsData;
+    private float[] xOFData;
+    private float[] yOFData;
+    
     public AbstractMotionFlowIMU(AEChip chip) {
         super(chip);
         addObservers(chip);
@@ -273,6 +283,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         setPropertyTooltip(imuTT, "startIMUCalibration", "<html> Starts estimating the IMU offsets based on next calibrationSamples samples. Should be used only with stationary recording to store these offsets in the preferences. <p> <b>measureAccuracy</b> must be selected as well to actually do the calibration.");
         setPropertyTooltip(imuTT, "eraseIMUCalibration", "Erases the IMU offsets to zero. Can be used to observe effect of these offsets on a stationary recording in the IMUFlow filter.");
         setPropertyTooltip(imuTT, "importGTfromMatlab", "Allows importing two 2D-arrays containing the x-/y- components of the motion flow field used as ground truth.");
+        setPropertyTooltip(imuTT, "importGTfromNPZ", "Allows importing ground truth from numpy file, only used for MVSEC dataset.");
         setPropertyTooltip(imuTT, "resetGroundTruth", "Resets the ground truth optical flow that was imported from matlab. Used in the measureAccuracy option.");
         setPropertyTooltip(imuTT, "selectLoggingFolder", "Allows selection of the folder to store the measured accuracies and optical flow events.");
 //        setPropertyTooltip(motionFieldTT, "motionFieldMixingFactor", "Flow events are mixed with the motion field with this factor. Use 1 to replace field content with each event, or e.g. 0.01 to update only by 1%.");
@@ -325,7 +336,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             }
             if (!addTimeStampsResetPropertyChangeListener) {
                 chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
-                chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
                 addTimeStampsResetPropertyChangeListener = true;
             }
         }
@@ -339,9 +349,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
         chooser.setMultiSelectionEnabled(false);
         if (chooser.showOpenDialog(chip.getAeViewer().getFilterFrame()) == JFileChooser.APPROVE_OPTION) {
-            try {
+            try {                
                 vxGTframe = ((MLDouble) (new MatFileReader(chooser.getSelectedFile().getPath())).getMLArray("vxGT")).getArray();
-                vyGTframe = ((MLDouble) (new MatFileReader(chooser.getSelectedFile().getPath())).getMLArray("vyGT")).getArray();
+                vyGTframe = ((MLDouble) (new MatFileReader(chooser.getSelectedFile().getPath())).getMLArray("vyGT")).getArray();                
                 tsGTframe = ((MLDouble) (new MatFileReader(chooser.getSelectedFile().getPath())).getMLArray("ts")).getArray();
                 importedGTfromMatlab = true;
                 log.info("Imported ground truth file");
@@ -351,6 +361,50 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
     }
 
+                
+    // Allows importing two 2D-arrays containing the x-/y- components of the 
+    // motion flow field used as ground truth from numpy file .npz.   
+    // Primarily used for MVSEC dataset.
+    synchronized public void doImportGTfromNPZ() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Choose ground truth file");
+        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        chooser.setMultiSelectionEnabled(false);
+        if (chooser.showOpenDialog(chip.getAeViewer().getFilterFrame()) == JFileChooser.APPROVE_OPTION) {
+            String fileName = chooser.getSelectedFile().getPath();
+            Path filePath = new File(fileName).toPath();
+            NpzFile.Reader reader = NpzFile.read(filePath);
+            List<NpzEntry> entryList = reader.introspect();
+            entryList.size();    
+            NpyArray tsArray = reader.get("timestamps", 1 << 18);
+            tsData = tsArray.asFloatArray();
+            tsShape = tsArray.getShape();
+            float firtTs = tsData[0];
+            for(int i = 0; i < tsShape[0]; i++)
+            {
+                tsData[i] = tsData[i] - firtTs;
+                tsData[i] = tsData[i] * 1e6f; // Convert to us.
+            }
+            NpyArray xOFArray = reader.get("x_flow_dist", 1 << 18);
+            xOFData = xOFArray.asFloatArray();
+            for (int i = 0; i < xOFData.length; i++)
+            {
+                xOFData[i] = (float)(xOFData[i]/0.05);
+            }
+            int[] xOFShape = xOFArray.getShape();
+            NpyArray yOFArray = reader.get("y_flow_dist", 1 << 18);
+            yOFData = yOFArray.asFloatArray();
+            for (int i = 0; i < yOFData.length; i++)
+            {
+                yOFData[i] = (float)(yOFData[i]/0.05);
+            }            
+            int[] yOFShape = yOFArray.getShape();      
+            reader.close();
+            importedGTfromNPZ = true;
+            log.info("Imported ground truth file from npz file.");
+        }
+    }                
+    
     // Allows exporting flow vectors that were accumulated between tmin and tmax
     // to a mat-file which can be processed in MATLAB.
     public void exportFlowToMatlab(final int tmin, final int tmax) {
@@ -529,9 +583,24 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 if (ts >= tsGTframe[0][0] && ts < tsGTframe[0][1]) {
                     vx = (float) vxGTframe[y][x];
                     vy = (float) vyGTframe[y][x];
+                    v = (float) Math.sqrt(vx * vx + vy * vy);
                 } else {
                     vx = 0;
                     vy = 0;
+                }
+            } else if (importedGTfromNPZ) {
+                int frameIdx = ts/50000;    // MVSEC's OF is updated every 50ms.
+                if(frameIdx < tsShape[0])
+                {
+                    vx = (float)xOFData[frameIdx * (260 * 346) + y * 346 + x];
+                    vy = (float)yOFData[frameIdx * (260 * 346) + y * 346 + x];
+                    v = (float) Math.sqrt(vx * vx + vy * vy);                  
+                }
+                else
+                {
+                    vx = 0;
+                    vy = 0;
+                    v = 0;
                 }
             } else {
                 // otherwise, if not IMU sample, use last IMU sample to compute GT flow from last IMU sample and event location
@@ -917,7 +986,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             gl.glRasterPos2i(chip.getSizeX() / 2, offset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     motionFlowStatistics.endpointErrorAbs.graphicsString("AEE(abs):", "pps"));
-            motionFlowStatistics.endpointErrorAbs.clear();
             gl.glPopMatrix();
             gl.glPushMatrix();
             gl.glRasterPos2i(chip.getSizeX() / 2, 2 * offset);
@@ -1149,7 +1217,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         motionVectorEventLogger.setEnabled(false);
         motionVectorEventLogger = null;
     }
-    
+
     protected void logMotionVectorEvents(EventPacket ep) {
         if (motionVectorEventLogger == null) {
             return;
