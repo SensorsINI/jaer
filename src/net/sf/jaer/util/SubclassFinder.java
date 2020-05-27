@@ -46,7 +46,16 @@ public class SubclassFinder {
                 ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
                 className2subclassListFileNameMap = (HashMap<String, String>) in.readObject();
                 in.close();
-                log.info("loaded SubclassFinder cache existing filename hashmap from preferences. Key is " + className2subclassListFileNameMap);
+                log.info("loaded SubclassFinder cache existing filename hashmap from preferences using key " + SUBCLASS_FINDERFILENAME_HASH_MAP_PREFS_KEY);
+                if (className2subclassListFileNameMap.isEmpty()) {
+                    log.info("map is empty");
+                } else {
+                    StringBuilder sb = new StringBuilder("map constains following entries\n");
+                    for (String s : className2subclassListFileNameMap.keySet()) {
+                        sb.append(String.format("  key: %s -> entry: %s\n", s, className2subclassListFileNameMap.get(s)));
+                    }
+                    log.info(sb.toString());
+                }
             } else {
                 log.info("no existing SubclassFinder cache filename hashmap to load, must scan classpath to find subclasses");
             }
@@ -174,7 +183,7 @@ public class SubclassFinder {
                     f = new File(cachefilename);
                 }
                 if (f != null && f.exists() && f.isFile()) {
-                    log.info("for super class " + superClassName + " found cache file " + f.getAbsolutePath() + "; reading subclasses from this file");
+                    log.info("For super class " + superClassName + ", found cache file " + f.getAbsolutePath() + "; reading subclasses from this file");
                     LineNumberReader is = new LineNumberReader(new FileReader(f));
                     // count lines for progress
                     while (is.skip(Long.MAX_VALUE) > 0) {
@@ -200,13 +209,13 @@ public class SubclassFinder {
                         line = is.readLine();
                     }
                     long duration = System.currentTimeMillis() - startTime;
-                    log.info("Read " + classes.size() + " subclasses from " + cachefilename + " in " + duration / 1000 + "s");
+                    log.info("Read " + classes.size() + " subclasses from cache file " + cachefilename + " in " + duration / 1000 + "s");
                     return classes;
                 } else {
                     log.info("Cache filename " + cachefilename + " does not lead to a readable file; will rescan entire classpath");
                 }
             }
-            log.info("no cache found for " + superClassName + "; now scanning entire classpath to build list of subclasses of " + superClassName);
+            log.info("No cache found for " + superClassName + "; now scanning entire classpath to build list of subclasses of " + superClassName);
             Class superClass = FastClassFinder.forName(superClassName);
             List<String> allClasses = ListClasses.listClasses();  // expensive, must search all classpath and make big string array list
             int n = ".class".length();
@@ -259,31 +268,35 @@ public class SubclassFinder {
                     log.warning(t + " while seeing if " + superClass + " isAssignableFrom " + c);
                 }
             }
-            // store cache
-            String tmpDir = System.getProperty("java.io.tmpdir");
-            String cacheFileName = superClassName + "-subclass-cache.txt";
-            File cacheFile = new File(tmpDir + File.separator + cacheFileName);
-            if (cacheFile.isFile() && cacheFile.exists()) {
-                log.info("overwriting existing cache file " + cacheFile);
+            if (!allClasses.isEmpty()) {
+                // store cache
+                String tmpDir = System.getProperty("java.io.tmpdir");
+                String cacheFileName = superClassName + "-subclass-cache.txt";
+                File cacheFile = new File(tmpDir + File.separator + cacheFileName);
+                if (cacheFile.isFile() && cacheFile.exists()) {
+                    log.info("overwriting existing cache file " + cacheFile);
+                }
+                PrintStream ps = new PrintStream(cacheFile);
+                for (ClassNameWithDescriptionAndDevelopmentStatus clz : classes) {
+                    ps.println(clz.getClassName());
+                }
+                ps.close();
+                log.info("wrote " + classes.size() + " classes to cache file " + cacheFile.getAbsolutePath());
+                if (className2subclassListFileNameMap == null) {
+                    className2subclassListFileNameMap = new HashMap<String, String>();
+                }
+                className2subclassListFileNameMap.put(superClassName, cacheFile.getAbsolutePath());
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                ObjectOutput oos = new ObjectOutputStream(bos);
+                oos.writeObject(className2subclassListFileNameMap);
+                oos.close();
+                // Get the bytes of the serialized object
+                byte[] buf = bos.toByteArray();
+                prefs.putByteArray(SUBCLASS_FINDERFILENAME_HASH_MAP_PREFS_KEY, buf);
+                log.info("stored cache file name with preferences key " + SUBCLASS_FINDERFILENAME_HASH_MAP_PREFS_KEY);
+            } else {
+                log.warning("skipped storing empty cache file");
             }
-            PrintStream ps = new PrintStream(cacheFile);
-            for (ClassNameWithDescriptionAndDevelopmentStatus clz : classes) {
-                ps.println(clz.getClassName());
-            }
-            ps.close();
-            log.info("wrote " + classes.size() + " classes to cache file " + cacheFile.getAbsolutePath());
-            if (className2subclassListFileNameMap == null) {
-                className2subclassListFileNameMap = new HashMap<String, String>();
-            }
-            className2subclassListFileNameMap.put(superClassName, cacheFile.getAbsolutePath());
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ObjectOutput oos = new ObjectOutputStream(bos);
-            oos.writeObject(className2subclassListFileNameMap);
-            oos.close();
-            // Get the bytes of the serialized object
-            byte[] buf = bos.toByteArray();
-            prefs.putByteArray(SUBCLASS_FINDERFILENAME_HASH_MAP_PREFS_KEY, buf);
-            log.info("stored cache file name with preferences key " + SUBCLASS_FINDERFILENAME_HASH_MAP_PREFS_KEY);
             long duration = System.currentTimeMillis() - startTime;
             log.info("Scanned " + classes.size() + " subclasses in " + duration / 1000 + "s");
 

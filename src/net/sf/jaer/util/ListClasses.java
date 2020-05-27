@@ -31,13 +31,16 @@ import java.util.zip.ZipException;
  */
 public class ListClasses {
 
+    /** only these jars are included in class listing */
+    public static final String INCLUDED_JAR = "jAER.jar";
+
     /**
      * ListClasses doesn't iterate over classpath classes starting with these
      * strings; this is hack to avoid iterating over standard java classes to
      * avoid running into missing DLLs with JOGL.
      */
     public static final String[] IGNORED_CLASSPATH = {
-        "java", "javax", "META-INF",
+        "java", "javax",
         "com/sun", "com/oracle", "org/w3c", "org.omg", "org/xml", "sun", "oracle",
         "gnu/io", // added because we don't bother with the native code for I2C, parallel ports, etc
         "build/classes", // added to ignore classes not in jaer.jar and only temporarily built
@@ -48,12 +51,12 @@ public class ListClasses {
         "org/jdesktop", "de/thesycon", "com/kitfox", "org/uncommons",
         "de/ailis", "org/netbeans",
         "com/kitfox", "org/bytedeco", "org/usb4java", "org/openni",
-        "jogamp", "org/jogamp", "com/jogamp", "gluegen", "newt","ncsa.hdf.hdf5lib", "ncsa.hdf",
+        "jogamp", "org/jogamp", "com/jogamp", "gluegen", "newt", "ncsa.hdf.hdf5lib", "ncsa.hdf",
         "lib", "org/tensorflow", "org/ros", "com/fasterxml", "ch/qos", "groovy/lang", "com/google", "groovy", "ch/systemsx"
     };
 
     static final Logger log = Logger.getLogger("net.sf.jaer.util");
-    private static boolean debug = false;
+    private static boolean debug = true;
     private static final int INIT_SIZE = 4000;
 
     private static void usage() {
@@ -91,6 +94,7 @@ public class ListClasses {
                     log.log(Level.INFO, "classpath token = {0}", token);
                 }
                 File classpathElement = new File(token);
+                if(classpathElement.isFile() && !token.endsWith(INCLUDED_JAR)) continue; // skip all files that are not jAER.jar
                 classNames.addAll(classpathElement.isDirectory()
                         //?loadClassesFromDir(classpathElement.list(new CLASSFilter()))
                         ? loadClassesFromDir(null, classpathElement, classpathElement)
@@ -98,7 +102,7 @@ public class ListClasses {
             }
             HashSet<String> hash = new HashSet(classNames); // store only unique
             classNames = new ArrayList(hash);
-            log.info("found " + classNames.size() + " classes in " + classpath);
+            log.info("found total of " + classNames.size() + " classes in " + classpath);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -112,11 +116,11 @@ public class ListClasses {
                 if (debug) {
                     log.log(Level.INFO, "{0} is being scanned", jarFile);
                 }
-                Enumeration<JarEntry> fileNames=null;
+                Enumeration<JarEntry> fileNames = null;
                 try {
                     fileNames = new JarFile(jarFile).entries();
                 } catch (ZipException e) {
-                    log.warning("jar file "+jarFile+" is corrupt: "+e);
+                    log.warning("jar file " + jarFile + " is corrupt: " + e);
                     return files;
                 }
                 JarEntry entry = null;
