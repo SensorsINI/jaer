@@ -44,6 +44,9 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.logging.Logger;
@@ -52,6 +55,8 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.text.WordUtils;
 import org.apache.tools.ant.BuildEvent;
 import org.apache.tools.ant.BuildException;
@@ -77,6 +82,7 @@ import org.eclipse.jgit.transport.FetchResult;
  */
 public class JaerUpdater {
 
+    public static final boolean DEBUG = false; // false for production version
     private static Logger log = Logger.getLogger("JaerUpdater");
     private static Preferences prefs = Preferences.userNodeForPackage(JaerUpdater.class);
 
@@ -364,34 +370,59 @@ public class JaerUpdater {
         UIManager.put("ProgressMonitor.progressText", "Git Release Initialization Progress");
         return (ActionEvent ae) -> {
             new Thread(() -> {
-                try {
-                    throwIoExceptionIfNoGit();
-                    log.warning("git exists, will not try to initialize it");
-                    JOptionPane.showMessageDialog(parent, ".git folder already exists and can be opened, will not do anything", "Git already exists", JOptionPane.ERROR_MESSAGE);
-                    parent.setGitButtonsEnabled(true);
+                if (!DEBUG) {
+                    try {
+                        throwIoExceptionIfNoGit();
+                        log.warning("git exists, will not try to initialize it");
+                        JOptionPane.showMessageDialog(parent, ".git folder already exists and can be opened, will not do anything", "Git already exists", JOptionPane.ERROR_MESSAGE);
+                        parent.setGitButtonsEnabled(true);
+                        parent.setCursor(null);
+                        return;
+                    } catch (IOException ex) {
+                        log.info("git not found, proceeeding");
+                    }
+                }
+                // confirm operation
+                int ret = JOptionPane.showConfirmDialog(parent,
+                        "<html>This operation will clone jaer to a new temporary folder"
+                        + "<br>and then copy the clone to your jAER working folder."
+                        + "<p>It can potentially overwrite files that you may have modified,"
+                        + "<br>like bias or filter settings."
+                        + "<p>You will be asked about overwriting files that have been modified<br>"
+                        + "after you installed release."
+                        + "<p><p>Do you want to proceed?",
+                        "Confirm git initialization operation",
+                        JOptionPane.YES_NO_OPTION);
+                if (ret != JOptionPane.YES_OPTION) {
+                    JOptionPane.showMessageDialog(parent, "Git initialization operation cancelled");
                     return;
-                } catch (IOException ex) {
-                    log.info("git not found, proceeeding");
                 }
                 final Path source = Paths.get("jaer-clone");
                 // debug, copy to new folder, not here at root level
 //                final Path target = Paths.get("jaer-clone-copy");   // we will create .git and also copy all non-existing files to starting folder
-                final Path target = Paths.get(".");   // we will create .git and also copy all non-existing files to starting folder
-                log.info("cloning");
-                parent.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));  
+                final Path target = DEBUG ? Paths.get("jaer-clone-copy") : Paths.get(".");   // we will create .git and also copy all non-existing files to starting folder
+                log.info(JaerConstants.JAER_HOME + " cloning to folder " + source.toString());
+                parent.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                 CloneCommand cloneCmd = Git.cloneRepository();
                 cloneCmd.setURI(JaerConstants.JAER_HOME);
                 cloneCmd.setDirectory(source.toFile());
-                GitProgressMonitor gpm=new GitProgressMonitor(parent, "cloning " + JaerConstants.JAER_HOME);
+                GitProgressMonitor gpm = new GitProgressMonitor(parent, "cloning " + JaerConstants.JAER_HOME);
                 cloneCmd.setProgressMonitor(gpm);
                 try (Git git = cloneCmd.call()) {
                     log.info("cloned " + git.toString());
                 } catch (Exception e) {
                     log.warning(e.toString());
-                    JOptionPane.showMessageDialog(parent, e.toString(), "Cloning failed", JOptionPane.ERROR_MESSAGE);
-                    return;
+                    if (!DEBUG) {
+                        JOptionPane.showMessageDialog(parent, e.toString(), "Cloning failed", JOptionPane.ERROR_MESSAGE);
+                    }
+
+                    if (!DEBUG) {
+                        parent.setCursor(null);
+                        return;
+                    }
                 }
-                if(gpm.isCancelled()){
+                if (gpm.isCancelled()) {
+                    parent.setCursor(null);
                     return;
                 }
 
@@ -400,13 +431,23 @@ public class JaerUpdater {
                 // https://docs.oracle.com/javase/8/docs/api/java/nio/file/FileVisitor.html
                 int estimatedCloneTotalFiles = prefs.getInt("JaerUpdaterFrame.estimatedCloneTotalFiles", 10000);
                 javax.swing.ProgressMonitor pm = new javax.swing.ProgressMonitor(parent, "moving clone", source.toString(), 0, estimatedCloneTotalFiles);
-                Mover mover = new Mover(source, target, pm);
+                Mover mover = new Mover(source, target, pm, parent);
                 SwingWorker fileMover = new SwingWorker() {
                     @Override
                     protected Object doInBackground() throws Exception {
                         try {
                             Files.walkFileTree(source, mover);
                             prefs.putInt("JaerUpdaterFrame.estimatedCloneTotalFiles", mover.fileCount);
+                            StringBuilder sb = new StringBuilder("file errors\n");
+                            sb.append("Could not copy following files");
+                            for (Path p : mover.filesCouldNotCopy) {
+                                sb.append(p.toString() + "\n");
+                            }
+                            sb.append("\nCould not delete following files\n");
+                            for (Path p : mover.filesCouldNotDelete) {
+                                sb.append(p.toString() + "\n");
+                            }
+                            log.info(sb.toString());
                             final String msg = String.format("moved %d files from %s to %s, skipped %d files", mover.filesAdded.size(), source, target, mover.filesSkipped.size());
                             log.info(msg);
                             JOptionPane.showMessageDialog(parent, msg, "Copying git clone done", JOptionPane.INFORMATION_MESSAGE);
@@ -427,6 +468,7 @@ public class JaerUpdater {
                 fileMover.addPropertyChangeListener(mover);
                 fileMover.execute();
                 parent.setCursor(null);
+                parent.setGitButtonsEnabled(true);
 
             }).start();
         };
@@ -436,13 +478,15 @@ public class JaerUpdater {
 
         Path source, target;
         int folderCount = 0, fileCount = 0;
-        ArrayList<Path> filesAdded = new ArrayList(1000), filesSkipped = new ArrayList(1000);
+        ArrayList<Path> filesAdded = new ArrayList(1000), filesSkipped = new ArrayList(500), filesCouldNotDelete = new ArrayList(100), filesCouldNotCopy = new ArrayList(100);
         javax.swing.ProgressMonitor pm;
+        Component parent;
 
-        Mover(Path source, Path target, javax.swing.ProgressMonitor pm) {
+        Mover(Path source, Path target, javax.swing.ProgressMonitor pm, Component parent) {
             this.source = source;
             this.target = target;
             this.pm = pm;
+            this.parent = parent;
             pm.setMillisToDecideToPopup(100);
         }
 
@@ -494,18 +538,44 @@ public class JaerUpdater {
             fileCount++;
             final Path targetFile = target.resolve(source.relativize(file));
             if (Files.exists(targetFile, LinkOption.NOFOLLOW_LINKS)) {
+                // File exists locally already, but it might be an older version than in current HEAD, or it might have
+                // been locally modified, e.g. a bias or filter settings file or modified shell script.  
+                // (The file date of new clone will always be later, so it is not useful.)
+                // We assume that the current HEAD version is authoritative except for xml and shell scripts.
+                // we ask for overwriting any file that has been modified more than 1 hour after the modification time of the 
+                // windows launcher file, which was set when the release was prepared.
+                FileTime rootTime = Files.getLastModifiedTime(Paths.get("jAERViewer_win64.exe"), LinkOption.NOFOLLOW_LINKS);
                 FileTime srcTime = Files.getLastModifiedTime(file, LinkOption.NOFOLLOW_LINKS);
                 FileTime targetTime = Files.getLastModifiedTime(targetFile, LinkOption.NOFOLLOW_LINKS);
-                if (srcTime.compareTo(targetTime) < 0) {
-                    log.info(String.format("source file %s dated %s is older than target file %s dated %s, skipping it", file, srcTime.toString(), targetFile, targetTime.toString()));
-                    filesSkipped.add(file);
-                    pm.setProgress(fileCount);
-                    return FileVisitResult.CONTINUE;
+                String s = FilenameUtils.getExtension(targetFile.getFileName().toString()).toLowerCase();
+                Instant targetTimeInstant = targetTime.toInstant();
+                Instant nowInstant = Instant.now();
+                Instant rootInstant = rootTime.toInstant();
+                long hoursAfterRootModified = rootInstant.until(targetTimeInstant, ChronoUnit.HOURS);
+                long daysAgoModified = targetTimeInstant.until(nowInstant, ChronoUnit.DAYS);
+//                if ("xml".equals(s) || "sh".equals(s) || "bash".equals(s) | s.isEmpty()) {
+                if (hoursAfterRootModified > 1) {
+                    String q = String.format("<html>%s <br>exists. <p> It was modified on %s, %d hours after the root of project (%d days ago). <p>Overwrite it?",
+                            targetFile.toString(), targetTime.toString(), hoursAfterRootModified, daysAgoModified);
+                    int ret = JOptionPane.showConfirmDialog(parent, q, "Overwrite local file?", JOptionPane.YES_NO_CANCEL_OPTION);
+                    if (ret != JOptionPane.YES_OPTION) {
+                        log.info(String.format("source file %s dated %s"
+                                + ", target file %s dated %s, skipping it",
+                                file, srcTime.toString(), targetFile, targetTime.toString()));
+                        filesSkipped.add(file);
+                        pm.setProgress(fileCount);
+                        if (ret == JOptionPane.NO_OPTION) {
+                            return FileVisitResult.CONTINUE;
+                        } else if (ret == JOptionPane.CANCEL_OPTION) {
+                            return FileVisitResult.TERMINATE;
+                        }
+                    }
                 }
                 try {
                     Files.delete(targetFile);
                 } catch (IOException e) {
-                    log.warning("could not delete target file that is older " + targetFile);
+                    log.warning("could not delete existing target file " + targetFile + ": caught " + e.toString());
+                    filesCouldNotDelete.add(targetFile);
                     return FileVisitResult.CONTINUE;
                 }
             }
@@ -514,12 +584,14 @@ public class JaerUpdater {
                 Files.copy(file, targetFile);
                 pm.setProgress(fileCount);
             } catch (IOException ex) {
-                log.warning("error copying/deleting file " + file + ": caught " + ex.toString());
+                log.warning("error copying " + file + ": caught " + ex.toString());
+                filesCouldNotCopy.add(file);
             }
             try {
                 Files.delete(file);
             } catch (IOException e) {
                 log.warning("could not delete source file " + file);
+                filesCouldNotDelete.add(file);
             }
             return FileVisitResult.CONTINUE;
         }
@@ -599,7 +671,9 @@ public class JaerUpdater {
         public GitProgressMonitor(Component parent, String name) {
             this.parent = parent;
             this.name = name;
-
+            this.pc = new ProgressCounter(name);
+            this.pm = new javax.swing.ProgressMonitor(parent, name,
+                    "Constructed " + name, 0, pc.getEstimatedTotal());
         }
 
         @Override

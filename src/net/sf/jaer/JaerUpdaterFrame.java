@@ -25,6 +25,7 @@ import java.net.URI;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.util.WindowSaver.DontRestore;
 
 /**
@@ -43,6 +44,7 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
     public JaerUpdaterFrame() {
         initComponents();
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE)).getImage());
+        boolean debug = JaerUpdater.DEBUG;
         try {
             setGitButtonsEnabled(false);
             initGitButton.setEnabled(false);
@@ -52,25 +54,37 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
             setGitButtonsEnabled(true);
         } catch (IOException e) {
             log.warning(e.toString());
-            JOptionPane.showMessageDialog(this.getParent(), "<html>.git folder not found or is corrupted; you must initialize git before any update operations."
-                    + "<p>It is expected if you are running jAER from a release, which does not include git information."
-                    + "<p>Click the jaerproject.org link in the Updater dialog to find out how to initialize your release to a working copy.", "git not set up", JOptionPane.WARNING_MESSAGE);
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    JOptionPane.showMessageDialog(JaerUpdaterFrame.this, "<html>.git folder not found or is corrupted; you must initialize git before any update operations."
+                            + "<p>It is expected if you are running jAER from a release, which does not include git information."
+                            + "<p>Click the jaerproject.org link in the Updater dialog to find out how to <br>"
+                            + "initialize your release to a working copy using command line git."
+                            + "<p> Or you can use the built in function in the updater to initialize git.", "git not set up", JOptionPane.WARNING_MESSAGE);
+                }
+            });
+
             try {
-                initGitButton.setEnabled(true);
-                initGitButton.addActionListener(JaerUpdater.initReleaseForGitActionListener(this));
+                if (!debug) {
+                    initGitButton.setEnabled(true);
+                    initGitButton.addActionListener(JaerUpdater.initReleaseForGitActionListener(this));
+                }
             } catch (IOException ex) {
                 Logger.getLogger(JaerUpdaterFrame.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
         pack();
-                
+
         //debug only
-//        initGitButton.setEnabled(true);
-//        try {
-//            initGitButton.addActionListener(JaerUpdater.initReleaseForGitActionListener(this));
-//        } catch (IOException ex) {
-//            Logger.getLogger(JaerUpdaterFrame.class.getName()).log(Level.SEVERE, null, ex);
-//        }
+        if (debug) {
+            initGitButton.setEnabled(true);
+            try {
+                initGitButton.addActionListener(JaerUpdater.initReleaseForGitActionListener(this));
+            } catch (IOException ex) {
+                Logger.getLogger(JaerUpdaterFrame.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
 
     }
 
@@ -366,16 +380,24 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
                 if ("Nimbus".equals(info.getName())) {
                     javax.swing.UIManager.setLookAndFeel(info.getClassName());
                     break;
+
                 }
             }
         } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(JaerUpdaterFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(JaerUpdaterFrame.class
+                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
+
         } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(JaerUpdaterFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(JaerUpdaterFrame.class
+                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
+
         } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(JaerUpdaterFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(JaerUpdaterFrame.class
+                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
+
         } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(JaerUpdaterFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(JaerUpdaterFrame.class
+                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
         //</editor-fold>
 
