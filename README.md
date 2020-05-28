@@ -12,9 +12,11 @@ Founded in 2007.
 
 ## Download
 
-You can find the latest releases at <https://github.com/SensorsINI/jaer/releases>. These releasees do NOT include git information so they will not support self-update. If you want to update from a release, you need to get a new release.
+You can find the latest releases at <https://github.com/SensorsINI/jaer/releases>. These releasees do NOT include git information, but using the new self-update feature introduced in jAER-1.8.1, you can initialize the release to a git working copy and pull+build within jAER. 
 
-You will get the best experience running from lastest bug fixes. To build yourself, see the user guide for IDE setup. Or you can use [ant](https://ant.apache.org/manual/install.html). Install [JDK 1.8](https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html), clone the jAER repo with git and compile jAER using ant from command line as below, from root of jAER. The default target of build.xml for ant is to build the jaer.jar archive of comppiled classes:
+You will get the best experience running from lastest bug fixes. 
+
+To build yourself, see the user guide for IDE setup. Or you can use [ant](https://ant.apache.org/manual/install.html). Install [JDK 1.8](https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html), clone the jAER repo with git and compile jAER using ant from command line as below, from root of jAER. The default target of build.xml for ant is to build the jaer.jar archive of comppiled classes:
 
     ant
 
@@ -22,7 +24,7 @@ On linux installing ant should be very easy. On Windows it is still a pain since
 
 NOTE: jAER is not working with java > 1.8 now. Do not bother with java 9,10,11, etc. yet.  You need Oracle JDK1.8. See User Guide for more information.
 
-Converting release into working git folder. Once you convert your release, you can use IDE or ant to rebuild jAER.
+Converting release into working git folder: Once you convert your release, you can use IDE or ant to rebuild jAER.
 
     cd jaer-dist
     git init
