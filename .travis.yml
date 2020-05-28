@@ -4,11 +4,14 @@ dist: trusty
 script: ant jar
 jdk: oraclejdk8
 before_deploy:
-  - zip -r jaer-dist.zip jAERViewer_linux.sh jAERViewer_win64.exe SplashScreen.gif dist/ jars/ lib/ biasgenSettings/ filterSettings/ images/ sounds/
+  - rm -rf $RELEASE_NAME || exit 0
+  - mkdir $RELEASE_NAME
+  - cp -r jAERViewer_linux.sh jAERViewer_win64.exe SplashScreen.gif dist/ jars/ lib/ biasgenSettings/ filterSettings/ images/ sounds/ $RELEASE_NAME
+  - zip -r $RELEASE_NAME.zip $RELEASE_NAME
 deploy:
   provider: releases
   api_key: $GITHUB_TOKEN
-  file: jaer-dist.zip
+  file: $RELEASE_NAME.zip
   skip_cleanup: true
   on:
     tags: true
