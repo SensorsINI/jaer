@@ -1,6 +1,7 @@
 package ch.unizh.ini.jaer.projects.rbodo.opticalflow;
 
 import ch.unizh.ini.jaer.projects.davis.calibration.SingleCameraCalibration;
+import ch.unizh.ini.jaer.projects.minliu.PatchMatchFlow;
 import com.jmatio.io.MatFileReader;
 import com.jmatio.io.MatFileWriter;
 import com.jmatio.types.MLDouble;
@@ -16,6 +17,9 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,6 +28,7 @@ import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.SwingUtilities;
 import net.sf.jaer.Description;
@@ -1107,9 +1112,50 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         if (displayGlobalMotion || ppsScaleDisplayRelativeOFLength) {
             motionFlowStatistics.getGlobalMotion().update(vx, vy, v, eout.x, eout.y);
         }
+        
         if (motionVectorEventLogger != null && motionVectorEventLogger.isEnabled()) {
-            String s = String.format("%d %d %d %d %.3g %.3g %.3g %d", eout.timestamp, eout.x, eout.y, eout.type, eout.velocity.x, eout.velocity.y, eout.speed, eout.hasDirection ? 1 : 0);
-            motionVectorEventLogger.log(s);
+            if(getClass().getSimpleName().equals("PatchMatchFlow"))
+            {
+                try {
+                    Method sliceIndexMethod;
+                    sliceIndexMethod = getClass().getDeclaredMethod("sliceIndex", Integer.TYPE);
+                    sliceIndexMethod.setAccessible(true);
+                    Object currentSliceIdxObj = sliceIndexMethod.invoke(this, 1);  
+                    int currentSliceIdx = (int) currentSliceIdxObj;
+
+                    Field startTimeFiled = getClass().getDeclaredField("sliceStartTimeUs");
+                    startTimeFiled.setAccessible(true);
+                    Object sliceTminus1StartTime = startTimeFiled.get((PatchMatchFlow)this);
+                    int[] sliceStartTimeUs = (int[])sliceTminus1StartTime; 
+                    Field endTimeFiled = getClass().getDeclaredField("sliceEndTimeUs");
+                    endTimeFiled.setAccessible(true);
+                    Object sliceTminus1EndTime = endTimeFiled.get((PatchMatchFlow)this);
+                    int[] sliceEndTimeUs = (int[])sliceTminus1EndTime; 
+
+                    String s = String.format("%d %d %d %d %d %d %.3g %.3g %.3g %d", eout.timestamp, 
+                            sliceStartTimeUs[currentSliceIdx], sliceEndTimeUs[currentSliceIdx],
+                            eout.x, eout.y, eout.type, eout.velocity.x, eout.velocity.y, eout.speed, eout.hasDirection ? 1 : 0);
+                    motionVectorEventLogger.log(s);             
+                } catch (NoSuchFieldException ex) {
+                    Logger.getLogger(AbstractMotionFlowIMU.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (NoSuchMethodException ex) {
+                    Logger.getLogger(AbstractMotionFlowIMU.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (SecurityException ex) {
+                    Logger.getLogger(AbstractMotionFlowIMU.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (IllegalAccessException ex) {
+                    Logger.getLogger(AbstractMotionFlowIMU.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (IllegalArgumentException ex) {
+                    Logger.getLogger(AbstractMotionFlowIMU.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (InvocationTargetException ex) {
+                    Logger.getLogger(AbstractMotionFlowIMU.class.getName()).log(Level.SEVERE, null, ex);
+                }                
+            }
+            else
+            {
+                String s = String.format("%d %d %d %d %.3g %.3g %.3g %d", eout.timestamp, eout.x, eout.y, eout.type, eout.velocity.x, eout.velocity.y, eout.speed, eout.hasDirection ? 1 : 0);
+                motionVectorEventLogger.log(s);                
+            }
+
         }
         motionField.update(ts, x, y, vx, vy, v);
     }
@@ -1205,7 +1251,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             putString("lastFile", file.toString());
             motionVectorEventLogger = new TobiLogger(file.getPath(), "Motion vector events output from normal optical flow method");
             motionVectorEventLogger.setNanotimeEnabled(false);
-            motionVectorEventLogger.setHeaderLine("system_time(ms) timestamp(us) x y type vx(pps) vy(pps) speed(pps) validity");
+            if(getClass().getSimpleName().equals("PatchMatchFlow"))
+            {
+                motionVectorEventLogger.setHeaderLine("system_time(ms) timestamp(us) sliceStartTime(us) sliceEndTime(us) x y type vx(pps) vy(pps) speed(pps) validity");                
+            }
+            else
+            {
+                motionVectorEventLogger.setHeaderLine("system_time(ms) timestamp(us) x y type vx(pps) vy(pps) speed(pps) validity");                
+            }
             motionVectorEventLogger.setEnabled(true);
         } else {
             log.info("Cancelled logging motion vectors");
