@@ -336,6 +336,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
             }
             if (!addTimeStampsResetPropertyChangeListener) {
                 chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
+                chip.getAeViewer().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
                 addTimeStampsResetPropertyChangeListener = true;
             }
         }
@@ -592,8 +593,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
                 int frameIdx = ts/50000;    // MVSEC's OF is updated every 50ms.
                 if(frameIdx < tsShape[0])
                 {
-                    vx = (float)xOFData[frameIdx * (260 * 346) + y * 346 + x];
-                    vy = (float)yOFData[frameIdx * (260 * 346) + y * 346 + x];
+                    vx = (float)xOFData[frameIdx * (260 * 346) + (259 - y) * 346 + x];
+                    vy = (float)yOFData[frameIdx * (260 * 346) + (259 - y) * 346 + x];
+                    vy = -vy;
                     v = (float) Math.sqrt(vx * vx + vy * vy);                  
                 }
                 else
