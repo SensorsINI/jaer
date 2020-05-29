@@ -82,7 +82,7 @@ import org.eclipse.jgit.transport.FetchResult;
  */
 public class JaerUpdater {
 
-    public static final boolean DEBUG = false; // false for production version
+    public static final boolean DEBUG = true; // false for production version,  true to clone here to tmp folders that do not overwrite our own .git
     private static Logger log = Logger.getLogger("JaerUpdater");
     private static Preferences prefs = Preferences.userNodeForPackage(JaerUpdater.class);
 
@@ -94,6 +94,7 @@ public class JaerUpdater {
         }
         try (Git git = Git.open(new File("."))) {
             log.info("successfully opened Git " + git.toString());
+            git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
         } catch (Exception e) {
             throw new IOException(e.toString());
         }
@@ -317,6 +318,7 @@ public class JaerUpdater {
                     log.info("Git pull result: " + result.toString());
                     String s = WordUtils.wrap(result.toString(), 40);
                     JOptionPane.showMessageDialog(parent, s.toString(), "Pull result", JOptionPane.INFORMATION_MESSAGE);
+                    git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
                 } catch (Exception e) {
                     log.warning(e.toString());
                     JOptionPane.showMessageDialog(parent, e.toString(), "Pull failed", JOptionPane.ERROR_MESSAGE);
@@ -339,6 +341,7 @@ public class JaerUpdater {
                     log.info(String.format("latest tag after fetch is %s", latestTag));
                     String s = String.format("<html>Lastest remote release tag: %s \n\nYour build version info: \n%s", latestTag, buildVersion);
                     JOptionPane.showMessageDialog(parent, s, "Latest tag", JOptionPane.INFORMATION_MESSAGE);
+                    git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
 
                 } catch (Exception e) {
                     log.warning(e.toString());
@@ -382,6 +385,19 @@ public class JaerUpdater {
                         log.info("git not found, proceeeding");
                     }
                 }
+                long freebytes = new File(".").getFreeSpace();
+                float gb = (float) freebytes / (1 << 30);
+                if (gb < 2) {
+                    int ret = JOptionPane.showConfirmDialog(parent,
+                            String.format( "<html>There is only %.1fGB of free disk space. Cloning will require at least 1GB free space."
+                            + "<p><p>Do you want to proceed?",(gb)),
+                            "Confirm git initialization operation",
+                            JOptionPane.YES_NO_OPTION);
+                    if (ret != JOptionPane.YES_OPTION) {
+                        JOptionPane.showMessageDialog(parent, "Git initialization operation cancelled");
+                        return;
+                    }
+                }
                 // confirm operation
                 int ret = JOptionPane.showConfirmDialog(parent,
                         "<html>This operation will clone jaer to a new temporary folder"
@@ -410,6 +426,7 @@ public class JaerUpdater {
                 cloneCmd.setProgressMonitor(gpm);
                 try (Git git = cloneCmd.call()) {
                     log.info("cloned " + git.toString());
+                    git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
                 } catch (Exception e) {
                     log.warning(e.toString());
                     if (!DEBUG) {
