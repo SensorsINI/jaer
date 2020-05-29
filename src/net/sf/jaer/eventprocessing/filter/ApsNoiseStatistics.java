@@ -55,7 +55,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     public boolean spatialHistogramEnabled = getBoolean("spatialHistogramEnabled", true);
     public boolean scaleHistogramsIncludingOverflow = getBoolean("scaleHistogramsIncludingOverflow", true);
     protected boolean resetOnBiasChange = getBoolean("resetOnBiasChange", true);
-    public int histNumBins = getInt("histNumBins", 30);
+    public int histNumBins = getInt("histNumBins", 100);
     int startx, starty, endx, endy; // mouse selection points
     private Point startPoint = null, endPoint = null, clickedPoint = null;
     protected Rectangle selectionRectangle = null;
@@ -72,7 +72,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     final private static float[] TEMPORAL_HIST_COLOR = {0, 0, .8f, .3f},
             SPATIAL_HIST_COLOR = {.6f, .4f, .2f, .6f},
             HIST_OVERFLOW_COLOR = {.8f, .3f, .2f, .6f};
-    final float textScale = .3f;
+    final float textScale = .4f;
     private boolean resetCalled = true;
     private float adcVref = getFloat("vreadcVreff", 1.5f);
     private int adcResolutionCounts = getInt("adcResolutionCounts", 1023);
@@ -826,7 +826,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                         float sampleValue = ((float) currentMousePoint.x / chip.getSizeX()) * frameExtractor.getMaxADC();
                         gl.glColor3fv(SELECT_COLOR, 0);
                         renderer.begin3DRendering();
-                        renderer.draw3D(String.format("%.0f", sampleValue), currentMousePoint.x, -4, 0, textScale);
+                        renderer.draw3D(String.format("%.0f", sampleValue), currentMousePoint.x, -8, 0, textScale);
                         renderer.end3DRendering();
                         gl.glLineWidth(3);
                         gl.glColor3fv(SELECT_COLOR, 0);
