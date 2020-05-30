@@ -6,7 +6,7 @@ jdk: oraclejdk8
 before_deploy:
  - rm -rf $TRAVIS_TAG || exit 0
  - mkdir $TRAVIS_TAG
- - cp -pr jAERViewer_linux.sh jAERViewer_win64.exe SplashScreen.gif dist/ jars/ lib/ biasgenSettings/ filterSettings/ images/ sounds/ $TRAVIS_TAG
+ - cp -pr jAERViewer_linux.sh jAERViewer_win64.exe dist/ jars/ lib/ biasgenSettings/ filterSettings/ images/ sounds/ $TRAVIS_TAG
  - zip -r $TRAVIS_TAG.zip $TRAVIS_TAG
 deploy:
   provider: releases
