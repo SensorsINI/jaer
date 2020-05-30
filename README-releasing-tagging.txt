@@ -19,3 +19,5 @@ After some minutes, the new release will appear on https://github.com/SensorsINI
 The release notes can then be edited on github web page, if you are logged in and have commit rights.
 
 The release name should then be jaer-1.8.1, for example.
+
+View the build results at https://travis-ci.com/github/SensorsINI/jaer
