@@ -4,14 +4,15 @@ dist: trusty
 script: ant jar
 jdk: oraclejdk8
 before_deploy:
-  - rm -rf $RELEASE_NAME || exit 0
-  - mkdir $RELEASE_NAME
-  - cp -pr jAERViewer_linux.sh jAERViewer_win64.exe SplashScreen.gif dist/ jars/ lib/ biasgenSettings/ filterSettings/ images/ sounds/ $RELEASE_NAME
-  - zip -r $RELEASE_NAME.zip $RELEASE_NAME
+ - rm -rf $TRAVIS_TAG || exit 0
+ - mkdir $TRAVIS_TAG
+ - cp -pr jAERViewer_linux.sh jAERViewer_win64.exe SplashScreen.gif dist/ jars/ lib/ biasgenSettings/ filterSettings/ images/ sounds/ $TRAVIS_TAG
+ - zip -r $TRAVIS_TAG.zip $TRAVIS_TAG
 deploy:
   provider: releases
   api_key: $GITHUB_TOKEN
-  file: $RELEASE_NAME.zip
+  file: $TRAVIS_TAG.zip
   skip_cleanup: true
+  draft: true
   on:
     tags: true
