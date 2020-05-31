@@ -7,14 +7,19 @@ Java tools for Address-Event Representation (AER) neuromorphic processing.
 
 **Welcome to the jAER Open Source Project
 Real time sensory-motor processing for event-based sensors and systems**
-Founded in 2007.
+
+Founded in 2007 to support event sensors and robot demonstrators developed by the [Sensors Group, Inst. of Neuroinformatics, UZH-ETH Zurich](https://sensors.ini.uzh.ch). 
 
 
 ## Download
 
-You can find the latest releases at <https://github.com/SensorsINI/jaer/releases>. These releasees do NOT include git information, but using the new self-update feature introduced in jAER-1.8.1, you can initialize the release to a git working copy and pull+build within jAER. 
+You can find the latest releases at <https://github.com/SensorsINI/jaer/releases>. 
+
+Releasees do NOT include git information, but using the new self-update feature introduced in jAER-1.8.1, you can initialize the release to a git working copy and pull+build within jAER. 
 
 You will get the best experience running from lastest bug fixes. 
+
+## Building yourself
 
 To build yourself, see the user guide for IDE setup. Or you can use [ant](https://ant.apache.org/manual/install.html). Install [JDK 1.8](https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html), clone the jAER repo with git and compile jAER using ant from command line as below, from root of jAER. The default target of build.xml for ant is to build the jaer.jar archive of comppiled classes:
 
