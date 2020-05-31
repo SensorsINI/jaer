@@ -5,6 +5,7 @@
  */
 package ch.unizh.ini.jaer.projects.minliu;
 
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.WindowAdapter;
@@ -29,9 +30,15 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import com.jogamp.opengl.GLException;
+import java.awt.Color;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.StringTokenizer;
@@ -39,6 +46,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
+import javax.imageio.ImageIO;
 import javax.swing.SwingUtilities;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -47,6 +55,7 @@ import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.TimeLimiter;
@@ -153,6 +162,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     private volatile boolean resetOFHistogramFlag; // signals to reset the OF histogram after it is rendered
     
     private float cornerThr = getFloat("cornerThr", 0.3f);
+    private boolean saveSliceGrayImage = false;
 
     public enum CornerCircleSelection {
         InnerCircle, OuterCircle, OR, AND
@@ -266,12 +276,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
     
     private boolean calcOFonCornersEnabled = getBoolean("calcOFonCornersEnabled", false);
 
+    private final ApsFrameExtractor apsFrameExtractor;
+    
     public PatchMatchFlow(AEChip chip) {
         super(chip);
 
         getEnclosedFilterChain().clear();
 //        getEnclosedFilterChain().add(new SpatioTemporalCorrelationFilter(chip));
         keypointFilter = new HWCornerPointRenderer(chip);
+        apsFrameExtractor = new ApsFrameExtractor(chip);
+        apsFrameExtractor.setShowAPSFrameDisplay(false);
+        getEnclosedFilterChain().add(apsFrameExtractor);
         getEnclosedFilterChain().add(keypointFilter);
 
         setSliceDurationUs(getSliceDurationUs());   // 40ms is good for the start of the slice duration adatative since 4ms is too fast and 500ms is too slow.
@@ -538,10 +553,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //                });
             }
 
-            if(Math.abs(result.dy) >= 4)
+            if(Math.abs(result.dy) >= 10)
             {
                 int tmp = 0;
-            } 
+            }
             if(ein.timestamp == 80059493)
             {
                 int tmp = 1;
@@ -1053,6 +1068,36 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 
     }
 
+    void saveAPSImage()
+    {
+        byte[] grayImageBuffer = new byte[sizex * sizey];
+        for (int y = 0; y < sizey; y++) {
+            for (int x = 0; x < sizex; x++) {
+                final int idx = x + (sizey - y - 1) * chip.getSizeX();
+                float bufferValue = apsFrameExtractor.getDisplayBuffer()[idx];
+                grayImageBuffer[x + y * chip.getSizeX()] = (byte)(int)(bufferValue * 1.0f);
+            }
+        }
+        final BufferedImage theImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_BYTE_GRAY);
+        theImage.getRaster().setDataElements(0, 0, sizex, sizey, grayImageBuffer);
+        
+        final Date d = new Date();
+        final String PNG = "png";
+        final String fn = "ApsFrame-" + sliceEndTimeUs[sliceIndex(1)] + "." + PNG;
+        // if user is playing a file, use folder that file lives in
+        String userDir = Paths.get(".").toAbsolutePath().normalize().toString();   
+
+        File APSFrmaeDir = new File(userDir + File.separator + "APSFrames"+ File.separator + getChip().getAeInputStream().getFile().getName());
+        if(!APSFrmaeDir.exists()) APSFrmaeDir.mkdirs();
+        File outputfile = new File(APSFrmaeDir + File.separator + fn);        
+
+        try {
+            ImageIO.write(theImage, "png", outputfile);
+        } catch (IOException ex) {
+            Logger.getLogger(PatchMatchFlow.class.getName()).log(Level.SEVERE, null, ex);
+        }  
+    }  
+    
     /**
      * Rotates slices by incrementing the slice pointer with rollover back to
      * zero, and sets currentSliceIdx and currentBitmap. Clears the new
@@ -1083,6 +1128,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (imuTimesliceLogger != null && imuTimesliceLogger.isEnabled()) {
             imuTimesliceLogger.log(String.format("%d %d %.3f", ts, sliceDeltaT, imuFlowEstimator.getPanRateDps()));
         }
+        
+        if(e.timestamp == 16115543)
+        {
+            saveAPSImage();                    
+            saveSliceGrayImage = true;
+        }        
         if (showSlices && !rewindFlg) {
             // TODO danger, drawing outside AWT thread
             final byte[][][][] thisSlices = slices;
@@ -2340,6 +2391,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         boolean old = this.showSlices;
         this.showSlices = showSlices;
         getSupport().firePropertyChange("showSlices", old, this.showSlices);
+        putBoolean("showSlices", showSlices);
     }
 
     synchronized public void setOutputSearchErrorInfo(boolean outputSearchErrorInfo) {
@@ -2733,12 +2785,46 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (showSlicesScale >= numScales) {
             showSlicesScale = numScales - 1;
         }
+        
+        byte[] grayImageBuffer = new byte[sizex * sizey];
         for (int x = 0; x < sizex >> showSlicesScale; x++) {
             for (int y = 0; y < sizey >> showSlicesScale; y++) {
                 // TODO only draw scale 0 (no subsampling) for now
-                sliceBitmapImageDisplay.setPixmapRGB(x, y, scale * slices[d1][showSlicesScale][x][y], 0, 0);
+                int pixelValue = slices[d1][showSlicesScale][x][y];
+                sliceBitmapImageDisplay.setPixmapRGB(x, y, scale * pixelValue, 0, 0);
+                // The minimum of byte is ox0(0), the maximum is 0xFF(-1); 
+                // It is from 0 to 127 and then -128 to -1;
+                int imagePixelVal = (int) (pixelValue*255.0f/getSliceMaxValue() + 128);
+                if(imagePixelVal == 0)
+                {
+                    imagePixelVal = 0;  // Background
+                }
+                grayImageBuffer[(sizey - 1 - y) * sizex + x] = (byte)imagePixelVal;
             }
         }
+        final BufferedImage theImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_BYTE_GRAY);
+        theImage.getRaster().setDataElements(0, 0, sizex, sizey, grayImageBuffer);
+
+        if(saveSliceGrayImage)
+        {
+            final Date d = new Date();
+            final String PNG = "png";
+//            final String fn = "EventSlice-" + AEDataFile.DATE_FORMAT.format(d) + "." + PNG;
+            final String fn = "EventSlice-" + sliceEndTimeUs[d1] + "." + PNG;            
+            // if user is playing a file, use folder that file lives in
+            String userDir = Paths.get(".").toAbsolutePath().normalize().toString();
+            File eventSliceDir = new File(userDir + File.separator + "EventSlices" + File.separator + getChip().getAeInputStream().getFile().getName());
+            if(!eventSliceDir.exists()) eventSliceDir.mkdirs();
+            File outputfile = new File(eventSliceDir + File.separator + fn);        
+
+            try {
+                ImageIO.write(theImage, "png", outputfile);
+            } catch (IOException ex) {
+                Logger.getLogger(PatchMatchFlow.class.getName()).log(Level.SEVERE, null, ex);
+            }  
+            saveSliceGrayImage = false;
+        }
+
         if (sliceBitmapImageDisplayLegend != null) {
             sliceBitmapImageDisplayLegend.s
                     = LEGEND_SLICES;
