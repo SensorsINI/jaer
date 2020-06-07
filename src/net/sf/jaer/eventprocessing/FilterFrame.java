@@ -522,6 +522,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             System.exit(0);
 	}//GEN-LAST:event_exitMenuItemActionPerformed
 
+        
 	private void measurePerformanceCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_measurePerformanceCheckBoxMenuItemActionPerformed
             filterChain.setMeasurePerformanceEnabled(measurePerformanceCheckBoxMenuItem.isSelected());
             if (measurePerformanceCheckBoxMenuItem.isSelected()) {
@@ -529,6 +530,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                     resetStatisticsButton = new JButton(new ResetPerformanceStatisticsAction());
                 }
                 toolBar1.add(resetStatisticsButton);
+                
             } else if (resetStatisticsButton != null) {
                 toolBar1.remove(resetStatisticsButton);
                 validate();

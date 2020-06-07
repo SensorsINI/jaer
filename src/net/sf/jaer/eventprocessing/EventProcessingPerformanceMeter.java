@@ -23,19 +23,21 @@ public class EventProcessingPerformanceMeter {
     private static final float SPNS = 1e-9f;
     public static final float NSPS = 1e9f;
     
-    EventPacket packet;
-    long startTimeNs, endTimeNs;
-    int size=1;
-    long durationSum, sumSquared;
-    long durationNs=1;
-    int nSamples=0;
-    float thisNspe=0, nspeSum=0,nspeSq=0; // summary stats for ns per event
-    EventFilter filter;
-    String filterClassName;
-    
+    private EventPacket packet;
+    private long startTimeNs, endTimeNs;
+    private int size=1;
+    private long durationSum, sumSquared;
+    private long durationNs=1;
+    private int nSamples=0;
+    private float thisNspe=0, nspeSum=0,nspeSq=0; // summary stats for ns per event
+    private EventFilter filter;
+    private String filterClassName;
+    private EventProcessingPerformanceView view=null;
+ 
     /** Creates a new instance of EventProcessingPerformanceMeter */
-    public EventProcessingPerformanceMeter(EventFilter f) {
+    public EventProcessingPerformanceMeter(EventFilter f, EventProcessingPerformanceView view) {
         this.filter=f;
+        this.view=view;
         filterClassName=f.getClass().getSimpleName();
     }
     
@@ -98,10 +100,8 @@ public class EventProcessingPerformanceMeter {
 //    }
     
     public String toString(){
-        String s=String.format("%s: %9d events, start %16d ns, duration %8.3f ms, %8.2g eps, %8.1f ns/event (Average %8.1f +/- %-6.1f ns/event, N=%d samples), ", 
-                filterClassName,
+        String s=String.format("%s: %9d events, duration %8.3f ms, %8.2g eps, %8.1f ns/event (Average %8.1f +/- %-6.1f ns/event, N=%d samples), ", getFilterClassName(),
                 size,
-                startTimeNs,
                 durationNs*1e-6f,
                 eps(),
                 NSPS*sPerEvent(),
@@ -110,6 +110,38 @@ public class EventProcessingPerformanceMeter {
                 nSamples
                 );
         return s;
+    }
+
+    void updateView() {
+        getView().updateView(this.toString());
+    }
+
+    /**
+     * @return the view
+     */
+    public EventProcessingPerformanceView getView() {
+        return view;
+    }
+
+    /**
+     * @param view the view to set
+     */
+    public void setView(EventProcessingPerformanceView view) {
+        this.view = view;
+    }
+
+    /**
+     * @return the filter
+     */
+    public EventFilter getFilter() {
+        return filter;
+    }
+
+    /**
+     * @return the filterClassName
+     */
+    public String getFilterClassName() {
+        return filterClassName;
     }
     
 }

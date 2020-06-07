@@ -207,7 +207,14 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             }
             if (measurePerformanceEnabled) {
                 if (f.perf == null) {
-                    f.perf = new EventProcessingPerformanceMeter(f);
+                    EventProcessingPerformanceView view = new EventProcessingPerformanceView(f.getChip().getFilterFrame());
+                    f.perf = new EventProcessingPerformanceMeter(f, view);
+                    view.setModel(f.perf);
+                }
+                if (f.perf.getView() != null && !f.perf.getView().isVisible()) {
+                    f.perf.getView().setFocusableWindowState(false);
+                    f.perf.getView().setVisible(true);  // only set visible if not visible
+                    f.perf.getView().setFocusableWindowState(true);
                 }
                 f.perf.start(in);
             }
@@ -215,7 +222,8 @@ public class FilterChain extends LinkedList<EventFilter2D> {
 //            timedOut = in.isTimedOut();
             if (measurePerformanceEnabled && f.perf != null) {
                 f.perf.stop();
-                System.out.println(f.perf);
+//                System.out.println(f.perf);
+                f.perf.updateView();
             }
             in = out;
         }
@@ -433,17 +441,18 @@ public class FilterChain extends LinkedList<EventFilter2D> {
 //        initFilters(); // not a good place to call initFilters(), becauses subclases have not yet set their sizes or other needed information for most filters.
     }
 
-    /** 
-     * Initializes all filters in the chain by calling initFilter() on each of them, 
-     * including each filter's enclosed filter chain
-     * @see EventFilter#initFilter() 
+    /**
+     * Initializes all filters in the chain by calling initFilter() on each of
+     * them, including each filter's enclosed filter chain
+     *
+     * @see EventFilter#initFilter()
      */
     public void initFilters() {
         // call initFilter on all filters in the chain
         for (EventFilter f : this) {
             try {
                 f.initFilter(); // initialize each enclosed filter TODO only goes one level deep\
-                FilterChain efc=f.getEnclosedFilterChain();
+                FilterChain efc = f.getEnclosedFilterChain();
                 if (efc != null && !efc.isEmpty()) {
                     efc.initFilters();
                 }
