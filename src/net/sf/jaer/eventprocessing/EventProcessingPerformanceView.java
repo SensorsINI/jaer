@@ -51,6 +51,7 @@ public class EventProcessingPerformanceView extends javax.swing.JFrame {
 
         setTitle("Event Processing Throughput");
 
+        statsTF.setFont(new java.awt.Font("Monospaced", 0, 12)); // NOI18N
         statsTF.setText("statistics will be shown here");
 
         resetButton.setText("Reset Statistics");
@@ -79,7 +80,7 @@ public class EventProcessingPerformanceView extends javax.swing.JFrame {
                 .addComponent(statsTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(resetButton)
-                .addGap(0, 26, Short.MAX_VALUE))
+                .addGap(0, 23, Short.MAX_VALUE))
         );
 
         pack();
