@@ -82,7 +82,7 @@ import org.eclipse.jgit.transport.FetchResult;
  */
 public class JaerUpdater {
 
-    public static final boolean DEBUG = true; // false for production version,  true to clone here to tmp folders that do not overwrite our own .git
+    public static final boolean DEBUG = false; // false for production version,  true to clone here to tmp folders that do not overwrite our own .git
     private static Logger log = Logger.getLogger("JaerUpdater");
     private static Preferences prefs = Preferences.userNodeForPackage(JaerUpdater.class);
 
