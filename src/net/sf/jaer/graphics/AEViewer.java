@@ -3885,6 +3885,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	private void imagePanelMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_imagePanelMouseWheelMoved
             int rotation = evt.getWheelRotation();
             getRenderer().setColorScale(getRenderer().getColorScale() + rotation);
+            showActionText(String.format("DVS full scale count=%d events",getRenderer().getColorScale()));
             interruptViewloop();
 	}//GEN-LAST:event_imagePanelMouseWheelMoved
 
@@ -3918,18 +3919,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
 	private void autoscaleContrastEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_autoscaleContrastEnabledCheckBoxMenuItemActionPerformed
             getRenderer().setAutoscaleEnabled(!getRenderer().isAutoscaleEnabled());
+            showActionText("DVS autoscale contras"+getRenderer().isAutoscaleEnabled());
 	}//GEN-LAST:event_autoscaleContrastEnabledCheckBoxMenuItemActionPerformed
 
 	private void acccumulateImageEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_acccumulateImageEnabledCheckBoxMenuItemActionPerformed
             boolean old = getRenderer().isAccumulateEnabled();
             getRenderer().setAccumulateEnabled(!getRenderer().isAccumulateEnabled());
             getSupport().firePropertyChange(AEViewer.EVENT_ACCUMULATE_ENABLED, old, getRenderer().isAccumulateEnabled());
+            showActionText("Accumulate events="+getRenderer().isAccumulateEnabled());
 	}//GEN-LAST:event_acccumulateImageEnabledCheckBoxMenuItemActionPerformed
 
 	private void zeroTimestampsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zeroTimestampsMenuItemActionPerformed
             if ((jaerViewer != null) && jaerViewer.isSyncEnabled()) {
                 log.info("zeroing timestamps on all viewers because isSyncEnabled=true");
                 jaerViewer.zeroTimestamps();
+                showActionText("Zeroed timestamps");
             } else {
                 log.info("zeroing timestamps only on current AEViewer " + this);
                 zeroTimestamps();
@@ -3937,36 +3941,29 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_zeroTimestampsMenuItemActionPerformed
 
 	private void decreaseFrameRateMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_decreaseFrameRateMenuItemActionPerformed
-            //            case KeyEvent.VK_LEFT: // slower
             setDesiredFrameRate(getDesiredFrameRate() / 2);
-            //                break;
-            //            case KeyEvent.VK_RIGHT: //faster
-            //                setDesiredFrameRate(getDesiredFrameRate()*2);
-            //                break;
-
+            showActionText(String.format("Decrease frame rate to %d Hz", getDesiredFrameRate()));
 	}//GEN-LAST:event_decreaseFrameRateMenuItemActionPerformed
 
 	private void increaseFrameRateMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_increaseFrameRateMenuItemActionPerformed
-            //            case KeyEvent.VK_LEFT: // slower
-            //                setDesiredFrameRate(getDesiredFrameRate()/2);
-            //                break;
-            //            case KeyEvent.VK_RIGHT: //faster
             setDesiredFrameRate(getDesiredFrameRate() * 2);
-            //                break;
-
+            showActionText(String.format("Increase frame rate to %d Hz", getDesiredFrameRate()));
 	}//GEN-LAST:event_increaseFrameRateMenuItemActionPerformed
 
 	private void decreaseContrastMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_decreaseContrastMenuItemActionPerformed
             getRenderer().setColorScale(getRenderer().getColorScale() + 1);
+            showActionText(String.format("Decrease DVS contrast to %d events full scale", getRenderer().getColorScale()));
 	}//GEN-LAST:event_decreaseContrastMenuItemActionPerformed
 
 	private void increaseContrastMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_increaseContrastMenuItemActionPerformed
             getRenderer().setColorScale(getRenderer().getColorScale() - 1);
+            showActionText(String.format("Increase DVS contrast to %d events full scale", getRenderer().getColorScale()));
 	}//GEN-LAST:event_increaseContrastMenuItemActionPerformed
 
 	private void cycleColorRenderingMethodMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cycleColorRenderingMethodMenuItemActionPerformed
             if ((chipCanvas != null) && (chipCanvas.getDisplayMethod() != null) && (chipCanvas.getDisplayMethod() instanceof DisplayMethod2D)) {
                 getRenderer().cycleColorMode();
+                showActionText(String.format("DVS color mode %s", getRenderer().getColorMode().toString()));
             } else {
                 log.warning("It does not make sense to cycle color mode for this display method, ignoring");
             }

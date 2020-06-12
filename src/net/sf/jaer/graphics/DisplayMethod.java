@@ -213,7 +213,7 @@ public abstract class DisplayMethod {
      * @param text 
      */
     public void showActionText(String text) {
-        if(statusChangeString!=null) text=statusChangeString+", "+text;
+//        if(statusChangeString!=null) text=statusChangeString+", "+text;
         statusChangeStartTimeMillis = System.currentTimeMillis();
         statusChangeString = text;
     }
