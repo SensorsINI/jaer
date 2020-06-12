@@ -33,34 +33,33 @@ import net.sf.jaer.util.IndexFileFilter;
 import net.sf.jaer.util.SubclassFinder;
 
 /**
- * Synchronized playback and control of such playback is not
- * totally straightforward because of the bursty nature of
- * AER - there are no frames to synchronize
- * on and you obviously cannot sync on event number.
+ * Synchronized playback and control of such playback is not totally
+ * straightforward because of the bursty nature of AER - there are no frames to
+ * synchronize on and you obviously cannot sync on event number.
  * <p>
- * This class synchronizes multiple viewer players.
- * It assumes one is the master (whichever the user controls)
- * and coordinates viewers synchronously
- * so that all viewers can present a consistent view.
+ * This class synchronizes multiple viewer players. It assumes one is the master
+ * (whichever the user controls) and coordinates viewers synchronously so that
+ * all viewers can present a consistent view.
  * <p>
- * To achieve this, each viewer encapsulates its playback functionality on an AEPlayer
- *  class instance that is controlled either by the Viewer GUI (the user)
- * or by JAERViewer through its own SyncPlayer.
+ * To achieve this, each viewer encapsulates its playback functionality on an
+ * AEPlayer class instance that is controlled either by the Viewer GUI (the
+ * user) or by JAERViewer through its own SyncPlayer.
  * <p>
- * There is a single SyncPlayer and multiple AEViwer.AEPlayers, one for each viewer.
- * The user opens an index file to play back multiple files. The files each play in their own AEViewer.
+ * There is a single SyncPlayer and multiple AEViwer.AEPlayers, one for each
+ * viewer. The user opens an index file to play back multiple files. The files
+ * each play in their own AEViewer.
  * <p>
  *
- * The Players share a common interface so this is achieved by
- * returning the correct object within AEViewer depending on
- * whether the views are synchronized.
+ * The Players share a common interface so this is achieved by returning the
+ * correct object within AEViewer depending on whether the views are
+ * synchronized.
  *
  * <p>
- * The individual threads doing the rendering in each AEViewer are
- * barricaded by the CyclicBarrier here. Each time an AEViewer asks
- * for synchronized events using getNextPacket, the call
- * here to SyncPlayer blocks until all threads asking for events have
- * gotten them. Then rendering in each thread happens normally.
+ * The individual threads doing the rendering in each AEViewer are barricaded by
+ * the CyclicBarrier here. Each time an AEViewer asks for synchronized events
+ * using getNextPacket, the call here to SyncPlayer blocks until all threads
+ * asking for events have gotten them. Then rendering in each thread happens
+ * normally.
  */
 public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListener {
 
@@ -75,8 +74,9 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     private ArrayList<AEViewer> playingViewers = new ArrayList<AEViewer>();
     static Preferences prefs = Preferences.userNodeForPackage(SyncPlayer.class);
 
-    /** Create new SyncPlayer
-     * 
+    /**
+     * Create new SyncPlayer
+     *
      * @param viewer the viewer we actually play in
      * @param outer the JAERViewer that maintains all the AEViewers
      */
@@ -89,8 +89,10 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         return fileChooser != null && fileChooser.isVisible();
     }
 
-    /** this call shows a file chooser for index files: files containing
-     * information on which AE data files go together. This method is only called when an index file is opened.
+    /**
+     * this call shows a file chooser for index files: files containing
+     * information on which AE data files go together. This method is only
+     * called when an index file is opened.
      */
     public void openAEInputFileDialog() {
         fileChooser = new JFileChooser();
@@ -121,7 +123,9 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         setPaused(false);
     }
 
-    /** @return a simple class name (no package header) parsed from a .dat filename as the part before the "-"
+    /**
+     * @return a simple class name (no package header) parsed from a .dat
+     * filename as the part before the "-"
      */
     String parseClassnameFromFilename(String filename) {
         StringBuilder className = new StringBuilder();
@@ -155,13 +159,16 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         });
     }
 
-    /** this call starts playback on the supplied index file, starting playback in each viewer appropriately.
-    If the file is not an index file, then the first available viewer is called to start playback of the data file.
+    /**
+     * this call starts playback on the supplied index file, starting playback
+     * in each viewer appropriately. If the file is not an index file, then the
+     * first available viewer is called to start playback of the data file.
+     *
      * @param indexFile the .index file containing the filenames to play
      */
     @Override
     public void startPlayback(File indexFile) throws IOException, InterruptedException {
-        inputFile=indexFile;
+        inputFile = indexFile;
         log.info("Starting synchronized playback of files in indexFile=" + indexFile);
         stopPlayback();
         // first check to make sure that index file is really an index file, in case a viewer called it
@@ -271,7 +278,9 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         outer.setPlayBack(true);
     }
 
-    /** stops playback on all players */
+    /**
+     * stops playback on all players
+     */
     public void stopPlayback() {
         log.info(Thread.currentThread() + " stopping playback");
         for (AEViewer v : outer.getViewers()) {
@@ -298,7 +307,9 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         setTime(minTime);
     }
 
-    /** rewinds all players */
+    /**
+     * rewinds all players
+     */
     public void rewind() {
         for (AEViewer v : outer.getViewers()) {
             v.aePlayer.rewind();
@@ -306,22 +317,29 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         initTime();
     }
 
-    /** pauses all players */
+    /**
+     * pauses all players
+     */
     @Override
     public void pause() {
         setPaused(true);
     }
 
-    /** resumes all players */
+    /**
+     * resumes all players
+     */
     @Override
     public void resume() {
         setPaused(false);
     }
     static final int SYNC_PLAYER_TIMEOUT_SEC = 3;
 
-    /** Returns next packet of AE data to the caller, which is a
-     * particular AEPlayer owned by an AEViewer.  getNextPacket is called via the ViewLoop run() loop thread of that AEViewer.
-     * The packet is synchronized in event time if synchronized playback is enabled.
+    /**
+     * Returns next packet of AE data to the caller, which is a particular
+     * AEPlayer owned by an AEViewer. getNextPacket is called via the ViewLoop
+     * run() loop thread of that AEViewer. The packet is synchronized in event
+     * time if synchronized playback is enabled.
+     *
      * @return a raw packet of events
      */
     public AEPacketRaw getNextPacket(AbstractAEPlayer player) {
@@ -334,7 +352,6 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         // We first set all the player's currentStartTimestamp to the same values, based on all the player's values.
         // Since currentStartTimestamp is set by each player to whatever time it happens to end at
         // (which is not nessarily the last timestamp plust the delta time), we have to keep synchrnozing the players
-
         int[] currentTimes = new int[getPlayingViewers().size()];
         int i = 0;
 //        System.out.print("current times ");
@@ -430,14 +447,35 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public void setFractionalPosition(float frac) {
         for (AEViewer v : outer.getViewers()) {
             v.aePlayer.setFractionalPosition(frac);
         }
     }
 
-    /** Sets all viewers to the same time.
-     * @param time current playback time relative to start in us */
+    @Override
+    public void setTimesliceUs(int samplePeriodUs) {
+        super.setTimesliceUs(samplePeriodUs);
+        for (AEViewer v : getPlayingViewers()) {
+            v.aePlayer.setTimesliceUs(samplePeriodUs);
+        }
+    }
+
+    @Override
+    public void setPacketSizeEvents(int packetSizeEvents) {
+       super.setPacketSizeEvents(packetSizeEvents);
+        for (AEViewer v : getPlayingViewers()) {
+            v.aePlayer.setTimesliceUs(packetSizeEvents);
+        }
+  }
+
+    /**
+     * Sets all viewers to the same time.
+     *
+     * @param time current playback time relative to start in us
+     */
+    @Override
     public void setTime(int time) {
         currentTime = time;
 //            log.info("JAERViewer.SyncPlayer.setTime("+time+")");
@@ -450,22 +488,33 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         }
     }
 
-    /** @return current playback time relative to start in us */
+    /**
+     * @return current playback time relative to start in us
+     */
+    @Override
     public int getTime() {
         return currentTime;
     }
 
-    /** will throw UnsupportedOperationException since the correct call is to getNextPacket(player). */
+    /**
+     * will throw UnsupportedOperationException since the correct call is to
+     * getNextPacket(player).
+     */
+    @Override
     public AEPacketRaw getNextPacket() {
         throw new UnsupportedOperationException();
     }
 
-    /** always returns null, because this is a sync player for multiple viewers */
+    /**
+     * always returns null, because this is a sync player for multiple viewers
+     */
     public AEFileInputStream getAEInputStream() {
         return null;
     }
 
-    /** JAERViewer gets PropertyChangeEvent from the AEPlayer in the AEViewers. This method presently only logs this event.
+    /**
+     * JAERViewer gets PropertyChangeEvent from the AEPlayer in the AEViewers.
+     * This method presently only logs this event.
      */
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName().equals(AEInputStream.EVENT_REWOUND)) {
@@ -493,6 +542,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
 
     /**
      * Returns the list of viewers involved in this playback.
+     *
      * @return the playingViewers
      */
     public ArrayList<AEViewer> getPlayingViewers() {
@@ -500,8 +550,9 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     }
     private static List<String> chipClassNames; // cache expensive search for all AEChip classes
 
-    /** Returns AEChip class from simple name. If chip classes have not
-     * yet been cached, waits until they exist.
+    /**
+     * Returns AEChip class from simple name. If chip classes have not yet been
+     * cached, waits until they exist.
      *
      * @param className, e.g. DVS128.
      * @return class for AEChip.
@@ -538,9 +589,10 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         return chipClassNames;
     }
 
-    /** Sets IN marker on all viewers.
-     * 
-     * @return always 0, because every player has its own position. 
+    /**
+     * Sets IN marker on all viewers.
+     *
+     * @return always 0, because every player has its own position.
      */
     @Override
     public long setMarkIn() {
@@ -550,9 +602,10 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         return 0;
     }
 
-  /** Sets OUT marker on all viewers.
-     * 
-     * @return always 0, because every player has its own position. 
+    /**
+     * Sets OUT marker on all viewers.
+     *
+     * @return always 0, because every player has its own position.
      */
     @Override
     public long setMarkOut() {

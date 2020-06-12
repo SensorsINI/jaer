@@ -1428,7 +1428,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             getDavisConfig().setCaptureFramesEnabled(!old);
             getDavisConfig().setDisplayFrames(!old);
             log.info("capturing and displaying frames = " + getDavisConfig().isCaptureFramesEnabled());
-            davisDisplayMethod.showStatusChangeText("frames=" + getDavisConfig().isCaptureFramesEnabled());
+            davisDisplayMethod.showActionText("frames=" + getDavisConfig().isCaptureFramesEnabled());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1449,7 +1449,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             getDavisConfig().setCaptureEvents(!old);
             getDavisConfig().setDisplayEvents(!old);
             log.info("capturing and displaying events = " + getDavisConfig().isCaptureEventsEnabled());
-            davisDisplayMethod.showStatusChangeText("events=" + getDavisConfig().isCaptureEventsEnabled());
+            davisDisplayMethod.showActionText("events=" + getDavisConfig().isCaptureEventsEnabled());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1490,7 +1490,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             DavisVideoContrastController controller = ((DavisRenderer) getRenderer()).getContrastController();
             controller.setUseAutoContrast(!controller.isUseAutoContrast());
             log.info("autoContrast = " + controller.isUseAutoContrast());
-            davisDisplayMethod.showStatusChangeText("autoContrast = " + controller.isUseAutoContrast());
+            davisDisplayMethod.showActionText("autoContrast = " + controller.isUseAutoContrast());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1511,7 +1511,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         public void actionPerformed(ActionEvent e) {
             getDavisConfig().setGlobalShutter(!getDavisConfig().isGlobalShutter());
             log.info("globalShutter = " + getDavisConfig().isGlobalShutter());
-            davisDisplayMethod.showStatusChangeText("globalShutter = " + getDavisConfig().isGlobalShutter());
+            davisDisplayMethod.showActionText("globalShutter = " + getDavisConfig().isGlobalShutter());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1532,7 +1532,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         public void actionPerformed(ActionEvent e) {
             setAutoExposureEnabled(!isAutoExposureEnabled());
             log.info("autoExposure = " + isAutoExposureEnabled());
-            davisDisplayMethod.showStatusChangeText("autoExposure = " + isAutoExposureEnabled());
+            davisDisplayMethod.showActionText("autoExposure = " + isAutoExposureEnabled());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1559,7 +1559,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             }
             final String s = "set exposure delay = " + getDavisConfig().getExposureDelayMs() + " ms";
             log.info(s);
-            davisDisplayMethod.showStatusChangeText(s);
+            davisDisplayMethod.showActionText(s);
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1586,7 +1586,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             }
             final String s = "set exposure delay = " + getDavisConfig().getExposureDelayMs() + " ms";
             log.info(s);
-            davisDisplayMethod.showStatusChangeText(s);
+            davisDisplayMethod.showActionText(s);
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1616,7 +1616,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             }
             final String s = "set frame interval = " + getDavisConfig().getFrameIntervalMs() + " ms";
             log.info(s);
-            davisDisplayMethod.showStatusChangeText(s);
+            davisDisplayMethod.showActionText(s);
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1646,7 +1646,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             }
             final String s = "set frame interval = " + getDavisConfig().getFrameIntervalMs() + " ms";
             log.info(s);
-            davisDisplayMethod.showStatusChangeText(s);
+            davisDisplayMethod.showActionText(s);
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1665,7 +1665,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             boolean old = getDavisConfig().isImuEnabled();
             getDavisConfig().setImuEnabled(!old);
             getDavisConfig().setDisplayImu(!old);
-            davisDisplayMethod.showStatusChangeText("IMU enabled = " + getDavisConfig().isImuEnabled());
+            davisDisplayMethod.showActionText("IMU enabled = " + getDavisConfig().isImuEnabled());
             putValue(Action.SELECTED_KEY, true);
         }
     }

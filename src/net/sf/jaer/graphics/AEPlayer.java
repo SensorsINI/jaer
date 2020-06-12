@@ -139,8 +139,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public void doSingleStep() {
-//        log.info("doSingleStep");
-        viewer.setDoSingleStepEnabled(true);
+        viewer.doSingleStep();
     }
 
     @Override
@@ -500,35 +499,6 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     }
 
     @Override
-    public void pause() {
-        super.pause();
-        viewer.setPaused(true);
-    }
-
-    @Override
-    public void resume() {
-        super.resume();
-        viewer.setPaused(false);
-    }
-
-    /**
-     * sets the AEViewer paused flag
-     */
-    @Override
-    public void setPaused(boolean yes) {
-        super.setPaused(yes);
-        viewer.setPaused(yes);
-    }
-
-    /**
-     * gets the AEViewer paused flag
-     */
-    @Override
-    public boolean isPaused() {
-        return viewer.isPaused();
-    }
-
-    @Override
     public AEPacketRaw getNextPacket() {
         return getNextPacket(null);
     }
@@ -540,6 +510,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         }
         AEPacketRaw aeRaw = null;
 
+        log.info(this+" viewer.getAePlayer().getTimesliceUs()="+viewer.getAePlayer().getTimesliceUs());
+        
         try {
             if (!jogOccuring || (jogOccuring && jogPacketsLeft == 0)) {
                 if (!viewer.aePlayer.isFlexTimeEnabled()) {

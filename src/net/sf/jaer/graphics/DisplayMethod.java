@@ -43,7 +43,7 @@ public abstract class DisplayMethod {
     private ArrayList<FrameAnnotater> annotators = new ArrayList<>();
     private String statusChangeString = null;
     private long statusChangeStartTimeMillis = 0;
-    private final long statusChangeDisplayTimeMillis = 750;
+    private final long statusChangeDisplayTimeMillis = 500;
     /** Provides PropertyChangeSupport for all DisplayMethods */
     private PropertyChangeSupport support=new PropertyChangeSupport(this);
 
@@ -193,10 +193,9 @@ public abstract class DisplayMethod {
         }
         GL2 gl = drawable.getGL().getGL2();
         TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
-        renderer.setColor(Color.white);
+        renderer.setColor(Color.YELLOW);
         try {
             renderer.begin3DRendering();
-            boolean first = true;
 
             Rectangle2D r = renderer.getBounds(statusChangeString);
             float scale = .5f;
@@ -213,7 +212,8 @@ public abstract class DisplayMethod {
      * 
      * @param text 
      */
-    public void showStatusChangeText(String text) {
+    public void showActionText(String text) {
+        if(statusChangeString!=null) text=statusChangeString+", "+text;
         statusChangeStartTimeMillis = System.currentTimeMillis();
         statusChangeString = text;
     }

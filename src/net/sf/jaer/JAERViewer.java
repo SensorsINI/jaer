@@ -105,7 +105,7 @@ public class JAERViewer {
     private boolean playBack = false;
     //some time variables for timing across threads
     static public long globalTime1, globalTime2, globalTime3;
-    private SyncPlayer syncPlayer = new SyncPlayer(null, this); // TODO ugly, create here and then recreate later
+    private SyncPlayer syncPlayer = null; // add a sync player once we have a viewer to assign it to
     protected static final String JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY = "JAERViewer.viewerChipClassNames";
 
 
@@ -313,9 +313,13 @@ public class JAERViewer {
         }
     }
 
-    public void addViewer(AEViewer aEViewer) {
-        getViewers().add(aEViewer);
-        aEViewer.addWindowListener(new java.awt.event.WindowAdapter() {
+    public void addViewer(AEViewer viewer) {
+        if(syncPlayer==null){
+            syncPlayer=new SyncPlayer(viewer, this);
+            log.info("added "+syncPlayer+" to first viewer "+this);
+        } 
+        getViewers().add(viewer);
+        viewer.addWindowListener(new java.awt.event.WindowAdapter() {
 
             @Override
             public void windowClosing(java.awt.event.WindowEvent evt) {
@@ -325,7 +329,7 @@ public class JAERViewer {
                 }
             }
         });
-        buildMenus(aEViewer);
+        buildMenus(viewer);
     }
 
     void buildMenus(AEViewer v) {
