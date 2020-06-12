@@ -16,6 +16,7 @@ import javax.swing.Action;
 import javax.swing.KeyStroke;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * Base class for AEPlayers for playing back AER data files that implements some
@@ -479,6 +480,12 @@ public abstract class AbstractAEPlayer {
                 viewer.showActionText((String) getValue(Action.SHORT_DESCRIPTION));
             }
         }
+
+        protected void showAction(String s) {
+            if (viewer != null && s != null) {
+                viewer.showActionText(s);
+            }
+        }
     }
 
     final public class PausePlayAction extends MyAction {
@@ -637,10 +644,19 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
-            showAction();
             speedUp();
+            showAction(speedText(false));
             putValue(Action.SELECTED_KEY, true);
         }
+    }
+
+    private final EngineeringFormat engFmt = new EngineeringFormat();
+
+    private final String speedText(boolean faster) {
+        return String.format("DVS frames %s to %s%s", faster ? "reduced" : "increased",
+                isFlexTimeEnabled() ? Integer.toString(getPacketSizeEvents()) : engFmt.format(1e-6f*getTimesliceUs()),
+                isFlexTimeEnabled() ? " events" : "s"
+        );
     }
 
     final public class SlowerAction extends MyAction {
@@ -651,8 +667,8 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
-            showAction();
             slowDown();
+            showAction(speedText(false));
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -729,8 +745,8 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
-            showAction();
             toggleFlexTime();
+            showAction(isFlexTimeEnabled()?"Flextime: Constantc-count DVS frames":"Flextime: Constant-time DVS frames");
             putValue(Action.SELECTED_KEY, true);
         }
     }
