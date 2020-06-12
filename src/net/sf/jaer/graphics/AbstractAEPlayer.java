@@ -50,6 +50,9 @@ public abstract class AbstractAEPlayer {
     public final ReverseAction reverseAction = new ReverseAction();
     public final StepForwardAction stepForwardAction = new StepForwardAction();
     public final StepBackwardAction stepBackwardAction = new StepBackwardAction();
+    public final JogForwardAction jogForwardAction = new JogForwardAction();
+    public final JogBackwardAction jogBackwardAction = new JogBackwardAction();
+    public final ToggleFlextimeAction toggleFlextimeAction = new ToggleFlextimeAction();
 //    public final SyncPlaybackAction syncPlaybackAction = new SyncPlaybackAction();
     public final MarkInAction markInAction = new MarkInAction();
     public final MarkOutAction markOutAction = new MarkOutAction();
@@ -69,48 +72,13 @@ public abstract class AbstractAEPlayer {
      * @param viewer must be instance of AEViewer.
      */
     public AbstractAEPlayer(AEViewer viewer) {
-        this.viewer = viewer;
-        if (viewer != null) {
-            support.addPropertyChangeListener(viewer); // TODO do we always want to add viewer to the listeners, or should it be up to the viewer to decide?
+        if (viewer == null) {
+            throw new RuntimeException("null AEViewer; you must control a viewer");
         }
+        this.viewer = viewer;
+        support.addPropertyChangeListener(viewer);
     }
 
-//    /**Returns the proper AbstractAEPlayer: either <code>this</code> or the delegated-to JAERViewer.SyncPlayer.
-//     *
-//     * @return the local player, unless we are part of a synchronized playback gruop.
-//     */
-//    public AbstractAEPlayer getAePlayer (){
-//        if ( viewer == null || viewer.getJaerViewer() == null || !viewer.getJaerViewer().isSyncEnabled() || viewer.getJaerViewer().getViewers().size() == 1 ){
-//            return viewer.aePlayer;
-//        }
-//
-//        return viewer.getJaerViewer().getSyncPlayer();
-//    }
-//
-//    /** Returns true if we delegate our player responsibilities to the JAERViewer.SyncPlayer player.
-//     *
-//     * @return true if delegated.
-//     */
-//    public boolean isDelegated (){
-//        if ( viewer == null || viewer.getJaerViewer() == null || !viewer.getJaerViewer().isSyncEnabled() || viewer.getJaerViewer().getViewers().size() == 1 ){
-//            return false;
-//        } else{
-//            return true;
-//        }
-//    }
-//
-//    /** Returns this. */
-//    public AbstractAEPlayer getLocalPlayer(){
-//        return this;
-//    }
-//
-//    /** Returns the JAERViewer.SyncPlayer; throws null reference exception if viewer is null.
-//     *
-//     * @return
-//     */
-//    public AbstractAEPlayer getGlobalPlayer(){
-//         return viewer.getJaerViewer().getSyncPlayer();
-//    }
     protected PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     /**
@@ -330,7 +298,7 @@ public abstract class AbstractAEPlayer {
     }
 
     /**
-     * Pauses/unpauses playback. Fires property change "paused" or "resumed".
+     * Pauses/un-pauses playback. Fires property change "paused" or "resumed".
      *
      * @param yes true to pause, false to resume.
      */
@@ -407,6 +375,19 @@ public abstract class AbstractAEPlayer {
         int sign = forwards ? 1 : -1;
         setPacketSizeEvents(sign * Math.abs(getPacketSizeEvents()));
         setTimesliceUs(sign * Math.abs(getTimesliceUs()));
+        setPlaybackDirection(PlaybackDirection.Forward);
+    }
+
+    /**
+     * Sets the playback direction
+     *
+     * @param forwards true for backwards, false for forwards
+     */
+    public void setDirectionBackwards(boolean forwards) {
+        int sign = forwards ? 1 : -1;
+        setPacketSizeEvents(-sign * Math.abs(getPacketSizeEvents()));
+        setTimesliceUs(-sign * Math.abs(getTimesliceUs()));
+        setPlaybackDirection(PlaybackDirection.Backward);
     }
 
     public int getPacketSizeEvents() {
@@ -443,6 +424,7 @@ public abstract class AbstractAEPlayer {
         int old = this.timesliceUs;
         this.timesliceUs = samplePeriodUs;
         support.firePropertyChange(EVENT_TIMESLICE_US, old, timesliceUs);
+        log.info(this + "      set time slice =" + this.timesliceUs);
     }
 
     /**
@@ -470,7 +452,7 @@ public abstract class AbstractAEPlayer {
 
     public void setPlaybackDirection(PlaybackDirection direction) {
         PlaybackDirection old = playbackDirection;
-        
+
         this.playbackDirection = direction;
         support.firePropertyChange(EVENT_PLAYBACKDIRECTION, old, this.playbackDirection);
     }
@@ -485,9 +467,17 @@ public abstract class AbstractAEPlayer {
 
         public MyAction(String name, String icon) {
             putValue(Action.NAME, name);
-            putValue(Action.SMALL_ICON, new javax.swing.ImageIcon(getClass().getResource(path + icon + ".gif")));
+            if (icon != null) {
+                putValue(Action.SMALL_ICON, new javax.swing.ImageIcon(getClass().getResource(path + icon + ".gif")));
+            }
             putValue("hideActionText", "true");
             putValue(Action.SHORT_DESCRIPTION, name);
+        }
+
+        protected void showAction() {
+            if (viewer != null) {
+                viewer.showActionText((String) getValue(Action.SHORT_DESCRIPTION));
+            }
         }
     }
 
@@ -500,6 +490,7 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
+            showAction();
             if (isPaused()) {
                 setPaused(false);
                 setPauseAction();
@@ -535,7 +526,8 @@ public abstract class AbstractAEPlayer {
         public void actionPerformed(ActionEvent e) {
             clearMarks();
             putValue(Action.SELECTED_KEY, true);
-            putValue(Action.SHORT_DESCRIPTION, "Clears IN and OUT markers");
+            putValue(Action.SHORT_DESCRIPTION, "Clear IN and OUT markers");
+            showAction();
         }
     }
 
@@ -546,9 +538,10 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
+            showAction();
             setMarkIn();
             putValue(Action.SELECTED_KEY, true);
-            putValue(Action.SHORT_DESCRIPTION, "Marks IN marker");
+            putValue(Action.SHORT_DESCRIPTION, "Mark IN marker");
         }
     }
 
@@ -559,9 +552,10 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
+            showAction();
             setMarkOut();
             putValue(Action.SELECTED_KEY, true);
-            putValue(Action.SHORT_DESCRIPTION, "Sets OUT marker");
+            putValue(Action.SHORT_DESCRIPTION, "Set OUT marker");
         }
     }
 
@@ -572,6 +566,7 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
+            showAction();
             setPlaybackDirection(PlaybackDirection.Forward);
             setPaused(false);
             putValue(Action.SELECTED_KEY, true);
@@ -586,6 +581,7 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
+            showAction();
             setPaused(true);
             putValue(Action.SELECTED_KEY, true);
         }
@@ -599,6 +595,7 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
+            showAction();
             rewind();
             putValue(Action.SELECTED_KEY, true);
         }
@@ -612,6 +609,7 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
+            showAction();
             toggleDirection();
             putValue(Action.SELECTED_KEY, true);
         }
@@ -624,6 +622,7 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
+            showAction();
             setPlaybackDirection(PlaybackDirection.Backward);
             setPaused(false);
             putValue(Action.SELECTED_KEY, true);
@@ -638,6 +637,7 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
+            showAction();
             speedUp();
             putValue(Action.SELECTED_KEY, true);
         }
@@ -651,6 +651,7 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
+            showAction();
             slowDown();
             putValue(Action.SELECTED_KEY, true);
         }
@@ -664,11 +665,12 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
-            setPlaybackDirection(PlaybackDirection.Forward);
+            showAction();
+            setDirectionForwards(true);
             doSingleStep();
-            if (viewer != null) {
-                viewer.interruptViewloop();
-            }
+//            if (viewer != null) {
+//                viewer.interruptViewloop();
+//            }
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -681,11 +683,54 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
-            setPlaybackDirection(PlaybackDirection.Backward);
+            showAction();
+            setDirectionBackwards(true);
             doSingleStep();
-            if (viewer != null) {
-                viewer.interruptViewloop();
-            }
+//            if (viewer != null) {
+//                viewer.interruptViewloop();
+//            }
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
+    final public class JogForwardAction extends MyAction {
+
+        public JogForwardAction() {
+            super("Jog forward", "StepForward16");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_PERIOD, java.awt.event.InputEvent.SHIFT_MASK | java.awt.event.InputEvent.CTRL_MASK));
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            showAction();
+            jogForwards();
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
+    final public class JogBackwardAction extends MyAction {
+
+        public JogBackwardAction() {
+            super("Jog backward", "StepBack16");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, java.awt.event.InputEvent.SHIFT_MASK | java.awt.event.InputEvent.CTRL_MASK));
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            showAction();
+            jogBackwards();
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
+    final public class ToggleFlextimeAction extends MyAction {
+
+        public ToggleFlextimeAction() {
+            super("ToggleFlextimeAction", null);
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_T, 0));
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            showAction();
+            toggleFlexTime();
             putValue(Action.SELECTED_KEY, true);
         }
     }
