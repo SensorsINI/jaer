@@ -1109,7 +1109,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 }
             }
 
-            displayStatusChangeText(drawable);
         }
 
         GLUquadric accelCircle = null;

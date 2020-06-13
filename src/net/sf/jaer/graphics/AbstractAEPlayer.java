@@ -425,7 +425,7 @@ public abstract class AbstractAEPlayer {
         int old = this.timesliceUs;
         this.timesliceUs = samplePeriodUs;
         support.firePropertyChange(EVENT_TIMESLICE_US, old, timesliceUs);
-        log.info(this + "      set time slice =" + this.timesliceUs);
+//        log.info(this + "      set time slice =" + this.timesliceUs);
     }
 
     /**

@@ -39,193 +39,192 @@ import eu.seebetter.ini.chips.davis.imu.IMUSample;
  */
 public class SpaceTimeEventDisplayMethod extends DisplayMethod implements DisplayMethod3D {
 
-	EngineeringFormat engFmt = new EngineeringFormat();
+    EngineeringFormat engFmt = new EngineeringFormat();
 
-	private DavisDisplayConfigInterface config;
-	private boolean displayEvents = true;
-	private boolean displayFrames = true;
+    private DavisDisplayConfigInterface config;
+    private boolean displayEvents = true;
+    private boolean displayFrames = true;
 
-	/**
-	 * Creates a new instance of SpaceTimeEventDisplayMethod
-	 */
-	public SpaceTimeEventDisplayMethod(final ChipCanvas chipCanvas) {
-		super(chipCanvas);
-	}
+    /**
+     * Creates a new instance of SpaceTimeEventDisplayMethod
+     */
+    public SpaceTimeEventDisplayMethod(final ChipCanvas chipCanvas) {
+        super(chipCanvas);
+    }
 
-	boolean spikeListCreated = false;
-	int spikeList = 1;
-	GLUT glut = null;
-	GLU glu = null;
-	final boolean useCubeEnabled = true; // true is too false or uses GPU improperly
+    boolean spikeListCreated = false;
+    int spikeList = 1;
+    GLUT glut = null;
+    GLU glu = null;
+    final boolean useCubeEnabled = true; // true is too false or uses GPU improperly
 
-	// TODO it doesn't make sense to redraw all data for each mouse drag transform change. All we should have to do is
-	// to change the projection matrix.
+    // TODO it doesn't make sense to redraw all data for each mouse drag transform change. All we should have to do is
+    // to change the projection matrix.
+    @Override
+    public void display(final GLAutoDrawable drawable) {
+        // GL2 gl=setupGL(drawable);
+        // AEChipRenderer renderer = (AEChipRenderer) (getChipCanvas().getRenderer());
+        // log.info("display");
+        final Chip2D chip = getChipCanvas().getChip();
+        if (glut == null) {
+            glut = new GLUT();
+        }
+        final GL2 gl = drawable.getGL().getGL2();
+        if (gl == null) {
+            log.warning("null GL context - not displaying");
+            return;
+        }
+        {
+            gl.glPushMatrix();
+            gl.glClearColor(0, 0, 0, 0);
+            gl.glClear(GL.GL_COLOR_BUFFER_BIT);
 
-	@Override
-	public void display(final GLAutoDrawable drawable) {
-		// GL2 gl=setupGL(drawable);
-		// AEChipRenderer renderer = (AEChipRenderer) (getChipCanvas().getRenderer());
-		// log.info("display");
-		final Chip2D chip = getChipCanvas().getChip();
-		if (glut == null) {
-			glut = new GLUT();
-		}
-		final GL2 gl = drawable.getGL().getGL2();
-		if (gl == null) {
-			log.warning("null GL context - not displaying");
-			return;
-		}
-		{
-			gl.glPushMatrix();
-			gl.glClearColor(0, 0, 0, 0);
-			gl.glClear(GL.GL_COLOR_BUFFER_BIT);
+            if (useCubeEnabled) {
+                if (!spikeListCreated) {
+                    spikeList = gl.glGenLists(1);
+                    gl.glNewList(spikeList, GL2.GL_COMPILE);
+                    {
+                        gl.glScalef(1, 1, 1); // tobi make it a unit cube so we can see it from the side
+                        glut.glutSolidCube(1);
+                        spikeListCreated = true;
+                        // gl.glRectf(.5f,.5f, .5f,.5f);
+                    }
+                    gl.glEndList();
+                }
+            }
+            // rotate viewpoint
 
-			if (useCubeEnabled) {
-				if (!spikeListCreated) {
-					spikeList = gl.glGenLists(1);
-					gl.glNewList(spikeList, GL2.GL_COMPILE);
-					{
-						gl.glScalef(1, 1, 1); // tobi make it a unit cube so we can see it from the side
-						glut.glutSolidCube(1);
-						spikeListCreated = true;
-						// gl.glRectf(.5f,.5f, .5f,.5f);
-					}
-					gl.glEndList();
-				}
-			}
-			// rotate viewpoint
+            gl.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the upvector
+            gl.glRotatef(getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the upvector
 
-			gl.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the upvector
-			gl.glRotatef(getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the upvector
+            gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
 
-			gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
+            // draw 3d axes
+            gl.glColor3f(0, 0, 1);
+            gl.glLineWidth(.4f);
 
-			// draw 3d axes
-			gl.glColor3f(0, 0, 1);
-			gl.glLineWidth(.4f);
+            {
+                gl.glBegin(GL.GL_LINES);
+                gl.glVertex3f(0, 0, 0);
+                gl.glVertex3f(chip.getSizeX(), 0, 0);
 
-			{
-				gl.glBegin(GL.GL_LINES);
-				gl.glVertex3f(0, 0, 0);
-				gl.glVertex3f(chip.getSizeX(), 0, 0);
+                gl.glVertex3f(0, 0, 0);
+                gl.glVertex3f(0, chip.getSizeY(), 0);
 
-				gl.glVertex3f(0, 0, 0);
-				gl.glVertex3f(0, chip.getSizeY(), 0);
+                gl.glVertex3f(0, 0, 0);
+                gl.glVertex3f(0, 0, chip.getMaxSize());
+                gl.glEnd();
+            }
 
-				gl.glVertex3f(0, 0, 0);
-				gl.glVertex3f(0, 0, chip.getMaxSize());
-				gl.glEnd();
-			}
+            // render events
+            // AEPacket2D ae = renderer.getAe();
+            final EventPacket packet = (EventPacket) chip.getLastData();
+            if (packet == null) {
+                log.warning("null packet to render");
+                gl.glPopMatrix();
+                return;
+            }
+            final int n = packet.getSize();
+            if (n == 0) {
+                gl.glPopMatrix();
+                return;
+            }
+            // if(ae==null || ae.getNumEvents()==0) return;
+            // int n = ae.getNumEvents();
+            final int t0 = packet.getFirstTimestamp();
+            final int dt = packet.getDurationUs() + 1;
+            // int t0 = ae.getFirstTimestamp();
+            // int dt = ae.getLastTimestamp()-t0+1;
+            float z;
+            final float zfac = chip.getMaxSize();
+            // int count=0;
 
-			// render events
+            Iterator evItr = packet.iterator();
+            if (packet instanceof ApsDvsEventPacket) {
+                final ApsDvsEventPacket apsPacket = (ApsDvsEventPacket) packet;
+                evItr = apsPacket.fullIterator();
 
-			// AEPacket2D ae = renderer.getAe();
-			final EventPacket packet = (EventPacket) chip.getLastData();
-			if (packet == null) {
-				log.warning("null packet to render");
-				gl.glPopMatrix();
-				return;
-			}
-			final int n = packet.getSize();
-			if (n == 0) {
-				gl.glPopMatrix();
-				return;
-			}
-			// if(ae==null || ae.getNumEvents()==0) return;
-			// int n = ae.getNumEvents();
-			final int t0 = packet.getFirstTimestamp();
-			final int dt = packet.getDurationUs() + 1;
-			// int t0 = ae.getFirstTimestamp();
-			// int dt = ae.getLastTimestamp()-t0+1;
-			float z;
-			final float zfac = chip.getMaxSize();
-			// int count=0;
+                if ((config == null) && (chip != null) && (chip instanceof DavisChip)) {
+                    config = (DavisDisplayConfigInterface) chip.getBiasgen();
+                }
 
-			Iterator evItr = packet.iterator();
-			if (packet instanceof ApsDvsEventPacket) {
-				final ApsDvsEventPacket apsPacket = (ApsDvsEventPacket) packet;
-				evItr = apsPacket.fullIterator();
+                if (config != null) {
+                    displayEvents = config.isDisplayEvents();
+                    displayFrames = config.isDisplayFrames();
+                }
+            }
 
-				if ((config == null) && (chip != null) && (chip instanceof DavisChip)) {
-					config = (DavisDisplayConfigInterface) chip.getBiasgen();
-				}
+            while (evItr.hasNext()) {
+                final BasicEvent ev = (BasicEvent) evItr.next();
 
-				if (config != null) {
-					displayEvents = config.isDisplayEvents();
-					displayFrames = config.isDisplayFrames();
-				}
-			}
+                // Check if event needs to be rendered (APS/DVS).
+                if (ev instanceof ApsDvsEvent) {
+                    final ApsDvsEvent apsEv = (ApsDvsEvent) ev;
 
-			while (evItr.hasNext()) {
-				final BasicEvent ev = (BasicEvent) evItr.next();
+                    if ((!displayFrames && apsEv.isApsData()) || (!displayEvents && apsEv.isDVSEvent())
+                            || apsEv.isImuSample()) {
+                        continue;
+                    }
+                }
 
-				// Check if event needs to be rendered (APS/DVS).
-				if (ev instanceof ApsDvsEvent) {
-					final ApsDvsEvent apsEv = (ApsDvsEvent) ev;
+                z = (float) (ev.timestamp - t0) / dt; // z goes from 0 (oldest) to 1 (youngest)
+                {
+                    gl.glPushMatrix();
+                    z = (float) (ev.timestamp - t0) / dt; // z goes from 0 (oldest) to 1 (youngest)
+                    computeRGBFromZ(z);
+                    gl.glColor3fv(rgb, 0);
+                    if (useCubeEnabled) {
+                        gl.glTranslatef(ev.x, ev.y, z * zfac);
+                        gl.glCallList(spikeList);
+                    } else {
+                        gl.glTranslatef(0, 0, z * zfac);
+                        gl.glRectf(ev.x - .5f, ev.y - .5f, ev.x + .5f, ev.y + .5f);
+                    }
+                    gl.glPopMatrix();
+                }
+            }
+            // draw axes labels x,y,t. See tutorial at http://jerome.jouvie.free.fr/OpenGl/Tutorials/Tutorial18.php
+            final int font = GLUT.BITMAP_HELVETICA_18;
+            {
+                gl.glPushMatrix();
+                final int FS = 1; // distance in pixels of text from endZoom of axis
+                gl.glRasterPos3f(chip.getSizeX() + FS, 0, 0);
+                glut.glutBitmapString(font, "x=" + chip.getSizeX());
+                gl.glRasterPos3f(0, chip.getSizeY() + FS, 0);
+                glut.glutBitmapString(font, "y=" + chip.getSizeY());
+                // label time end value
+                // gl.glRasterPos3f(0, -2 , chip.getMaxSize() + FS);
+                // glut.glutBitmapCharacter(font, '0');
+                gl.glRasterPos3f(0, 0, chip.getMaxSize() + FS);
+                glut.glutBitmapString(font, "t=" + engFmt.format(dt * AEConstants.TICK_DEFAULT_US * 1e-6f) + "s");
+                gl.glPopMatrix();
+            }
 
-					if ((!displayFrames && apsEv.isApsData()) || (!displayEvents && apsEv.isDVSEvent())
-						|| apsEv.isImuSample()) {
-						continue;
-					}
-				}
+            // log.info("done rendering");
+            checkGLError(gl);
+            gl.glPopMatrix();
+        }
+        displayStatusChangeText(drawable);
 
-				z = (float) (ev.timestamp - t0) / dt; // z goes from 0 (oldest) to 1 (youngest)
-				{
-					gl.glPushMatrix();
-					z = (float) (ev.timestamp - t0) / dt; // z goes from 0 (oldest) to 1 (youngest)
-					computeRGBFromZ(z);
-					gl.glColor3fv(rgb, 0);
-					if (useCubeEnabled) {
-						gl.glTranslatef(ev.x, ev.y, z * zfac);
-						gl.glCallList(spikeList);
-					}
-					else {
-						gl.glTranslatef(0, 0, z * zfac);
-						gl.glRectf(ev.x - .5f, ev.y - .5f, ev.x + .5f, ev.y + .5f);
-					}
-					gl.glPopMatrix();
-				}
-			}
-			// draw axes labels x,y,t. See tutorial at http://jerome.jouvie.free.fr/OpenGl/Tutorials/Tutorial18.php
-			final int font = GLUT.BITMAP_HELVETICA_18;
-			{
-				gl.glPushMatrix();
-				final int FS = 1; // distance in pixels of text from endZoom of axis
-				gl.glRasterPos3f(chip.getSizeX() + FS, 0, 0);
-				glut.glutBitmapString(font, "x=" + chip.getSizeX());
-				gl.glRasterPos3f(0, chip.getSizeY() + FS, 0);
-				glut.glutBitmapString(font, "y=" + chip.getSizeY());
-				// label time end value
-				// gl.glRasterPos3f(0, -2 , chip.getMaxSize() + FS);
-				// glut.glutBitmapCharacter(font, '0');
-				gl.glRasterPos3f(0, 0, chip.getMaxSize() + FS);
-				glut.glutBitmapString(font, "t=" + engFmt.format(dt * AEConstants.TICK_DEFAULT_US * 1e-6f) + "s");
-				gl.glPopMatrix();
-			}
+    }
 
-			// log.info("done rendering");
-			checkGLError(gl);
-			gl.glPopMatrix();
-		}
-	}
+    void checkGLError(final GL2 gl) {
+        int error = gl.glGetError();
+        int nerrors = 10;
+        while ((error != GL.GL_NO_ERROR) && (nerrors-- != 0)) {
+            if (glu == null) {
+                glu = new GLU();
+            }
+            log.warning("GL error number " + error + " " + glu.gluErrorString(error));
+            error = gl.glGetError();
+        }
+    }
 
-	void checkGLError(final GL2 gl) {
-		int error = gl.glGetError();
-		int nerrors = 10;
-		while ((error != GL.GL_NO_ERROR) && (nerrors-- != 0)) {
-			if (glu == null) {
-				glu = new GLU();
-			}
-			log.warning("GL error number " + error + " " + glu.gluErrorString(error));
-			error = gl.glGetError();
-		}
-	}
+    protected float[] rgb = new float[3];
 
-	protected float[] rgb = new float[3];
-
-	protected final void computeRGBFromZ(final float z) {
-		rgb[0] = z;
-		rgb[1] = 1 - z;
-		rgb[2] = 0;
-	}
+    protected final void computeRGBFromZ(final float z) {
+        rgb[0] = z;
+        rgb[1] = 1 - z;
+        rgb[2] = 0;
+    }
 }

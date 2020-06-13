@@ -290,6 +290,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             checkGLError(gl, "set uniform t0 and t1");
         }
         renderEvents(gl, drawable, eventVertexBuffer, eventVertexBuffer.limit(), 1e-6f * timeWindowUs, smax * aspectRatio);
+        displayStatusChangeText(drawable);
     }
 
     private void addEventsToEventList(final EventPacket<BasicEvent> packet) {

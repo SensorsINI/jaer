@@ -510,7 +510,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         }
         AEPacketRaw aeRaw = null;
 
-        log.info(this+" viewer.getAePlayer().getTimesliceUs()="+viewer.getAePlayer().getTimesliceUs());
+//        log.info(this+" viewer.getAePlayer().getTimesliceUs()="+viewer.getAePlayer().getTimesliceUs());
         
         try {
             if (!jogOccuring || (jogOccuring && jogPacketsLeft == 0)) {

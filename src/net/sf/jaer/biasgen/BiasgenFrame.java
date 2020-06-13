@@ -117,8 +117,21 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
                 //                System.out.println("view menu canceled");
             }
         });
+        defaultFolder = System.getProperty("user.dir");
+        try {
+            File f = new File(defaultFolder + File.separator + "biasgenSettings");
+            defaultFolder = f.getPath();
+            log.info("default hardware configuration file path is "+defaultFolder);
+        } catch (Exception e) {
+        }
+
+        
         String lastFilePath = prefs.get("BiasgenFrame.lastFile", defaultFolder);
         lastFile = new File(lastFilePath);
+        if(!lastFile.exists()){
+            log.info("lastFile "+lastFile+" does not exist, setting it to "+defaultFolder);
+            lastFile=new File(defaultFolder);
+        }
         recentFiles = new RecentFiles(prefs, fileMenu, new ActionListener() {
 
             @Override
@@ -146,14 +159,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         //        saveMenuItem.setEnabled(false); // until we load or save a file
         pack();
 
-        defaultFolder = System.getProperty("user.dir");
-        try {
-            File f = new File(defaultFolder + File.separator + "biasgenSettings");
-            defaultFolder = f.getPath();
-            log.info("default hardware configuration file path is "+defaultFolder);
-        } catch (Exception e) {
-        }
-
+ 
     }
 
     /**

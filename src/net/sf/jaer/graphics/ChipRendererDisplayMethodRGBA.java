@@ -62,6 +62,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
     @Override
     public void display(final GLAutoDrawable drawable) {
         displayQuad(drawable);
+        displayStatusChangeText(drawable);
     }
 
     private static float clearDisplay(final Chip2DRenderer renderer, final GL gl) {
