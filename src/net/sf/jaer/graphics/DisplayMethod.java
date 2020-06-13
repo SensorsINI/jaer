@@ -25,6 +25,7 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeSupport;
+import org.apache.commons.text.WordUtils;
 
 /**
  * A abstract class that displays AE data in a ChipCanvas using OpenGL.
@@ -44,8 +45,10 @@ public abstract class DisplayMethod {
     private String statusChangeString = null;
     private long statusChangeStartTimeMillis = 0;
     private final long statusChangeDisplayTimeMillis = 500;
-    /** Provides PropertyChangeSupport for all DisplayMethods */
-    private PropertyChangeSupport support=new PropertyChangeSupport(this);
+    /**
+     * Provides PropertyChangeSupport for all DisplayMethods
+     */
+    private PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     /**
      * Creates a new instance of DisplayMethod
@@ -178,8 +181,9 @@ public abstract class DisplayMethod {
     protected void onDeregistration() {
     }
 
-    /** shows the status change display centered over the image
-     * 
+    /**
+     * shows the status change display centered over the image
+     *
      * @param drawable the OpenGL context
      */
     protected void displayStatusChangeText(GLAutoDrawable drawable) {
@@ -187,30 +191,48 @@ public abstract class DisplayMethod {
             return;
         }
         long now = System.currentTimeMillis();
-        if ((now - statusChangeStartTimeMillis) > statusChangeDisplayTimeMillis) {
+        final int WRAP_LEN = 20;
+        if ((now - statusChangeStartTimeMillis) > statusChangeDisplayTimeMillis * (1+(statusChangeString.length() / WRAP_LEN))) {
             statusChangeString = null;
             return;
         }
+        String s = statusChangeString;
+        if (s.length() > WRAP_LEN) {
+            s = WordUtils.wrap(s, WRAP_LEN);
+        }
+        String[] ss = s.split("\n");
+        int nlines = ss.length;
+
         GL2 gl = drawable.getGL().getGL2();
         TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
         renderer.setColor(Color.YELLOW);
         try {
             renderer.begin3DRendering();
 
-            Rectangle2D r = renderer.getBounds(statusChangeString);
+            Rectangle2D r = renderer.getBounds(ss[0]);
+            float h1 = (float) (r.getHeight());
+            float ht = (float) h1*nlines;
+            float w = (float) (r.getWidth());
             float scale = .5f;
-            float ypos = (float) (chip.getSizeY()/2 - r.getHeight() * scale);
-            float xpos = (float) (chip.getSizeX()/2 - r.getWidth()/2 * scale);
-            renderer.draw3D(statusChangeString, xpos, ypos, 0, scale);
+            final float linespace = (float) (h1 * scale * 1.2f);
+            float ypos = (float) (chip.getSizeY() / 2 + ht/2 * scale-linespace/2);
+            float xpos = (float) (chip.getSizeX() / 2 - w / 2 * scale);
+            float y = ypos;
+            for (String sss : ss) {
+                renderer.draw3D(sss, xpos, y, 0, scale);
+                y -= linespace;
+            }
             renderer.end3DRendering();
         } catch (GLException e) {
             log.warning("caught " + e + " when trying to render text into the current OpenGL context");
         }
     }
 
-    /** Shows the status change text momentarily centered in middle of display, for DisplayMethod that implement it.
-     * 
-     * @param text 
+    /**
+     * Shows the status change text momentarily centered in middle of display,
+     * for DisplayMethod that implement it.
+     *
+     * @param text
      */
     public void showActionText(String text) {
 //        if(statusChangeString!=null) text=statusChangeString+", "+text;
@@ -220,6 +242,7 @@ public abstract class DisplayMethod {
 
     /**
      * PropertyChangeSupport for all DisplayMethods.
+     *
      * @return the support
      */
     public PropertyChangeSupport getSupport() {
