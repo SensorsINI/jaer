@@ -119,7 +119,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
             frameid = 0;
 //            timeThr = basicThr;
         }
-//        totalEventCount = 0;
+        totalEventCount = 0;
         filteredOutEventCount = 0;
 
         // for each event only keep it if it is within dt of the last time
