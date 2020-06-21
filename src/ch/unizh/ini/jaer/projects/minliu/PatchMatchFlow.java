@@ -976,10 +976,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         if (slices == null) {
             return;  // on reset maybe chip is not set yet
         }
-//        for (byte[][][] b : slices) {
-//            clearSlice(b);
-//        }
-//
+        for (byte[][][] b : slices) {
+            clearSlice(b);
+        }
+
 //        currentSliceIdx = 0;  // start by filling slice 0
 //        currentSlice = slices[currentSliceIdx];
 //
@@ -1075,7 +1075,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             for (int x = 0; x < sizex; x++) {
                 final int idx = x + (sizey - y - 1) * chip.getSizeX();
                 float bufferValue = apsFrameExtractor.getDisplayBuffer()[idx];
-                grayImageBuffer[x + y * chip.getSizeX()] = (byte)(int)(bufferValue * 1.0f);
+                grayImageBuffer[x + y * chip.getSizeX()] = (byte)(int)(bufferValue * 0.5f);
             }
         }
         final BufferedImage theImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_BYTE_GRAY);
@@ -1129,7 +1129,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
             imuTimesliceLogger.log(String.format("%d %d %.3f", ts, sliceDeltaT, imuFlowEstimator.getPanRateDps()));
         }
         
-        if(e.timestamp == 16115543)
+        if(e.timestamp == 80297456)
         {
             saveAPSImage();                    
             saveSliceGrayImage = true;
@@ -3273,6 +3273,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
         }
         
         found_streak_inner = false;
+        boolean exit_inner_loop = false;
 
         int centerValue = 0;
         int xInnerOffset[] = new int[innerCircleSize];
@@ -3363,11 +3364,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                     {
                         found_streak_inner = true;
                     }
+                    exit_inner_loop = true;
                     break;
                 }
             }
 
-            if (found_streak_inner) {
+            if (found_streak_inner || exit_inner_loop) {
                 break;
             }
         }
@@ -3377,7 +3379,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
 //        if (found_streak) 
         {
             found_streak_outer = false;
-            boolean exit_loop = false;
+            boolean exit_outer_loop = false;
 
             FastDetectorisFeature_label6:
             for (int streak_size = outerCircleSize - 1; streak_size >= 3; streak_size--) {
@@ -3449,11 +3451,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements Observer, Fram
                         {
 //                            found_streak_outer = false; 
                         }
-                        exit_loop = true;                        
+                        exit_outer_loop = true;                        
                         break;
                     }
                 }
-                if (found_streak_outer || exit_loop) {
+                if (found_streak_outer || exit_outer_loop) {
                     break;
                 }
             }
