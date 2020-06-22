@@ -218,7 +218,7 @@ public abstract class AbstractAEPlayer {
         if (Math.abs(getTimesliceUs()) < 1) {
             setTimesliceUs((int) Math.signum(getTimesliceUs()));
         }
-        log.info("new time and event slice durations are " + getTimesliceUs() + " us and " + getPacketSizeEvents() + "events");
+//        log.info("new time and event slice durations are " + getTimesliceUs() + " us and " + getPacketSizeEvents() + "events");
     }
 
     public void jogForwards() {
@@ -645,7 +645,7 @@ public abstract class AbstractAEPlayer {
 
         public void actionPerformed(ActionEvent e) {
             speedUp();
-            showAction(speedText(false));
+            showAction(speedText(true));
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -653,7 +653,7 @@ public abstract class AbstractAEPlayer {
     private final EngineeringFormat engFmt = new EngineeringFormat();
 
     private final String speedText(boolean faster) {
-        return String.format("DVS frames %s to %s%s", faster ? "reduced" : "increased",
+        return String.format("DVS frames %s to %s%s", faster ? "increased" : "reduced",
                 isFlexTimeEnabled() ? Integer.toString(getPacketSizeEvents()) : engFmt.format(1e-6f*getTimesliceUs()),
                 isFlexTimeEnabled() ? " events" : "s"
         );
@@ -746,7 +746,13 @@ public abstract class AbstractAEPlayer {
 
         public void actionPerformed(ActionEvent e) {
             toggleFlexTime();
-            showAction(isFlexTimeEnabled()?"Flextime: Constantc-count DVS frames":"Flextime: Constant-time DVS frames");
+            String s=null;
+            if(isFlexTimeEnabled()){
+                s=String.format("Flextime: Constant-count DVS frames with %d events/frame",getPacketSizeEvents());
+            }else{
+                s=String.format("Flextime: Flextime: Constant-duration DVS frames with %ss/frame",engFmt.format(getTimesliceUs()*1e-6f));
+            }
+            showAction(s);
             putValue(Action.SELECTED_KEY, true);
         }
     }
