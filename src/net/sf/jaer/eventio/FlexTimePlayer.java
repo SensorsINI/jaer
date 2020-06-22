@@ -107,8 +107,21 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
             if (!(e.isFilteredOut())) {
                 BasicEvent eout = outItr.nextOutput();
                 eout.copyFrom(e);
+                if ((!(in instanceof ApsDvsEventPacket)) || ((ApsDvsEvent) e).isDVSEvent()) {
+                    ++eventCounter;
+                }
             }
         }
+        // if leftOverEvents is growing, slow down playback, otherwise speed it up
+        if ((chip.getAeViewer() != null) && (chip.getAeViewer().getAePlayer() != null)) {
+            AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
+            if (leftOverEvents.getSize() > 1000) {
+                player.slowerAction.actionPerformed(null);
+            } else {
+                player.fasterAction.actionPerformed(null);
+            }
+        }
+
         leftOverEvents.clear();
         while (i.hasNext()) {
             BasicEvent e = i.next();
@@ -117,14 +130,14 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
             }
             BasicEvent eout = outItr.nextOutput();
             eout.copyFrom(e);
-            ++eventCounter;
-            if (!(in instanceof ApsDvsEventPacket) || ((ApsDvsEvent) e).isDVSEvent()) {
+            if ((!(in instanceof ApsDvsEventPacket)) || (((ApsDvsEvent) e).isDVSEvent())) {
+                ++eventCounter;
                 switch (method) {
                     case ConstantEventNumber:
                     case AreaEventCount:
                         boolean frameDone = false;
                         if (method == Method.ConstantEventNumber) {
-                            if (eventCounter > constantEventNumber) {
+                            if (eventCounter >= constantEventNumber) {
                                 frameDone = true;
                             }
                         } else if (method == Method.AreaEventCount) {
@@ -154,10 +167,6 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
                             }
                             return out;
                         }
-                        break;
-
-//                    case ConstantFrameDuration:
-//                        throw new RuntimeException("ConstantFrameDuration not yet implemented, sorry :-(");
                 }
             }
         }
@@ -209,27 +218,27 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
         this.constantEventNumber = constantEventNumber;
         putInt("constantEventNumber", constantEventNumber);
         out.allocate(constantEventNumber);
-        if (isFilterEnabled() && (chip.getAeViewer() != null) && (chip.getAeViewer().getAePlayer() != null)) {
-            AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
-            player.setFlexTimeEnabled();
-            player.setPacketSizeEvents(constantEventNumber); // ensure that we don't get more DVS events than can be returned in one of our out packets
-            log.info("set player to flex time mode and set packet size to match nEventsPerPacket");
-        }
+//        if (isFilterEnabled() && (chip.getAeViewer() != null) && (chip.getAeViewer().getAePlayer() != null)) {
+//            AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
+//            player.setFlexTimeEnabled();
+//            player.setPacketSizeEvents(constantEventNumber); // ensure that we don't get more DVS events than can be returned in one of our out packets
+//            log.info("set player to flex time mode and set packet size to match nEventsPerPacket");
+//        }
     }
 
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
-        if ((chip.getAeViewer() != null) && (chip.getAeViewer().getAePlayer() != null)) {
-            AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
-            if (yes) {
-                player.setFlexTimeEnabled();
-                player.setPacketSizeEvents(constantEventNumber); // ensure that we don't get more DVS events than can be returned in one of our out packets
-                log.info("set player to flex time mode and set packet size to match nEventsPerPacket");
-            } else {
-                player.setFixedTimesliceEnabled();
-            }
-        }
+//        if ((chip.getAeViewer() != null) && (chip.getAeViewer().getAePlayer() != null)) {
+//            AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
+//            if (yes) {
+//                player.setFlexTimeEnabled();
+//                player.setPacketSizeEvents(constantEventNumber); // ensure that we don't get more DVS events than can be returned in one of our out packets
+//                log.info("set player to flex time mode and set packet size to match nEventsPerPacket");
+//            } else {
+//                player.setFixedTimesliceEnabled();
+//            }
+//        }
     }
 
     @Override
