@@ -462,7 +462,7 @@ public class RectangularClusterTracker extends EventFilter2D
          * Logs the clusters at frame number as a matlab switch statement.
          *
          * @param ae the event packet.
-         * @param logNumber the case # (analagous to frame) of this logg record.
+         * @param logNumber the case # (analogous to frame) of this log record.
          */
         protected void logClusters(EventPacket<BasicEvent> ae, int logNumber, int frameTS, boolean parseablePrint) {
             if (!isLogDataEnabled() || (clusterLoggingMethod != ClusterLoggingMethod.LogFrames)) {
@@ -1694,7 +1694,7 @@ public class RectangularClusterTracker extends EventFilter2D
                 DrawGL.drawVector(gl, 0, 0, velocityPPS.x, velocityPPS.y, 2, velocityVectorScaling);
             }
             if (showClusterRadius) {
-                DrawGL.drawCircle(gl, 0, 0, 3 * getAverageEventDistance(), 32);
+                DrawGL.drawCircle(gl, 0, 0, getAverageEventDistance(), 32);
             }
             gl.glPopMatrix();
 
