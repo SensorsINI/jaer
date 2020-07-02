@@ -26,11 +26,14 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Random;
 import java.util.logging.Level;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
@@ -54,6 +57,8 @@ import net.sf.jaer.util.DrawGL;
 public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
 
     private ArrayList<BasicEvent> cornerEvents = new ArrayList(1000);
+    private ArrayList<BasicEvent> cornerEventsCopy = new ArrayList(1000);   // Backup of cornerEvnets array.
+    
     private double[][][] sae_ = null;
     private static final int INNER_SIZE = 16;
     private static final int OUTER_SIZE = 20;
@@ -130,10 +135,26 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
                 cornerSlice[xIdx][yIdx] = 0;
             }
         }
+        Iterator i = null;
+        if (in instanceof ApsDvsEventPacket) {
+            i = ((ApsDvsEventPacket) in).fullIterator();
+        } else {
+            i = ((EventPacket) in).inputIterator();
+        }
         
-        for (BasicEvent e : in) {
-            PolarityEvent ein = (PolarityEvent) e;
-            int swCornerRet = 0;
+        while (i.hasNext()) {
+            Object o = i.next();
+            if (o == null) {
+                log.warning("null event passed in, returning input packet");
+                return in;
+            }
+            if ((o instanceof ApsDvsEvent) && ((ApsDvsEvent) o).isApsData()) {
+                continue;
+            }
+ 
+            PolarityEvent ein = (PolarityEvent) o;
+            
+            int swCornerRet = 0;          
             if (isEnCompareSWandHW() || getCalcMethod() == CalcMethod.SW_EFAST) {
                 swCornerRet = FastDetectorisFeature(ein) ? 1 : 0;
                 if(swCornerRet == 1)
@@ -141,7 +162,8 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
                     ein.setAddress(ein.getAddress()|1); // set LSB hack since when event is DVS, then bits 0-9 are zero. TODO messes up APS samples                    
                 }
             }
-            int hwCornerRet = (e.getAddress() & 1);
+            
+            int hwCornerRet = (ein.getAddress() & 1);
             if (isEnCompareSWandHW()) {
                 if (hwCornerRet != swCornerRet) {
                     wrongCornerNum++;
@@ -158,24 +180,26 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
             if (getCalcMethod() == CalcMethod.SW_EFAST) {
                 if (swCornerRet == 0) {
                     if (enFilterOut) {
-                        e.setFilteredOut(true);
+                        ein.setFilteredOut(true);
                     } else {
-                        e.setFilteredOut(false);
+                        ein.setFilteredOut(false);
                     }
                 } else {
                     // corner event
-                    cornerEvents.add(e);
+                    cornerEvents.add(ein);
+                    cornerEventsCopy.add(ein);
                 }
             } else {
                 if ((hwCornerRet) == 0) {
                     if (enFilterOut) {
-                        e.setFilteredOut(true);
+                        ein.setFilteredOut(true);
                     } else {
-                        e.setFilteredOut(false);
+                        ein.setFilteredOut(false);
                     }
                 } else {
                     // corner event
-                    cornerEvents.add(e);
+                    cornerEvents.add(ein);
+                    cornerEventsCopy.add(ein);
                 }
             }
         }
@@ -188,26 +212,37 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
                 int cornerX = cornerEvents.get(cornerCnt).x;
                 int cornerY = cornerEvents.get(cornerCnt).y;
                 cornerSlice[cornerX >> subsample][cornerY >> subsample] += 1;
+            }               
+
+            if (in instanceof ApsDvsEventPacket) {
+                i = ((ApsDvsEventPacket) in).fullIterator();
+            } else {
+                i = ((EventPacket) in).inputIterator();
             }
-
-            for(int xIdx = 0; xIdx < 100; xIdx++)
+            while(i.hasNext())
             {
-                for(int yIdx = 0; yIdx < 100; yIdx++)
-                {
-                    final int xIndex = xIdx;
-                    final int yIndex = yIdx;
-                    if(cornerSlice[xIdx][yIdx] < threshold)
-                    {
-                        cornerEvents.removeIf(e -> xIndex == (e.x >> subsample) && yIndex == (e.y >> subsample));
-                    }
+                Object o = i.next();
+                if (o == null) {
+                    log.warning("null event passed in, returning input packet");
+                    return in;
                 }
-            }                
+                if ((o instanceof ApsDvsEvent) && ((ApsDvsEvent) o).isApsData()) {
+                    continue;
+                }
 
-            for (BasicEvent e : in) {
-                PolarityEvent ein = (PolarityEvent) e;
+                PolarityEvent ein = (PolarityEvent) o;
 
-                if(cornerSlice[(e.x >> subsample)][(e.y >> subsample)] < threshold)
+                if(ein.timestamp == 295903198)
                 {
+                    int tmp = 1;
+                }  
+                            
+                if(cornerSlice[(ein.x >> subsample)][(ein.y >> subsample)] < threshold || !cornerEvents.contains(ein))
+                {
+                    if(cornerEvents.contains(ein))
+                    {
+                        cornerEvents.remove(ein);                        
+                    }
                     if (enFilterOut && !enShowOriginalCorners) {
                         ein.setFilteredOut(true);
                     } else {
@@ -219,9 +254,12 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
                 {
                     ein.setAddress(ein.getAddress()|1);
                 }
-            }
+            }           
         }
-        
+
+
+
+            
 //        HashHeatNoiseFilterInst.setEventCountWindow(cornerEvents.size());
 //        in = getEnclosedFilterChain().filterPacket(in);
          
@@ -265,7 +303,7 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
         } catch (final GLException e) {
             e.printStackTrace();
         }
-        gl.glColor4f(1f, 0, 0, 0.6f);
+        gl.glColor4f(1f, 0, 0, 1.0f);
         for (BasicEvent e : cornerEvents) {
             gl.glPushMatrix();
             DrawGL.drawBox(gl, e.x, e.y, 4, 4, 0);
