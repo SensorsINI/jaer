@@ -27,6 +27,7 @@
         <chain name="default" returnFirst="true" checkmodified="true">
             <resolver ref="local"/>
             <resolver ref="main"/>
+            <ibiblio name="spring_lib_m" root="https://repo.spring.io/libs-release/" m2compatible="true" />            
             <ibiblio name="rosjava_mvn_repo" m2compatible="true" 
                                   root="https://github.com/rosjava/rosjava_mvn_repo" />
         </chain>
