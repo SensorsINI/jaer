@@ -29,8 +29,8 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author tobi, with discussion with Moritz Milde, Dave Karpul, Elisabetta
  * Chicca, Chiara Bartolozzi Telluride 2017
  */
-@Description("Filters out uncorrelated noise events based on work at Telluride 2017 with discussion with Moritz Milde, Dave Karpul, Elisabetta\n" +
-" * Chicca, and Chiara Bartolozzi ")
+@Description("Filters out uncorrelated noise events based on work at Telluride 2017 with discussion with Moritz Milde, Dave Karpul, Elisabetta\n"
+        + " * Chicca, and Chiara Bartolozzi ")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
@@ -169,18 +169,20 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         if (!showFilteringStatistics) {
             return;
         }
+        findUnusedDawingY();
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushMatrix();
         final GLUT glut = new GLUT();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
-        gl.glRasterPos3f(0, 0, 0);
+        gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
         final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
         String s = null;
         if (adaptiveFilteringEnabled) {
-            s = String.format("dt=%.1fms, filteredOutPercent=%%%.1f, entropyReduction=%.1f",
-                    dt * 1e-3f, filteredOutPercent, entropyReduction);
+            s = String.format("%s: dt=%.1fms, filteredOutPercent=%%%.1f, entropyReduction=%.1f",
+                    getClass().getSimpleName(), dt * 1e-3f, filteredOutPercent, entropyReduction);
         } else {
-            s = String.format("filteredOutPercent=%%%.1f",
+            s = String.format("%s: filtered out %%%6.1f",
+                    getClass().getSimpleName(),
                     filteredOutPercent);
         }
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);

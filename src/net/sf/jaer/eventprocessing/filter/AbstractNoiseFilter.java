@@ -21,6 +21,7 @@ package net.sf.jaer.eventprocessing.filter;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.util.HashMap;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -35,6 +36,9 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     protected boolean showFilteringStatistics = getBoolean("showFilteringStatistics", true);
     protected int totalEventCount = 0;
     protected int filteredOutEventCount = 0;
+    /** Map from noise filters to drawing positions of noise filtering statistics annotations */
+    static protected HashMap<AbstractNoiseFilter,Integer> noiseStatDrawingMap=new HashMap<AbstractNoiseFilter,Integer>();
+    protected int statisticsDrawingPosition=-10; // y coordinate we write ourselves to, start with -10 so we end up at 0 for first one (hack)
 
     public AbstractNoiseFilter(AEChip chip) {
         super(chip);
@@ -61,17 +65,30 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         if (!showFilteringStatistics) {
             return;
         }
+        findUnusedDawingY();
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushMatrix();
         final GLUT glut = new GLUT();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
-        gl.glRasterPos3f(0, 0, 0);
+        gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
         final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
         String s = null;
-        s = String.format("filteredOutPercent=%%%6.1f",
+        s = String.format("%s: filtered out %%%6.1f",
+                getClass().getSimpleName(),
                 filteredOutPercent);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glPopMatrix();
+    }
+
+    protected void findUnusedDawingY() {
+        // find a y posiiton not used yet for us
+        if(noiseStatDrawingMap.get(this)==null){
+            for(int y:noiseStatDrawingMap.values()){
+                if(y>statisticsDrawingPosition) statisticsDrawingPosition=y;
+            }
+            statisticsDrawingPosition=statisticsDrawingPosition+10;
+            noiseStatDrawingMap.put(this,statisticsDrawingPosition);
+        }
     }
 
 }

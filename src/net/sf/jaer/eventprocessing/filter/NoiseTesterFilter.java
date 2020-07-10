@@ -74,11 +74,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (!showFilteringStatistics) {
             return;
         }
+        findUnusedDawingY();
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushMatrix();
         final GLUT glut = new GLUT();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
-        gl.glRasterPos3f(0, 10, 0);
+        gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
         
 //        final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
 //        String s = null;
