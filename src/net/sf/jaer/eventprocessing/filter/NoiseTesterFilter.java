@@ -75,9 +75,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter {
         int FN = 0; // filter take real events as noise events
 
         ArrayList inList = new ArrayList<BasicEvent>(in.getSize());
+        ArrayList newInList = new ArrayList<BasicEvent>(newIn.getSize());
         ArrayList outList = new ArrayList<BasicEvent>(out.getSize());
         for (BasicEvent e : in) {
             inList.add(e);
+        }
+        for (BasicEvent e : newIn) {
+            newInList.add(e);
         }
         for (BasicEvent e : out) {
             outList.add(e);
@@ -99,13 +103,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter {
         FN = result2.size();
 
         Set<BasicEvent> noise;
-        noise = new HashSet<BasicEvent>((Collection<? extends BasicEvent>) newIn);
-        noise.removeAll((Collection<?>) in);
+        noise = new HashSet<BasicEvent>((Collection<? extends BasicEvent>) newInList);
+        noise.removeAll((Collection<?>) inList);
         // noise is TN + FP
 
         Set<BasicEvent> noise1 = new HashSet<BasicEvent>(noise);
 
-        noise1.retainAll((Collection<?>) out); // intersection
+        noise1.retainAll((Collection<?>) outList); // intersection
         // noise but occur in the filters output, this is False Positive FP
         FP = noise1.size();
 
@@ -116,9 +120,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter {
         TN = noise2.size();
 
         float TPR = TP / (TP + FN);
-        float precision = TP / (TP + FP);
+        float precision = TP+FP==0? 0: TP / (TP + FP);
 
-        float TNR = TN / (TN + FP);
+        float TNR = TN + FP==0? 0: TN / (TN + FP);
         float accuracy = (TP + TN) / (TP + TN + FP + FN);
 
         float balanceRelation = 2 * TPR * precision / (TPR + precision); // wish to norm to 1. if both TPR and precision is 1. the value is 1
