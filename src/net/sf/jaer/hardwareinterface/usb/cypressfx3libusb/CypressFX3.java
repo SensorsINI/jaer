@@ -552,7 +552,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 					logicRevision, requiredLogicRevision));
                         needsUpdate=true;
 		}
-
+                
 		if (needsUpdate) {
 			updateStringBuilder
 				.append("<p>Please update by following the Flashy documentation at <a href=\" " + JaerConstants.HELP_USER_GUIDE_URL_FLASHY+"\">"+JaerConstants.HELP_USER_GUIDE_URL_FLASHY+"</a></p>");
@@ -802,7 +802,24 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		// paramAddr, param));
 
 		sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, moduleAddr, paramAddr, configBytes);
-	}
+//                
+//		int returnedParam = 0;
+//
+//		final ByteBuffer configBytesRecv = sendVendorRequestIN(CypressFX3.VR_FPGA_CONFIG, moduleAddr, paramAddr, 4);
+//
+//		returnedParam |= (configBytesRecv.get(0) & 0x00FF) << 24;
+//		returnedParam |= (configBytesRecv.get(1) & 0x00FF) << 16;
+//		returnedParam |= (configBytesRecv.get(2) & 0x00FF) << 8;
+//		returnedParam |= (configBytesRecv.get(3) & 0x00FF) << 0;
+//                
+//                System.out.println(String.format("SPI Received back with modAddr=%d, paramAddr=%d, value=0x%x.\n", moduleAddr,
+//		 paramAddr, returnedParam));
+//                
+//                if(returnedParam != param && (moduleAddr == 0 || moduleAddr == 1 || moduleAddr == 5 ))
+//                {
+//                    System.out.println("SPI write error!\n");
+//                }
+        }
 
 	public synchronized int spiConfigReceive(final short moduleAddr, final short paramAddr) throws HardwareInterfaceException {
 		int returnedParam = 0;
@@ -824,17 +841,25 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 
 		final SPIConfigSequence configSequence = new SPIConfigSequence();
+                
+                spiConfigSend(CypressFX3.FPGA_MUX, (short) 3, 1);
 
-		configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 3, 1); // Enable biasgen.
+                spiConfigSend(CypressFX3.FPGA_USB, (short) 0, 1);
 
-		configSequence.addConfig(CypressFX3.FPGA_USB, (short) 0, 1); // Enable USB.
+                spiConfigSend(CypressFX3.FPGA_MUX, (short) 1, 1);
 
-		configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 1, 1); // Enable timestamps.
-		configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 0, 1); // Enable mux.
-
-		configSequence.sendConfigSequence();
-
-		inEndpointEnabled = true;
+                spiConfigSend(CypressFX3.FPGA_MUX, (short) 0, 1);
+//                
+//		configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 3, 1); // Enable biasgen.
+//
+//		configSequence.addConfig(CypressFX3.FPGA_USB, (short) 0, 1); // Enable USB.
+//
+//		configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 1, 1); // Enable timestamps.
+//		configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 0, 1); // Enable mux.
+//
+//		configSequence.sendConfigSequence();
+                
+ 		inEndpointEnabled = true;
 	}
 
 	/**
@@ -844,23 +869,37 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	protected synchronized void disableINEndpoint() {
 		try {
-			final SPIConfigSequence configSequence = new SPIConfigSequence();
+			spiConfigSend(CypressFX3.FPGA_EXTINPUT, (short) 0, 0); // Disable ext detector.
+			spiConfigSend(CypressFX3.FPGA_IMU, (short) 2, 0); // Disable IMU accel.
+			spiConfigSend(CypressFX3.FPGA_IMU, (short) 3, 0); // Disable IMU gyro.
+			spiConfigSend(CypressFX3.FPGA_IMU, (short) 4, 0); // Disable IMU temp.
+			spiConfigSend(CypressFX3.FPGA_APS, (short) 4, 0); // Disable APS.
+			spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 0); // Disable DVS.
 
-			configSequence.addConfig(CypressFX3.FPGA_EXTINPUT, (short) 0, 0); // Disable ext detector.
-			configSequence.addConfig(CypressFX3.FPGA_IMU, (short) 2, 0); // Disable IMU accel.
-			configSequence.addConfig(CypressFX3.FPGA_IMU, (short) 3, 0); // Disable IMU gyro.
-			configSequence.addConfig(CypressFX3.FPGA_IMU, (short) 4, 0); // Disable IMU temp.
-			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 4, 0); // Disable APS.
-			configSequence.addConfig(CypressFX3.FPGA_DVS, (short) 3, 0); // Disable DVS.
+			spiConfigSend(CypressFX3.FPGA_MUX, (short) 1, 0); // Disable timestamps.
+			spiConfigSend(CypressFX3.FPGA_MUX, (short) 0, 0); // Disable mux.
 
-			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 1, 0); // Disable timestamps.
-			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 0, 0); // Disable mux.
+			spiConfigSend(CypressFX3.FPGA_USB, (short) 0, 0); // Disable USB.
 
-			configSequence.addConfig(CypressFX3.FPGA_USB, (short) 0, 0); // Disable USB.
-
-			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 3, 0); // Disable biasgen.
-
-			configSequence.sendConfigSequence();
+			spiConfigSend(CypressFX3.FPGA_MUX, (short) 3, 0); // Disable biasgen
+                        
+//			final SPIConfigSequence configSequence = new SPIConfigSequence();
+                        
+//			configSequence.addConfig(CypressFX3.FPGA_EXTINPUT, (short) 0, 0); // Disable ext detector.
+//			configSequence.addConfig(CypressFX3.FPGA_IMU, (short) 2, 0); // Disable IMU accel.
+//			configSequence.addConfig(CypressFX3.FPGA_IMU, (short) 3, 0); // Disable IMU gyro.
+//			configSequence.addConfig(CypressFX3.FPGA_IMU, (short) 4, 0); // Disable IMU temp.
+//			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 4, 0); // Disable APS.
+//			configSequence.addConfig(CypressFX3.FPGA_DVS, (short) 3, 0); // Disable DVS.
+//
+//			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 1, 0); // Disable timestamps.
+//			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 0, 0); // Disable mux.
+//
+//			configSequence.addConfig(CypressFX3.FPGA_USB, (short) 0, 0); // Disable USB.
+//
+//			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 3, 0); // Disable biasgen.
+//
+//			configSequence.sendConfigSequence();
 		}
 		catch (final HardwareInterfaceException e) {
 			CypressFX3.log.info(
@@ -921,7 +960,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		aeReaderNumBuffers = number;
 		CypressFX3.prefs.putInt("CypressFX3.AEReader.numBuffers", number);
 	}
-
+  
 	/**
 	 * AE reader class. the thread continually reads events into buffers. when a
 	 * buffer is read, ProcessData transfers
@@ -971,7 +1010,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 					e.printStackTrace();
 				}
 			}
-
+      
 			CypressFX3.log.info("Starting AEReader");
 			usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX3.AE_MONITOR_ENDPOINT_ADDRESS, LibUsb.TRANSFER_TYPE_BULK,
 				new ProcessAEData(), getNumBuffers(), getFifoSize(), null, null, new Runnable() {
@@ -1774,11 +1813,11 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		// System.out.println(String.format("Sent VR %X, wValue %X, wIndex %X, wLength %d.\n", request, value, index,
 		// dataBuffer.limit()));
-
+                
 		final byte bmRequestType = (byte) (LibUsb.ENDPOINT_OUT | LibUsb.REQUEST_TYPE_VENDOR | LibUsb.RECIPIENT_DEVICE);
-
+                
 		final int status = LibUsb.controlTransfer(deviceHandle, bmRequestType, request, value, index, dataBuffer, 0);
-		if (status < LibUsb.SUCCESS) {
+                if (status < LibUsb.SUCCESS) {
 			throw new HardwareInterfaceException(
 				"Unable to send vendor OUT request " + String.format("0x%x", request) + ": " + LibUsb.errorName(status));
 		}
