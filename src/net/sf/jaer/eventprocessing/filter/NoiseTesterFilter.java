@@ -44,8 +44,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter {
     FilterChain chain;
     private float shotNoiseRateHz = getFloat("shotNoiseRateHz", .1f);
     private float leakNoiseRateHz = getFloat("leakNoiseRateHz", .1f);
-    
-    
+
     private int startEventTime = -1; // ts of the first event in this packet
     private int endEventTime = -1; // ts of the last event in this packet
     private int lastEventTime = -1; // ts of the last event in last packet
@@ -66,67 +65,64 @@ public class NoiseTesterFilter extends AbstractNoiseFilter {
         filteredOutEventCount = 0;
 
         // record the first timestamp and last timestamp of the packet
-        
-        
         // add noise into the packet in and get a new packet?
-        EventPacket newIn = addNoise(in, shotNoiseRateHz, leakNoiseRateHz);
-        EventPacket out = getEnclosedFilterChain().filterPacket(newIn);
+        EventPacket<BasicEvent> newIn = addNoise(in, shotNoiseRateHz, leakNoiseRateHz);
+        EventPacket<BasicEvent> out = getEnclosedFilterChain().filterPacket(newIn);
 
-        
         int TP = 0; // filter take real events as real events. the number of events
         int TN = 0; // filter take noise events as noise events
         int FP = 0; // filter take noise events as real events
         int FN = 0; // filter take real events as noise events
-        
-        ArrayList inList=new ArrayList(in.si)
+
+        ArrayList inList = new ArrayList<BasicEvent>(in.getSize());
+        ArrayList outList = new ArrayList<BasicEvent>(out.getSize());
+        for (BasicEvent e : in) {
+            inList.add(e);
+        }
+        for (BasicEvent e : out) {
+            outList.add(e);
+        }
         // compare out with newIn and in to get TP, TN, FP, FN. consider using set intersecion and union
-        Set<BasicEvent> result;
-        result = new HashSet<BasicEvent>((Collection<? extends BasicEvent>) out);
-        
+        Set<BasicEvent>result = new HashSet<BasicEvent>((Collection<? extends BasicEvent>) outList);
+
 //        java.lang.ClassCastException: net.sf.jaer.event.ApsDvsEventPacket cannot be cast to java.util.Collection
 //	at net.sf.jaer.eventprocessing.filter.NoiseTesterFilter.filterPacket(NoiseTesterFilter.java:83)
-        
-        
-        result.retainAll((Collection<?>) in); // Intersection, 
+        result.retainAll((Collection<?>) inList); // Intersection, 
         // in is the clean real events, so the intersection will result the collection of TP 
         TP = result.size();
-        
-        Set<BasicEvent> result2;
-        result2 = new HashSet<BasicEvent>((Collection<? extends BasicEvent>) in);
-        result2.removeAll(result);  
+
+        Set<BasicEvent> result2 = new HashSet<BasicEvent>((Collection<? extends BasicEvent>) inList);
+        result2.removeAll(result);
         // subtraction, the intersection result is the TP, in is TP + FN
         // so in - result = #FN
-        
+
         FN = result2.size();
-        
-        
+
         Set<BasicEvent> noise;
         noise = new HashSet<BasicEvent>((Collection<? extends BasicEvent>) newIn);
         noise.removeAll((Collection<?>) in);
         // noise is TN + FP
-        
-        
+
         Set<BasicEvent> noise1 = new HashSet<BasicEvent>(noise);
-        
+
         noise1.retainAll((Collection<?>) out); // intersection
         // noise but occur in the filters output, this is False Positive FP
         FP = noise1.size();
-        
+
         Set<BasicEvent> noise2 = new HashSet<BasicEvent>(noise);
         noise2.removeAll(noise1); // subtraction 
         // TN + FP - FP = TN.
-        
+
         TN = noise2.size();
-                
-        
+
         float TPR = TP / (TP + FN);
         float precision = TP / (TP + FP);
-        
+
         float TNR = TN / (TN + FP);
         float accuracy = (TP + TN) / (TP + TN + FP + FN);
-        
+
         float balanceRelation = 2 * TPR * precision / (TPR + precision); // wish to norm to 1. if both TPR and precision is 1. the value is 1
-        
+
 //        in=getEnclosedFilterChain().filterPacket(in);
         return out;
     }
@@ -173,6 +169,5 @@ public class NoiseTesterFilter extends AbstractNoiseFilter {
 //        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         return in;
     }
-
 
 }
