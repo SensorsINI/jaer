@@ -18,6 +18,9 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.util.gl2.GLUT;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -31,6 +34,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
  * Filter for testing noise filters
@@ -39,7 +43,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
  */
 @Description("Tests noise filters by injecting known noise and measuring how much signal and noise is filtered")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
-public class NoiseTesterFilter extends AbstractNoiseFilter {
+public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnotater {
 
     FilterChain chain;
     private float shotNoiseRateHz = getFloat("shotNoiseRateHz", .1f);
@@ -48,6 +52,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter {
     private int startEventTime = -1; // ts of the first event in this packet
     private int endEventTime = -1; // ts of the last event in this packet
     private int lastEventTime = -1; // ts of the last event in last packet
+    private float TPR = 0;
+    private float precision = 0;
+    private float TNR = 0;
+    private float accuracy = 0;
+
+    float balanceRelation = 2 * TPR * precision / (TPR + precision); // wish to norm to 1. if both TPR and precision is 1. the value is 1
 
     public NoiseTesterFilter(AEChip chip) {
         super(chip);
@@ -57,6 +67,24 @@ public class NoiseTesterFilter extends AbstractNoiseFilter {
         setEnclosedFilterChain(chain);
         setPropertyTooltip("shotNoiseRateHz", "rate per pixel of shot noise events");
         setPropertyTooltip("leakNoiseRateHz", "rate per pixel of leak noise events");
+    }
+
+    @Override
+    public void annotate(GLAutoDrawable drawable) {
+        if (!showFilteringStatistics) {
+            return;
+        }
+        GL2 gl = drawable.getGL().getGL2();
+        gl.glPushMatrix();
+        final GLUT glut = new GLUT();
+        gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
+        gl.glRasterPos3f(0, 10, 0);
+        
+//        final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
+//        String s = null;
+        String s = String.format("TPR=%%%6.1f, TNR=%%%6.1f", 100*TPR,100*TNR);
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
+        gl.glPopMatrix();
     }
 
     @Override
@@ -87,7 +115,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter {
             outList.add(e);
         }
         // compare out with newIn and in to get TP, TN, FP, FN. consider using set intersecion and union
-        Set<BasicEvent>result = new HashSet<BasicEvent>((Collection<? extends BasicEvent>) outList);
+        Set<BasicEvent> result = new HashSet<BasicEvent>((Collection<? extends BasicEvent>) outList);
 
 //        java.lang.ClassCastException: net.sf.jaer.event.ApsDvsEventPacket cannot be cast to java.util.Collection
 //	at net.sf.jaer.eventprocessing.filter.NoiseTesterFilter.filterPacket(NoiseTesterFilter.java:83)
@@ -119,13 +147,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter {
 
         TN = noise2.size();
 
-        float TPR = TP / (TP + FN);
-        float precision = TP+FP==0? 0: TP / (TP + FP);
+        TPR = TP / (TP + FN);
+        precision = TP + FP == 0 ? 0 : TP / (TP + FP);
 
-        float TNR = TN + FP==0? 0: TN / (TN + FP);
-        float accuracy = (TP + TN) / (TP + TN + FP + FN);
+        TNR = TN + FP == 0 ? 0 : TN / (TN + FP);
+        accuracy = (TP + TN) / (TP + TN + FP + FN);
 
-        float balanceRelation = 2 * TPR * precision / (TPR + precision); // wish to norm to 1. if both TPR and precision is 1. the value is 1
+        balanceRelation = 2 * TPR * precision / (TPR + precision); // wish to norm to 1. if both TPR and precision is 1. the value is 1
 
 //        in=getEnclosedFilterChain().filterPacket(in);
         return out;
