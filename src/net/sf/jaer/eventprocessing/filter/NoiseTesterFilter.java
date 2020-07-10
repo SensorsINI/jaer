@@ -63,6 +63,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter {
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         totalEventCount = 0;
         filteredOutEventCount = 0;
+        
+        startEventTime = in.getFirstTimestamp();
+        endEventTime = in.getLastTimestamp();
 
         // record the first timestamp and last timestamp of the packet
         // add noise into the packet in and get a new packet?
@@ -171,7 +174,32 @@ public class NoiseTesterFilter extends AbstractNoiseFilter {
 
     private EventPacket addNoise(EventPacket<? extends BasicEvent> in, float shotNoiseRateHz, float leakNoiseRateHz) {
 //        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-        return in;
+        
+        EventPacket<BasicEvent> newIn = new EventPacket<BasicEvent>();
+        newIn.appendCopy((EventPacket<BasicEvent>) in);
+        
+        ArrayList newInList = new ArrayList<BasicEvent>(newIn.getSize());
+        
+        int count = 0;
+        for (BasicEvent e : in) {
+            newInList.add(e);
+            count += 1;
+        }
+        BasicEvent noiseE = (BasicEvent) newInList.get(count - 1);
+        
+        for(int i = 2; i < 10; i ++){
+            noiseE.x = (short) (noiseE.x / i);
+            newIn.appendCopy(noiseE);
+        
+            noiseE.y = (short) (noiseE.y / i);
+            newIn.appendCopy(noiseE);
+        }
+        
+        
+        
+        
+        
+        return newIn;
     }
 
 }
