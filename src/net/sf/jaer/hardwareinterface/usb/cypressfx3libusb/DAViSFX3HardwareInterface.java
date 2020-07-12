@@ -92,7 +92,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 			getRealClockValues();
 			updatedRealClockValues = true;
 		}
-
+                
 		if ((moduleAddr == CypressFX3.FPGA_APS) && (paramAddr == 12)) {
 			// Exposure multiplied by clock.
 			return (int) (param * adcClockFreq);
@@ -213,7 +213,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 			if (currentTimestamp <= lastTimestamp) {
 				CypressFX3.log.severe(toString() + ": non strictly-monotonic timestamp detected: lastTimestamp=" + lastTimestamp
 					+ ", currentTimestamp=" + currentTimestamp + ", difference=" + (lastTimestamp - currentTimestamp) + ".");
-			}
+                        }
 		}
 
 		private void initFrame() {
@@ -249,7 +249,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 				buffer.lastCaptureIndex = eventCounter;
 
-				final ShortBuffer sBuf = b.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
+ 				final ShortBuffer sBuf = b.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();                                
 
 				for (int i = 0; i < sBuf.limit(); i++) {
 					final short event = sBuf.get(i);
@@ -657,7 +657,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 							case 6:  // Misc 10bit data.
 								final byte misc10Code = (byte) ((data & 0x0C00) >>> 10);
 
-								switch (misc10Code) {
+                                                        switch (misc10Code) {
                                                                     	case 0:	                         
                                                             			// APS Exposure Information, ignore for now.
 										break;
@@ -666,10 +666,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                                                                                 // Every hw_ip result is appened to the x address.
                                                                                 // Current eventCounter is already added by 1 while extracting x address,
                                                                                 // thus we need to substract 1 here.
-                                                                                if(eventCounter >= 1)
+                                                                                if(eventCounter >= 1 && ensureCapacity(buffer, eventCounter))
                                                                                 {
-                                                                                    buffer.getAddresses()[eventCounter - 1] |= data & 0x3ff;        
-                                                                                }   
+                                                                                    buffer.getAddresses()[eventCounter - 1] |= data & 0x3ff;    
+                                                                                }
                                                                                 break;
 
 									default:

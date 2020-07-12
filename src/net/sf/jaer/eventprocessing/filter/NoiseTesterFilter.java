@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -48,16 +49,20 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     FilterChain chain;
     private float shotNoiseRateHz = getFloat("shotNoiseRateHz", .1f);
     private float leakNoiseRateHz = getFloat("leakNoiseRateHz", .1f);
-
+    
+    private int sx;
+    private int sy;
+    
     private int startEventTime = -1; // ts of the first event in this packet
     private int endEventTime = -1; // ts of the last event in this packet
     private int lastEventTime = -1; // ts of the last event in last packet
+    private BasicEvent lastE;
     private float TPR = 0;
     private float precision = 0;
     private float TNR = 0;
     private float accuracy = 0;
-
-    float balanceRelation = 2 * TPR * precision / (TPR + precision); // wish to norm to 1. if both TPR and precision is 1. the value is 1
+    float balanceRelation = 0;
+//    float balanceRelation = 2 * TPR * precision / (TPR + precision); // wish to norm to 1. if both TPR and precision is 1. the value is 1
 
     public NoiseTesterFilter(AEChip chip) {
         super(chip);
@@ -83,7 +88,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         
 //        final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
 //        String s = null;
-        String s = String.format("TPR=%%%6.1f, TNR=%%%6.1f", 100*TPR,100*TNR);
+        String s = String.format("TPR=%%%6.1f, TNR=%%%6.1f, BR=%%%6.1f", 100 * TPR, 100 * TNR, 100 * balanceRelation);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glPopMatrix();
     }
@@ -93,10 +98,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         totalEventCount = 0;
         filteredOutEventCount = 0;
 
-        // record the first timestamp and last timestamp of the packet
-        // add noise into the packet in and get a new packet?
-        EventPacket<BasicEvent> newIn = addNoise(in, shotNoiseRateHz, leakNoiseRateHz);
-        EventPacket<BasicEvent> out = getEnclosedFilterChain().filterPacket(newIn);
+        startEventTime = in.getFirstTimestamp();
+        endEventTime = in.getLastTimestamp();
 
         int TP = 0; // filter take real events as real events. the number of events
         int TN = 0; // filter take noise events as noise events
@@ -104,22 +107,30 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         int FN = 0; // filter take real events as noise events
 
         ArrayList inList = new ArrayList<BasicEvent>(in.getSize());
-        ArrayList newInList = new ArrayList<BasicEvent>(newIn.getSize());
-        ArrayList outList = new ArrayList<BasicEvent>(out.getSize());
         for (BasicEvent e : in) {
             inList.add(e);
+            lastE = e;
         }
+
+        // record the first timestamp and last timestamp of the packet
+        // add noise into the packet in and get a new packet?
+        EventPacket<BasicEvent> newIn = addNoise(in, shotNoiseRateHz, leakNoiseRateHz);
+        ArrayList newInList = new ArrayList<BasicEvent>(newIn.getSize());
         for (BasicEvent e : newIn) {
             newInList.add(e);
         }
+
+        EventPacket<BasicEvent> out = getEnclosedFilterChain().filterPacket(newIn);
+
+        ArrayList outList = new ArrayList<BasicEvent>(out.getSize());
         for (BasicEvent e : out) {
             outList.add(e);
         }
+
+
         // compare out with newIn and in to get TP, TN, FP, FN. consider using set intersecion and union
         Set<BasicEvent> result = new HashSet<BasicEvent>((Collection<? extends BasicEvent>) outList);
 
-//        java.lang.ClassCastException: net.sf.jaer.event.ApsDvsEventPacket cannot be cast to java.util.Collection
-//	at net.sf.jaer.eventprocessing.filter.NoiseTesterFilter.filterPacket(NoiseTesterFilter.java:83)
         result.retainAll((Collection<?>) inList); // Intersection, 
         // in is the clean real events, so the intersection will result the collection of TP 
         TP = result.size();
@@ -146,17 +157,21 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         noise2.removeAll(noise1); // subtraction 
         // TN + FP - FP = TN.
 
-        TN = noise2.size();
+        TN = noise2.size();      
 
-        TPR = TP / (TP + FN);
-        precision = TP + FP == 0 ? 0 : TP / (TP + FP);
+//        System.out.printf("every event is: %d %d %d %d %d, %d %d %d: %d %d %d %d\n", inList.size(), newInList.size(), outList.size(), outRealList.size(), outNoiseList.size(), outInitList.size(), outInitRealList.size(), outInitNoiseList.size(), TP, TN, FP, FN);
+        TPR = TP + FN == 0 ? 0 : (float) (TP * 1.0 / (TP + FN));
+        precision = TP + FP == 0 ? 0 : (float)(TP * 1.0 / (TP + FP));
 
-        TNR = TN + FP == 0 ? 0 : TN / (TN + FP);
-        accuracy = (TP + TN) / (TP + TN + FP + FN);
+        TNR = TN + FP == 0 ? 0 : (float)(TN * 1.0 / (TN + FP));
+        accuracy = (float) ((TP + TN) * 1.0 / (TP + TN + FP + FN));
 
-        balanceRelation = 2 * TPR * precision / (TPR + precision); // wish to norm to 1. if both TPR and precision is 1. the value is 1
-
+        balanceRelation = TPR + precision == 0? 0: (float)(2 * TPR * precision / (TPR + precision)); // wish to norm to 1. if both TPR and precision is 1. the value is 1
+        
+        System.out.printf("every event is: %d %d %d TP: %d TN: %d FP: %d FN: %d %%%3.1f %%%3.1f %%%3.1f\n", inList.size(), newInList.size(), outList.size(), TP, TN, FP, FN, 100 * TPR, 100 * TNR, 100 * balanceRelation);
 //        in=getEnclosedFilterChain().filterPacket(in);
+        lastEventTime = endEventTime;
+
         return out;
     }
 
@@ -166,6 +181,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     public void initFilter() {
+        lastE = new BasicEvent();
+        
+        sx = chip.getSizeX() - 1;
+        sy = chip.getSizeY() - 1;
     }
 
     /**
@@ -200,7 +219,43 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     private EventPacket addNoise(EventPacket<? extends BasicEvent> in, float shotNoiseRateHz, float leakNoiseRateHz) {
 //        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-        return in;
+
+        EventPacket<BasicEvent> newIn = new EventPacket<BasicEvent>();
+        newIn.appendCopy((EventPacket<BasicEvent>) in);
+
+        ArrayList newInList = new ArrayList<BasicEvent>(newIn.getSize());
+
+        int count = 0;
+//        for (BasicEvent e : in) {
+//            newInList.add(e);
+//            count += 1;
+//        }
+//        
+//        if (count > 0){
+//            BasicEvent noiseE = (BasicEvent) newInList.get(count - 1);
+//        }else{
+//            ArrayList outRealList = new ArrayList<BasicEvent>(out.getSize());
+//
+//        }
+//        BasicEvent noiseE = lastE;
+        int lastts = lastE.timestamp;
+        int Min = 0;
+        
+        for (int i = 2; i < 300; i += 30) {
+            BasicEvent noiseE = new BasicEvent();
+            
+            int randomX = Min + (int)(Math.random() * ((sx - Min) + 1));
+            noiseE.x = (short) randomX;
+
+            int randomY = Min + (int)(Math.random() * ((sy - Min) + 1));
+            noiseE.y = (short) randomY;
+
+            noiseE.timestamp = lastts + i;
+            newIn.appendCopy(noiseE);
+
+        }
+
+        return newIn;
     }
 
 }

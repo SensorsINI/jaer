@@ -73,8 +73,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     public enum ColorMode {
 
         GrayLevel("Each event causes linear change in brightness"),
-        Contrast("Each event causes multiplicative change in brightness to produce logarithmic scale"),
+        //        Contrast("Each event causes multiplicative change in brightness to produce logarithmic scale"),
         RedGreen("ON events are green; OFF events are red"),
+        FadingActivity("Events are accumulated (without polarity) and are faded away over frames according to color scale"),
         ColorTime("Events are colored according to time within displayed slice, with red coding old events and green coding new events"),
         GrayTime("Events are colored according to time within displayed slice, with white coding old events and black coding new events"),
         HotCode("Events counts are colored blue to red, blue=0, red=full scale"),
@@ -280,14 +281,11 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                             f[ind + 2] = a;
                         }
                         break;
-                    case Contrast:
-                        if (!accumulateEnabled && !externalRenderer) {
-                            resetFrame(.5f);
-                        }
-                        float eventContrastRecip = 1 / eventContrast;
+                    case FadingActivity:
+                        checkPixmapAllocation();
+                        float fadeby = 1 - 1f / (colorScale + 1);
                         for (Object obj : packet) {
                             BasicEvent e = (BasicEvent) obj;
-
                             int type = e.getType();
                             if (e.isSpecial()) {
                                 setSpecialCount(specialCount + 1); // TODO optimate special count increment
@@ -298,18 +296,47 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                             }
                             int ind = getPixMapIndex(e.x, e.y);
                             a = f[ind];
-                            switch (type) {
-                                case 0:
-                                    a *= eventContrastRecip; // off cell divides gray
-                                    break;
-                                case 1:
-                                    a *= eventContrast; // on multiplies gray
+                            if (!ignorePolarity) {
+                                a = a * fadeby + (type - grayValue) / 2;
+                            } else {
+                                a = a * fadeby * (1 - fadeby) * (1 - grayValue);
+
                             }
                             f[ind] = a;
                             f[ind + 1] = a;
                             f[ind + 2] = a;
                         }
                         break;
+//                    case Contrast:
+//                        if (!accumulateEnabled && !externalRenderer) {
+//                            resetFrame(.5f);
+//                        }
+//                        float eventContrastRecip = 1 / eventContrast;
+//                        for (Object obj : packet) {
+//                            BasicEvent e = (BasicEvent) obj;
+//
+//                            int type = e.getType();
+//                            if (e.isSpecial()) {
+//                                setSpecialCount(specialCount + 1); // TODO optimate special count increment
+//                                continue;
+//                            }
+//                            if ((e.x == xsel) && (e.y == ysel)) {
+//                                playSpike(type);
+//                            }
+//                            int ind = getPixMapIndex(e.x, e.y);
+//                            a = f[ind];
+//                            switch (type) {
+//                                case 0:
+//                                    a *= eventContrastRecip; // off cell divides gray
+//                                    break;
+//                                case 1:
+//                                    a *= eventContrast; // on multiplies gray
+//                            }
+//                            f[ind] = a;
+//                            f[ind + 1] = a;
+//                            f[ind + 2] = a;
+//                        }
+//                        break;
                     case RedGreen:
                         if (!accumulateEnabled && !externalRenderer) {
                             resetFrame(0);
@@ -452,19 +479,19 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                 b = gray - (gray * m);
             } // float norm=(float)Math.max(Math.abs(max),Math.abs(min)); // norm is max distance from gray level
             // System.out.println("norm="+norm);
-            if (colorMode != ColorMode.Contrast) {
-                autoScaleValue = Math.round(Math.max(max, -min) / step); // this is value shown to user, step was
-                // computed during rendering to be (usually)
-                // 1/colorScale
-            } else {
-                if (max > -min) {
-                    autoScaleValue = 1; // this is value shown to user, step was computed during rendering to be
-                    // (usually) 1/colorScale
-                } else {
-                    autoScaleValue = -1; // this is value shown to user, step was computed during rendering to be
-                    // (usually) 1/colorScale
-                }
-            }
+//            if (colorMode != ColorMode.Contrast) {
+//                autoScaleValue = Math.round(Math.max(max, -min) / step); // this is value shown to user, step was
+//                // computed during rendering to be (usually)
+//                // 1/colorScale
+//            } else {
+//                if (max > -min) {
+//                    autoScaleValue = 1; // this is value shown to user, step was computed during rendering to be
+//                    // (usually) 1/colorScale
+//                } else {
+//                    autoScaleValue = -1; // this is value shown to user, step was computed during rendering to be
+//                    // (usually) 1/colorScale
+//                }
+//            }
             // normalize all channels
             for (int i = 0; i < fr.length; i++) {
                 for (int j = 0; j < fr[i].length; j++) {
@@ -528,18 +555,18 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             m = grayValue / (-min);
             b = grayValue - (grayValue * m);
         }
-        if (colorMode != ColorMode.Contrast) {
-            autoScaleValue = Math.round(Math.max(max, -min) / step); // this is value shown to user, step was computed
-            // during rendering to be (usually) 1/colorScale
-        } else {
-            if (max > -min) {
-                autoScaleValue = 1; // this is value shown to user, step was computed during rendering to be (usually)
-                // 1/colorScale
-            } else {
-                autoScaleValue = -1; // this is value shown to user, step was computed during rendering to be (usually)
-                // 1/colorScale
-            }
-        }
+//        if (colorMode != ColorMode.Contrast) {
+//            autoScaleValue = Math.round(Math.max(max, -min) / step); // this is value shown to user, step was computed
+//            // during rendering to be (usually) 1/colorScale
+//        } else {
+//            if (max > -min) {
+//                autoScaleValue = 1; // this is value shown to user, step was computed during rendering to be (usually)
+//                // 1/colorScale
+//            } else {
+//                autoScaleValue = -1; // this is value shown to user, step was computed during rendering to be (usually)
+//                // 1/colorScale
+//            }
+//        }
         // normalize all channels
         for (int i = 0; i < fr.length; i++) {
             fr[i] = (m * fr[i]) + b;
@@ -680,7 +707,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     protected boolean isMethodMonochrome() {
-        if ((colorMode == ColorMode.GrayLevel) || (colorMode == ColorMode.Contrast)) {
+        if ((colorMode == ColorMode.GrayLevel) /*|| (colorMode == ColorMode.Contrast)*/) {
             return true;
         } else {
             return false;
@@ -772,8 +799,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     /**
-     * @return 
-     * @see AEChipRenderer#typeColors
+     * @return @see AEChipRenderer#typeColors
      */
     public Color[] getTypeColors() {
         return typeColors;

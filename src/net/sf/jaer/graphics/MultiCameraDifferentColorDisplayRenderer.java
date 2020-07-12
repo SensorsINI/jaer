@@ -127,7 +127,7 @@ public class MultiCameraDifferentColorDisplayRenderer extends DavisRenderer{
         checkPixmapAllocation();
         switch (colorMode) {
             case GrayLevel:
-            case Contrast:
+//            case Contrast:
                 onColor[0] = 1.0f;
                 onColor[1] = 1.0f;
                 onColor[2] = 1.0f;

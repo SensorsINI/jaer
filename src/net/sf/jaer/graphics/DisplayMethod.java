@@ -44,7 +44,7 @@ public abstract class DisplayMethod {
     private ArrayList<FrameAnnotater> annotators = new ArrayList<>();
     private String statusChangeString = null;
     private long statusChangeStartTimeMillis = 0;
-    private final long statusChangeDisplayTimeMillis = 500;
+    private final long statusChangeDisplayTimeMillis = 1000;
     /**
      * Provides PropertyChangeSupport for all DisplayMethods
      */
@@ -192,7 +192,7 @@ public abstract class DisplayMethod {
         }
         long now = System.currentTimeMillis();
         final int WRAP_LEN = 20;
-        if ((now - statusChangeStartTimeMillis) > statusChangeDisplayTimeMillis * (1+(statusChangeString.length() / WRAP_LEN))) {
+        if ((now - statusChangeStartTimeMillis) > statusChangeDisplayTimeMillis * (1 + (statusChangeString.length() / WRAP_LEN))) {
             statusChangeString = null;
             return;
         }
@@ -205,17 +205,25 @@ public abstract class DisplayMethod {
 
         GL2 gl = drawable.getGL().getGL2();
         TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
-        renderer.setColor(Color.YELLOW);
+        // need to translate to correct position
+//        gl.glPushMatrix();
+//        for (String sss : ss) {
+//            Rectangle2D r2 = renderer.getBounds(sss);
+//            gl.glColor4f(1, 1, 1, 1);
+//            gl.glRectd(r2.getMinX(), r2.getMinY(), r2.getMaxX(), r2.getMaxY());
+//        }
+//        gl.glPopMatrix();
         try {
             renderer.begin3DRendering();
+            renderer.setColor(Color.BLUE);
 
             Rectangle2D r = renderer.getBounds(ss[0]);
             float h1 = (float) (r.getHeight());
-            float ht = (float) h1*nlines;
+            float ht = (float) h1 * nlines;
             float w = (float) (r.getWidth());
             float scale = .5f;
             final float linespace = (float) (h1 * scale * 1.2f);
-            float ypos = (float) (chip.getSizeY() / 2 + ht/2 * scale-linespace/2);
+            float ypos = (float) (chip.getSizeY() / 2 + ht / 2 * scale - linespace / 2);
             float xpos = (float) (chip.getSizeX() / 2 - w / 2 * scale);
             float y = ypos;
             for (String sss : ss) {
