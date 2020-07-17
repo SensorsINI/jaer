@@ -21,12 +21,9 @@ package net.sf.jaer.eventprocessing.filter;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
-import static java.lang.Math.random;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import net.sf.jaer.Description;
@@ -34,9 +31,11 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.EventFilter;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface;
 
 /**
  * Filter for testing noise filters
@@ -228,10 +227,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private EventPacket addNoise(EventPacket<? extends BasicEvent> in, float shotNoiseRateHz, float leakNoiseRateHz) {
 //        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
 
-        EventPacket<BasicEvent> newIn = new EventPacket<BasicEvent>();
-        newIn.appendCopy((EventPacket<BasicEvent>) in);
-
-        ArrayList newInList = new ArrayList<BasicEvent>(newIn.getSize());
+        EventPacket<PolarityEvent> newIn = new EventPacket<PolarityEvent>();
+        OutputEventIterator outItr = newIn.outputIterator();
 
         int count = 0;
         int lastPacketTs = 0; // timestamp of the last event in the last packet
@@ -242,25 +239,110 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         int firstts = firstE.timestamp; // timestamp of the first event in the current packet
         int lastts = lastE.timestamp; // timestamp of the last event in the current packet
         int Min = 0;
-
         Random random = new Random();
-        
 
-        for (int ts = lastPacketTs; ts <= lastts; ts += 10) {
-             
-                BasicEvent noiseE = new BasicEvent();
-                int randomX = Min + (int) (Math.random() * ((sx - Min) + 1));
-                noiseE.x = (short) randomX;
+        float tmp = (float) (1.0 / (shotNoiseRateHz * (sx + 1) * (sy + 1)));
+        int dt = (int) (tmp / 10);
+        float downbound = dt * shotNoiseRateHz;
+        float upbound = 1 - downbound;
 
-                int randomY = Min + (int) (Math.random() * ((sy - Min) + 1));
-                noiseE.y = (short) randomY;       
-                
-                noiseE.timestamp = ts;
-                newIn.appendCopy(noiseE);
+        for (int ts = lastPacketTs; ts < firstts; ts += dt) {
+            float randomnum;
+            randomnum = random.nextFloat();
+            if (randomnum < downbound) {
+                PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+                e.setSpecial(false);
 
-            
+                e.polarity = PolarityEvent.Polarity.Off;
+                int x = (short) random.nextInt(sx);
+                int y = (short) random.nextInt(sy);
+                e.x = (short) (x);
+                e.y = (short) (y);
+                e.timestamp = ts;
+            } else if (randomnum > upbound) {
+                PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+                e.setSpecial(false);
+
+                e.polarity = PolarityEvent.Polarity.On;
+                int x = (short) random.nextInt(sx);
+                int y = (short) random.nextInt(sy);
+                e.x = (short) (x);
+                e.y = (short) (y);
+                e.timestamp = ts;
+            } else {
+
+            }
         }
 
+//        OutputEventIterator inItr = in.outputIterator();
+//        count = 0;
+//        BasicEvent preE = null;
+//        BasicEvent curE = null;
+//        for (BasicEvent ie : in) {
+//            if (count == 0) {
+//                curE = ie;
+//                count += 1;
+//                continue;
+//            }
+//            preE = curE;
+//            curE = ie;
+//
+//            PolarityEvent pe = (PolarityEvent) outItr.nextOutput();
+//            pe.setSpecial(false);
+//            pe.polarity = preE.getType() == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
+//            pe.x = preE.x;
+//            pe.y = preE.y;
+//            pe.timestamp = preE.timestamp;
+//
+//            int startts = preE.timestamp;
+//            int endts = curE.timestamp;
+//            for (int ts = startts; ts <= endts; ts += dt) {
+//                float randomnum;
+//                randomnum = random.nextFloat();
+//                if (randomnum < downbound) {
+//                    PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+//                    e.setSpecial(false);
+//
+//                    e.polarity = PolarityEvent.Polarity.Off;
+//                    int x = (short) random.nextInt(sx);
+//                    int y = (short) random.nextInt(sy);
+//                    e.x = (short) (x);
+//                    e.y = (short) (y);
+//                    e.timestamp = ts;
+//                } else if (randomnum > upbound) {
+//                    PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+//                    e.setSpecial(false);
+//
+//                    e.polarity = PolarityEvent.Polarity.On;
+//                    int x = (short) random.nextInt(sx);
+//                    int y = (short) random.nextInt(sy);
+//                    e.x = (short) (x);
+//                    e.y = (short) (y);
+//                    e.timestamp = ts;
+//                } else {
+//
+//                }
+//
+//            }
+//            PolarityEvent ce = (PolarityEvent) outItr.nextOutput();
+//            ce.setSpecial(false);
+//            ce.polarity = curE.getType() == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
+//            ce.x = curE.x;
+//            ce.y = curE.y;
+//            ce.timestamp = curE.timestamp;
+//        }
+
+//        for (int ts = lastPacketTs; ts <= lastts; ts += 100) {
+//
+//            int x = (short) random.nextInt(sx);
+//            int y = (short) random.nextInt(sy);
+//
+//            BasicEvent noiseE = new PolarityEvent();
+//
+//            noiseE.timestamp = ts;
+//            newIn.appendCopy(noiseE);
+//
+//        }
         return newIn;
     }
 
