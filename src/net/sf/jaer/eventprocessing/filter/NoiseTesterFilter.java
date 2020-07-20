@@ -23,7 +23,10 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import net.sf.jaer.Description;
@@ -134,6 +137,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             outList.add(e);
         }
 
+//        Collection exists = new ArrayList(outList);
+//        Collection notexists = new ArrayList(outList);
+//        exists.removeAll(inList);
+//        System.out.println("outList not in inList：" + exists.size());
+//        notexists.removeAll(exists);
+//        System.out.println("outList in inList：" + notexists.size());
+
         // compare out with newIn and in to get TP, TN, FP, FN. consider using set intersecion and union
         Set<BasicEvent> result = new HashSet<BasicEvent>((Collection<? extends BasicEvent>) outList);
 
@@ -165,7 +175,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         TN = noise2.size();
 
-//        System.out.printf("every event is: %d %d %d %d %d, %d %d %d: %d %d %d %d\n", inList.size(), newInList.size(), outList.size(), outRealList.size(), outNoiseList.size(), outInitList.size(), outInitRealList.size(), outInitNoiseList.size(), TP, TN, FP, FN);
+//        System.out.printf("every packet is: %d %d %d %d %d, %d %d %d: %d %d %d %d\n", inList.size(), newInList.size(), outList.size(), outRealList.size(), outNoiseList.size(), outInitList.size(), outInitRealList.size(), outInitNoiseList.size(), TP, TN, FP, FN);
         TPR = TP + FN == 0 ? 0 : (float) (TP * 1.0 / (TP + FN));
         precision = TP + FP == 0 ? 0 : (float) (TP * 1.0 / (TP + FP));
 
@@ -174,10 +184,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         balanceRelation = TPR + precision == 0 ? 0 : (float) (2 * TPR * precision / (TPR + precision)); // wish to norm to 1. if both TPR and precision is 1. the value is 1
 
-        System.out.printf("every event is: %d %d %d TP: %d TN: %d FP: %d FN: %d %%%3.1f %%%3.1f %%%3.1f\n", inList.size(), newInList.size(), outList.size(), TP, TN, FP, FN, 100 * TPR, 100 * TNR, 100 * balanceRelation);
-//        in=getEnclosedFilterChain().filterPacket(in);
+        System.out.printf("every packet is: inList: %d after add noise: %d filter's out: %d TP: %d TN: %d FP: %d FN: %d %%%3.1f %%%3.1f %%%3.1f\n", inList.size(), newInList.size(), outList.size(), TP, TN, FP, FN, 100 * TPR, 100 * TNR, 100 * balanceRelation);
+
         lastpacketE = lastE;
-//        lastEventTime = endEventTime;
 
         return out;
     }
@@ -227,7 +236,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private EventPacket addNoise(EventPacket<? extends BasicEvent> in, float shotNoiseRateHz, float leakNoiseRateHz) {
 //        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
 
-        EventPacket<PolarityEvent> newIn = new EventPacket<PolarityEvent>();
+        EventPacket<BasicEvent> newIn = new EventPacket<BasicEvent>();
         OutputEventIterator outItr = newIn.outputIterator();
 
         int count = 0;
@@ -241,29 +250,33 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         int Min = 0;
         Random random = new Random();
 
-        float tmp = (float) (1.0 / (shotNoiseRateHz * (sx + 1) * (sy + 1)));
-        int dt = (int) (tmp / 10);
-        float downbound = dt * shotNoiseRateHz;
+//        here is a bug
+//        float tmp = (float) (1.0 / (shotNoiseRateHz * (sx + 1) * (sy + 1))); // this equation yields dt too small
+//        float tmp = (float) ((shotNoiseRateHz * (sx + 1) * (sy + 1))); // this equation yields dt too large
+//        int dt = (int) (tmp / 10);
+        int dt = 10;
+//        float downbound = dt * shotNoiseRateHz / 10;
+        float downbound = shotNoiseRateHz;
         float upbound = 1 - downbound;
 
+//        java.lang.ClassCastException: net.sf.jaer.event.BasicEvent cannot be cast to net.sf.jaer.event.PolarityEvent, so I change the PolarityEvent to BasicEvent
+//        insert noise between last event of last packet and first event of current packet
         for (int ts = lastPacketTs; ts < firstts; ts += dt) {
             float randomnum;
             randomnum = random.nextFloat();
             if (randomnum < downbound) {
-                PolarityEvent e = (PolarityEvent) outItr.nextOutput();
-                e.setSpecial(false);
-
-                e.polarity = PolarityEvent.Polarity.Off;
+                BasicEvent e = (BasicEvent) outItr.nextOutput();
+//                e.setSpecial(false);
+//                e.polarity = PolarityEvent.Polarity.Off;
                 int x = (short) random.nextInt(sx);
                 int y = (short) random.nextInt(sy);
                 e.x = (short) (x);
                 e.y = (short) (y);
                 e.timestamp = ts;
             } else if (randomnum > upbound) {
-                PolarityEvent e = (PolarityEvent) outItr.nextOutput();
-                e.setSpecial(false);
-
-                e.polarity = PolarityEvent.Polarity.On;
+                BasicEvent e = (BasicEvent) outItr.nextOutput();
+//                e.setSpecial(false);
+//                e.polarity = PolarityEvent.Polarity.On;
                 int x = (short) random.nextInt(sx);
                 int y = (short) random.nextInt(sy);
                 e.x = (short) (x);
@@ -273,64 +286,71 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
             }
         }
+        
+        // insert noise between two real events
+        count = 0;
+        BasicEvent preE = new BasicEvent();
+        BasicEvent curE = new BasicEvent();
 
-//        OutputEventIterator inItr = in.outputIterator();
-//        count = 0;
-//        BasicEvent preE = null;
-//        BasicEvent curE = null;
-//        for (BasicEvent ie : in) {
-//            if (count == 0) {
-//                curE = ie;
-//                count += 1;
-//                continue;
-//            }
-//            preE = curE;
-//            curE = ie;
-//
-//            PolarityEvent pe = (PolarityEvent) outItr.nextOutput();
-//            pe.setSpecial(false);
-//            pe.polarity = preE.getType() == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
-//            pe.x = preE.x;
-//            pe.y = preE.y;
-//            pe.timestamp = preE.timestamp;
-//
-//            int startts = preE.timestamp;
-//            int endts = curE.timestamp;
-//            for (int ts = startts; ts <= endts; ts += dt) {
-//                float randomnum;
-//                randomnum = random.nextFloat();
-//                if (randomnum < downbound) {
-//                    PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+        // bug is here, I want to copy the signal event from the initial packet to the new packet. 
+//        I find that most events in the filter's output packet have the same (x,y,ts) as the events in the initial in packet. 
+//        that is to say, most of the events in the outList should be the regarded as same as those in the inList.
+//        but they are treated as different events when using set operations, 
+//        so the FP always equals to the filter's out.
+
+//        every packet is: inList: 58 after add noise: 447 filter's out: 73 TP: 0 TN: 374 FP: 73 FN: 58 %0.0 %83.7 %0.0
+//        every packet is: inList: 307 after add noise: 785 filter's out: 379 TP: 0 TN: 406 FP: 379 FN: 307 %0.0 %51.7 %0.0
+
+//        most of the inserted noise are acturally filtered out.
+//        I think the error exises here, how to copy the initial signal events to the newIn packet
+//        the newIn packet contains noise events as well as identical initial events
+
+        for (BasicEvent ie : in) {
+
+            if (count == 0) {
+                curE.copyFrom(ie);
+                count += 1;
+                BasicEvent ce = (BasicEvent) outItr.nextOutput();
+                ce.copyFrom(ie);
+                continue;
+            }
+            preE.copyFrom(curE);
+            curE.copyFrom(ie);
+
+            int startts = preE.timestamp;
+            int endts = curE.timestamp;
+            for (int ts = startts; ts <= endts; ts += dt) {
+                float randomnum;
+                randomnum = random.nextFloat();
+                if (randomnum < downbound) {
+                    BasicEvent e = (BasicEvent) outItr.nextOutput();
+                    e.copyFrom(curE);
 //                    e.setSpecial(false);
-//
 //                    e.polarity = PolarityEvent.Polarity.Off;
-//                    int x = (short) random.nextInt(sx);
-//                    int y = (short) random.nextInt(sy);
-//                    e.x = (short) (x);
-//                    e.y = (short) (y);
-//                    e.timestamp = ts;
-//                } else if (randomnum > upbound) {
-//                    PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+                    int x = (short) random.nextInt(sx);
+                    int y = (short) random.nextInt(sy);
+                    e.x = (short) (x);
+                    e.y = (short) (y);
+                    e.timestamp = ts;
+                } else if (randomnum > upbound) {
+                    BasicEvent e = (BasicEvent) outItr.nextOutput();
+                    e.copyFrom(curE);
 //                    e.setSpecial(false);
-//
 //                    e.polarity = PolarityEvent.Polarity.On;
-//                    int x = (short) random.nextInt(sx);
-//                    int y = (short) random.nextInt(sy);
-//                    e.x = (short) (x);
-//                    e.y = (short) (y);
-//                    e.timestamp = ts;
-//                } else {
-//
-//                }
-//
-//            }
-//            PolarityEvent ce = (PolarityEvent) outItr.nextOutput();
-//            ce.setSpecial(false);
-//            ce.polarity = curE.getType() == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
-//            ce.x = curE.x;
-//            ce.y = curE.y;
-//            ce.timestamp = curE.timestamp;
-//        }
+                    int x = (short) random.nextInt(sx);
+                    int y = (short) random.nextInt(sy);
+                    e.x = (short) (x);
+                    e.y = (short) (y);
+                    e.timestamp = ts;
+                } else {
+
+                }
+
+            }
+            BasicEvent ce = (BasicEvent) outItr.nextOutput();
+            ce.copyFrom(ie);
+
+        }
 
 //        for (int ts = lastPacketTs; ts <= lastts; ts += 100) {
 //
