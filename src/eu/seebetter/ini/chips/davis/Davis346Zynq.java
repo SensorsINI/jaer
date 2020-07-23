@@ -22,7 +22,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
  * 
  * @author Tobi
  */
-@Description("Min Liu's Zynq FPGA DAVIS346 346x260 pixel APS-DVS DAVIS USB 3.0")
+@Description("Min Liu's Zynq FPGA DAVIS346 346x260 pixel APS-DVS DAVIS USB 2.0")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class Davis346Zynq extends Davis346BaseCamera {
 	public Davis346Zynq() {
@@ -32,6 +32,9 @@ public class Davis346Zynq extends Davis346BaseCamera {
 		davisRenderer = new DavisRenderer(this);
 //		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(davisRenderer);
+
+                // Use its own extractor
+                setEventExtractor(new DavisColorEventExtractor(this));
 
 //		// Inverted with respect to other 346 cameras.
 //		setApsFirstPixelReadOut(new Point(getSizeX() - 1, 0));
@@ -125,13 +128,13 @@ public class Davis346Zynq extends Davis346BaseCamera {
                     final ApsDvsEvent e = nextApsDvsEvent(outItr);
                     e.setImuSample(null);
 
-                    if ((data & DavisChip.EVENT_TYPE_MASK) == DavisChip.EXTERNAL_INPUT_EVENT_ADDR) {
-                        e.setReadoutType(ApsDvsEvent.ReadoutType.DVS);
-                        e.setSpecial(true);
-
-                        e.address = data;
-                        e.timestamp = (timestamps[i]);
-                    } else {
+//                    if ((data & DavisChip.EVENT_TYPE_MASK) == DavisChip.EXTERNAL_INPUT_EVENT_ADDR) {
+//                        e.setReadoutType(ApsDvsEvent.ReadoutType.DVS);
+//                        e.setSpecial(true);
+//
+//                        e.address = data;
+//                        e.timestamp = (timestamps[i]);
+//                    } else {
                         e.setReadoutType(ApsDvsEvent.ReadoutType.DVS);
 
                         e.address = data;
@@ -143,7 +146,7 @@ public class Davis346Zynq extends Davis346BaseCamera {
 
                         // autoshot triggering
                         autoshotEventsSinceLastShot++; // number DVS events captured here
-                    }
+//                    }
                 } else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_APS) {
                     // ignore, no APS output for now
  
