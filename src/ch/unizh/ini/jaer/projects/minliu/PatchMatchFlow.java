@@ -157,6 +157,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     
     private float cornerThr = getFloat("cornerThr", 0.2f);
     private boolean saveSliceGrayImage = false;
+    
+    // These variables are only used by HW_ABMOF. 
+    // HW_ABMOF send slice rotation flag so we need to indicate the real rotation timestamp
+    // HW_ABMOF is only supported for davis346Zynq
+    private int curretnRotatTs_HW = 0, tMinus1RotateTs_HW = 0, tMinus2RotateTs_HW = 0;
+    private float deltaTsMs_HW = 0;
+    private boolean HWABMOFEnabled = false;
 
     public enum CornerCircleSelection {
         InnerCircle, OuterCircle, OR, AND
@@ -281,7 +288,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         apsFrameExtractor = new ApsFrameExtractor(chip);
         apsFrameExtractor.setShowAPSFrameDisplay(false);
         getEnclosedFilterChain().add(apsFrameExtractor);
-        getEnclosedFilterChain().add(keypointFilter);
+//        getEnclosedFilterChain().add(keypointFilter);
 
         setSliceDurationUs(getSliceDurationUs());   // 40ms is good for the start of the slice duration adatative since 4ms is too fast and 500ms is too slow.
         setDefaultScalesToCompute();
@@ -419,140 +426,177 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             }
 
             countIn++;
-
+            
             // compute flow
             SADResult result = null;
-
-            float[] sadVals = new float[numScales]; // TODO debug
-            int[] dxInitVals = new int[numScales];
-            int[] dyInitVals = new int[numScales];
             
-            switch (patchCompareMethod) {
-                case SAD:
-                    boolean rotated = maybeRotateSlices();
-                    if (rotated) {
-                        adaptSliceDuration();
-                        setResetOFHistogramFlag();
-                    }
-//                    if (ein.x >= subSizeX || ein.y > subSizeY) {
-//                        log.warning("event out of range");
-//                        continue;
-//                    }
-                    
-                    if(ein.timestamp == 151322924)
-                    {
-//                        ein.y = (short)(ein.y + 4);
-                        int tmp = 1;
-                    }
-                    
-                    if (!accumulateEvent(ein)) { // maybe skip events here
-                        break;
-                    }
- 
-                    SADResult sliceResult = new SADResult();
-                    minDistScale = 0;
+            if(HWABMOFEnabled)                   // Only use it when there is hardwar supported. Hardware is davis346Zynq
+            {
+                SADResult sliceResult = new SADResult();
 
-                    // Sorts scalesToComputeArray[] in descending order
-                    Arrays.sort(scalesToComputeArray, Collections.reverseOrder());
+                int data = ein.address & 0x7ff;
+              
+                // The OF result from the hardware has following procotol:
+                // If the data is 0x7ff, it indicates that this result is an invalid result
+                // if the data is 0x7fe, then it means slice rotated on this event,
+                // in this case, only rotation information is included.
+                // Other cases are valid OF data.
+                // The valid OF data is represented in a compressed data format.
+                // It is calculated by OF_x * (2 * maxSearchDistanceRadius + 1) + OF_y.
+                // Therefore, simple decompress is required.
+                if((data & 0x7ff) == 0x7ff)
+                {
+                    continue;
+                } 
+                else if((data & 0x7ff) == 0x7fe)
+                {
+                    tMinus2RotateTs_HW = tMinus1RotateTs_HW;
+                    tMinus1RotateTs_HW = curretnRotatTs_HW;
+                    curretnRotatTs_HW = ts;
+                    
+                    deltaTsMs_HW = (float)(tMinus1RotateTs_HW - tMinus2RotateTs_HW)/(float)1000.0;
+                    continue;
+                } 
+                else
+                {   final int searchDistanceHW = 3;     // hardcoded on hardware.             
+                    final int maxSearchDistanceRadius = (4 + 2 + 1) * searchDistanceHW;
+                    int OF_x = (data/(2 * maxSearchDistanceRadius + 1)) - maxSearchDistanceRadius;
+                    int OF_y = (data%(2 * maxSearchDistanceRadius + 1)) - maxSearchDistanceRadius;
 
-                    for (int scale : scalesToComputeArray) {
-                        if (scale >= numScales) {
-//                            log.warning("scale " + scale + " is out of range of " + numScales + "; fix scalesToCompute for example by clearing it");
-//                            break;
+                    sliceResult.dx = -OF_x;
+                    sliceResult.dy = -OF_y;
+                    sliceResult.vx = (float) (1e3 * sliceResult.dx/deltaTsMs_HW);
+                    sliceResult.vy = (float) (1e3 * sliceResult.dy/deltaTsMs_HW);
+                    result = sliceResult;  
+                    vx = result.vx;
+                    vy = result.vy;
+                    v = (float) Math.sqrt((vx * vx) + (vy * vy));
+                }
+            } 
+            else
+            {
+                float[] sadVals = new float[numScales]; // TODO debug
+                int[] dxInitVals = new int[numScales];
+                int[] dyInitVals = new int[numScales];
+
+                switch (patchCompareMethod) {
+                    case SAD:
+                        boolean rotated = maybeRotateSlices();
+                        if (rotated) {
+                            adaptSliceDuration();
+                            setResetOFHistogramFlag();
                         }
-                        int dx_init = ((result != null) && !isNotSufficientlyAccurate(sliceResult)) ? (sliceResult.dx >> scale) : 0;
-                        int dy_init = ((result != null) && !isNotSufficientlyAccurate(sliceResult)) ? (sliceResult.dy >> scale) : 0;
-//                        dx_init = 0;
-//                        dy_init = 0;                            
+    //                    if (ein.x >= subSizeX || ein.y > subSizeY) {
+    //                        log.warning("event out of range");
+    //                        continue;
+    //                    }
 
-                        // The reason why we inverse dx_init, dy_init i is the offset is pointing from previous slice to current slice.
-                        // The dx_init, dy_init are from the corse scale's result, and it is used as the finer scale's initial guess.
-                        sliceResult = minSADDistance(ein.x, ein.y, -dx_init, -dy_init, slices[sliceIndex(1)], slices[sliceIndex(2)], scale); // from ref slice to past slice k+1, using scale 0,1,....
-//                        sliceSummedSADValues[sliceIndex(scale + 2)] += sliceResult.sadValue; // accumulate SAD for this past slice
-//                        sliceSummedSADCounts[sliceIndex(scale + 2)]++; // accumulate SAD count for this past slice
-                        // sliceSummedSADValues should end up filling 2 values for 4 slices 
-
-                        sadVals[scale] = sliceResult.sadValue; // TODO debug 
-                        dxInitVals[scale] = dx_init;
-                        dyInitVals[scale] = dy_init;
-
-                        if(sliceResult.sadValue >= this.maxAllowedSadDistance)
+                        if(ein.timestamp == 151322924)
                         {
+    //                        ein.y = (short)(ein.y + 4);
+                            int tmp = 1;
+                        }
+
+                        if (!accumulateEvent(ein)) { // maybe skip events here
                             break;
                         }
-                        else
-                        {
-                            if ((result == null) || (sliceResult.sadValue < result.sadValue)) {
-                                result = sliceResult; // result holds the overall min sad result
-                                minDistScale = scale;
+
+                        SADResult sliceResult = new SADResult();
+                        minDistScale = 0;
+
+                        // Sorts scalesToComputeArray[] in descending order
+                        Arrays.sort(scalesToComputeArray, Collections.reverseOrder());
+
+                        for (int scale : scalesToComputeArray) {
+                            if (scale >= numScales) {
+    //                            log.warning("scale " + scale + " is out of range of " + numScales + "; fix scalesToCompute for example by clearing it");
+    //                            break;
                             }
+                            int dx_init = ((result != null) && !isNotSufficientlyAccurate(sliceResult)) ? (sliceResult.dx >> scale) : 0;
+                            int dy_init = ((result != null) && !isNotSufficientlyAccurate(sliceResult)) ? (sliceResult.dy >> scale) : 0;
+    //                        dx_init = 0;
+    //                        dy_init = 0;                            
+
+                            // The reason why we inverse dx_init, dy_init i is the offset is pointing from previous slice to current slice.
+                            // The dx_init, dy_init are from the corse scale's result, and it is used as the finer scale's initial guess.
+                            sliceResult = minSADDistance(ein.x, ein.y, -dx_init, -dy_init, slices[sliceIndex(1)], slices[sliceIndex(2)], scale); // from ref slice to past slice k+1, using scale 0,1,....
+    //                        sliceSummedSADValues[sliceIndex(scale + 2)] += sliceResult.sadValue; // accumulate SAD for this past slice
+    //                        sliceSummedSADCounts[sliceIndex(scale + 2)]++; // accumulate SAD count for this past slice
+                            // sliceSummedSADValues should end up filling 2 values for 4 slices 
+
+                            sadVals[scale] = sliceResult.sadValue; // TODO debug 
+                            dxInitVals[scale] = dx_init;
+                            dyInitVals[scale] = dy_init;
+
+                            if(sliceResult.sadValue >= this.maxAllowedSadDistance)
+                            {
+                                break;
+                            }
+                            else
+                            {
+                                if ((result == null) || (sliceResult.sadValue < result.sadValue)) {
+                                    result = sliceResult; // result holds the overall min sad result
+                                    minDistScale = scale;
+                                }
+                            }
+    //                        result=sliceResult; // TODO tobi: override the absolute minimum to always use the finest scale result, which has been guided by coarser scales
                         }
-//                        result=sliceResult; // TODO tobi: override the absolute minimum to always use the finest scale result, which has been guided by coarser scales
-                    }
-                    result = sliceResult;
-                    minDistScale = 0;
-                    float dt = (sliceDeltaTimeUs(2) * 1e-6f);
-                    if (result != null) {
-                        result.vx = result.dx / dt; // hack, convert to pix/second
-                        result.vy = result.dy / dt; // TODO clean up, make time for each slice, since could be different when const num events
-                    }
+                        result = sliceResult;
+                        minDistScale = 0;
+                        float dt = (sliceDeltaTimeUs(2) * 1e-6f);
+                        if (result != null) {
+                            result.vx = result.dx / dt; // hack, convert to pix/second
+                            result.vy = result.dy / dt; // TODO clean up, make time for each slice, since could be different when const num events
+                        }
 
-                    break;
-//                case JaccardDistance:
-//                    maybeRotateSlices();
-//                    if (!accumulateEvent(in)) {
-//                        break;
-//                    }
-//                    result = minJaccardDistance(x, y, bitmaps[sliceIndex(2)], bitmaps[sliceIndex(1)]);
-//                    float dtj=(sliceDeltaTimeUs(2) * 1e-6f);
-//                    result.dx = result.dx / dtj;
-//                    result.dy = result.dy / dtj;
-//                    break;
+                        break;
+    //                case JaccardDistance:
+    //                    maybeRotateSlices();
+    //                    if (!accumulateEvent(in)) {
+    //                        break;
+    //                    }
+    //                    result = minJaccardDistance(x, y, bitmaps[sliceIndex(2)], bitmaps[sliceIndex(1)]);
+    //                    float dtj=(sliceDeltaTimeUs(2) * 1e-6f);
+    //                    result.dx = result.dx / dtj;
+    //                    result.dy = result.dy / dtj;
+    //                    break;
 
-            }
-            if (result == null || result.sadValue == Float.MAX_VALUE) {
-                continue; // maybe some property change caused this
-            }
-            // reject values that are unreasonable
-            if (isNotSufficientlyAccurate(result)) {
-                continue;
-            }
-            scaleResultCounts[minDistScale]++;
-            vx = result.vx;
-            vy = result.vy;
-            v = (float) Math.sqrt((vx * vx) + (vy * vy));
+                }
+                if (result == null || result.sadValue == Float.MAX_VALUE) {
+                    continue; // maybe some property change caused this
+                }
+                // reject values that are unreasonable
+                if (isNotSufficientlyAccurate(result)) {
+                    continue;
+                }
+                scaleResultCounts[minDistScale]++;
+                vx = result.vx;
+                vy = result.vy;
+                v = (float) Math.sqrt((vx * vx) + (vy * vy));
+                
+                // TODO debug
+                StringBuilder sadValsString = new StringBuilder();
+                for (int k = 0; k < sadVals.length - 1; k++) {
+                    sadValsString.append(String.format("%f,", sadVals[k]));
+                }
+                sadValsString.append(String.format("%f", sadVals[sadVals.length - 1])); // very awkward to prevent trailing ,
+                if (sadValueLogger.isEnabled()) { // TODO debug
+                    sadValueLogger.log(sadValsString.toString());
+                }
 
-            // TODO debug
-            StringBuilder sadValsString = new StringBuilder();
-            for (int k = 0; k < sadVals.length - 1; k++) {
-                sadValsString.append(String.format("%f,", sadVals[k]));
-            }
-            sadValsString.append(String.format("%f", sadVals[sadVals.length - 1])); // very awkward to prevent trailing ,
-            if (sadValueLogger.isEnabled()) { // TODO debug
-                sadValueLogger.log(sadValsString.toString());
-            }
-
-            if (showBlockMatches) {
-                // TODO danger, drawing outside AWT thread
-                final SADResult thisResult = result;
-                final PolarityEvent thisEvent = ein;
-                final byte[][][][] thisSlices = slices;
-//                SwingUtilities.invokeLater(new Runnable() {
-//                    @Override
-//                    public void run() {
-                        drawMatching(thisResult, thisEvent, thisSlices, sadVals, dxInitVals, dyInitVals); // ein.x >> result.scale, ein.y >> result.scale, (int) result.dx >> result.scale, (int) result.dy >> result.scale, slices[sliceIndex(1)][result.scale], slices[sliceIndex(2)][result.scale], result.scale);
-                        drawTimeStampBlock(thisEvent);
-//                    }
-//                });
-            }
-
-            if(Math.abs(result.dy) >= 10)
-            {
-                int tmp = 0;
-            }
-            if(ein.timestamp == 80059493)
-            {
-                int tmp = 1;
+                if (showBlockMatches) {
+                    // TODO danger, drawing outside AWT thread
+                    final SADResult thisResult = result;
+                    final PolarityEvent thisEvent = ein;
+                    final byte[][][][] thisSlices = slices;
+    //                SwingUtilities.invokeLater(new Runnable() {
+    //                    @Override
+    //                    public void run() {
+                            drawMatching(thisResult, thisEvent, thisSlices, sadVals, dxInitVals, dyInitVals); // ein.x >> result.scale, ein.y >> result.scale, (int) result.dx >> result.scale, (int) result.dy >> result.scale, slices[sliceIndex(1)][result.scale], slices[sliceIndex(2)][result.scale], result.scale);
+                            drawTimeStampBlock(thisEvent);
+    //                    }
+    //                });
+                }
             }
                     
             if (resultHistogram != null) {
@@ -567,13 +611,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //                    resultAngleHistogramMax = v;
 //                }
 //            }
+
             double oldGlobalMeanVx = motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean();
             processGoodEvent();
             double newGlobalMeanVx = motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean();
-            if(Math.abs(newGlobalMeanVx - oldGlobalMeanVx) >= 30)
-            {
-                int tmp = 0;
-            }
             lastGoodSadResult.set(result);
 
         }
@@ -1220,7 +1261,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             }
         }
         // detect if keypoint here
-        boolean isEASTCorner = ((e.getAddress() & 1) == 1);
+        boolean isEASTCorner = ((e.getAddress() & 1) == 1);  // supported only HWCornerPointRender or HW EFAST is used
         boolean isBFASTCorner = PatchFastDetectorisFeature(e);
         boolean isCorner = isBFASTCorner;
         if (calcOFonCornersEnabled && !isCorner) {
@@ -3201,6 +3242,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         this.showSlicesScale = showSlicesScale;
     }
 
+    public boolean isHWABMOFEnabled() {
+        return HWABMOFEnabled;
+    }
+
+    public void setHWABMOFEnabled(boolean HWABMOFEnabled) {
+        this.HWABMOFEnabled = HWABMOFEnabled;
+    }
+    
     public boolean isCalcOFonCornersEnabled() {
         return calcOFonCornersEnabled;
     }
