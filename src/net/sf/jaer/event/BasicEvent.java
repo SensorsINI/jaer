@@ -274,4 +274,17 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
 	public void setFilteredOut(final boolean filteredOut) {
 		this.filteredOut = filteredOut;
 	}
+        
+        
+        @Override
+        public boolean equals(Object obj) {
+        if(!(obj instanceof BasicEvent)){
+            return false;
+        }
+        BasicEvent tgt = (BasicEvent) obj;
+ 
+        return (this.x == tgt.x) && (this.y == tgt.y) && (this.timestamp == tgt.timestamp);
+ 
+    }
+
 }
