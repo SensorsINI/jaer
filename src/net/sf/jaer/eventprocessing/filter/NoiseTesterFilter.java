@@ -136,44 +136,34 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         for (BasicEvent e : out) {
             outList.add(e);
         }
-
-//        Collection exists = new ArrayList(outList);
-//        Collection notexists = new ArrayList(outList);
-//        exists.removeAll(inList);
-//        System.out.println("outList not in inList：" + exists.size());
-//        notexists.removeAll(exists);
-//        System.out.println("outList in inList：" + notexists.size());
-
-        // compare out with newIn and in to get TP, TN, FP, FN. consider using set intersecion and union
-        Set<BasicEvent> result = new HashSet<BasicEvent>((Collection<? extends BasicEvent>) outList);
-
-        result.retainAll((Collection<?>) inList); // Intersection, 
-        // in is the clean real events, so the intersection will result the collection of TP 
-        TP = result.size();
-
-        Set<BasicEvent> result2 = new HashSet<BasicEvent>((Collection<? extends BasicEvent>) inList);
-        result2.removeAll(result);
-        // subtraction, the intersection result is the TP, in is TP + FN
-        // so in - result = #FN
-
-        FN = result2.size();
-
-        Set<BasicEvent> noise;
-        noise = new HashSet<BasicEvent>((Collection<? extends BasicEvent>) newInList);
-        noise.removeAll((Collection<?>) inList);
-        // noise is TN + FP
-
-        Set<BasicEvent> noise1 = new HashSet<BasicEvent>(noise);
-
-        noise1.retainAll((Collection<?>) outList); // intersection
-        // noise but occur in the filters output, this is False Positive FP
-        FP = noise1.size();
-
-        Set<BasicEvent> noise2 = new HashSet<BasicEvent>(noise);
-        noise2.removeAll(noise1); // subtraction 
-        // TN + FP - FP = TN.
-
-        TN = noise2.size();
+        
+        Collection realEvents = new ArrayList<BasicEvent>(inList);
+        realEvents.removeAll(outList);
+        FN = realEvents.size();
+//        System.out.println("realEvents not in outList, i.e., filtered out: FN " + FN);
+        
+        Collection RealEvents = new ArrayList<BasicEvent>(inList);
+        RealEvents.removeAll(realEvents); // real events subtraction FN, gets TP
+        TP = RealEvents.size();
+//        System.out.println("inList in outList: TP " + TP);
+        
+        
+        Collection addedNoise = new ArrayList<BasicEvent>(newInList);
+        addedNoise.removeAll(inList);
+//        System.out.println("added noise：" + addedNoise.size());
+        Collection outEvents = new ArrayList<BasicEvent>(outList);
+        addedNoise.retainAll(outEvents); // noise intersection with out 
+        FP = addedNoise.size();
+//        System.out.println("noise in outList: FP " + FP);
+        
+        
+        Collection addedNoise2 = new ArrayList<BasicEvent>(newInList);
+        addedNoise2.removeAll(inList);
+        // noise is FP + TN
+//        System.out.println("added noise：" + addedNoise2.size());
+        addedNoise2.removeAll(addedNoise); // noise subtraction FP, get TN
+        TN = addedNoise2.size();
+//        System.out.println("TN " + TN);
 
 //        System.out.printf("every packet is: %d %d %d %d %d, %d %d %d: %d %d %d %d\n", inList.size(), newInList.size(), outList.size(), outRealList.size(), outNoiseList.size(), outInitList.size(), outInitRealList.size(), outInitNoiseList.size(), TP, TN, FP, FN);
         TPR = TP + FN == 0 ? 0 : (float) (TP * 1.0 / (TP + FN));
@@ -190,6 +180,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         return out;
     }
+
 
     @Override
     public void resetFilter() {
@@ -287,46 +278,31 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
         }
         
-        // insert noise between two real events
+        // insert noise between two real events, record their timestamp
         count = 0;
-        BasicEvent preE = new BasicEvent();
-        BasicEvent curE = new BasicEvent();
 
-        // bug is here, I want to copy the signal event from the initial packet to the new packet. 
-//        I find that most events in the filter's output packet have the same (x,y,ts) as the events in the initial in packet. 
-//        that is to say, most of the events in the outList should be the regarded as same as those in the inList.
-//        but they are treated as different events when using set operations, 
-//        so the FP always equals to the filter's out.
+        int preEts = 0;
+        int curEts = 0;
 
-//        every packet is: inList: 58 after add noise: 447 filter's out: 73 TP: 0 TN: 374 FP: 73 FN: 58 %0.0 %83.7 %0.0
-//        every packet is: inList: 307 after add noise: 785 filter's out: 379 TP: 0 TN: 406 FP: 379 FN: 307 %0.0 %51.7 %0.0
-
-//        most of the inserted noise are acturally filtered out.
-//        I think the error exises here, how to copy the initial signal events to the newIn packet
-//        the newIn packet contains noise events as well as identical initial events
 
         for (BasicEvent ie : in) {
 
             if (count == 0) {
-                curE.copyFrom(ie);
+
+                curEts = ie.timestamp;
                 count += 1;
                 BasicEvent ce = (BasicEvent) outItr.nextOutput();
                 ce.copyFrom(ie);
                 continue;
             }
-            preE.copyFrom(curE);
-            curE.copyFrom(ie);
+            preEts = curEts;
+            curEts = ie.timestamp;
 
-            int startts = preE.timestamp;
-            int endts = curE.timestamp;
-            for (int ts = startts; ts <= endts; ts += dt) {
+            for (int ts = preEts; ts <= curEts; ts += dt) {
                 float randomnum;
                 randomnum = random.nextFloat();
                 if (randomnum < downbound) {
                     BasicEvent e = (BasicEvent) outItr.nextOutput();
-                    e.copyFrom(curE);
-//                    e.setSpecial(false);
-//                    e.polarity = PolarityEvent.Polarity.Off;
                     int x = (short) random.nextInt(sx);
                     int y = (short) random.nextInt(sy);
                     e.x = (short) (x);
@@ -334,9 +310,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     e.timestamp = ts;
                 } else if (randomnum > upbound) {
                     BasicEvent e = (BasicEvent) outItr.nextOutput();
-                    e.copyFrom(curE);
-//                    e.setSpecial(false);
-//                    e.polarity = PolarityEvent.Polarity.On;
                     int x = (short) random.nextInt(sx);
                     int y = (short) random.nextInt(sy);
                     e.x = (short) (x);
