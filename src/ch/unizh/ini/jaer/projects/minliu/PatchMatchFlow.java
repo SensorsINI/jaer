@@ -436,6 +436,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
                 int data = ein.address & 0x7ff;
               
+                // The OF result from the hardware has following procotol:
+                // If the data is 0x7ff, it indicates that this result is an invalid result
+                // if the data is 0x7fe, then it means slice rotated on this event,
+                // in this case, only rotation information is included.
+                // Other cases are valid OF data.
+                // The valid OF data is represented in a compressed data format.
+                // It is calculated by OF_x * (2 * maxSearchDistanceRadius + 1) + OF_y.
+                // Therefore, simple decompress is required.
                 if((data & 0x7ff) == 0x7ff)
                 {
                     continue;
