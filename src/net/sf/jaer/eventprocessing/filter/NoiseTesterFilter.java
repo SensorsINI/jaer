@@ -32,6 +32,7 @@ import java.util.Set;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -67,6 +68,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private float TNR = 0;
     private float accuracy = 0;
     float balanceRelation = 0;
+    private EventPacket<ApsDvsEvent> newIn;
 //    float balanceRelation = 2 * TPR * precision / (TPR + precision); // wish to norm to 1. if both TPR and precision is 1. the value is 1
 
     public NoiseTesterFilter(AEChip chip) {
@@ -124,7 +126,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         // record the first timestamp and last timestamp of the packet
         // add noise into the packet in and get a new packet?
-        EventPacket<BasicEvent> newIn = addNoise(in, shotNoiseRateHz, leakNoiseRateHz);
+//        EventPacket<ApsDvsEvent> newIn = new EventPacket<ApsDvsEvent>();
+        addNoise(in, newIn, shotNoiseRateHz, leakNoiseRateHz);
         ArrayList newInList = new ArrayList<BasicEvent>(newIn.getSize());
         for (BasicEvent e : newIn) {
             newInList.add(e);
@@ -192,6 +195,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
+        
+        newIn = new EventPacket<>(ApsDvsEvent.class);
+        
+//        EventPacket<BasicEvent> newIn = new EventPacket<BasicEvent>();
     }
 
     /**
@@ -224,11 +231,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         putFloat("leakNoiseRateHz", leakNoiseRateHz);
     }
 
-    private EventPacket addNoise(EventPacket<? extends BasicEvent> in, float shotNoiseRateHz, float leakNoiseRateHz) {
+    private EventPacket addNoise(EventPacket<? extends BasicEvent> in, EventPacket<? extends ApsDvsEvent> newIn, float shotNoiseRateHz, float leakNoiseRateHz) {
 //        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
 
-        EventPacket<BasicEvent> newIn = new EventPacket<BasicEvent>();
-        OutputEventIterator outItr = newIn.outputIterator();
+//        EventPacket<ApsDvsEvent> newIn = new EventPacket<ApsDvsEvent>();
+        newIn.clear();
+        OutputEventIterator<ApsDvsEvent> outItr;
+        outItr = (OutputEventIterator<ApsDvsEvent>) newIn.outputIterator();
 
         int count = 0;
         int lastPacketTs = 0; // timestamp of the last event in the last packet
@@ -255,9 +264,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             float randomnum;
             randomnum = random.nextFloat();
             if (randomnum < downbound) {
-                BasicEvent e = (BasicEvent) outItr.nextOutput();
-//                e.setSpecial(false);
-//                e.polarity = PolarityEvent.Polarity.Off;
+                ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
+                e.setSpecial(false);
+                e.polarity = PolarityEvent.Polarity.Off;
                 
                 int x = (short) random.nextInt(sx);
                 int y = (short) random.nextInt(sy);
@@ -265,9 +274,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 e.y = (short) (y);
                 e.timestamp = ts;
             } else if (randomnum > upbound) {
-                BasicEvent e = (BasicEvent) outItr.nextOutput();
-//                e.setSpecial(false);
-//                e.polarity = PolarityEvent.Polarity.On;
+                ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
+                e.setSpecial(false);
+                e.polarity = PolarityEvent.Polarity.On;
                 int x = (short) random.nextInt(sx);
                 int y = (short) random.nextInt(sy);
                 e.x = (short) (x);
@@ -291,8 +300,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
                 curEts = ie.timestamp;
                 count += 1;
-                BasicEvent ce = (BasicEvent) outItr.nextOutput();
-                ce.copyFrom(ie);
+                outItr.nextOutput().copyFrom(ie);
+//                BasicEvent ce = (BasicEvent) outItr.nextOutput();
+//                ce.copyFrom(ie);
                 continue;
             }
             preEts = curEts;
@@ -302,7 +312,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 float randomnum;
                 randomnum = random.nextFloat();
                 if (randomnum < downbound) {
-                    BasicEvent e = (BasicEvent) outItr.nextOutput();
+                    ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
                     e.copyFrom(ie);
                     int x = (short) random.nextInt(sx);
                     int y = (short) random.nextInt(sy);
@@ -310,7 +320,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     e.y = (short) (y);
                     e.timestamp = ts;
                 } else if (randomnum > upbound) {
-                    BasicEvent e = (BasicEvent) outItr.nextOutput();
+                    ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
                     e.copyFrom(ie);
                     int x = (short) random.nextInt(sx);
                     int y = (short) random.nextInt(sy);
@@ -322,8 +332,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 }
 
             }
-            BasicEvent ce = (BasicEvent) outItr.nextOutput();
-            ce.copyFrom(ie);
+//            BasicEvent ce = (BasicEvent) outItr.nextOutput();
+//            ce.copyFrom(ie);
+            outItr.nextOutput().copyFrom(ie);
 
         }
 
