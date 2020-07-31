@@ -241,11 +241,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         int Min = 0;
         Random random = new Random();
 
-//        here is a bug
-//        float tmp = (float) (1.0 / (shotNoiseRateHz * (sx + 1) * (sy + 1))); // this equation yields dt too small
-//        float tmp = (float) ((shotNoiseRateHz * (sx + 1) * (sy + 1))); // this equation yields dt too large
-//        int dt = (int) (tmp / 10);
-        int dt = 10;
+        float tmp = (float) (1.0 / (shotNoiseRateHz * (sx + 1) * (sy + 1))); // this value is very small
+        int dt = (int) ((float)(tmp / 10) * 1000000); // 1s = 1000000 us
+        System.out.printf("dt %d\n", dt);
+//        int dt = 10;
 //        float downbound = dt * shotNoiseRateHz / 10;
         float downbound = shotNoiseRateHz;
         float upbound = 1 - downbound;
@@ -259,6 +258,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 BasicEvent e = (BasicEvent) outItr.nextOutput();
 //                e.setSpecial(false);
 //                e.polarity = PolarityEvent.Polarity.Off;
+                
                 int x = (short) random.nextInt(sx);
                 int y = (short) random.nextInt(sy);
                 e.x = (short) (x);
@@ -303,6 +303,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 randomnum = random.nextFloat();
                 if (randomnum < downbound) {
                     BasicEvent e = (BasicEvent) outItr.nextOutput();
+                    e.copyFrom(ie);
                     int x = (short) random.nextInt(sx);
                     int y = (short) random.nextInt(sy);
                     e.x = (short) (x);
@@ -310,6 +311,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     e.timestamp = ts;
                 } else if (randomnum > upbound) {
                     BasicEvent e = (BasicEvent) outItr.nextOutput();
+                    e.copyFrom(ie);
                     int x = (short) random.nextInt(sx);
                     int y = (short) random.nextInt(sy);
                     e.x = (short) (x);
