@@ -464,7 +464,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                     int OF_y = (data%(2 * maxSearchDistanceRadius + 1)) - maxSearchDistanceRadius;
 
                     sliceResult.dx = -OF_x;
-                    sliceResult.dy = -OF_y;
+                    sliceResult.dy = OF_y;
                     sliceResult.vx = (float) (1e3 * sliceResult.dx/deltaTsMs_HW);
                     sliceResult.vy = (float) (1e3 * sliceResult.dy/deltaTsMs_HW);
                     result = sliceResult;  
@@ -612,9 +612,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //                }
 //            }
 
-            double oldGlobalMeanVx = motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean();
             processGoodEvent();
-            double newGlobalMeanVx = motionFlowStatistics.getGlobalMotion().getGlobalVx().getMean();
             lastGoodSadResult.set(result);
 
         }
