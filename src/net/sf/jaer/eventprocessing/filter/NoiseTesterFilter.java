@@ -64,12 +64,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private BasicEvent firstE = null;
     private BasicEvent lastE = null;
     private float TPR = 0;
-    private float precision = 0;
+    private float TPO = 0;
     private float TNR = 0;
     private float accuracy = 0;
     float balanceRelation = 0;
     private EventPacket<ApsDvsEvent> newIn;
-//    float balanceRelation = 2 * TPR * precision / (TPR + precision); // wish to norm to 1. if both TPR and precision is 1. the value is 1
+//    float balanceRelation = 2 * TPR * TPO / (TPR + TPO); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
 
     public NoiseTesterFilter(AEChip chip) {
         super(chip);
@@ -169,13 +169,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //        System.out.println("TN " + TN);
 
 //        System.out.printf("every packet is: %d %d %d %d %d, %d %d %d: %d %d %d %d\n", inList.size(), newInList.size(), outList.size(), outRealList.size(), outNoiseList.size(), outInitList.size(), outInitRealList.size(), outInitNoiseList.size(), TP, TN, FP, FN);
-        TPR = TP + FN == 0 ? 0 : (float) (TP * 1.0 / (TP + FN));
-        precision = TP + FP == 0 ? 0 : (float) (TP * 1.0 / (TP + FP));
+        TPR = TP + FN == 0 ? 0 : (float) (TP * 1.0 / (TP + FN)); // percentage of true positive events. that's output real events out of all real events
+        TPO = TP + FP == 0 ? 0 : (float) (TP * 1.0 / (TP + FP)); // percentage of real events in the filter's output
 
         TNR = TN + FP == 0 ? 0 : (float) (TN * 1.0 / (TN + FP));
         accuracy = (float) ((TP + TN) * 1.0 / (TP + TN + FP + FN));
 
-        balanceRelation = TPR + precision == 0 ? 0 : (float) (2 * TPR * precision / (TPR + precision)); // wish to norm to 1. if both TPR and precision is 1. the value is 1
+        balanceRelation = TPR + TPO == 0 ? 0 : (float) (2 * TPR * TPO / (TPR + TPO)); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
 
         System.out.printf("every packet is: inList: %d after add noise: %d filter's out: %d TP: %d TN: %d FP: %d FN: %d %%%3.1f %%%3.1f %%%3.1f\n", inList.size(), newInList.size(), outList.size(), TP, TN, FP, FN, 100 * TPR, 100 * TNR, 100 * balanceRelation);
 
@@ -232,9 +232,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     private EventPacket addNoise(EventPacket<? extends BasicEvent> in, EventPacket<? extends ApsDvsEvent> newIn, float shotNoiseRateHz, float leakNoiseRateHz) {
-//        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
 
-//        EventPacket<ApsDvsEvent> newIn = new EventPacket<ApsDvsEvent>();
         newIn.clear();
         OutputEventIterator<ApsDvsEvent> outItr;
         outItr = (OutputEventIterator<ApsDvsEvent>) newIn.outputIterator();
