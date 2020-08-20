@@ -339,7 +339,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         int lastts = lastE.timestamp; // timestamp of the last event in the current packet
         int Min = 0;
 
-        // the rate per pixel resuults in overall noise rate for entire sensor that is product of pixel rate and number of pixels.
+        // the rate per pixel results in overall noise rate for entire sensor that is product of pixel rate and number of pixels.
         // we compute this overall noise rate to determine the Poisson sample interval that is much smaller than this to enable simple Poisson noise sampling.
         // Compute time step that is 10X less than the overall mean interval for noise
         // dt is the time interval such that if we sample a random value 0-1 every dt us, the the overall noise rate will be correct.
@@ -356,15 +356,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
 
         // insert noise between two real events, record their timestamp
-        count = 0;
 
         int preEts = 0;
         int curEts = 0;
 
         for (BasicEvent ie : in) {
-            if (count == 0) {  // TODO what is this code doing?
+            if (ie.timestamp == firstts) {  // TODO what is this code doing?
                 curEts = ie.timestamp;
-                count += 1;
                 outItr.nextOutput().copyFrom(ie);
                 continue;
             }
