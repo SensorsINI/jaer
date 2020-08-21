@@ -82,14 +82,22 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private EventPacket<ApsDvsEvent> outputPacketWithNoiseAdded = null;
     private Random random = new Random();
     private int poissonDtUs = 1;
+    private AbstractNoiseFilter[] noiseFilters = null;
+    private AbstractNoiseFilter selectedFilter = null;
+
+    public enum NoiseFilter {
+        BackgroundActivityFilter, SpatioTemporalCorrelationFilter, SequenceBasedFilter, OrderNBackgroundActivityFilter
+    }
+    private NoiseFilter selectedNoiseFilter = NoiseFilter.valueOf(getString("nosieFilter", NoiseFilter.BackgroundActivityFilter.toString())); //default is BAF
 
 //    float BR = 2 * TPR * TPO / (TPR + TPO); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
     public NoiseTesterFilter(AEChip chip) {
         super(chip);
         chain = new FilterChain(chip);
-        chain.add(new BackgroundActivityFilter(chip));
-        chain.add(new SpatioTemporalCorrelationFilter(chip));
-        chain.add(new SequenceBasedFilter(chip));
+        noiseFilters = new AbstractNoiseFilter[]{new BackgroundActivityFilter(chip), new SpatioTemporalCorrelationFilter(chip), new SequenceBasedFilter(chip), new OrderNBackgroundActivityFilter((chip))};
+        for (AbstractNoiseFilter n : noiseFilters) {
+            chain.add(n);
+        }
         setEnclosedFilterChain(chain);
         setPropertyTooltip("shotNoiseRateHz", "rate per pixel of shot noise events");
         setPropertyTooltip("leakNoiseRateHz", "rate per pixel of leak noise events");
@@ -98,7 +106,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
-        super.setFilterEnabled(yes);
+        // don't do default of setting all enclosed filters enabled
     }
 
     private void doCloseCsvFile() {
@@ -148,6 +156,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
+        
         totalEventCount = 0;
         filteredOutEventCount = 0;
 
@@ -168,6 +177,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             inList.add(e);
             lastE = e;
 
+        }
+        
+        if(firstE==null){  // no input packet yet
+            return in;
         }
 
         // record the first timestamp and last timestamp of the packet
@@ -251,6 +264,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
             chip.getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_CHIP, this);
         }
+        setSelectedNoiseFilter(selectedNoiseFilter);
     }
 
     /**
@@ -334,6 +348,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (lastpacketE != null) {
             lastPacketTs = lastpacketE.timestamp;
         }
+        
 
         int firstts = firstE.timestamp; // timestamp of the first event in the current packet
         int lastts = lastE.timestamp; // timestamp of the last event in the current packet
@@ -356,7 +371,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
 
         // insert noise between two real events, record their timestamp
-
         int preEts = 0;
         int curEts = 0;
 
@@ -421,6 +435,28 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             resetFilter();
         }
 
+    }
+
+    /**
+     * @return the selectedNoiseFilter
+     */
+    public NoiseFilter getSelectedNoiseFilter() {
+        return selectedNoiseFilter;
+    }
+
+    /**
+     * @param selectedNoiseFilter the selectedNoiseFilter to set
+     */
+    public void setSelectedNoiseFilter(NoiseFilter selectedNoiseFilter) {
+        this.selectedNoiseFilter = selectedNoiseFilter;
+        putString("selectedNoiseFilter", selectedNoiseFilter.toString());
+        for(AbstractNoiseFilter n:noiseFilters){
+            if(n.getClass().getSimpleName().equals(selectedNoiseFilter.toString())){
+                n.setFilterEnabled(true);
+            }else{
+                n.setFilterEnabled(false);
+            }
+        }
     }
 
 }
