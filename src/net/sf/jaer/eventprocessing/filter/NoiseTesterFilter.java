@@ -452,6 +452,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         putString("selectedNoiseFilter", selectedNoiseFilter.toString());
         for(AbstractNoiseFilter n:noiseFilters){
             if(n.getClass().getSimpleName().equals(selectedNoiseFilter.toString())){
+                n.initFilter();
                 n.setFilterEnabled(true);
             }else{
                 n.setFilterEnabled(false);
