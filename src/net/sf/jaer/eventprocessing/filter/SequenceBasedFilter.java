@@ -18,6 +18,7 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
@@ -31,8 +32,15 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
 import java.lang.*;
+import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
+import java.nio.BufferOverflowException;
+import java.nio.ByteBuffer;
+import java.nio.channels.DatagramChannel;
 //import java.util.stream;
 import java.util.stream.IntStream;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.util.RemoteControlCommand;
 
 /**
  * An filter that filters out noise according to Shasha Guo method 2020.
@@ -48,7 +56,6 @@ import java.util.stream.IntStream;
  * @author gss
  */
 public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer {
-    
 
     /**
      * the time in timestamp ticks (1us at present) that a spike needs to be
@@ -64,7 +71,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
      */
 //    private int subsampleBy = getInt("subsampleBy", 0);
     private int subsampleBy = 0;
-    
+
     int[][] lastTimesMap;
     private int firstEventTime;
     private int lastEventTime;
@@ -72,22 +79,41 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
 //    protected int eventCountWindow = getInt("eventCountWindow", 5000);
 //    protected float scaleFactor = getFloat("scaleFactor", 10);
 //    private int dtUs = getInt("dtUs", 10000);
-    
+
     private int ts = 0; // used to reset filter
     private int sx;
     private int sy;
-    private final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
-    
+    private final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
+
     private int lasttd = 0;
     private int frameid = 0;
-    
+
     private int basicThr = 0;
-    
+
 //    private int mode = getInt("mode", 1);
     private int xlength = getInt("xlength", 2);
-    private short [][]lastXEvents;// = new short[xlength][2];
+    private short[][] lastXEvents;// = new short[xlength][2];
     private float disThr = getFloat("disThr", (float) 0.1);
     private int fillindex = 0;
+
+    /// beamforming
+    private boolean beamFormingEnabled = getBoolean("beamFormingEnabled", false);
+    private int beamFormingRangeUs = getInt("beamFormingRangeUs", 100);
+    private float beamFormingITDUs = getFloat("beamFormingITDUs", Float.NaN);
+    // UDP messages
+    private String sendITD_UDP_port = getString("sendITD_UDP_port", "localhost:9999");
+    private boolean sendITD_UDP_Messages = getBoolean("sendITD_UDP_Messages", false);
+    private boolean sendADCSamples = getBoolean("sendADCSamples", true);
+
+    protected DatagramChannel channel = null;
+    protected DatagramSocket socket = null;
+    int packetSequenceNumber = 0;
+    InetSocketAddress client = null;
+    private int UDP_BUFFER_SIZE = 8192;
+    private ByteBuffer udpBuffer = ByteBuffer.allocateDirect(UDP_BUFFER_SIZE);
+    private boolean printedFirstUdpMessage = false;
+    long lastUdpMsgTime = 0;
+    int MIN_UPD_PACKET_INTERVAL_MS = 15;
 
     public SequenceBasedFilter(AEChip chip) {
         super(chip);
@@ -108,8 +134,6 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
      * @return the processed events, may be fewer in number. filtering may occur
      * in place in the in packet.
      */
-    
-
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
         if (lastTimesMap == null) {
@@ -133,9 +157,9 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
             if (e.isSpecial()) {
                 continue;
             }
-            
+
             ts = e.timestamp;
-            if (totalEventCount == 0){
+            if (totalEventCount == 0) {
                 firstEventTime = ts;
             }
             totalEventCount++;
@@ -144,7 +168,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
                 filteredOutEventCount++;
                 continue;
             }
-            if (fillindex < xlength && lastXEvents[xlength - 1][0] == -1){
+            if (fillindex < xlength && lastXEvents[xlength - 1][0] == -1) {
                 e.setFilteredOut(true);
                 filteredOutEventCount++;
                 lastXEvents[fillindex][0] = e.x;
@@ -152,21 +176,19 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
                 fillindex = fillindex + 1;
                 continue;
             }
-            
+
 //            int lastT = lastTimesMap[x][y];
 //            int deltaT = (ts - lastT);
-            
 //            int myflag = 1;
 //            if (deltaT > timeThr){
 //                e.setFilteredOut(true);
 //                filteredOutEventCount++;
 //                myflag = 0;
 //            }
-            
-            float [] disarray = new float[xlength];
-            for(int i =0; i < xlength; i ++){
+            float[] disarray = new float[xlength];
+            for (int i = 0; i < xlength; i++) {
 //                int Dis = Math.abs(e.x - lastXEvents[i][0]) + Math.abs(e.y - lastXEvents[i][1]);
-                disarray[i] = (float)(Math.abs(e.x - lastXEvents[i][0])) / sx + (float)(Math.abs(e.y - lastXEvents[i][1])) / sy;
+                disarray[i] = (float) (Math.abs(e.x - lastXEvents[i][0])) / sx + (float) (Math.abs(e.y - lastXEvents[i][1])) / sy;
             }
             int minindex = IntStream.range(0, disarray.length).reduce((i, j) -> disarray[i] > disarray[j] ? j : i).getAsInt();
 //            int maxindex = IntStream.range(0, disarray.length).reduce((i, j) -> disarray[i] < disarray[j] ? j : i).getAsInt();
@@ -174,42 +196,23 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
 //            float maxdisvalue = disarray[maxindex];
             int myflag = 1;
             float checkvalue = 0;
-            
+
             checkvalue = mindisvalue;
-            
-            if (checkvalue > disThr){
+
+            if (checkvalue > disThr) {
                 e.setFilteredOut(true);
                 filteredOutEventCount++;
                 myflag = 0;
             }
-            
-//            update based on last x events
-            for(int i = 0; i < xlength -1; i ++){
 
-                lastXEvents[i][0] = lastXEvents[i+1][0];
-                lastXEvents[i][1] = lastXEvents[i+1][1];     
+//            update based on last x events
+            for (int i = 0; i < xlength - 1; i++) {
+
+                lastXEvents[i][0] = lastXEvents[i + 1][0];
+                lastXEvents[i][1] = lastXEvents[i + 1][1];
             }
             lastXEvents[xlength - 1][0] = e.x;
             lastXEvents[xlength - 1][1] = e.y;
-            
-            
-            
-
-            
-//            System.out.printf("every event is: %d %x %x %d %d %d %d %d %d\n", totalEventCount, e.x, e.y, e.timestamp, x,y, lastT, deltaT, myflag);
-            
-//            if (totalEventCount == (eventCountWindow)){
-//                lastEventTime = ts;
-//                int TD = lastEventTime - firstEventTime;
-//                frameid += 1;
-//                int sf = (1 << subsampleBy << subsampleBy);
-//                System.out.printf("the end  is: %d %d %d %d %d %d %d %d\n", totalEventCount, frameid, TD, firstEventTime, lastEventTime, totalEventCount - filteredOutEventCount, (1 << subsampleBy << subsampleBy), (int) timeThr);
-////                timeThr = Math.round( (TD * (sx+1) * (sy+1) / (sf * eventCountWindow * scaleFactor))); 
-//                timeThr = (int) (TD * basicThr / scaleFactor); // basicThr is the fixed part of the thr, once the eventCountWindow is fixed
-//                totalEventCount = 0;
-//            }
-            
-//            lastTimesMap[x][y] = ts; // x,y is already subsampled by subsample
         }
 
         return in;
@@ -232,7 +235,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
         allocateMaps(chip);
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
-        frameid=0;
+        frameid = 0;
 //        basicThr = (int) (sx+1) * (sy+1) / ((1 << subsampleBy << subsampleBy) * eventCountWindow);
 //        timeThr = basicThr;
 //        System.out.printf("the number is: %d %d\n",sx, sy);
@@ -246,7 +249,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
 //            }
             lastXEvents = new short[xlength][2];
             for (short[] arrayRow : lastXEvents) {
-                Arrays.fill(arrayRow, (short)-1);
+                Arrays.fill(arrayRow, (short) -1);
             }
         }
     }
@@ -254,7 +257,6 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
     public Object getFilterState() {
         return lastTimesMap;
     }
-
 
 //    // <editor-fold defaultstate="collapsed" desc="getter-setter for --SubsampleBy--">
 //    public int getSubsampleBy() {
@@ -280,7 +282,6 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
 //        putInt("subsampleBy", subsampleBy);
 //    }
     // </editor-fold>
-
     /**
      * @return the letFirstEventThrough
      */
@@ -295,10 +296,10 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
         this.letFirstEventThrough = letFirstEventThrough;
         putBoolean("letFirstEventThrough", letFirstEventThrough);
     }
-    
-        /**
-//     * @return the mode
-//     */
+
+    /**
+     * // * @return the mode //
+     */
 //    public int getMode() {
 //        return mode;
 //    }
@@ -310,7 +311,6 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
 //        this.mode = mode;
 //        putInt("mode", mode);
 //    }
-    
     /**
      * @return the xlength
      */
@@ -325,7 +325,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
         this.xlength = xlength;
         putInt("xlength", xlength);
     }
-    
+
     /**
      * @return the disThr
      */
@@ -340,5 +340,36 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
         this.disThr = disThr;
         putDouble("scaleFactor", disThr);
     }
+
+    private String USAGE = "SequenceFilter needs at least 2 arguments: noisefilter <command> <args>\nCommands are: setParameters disThr xx windowsize xx\n";
     
+    @Override 
+    public String setParameters(RemoteControlCommand command, String input) {
+        String[] tok = input.split("\\s");
+        if (tok.length < 3) {
+            return USAGE;
+        }
+        try {
+
+            if ((tok.length -1) % 2 == 0) {
+                for (int i = 1; i <= tok.length; i++) {
+                    if (tok[i].equals("disThr")) {
+                        disThr = Float.parseFloat(tok[i+1]);
+                        i+=2;
+                    }
+                    if (tok[i].equals("windowsize")) {
+                        xlength = Integer.parseInt(tok[i+1]);
+                        i+=2;
+                    }
+                }
+                String out = "successfully set SequenceFilter parameters dt " + String.valueOf(disThr) + " and windowsize " + String.valueOf(xlength); 
+                return out;
+            } else {
+                return USAGE;
+            }
+
+        } catch (Exception e) {
+            return "IOExeption in remotecontrol\n";
+        }
+    }
 }
