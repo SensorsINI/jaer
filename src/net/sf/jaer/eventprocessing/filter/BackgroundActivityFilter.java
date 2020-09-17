@@ -12,7 +12,9 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.util.RemoteControlCommand;
 
 /**
  * An filter that filters slow background activity by only passing events that
@@ -224,6 +226,40 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
     public void setLetFirstEventThrough(boolean letFirstEventThrough) {
         this.letFirstEventThrough = letFirstEventThrough;
         putBoolean("letFirstEventThrough", letFirstEventThrough);
+    }
+    
+        
+    private String USAGE = "BackgroundFilter needs at least 2 arguments: noisefilter <command> <args>\nCommands are: setParameters dt xx subsample xx\n";
+    
+    @Override
+    public String setParameters(RemoteControlCommand command, String input) {
+        String[] tok = input.split("\\s");
+        
+        if (tok.length < 3) {
+            return USAGE;
+        }
+        try {
+
+            if ((tok.length -1) % 2 == 0) {
+                for (int i = 1; i <= tok.length; i++) {
+                    if (tok[i].equals("dt")) {
+                        dt = Integer.parseInt(tok[i+1]);
+                        i += 2;
+                    }
+                    if (tok[i].equals("subsample")) {
+                        subsampleBy = Integer.parseInt(tok[i+1]);
+                        i+=2;
+                    }
+                }
+                String out = "successfully set BackgroundFilter parameters dt " + String.valueOf(dt) + " and subsampleBy " + String.valueOf(subsampleBy); 
+                return out;
+            } else {
+                return USAGE;
+            }
+
+        } catch (Exception e) {
+            return "IOExeption in remotecontrol\n";
+        }
     }
 
 }
