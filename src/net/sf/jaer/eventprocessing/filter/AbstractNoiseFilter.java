@@ -21,17 +21,20 @@ package net.sf.jaer.eventprocessing.filter;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.io.IOException;
 import java.util.HashMap;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.RemoteControlCommand;
+import net.sf.jaer.util.RemoteControlled;
 
 /**
  * Superclass for all noise filters
  *
  * @author tobi
  */
-public abstract class AbstractNoiseFilter extends EventFilter2D implements FrameAnnotater {
+public abstract class AbstractNoiseFilter extends EventFilter2D implements FrameAnnotater, RemoteControlled {
 
     protected boolean showFilteringStatistics = getBoolean("showFilteringStatistics", true);
     protected int totalEventCount = 0;
@@ -43,6 +46,10 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     public AbstractNoiseFilter(AEChip chip) {
         super(chip);
         setPropertyTooltip("showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
+        
+        if (chip.getRemoteControl() != null) {
+            chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");
+        }
    }
 
     /**
@@ -90,5 +97,27 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
             noiseStatDrawingMap.put(this,statisticsDrawingPosition);
         }
     }
+     
+    private String USAGE = "Need at least 2 arguments: noisefilter <command> <args>\nCommands are: specific to the filter\n";
+ 
+    public String processRemoteControlCommand(RemoteControlCommand command, String input) {
+        String[] tok = input.split("\\s", 3);
+        if (tok.length < 2) {
+            return USAGE;
+        }
+
+        log.info("Received Command:" + input);
+        return USAGE;
+    }
+    
+    public String setParameters(RemoteControlCommand command, String input) {
+        String[] tok = input.split("\\s", 3);
+        if (tok.length < 2) {
+            return USAGE;
+        }
+        
+        return USAGE;
+    }
+
 
 }
