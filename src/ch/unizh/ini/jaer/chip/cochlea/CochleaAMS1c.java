@@ -261,7 +261,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
        enableThisChipMenu(true);
           adcSamples = new CochleaAMS1cADCSamples(this); // need biasgen / scanner first
        helpsep=getAeViewer().addHelpItem(new JSeparator());
-        help1=getAeViewer().addHelpURLItem("http://inilabs.com/support/hardware/das1/", "DAS User guide", "Opens Dynamic Audio Sensor user guide");
+        help1=getAeViewer().addHelpURLItem("https://docs.google.com/document/d/1uY3-AHObAVNABi0JFmqE5yg-vwyFi552K4TMpinS1-M/pub", "DAS User guide", "Opens Dynamic Audio Sensor user guide");
 //        help2=getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/0_README_CochleaAMS1c.pdf", "CochleaAMS1c README", "README file for CochleaAMS1c");
      }
 
