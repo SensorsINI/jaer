@@ -19,6 +19,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.RemoteControlCommand;
 
 /**
  * An filter derived from BackgroundActivityFilter that only passes events that
@@ -481,6 +482,39 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     public void setDtChangeFraction(float dtChangeFraction) {
         this.dtChangeFraction = dtChangeFraction;
         putFloat("dtChangeFraction", dtChangeFraction);
+    }
+
+    private String USAGE = "SpatioTemporalFilter needs at least 2 arguments: noisefilter <command> <args>\nCommands are: setParameters dt xx numMustBeCorrelated xx\n";
+
+    @Override
+    public String setParameters(RemoteControlCommand command, String input) {
+        String[] tok = input.split("\\s");
+        
+        if (tok.length < 3) {
+            return USAGE;
+        }
+        try {
+
+            if ((tok.length - 1) % 2 == 0) {
+                for (int i = 1; i <= tok.length; i++) {
+                    if (tok[i].equals("dt")) {
+                        dt = Integer.parseInt(tok[i + 1]);
+                        i += 2;
+                    }
+                    if (tok[i].equals("numMustBeCorrelated")) {
+                        numMustBeCorrelated = Integer.parseInt(tok[i + 1]);
+                        i += 2;
+                    }
+                }
+                String out = "successfully set SpatioTemporalFilter parameters dt " + String.valueOf(dt) + " and numMustBeCorrelated " + String.valueOf(numMustBeCorrelated);
+                return out;
+            } else {
+                return USAGE;
+            }
+
+        } catch (Exception e) {
+            return "IOExeption in remotecontrol\n";
+        }
     }
 
 }
