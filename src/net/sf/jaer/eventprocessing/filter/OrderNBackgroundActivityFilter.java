@@ -147,8 +147,10 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
      * @param dtUs the dtUs to set
      */
     public void setDtUs(int dtUs) {
+        int old=this.dtUs;
         this.dtUs = dtUs;
         putInt("dtUs", dtUs);
+        getSupport().firePropertyChange("dtUs", old, dtUs);
     }
 
     @Override
