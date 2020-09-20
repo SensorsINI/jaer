@@ -233,6 +233,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public final String REMOTE_STOP_LOGGING = "stoplogging";
     public final String REMOTE_TOGGLE_SYNCHRONIZED_LOGGING = "togglesynclogging";
     public final String REMOTE_ZERO_TIMESTAMPS = "zerotimestamps";
+    public final String REMOTE_OPEN_FILE = "openfile";
+    public final String REMOTE_PAUSE = "pause";
+    public final String REMOTE_PLAY = "play";
+    public final String REMOTE_REWIND = "rewind";
+    public final String REMOTE_SET_MARK_IN = "setmarkin";
+    public final String REMOTE_SET_MARK_OUT = "setmarkout";
 
     /**
      * Modes of viewing: WAITING means waiting for device or for playback or
@@ -546,6 +552,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             remoteControl.addCommandListener(this, REMOTE_STOP_LOGGING, "stops logging ae data to a file");
             remoteControl.addCommandListener(this, REMOTE_TOGGLE_SYNCHRONIZED_LOGGING, "starts synchronized logging ae data to a set of files with aeidx filename automatically timstamped"); // TODO allow sync logging to a chosen file - change startLogging to do sync logging if viewers are synchronized
             remoteControl.addCommandListener(this, REMOTE_ZERO_TIMESTAMPS, "zeros timestamps on all AEViewers");
+            remoteControl.addCommandListener(this, REMOTE_OPEN_FILE + " <filename>", "<filename> open file for playback");
+            remoteControl.addCommandListener(this, REMOTE_PAUSE, "pause player");
+            remoteControl.addCommandListener(this, REMOTE_PLAY, "resume player");
+            remoteControl.addCommandListener(this, REMOTE_REWIND, "rewind player");
+            remoteControl.addCommandListener(this, REMOTE_SET_MARK_IN + " <timestamp_us>", "set mark IN timestamp");
+            remoteControl.addCommandListener(this, REMOTE_SET_MARK_OUT+ " <timestamp_us>", "set mark OUT timestamp");
             log.info("created " + remoteControl + " for remote control of some AEViewer functions");
         } catch (Exception ex) {
             log.warning(ex.toString());
@@ -4825,6 +4837,42 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             } else if (command.getCmdName().equals(REMOTE_ZERO_TIMESTAMPS)) {
                 jaerViewer.zeroTimestamps();
+            }else if (command.getCmdName().equals(REMOTE_OPEN_FILE)) {
+                if (tokens.length < 2) {
+                    return "not enough arguments, need file to open\n";
+                }
+                String filename = line.substring(REMOTE_OPEN_FILE.length() + 1);
+                try{
+                    openAedatInputFile(new File(filename));
+                    return String.format("Opened file %s\n",filename);
+                } catch(Exception e){
+                    return String.format("Could not open file %s, caught exception %s\n",filename,e.toString());
+                }
+            }else if (command.getCmdName().equals(REMOTE_PAUSE)) {
+                setPaused(true);
+                return String.format("Paused viewer\n");
+            }else if (command.getCmdName().equals(REMOTE_PLAY)) {
+                 setPaused(true);
+                return String.format("Started viewer\n");
+            }else if (command.getCmdName().equals(REMOTE_REWIND)) {
+                if(getAePlayer()!=null){
+                    getAePlayer().rewind();
+                    return String.format("Rewound playback\n");
+                }else{
+                    return String.format("No file is playing, cannot rewind\n");
+                }
+            }else if (command.getCmdName().equals(REMOTE_SET_MARK_IN)) {
+                if(getAePlayer()!=null){
+                    return String.format("Setting mark is not yet supported\n");
+                }else{
+                    return String.format("No file is playing, cannot set mark\n");
+                }
+           }else if (command.getCmdName().equals(REMOTE_SET_MARK_OUT)) {
+               if(getAePlayer()!=null){
+                    return String.format("Setting mark is not yet supported\n");
+                }else{
+                    return String.format("No file is playing, cannot set mark\n");
+                }
             }
         } catch (Exception e) {
             return e.toString() + "\n";
