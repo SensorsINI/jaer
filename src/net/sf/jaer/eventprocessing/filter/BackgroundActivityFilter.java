@@ -165,7 +165,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
      * @see #getDt
      * @param dt delay in us
      */
-    public void setDt(final int dt) {
+    public void setDt(int dt) {
         int setValue = dt;
         if (dt < getMinDt()) {
             setValue = getMinDt();
@@ -208,8 +208,10 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
         } else if (subsampleBy > 4) {
             subsampleBy = 4;
         }
-        this.subsampleBy = subsampleBy;
+        
         putInt("subsampleBy", subsampleBy);
+        getSupport().firePropertyChange("subsampleBy", this.subsampleBy, subsampleBy);
+        this.subsampleBy = subsampleBy;
     }
     // </editor-fold>
 
@@ -242,14 +244,11 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
 
             if ((tok.length -1) % 2 == 0) {
                 for (int i = 1; i < tok.length; i++) {
-                    if (tok[i].equals("dt")) {
-                        dt = Integer.parseInt(tok[i+1]);
-                        setDt(dt);
-                        i += 2;
+                    if (tok[i].equals("dt")) {                
+                        setDt(Integer.parseInt(tok[i+1]));
                     }
                     if (tok[i].equals("subsample")) {
-                        subsampleBy = Integer.parseInt(tok[i+1]);
-                        i+=2;
+                        setSubsampleBy(Integer.parseInt(tok[i+1]));
                     }
                 }
                 String out = "successfully set BackgroundFilter parameters dt " + String.valueOf(dt) + " and subsampleBy " + String.valueOf(subsampleBy); 
@@ -259,7 +258,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
             }
 
         } catch (Exception e) {
-            return "IOExeption in remotecontrol\n";
+            return "IOExeption in remotecontrol " + e.toString() + "\n";
         }
     }
 
