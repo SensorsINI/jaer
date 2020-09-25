@@ -19,12 +19,15 @@
 package net.sf.jaer.eventprocessing;
 
 import java.awt.Component;
+import java.util.logging.Logger;
 
 /**
  * Displays a single filter processing throughput performance
  * @author tobid
  */
 public class EventProcessingPerformanceView extends javax.swing.JFrame {
+    
+    private static Logger log=Logger.getLogger("EventProcessingPerformanceView");
 
     private EventProcessingPerformanceMeter model=null;
     private Component parent;
@@ -50,6 +53,11 @@ public class EventProcessingPerformanceView extends javax.swing.JFrame {
         resetButton = new javax.swing.JButton();
 
         setTitle("Event Processing Throughput");
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent evt) {
+                formWindowClosing(evt);
+            }
+        });
 
         statsTF.setFont(new java.awt.Font("Monospaced", 0, 12)); // NOI18N
         statsTF.setText("statistics will be shown here");
@@ -91,6 +99,14 @@ public class EventProcessingPerformanceView extends javax.swing.JFrame {
             model.resetStatistics();
         }
     }//GEN-LAST:event_resetButtonActionPerformed
+
+    private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
+        try{
+            model.getFilter().getChip().getFilterChain().setMeasurePerformanceEnabled(false);
+        }catch(Exception e){
+            log.warning("caught "+e.toString()+" when trying to disable performance meausurement");
+        }
+    }//GEN-LAST:event_formWindowClosing
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
