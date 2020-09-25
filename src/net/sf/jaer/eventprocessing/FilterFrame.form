@@ -113,6 +113,9 @@
             </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="measurePerformanceCheckBoxMenuItem">
               <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="Ctrl+P"/>
+                </Property>
                 <Property name="mnemonic" type="int" value="112"/>
                 <Property name="text" type="java.lang.String" value="Measure filter processing time"/>
                 <Property name="toolTipText" type="java.lang.String" value="Enables instrumentation of filter performance. Filter processing time statistics are printed to System.out. They appear in netbeans IDE console, for example, but not in built-in jAER console, which does not show System.out."/>
@@ -123,6 +126,9 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="resetPerformanceMeasurementMI">
               <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="Ctrl+R"/>
+                </Property>
                 <Property name="mnemonic" type="int" value="115"/>
                 <Property name="text" type="java.lang.String" value="Reset performance measurement statistics"/>
                 <Property name="toolTipText" type="java.lang.String" value="Resets the statsitics after next processing cycle"/>

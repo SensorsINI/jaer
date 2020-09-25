@@ -408,6 +408,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         modeMenu.add(acquisitionModeMenuItem);
         modeMenu.add(jSeparator1);
 
+        measurePerformanceCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_MASK));
         measurePerformanceCheckBoxMenuItem.setMnemonic('p');
         measurePerformanceCheckBoxMenuItem.setText("Measure filter processing time");
         measurePerformanceCheckBoxMenuItem.setToolTipText("Enables instrumentation of filter performance. Filter processing time statistics are printed to System.out. They appear in netbeans IDE console, for example, but not in built-in jAER console, which does not show System.out.");
@@ -418,6 +419,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         });
         modeMenu.add(measurePerformanceCheckBoxMenuItem);
 
+        resetPerformanceMeasurementMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_MASK));
         resetPerformanceMeasurementMI.setMnemonic('s');
         resetPerformanceMeasurementMI.setText("Reset performance measurement statistics");
         resetPerformanceMeasurementMI.setToolTipText("Resets the statsitics after next processing cycle");
