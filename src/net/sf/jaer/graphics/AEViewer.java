@@ -4852,7 +4852,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 setPaused(true);
                 return String.format("Paused viewer\n");
             }else if (command.getCmdName().equals(REMOTE_PLAY)) {
-                 setPaused(true);
+                setPaused(false);
                 return String.format("Started viewer\n");
             }else if (command.getCmdName().equals(REMOTE_REWIND)) {
                 if(getAePlayer()!=null){
