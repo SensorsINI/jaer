@@ -318,8 +318,10 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         } else if (numMustBeCorrelated > 9) {
             numMustBeCorrelated = 9;
         }
-        this.numMustBeCorrelated = numMustBeCorrelated;
+        
+        getSupport().firePropertyChange("numMustBeCorrelated", this.numMustBeCorrelated, numMustBeCorrelated);
         putInt("numMustBeCorrelated", numMustBeCorrelated);
+        this.numMustBeCorrelated = numMustBeCorrelated;
     }
 
     private void adaptFiltering() {
@@ -496,15 +498,13 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         try {
 
             if ((tok.length - 1) % 2 == 0) {
-                for (int i = 1; i < tok.length; i++) {
+                for (int i = 1; i < tok.length; i++) {       
                     if (tok[i].equals("dt")) {
-                        dt = Integer.parseInt(tok[i + 1]);
-                        i += 2;
+                        setDt(Integer.parseInt(tok[i + 1]));
                     }
-                    if (tok[i].equals("numMustBeCorrelated")) {
-                        numMustBeCorrelated = Integer.parseInt(tok[i + 1]);
-                        i += 2;
-                    }
+                    else if (tok[i].equals("numMustBeCorrelated")) {
+                        setNumMustBeCorrelated(Integer.parseInt(tok[i + 1]));
+                    }                    
                 }
                 String out = "successfully set SpatioTemporalFilter parameters dt " + String.valueOf(dt) + " and numMustBeCorrelated " + String.valueOf(numMustBeCorrelated);
                 return out;
@@ -513,7 +513,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             }
 
         } catch (Exception e) {
-            return "IOExeption in remotecontrol\n";
+            return "IOExeption in remotecontrol" + e.toString() + "\n";
         }
     }
 
