@@ -252,7 +252,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         accuracy = (float) ((TP + TN) * 1.0 / (TP + TN + FP + FN));
 
         BR = TPR + TPO == 0 ? 0f : (float) (2 * TPR * TPO / (TPR + TPO)); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
-        System.out.printf("shotNoiseRateHz and leakNoiseRateHz is %.2f and %.2f\n", shotNoiseRateHz, leakNoiseRateHz);
+//        System.out.printf("shotNoiseRateHz and leakNoiseRateHz is %.2f and %.2f\n", shotNoiseRateHz, leakNoiseRateHz);
         if (csvWriter != null) {
             try {
                 csvWriter.write(String.format("%d,%d,%d,%d,%f,%f,%f,%d\n",
@@ -261,8 +261,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 doCloseCsvFile();
             }
         }
-//        System.out.printf("every packet is: inList: %d after add noise: %d filter's out: %d TP: %d TN: %d FP: %d FN: %d %%%3.1f %%%3.1f %%%3.1f\n", inList.size(), newInList.size(), outList.size(), TP, TN, FP, FN, 100 * TPR, 100 * TNR, 100 * BR);
-
         lastpacketE = lastE;
 
         return out;
@@ -305,8 +303,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             log.warning("high leak rates will hang the filter and consume all memory");
             shotNoiseRateHz = 1;
         }
-        this.shotNoiseRateHz = shotNoiseRateHz;
+        
         putFloat("shotNoiseRateHz", shotNoiseRateHz);
+        getSupport().firePropertyChange("shotNoiseRateHz", this.shotNoiseRateHz, shotNoiseRateHz);
+        this.shotNoiseRateHz = shotNoiseRateHz;
     }
 
     /**
@@ -327,8 +327,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             log.warning("high leak rates will hang the filter and consume all memory");
             leakNoiseRateHz = 1;
         }
-        this.leakNoiseRateHz = leakNoiseRateHz;
+        
         putFloat("leakNoiseRateHz", leakNoiseRateHz);
+        getSupport().firePropertyChange("leakNoiseRateHz", this.leakNoiseRateHz, leakNoiseRateHz);
+        this.leakNoiseRateHz = leakNoiseRateHz;
     }
 
     /**
@@ -484,22 +486,22 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     public String processRemoteControlCommand(RemoteControlCommand command, String input) {
+        // parse command and set parameters of NoiseTesterFilter, and pass command to specific filter for further processing
         String[] tok = input.split("\\s");
         if (tok.length < 2) {
             return USAGE;
         } else {
-            for (int i = 1; i < tok.length; i+=2) {
+            for (int i = 1; i < tok.length; i++) {
                 if (tok[i].equals("csvFilename")) {
                     setCsvFilename(tok[i + 1]);
-                    i+=2;
                 }
-                if (tok[i].equals("shotNoiseRateHz")) {
-                    shotNoiseRateHz = Float.parseFloat(tok[i+1]);
-                    i+=2;
+                else if (tok[i].equals("shotNoiseRateHz")) {
+                    setShotNoiseRateHz(Float.parseFloat(tok[i+1]));
+                    log.info(String.format("setShotNoiseRateHz %f", shotNoiseRateHz));
                 }
-                if (tok[i].equals("leakNoiseRateHz")) {
-                    leakNoiseRateHz = Float.parseFloat(tok[i+1]);
-                    i+=2;
+                else if (tok[i].equals("leakNoiseRateHz")) {
+                    setLeakNoiseRateHz(Float.parseFloat(tok[i+1]));
+                    log.info(String.format("setLeakNoiseRateHz %f", leakNoiseRateHz));
                 }
             }
             log.info("Received Command:" + input);

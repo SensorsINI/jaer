@@ -148,9 +148,10 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
      */
     public void setDtUs(int dtUs) {
         int old=this.dtUs;
-        this.dtUs = dtUs;
+        
         putInt("dtUs", dtUs);
         getSupport().firePropertyChange("dtUs", old, dtUs);
+        this.dtUs = dtUs;
     }
 
     @Override
@@ -174,14 +175,11 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
             return USAGE;
         }
         try {
-
             if ((tok.length - 1) % 2 == 0) {
                 for (int i = 1; i <= tok.length; i++) {
                     if (tok[i].equals("dt")) {
-                        dtUs = Integer.parseInt(tok[i + 1]);
-                        i += 2;
-                    }
-                    
+                        setDtUs(Integer.parseInt(tok[i + 1]));
+                    }                    
                 }
                 String out = "successfully set OrderNFilter parameters dt " + String.valueOf(dtUs);
                 return out;
@@ -190,7 +188,7 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
             }
 
         } catch (Exception e) {
-            return "IOExeption in remotecontrol\n";
+            return "IOExeption in remotecontrol " + e.toString() + "\n";
         }
     }
 

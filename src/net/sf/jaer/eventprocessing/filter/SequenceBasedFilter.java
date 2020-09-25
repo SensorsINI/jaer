@@ -61,6 +61,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
      * the time in timestamp ticks (1us at present) that a spike needs to be
      * supported by a prior event in the neighborhood by to pass through
      */
+    
     private boolean letFirstEventThrough = getBoolean("letFirstEventThrough", true);
 
     /**
@@ -114,6 +115,9 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
     private boolean printedFirstUdpMessage = false;
     long lastUdpMsgTime = 0;
     int MIN_UPD_PACKET_INTERVAL_MS = 15;
+    
+    int MAX_DT = sx+sy;
+    final int MIN_DT = 0;
 
     public SequenceBasedFilter(AEChip chip) {
         super(chip);
@@ -322,8 +326,10 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
      * @param xlength the xlength to set
      */
     public void setXLength(int xlength) {
-        this.xlength = xlength;
         putInt("xlength", xlength);
+        getSupport().firePropertyChange("xlength", this.xlength, xlength);
+        this.xlength = xlength;
+        
     }
 
     /**
@@ -337,39 +343,57 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
      * @param disThr the disThr to set
      */
     public void setDisThr(float disThr) {
-        this.disThr = disThr;
-        putDouble("scaleFactor", disThr);
+//        this.disThr = disThr;
+//        putDouble("disThr", disThr);
+
+        float setValue = disThr;
+        if (disThr < getMinDt()) {
+            setValue = getMinDt();
+        }
+        if (disThr > getMaxDt()) {
+            setValue = getMaxDt();
+        }
+
+        putDouble("disThr", setValue);
+        getSupport().firePropertyChange("disThr", this.disThr, setValue);
+        this.disThr = setValue;
+    }
+
+    public int getMinDt() {
+        return MIN_DT;
+    }
+
+    public int getMaxDt() {
+        MAX_DT = sx + sy;
+        return MAX_DT;
     }
 
     private String USAGE = "SequenceFilter needs at least 2 arguments: noisefilter <command> <args>\nCommands are: setParameters disThr xx windowsize xx\n";
-    
-    @Override 
+
+    @Override
     public String setParameters(RemoteControlCommand command, String input) {
         String[] tok = input.split("\\s");
         if (tok.length < 3) {
             return USAGE;
         }
         try {
-
-            if ((tok.length -1) % 2 == 0) {
-                for (int i = 1; i <= tok.length; i++) {
+            if ((tok.length - 1) % 2 == 0) {
+                for (int i = 1; i < tok.length; i++) {
                     if (tok[i].equals("disThr")) {
-                        disThr = Float.parseFloat(tok[i+1]);
-                        i+=2;
+                        setDisThr(Float.parseFloat(tok[i + 1]));
                     }
-                    if (tok[i].equals("windowsize")) {
-                        xlength = Integer.parseInt(tok[i+1]);
-                        i+=2;
+                    else if (tok[i].equals("windowsize")) {
+                        setXLength(Integer.parseInt(tok[i + 1]));
                     }
                 }
-                String out = "successfully set SequenceFilter parameters dt " + String.valueOf(disThr) + " and windowsize " + String.valueOf(xlength); 
+                String out = "successfully set SequenceFilter parameters dt " + String.valueOf(disThr) + " and windowsize " + String.valueOf(xlength);
                 return out;
             } else {
                 return USAGE;
             }
 
         } catch (Exception e) {
-            return "IOExeption in remotecontrol\n";
+            return "IOExeption in remotecontrol " + e.toString() + "\n";
         }
     }
 }
