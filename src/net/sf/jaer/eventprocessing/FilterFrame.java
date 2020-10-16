@@ -555,6 +555,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     public void renewContents() {
         filterChain.renewChain();
         filterChain.contructPreferredFilters();
+        filterChain.initFilters(); // we need to run initFilter here because we have not gone through the whole AEChip construction process
         rebuildContents();
 
     }
