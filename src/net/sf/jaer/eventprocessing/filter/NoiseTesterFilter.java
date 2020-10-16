@@ -366,9 +366,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
 
         int count = 0;
-        int lastPacketTs = 0; // timestamp of the last event in the last packet
+        int lastPacketTs; // timestamp of the last event in the last packet
         if (lastpacketE != null) {
             lastPacketTs = lastpacketE.timestamp;
+        }else{ // no last packet (this is first packet we process) so we set lastPacketTs to the first event of the packet
+            lastPacketTs=in.getFirstTimestamp();
         }
 
         int firstts = firstE.timestamp; // timestamp of the first event in the current packet
