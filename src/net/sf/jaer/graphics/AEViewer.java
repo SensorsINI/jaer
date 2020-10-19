@@ -147,6 +147,9 @@ import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.filter.LowpassFilter;
+import org.joda.time.Period;
+import org.joda.time.format.PeriodFormatter;
+import org.joda.time.format.PeriodFormatterBuilder;
 
 /**
  * This is the main jAER interface to the user. The main event loop "ViewLoop"
@@ -557,7 +560,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             remoteControl.addCommandListener(this, REMOTE_PLAY, "resume player");
             remoteControl.addCommandListener(this, REMOTE_REWIND, "rewind player");
             remoteControl.addCommandListener(this, REMOTE_SET_MARK_IN + " <timestamp_us>", "set mark IN timestamp");
-            remoteControl.addCommandListener(this, REMOTE_SET_MARK_OUT+ " <timestamp_us>", "set mark OUT timestamp");
+            remoteControl.addCommandListener(this, REMOTE_SET_MARK_OUT + " <timestamp_us>", "set mark OUT timestamp");
             log.info("created " + remoteControl + " for remote control of some AEViewer functions");
         } catch (Exception ex) {
             log.warning(ex.toString());
@@ -3898,7 +3901,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	private void imagePanelMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_imagePanelMouseWheelMoved
             int rotation = evt.getWheelRotation();
             getRenderer().setColorScale(getRenderer().getColorScale() + rotation);
-            showActionText(String.format("DVS full scale count=%d events",getRenderer().getColorScale()));
+            showActionText(String.format("DVS full scale count=%d events", getRenderer().getColorScale()));
             interruptViewloop();
 	}//GEN-LAST:event_imagePanelMouseWheelMoved
 
@@ -3932,14 +3935,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
 	private void autoscaleContrastEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_autoscaleContrastEnabledCheckBoxMenuItemActionPerformed
             getRenderer().setAutoscaleEnabled(!getRenderer().isAutoscaleEnabled());
-            showActionText("DVS autoscale contras"+getRenderer().isAutoscaleEnabled());
+            showActionText("DVS autoscale contras" + getRenderer().isAutoscaleEnabled());
 	}//GEN-LAST:event_autoscaleContrastEnabledCheckBoxMenuItemActionPerformed
 
 	private void acccumulateImageEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_acccumulateImageEnabledCheckBoxMenuItemActionPerformed
             boolean old = getRenderer().isAccumulateEnabled();
             getRenderer().setAccumulateEnabled(!getRenderer().isAccumulateEnabled());
             getSupport().firePropertyChange(AEViewer.EVENT_ACCUMULATE_ENABLED, old, getRenderer().isAccumulateEnabled());
-            showActionText("Accumulate events="+getRenderer().isAccumulateEnabled());
+            showActionText("Accumulate events=" + getRenderer().isAccumulateEnabled());
 	}//GEN-LAST:event_acccumulateImageEnabledCheckBoxMenuItemActionPerformed
 
 	private void zeroTimestampsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zeroTimestampsMenuItemActionPerformed
@@ -4837,40 +4840,40 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             } else if (command.getCmdName().equals(REMOTE_ZERO_TIMESTAMPS)) {
                 jaerViewer.zeroTimestamps();
-            }else if (command.getCmdName().equals(REMOTE_OPEN_FILE)) {
+            } else if (command.getCmdName().equals(REMOTE_OPEN_FILE)) {
                 if (tokens.length < 2) {
                     return "not enough arguments, need file to open\n";
                 }
                 String filename = line.substring(REMOTE_OPEN_FILE.length() + 1);
-                try{
+                try {
                     openAedatInputFile(new File(filename));
-                    return String.format("Opened file %s\n",filename);
-                } catch(Exception e){
-                    return String.format("Could not open file %s, caught exception %s\n",filename,e.toString());
+                    return String.format("Opened file %s\n", filename);
+                } catch (Exception e) {
+                    return String.format("Could not open file %s, caught exception %s\n", filename, e.toString());
                 }
-            }else if (command.getCmdName().equals(REMOTE_PAUSE)) {
+            } else if (command.getCmdName().equals(REMOTE_PAUSE)) {
                 setPaused(true);
                 return String.format("Paused viewer\n");
-            }else if (command.getCmdName().equals(REMOTE_PLAY)) {
+            } else if (command.getCmdName().equals(REMOTE_PLAY)) {
                 setPaused(false);
                 return String.format("Started viewer\n");
-            }else if (command.getCmdName().equals(REMOTE_REWIND)) {
-                if(getAePlayer()!=null){
+            } else if (command.getCmdName().equals(REMOTE_REWIND)) {
+                if (getAePlayer() != null) {
                     getAePlayer().rewind();
                     return String.format("Rewound playback\n");
-                }else{
+                } else {
                     return String.format("No file is playing, cannot rewind\n");
                 }
-            }else if (command.getCmdName().equals(REMOTE_SET_MARK_IN)) {
-                if(getAePlayer()!=null){
+            } else if (command.getCmdName().equals(REMOTE_SET_MARK_IN)) {
+                if (getAePlayer() != null) {
                     return String.format("Setting mark is not yet supported\n");
-                }else{
+                } else {
                     return String.format("No file is playing, cannot set mark\n");
                 }
-           }else if (command.getCmdName().equals(REMOTE_SET_MARK_OUT)) {
-               if(getAePlayer()!=null){
+            } else if (command.getCmdName().equals(REMOTE_SET_MARK_OUT)) {
+                if (getAePlayer() != null) {
                     return String.format("Setting mark is not yet supported\n");
-                }else{
+                } else {
                     return String.format("No file is playing, cannot set mark\n");
                 }
             }
@@ -5371,12 +5374,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_logFilteredEventsCheckBoxMenuItemActionPerformed
 
 	private void loggingSetTimelimitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loggingSetTimelimitMenuItemActionPerformed
-            String ans = JOptionPane.showInputDialog(this, "Enter logging time limit in ms (0 for no limit)", loggingTimeLimit);
+            String ans = JOptionPane.showInputDialog(this, "Enter logging time limit, e.g. 1000 (ms implied) 2m 30s, 1h 15m, 35m (0 for no limit)", loggingTimeLimit);
+
             try {
-                int n = Integer.parseInt(ans);
-                loggingTimeLimit = n;
-            } catch (NumberFormatException e) {
-                Toolkit.getDefaultToolkit().beep();
+                PeriodFormatter formatter = new PeriodFormatterBuilder()
+                        .appendDays().appendSuffix("d")
+                        .appendHours().appendSuffix("h")
+                        .appendMinutes().appendSuffix("m")
+                        .appendSeconds().appendSuffix("s")
+                        .appendMillis()
+                        .toFormatter();
+                Period p = formatter.parsePeriod(ans);
+
+                loggingTimeLimit = p.toStandardDuration().getMillis();
+                String s=formatter.print(p);
+                JOptionPane.showMessageDialog(this, String.format("Time limit set to %s (%d ms)",s,loggingTimeLimit));
+            } catch (IllegalArgumentException e) {
+                JOptionPane.showMessageDialog(this, String.format("Bad format? Caught %s", e.toString()), "Error with duration", JOptionPane.ERROR_MESSAGE);
             }
 	}//GEN-LAST:event_loggingSetTimelimitMenuItemActionPerformed
 
