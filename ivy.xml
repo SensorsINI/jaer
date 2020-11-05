@@ -162,6 +162,10 @@ MA 02110-1301  USA
         
         <!-- used for numpy data file format npy and npz support in JVM -->
         <dependency org="org.jetbrains.bio" name="npy" rev="0.3.3"/>      
+        
+        <dependency org="joda-time" name="joda-time" rev="2.10.6">
+            <artifact name="joda-time" type="jar" />
+        </dependency>
              
     </dependencies>
 </ivy-module>
