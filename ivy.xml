@@ -160,9 +160,6 @@ MA 02110-1301  USA
         <!-- for rebuild myself task in JaerUpdater -->
         <dependency org="org.apache.ant" name="ant-commons-net" rev="1.10.8" />
         
-        <!-- used for numpy data file format npy and npz support in JVM -->
-        <dependency org="org.jetbrains.bio" name="npy" rev="0.3.3"/>      
-        
         <dependency org="joda-time" name="joda-time" rev="2.10.6">
             <artifact name="joda-time" type="jar" />
         </dependency>
