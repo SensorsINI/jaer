@@ -61,7 +61,6 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
      * the time in timestamp ticks (1us at present) that a spike needs to be
      * supported by a prior event in the neighborhood by to pass through
      */
-    
     private boolean letFirstEventThrough = getBoolean("letFirstEventThrough", true);
 
     /**
@@ -77,9 +76,6 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
     private int firstEventTime;
     private int lastEventTime;
     private int timeThr = 0;
-//    protected int eventCountWindow = getInt("eventCountWindow", 5000);
-//    protected float scaleFactor = getFloat("scaleFactor", 10);
-//    private int dtUs = getInt("dtUs", 10000);
 
     private int ts = 0; // used to reset filter
     private int sx;
@@ -91,10 +87,12 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
 
     private int basicThr = 0;
 
-//    private int mode = getInt("mode", 1);
-    private int xlength = getInt("xlength", 2);
-    private short[][] lastXEvents;// = new short[xlength][2];
-    private float disThr = getFloat("disThr", (float) 0.1);
+    private int wlen = getInt("wlen", 2); // window length
+    private short[][] lastREvents;// real window;
+    private short[][] lastNEvents;// noise window;
+
+    private int disThr = getInt("disThr", 10);
+    private int useDoubleMode = getInt("useDoubleMode", 0);
     private int fillindex = 0;
 
     /// beamforming
@@ -115,8 +113,8 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
     private boolean printedFirstUdpMessage = false;
     long lastUdpMsgTime = 0;
     int MIN_UPD_PACKET_INTERVAL_MS = 15;
-    
-    int MAX_DT = sx+sy;
+
+    int MAX_DT = sx + sy;
     final int MIN_DT = 0;
 
     public SequenceBasedFilter(AEChip chip) {
@@ -124,9 +122,9 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
         chip.addObserver(this);
         initFilter();
 //        setPropertyTooltip("mode", "mode (min:1 avg31:2)");
-        setPropertyTooltip("xlength", "based on how many Past events for the current event");
+        setPropertyTooltip("wlen", "window length");
         setPropertyTooltip("letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
-//        setPropertyTooltip("eventCountWindow", "constant-count window length in events");
+        setPropertyTooltip("useDoubleMode", "use two separate windows for storing real and noise events");
         setPropertyTooltip("disThr", "threshold for distance comparison, if too noise, make this smaller, if too little events, make this larger");
     }
 
@@ -172,51 +170,88 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
                 filteredOutEventCount++;
                 continue;
             }
-            if (fillindex < xlength && lastXEvents[xlength - 1][0] == -1) {
+            if (fillindex < wlen && lastREvents[wlen - 1][0] == -1) {
                 e.setFilteredOut(true);
                 filteredOutEventCount++;
-                lastXEvents[fillindex][0] = e.x;
-                lastXEvents[fillindex][1] = e.y;
+                lastREvents[fillindex][0] = e.x;
+                lastREvents[fillindex][1] = e.y;
                 fillindex = fillindex + 1;
                 continue;
             }
 
-//            int lastT = lastTimesMap[x][y];
-//            int deltaT = (ts - lastT);
-//            int myflag = 1;
-//            if (deltaT > timeThr){
-//                e.setFilteredOut(true);
-//                filteredOutEventCount++;
-//                myflag = 0;
-//            }
-            float[] disarray = new float[xlength];
-            for (int i = 0; i < xlength; i++) {
-//                int Dis = Math.abs(e.x - lastXEvents[i][0]) + Math.abs(e.y - lastXEvents[i][1]);
-                disarray[i] = (float) (Math.abs(e.x - lastXEvents[i][0])) / sx + (float) (Math.abs(e.y - lastXEvents[i][1])) / sy;
+            if (useDoubleMode == 1) {
+//                check real window first 
+                int[] disarray = new int[wlen];
+                for (int i = 0; i < wlen; i++) {
+                    disarray[i] = (Math.abs(e.x - lastREvents[i][0])) + (Math.abs(e.y - lastREvents[i][1]));
+                }
+                int minindex = IntStream.range(0, disarray.length).reduce((i, j) -> disarray[i] > disarray[j] ? j : i).getAsInt();
+                int mindisvalue = disarray[minindex];
+                int noiseflag = 0;
+
+//                if events in real window do not support correlation, check noise window
+//                the reason to check noise window is that there might be real events 
+//                        that are caused due to objects beginning moving in a different area and 
+//                        far away from current real events
+                if (mindisvalue > disThr) {
+                    for (int i = 0; i < wlen; i++) {
+                        disarray[i] = (Math.abs(e.x - lastNEvents[i][0])) + (Math.abs(e.y - lastNEvents[i][1]));
+                    }
+                    minindex = IntStream.range(0, disarray.length).reduce((i, j) -> disarray[i] > disarray[j] ? j : i).getAsInt();
+                    mindisvalue = disarray[minindex];
+
+                    if (mindisvalue > disThr) {
+                        e.setFilteredOut(true);
+                        filteredOutEventCount++;
+                        noiseflag = 1;
+
+                    } else {
+                        noiseflag = 0;
+                    }
+                }
+
+//            update real window or noise window based on the output of filter
+                if (noiseflag == 0) {
+                    for (int i = 0; i < wlen - 1; i++) {
+
+                        lastREvents[i][0] = lastREvents[i + 1][0];
+                        lastREvents[i][1] = lastREvents[i + 1][1];
+                    }
+                    lastREvents[wlen - 1][0] = e.x;
+                    lastREvents[wlen - 1][1] = e.y;
+                } else {
+                    for (int i = 0; i < wlen - 1; i++) {
+
+                        lastNEvents[i][0] = lastNEvents[i + 1][0];
+                        lastNEvents[i][1] = lastNEvents[i + 1][1];
+                    }
+                    lastNEvents[wlen - 1][0] = e.x;
+                    lastNEvents[wlen - 1][1] = e.y;
+                }
             }
-            int minindex = IntStream.range(0, disarray.length).reduce((i, j) -> disarray[i] > disarray[j] ? j : i).getAsInt();
-//            int maxindex = IntStream.range(0, disarray.length).reduce((i, j) -> disarray[i] < disarray[j] ? j : i).getAsInt();
-            float mindisvalue = disarray[minindex];
-//            float maxdisvalue = disarray[maxindex];
-            int myflag = 1;
-            float checkvalue = 0;
 
-            checkvalue = mindisvalue;
+            if (useDoubleMode == 0) {
+//                only use lastREvents to store the past events
+                int[] disarray = new int[wlen];
+                for (int i = 0; i < wlen; i++) {
+                    disarray[i] = (Math.abs(e.x - lastREvents[i][0])) + (Math.abs(e.y - lastREvents[i][1]));
+                }
+                int minindex = IntStream.range(0, disarray.length).reduce((i, j) -> disarray[i] > disarray[j] ? j : i).getAsInt();
+                int mindisvalue = disarray[minindex];
 
-            if (checkvalue > disThr) {
-                e.setFilteredOut(true);
-                filteredOutEventCount++;
-                myflag = 0;
+                if (mindisvalue > disThr) {
+                    e.setFilteredOut(true);
+                    filteredOutEventCount++;
+                }
+
+//                update window
+                for (int i = 0; i < wlen - 1; i++) {
+                    lastREvents[i][0] = lastREvents[i + 1][0];
+                    lastREvents[i][1] = lastREvents[i + 1][1];
+                }
+                lastREvents[wlen - 1][0] = e.x;
+                lastREvents[wlen - 1][1] = e.y;
             }
-
-//            update based on last x events
-            for (int i = 0; i < xlength - 1; i++) {
-
-                lastXEvents[i][0] = lastXEvents[i + 1][0];
-                lastXEvents[i][1] = lastXEvents[i + 1][1];
-            }
-            lastXEvents[xlength - 1][0] = e.x;
-            lastXEvents[xlength - 1][1] = e.y;
         }
 
         return in;
@@ -251,9 +286,16 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
 //            for (int[] arrayRow : lastTimesMap) {
 //                Arrays.fill(arrayRow, 0);
 //            }
-            lastXEvents = new short[xlength][2];
-            for (short[] arrayRow : lastXEvents) {
+            lastREvents = new short[wlen][2];
+            lastNEvents = new short[wlen][2];
+
+            for (short[] arrayRow : lastREvents) {
                 Arrays.fill(arrayRow, (short) -1);
+            }
+            if (useDoubleMode == 1) {
+                for (short[] arrayRow : lastNEvents) {
+                    Arrays.fill(arrayRow, (short) -1);
+                }
             }
         }
     }
@@ -302,51 +344,58 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
     }
 
     /**
-     * // * @return the mode //
+     * @return the wlen
      */
-//    public int getMode() {
-//        return mode;
-//    }
-//
-//    /**
-//     * @param mode the mode to set
-//     */
-//    public void setMode(int mode) {
-//        this.mode = mode;
-//        putInt("mode", mode);
-//    }
-    /**
-     * @return the xlength
-     */
-    public int getXLength() {
-        return xlength;
+    public int getWLen() {
+        return wlen;
     }
 
     /**
-     * @param xlength the xlength to set
+     * @param wlen the wlen to set
      */
-    public void setXLength(int xlength) {
-        putInt("xlength", xlength);
-        getSupport().firePropertyChange("xlength", this.xlength, xlength);
-        this.xlength = xlength;
-        
+    public void setWLen(int wlen) {
+        int setValue = wlen;
+        if (setValue < 1) {
+            setValue = 1;
+        }
+        putInt("wlen", setValue);
+        getSupport().firePropertyChange("wlen", this.wlen, setValue);
+        this.wlen = setValue;
+
+    }
+
+    /**
+     * @return the useDoubleMode
+     */
+    public int getUseDoubleMode() {
+        return useDoubleMode;
+    }
+
+    /**
+     * @param wlen the useDoubleMode to set
+     */
+    public void setUseDoubleMode(int useDoubleMode) {
+        putInt("useDoubleMode", useDoubleMode);
+        getSupport().firePropertyChange("useDoubleMode", this.useDoubleMode, useDoubleMode);
+        this.useDoubleMode = useDoubleMode;
+
     }
 
     /**
      * @return the disThr
      */
-    public float getDisThr() {
+    public int getDisThr() {
         return disThr;
     }
 
     /**
      * @param disThr the disThr to set
      */
-    public void setDisThr(float disThr) {
+    public void setDisThr(int disThr) {
 //        this.disThr = disThr;
 //        putDouble("disThr", disThr);
 
-        float setValue = disThr;
+        int setValue = disThr;
         if (disThr < getMinDt()) {
             setValue = getMinDt();
         }
@@ -368,7 +417,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
         return MAX_DT;
     }
 
-    private String USAGE = "SequenceFilter needs at least 2 arguments: noisefilter <command> <args>\nCommands are: setParameters disThr xx windowsize xx\n";
+    private String USAGE = "SequenceFilter needs at least 2 arguments: noisefilter <command> <args>\nCommands are: setParameters dt xx num xx\n";
 
     @Override
     public String setParameters(RemoteControlCommand command, String input) {
@@ -379,14 +428,13 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
         try {
             if ((tok.length - 1) % 2 == 0) {
                 for (int i = 1; i < tok.length; i++) {
-                    if (tok[i].equals("disThr")) {
-                        setDisThr(Float.parseFloat(tok[i + 1]));
-                    }
-                    else if (tok[i].equals("windowsize")) {
-                        setXLength(Integer.parseInt(tok[i + 1]));
+                    if (tok[i].equals("dt")) {
+                        setDisThr(Integer.parseInt(tok[i + 1]));
+                    } else if (tok[i].equals("num")) {
+                        setWLen(Integer.parseInt(tok[i + 1]));
                     }
                 }
-                String out = "successfully set SequenceFilter parameters dt " + String.valueOf(disThr) + " and windowsize " + String.valueOf(xlength);
+                String out = "successfully set SequenceFilter parameters dt " + String.valueOf(disThr) + " and windowsize " + String.valueOf(wlen);
                 return out;
             } else {
                 return USAGE;
