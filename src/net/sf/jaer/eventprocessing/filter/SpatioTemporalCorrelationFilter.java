@@ -144,10 +144,15 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     if ((xx < 0) || (xx >= sx) || (yy < 0) || (yy >= sy)) {
                         continue;
                     }
+                    if(xx==x && yy==y){
+                        continue; // like BAF, don't correlate with ourself
+                    }
                     final int lastT = lastTimesMap[xx][yy];
                     final int deltaT = (ts - lastT);
                     if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) {
                         ncorrelated++;
+                        if(ncorrelated>=numMustBeCorrelated)
+                            break; // csn stop checking now
                     }
                 }
             }
