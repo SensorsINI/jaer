@@ -46,7 +46,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
     private int subsampleBy = getInt("subsampleBy", 0);
 
     int[][] lastTimesMap;
-    private int ts = 0; // used to reset filter
+    private int ts = 0, lastTimestamp = DEFAULT_TIMESTAMP; // used to reset filter
     private int sx;
     private int sy;
 
@@ -84,38 +84,84 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
             if (e.isSpecial()) {
                 continue;
             }
-
             totalEventCount++;
-            short x = (short) (e.x >>> subsampleBy), y = (short) (e.y >>> subsampleBy);
-            if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
+            int ts = e.timestamp;
+            if (ts < lastTimestamp) {
+                resetFilter(); // handle rewind TODO check if this breaks with nonmonotonic timestamps
+            }
+            lastTimestamp = ts;
+            final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy);
+            if ((x < 0) || (x >= sx) || (y < 0) || (y >= sy)) {
+                e.setFilteredOut(true);
                 filteredOutEventCount++;
                 continue;
             }
+ 
+//            totalEventCount++;
+//            short x = (short) (e.x >>> subsampleBy), y = (short) (e.y >>> subsampleBy);
+//            if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
+//                filteredOutEventCount++;
+//                continue;
+//            }
+//
+//            ts = e.timestamp;
+//            int lastT = lastTimesMap[x][y];
+//            int deltaT = (ts - lastT);
 
-            ts = e.timestamp;
-            int lastT = lastTimesMap[x][y];
-            int deltaT = (ts - lastT);
-
-            if (!((deltaT < dt) && (lastT != DEFAULT_TIMESTAMP)) && !(letFirstEventThrough && lastT == DEFAULT_TIMESTAMP)) {
+            if (lastTimesMap[x][y] == DEFAULT_TIMESTAMP) {
+                lastTimesMap[x][y] = ts;
+                if (letFirstEventThrough) {
+                    continue;
+                } else {
+                    e.setFilteredOut(true);
+                    filteredOutEventCount++;
+                    continue;
+                }
+            }
+            final int numMustBeCorrelated=1;
+            int ncorrelated = 0;
+            for (int xx = x - 1; xx <= x + 1; xx++) {
+                for (int yy = y - 1; yy <= y + 1; yy++) {
+                    if ((xx < 0) || (xx >= sx) || (yy < 0) || (yy >= sy)) {
+                        continue;
+                    }
+                    if(xx==x && yy==y){
+                        continue; // like BAF, don't correlate with ourself
+                    }
+                    final int lastT = lastTimesMap[xx][yy];
+                    final int deltaT = (ts - lastT);
+                    if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) {
+                        ncorrelated++;
+                        break; // can break as soon as we get one
+                    }
+                }
+            }
+            if (ncorrelated < numMustBeCorrelated) {
                 e.setFilteredOut(true);
                 filteredOutEventCount++;
             }
+            lastTimesMap[x][y] = ts;
 
-            // For each event write the event's timestamp into the
-            // lastTimesMap array at neighboring locations lastTimesMap[x][y]=ts;
-            // Don't write to ourselves, we need support from neighbor for
-            // next event.
-            // Bounds checking here to avoid throwing expensive exceptions.
-            if (((x > 0) && (x < sx)) && ((y > 0) && (y < sy))) {
-                lastTimesMap[x - 1][y] = ts;
-                lastTimesMap[x + 1][y] = ts;
-                lastTimesMap[x][y - 1] = ts;
-                lastTimesMap[x][y + 1] = ts;
-                lastTimesMap[x - 1][y - 1] = ts;
-                lastTimesMap[x + 1][y + 1] = ts;
-                lastTimesMap[x - 1][y + 1] = ts;
-                lastTimesMap[x + 1][y - 1] = ts;
-            }
+//            if (!((deltaT < dt) && (lastT != DEFAULT_TIMESTAMP)) && !(letFirstEventThrough && lastT == DEFAULT_TIMESTAMP)) {
+//                e.setFilteredOut(true);
+//                filteredOutEventCount++;
+//            }
+//
+//            // For each event write the event's timestamp into the
+//            // lastTimesMap array at neighboring locations lastTimesMap[x][y]=ts;
+//            // Don't write to ourselves, we need support from neighbor for
+//            // next event.
+//            // Bounds checking here to avoid throwing expensive exceptions.
+//            if (((x > 0) && (x < sx)) && ((y > 0) && (y < sy))) {
+//                lastTimesMap[x - 1][y] = ts;
+//                lastTimesMap[x + 1][y] = ts;
+//                lastTimesMap[x][y - 1] = ts;
+//                lastTimesMap[x][y + 1] = ts;
+//                lastTimesMap[x - 1][y - 1] = ts;
+//                lastTimesMap[x + 1][y + 1] = ts;
+//                lastTimesMap[x - 1][y + 1] = ts;
+//                lastTimesMap[x + 1][y - 1] = ts;
+//            }
         }
 
         return in;
