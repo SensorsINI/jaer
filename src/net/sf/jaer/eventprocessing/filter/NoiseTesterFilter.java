@@ -52,7 +52,7 @@ import net.sf.jaer.util.RemoteControlled;
  * @author tobid/shasah
  */
 @Description("Tests noise filters by injecting known noise and measuring how much signal and noise is filtered")
-@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnotater, RemoteControlled {
 
     FilterChain chain;
@@ -383,7 +383,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         // dt is the time interval such that if we sample a random value 0-1 every dt us, the the overall noise rate will be correct.
         float tmp = (float) (1.0 / ((leakNoiseRateHz + shotNoiseRateHz) * npix)); // this value is very small
         poissonDtUs = (int) ((tmp / 10) * 1000000); // 1s = 1000000 us
-
+        if(poissonDtUs<1) poissonDtUs=1;
+        
         float shotOffThresholdProb = 0.5f * (poissonDtUs * 1e-6f * npix) * shotNoiseRateHz; // bounds for samppling Poisson noise, factor 0.5 so total rate is shotNoiseRateHz
         float shotOnThresholdProb = 1 - shotOffThresholdProb; // for shot noise sample both sides, for leak events just generate ON events
         float leakOnThresholdProb = (poissonDtUs * 1e-6f * npix) * leakNoiseRateHz; // bounds for samppling Poisson noise
