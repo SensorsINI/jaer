@@ -86,7 +86,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         BackgroundActivityFilter, SpatioTemporalCorrelationFilter, SequenceBasedFilter, OrderNBackgroundActivityFilter
     }
     private NoiseFilter selectedNoiseFilterEnum = NoiseFilter.valueOf(getString("nosieFilter", NoiseFilter.BackgroundActivityFilter.toString())); //default is BAF
-
+    private float correlationTimeS=getFloat("correlationTimeS", 20e-3f);
+    
 //    float BR = 2 * TPR * TPO / (TPR + TPO); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
     public NoiseTesterFilter(AEChip chip) {
         super(chip);
@@ -549,5 +550,23 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
         }
     }
+
+
+    
+    @Override
+    public float getCorrelationTimeS() {
+        return this.correlationTimeS;
+    }
+
+    @Override
+    public void setCorrelationTimeS(float dtS) {
+        this.correlationTimeS=dtS;
+        for(AbstractNoiseFilter f:noiseFilters){
+            f.setCorrelationTimeS(dtS);
+        }
+        putFloat("correlationTimeS", this.correlationTimeS);
+    }
+    
+    
 
 }
