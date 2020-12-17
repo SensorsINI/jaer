@@ -49,6 +49,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     public AbstractNoiseFilter(AEChip chip) {
         super(chip);
         setPropertyTooltip("showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
+        setPropertyTooltip("correlationTimeS", "Correlation time for noise filters that use this parameter");
 
         if (chip.getRemoteControl() != null) {
             chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");
@@ -127,4 +128,15 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     /** Returns lastTimesMap if there is one, or null if filter does not use it */
     public abstract int[][] getLastTimesMap();
 
+    /** Sets the noise filter correlation time. Empty method that can be overridden
+     * 
+     * @param dtS time in seconds 
+     */
+    public void setCorrelationTimeS(float dtS){
+        
+    }
+    
+    public float getCorrelationTimeS(){
+        return 0;
+    }
 }

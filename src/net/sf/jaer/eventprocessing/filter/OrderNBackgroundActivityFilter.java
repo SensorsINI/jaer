@@ -198,5 +198,17 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
     }
     
     
+       @Override
+    public float getCorrelationTimeS() {
+        return this.dtUs*1e-6f;
+    }
+
+    @Override
+    public void setCorrelationTimeS(float dtS) {
+        setDtUs((int)(dtS*1e6));
+    }
+    
+
+    
 
 }

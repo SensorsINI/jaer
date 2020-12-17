@@ -309,4 +309,16 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
         }
     }
 
+    @Override
+    public float getCorrelationTimeS() {
+        return this.dt*1e-6f;
+    }
+
+    @Override
+    public void setCorrelationTimeS(float dtS) {
+        setDt((int)(dtS*1e6));
+   }
+    
+    
+
 }

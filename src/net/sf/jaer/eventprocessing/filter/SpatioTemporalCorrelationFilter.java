@@ -208,7 +208,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     }
 
     private void allocateMaps(AEChip chip) {
-        if ((chip != null) && (chip.getNumCells() > 0) && (lastTimesMap==null|| lastTimesMap.length!=chip.getSizeX()>>subsampleBy)) {
+        if ((chip != null) && (chip.getNumCells() > 0) && (lastTimesMap == null || lastTimesMap.length != chip.getSizeX() >> subsampleBy)) {
             lastTimesMap = new int[chip.getSizeX() >> subsampleBy][chip.getSizeY() >> subsampleBy];
         }
         binDim = 1 << activityBinDimBits;
@@ -523,6 +523,16 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         } catch (Exception e) {
             return "IOExeption in remotecontrol" + e.toString() + "\n";
         }
+    }
+
+    @Override
+    public float getCorrelationTimeS() {
+        return this.dt * 1e-6f;
+    }
+
+    @Override
+    public void setCorrelationTimeS(float dtS) {
+        setDt((int) (dtS * 1e6));
     }
 
 }
