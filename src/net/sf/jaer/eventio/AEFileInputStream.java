@@ -172,7 +172,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * centered over the file position except at the start and end of the file.
      */
     private long CHUNK_SIZE_EVENTS = Integer.MAX_VALUE / 64 / EVENT32_SIZE;
-    private long chunkSizeBytes = CHUNK_SIZE_EVENTS * EVENT32_SIZE; // size of memory mapped file chunk, depends on event 
+    private long chunkSizeBytes = CHUNK_SIZE_EVENTS * EVENT32_SIZE; // size of memory mapped file chunk, depends on event
     // size and number of events to map, initialized as
     // though we didn't have a file header. Max value is Integer.MAX_VALUE however. Will generate illegalargument exception if we try to allowcate larger chunk
 
@@ -234,7 +234,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
         /* Here is the logic:
          * The chip and extractor will be updated unless the chip changed such as by the user.
-         * It makes the chip and the extractor are alwayse associated with each other. 
+         * It makes the chip and the extractor are alwayse associated with each other.
          */
         if (this.chip != LAST_CHIP) {
             LAST_CHIP = this.chip;
@@ -621,7 +621,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         try {
             if (n > 0) {
                 for (int i = 0; i < n; i++) {
-                    ev = readEventForwards();  // TODO since repeat is always true in existing code, then can never get null event right now TODO; fix this 
+                    ev = readEventForwards();  // TODO since repeat is always true in existing code, then can never get null event right now TODO; fix this
                     count++;
                     addr[i] = ev.address; // could get null pointer exception here if repeat was false
                     ts[i] = ev.timestamp;
@@ -646,7 +646,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         }
         packet.setNumEvents(count);
         getSupport().firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, position());
-        maybeSendRewoundEvent(oldPosition);
+        maybeSendRewoundEvent(oldPosition); // we only need to call at the end because readEventForwards sets the flag
         return packet;
         // return new AEPacketRaw(addr,ts);
     }
@@ -725,7 +725,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             if (dt > 0) { // read forwards
                 if (!bigWrap) { // normal situation
                     do {
-                        ae = readEventForwards(endTimestamp);
+                        ae = readEventForwards(endTimestamp); // if we hit end (mark or file), we rewind here and get the first event and rewindFlag is set
                         if (ae == null) {
                             break;
                         }
@@ -735,22 +735,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                         pixelDataArray[i] = ae.pixelData;
                         i++;
                     } while ((mostRecentTimestamp < endTimestamp) && (i < addr.length) && (mostRecentTimestamp >= startTimestamp)); // if
-                    // time
-                    // jumps
-                    // backwards
-                    // (e.g.
-                    // timestamp
-                    // reset
-                    // during
-                    // recording)
-                    // then
-                    // will
-                    // read
-                    // a
-                    // huge
-                    // number
-                    // of
-                    // events.
                 } else { // read should wrap around
                     log.info("bigwrap started");
                     do {
@@ -818,13 +802,11 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             // currentStartTimestamp = mostRecentTimestamp;
         }
         packet.setNumEvents(i);
-        // if(i<1){
-        // log.info(packet.toString());
-        // }
         getSupport().firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, position());
-        // System.out.println("bigwrap="+bigWrap+" read "+packet.getNumEvents()+"
-        // mostRecentTimestamp="+mostRecentTimestamp+" currentStartTimestamp="+currentStartTimestamp);
-        maybeSendRewoundEvent(oldPosition);
+        // the problem with sending EVENT_REWOUND here is that it gets delivered to listeners
+        // like event filters BEFORE they get the new packet, and the packet they get
+        maybeSendRewoundEvent(oldPosition); // we only need send at the end because readEventForwards sets the flag
+        // if there was a rewind, then the last event of the new packet will have the first event after rewind
         return packet;
     }
 
@@ -1059,7 +1041,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     public boolean isMarkOutSet() {
         return markOut != size();
     }
-    
+
     // https://stackoverflow.com/questions/2972986/how-to-unmap-a-file-from-memory-mapped-using-filechannel-in-java
     private static void closeDirectBuffer(ByteBuffer cb) {
         if (cb == null || !cb.isDirect()) {
@@ -1103,7 +1085,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     public void close() throws IOException {
         super.close();
         if (fileChannel != null) {
-            if(getByteBuffer()!=null){
+            if (getByteBuffer() != null) {
                 closeDirectBuffer(getByteBuffer());
             }
             fileChannel.close();
@@ -1196,6 +1178,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         return byteBuffer;
     }
 
+    /**
+     * Sends EVENT_REWOUND event if the rewindFlag is set
+     */
     private void maybeSendRewoundEvent(long oldPosition) {
         if (rewindFlag) {
             getSupport().firePropertyChange(AEInputStream.EVENT_REWOUND, oldPosition, position());
@@ -1593,7 +1578,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         String s = reader.readLine();
 
         boolean flag = true;
-        // code below is wrong because it means that any header line with non alpha char 
+        // code below is wrong because it means that any header line with non alpha char
         // (such as device with binary serial number) will terminate header
         // and cause header to be treated as data (tobi)
         // header non alpha are converted to alpha below in any case.
@@ -1606,14 +1591,14 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //        }
 
         // specifically, the end of header section is line "#End Of ASCII Header" followed by CRLF
-        if(s.startsWith(AEDataFile.DATA_START_TIME_SYSTEMCURRENT_TIME_MILLIS)){
-            try{
-                String timeString=s.substring(AEDataFile.DATA_START_TIME_SYSTEMCURRENT_TIME_MILLIS.length());
-                long startTimeEpochMs=Long.parseLong(timeString);
-                log.info("read  data starting time since epoch is ms "+startTimeEpochMs+" which is "+new Date(startTimeEpochMs));
+        if (s.startsWith(AEDataFile.DATA_START_TIME_SYSTEMCURRENT_TIME_MILLIS)) {
+            try {
+                String timeString = s.substring(AEDataFile.DATA_START_TIME_SYSTEMCURRENT_TIME_MILLIS.length());
+                long startTimeEpochMs = Long.parseLong(timeString);
+                log.info("read  data starting time since epoch is ms " + startTimeEpochMs + " which is " + new Date(startTimeEpochMs));
                 setAbsoluteStartingTimeMs(startTimeEpochMs);
-            }catch(NumberFormatException e){
-                log.warning("Got line "+s+" but could not parse starting time since epoch in ms from it");
+            } catch (NumberFormatException e) {
+                log.warning("Got line " + s + " but could not parse starting time since epoch in ms from it");
             }
         }
         if (s.toLowerCase().equals(AEDataFile.END_OF_HEADER_STRING.toLowerCase())) {
@@ -1683,9 +1668,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     /**
-     * When the file is opened, the filename and the header section are parsed to try to extract the
-     * date and time the file was created from the filename. This method returns
-     * time since the epoch, in universal time.
+     * When the file is opened, the filename and the header section are parsed
+     * to try to extract the date and time the file was created from the
+     * filename. This method returns time since the epoch, in universal time.
      *
      * @return the time logging was started in ms since 1970, in GMT universal
      * time
@@ -1712,8 +1697,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * datetime format is specified in AEDataFile.YYYY_M_MDD_TH_HMMSS_Z. Z is
      * the time zone offset. The next thing is the device serial number. Finally
      * there is the comment added by convention by user.
-     * 
-     * Newer AEDAT-2.0 files also have a comment just before data starts that records the absolute time in ms since epcoh
+     *
+     * Newer AEDAT-2.0 files also have a comment just before data starts that
+     * records the absolute time in ms since epcoh
      *
      * @return start of logging time in ms, i.e., in "java" time, since 1970
      */
@@ -1725,8 +1711,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             String fn = f.getName();
             String dateStr = fn.substring(fn.indexOf('-') + 1); // guess that datestamp is right after first - which
             // follows Chip classname, but which include -SN and other text, which is serial number of camera and other trailing text annotation
-            if(dateStr.length()<25){
-                log.warning(f.getName()+" name is too short to hold date/time string, not trying to parse time from it");
+            if (dateStr.length() < 25) {
+                log.warning(f.getName() + " name is too short to hold date/time string, not trying to parse time from it");
                 return 0;
             }
             dateStr = dateStr.substring(0, 24);

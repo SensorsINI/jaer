@@ -192,4 +192,11 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
         }
     }
 
+    @Override
+    public int[][] getLastTimesMap() {
+        return null;
+    }
+    
+    
+
 }

@@ -242,4 +242,9 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
         putDouble("scaleFactor", scaleFactor);
     }
 
+    @Override
+    public int[][] getLastTimesMap() {
+        return lastTimesMap;
+    }
+
 }

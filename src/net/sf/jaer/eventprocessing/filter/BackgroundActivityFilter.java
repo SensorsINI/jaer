@@ -86,9 +86,6 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
             }
             totalEventCount++;
             int ts = e.timestamp;
-            if (ts < lastTimestamp) {
-                resetFilter(); // handle rewind TODO check if this breaks with nonmonotonic timestamps
-            }
             lastTimestamp = ts;
             final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy);
             if ((x < 0) || (x >= sx) || (y < 0) || (y >= sy)) {
@@ -96,7 +93,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
                 filteredOutEventCount++;
                 continue;
             }
- 
+
 //            totalEventCount++;
 //            short x = (short) (e.x >>> subsampleBy), y = (short) (e.y >>> subsampleBy);
 //            if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
@@ -107,7 +104,6 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
 //            ts = e.timestamp;
 //            int lastT = lastTimesMap[x][y];
 //            int deltaT = (ts - lastT);
-
             if (lastTimesMap[x][y] == DEFAULT_TIMESTAMP) {
                 lastTimesMap[x][y] = ts;
                 if (letFirstEventThrough) {
@@ -118,14 +114,14 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
                     continue;
                 }
             }
-            final int numMustBeCorrelated=1;
+            final int numMustBeCorrelated = 1;
             int ncorrelated = 0;
             for (int xx = x - 1; xx <= x + 1; xx++) {
                 for (int yy = y - 1; yy <= y + 1; yy++) {
                     if ((xx < 0) || (xx >= sx) || (yy < 0) || (yy >= sy)) {
                         continue;
                     }
-                    if(xx==x && yy==y){
+                    if (xx == x && yy == y) {
                         continue; // like BAF, don't correlate with ourself
                     }
                     final int lastT = lastTimesMap[xx][yy];
@@ -169,7 +165,10 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
 
     @Override
     public synchronized final void resetFilter() {
-        initFilter();
+        log.info("resetting BackgroundActivityFilter");
+        for (int[] arrayRow : lastTimesMap) {
+            Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
+        }
     }
 
     @Override
@@ -177,15 +176,18 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
         allocateMaps(chip);
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
+        resetFilter();
     }
 
     private void allocateMaps(AEChip chip) {
-        if ((chip != null) && (chip.getNumCells() > 0)) {
-            lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()];
-            for (int[] arrayRow : lastTimesMap) {
-                Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
-            }
+       if ((chip != null) && (chip.getNumCells() > 0) && (lastTimesMap==null|| lastTimesMap.length!=chip.getSizeX()>>subsampleBy)) {
+            lastTimesMap = new int[chip.getSizeX() >> subsampleBy][chip.getSizeY() >> subsampleBy];
         }
+    }
+
+    @Override
+    public int[][] getLastTimesMap() {
+        return lastTimesMap;
     }
 
     public Object getFilterState() {
@@ -254,7 +256,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
         } else if (subsampleBy > 4) {
             subsampleBy = 4;
         }
-        
+
         putInt("subsampleBy", subsampleBy);
         getSupport().firePropertyChange("subsampleBy", this.subsampleBy, subsampleBy);
         this.subsampleBy = subsampleBy;
@@ -275,29 +277,28 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
         this.letFirstEventThrough = letFirstEventThrough;
         putBoolean("letFirstEventThrough", letFirstEventThrough);
     }
-    
-        
+
     private String USAGE = "BackgroundFilter needs at least 2 arguments: noisefilter <command> <args>\nCommands are: setParameters dt xx subsample xx\n";
-    
+
     @Override
     public String setParameters(RemoteControlCommand command, String input) {
         String[] tok = input.split("\\s");
-        
+
         if (tok.length < 3) {
             return USAGE;
         }
         try {
 
-            if ((tok.length -1) % 2 == 0) {
+            if ((tok.length - 1) % 2 == 0) {
                 for (int i = 1; i < tok.length; i++) {
-                    if (tok[i].equals("dt")) {                
-                        setDt(Integer.parseInt(tok[i+1]));
+                    if (tok[i].equals("dt")) {
+                        setDt(Integer.parseInt(tok[i + 1]));
                     }
                     if (tok[i].equals("subsample")) {
-                        setSubsampleBy(Integer.parseInt(tok[i+1]));
+                        setSubsampleBy(Integer.parseInt(tok[i + 1]));
                     }
                 }
-                String out = "successfully set BackgroundFilter parameters dt " + String.valueOf(dt) + " and subsampleBy " + String.valueOf(subsampleBy); 
+                String out = "successfully set BackgroundFilter parameters dt " + String.valueOf(dt) + " and subsampleBy " + String.valueOf(subsampleBy);
                 return out;
             } else {
                 return USAGE;

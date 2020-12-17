@@ -72,7 +72,6 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
 //    private int subsampleBy = getInt("subsampleBy", 0);
     private int subsampleBy = 0;
 
-    int[][] lastTimesMap;
     private int firstEventTime;
     private int lastEventTime;
     private int timeThr = 0;
@@ -138,11 +137,10 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
      */
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        if (lastTimesMap == null) {
+        if (lastREvents == null) {
             allocateMaps(chip);
 //            System.out.printf("after allocate  is: %d\n", (1 << subsampleBy << subsampleBy));
 //            basicThr = (int) (sx+1) * (sy+1) / ((1 << subsampleBy << subsampleBy) * eventCountWindow);
-            frameid = 0;
 //            timeThr = basicThr;
         }
         totalEventCount = 0;
@@ -259,7 +257,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
 
     @Override
     public synchronized final void resetFilter() {
-//        initFilter();
+            frameid = 0;
     }
 
     @Override
@@ -282,10 +280,6 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
 
     private void allocateMaps(AEChip chip) {
         if ((chip != null) && (chip.getNumCells() > 0)) {
-//            lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()];
-//            for (int[] arrayRow : lastTimesMap) {
-//                Arrays.fill(arrayRow, 0);
-//            }
             lastREvents = new short[wlen][2];
             lastNEvents = new short[wlen][2];
 
@@ -300,9 +294,6 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
         }
     }
 
-    public Object getFilterState() {
-        return lastTimesMap;
-    }
 
 //    // <editor-fold defaultstate="collapsed" desc="getter-setter for --SubsampleBy--">
 //    public int getSubsampleBy() {
@@ -444,4 +435,12 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
             return "IOExeption in remotecontrol " + e.toString() + "\n";
         }
     }
+    
+    
+    @Override
+    public int[][] getLastTimesMap() {
+        return null;
+    }
+
+
 }

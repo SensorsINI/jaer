@@ -69,12 +69,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private int sy = 0;
     private int npix = 0;
 
-    private int startEventTime = -1; // ts of the first event in this packet
-    private int endEventTime = -1; // ts of the last event in this packet
-    private int lastEventTime = -1; // ts of the last event in last packet
-    private BasicEvent lastpacketE = null;
-    private BasicEvent firstE = null;
-    private BasicEvent lastE = null;
+    private Integer lastTimestampPreviousPacket = null; // use Integer Object so it can be null to signify no value yet
     private float TPR = 0;
     private float TPO = 0;
     private float TNR = 0;
@@ -85,7 +80,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private int poissonDtUs = 1;
     private AbstractNoiseFilter[] noiseFilters = null;
     private AbstractNoiseFilter selectedFilter = null;
-
+    protected boolean resetCalled = true; // flag to reset on next event
+    public static final float RATE_LIMIT_HZ=10;
     public enum NoiseFilter {
         BackgroundActivityFilter, SpatioTemporalCorrelationFilter, SequenceBasedFilter, OrderNBackgroundActivityFilter
     }
@@ -94,13 +90,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //    float BR = 2 * TPR * TPO / (TPR + TPO); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
     public NoiseTesterFilter(AEChip chip) {
         super(chip);
-        chain = new FilterChain(chip);
-
-        noiseFilters = new AbstractNoiseFilter[]{new BackgroundActivityFilter(chip), new SpatioTemporalCorrelationFilter(chip), new SequenceBasedFilter(chip), new OrderNBackgroundActivityFilter((chip))};
-        for (AbstractNoiseFilter n : noiseFilters) {
-            chain.add(n);
-        }
-        setEnclosedFilterChain(chain);
         setPropertyTooltip("shotNoiseRateHz", "rate per pixel of shot noise events");
         setPropertyTooltip("leakNoiseRateHz", "rate per pixel of leak noise events");
         setPropertyTooltip("csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
@@ -174,38 +163,44 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
 
-        totalEventCount = 0;
+        totalEventCount = 0; // from super, to measure filtering
         filteredOutEventCount = 0;
-
-        startEventTime = in.getFirstTimestamp();
-        endEventTime = in.getLastTimestamp();
 
         int TP = 0; // filter take real events as real events. the number of events
         int TN = 0; // filter take noise events as noise events
         int FP = 0; // filter take noise events as real events
         int FN = 0; // filter take real events as noise events
 
-        ArrayList inList = new ArrayList<BasicEvent>(in.getSize());
-        for (BasicEvent e : in) {
-            if (totalEventCount == 0) {
-                firstE = e;
-            }
-            totalEventCount += 1;
-            inList.add(e);
-            lastE = e;
-
-        }
-
-        if (firstE == null) {  // no input packet yet
+        if (in.isEmpty()) {
+            log.warning("empty packet, cannot inject noise");
             return in;
         }
+        BasicEvent firstE = in.getFirstEvent();
+        if (resetCalled) {
+            resetCalled = false;
+            int ts = in.getLastTimestamp(); // we use getLastTimestamp because getFirstTimestamp contains event from BEFORE the rewind :-(
+            // initialize filters with lastTimesMap to Poisson waiting times
+            log.info("initializing timestamp maps with Poisson process waiting times");
+            for (AbstractNoiseFilter f : noiseFilters) {
+                int[][] map = f.getLastTimesMap();
+                if (map != null) {
+                    initializeLastTimesMapForNoiseRate(map, shotNoiseRateHz + leakNoiseRateHz, ts);
+                }
+            }
 
-        // record the first timestamp and last timestamp of the packet
-        // add noise into the packet in and get a new packet?
-//        EventPacket<ApsDvsEvent> newIn = new EventPacket<ApsDvsEvent>();
+        }
+
+        ArrayList inList = new ArrayList<BasicEvent>(in.getSize());
+        for (BasicEvent e : in) {
+            totalEventCount += 1;
+            inList.add(e);
+        }
+
+        // add noise into the packet in
         addNoise(in, outputPacketWithNoiseAdded, shotNoiseRateHz, leakNoiseRateHz);
+        // we need to copy the augmented event packet to a new one to use it with Collections
         ArrayList newInList = new ArrayList<BasicEvent>(outputPacketWithNoiseAdded.getSize());
         for (BasicEvent e : outputPacketWithNoiseAdded) {
             newInList.add(e);
@@ -261,19 +256,27 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 doCloseCsvFile();
             }
         }
-        lastpacketE = lastE;
+        lastTimestampPreviousPacket = in.getLastTimestamp();
 
         return out;
     }
 
     @Override
-    public void resetFilter() {
+    synchronized public void resetFilter() {
+        lastTimestampPreviousPacket = null;
+        resetCalled = true;
         getEnclosedFilterChain().reset();
     }
 
     @Override
     public void initFilter() {
-        lastE = new BasicEvent();
+        chain = new FilterChain(chip);
+
+        noiseFilters = new AbstractNoiseFilter[]{new BackgroundActivityFilter(chip), new SpatioTemporalCorrelationFilter(chip), new SequenceBasedFilter(chip), new OrderNBackgroundActivityFilter((chip))};
+        for (AbstractNoiseFilter n : noiseFilters) {
+            chain.add(n);
+        }
+        setEnclosedFilterChain(chain);
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
         npix = (chip.getSizeX() * chip.getSizeY());
@@ -292,6 +295,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         return shotNoiseRateHz;
     }
 
+    @Override
+    public int[][] getLastTimesMap() {
+        return null;
+    }
+
     /**
      * @param shotNoiseRateHz the shotNoiseRateHz to set
      */
@@ -299,11 +307,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (shotNoiseRateHz < 0) {
             shotNoiseRateHz = 0;
         }
-        if (shotNoiseRateHz > 1) {
+        if (shotNoiseRateHz > RATE_LIMIT_HZ) {
             log.warning("high leak rates will hang the filter and consume all memory");
-            shotNoiseRateHz = 1;
+            shotNoiseRateHz = RATE_LIMIT_HZ;
         }
-        
+
         putFloat("shotNoiseRateHz", shotNoiseRateHz);
         getSupport().firePropertyChange("shotNoiseRateHz", this.shotNoiseRateHz, shotNoiseRateHz);
         this.shotNoiseRateHz = shotNoiseRateHz;
@@ -323,11 +331,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (leakNoiseRateHz < 0) {
             leakNoiseRateHz = 0;
         }
-        if (leakNoiseRateHz > 1) {
+        if (leakNoiseRateHz > RATE_LIMIT_HZ) {
             log.warning("high leak rates will hang the filter and consume all memory");
-            leakNoiseRateHz = 1;
+            leakNoiseRateHz = RATE_LIMIT_HZ;
         }
-        
+
         putFloat("leakNoiseRateHz", leakNoiseRateHz);
         getSupport().firePropertyChange("leakNoiseRateHz", this.leakNoiseRateHz, leakNoiseRateHz);
         this.leakNoiseRateHz = leakNoiseRateHz;
@@ -352,30 +360,24 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         openCvsFiile();
     }
 
-    private void addNoise(EventPacket<? extends BasicEvent> in, EventPacket<? extends ApsDvsEvent> newIn, float shotNoiseRateHz, float leakNoiseRateHz) {
+    private void addNoise(EventPacket<? extends BasicEvent> in, EventPacket<? extends ApsDvsEvent> augmentedPacket, float shotNoiseRateHz, float leakNoiseRateHz) {
 
-        newIn.clear();
-        OutputEventIterator<ApsDvsEvent> outItr;
-        outItr = (OutputEventIterator<ApsDvsEvent>) newIn.outputIterator();
+        // we need at least 1 event to be able to inject noise before it
+        if ((in.isEmpty())) {
+            log.warning("no input events in this packet, cannot inject noise because there is no end event");
+            return;
+        }
 
+        // save input packet
+        augmentedPacket.clear();
+        // make the itertor to save events with added noise events
+        OutputEventIterator<ApsDvsEvent> outItr = (OutputEventIterator<ApsDvsEvent>) augmentedPacket.outputIterator();
         if (leakNoiseRateHz == 0 && shotNoiseRateHz == 0) {
             for (BasicEvent ie : in) {
                 outItr.nextOutput().copyFrom(ie);
             }
-            return;
+            return; // no noise, just return which returns the copy from filterPacket
         }
-
-        int count = 0;
-        int lastPacketTs; // timestamp of the last event in the last packet
-        if (lastpacketE != null) {
-            lastPacketTs = lastpacketE.timestamp;
-        }else{ // no last packet (this is first packet we process) so we set lastPacketTs to the first event of the packet
-            lastPacketTs=in.getFirstTimestamp();
-        }
-
-        int firstts = firstE.timestamp; // timestamp of the first event in the current packet
-        int lastts = lastE.timestamp; // timestamp of the last event in the current packet
-        int Min = 0;
 
         // the rate per pixel results in overall noise rate for entire sensor that is product of pixel rate and number of pixels.
         // we compute this overall noise rate to determine the Poisson sample interval that is much smaller than this to enable simple Poisson noise sampling.
@@ -383,30 +385,44 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         // dt is the time interval such that if we sample a random value 0-1 every dt us, the the overall noise rate will be correct.
         float tmp = (float) (1.0 / ((leakNoiseRateHz + shotNoiseRateHz) * npix)); // this value is very small
         poissonDtUs = (int) ((tmp / 10) * 1000000); // 1s = 1000000 us
-        if(poissonDtUs<1) poissonDtUs=1;
-        
+        if (poissonDtUs < 1) {
+            poissonDtUs = 1;
+        }
         float shotOffThresholdProb = 0.5f * (poissonDtUs * 1e-6f * npix) * shotNoiseRateHz; // bounds for samppling Poisson noise, factor 0.5 so total rate is shotNoiseRateHz
         float shotOnThresholdProb = 1 - shotOffThresholdProb; // for shot noise sample both sides, for leak events just generate ON events
         float leakOnThresholdProb = (poissonDtUs * 1e-6f * npix) * leakNoiseRateHz; // bounds for samppling Poisson noise
 
+        int firstTsThisPacket = in.getFirstTimestamp();
         // insert noise between last event of last packet and first event of current packet
-        for (int ts = lastPacketTs; ts < firstts; ts += poissonDtUs) {
-            sampleNoiseEvent(outItr, ts, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb);
+        // but only if there waa a previous packet and we are monotonic
+        if (lastTimestampPreviousPacket != null) {
+            if (firstTsThisPacket < lastTimestampPreviousPacket) {
+                log.warning(String.format("non-monotonic timestamp: Resetting filter. (first event %d is smaller than previous event %d by %d)",
+                        firstTsThisPacket, lastTimestampPreviousPacket, firstTsThisPacket - lastTimestampPreviousPacket));
+                resetFilter();
+                return;
+            }
+            // we had some previous event
+            int lastPacketTs = lastTimestampPreviousPacket; // timestamp of the last event in the last packet
+            for (int ts = lastPacketTs; ts < firstTsThisPacket; ts += poissonDtUs) {
+                sampleNoiseEvent(outItr, ts, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb);
+            }
         }
 
-        // insert noise between two real events, record their timestamp
+        // insert noise between events of this packet after the first event, record their timestamp
         int preEts = 0;
-        int curEts = 0;
 
+        int lastEventTs = in.getFirstTimestamp();
         for (BasicEvent ie : in) {
-            if (ie.timestamp == firstts) {  // TODO what is this code doing?
-                curEts = ie.timestamp;
+            // if it is the first event or any with first event timestamp then just copy them
+            if (ie.timestamp == firstTsThisPacket) {
                 outItr.nextOutput().copyFrom(ie);
                 continue;
             }
-            preEts = curEts;
-            curEts = ie.timestamp;
-            for (int ts = preEts; ts <= curEts; ts += poissonDtUs) {  // TODO might be truncation error here with leftover time
+            // save the previous timestamp and get the next one, and then inject noise between them
+            preEts = lastEventTs;
+            lastEventTs = ie.timestamp;
+            for (int ts = preEts; ts <= lastEventTs; ts += poissonDtUs) {  // TODO might be truncation error here with leftover time
                 sampleNoiseEvent(outItr, ts, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb);
             }
             outItr.nextOutput().copyFrom(ie);
@@ -452,11 +468,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public void propertyChange(PropertyChangeEvent evt) {
         super.propertyChange(evt); //To change body of generated methods, choose Tools | Templates.
         if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
-            log.info(String.format("got rewound event %s, resetting filter", evt));
-            resetFilter();
-        } else if (evt.getPropertyName() == AEViewer.EVENT_CHIP) {
-            log.info(String.format("AEChip changed event %s, resetting filter", evt));
-            resetFilter();
+            log.info(String.format("got rewound event %s, setting reset on next packet flat", evt));
+            resetCalled = true;
+        }
+        if (evt.getPropertyName() == AEViewer.EVENT_CHIP) {
+            log.info(String.format("AEChip changed event %s, initializing filter", evt));
+            initFilter();
         }
 
     }
@@ -483,6 +500,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 n.setFilterEnabled(false);
             }
         }
+        resetCalled=true; // make sure we iniitialize the timestamp maps on next packet for new filter
     }
 
     private String USAGE = "Need at least 2 arguments: noisefilter <command> <args>\nCommands are: setNoiseFilterParameters <csvFilename> xx <shotNoiseRateHz> xx <leakNoiseRateHz> xx and specific to the filter\n";
@@ -497,13 +515,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             for (int i = 1; i < tok.length; i++) {
                 if (tok[i].equals("csvFilename")) {
                     setCsvFilename(tok[i + 1]);
-                }
-                else if (tok[i].equals("shotNoiseRateHz")) {
-                    setShotNoiseRateHz(Float.parseFloat(tok[i+1]));
+                } else if (tok[i].equals("shotNoiseRateHz")) {
+                    setShotNoiseRateHz(Float.parseFloat(tok[i + 1]));
                     log.info(String.format("setShotNoiseRateHz %f", shotNoiseRateHz));
-                }
-                else if (tok[i].equals("leakNoiseRateHz")) {
-                    setLeakNoiseRateHz(Float.parseFloat(tok[i+1]));
+                } else if (tok[i].equals("leakNoiseRateHz")) {
+                    setLeakNoiseRateHz(Float.parseFloat(tok[i + 1]));
                     log.info(String.format("setLeakNoiseRateHz %f", leakNoiseRateHz));
                 }
             }
@@ -511,6 +527,26 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             String out = selectedFilter.setParameters(command, input);
             log.info("Execute Command:" + input);
             return out;
+        }
+    }
+
+    /**
+     * Fills lastTimesMap with waiting times drawn from Poisson process with
+     * rate noiseRateHz
+     *
+     * @param lastTimesMap map
+     * @param noiseRateHz rate in Hz
+     * @param lastTimestampUs the last timestamp; waiting times are created
+     * before this time
+     */
+    protected void initializeLastTimesMapForNoiseRate(int[][] lastTimesMap, float noiseRateHz, int lastTimestampUs) {
+        for (final int[] arrayRow : lastTimesMap) {
+            for (int i = 0; i < arrayRow.length; i++) {
+                final float p = random.nextFloat();
+                final double t = -noiseRateHz * Math.log(1 - p);
+                final int tUs = (int) (1000000 * t);
+                arrayRow[i] = lastTimestampUs - tUs;
+            }
         }
     }
 

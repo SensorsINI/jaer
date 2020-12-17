@@ -514,4 +514,9 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter  {
         putFloat("mArrayThrInit", mArrayThrInit);
     }
 
+    @Override
+    public int[][] getLastTimesMap() {
+        return lastTimesMap;
+    }
+
 }

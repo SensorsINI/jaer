@@ -21,8 +21,8 @@ package net.sf.jaer.eventprocessing.filter;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
-import java.io.IOException;
 import java.util.HashMap;
+import java.util.Random;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -39,18 +39,21 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     protected boolean showFilteringStatistics = getBoolean("showFilteringStatistics", true);
     protected int totalEventCount = 0;
     protected int filteredOutEventCount = 0;
-    /** Map from noise filters to drawing positions of noise filtering statistics annotations */
-    static protected HashMap<AbstractNoiseFilter,Integer> noiseStatDrawingMap=new HashMap<AbstractNoiseFilter,Integer>();
-    protected int statisticsDrawingPosition=-10; // y coordinate we write ourselves to, start with -10 so we end up at 0 for first one (hack)
+    /**
+     * Map from noise filters to drawing positions of noise filtering statistics
+     * annotations
+     */
+    static protected HashMap<AbstractNoiseFilter, Integer> noiseStatDrawingMap = new HashMap<AbstractNoiseFilter, Integer>();
+    protected int statisticsDrawingPosition = -10; // y coordinate we write ourselves to, start with -10 so we end up at 0 for first one (hack)
 
     public AbstractNoiseFilter(AEChip chip) {
         super(chip);
         setPropertyTooltip("showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
-        
+
         if (chip.getRemoteControl() != null) {
             chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");
         }
-   }
+    }
 
     /**
      * @return the showFilteringStatistics
@@ -89,17 +92,19 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 
     protected void findUnusedDawingY() {
         // find a y posiiton not used yet for us
-        if(noiseStatDrawingMap.get(this)==null){
-            for(int y:noiseStatDrawingMap.values()){
-                if(y>statisticsDrawingPosition) statisticsDrawingPosition=y;
+        if (noiseStatDrawingMap.get(this) == null) {
+            for (int y : noiseStatDrawingMap.values()) {
+                if (y > statisticsDrawingPosition) {
+                    statisticsDrawingPosition = y;
+                }
             }
-            statisticsDrawingPosition=statisticsDrawingPosition+10;
-            noiseStatDrawingMap.put(this,statisticsDrawingPosition);
+            statisticsDrawingPosition = statisticsDrawingPosition + 10;
+            noiseStatDrawingMap.put(this, statisticsDrawingPosition);
         }
     }
-     
+
     private String USAGE = "Need at least 2 arguments: noisefilter <command> <args>\nCommands are: specific to the filter\n";
- 
+
     public String processRemoteControlCommand(RemoteControlCommand command, String input) {
         String[] tok = input.split("\\s", 3);
         if (tok.length < 2) {
@@ -109,15 +114,17 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         log.info("Received Command:" + input);
         return USAGE;
     }
-    
+
     public String setParameters(RemoteControlCommand command, String input) {
         String[] tok = input.split("\\s", 3);
         if (tok.length < 2) {
             return USAGE;
         }
-        
+
         return USAGE;
     }
-
+    
+    /** Returns lastTimesMap if there is one, or null if filter does not use it */
+    public abstract int[][] getLastTimesMap();
 
 }

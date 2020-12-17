@@ -115,9 +115,6 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             }
             totalEventCount++;
             int ts = e.timestamp;
-            if (ts < lastTimestamp) {
-                resetFilter(); // handle rewind TODO check if this breaks with nonmonotonic timestamps
-            }
             lastTimestamp = ts;
             final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy);
             if ((x < 0) || (x >= sx) || (y < 0) || (y >= sy)) {
@@ -144,15 +141,16 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     if ((xx < 0) || (xx >= sx) || (yy < 0) || (yy >= sy)) {
                         continue;
                     }
-                    if(xx==x && yy==y){
+                    if (xx == x && yy == y) {
                         continue; // like BAF, don't correlate with ourself
                     }
                     final int lastT = lastTimesMap[xx][yy];
                     final int deltaT = (ts - lastT);
                     if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) {
                         ncorrelated++;
-                        if(ncorrelated>=numMustBeCorrelated)
+                        if (ncorrelated >= numMustBeCorrelated) {
                             break; // csn stop checking now
+                        }
                     }
                 }
             }
@@ -197,20 +195,21 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     @Override
     public synchronized final void resetFilter() {
-        initFilter();
+        log.info("resetting SpatioTemporalCorrelationFilter");
+        for (int[] arrayRow : lastTimesMap) {
+            Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
+        }
     }
 
     @Override
     public final void initFilter() {
         allocateMaps(chip);
+        resetFilter();
     }
 
     private void allocateMaps(AEChip chip) {
-        if ((chip != null) && (chip.getNumCells() > 0)) {
+        if ((chip != null) && (chip.getNumCells() > 0) && (lastTimesMap==null|| lastTimesMap.length!=chip.getSizeX()>>subsampleBy)) {
             lastTimesMap = new int[chip.getSizeX() >> subsampleBy][chip.getSizeY() >> subsampleBy];
-            for (int[] arrayRow : lastTimesMap) {
-                Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
-            }
         }
         binDim = 1 << activityBinDimBits;
         nBinsX = chip.getSizeX() / binDim;
@@ -219,6 +218,11 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         activityHistInput = new int[nBinsX + 1][nBinsY + 1];
         activityHistFiltered = new int[nBinsX + 1][nBinsY + 1];
         lastTimestamp = DEFAULT_TIMESTAMP;
+    }
+
+    @Override
+    public int[][] getLastTimesMap() {
+        return lastTimesMap;
     }
 
     public Object getFilterState() {
@@ -323,7 +327,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         } else if (numMustBeCorrelated > 9) {
             numMustBeCorrelated = 9;
         }
-        
+
         getSupport().firePropertyChange("numMustBeCorrelated", this.numMustBeCorrelated, numMustBeCorrelated);
         putInt("numMustBeCorrelated", numMustBeCorrelated);
         this.numMustBeCorrelated = numMustBeCorrelated;
@@ -496,20 +500,19 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     @Override
     public String setParameters(RemoteControlCommand command, String input) {
         String[] tok = input.split("\\s");
-        
+
         if (tok.length < 3) {
             return USAGE;
         }
         try {
 
             if ((tok.length - 1) % 2 == 0) {
-                for (int i = 1; i < tok.length; i++) {       
+                for (int i = 1; i < tok.length; i++) {
                     if (tok[i].equals("dt")) {
                         setDt(Integer.parseInt(tok[i + 1]));
-                    }
-                    else if (tok[i].equals("numMustBeCorrelated")) {
+                    } else if (tok[i].equals("numMustBeCorrelated")) {
                         setNumMustBeCorrelated(Integer.parseInt(tok[i + 1]));
-                    }                    
+                    }
                 }
                 String out = "successfully set SpatioTemporalFilter parameters dt " + String.valueOf(dt) + " and numMustBeCorrelated " + String.valueOf(numMustBeCorrelated);
                 return out;
