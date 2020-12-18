@@ -50,10 +50,6 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         super(chip);
         setPropertyTooltip("showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
         setPropertyTooltip("correlationTimeS", "Correlation time for noise filters that use this parameter");
-
-        if (chip.getRemoteControl() != null) {
-            chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");
-        }
     }
 
     /**

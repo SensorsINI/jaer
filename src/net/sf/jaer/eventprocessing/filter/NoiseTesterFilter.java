@@ -95,7 +95,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip("leakNoiseRateHz", "rate per pixel of leak noise events");
         setPropertyTooltip("csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
         if (chip.getRemoteControl() != null) {
-            System.out.printf("add command listener\n");
+            log.info("adding RemoteControlCommand listener to AEChip\n");
             chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");
         }
     }
@@ -509,6 +509,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     @Override
     public String processRemoteControlCommand(RemoteControlCommand command, String input) {
         // parse command and set parameters of NoiseTesterFilter, and pass command to specific filter for further processing
+        // e.g. 
+        // setNoiseFilterParameters csvFilename 10msBAFdot_500m_0m_300num0 shotNoiseRateHz 0.5 leakNoiseRateHz 0 dt 300 num 0
         String[] tok = input.split("\\s");
         if (tok.length < 2) {
             return USAGE;
