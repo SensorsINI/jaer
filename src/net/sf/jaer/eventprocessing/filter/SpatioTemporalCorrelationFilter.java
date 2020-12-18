@@ -20,6 +20,7 @@ import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.RemoteControlCommand;
+import net.sf.jaer.util.TobiLogger;
 
 /**
  * An filter derived from BackgroundActivityFilter that only passes events that
@@ -55,6 +56,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     private float entropyReductionHighLimit = getFloat("entropyReductionHighLimit", .4f);
     private float entropyReductionLowLimit = getFloat("entropyReductionLowLimit", .1f);
     private float dtChangeFraction = getFloat("dtChangeFraction", 0.01f);
+    private TobiLogger tobiLogger = null;
 
     /**
      * the amount to subsample x and y event location by in bit shifts when
@@ -81,6 +83,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         setPropertyTooltip(adap, "entropyReductionHighLimit", "if entropy reduction from filtering is above this limit, increase dt");
         setPropertyTooltip(adap, "dtChangeFraction", "fraction by which dt is increased/decreased per packet if entropyReduction is too low/high");
         setPropertyTooltip(disp, "showFilteringStatistics", "annotate display with statistics");
+        setPropertyTooltip(disp, "LogControl", "write CSV with control data");
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
     }
 
@@ -166,6 +169,23 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             adaptFiltering();
         }
         return in;
+    }
+
+    public void doToggleOnLogControl() {
+        if(tobiLogger!=null){
+            tobiLogger.setEnabled(false);
+            tobiLogger.setEnabled(true);
+        }else{
+            tobiLogger=new TobiLogger("SpatioTemporalCorrelationFilter-log.csv", "# SpatioTemporalCorrelationFilter control logging");
+            tobiLogger.setHeaderLine("lastTimestamp,entropyReductionLowLimit,entropyReductionHighLimit,entropyInput,entropyFiltered,entropyReduction,olddt,newdt");
+            tobiLogger.setEnabled(true);
+        }
+    }
+
+    public void doToggleOffLogControl() {
+        if(tobiLogger!=null){
+            tobiLogger.setEnabled(false);
+        }
     }
 
     @Override
@@ -390,6 +410,10 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             }
             setDt(newdt); // decrease dt to force more correlation
 
+        }
+        if(tobiLogger!=null && tobiLogger.isEnabled()){
+            String s=String.format("%d,%f,%f,%f,%f,%f,%d,%d",lastTimestamp,entropyReductionLowLimit,entropyReductionHighLimit,entropyInput, entropyFiltered, entropyReduction,olddt,getDt());
+            tobiLogger.log(s);
         }
     }
 
