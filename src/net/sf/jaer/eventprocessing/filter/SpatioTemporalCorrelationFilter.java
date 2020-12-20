@@ -53,10 +53,11 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     private float entropyInput = 0, entropyFiltered = 0;
     private float entropyReduction;
     private boolean adaptiveFilteringEnabled = getBoolean("adaptiveFilteringEnabled", false);
-    private float entropyReductionHighLimit = getFloat("entropyReductionHighLimit", .4f);
-    private float entropyReductionLowLimit = getFloat("entropyReductionLowLimit", .1f);
+    private float entropyReductionHighLimit = getFloat("entropyReductionHighLimit", 1f);
+    private float entropyReductionLowLimit = getFloat("entropyReductionLowLimit", .5f);
     private float dtChangeFraction = getFloat("dtChangeFraction", 0.01f);
     private TobiLogger tobiLogger = null;
+    static final float LOG2_FACTOR = (float) (1 / Math.log(2));
 
     /**
      * the amount to subsample x and y event location by in bit shifts when
@@ -172,18 +173,18 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     }
 
     public void doToggleOnLogControl() {
-        if(tobiLogger!=null){
+        if (tobiLogger != null) {
             tobiLogger.setEnabled(false);
             tobiLogger.setEnabled(true);
-        }else{
-            tobiLogger=new TobiLogger("SpatioTemporalCorrelationFilter-log.csv", "# SpatioTemporalCorrelationFilter control logging");
+        } else {
+            tobiLogger = new TobiLogger("SpatioTemporalCorrelationFilter-log.csv", "# SpatioTemporalCorrelationFilter control logging");
             tobiLogger.setHeaderLine("lastTimestamp,entropyReductionLowLimit,entropyReductionHighLimit,entropyInput,entropyFiltered,entropyReduction,olddt,newdt");
             tobiLogger.setEnabled(true);
         }
     }
 
     public void doToggleOffLogControl() {
-        if(tobiLogger!=null){
+        if (tobiLogger != null) {
             tobiLogger.setEnabled(false);
         }
     }
@@ -202,8 +203,8 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
         String s = null;
         if (adaptiveFilteringEnabled) {
-            s = String.format("%s: dt=%.1fms, filteredOutPercent=%%%.1f, entropyReduction=%.1f",
-                    getClass().getSimpleName(), dt * 1e-3f, filteredOutPercent, entropyReduction);
+            s = String.format("STCF: dt=%.1fms filOut=%%%.1f entropy bef/aft/reduc=%.1f/%.1f/%.1f",
+                     dt * 1e-3f, filteredOutPercent, entropyInput,entropyFiltered,entropyReduction);
         } else {
             s = String.format("%s: filtered out %%%6.1f",
                     getClass().getSimpleName(),
@@ -392,8 +393,8 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 }
             }
         }
-        entropyFiltered = -entropyFiltered;
-        entropyInput = -entropyInput;
+        entropyFiltered = -LOG2_FACTOR * entropyFiltered;
+        entropyInput = -LOG2_FACTOR * entropyInput;
         entropyReduction = entropyInput - entropyFiltered;
         int olddt = getDt();
         if (entropyReduction > entropyReductionHighLimit) {
@@ -411,8 +412,8 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             setDt(newdt); // decrease dt to force more correlation
 
         }
-        if(tobiLogger!=null && tobiLogger.isEnabled()){
-            String s=String.format("%d,%f,%f,%f,%f,%f,%d,%d",lastTimestamp,entropyReductionLowLimit,entropyReductionHighLimit,entropyInput, entropyFiltered, entropyReduction,olddt,getDt());
+        if (tobiLogger != null && tobiLogger.isEnabled()) {
+            String s = String.format("%d,%f,%f,%f,%f,%f,%d,%d", lastTimestamp, entropyReductionLowLimit, entropyReductionHighLimit, entropyInput, entropyFiltered, entropyReduction, olddt, getDt());
             tobiLogger.log(s);
         }
     }
