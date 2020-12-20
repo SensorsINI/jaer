@@ -432,20 +432,20 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
         }
 
-        synchronized void filter(String s) {
+        synchronized void filter(String filterString) {
             boolean onlyStable = onlyStableCB.isSelected();
-            if (((s == null) || s.equals("")) && !onlyStable) {
+            if (((filterString == null) || filterString.equals("")) && !onlyStable) {
                 resetList();
                 return;
             }
             boolean passAllStable = false;
-            if (onlyStable && ((s == null) || s.equals(""))) {
+            if (onlyStable && ((filterString == null) || filterString.equals(""))) {
                 passAllStable = true; // pass all stable filters 
             }
 
             boolean includeExperimental = includeExperimentalCB.isSelected();
 
-            filterString = s.toLowerCase();
+//            filterString = filterString.toLowerCase(); // camelcase search
             resetList();
 
             Vector v = new Vector();  // list to prune out
@@ -474,14 +474,18 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                         continue;
                     }
                     if (includeDescriptionCB.isSelected()) {
-                        str = (cn.toString() + cn.getDescription()).toLowerCase();
+                        str = (cn.toString() + cn.getDescription()); // camelcase search// .toLowerCase();
                     } else {
                         str = cn.toString();
                     }
-                    int ind = str.indexOf(filterString);
-                    if (ind == -1 || (!isStable && onlyStable)) {
+                    String match=CamelCaseSearch.matchCamelCase(filterString, str);
+                    if(match==null || (!isStable && onlyStable)){
                         v.add(o);
                     }
+//                    int ind = str.indexOf(filterString);
+//                    if (ind == -1 || (!isStable && onlyStable)) {
+//                        v.add(o);
+//                    }
                 }
             }
             // prune list
@@ -566,7 +570,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
         filterLabel.setText("Filter");
 
-        availFilterTextField.setToolTipText("type any part of your filter name or description here to filter list");
+        availFilterTextField.setToolTipText("<html>\nStart typing any part of your filter name or description here to filter list.\n<br>\nYou can use CamelCase, e.g. use <i>BAFi</i> for <i>BackgroundActivityFilter</i>");
         availFilterTextField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 availFilterTextFieldActionPerformed(evt);

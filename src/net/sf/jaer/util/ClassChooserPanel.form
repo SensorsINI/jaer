@@ -174,7 +174,7 @@
         </Component>
         <Component class="javax.swing.JTextField" name="availFilterTextField">
           <Properties>
-            <Property name="toolTipText" type="java.lang.String" value="type any part of your filter name or description here to filter list"/>
+            <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;&#xa;Start typing any part of your filter name or description here to filter list.&#xa;&lt;br&gt;&#xa;You can use CamelCase, e.g. use &lt;i&gt;BAFi&lt;/i&gt; for &lt;i&gt;BackgroundActivityFilter&lt;/i&gt;"/>
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="availFilterTextFieldActionPerformed"/>
