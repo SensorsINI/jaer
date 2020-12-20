@@ -72,7 +72,6 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     public SpatioTemporalCorrelationFilter(AEChip chip) {
         super(chip);
-        initFilter();
         String filt = "1. basic params", adap = "2. AdaptiveFiltering", disp = "Display";
         setPropertyTooltip(filt, "dt", "Events with less than this delta time in us to neighbors pass through");
         setPropertyTooltip(filt, "subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
