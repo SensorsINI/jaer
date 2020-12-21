@@ -246,15 +246,13 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        final int dtThisPacket = t1 - t0ThisPacket + 1;
             // the time that is displayed in rolling window is some multiple of either current frame duration (for live playback) or timeslice (for recorded playback)
             int colorScale = getRenderer().getColorScale(); // use color scale to determine multiple, up and down arrows set it then
-            int newTimeWindowUs;
+            int newTimeWindowUs, frameDurationUs = 100000;
             if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
-                int frameDurationUs = (int) (1e6f / chip.getAeViewer().getFrameRater().getDesiredFPS());
-                newTimeWindowUs = frameDurationUs * (1 << colorScale);
+                frameDurationUs = (int) (1e6f / chip.getAeViewer().getFrameRater().getDesiredFPS());
             } else if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
-                newTimeWindowUs = chip.getAeViewer().getAePlayer().getTimesliceUs() * (1 << colorScale);
-            } else {
-                newTimeWindowUs = 100000; // 100ms
+                frameDurationUs = chip.getAeViewer().getAePlayer().getTimesliceUs();
             }
+            newTimeWindowUs = (int) (frameDurationUs * Math.pow(2, (colorScale - 1) / 4f));
             if (newTimeWindowUs < 10000) {
                 newTimeWindowUs = 10000; // tobi - don't let time get too short for window, minimum 10ms
             }
