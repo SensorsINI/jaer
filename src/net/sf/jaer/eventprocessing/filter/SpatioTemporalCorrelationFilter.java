@@ -66,6 +66,8 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
      * x and y are shifted right by one bit
      */
     private int subsampleBy = getInt("subsampleBy", 0);
+    private int sx;
+    private int sy;
 
     int[][] lastTimesMap;
     private int ts = 0, lastTimestamp = DEFAULT_TIMESTAMP; // used to reset filter
@@ -101,10 +103,12 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         filteredOutEventCount = 0;
         final int sx = chip.getSizeX() >> subsampleBy;
         final int sy = chip.getSizeY() >> subsampleBy;
-        if (lastTimesMap == null || lastTimesMap.length != sx || lastTimesMap[0].length != sy) {
-            allocateMaps(chip);
+//        if (lastTimesMap == null || lastTimesMap.length != sx || lastTimesMap[0].length != sy) {
+//            allocateMaps(chip);
+//        }
+        if (adaptiveFilteringEnabled) {
+            resetActivityHistograms();
         }
-        resetActivityHistograms();
 
         // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
@@ -125,12 +129,18 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 filteredOutEventCount++;
                 continue;
             }
-            int ax = x >> activityBinDimBits, ay = y >> activityBinDimBits;
-            activityHistInput[ax][ay]++;
+            int ax = 0, ay = 0; // must initialize, compute later
+            if (adaptiveFilteringEnabled) {
+                ax = x >> activityBinDimBits;
+                ay = y >> activityBinDimBits;
+                activityHistInput[ax][ay]++;
+            }
             if (lastTimesMap[x][y] == DEFAULT_TIMESTAMP) {
                 lastTimesMap[x][y] = ts;
                 if (letFirstEventThrough) {
-                    activityHistFiltered[ax][ay]++;
+                    if (adaptiveFilteringEnabled) {
+                        activityHistFiltered[ax][ay]++;
+                    }
                     continue;
                 } else {
                     e.setFilteredOut(true);
@@ -139,6 +149,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 }
             }
             int ncorrelated = 0;
+            outerloop:
             for (int xx = x - 1; xx <= x + 1; xx++) {
                 for (int yy = y - 1; yy <= y + 1; yy++) {
                     if ((xx < 0) || (xx >= sx) || (yy < 0) || (yy >= sy)) {
@@ -152,7 +163,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) {
                         ncorrelated++;
                         if (ncorrelated >= numMustBeCorrelated) {
-                            break; // csn stop checking now
+                            break outerloop; // csn stop checking now
                         }
                     }
                 }
@@ -161,11 +172,13 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 e.setFilteredOut(true);
                 filteredOutEventCount++;
             } else {
-                activityHistFiltered[ax][ay]++;
+                if (adaptiveFilteringEnabled) {
+                    activityHistFiltered[ax][ay]++;
+                }
             }
             lastTimesMap[x][y] = ts;
         }
-        if (totalEventCount > 0) { // don't adjust if there were no DVS events (i.e. only APS turned on)
+        if (adaptiveFilteringEnabled && totalEventCount > 0) { // don't adjust if there were no DVS events (i.e. only APS turned on)
             adaptFiltering();
         }
         return in;
@@ -203,7 +216,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         String s = null;
         if (adaptiveFilteringEnabled) {
             s = String.format("STCF: dt=%.1fms filOut=%%%.1f entropy bef/aft/reduc=%.1f/%.1f/%.1f",
-                     dt * 1e-3f, filteredOutPercent, entropyInput,entropyFiltered,entropyReduction);
+                    dt * 1e-3f, filteredOutPercent, entropyInput, entropyFiltered, entropyReduction);
         } else {
             s = String.format("%s: filtered out %%%6.1f",
                     getClass().getSimpleName(),
@@ -223,6 +236,8 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     @Override
     public final void initFilter() {
+        sx = chip.getSizeX() - 1;
+        sy = chip.getSizeY() - 1;
         allocateMaps(chip);
         resetFilter();
     }
@@ -426,6 +441,9 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     }
 
     private void resetActivityHistograms() {
+        if (!adaptiveFilteringEnabled) {
+            return;
+        }
         for (int[] i : activityHistInput) {
             Arrays.fill(i, 0);
         }

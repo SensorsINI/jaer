@@ -44,15 +44,14 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
      * x and y are shifted right by one bit
      */
     private int subsampleBy = getInt("subsampleBy", 0);
-
-    int[][] lastTimesMap;
-    private int ts = 0, lastTimestamp = DEFAULT_TIMESTAMP; // used to reset filter
     private int sx;
     private int sy;
 
+    int[][] lastTimesMap;
+    private int ts = 0, lastTimestamp = DEFAULT_TIMESTAMP; // used to reset filter
+
     public BackgroundActivityFilter(AEChip chip) {
         super(chip);
-        initFilter();
         setPropertyTooltip("dt", "Events with less than this delta time in us to neighbors pass through");
         setPropertyTooltip("subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
         setPropertyTooltip("letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
@@ -68,9 +67,9 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
      */
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        if (lastTimesMap == null) {
-            allocateMaps(chip);
-        }
+//        if (lastTimesMap == null) {
+//            allocateMaps(chip);
+//        }
         totalEventCount = 0;
         filteredOutEventCount = 0;
 
@@ -116,6 +115,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
             }
             final int numMustBeCorrelated = 1;
             int ncorrelated = 0;
+            outerloop:
             for (int xx = x - 1; xx <= x + 1; xx++) {
                 for (int yy = y - 1; yy <= y + 1; yy++) {
                     if ((xx < 0) || (xx >= sx) || (yy < 0) || (yy >= sy)) {
@@ -128,16 +128,15 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
                     final int deltaT = (ts - lastT);
                     if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) {
                         ncorrelated++;
-                        break; // can break as soon as we get one
+                        break outerloop; // csn stop checking n                    }
                     }
                 }
+                if (ncorrelated < numMustBeCorrelated) {
+                    e.setFilteredOut(true);
+                    filteredOutEventCount++;
+                }
+                lastTimesMap[x][y] = ts;
             }
-            if (ncorrelated < numMustBeCorrelated) {
-                e.setFilteredOut(true);
-                filteredOutEventCount++;
-            }
-            lastTimesMap[x][y] = ts;
-
 //            if (!((deltaT < dt) && (lastT != DEFAULT_TIMESTAMP)) && !(letFirstEventThrough && lastT == DEFAULT_TIMESTAMP)) {
 //                e.setFilteredOut(true);
 //                filteredOutEventCount++;
@@ -158,29 +157,35 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
 //                lastTimesMap[x - 1][y + 1] = ts;
 //                lastTimesMap[x + 1][y - 1] = ts;
 //            }
+            }
+
+            return in;
         }
 
-        return in;
-    }
-
-    @Override
-    public synchronized final void resetFilter() {
+        @Override
+        public synchronized final void resetFilter
+        
+            () {
         log.info("resetting BackgroundActivityFilter");
-        for (int[] arrayRow : lastTimesMap) {
-            Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
+            for (int[] arrayRow : lastTimesMap) {
+                Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
+            }
         }
-    }
 
-    @Override
-    public final void initFilter() {
+        @Override
+        public final void initFilter
+        
+            () {
         allocateMaps(chip);
-        sx = chip.getSizeX() - 1;
-        sy = chip.getSizeY() - 1;
-        resetFilter();
-    }
+            sx = chip.getSizeX() - 1;
+            sy = chip.getSizeY() - 1;
+            resetFilter();
+        }
+
+    
 
     private void allocateMaps(AEChip chip) {
-       if ((chip != null) && (chip.getNumCells() > 0) && (lastTimesMap==null|| lastTimesMap.length!=chip.getSizeX()>>subsampleBy)) {
+        if ((chip != null) && (chip.getNumCells() > 0) && (lastTimesMap == null || lastTimesMap.length != chip.getSizeX() >> subsampleBy)) {
             lastTimesMap = new int[chip.getSizeX() >> subsampleBy][chip.getSizeY() >> subsampleBy];
         }
     }
@@ -311,14 +316,12 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
 
     @Override
     public float getCorrelationTimeS() {
-        return this.dt*1e-6f;
+        return this.dt * 1e-6f;
     }
 
     @Override
     public void setCorrelationTimeS(float dtS) {
-        setDt((int)(dtS*1e6));
-   }
-    
-    
+        setDt((int) (dtS * 1e6));
+    }
 
 }
