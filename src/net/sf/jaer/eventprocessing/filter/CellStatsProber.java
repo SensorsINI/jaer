@@ -581,6 +581,8 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                             } catch (OutOfMemoryError ex) {
                                 log.warning(String.format("Out of heap memory, try a smaller ROI?: See https://stackoverflow.com/questions/511013/how-to-handle-outofmemoryerror-in-java (%s)", ex.toString()));
                                 histMap.clear();
+                                clearSelection();
+                                selecting=true; // to disable stats
 //                                setFilterEnabled(false);
                                 return;
                             }
@@ -1086,6 +1088,9 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             int old = this.isiNumBins;
             if (isiNumBins < 1) {
                 isiNumBins = 1;
+            }else if(isiNumBins>1000){
+                log.warning("too many bins, limit is 1000");
+                isiNumBins=1000;
             }
             this.isiNumBins = isiNumBins;
             reset();
