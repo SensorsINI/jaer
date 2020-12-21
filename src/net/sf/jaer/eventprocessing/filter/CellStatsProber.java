@@ -170,6 +170,10 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 
     }
 
+    private void clearSelection(){
+        selection=null;
+    }
+    
     private void getSelection(MouseEvent e) {
         Point p = canvas.getPixelFromMouseEvent(e);
         endPoint = p;
@@ -545,6 +549,11 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 //            if (selection == null) {
 //                return;
 //            }
+            if (selecting) {
+                histMap.clear();
+                globalHist.reset();
+                return;
+            }
             nPixels = selection == null ? chip.getNumPixels() : (selection.width) * (selection.height);
             stats.count = 0;
             for (BasicEvent e : in) {
@@ -566,8 +575,15 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                     if (isiHistEnabled && individualISIsEnabled) {
                         ISIHist h = histMap.get(e.address);
                         if (h == null) {
-                            h = new ISIHist(e.address);
-                            histMap.put(e.address, h);
+                            try {
+                                h = new ISIHist(e.address);
+                                histMap.put(e.address, h);
+                            } catch (OutOfMemoryError ex) {
+                                log.warning(String.format("Out of heap memory, try a smaller ROI?: See https://stackoverflow.com/questions/511013/how-to-handle-outofmemoryerror-in-java (%s)", ex.toString()));
+                                histMap.clear();
+//                                setFilterEnabled(false);
+                                return;
+                            }
                             // System.out.println("added hist for "+e);
                         }
                         h.addEvent(e);
@@ -1328,7 +1344,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
      */
     public void setFreqHistEnabled(boolean freqHistEnabled) {
         this.freqHistEnabled = freqHistEnabled;
-        putBoolean("freqHistEnabled",freqHistEnabled);
+        putBoolean("freqHistEnabled", freqHistEnabled);
     }
 
 }
