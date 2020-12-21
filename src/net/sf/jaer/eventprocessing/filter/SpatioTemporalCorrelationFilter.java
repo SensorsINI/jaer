@@ -101,8 +101,6 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     synchronized public EventPacket filterPacket(EventPacket in) {
         totalEventCount = 0;
         filteredOutEventCount = 0;
-        final int sx = chip.getSizeX() >> subsampleBy;
-        final int sy = chip.getSizeY() >> subsampleBy;
 //        if (lastTimesMap == null || lastTimesMap.length != sx || lastTimesMap[0].length != sy) {
 //            allocateMaps(chip);
 //        }

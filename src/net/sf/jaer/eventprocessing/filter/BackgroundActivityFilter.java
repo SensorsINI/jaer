@@ -157,32 +157,26 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
 //                lastTimesMap[x - 1][y + 1] = ts;
 //                lastTimesMap[x + 1][y - 1] = ts;
 //            }
-            }
-
-            return in;
         }
 
-        @Override
-        public synchronized final void resetFilter
-        
-            () {
+        return in;
+    }
+
+    @Override
+    public synchronized final void resetFilter() {
         log.info("resetting BackgroundActivityFilter");
-            for (int[] arrayRow : lastTimesMap) {
-                Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
-            }
+        for (int[] arrayRow : lastTimesMap) {
+            Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
         }
+    }
 
-        @Override
-        public final void initFilter
-        
-            () {
+    @Override
+    public final void initFilter() {
         allocateMaps(chip);
-            sx = chip.getSizeX() - 1;
-            sy = chip.getSizeY() - 1;
-            resetFilter();
-        }
-
-    
+        sx = chip.getSizeX() - 1;
+        sy = chip.getSizeY() - 1;
+        resetFilter();
+    }
 
     private void allocateMaps(AEChip chip) {
         if ((chip != null) && (chip.getNumCells() > 0) && (lastTimesMap == null || lastTimesMap.length != chip.getSizeX() >> subsampleBy)) {
