@@ -275,6 +275,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         noiseFilters = new AbstractNoiseFilter[]{new BackgroundActivityFilter(chip), new SpatioTemporalCorrelationFilter(chip), new SequenceBasedFilter(chip), new OrderNBackgroundActivityFilter((chip))};
         for (AbstractNoiseFilter n : noiseFilters) {
+            n.initFilter();
             chain.add(n);
         }
         setEnclosedFilterChain(chain);
@@ -472,11 +473,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             log.info(String.format("got rewound event %s, setting reset on next packet flat", evt));
             resetCalled = true;
         }
-        if (evt.getPropertyName() == AEViewer.EVENT_CHIP) {
-            log.info(String.format("AEChip changed event %s, initializing filter", evt));
-            initFilter();
-        }
-
     }
 
     /**

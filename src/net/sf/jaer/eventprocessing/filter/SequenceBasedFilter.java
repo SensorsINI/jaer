@@ -47,13 +47,18 @@ import net.sf.jaer.util.RemoteControlCommand;
  *
  * @author Shssha Guo, tobi
  */
-@Description("Filters out uncorrelated background activity noise according to "
+@Description("FWF/DFWF Fixed Window and Double Fixed Window filter that Filters out uncorrelated background activity noise according to "
         + " spatio-temporal correlation but with a past event window. The past event window stores the past few events, usually 2 or 4 is enough, and requires negligible memory cost.")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 
 /**
+ * WF/DFWF Fixed Window and Double Fixed Window filter that Filters out
+ * uncorrelated background activity noise according to spatio-temporal
+ * correlation but with a past event window. The past event window stores the
+ * past few events, usually 2 or 4 is enough, and requires negligible memory
+ * cost.
  *
- * @author gss
+ * @author Shssha Guo
  */
 public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer {
 
@@ -72,8 +77,6 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
 //    private int subsampleBy = getInt("subsampleBy", 0);
     private int subsampleBy = 0;
 
-    private int firstEventTime;
-    private int lastEventTime;
     private int timeThr = 0;
 
     private int ts = 0; // used to reset filter
@@ -137,12 +140,6 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
      */
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        if (lastREvents == null) {
-            allocateMaps(chip);
-//            System.out.printf("after allocate  is: %d\n", (1 << subsampleBy << subsampleBy));
-//            basicThr = (int) (sx+1) * (sy+1) / ((1 << subsampleBy << subsampleBy) * eventCountWindow);
-//            timeThr = basicThr;
-        }
         totalEventCount = 0;
         filteredOutEventCount = 0;
 
@@ -159,9 +156,6 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
             }
 
             ts = e.timestamp;
-            if (totalEventCount == 0) {
-                firstEventTime = ts;
-            }
             totalEventCount++;
             short x = (short) (e.x >>> subsampleBy), y = (short) (e.y >>> subsampleBy);
             if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
@@ -257,43 +251,31 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
 
     @Override
     public synchronized final void resetFilter() {
-            frameid = 0;
+        frameid = 0;
     }
 
-    @Override
-    public void update(Observable o, Object arg) {
-        if ((arg != null) && ((arg == Chip2D.EVENT_SIZEX) || (arg == Chip2D.EVENT_SIZEY))) {
-            resetFilter();
-        }
-    }
 
     @Override
     public final void initFilter() {
-        allocateMaps(chip);
+        allocateMaps();
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
         frameid = 0;
-//        basicThr = (int) (sx+1) * (sy+1) / ((1 << subsampleBy << subsampleBy) * eventCountWindow);
-//        timeThr = basicThr;
-//        System.out.printf("the number is: %d %d\n",sx, sy);
     }
 
-    private void allocateMaps(AEChip chip) {
-        if ((chip != null) && (chip.getNumCells() > 0)) {
-            lastREvents = new short[wlen][2];
-            lastNEvents = new short[wlen][2];
+    private void allocateMaps() {
+        lastREvents = new short[wlen][2];
+        lastNEvents = new short[wlen][2];
 
-            for (short[] arrayRow : lastREvents) {
+        for (short[] arrayRow : lastREvents) {
+            Arrays.fill(arrayRow, (short) -1);
+        }
+        if (useDoubleMode == 1) {
+            for (short[] arrayRow : lastNEvents) {
                 Arrays.fill(arrayRow, (short) -1);
-            }
-            if (useDoubleMode == 1) {
-                for (short[] arrayRow : lastNEvents) {
-                    Arrays.fill(arrayRow, (short) -1);
-                }
             }
         }
     }
-
 
 //    // <editor-fold defaultstate="collapsed" desc="getter-setter for --SubsampleBy--">
 //    public int getSubsampleBy() {
@@ -342,9 +324,11 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
     }
 
     /**
+     * Sets the window length in events.
+     * 
      * @param wlen the wlen to set
      */
-    public void setWLen(int wlen) {
+    synchronized public void setWLen(int wlen) {
         int setValue = wlen;
         if (setValue < 1) {
             setValue = 1;
@@ -352,7 +336,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
         putInt("wlen", setValue);
         getSupport().firePropertyChange("wlen", this.wlen, setValue);
         this.wlen = setValue;
-
+        allocateMaps();
     }
 
     /**
@@ -363,6 +347,8 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
     }
 
     /**
+     * Sets to use double mode, where noise and signal events that are detected are put to different halves of the window.
+     * 
      * @param wlen the useDoubleMode to set
      */
     public void setUseDoubleMode(int useDoubleMode) {
@@ -382,9 +368,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
     /**
      * @param disThr the disThr to set
      */
-    public void setDisThr(int disThr) {
-//        this.disThr = disThr;
-//        putDouble("disThr", disThr);
+    synchronized public void setDisThr(int disThr) {
 
         int setValue = disThr;
         if (disThr < getMinDt()) {
@@ -435,12 +419,15 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
             return "IOExeption in remotecontrol " + e.toString() + "\n";
         }
     }
-    
-    
+
     @Override
     public int[][] getLastTimesMap() {
         return null;
     }
 
+    @Override
+    public void update(Observable o, Object o1) {
+        return;
+    }
 
 }

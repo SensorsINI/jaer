@@ -101,9 +101,9 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     synchronized public EventPacket filterPacket(EventPacket in) {
         totalEventCount = 0;
         filteredOutEventCount = 0;
-//        if (lastTimesMap == null || lastTimesMap.length != sx || lastTimesMap[0].length != sy) {
-//            allocateMaps(chip);
-//        }
+        if (lastTimesMap == null ) {
+            allocateMaps(chip);
+        }
         if (adaptiveFilteringEnabled) {
             resetActivityHistograms();
         }
@@ -122,7 +122,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             int ts = e.timestamp;
             lastTimestamp = ts;
             final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy);
-            if ((x < 0) || (x >= sx) || (y < 0) || (y >= sy)) {
+            if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
                 e.setFilteredOut(true);
                 filteredOutEventCount++;
                 continue;
@@ -150,7 +150,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             outerloop:
             for (int xx = x - 1; xx <= x + 1; xx++) {
                 for (int yy = y - 1; yy <= y + 1; yy++) {
-                    if ((xx < 0) || (xx >= sx) || (yy < 0) || (yy >= sy)) {
+                    if ((xx < 0) || (xx > sx) || (yy < 0) || (yy > sy)) {
                         continue;
                     }
                     if (xx == x && yy == y) {

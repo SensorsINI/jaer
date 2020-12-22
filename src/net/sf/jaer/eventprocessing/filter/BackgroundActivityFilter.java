@@ -52,9 +52,10 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
 
     public BackgroundActivityFilter(AEChip chip) {
         super(chip);
-        setPropertyTooltip("dt", "Events with less than this delta time in us to neighbors pass through");
+        setPropertyTooltip("dt", "Not used by this filter");
         setPropertyTooltip("subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
         setPropertyTooltip("letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
+        setPropertyTooltip("useDoubleMode", "Set 0 for FWF, 1 for DFWF.");
     }
 
     /**
@@ -67,11 +68,11 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
      */
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-//        if (lastTimesMap == null) {
-//            allocateMaps(chip);
-//        }
         totalEventCount = 0;
         filteredOutEventCount = 0;
+        if (lastTimesMap == null ) {
+            allocateMaps(chip);
+        }
 
         // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
@@ -87,22 +88,12 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
             int ts = e.timestamp;
             lastTimestamp = ts;
             final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy);
-            if ((x < 0) || (x >= sx) || (y < 0) || (y >= sy)) {
+            if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
                 e.setFilteredOut(true);
                 filteredOutEventCount++;
                 continue;
             }
 
-//            totalEventCount++;
-//            short x = (short) (e.x >>> subsampleBy), y = (short) (e.y >>> subsampleBy);
-//            if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
-//                filteredOutEventCount++;
-//                continue;
-//            }
-//
-//            ts = e.timestamp;
-//            int lastT = lastTimesMap[x][y];
-//            int deltaT = (ts - lastT);
             if (lastTimesMap[x][y] == DEFAULT_TIMESTAMP) {
                 lastTimesMap[x][y] = ts;
                 if (letFirstEventThrough) {
@@ -118,7 +109,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
             outerloop:
             for (int xx = x - 1; xx <= x + 1; xx++) {
                 for (int yy = y - 1; yy <= y + 1; yy++) {
-                    if ((xx < 0) || (xx >= sx) || (yy < 0) || (yy >= sy)) {
+                    if ((xx < 0) || (xx > sx) || (yy < 0) || (yy > sy)) {
                         continue;
                     }
                     if (xx == x && yy == y) {
@@ -137,26 +128,6 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
                 }
                 lastTimesMap[x][y] = ts;
             }
-//            if (!((deltaT < dt) && (lastT != DEFAULT_TIMESTAMP)) && !(letFirstEventThrough && lastT == DEFAULT_TIMESTAMP)) {
-//                e.setFilteredOut(true);
-//                filteredOutEventCount++;
-//            }
-//
-//            // For each event write the event's timestamp into the
-//            // lastTimesMap array at neighboring locations lastTimesMap[x][y]=ts;
-//            // Don't write to ourselves, we need support from neighbor for
-//            // next event.
-//            // Bounds checking here to avoid throwing expensive exceptions.
-//            if (((x > 0) && (x < sx)) && ((y > 0) && (y < sy))) {
-//                lastTimesMap[x - 1][y] = ts;
-//                lastTimesMap[x + 1][y] = ts;
-//                lastTimesMap[x][y - 1] = ts;
-//                lastTimesMap[x][y + 1] = ts;
-//                lastTimesMap[x - 1][y - 1] = ts;
-//                lastTimesMap[x + 1][y + 1] = ts;
-//                lastTimesMap[x - 1][y + 1] = ts;
-//                lastTimesMap[x + 1][y - 1] = ts;
-//            }
         }
 
         return in;
