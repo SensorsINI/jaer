@@ -111,7 +111,7 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
                 // if there was event (ts!=0), and the timestamp is recent enough, and the column was adjacent, then filter in
                 e.setFilteredOut(false);
                 saveEvent(e);
-                selfCorrelated = y == 0;
+//                selfCorrelated = y == 0;
             }
         }
         // now do same for columns
@@ -120,9 +120,9 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
                     && Math.abs(lastYByCol[e.x + x] - e.y) <= 1) {
                 e.setFilteredOut(false);
                 saveEvent(e);
-                if (selfCorrelated && x == 0) { // if we correlated with ourselves only, then filter out and just return
-                    e.setFilteredOut(true);
-                }
+//                if (selfCorrelated && x == 0) { // if we correlated with ourselves only, then filter out and just return
+//                    e.setFilteredOut(true);
+//                }
                 return;
             }
         }

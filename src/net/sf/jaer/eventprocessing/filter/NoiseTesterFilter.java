@@ -229,8 +229,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             totalEventCount += 1;
             signalList.add(e);
         }
+        
+        System.out.printf("in size and signal size are %d and %d\n", in.getSize(), signalList.size());
 
-        // add noise from in to the outputPacketWithNoiseAdded, track noise in noiseList
+        // add noise into signalList to get the outputPacketWithNoiseAdded, track noise in noiseList
         addNoise(in, signalAndNoisePacket, noiseList, shotNoiseRateHz, leakNoiseRateHz);
 
         // we need to copy the augmented event packet to a HashSet for use with Collections
@@ -241,46 +243,47 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
 
         // filter the augmented packet
-        EventPacket<BasicEvent> filteredSignalAndNoisePacket = getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
+        EventPacket<BasicEvent> passedSignalAndNoisePacket = getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
 
         // make a copy of the output packet, which has noise filtered out by selected filter
-//        HashSet filteredSignalAndNoiseList = new HashSet(filteredSignalAndNoisePacket.getSize());
-        EventSet filteredSignalAndNoiseList = new EventSet();
-        for (BasicEvent e : filteredSignalAndNoisePacket) {
-            filteredSignalAndNoiseList.add(e);
+//        HashSet passedSignalAndNoiseList = new HashSet(passedSignalAndNoisePacket.getSize());
+        EventSet passedSignalAndNoiseList = new EventSet();
+        for (BasicEvent e : passedSignalAndNoisePacket) {
+            passedSignalAndNoiseList.add(e);
         }
 
         // now we sort out the mess
         // make a list of everything that was removed
 //        Collection removedList = new HashSet(signalAndNoiseList); // start with S+N
         Collection removedList = new EventSet(signalAndNoiseList); // start with S+N
-        removedList.removeAll(filteredSignalAndNoiseList); // remove the filtered S+N, leaves everything that was filtered out
+        removedList.removeAll(passedSignalAndNoiseList); // remove the filtered S+N, leaves everything that was filtered out
 
         // False negatives: Signal that was incorrectly removed by filter.
 //        Collection fnList = new HashSet(signalList); // start with signal
         Collection fnList = new EventSet(signalList); // start with signal
-        fnList.removeAll(filteredSignalAndNoiseList);
-        // remove fron signal the filtered output which removes all signal left 
+        fnList.removeAll(passedSignalAndNoiseList);
+        // Signal - (passed Signal (TP)) = FN
+        // remove from signal the filtered output which removes all signal left 
         //over plus removes all noise (which is not there to start with).
         // What is left is signal that was removed by filtering, which are the false negatives
         FN = fnList.size();
 
         // True positives: Signal that was correctly retained by filtering
 //        Collection tpList = new HashSet(signalList); // start with signal
-        Collection tpList = new EventSet(signalList); // start with signal
-        tpList.retainAll(filteredSignalAndNoiseList); // signal intersect filtered S+N =  TP
+        Collection tpList = new EventSet(signalList); // start with passed signal
+        tpList.removeAll(fnList); // S = TP + FN, TP = S - FN
         TP = tpList.size();
 
         // False positives: Noise that is incorrectly passed by filter
-//        Collection fpList = new HashSet(noiseList); // start with filter output TP S + FP N
-        Collection fpList = new EventSet(noiseList); // start with filter output TP S + FP N
-        fpList.retainAll(filteredSignalAndNoiseList); // noise intersect with filtered S+N 
+//        Collection fpList = new HashSet(noiseList); // start with added noise
+        Collection fpList = new EventSet(noiseList); // start with added noise
+        fpList.retainAll(passedSignalAndNoiseList); // noise intersect with (passed S+N) which means noise are regarded as signal
         FP = fpList.size();
 
         // True negatives: Noise that was correctly removed by filter
 //        Collection tnList = new HashSet(removedList); // start with all N
-        Collection tnList = new EventSet(removedList); // start with all N
-        tnList.removeAll(signalList); // N - filtered S+N is noise
+        Collection tnList = new EventSet(noiseList); // start with noiseList
+        tnList.removeAll(passedSignalAndNoiseList); // N - (passed S + N) is N filtered out
         TN = tnList.size();
 
 //        System.out.printf("every packet is: %d %d %d %d %d, %d %d %d: %d %d %d %d\n", inList.size(), newInList.size(), outList.size(), outRealList.size(), outNoiseList.size(), outInitList.size(), outInitRealList.size(), outInitNoiseList.size(), TP, TN, FP, FN);
@@ -312,10 +315,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 doCloseCsvFile();
             }
         }
-        int outputEventCount = filteredSignalAndNoiseList.size();
+        int outputEventCount = passedSignalAndNoiseList.size();
         filteredOutEventCount = totalEventCount - outputEventCount;
 
-        return filteredSignalAndNoisePacket;
+        return passedSignalAndNoisePacket;
     }
 
     @Override
@@ -413,8 +416,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (csvFileName.toLowerCase().endsWith(".csv")) {
             csvFileName = csvFileName.substring(0, csvFileName.length() - 4);
         }
-        this.csvFileName = csvFileName;
+        
         putString("csvFileName", csvFileName);
+        getSupport().firePropertyChange("csvFileName", this.csvFileName, csvFileName);
+        this.csvFileName = csvFileName;
         openCvsFiile();
     }
 
@@ -571,7 +576,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             return USAGE;
         } else {
             for (int i = 1; i < tok.length; i++) {
-                if (tok[i].equals("csvFilename")) {
+                if (tok[i].equals("csvFileName")) {
                     setCsvFilename(tok[i + 1]);
                 } else if (tok[i].equals("shotNoiseRateHz")) {
                     setShotNoiseRateHz(Float.parseFloat(tok[i + 1]));
