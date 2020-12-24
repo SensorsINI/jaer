@@ -229,6 +229,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             totalEventCount += 1;
             signalList.add(e);
         }
+        
+        System.out.printf("in size and signal size are %d and %d\n", in.getSize(), signalList.size());
 
         // add noise into signalList to get the outputPacketWithNoiseAdded, track noise in noiseList
         addNoise(in, signalAndNoisePacket, noiseList, shotNoiseRateHz, leakNoiseRateHz);
@@ -268,8 +270,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         // True positives: Signal that was correctly retained by filtering
 //        Collection tpList = new HashSet(signalList); // start with signal
-        Collection tpList = new EventSet(signalList); // start with signal
-        tpList.retainAll(passedSignalAndNoiseList); // signal intersect (passed S+N) =  TP
+        Collection tpList = new EventSet(signalList); // start with passed signal
+        tpList.removeAll(fnList); // S = TP + FN, TP = S - FN
         TP = tpList.size();
 
         // False positives: Noise that is incorrectly passed by filter
@@ -414,8 +416,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (csvFileName.toLowerCase().endsWith(".csv")) {
             csvFileName = csvFileName.substring(0, csvFileName.length() - 4);
         }
-        this.csvFileName = csvFileName;
+        
         putString("csvFileName", csvFileName);
+        getSupport().firePropertyChange("csvFileName", this.csvFileName, csvFileName);
+        this.csvFileName = csvFileName;
         openCvsFiile();
     }
 
@@ -572,7 +576,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             return USAGE;
         } else {
             for (int i = 1; i < tok.length; i++) {
-                if (tok[i].equals("csvFilename")) {
+                if (tok[i].equals("csvFileName")) {
                     setCsvFilename(tok[i + 1]);
                 } else if (tok[i].equals("shotNoiseRateHz")) {
                     setShotNoiseRateHz(Float.parseFloat(tok[i + 1]));
