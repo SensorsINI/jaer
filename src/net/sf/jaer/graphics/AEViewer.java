@@ -620,6 +620,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.info("closing multicastOutput " + aeMulticastOutput);
             aeMulticastOutput.close();
         }
+        if(chip!=null){
+            chip.cleanup();
+        }
+        
     }
 
     private boolean isWindows() {

@@ -24,6 +24,9 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLException;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.Serializable;
+import java.util.logging.Level;
+import java.util.prefs.BackingStoreException;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
@@ -33,6 +36,7 @@ import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.HasPropertyTooltips;
+import net.sf.jaer.util.PrefObj;
 import net.sf.jaer.util.PropertyTooltipSupport;
 
 /**
@@ -93,7 +97,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      */
     protected PropertyChangeSupport support = new PropertyChangeSupport(this);
 
-    private boolean addedViewerPropertyChangeListener = false; 
+    private boolean addedViewerPropertyChangeListener = false;
     private boolean addTimeStampsResetPropertyChangeListener = false;
 
     /**
@@ -171,10 +175,10 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 
     /**
      * Can be used for lazy allocation and initialization of memory. It is
-     * called after the AEChip is constructed and preferred filters are added to the AEChip
-     * and after the EventFilter is added to the chip's
-     * FilterChain via the ClassChooserDialog, when
-     * filterChain.contructPreferredFilters() is called.
+     * called after the AEChip is constructed and preferred filters are added to
+     * the AEChip and after the EventFilter is added to the chip's FilterChain
+     * via the ClassChooserDialog, when filterChain.contructPreferredFilters()
+     * is called.
      */
     abstract public void initFilter();
 
@@ -184,6 +188,12 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * default.
      */
     synchronized public void cleanup() {
+        if(getEnclosedFilter()!=null){
+            getEnclosedFilter().cleanup();
+        }
+        if(getEnclosedFilterChain()!=null){
+            getEnclosedFilterChain().cleanup();
+        }
     }
 
     /**
@@ -226,7 +236,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
             String key = prefsEnabledKey();
             prefs.putBoolean(key, enabled);
         }
-        support.firePropertyChange("filterEnabled", wasEnabled,enabled);
+        support.firePropertyChange("filterEnabled", wasEnabled, enabled);
     }
 
     /**
@@ -511,10 +521,12 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         });
     }
 
-    /** Use this method at start of e.g. EventFilter.filterPacket() to add the property change listeners if needed.
-     * 
-     * @param chip 
-     * @see #propertyChange(java.beans.PropertyChangeEvent) 
+    /**
+     * Use this method at start of e.g. EventFilter.filterPacket() to add the
+     * property change listeners if needed.
+     *
+     * @param chip
+     * @see #propertyChange(java.beans.PropertyChangeEvent)
      */
     protected void maybeAddListeners(AEChip chip) {
         if (chip.getAeViewer() != null) {
@@ -530,9 +542,10 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     }
 
     /**
-     * Handles PropertyChangeEvent sent to us from various sources. 
+     * Handles PropertyChangeEvent sent to us from various sources.
      * Unfortunately we need to add ourselves as listeners for these property
-     * changes. Use maybeAddListeners in filterPacket to ensure PropertyChangeEvent are sent to us.
+     * changes. Use maybeAddListeners in filterPacket to ensure
+     * PropertyChangeEvent are sent to us.
      * <p>
      * The default implementation handles
      * <code>AEInputStreamEVENT_REWOUND</code> and
@@ -541,7 +554,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * AEFileInputStream.
      *
      * @param evt
-     * @see #maybeAddListeners(net.sf.jaer.chip.AEChip) 
+     * @see #maybeAddListeners(net.sf.jaer.chip.AEChip)
      */
     public void propertyChange(PropertyChangeEvent evt) {
         if (this.filterEnabled) {
@@ -795,6 +808,47 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 
     // <editor-fold defaultstate="collapsed" desc="-- putter Methods for types of preference variables --">
     /**
+     * Puts a preference for arbitrary Object, using PrefObj utility.
+     *
+     * @param key the property name, e.g. "hotPixels"
+     * @param o the Serializable Object to be stored, e.g. some instance of HotPixelMap
+     */
+    public void putObject(String key, Serializable o) {
+        try {
+            PrefObj.putObject(getPrefs(), prefsKeyHeader() + key, o);
+        } catch (IOException e) {
+            log.warning(String.format("Could not store preference for %s; got %s", key, e));
+        } catch (BackingStoreException e) {
+            log.warning(String.format("Could not store preference for %s; got %s", key, e));
+        } catch (ClassNotFoundException e) {
+            log.warning(String.format("Could not store preference for %s; got %s", key, e));
+        }
+    }
+
+    /**
+     * Gets a preference for arbitrary Object, using PrefObj utility.
+     *
+     * @param key the property name, e.g. "hotPixels"
+     * @param defObject the default Object
+     */
+    public Object getObject(String key, Object defObject) {
+        try {
+            Object o = PrefObj.getObject(getPrefs(), prefsKeyHeader() + key);
+            if (o == null) {
+                return defObject;
+            }
+            return o;
+        } catch (IOException ex) {
+            log.warning(String.format("Could not load preference for %s; got %s", key, ex));
+        } catch (BackingStoreException ex) {
+            log.warning(String.format("Could not load preference for %s; got %s", key, ex));
+        } catch (ClassNotFoundException ex) {
+            log.warning(String.format("Could not load preference for %s; got %s", key, ex));
+        } 
+        return defObject;
+    }
+
+    /**
      * Puts a preference.
      *
      * @param key the property name, e.g. "tauMs"
@@ -835,7 +889,8 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     }
 
     /**
-     * Puts a preference.
+     * Stores a byteArray. Can only store up to maximum size for Preferences
+     * value.
      *
      * @param key the property name, e.g. "tauMs"
      * @param value the value to be stored
@@ -845,7 +900,8 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     }
 
     /**
-     * Puts a preference.
+     * Puts a preference for float array, up to max size supported by
+     * Preferences value.
      *
      * @param key the property name, e.g. "tauMs"
      * @param value the value to be stored
