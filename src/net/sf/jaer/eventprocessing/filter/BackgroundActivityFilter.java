@@ -70,7 +70,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
     synchronized public EventPacket filterPacket(EventPacket in) {
         totalEventCount = 0;
         filteredOutEventCount = 0;
-        if (lastTimesMap == null ) {
+        if (lastTimesMap == null) {
             allocateMaps(chip);
         }
 
@@ -122,12 +122,12 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
                         break outerloop; // csn stop checking n                    }
                     }
                 }
-                if (ncorrelated < numMustBeCorrelated) {
-                    e.setFilteredOut(true);
-                    filteredOutEventCount++;
-                }
-                lastTimesMap[x][y] = ts;
             }
+            if (ncorrelated < numMustBeCorrelated) {
+                e.setFilteredOut(true);
+                filteredOutEventCount++;
+            }
+            lastTimesMap[x][y] = ts;
         }
 
         return in;
