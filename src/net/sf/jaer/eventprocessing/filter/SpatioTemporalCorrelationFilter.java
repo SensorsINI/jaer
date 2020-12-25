@@ -99,8 +99,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
      */
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        totalEventCount = 0;
-        filteredOutEventCount = 0;
+        super.filterPacket(in);
         if (lastTimesMap == null ) {
             allocateMaps(chip);
         }
@@ -123,8 +122,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             lastTimestamp = ts;
             final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy);
             if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
-                e.setFilteredOut(true);
-                filteredOutEventCount++;
+                filterOut(e);
                 continue;
             }
             int ax = 0, ay = 0; // must initialize, compute later
@@ -141,8 +139,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     }
                     continue;
                 } else {
-                    e.setFilteredOut(true);
-                    filteredOutEventCount++;
+                    filterOut(e);
                     continue;
                 }
             }
@@ -167,8 +164,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 }
             }
             if (ncorrelated < numMustBeCorrelated) {
-                e.setFilteredOut(true);
-                filteredOutEventCount++;
+                filterOut(e);
             } else {
                 if (adaptiveFilteringEnabled) {
                     activityHistFiltered[ax][ay]++;

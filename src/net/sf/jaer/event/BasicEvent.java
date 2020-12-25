@@ -267,20 +267,34 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
         this.filteredOut = filteredOut;
     }
 
+    /**
+     * Overrides default to use hashCode which considers timestamp, address,
+     * special and filtered out.
+     */
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof BasicEvent)) {
+        if (obj == null) {
+            return false;
+        }
+        if (this == obj) {
+            return true;
+        }
+        if (obj.getClass() != this.getClass()) {
             return false;
         }
         BasicEvent tgt = (BasicEvent) obj;
 
-        return (this.x == tgt.x) && (this.y == tgt.y) && (this.timestamp == tgt.timestamp);
+//        return (this.x == tgt.x) && (this.y == tgt.y) && (this.timestamp == tgt.timestamp) && (this.filteredOut==tgt.filteredOut) && (this.special==tgt.special);
+        return this.hashCode() == tgt.hashCode();
 
     }
 
-    /** Overrides hashCode to result in identical hashCode (even if for different objects) if the timestamp, x,y,filteredOut, and special fields are the same.
-     * 
-     * @return the hashcode 
+    /**
+     * Overrides hashCode to result in identical hashCode (even if for different
+     * objects) if the timestamp, x,y,filteredOut, and special fields are the
+     * same.
+     *
+     * @return the hashcode
      */
     @Override
     public int hashCode() {
@@ -293,14 +307,20 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
         return hash;
     }
 
-    /** Overrides built-in comparator to compare timestamps
-     * 
+    /**
+     * Overrides built-in comparator to compare timestamps, unless the events
+     * are equal() then return 0 always
+     *
      * @param t another BasicEvent
-     * @return timestamp difference, this event minus previous one. Result is positive if this event is later than previous one.
+     * @return timestamp difference, this event minus previous one. Result is
+     * positive if this event is later than previous one.
      */
     @Override
     public int compareTo(Object t) {
-        return this.timestamp-((BasicEvent)t).timestamp;
+        if(t==null) return 1;
+        if(!(t instanceof BasicEvent)) return 1;
+        if(this.hashCode()==t.hashCode()) return 0;
+        return this.timestamp - ((BasicEvent) t).timestamp; // if not, compare timestamps
     }
 
 }

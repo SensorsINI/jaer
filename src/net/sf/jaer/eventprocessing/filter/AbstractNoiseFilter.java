@@ -21,9 +21,11 @@ package net.sf.jaer.eventprocessing.filter;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Random;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.RemoteControlCommand;
@@ -39,6 +41,8 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     protected boolean showFilteringStatistics = getBoolean("showFilteringStatistics", true);
     protected int totalEventCount = 0;
     protected int filteredOutEventCount = 0;
+    /** list of filtered out events */
+    public ArrayList<BasicEvent> filteredOutEvents = new ArrayList();
     /**
      * Map from noise filters to drawing positions of noise filtering statistics
      * annotations
@@ -50,6 +54,29 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         super(chip);
         setPropertyTooltip("showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
         setPropertyTooltip("correlationTimeS", "Correlation time for noise filters that use this parameter");
+    }
+
+    /** Use to filter out events, updates the list of such events
+     * 
+     * @param e 
+     */
+    protected void filterOut(BasicEvent e) {
+        e.setFilteredOut(true);
+        filteredOutEventCount++;
+        filteredOutEvents.add(e);
+    }
+
+    /** Subclasses should call this before filtering to clear the filteredOutEventCount and filteredOutEvents
+     * 
+     * @param in
+     * @return 
+     */
+    @Override
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<?> in) {
+        filteredOutEvents.clear();
+        filteredOutEventCount = 0;
+        totalEventCount = 0;
+        return in;
     }
 
     /**
@@ -120,19 +147,24 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 
         return USAGE;
     }
-    
-    /** Returns lastTimesMap if there is one, or null if filter does not use it */
+
+    /**
+     * Returns lastTimesMap if there is one, or null if filter does not use it
+     */
     public abstract int[][] getLastTimesMap();
 
-    /** Sets the noise filter correlation time. Empty method that can be overridden
-     * 
-     * @param dtS time in seconds 
+    /**
+     * Sets the noise filter correlation time. Empty method that can be
+     * overridden
+     *
+     * @param dtS time in seconds
      */
-    public void setCorrelationTimeS(float dtS){
-        
+    public void setCorrelationTimeS(float dtS) {
+
     }
-    
-    public float getCorrelationTimeS(){
+
+    public float getCorrelationTimeS() {
         return 0;
     }
+
 }

@@ -117,22 +117,25 @@ public class PolarityEvent extends TypedEvent implements PolarityEventInterface 
 
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof PolarityEvent)) {
+        if (obj == null) {
+            return false;
+        }
+        if (this == obj) {
+            return true;
+        }
+        if (obj.getClass() != this.getClass()) {
             return false;
         }
         PolarityEvent tgt = (PolarityEvent) obj;
 
-        return (this.x == tgt.x) && (this.y == tgt.y) && (this.timestamp == tgt.timestamp) && (this.polarity == tgt.polarity);
+        return this.hashCode() == tgt.hashCode();
     }
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 67 * hash + Objects.hashCode(this.polarity);
+        int hash = super.hashCode();
+        hash = 89 * hash + (this.polarity==Polarity.On ? 1 : 0);
         return hash;
     }
-    
-    
-    
 
 }

@@ -140,8 +140,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
      */
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        totalEventCount = 0;
-        filteredOutEventCount = 0;
+        super.filterPacket(in);
 
         // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
@@ -159,12 +158,11 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
             totalEventCount++;
             short x = (short) (e.x >>> subsampleBy), y = (short) (e.y >>> subsampleBy);
             if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
-                filteredOutEventCount++;
+                filterOut(e);
                 continue;
             }
             if (fillindex < wlen && lastREvents[wlen - 1][0] == -1) {
-                e.setFilteredOut(true);
-                filteredOutEventCount++;
+                filterOut(e);
                 lastREvents[fillindex][0] = e.x;
                 lastREvents[fillindex][1] = e.y;
                 fillindex = fillindex + 1;
@@ -193,8 +191,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
                     mindisvalue = disarray[minindex];
 
                     if (mindisvalue > disThr) {
-                        e.setFilteredOut(true);
-                        filteredOutEventCount++;
+                        filterOut(e);
                         noiseflag = 1;
 
                     } else {
@@ -232,8 +229,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
                 int mindisvalue = disarray[minindex];
 
                 if (mindisvalue > disThr) {
-                    e.setFilteredOut(true);
-                    filteredOutEventCount++;
+                    filterOut(e);
                 }
 
 //                update window

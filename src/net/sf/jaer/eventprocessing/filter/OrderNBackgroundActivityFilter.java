@@ -55,16 +55,14 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        totalEventCount = 0;
-        filteredOutEventCount = 0;
+        super.filterPacket(in);
         for (BasicEvent e : in) {
             checkAndFilterEvent(e);
             totalEventCount++;
             if (e.isFilteredOut()) {
-                filteredOutEventCount++;
+                filterOut(e);
             }
         }
-//        filteredOutEventCount=in.getFilteredOutCount();
         return in;
     }
 
