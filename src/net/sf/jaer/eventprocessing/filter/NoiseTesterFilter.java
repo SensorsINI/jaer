@@ -43,8 +43,12 @@ import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
-import com.google.common.collect.TreeMultiset;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.sf.jaer.event.BasicEvent;
 
 /**
@@ -183,33 +187,85 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
 //    private TimeStampComparator timestampComparator = new TimeStampComparator<BasicEvent>();
-    private TreeMultiset<BasicEvent> createEventList() {
-//        return TreeMultiset.create(timestampComparator);
-        return TreeMultiset.create();
+    private ArrayList<BasicEvent> createEventList() {
+        return new ArrayList<BasicEvent>();
     }
 
-    private TreeMultiset<BasicEvent> createEventList(EventPacket<BasicEvent> p) {
-        TreeMultiset l = TreeMultiset.create();
-        BasicEvent lastE = null;
+    private class BackwardsTimestampException extends Exception {
+
+        public BackwardsTimestampException(String string) {
+            super(string);
+        }
+
+    }
+
+    private ArrayList<BasicEvent> createEventList(EventPacket<BasicEvent> p) throws BackwardsTimestampException {
+        ArrayList<BasicEvent> l = new ArrayList(p.getSize());
+        BasicEvent pe = null;
         for (BasicEvent e : p) {
-            if(l.contains(e)){
-                log.warning("list "+l+" already contains "+e);
+            if (pe != null && (e.timestamp < pe.timestamp || pe.equals(e))) {
+                throw new BackwardsTimestampException(String.format("timestamp %d is earlier than previous %d", e.timestamp, pe.timestamp));
             }
-            assert lastE == null || !lastE.equals(e) : String.format("should not be adding duplicate events [%s] == [%s]", lastE, e);
-            int prevCount = l.add(e, 1);
-            
-            if (prevCount > 0) {
-                log.warning("added duplicate element " + e);
-            }
-            lastE=e;
+            l.add(e);
+            pe = e;
         }
         return l;
     }
 
-    private TreeMultiset<BasicEvent> createEventList(TreeMultiset<BasicEvent> list) {
-//        TreeMultiset l = TreeMultiset.create(timestampComparator);
-        TreeMultiset l = TreeMultiset.create(list);
+    private ArrayList<BasicEvent> createEventList(List<BasicEvent> p) throws BackwardsTimestampException {
+        ArrayList<BasicEvent> l = new ArrayList(p.size());
+        BasicEvent pe = null;
+        for (BasicEvent e : p) {
+            if (pe != null && (e.timestamp < pe.timestamp || pe.equals(e))) {
+                throw new BackwardsTimestampException(String.format("timestamp %d is earlier than previous %d", e.timestamp, pe.timestamp));
+            }
+            l.add(e);
+            pe = e;
+        }
         return l;
+    }
+
+    /**
+     * Counts the number of events in a that are in b. Assumes packets are
+     * non-monotonic in timestamp ordering. But after a rewind, the packet can
+     * contain events from end and start of a recording. To prevent this, the
+     * EventList constructor throws BackwardsTimestampException.
+     *
+     *
+     * @param a
+     * @param b
+     */
+    private int countAintersectB(ArrayList<BasicEvent> a, ArrayList<BasicEvent> b) {
+        int count = 0;
+        if (a.isEmpty() || b.isEmpty()) {
+            return 0;
+        }
+
+        // test case
+//        a = new ArrayList();
+//        b = new ArrayList();
+//        a.add(new BasicEvent(1, (short) 0, (short) 0));
+//        a.add(new BasicEvent(2, (short) 0, (short) 0));
+//        a.add(new BasicEvent(4, (short) 0, (short) 0));
+//        
+//        b.add(new BasicEvent(1, (short) 0, (short) 0));
+//        b.add(new BasicEvent(3, (short) 0, (short) 0));
+//        b.add(new BasicEvent(4, (short) 0, (short) 0));
+
+        int i=0, j=0;
+        while (i<a.size() && j<b.size()) {
+            if (a.get(i).timestamp < b.get(j).timestamp) {
+                i++;
+            } else if (b.get(j).timestamp < a.get(i).timestamp) {
+                j++;
+            } else {
+                if (a.get(i).equals(b.get(j))) {
+                    count++;
+                }
+                i++; j++;
+            }
+        }
+        return count;
     }
 
     @Override
@@ -243,105 +299,93 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
 
         // copy input events to inList
-        TreeMultiset<BasicEvent> signalList = createEventList((EventPacket<BasicEvent>) in);
-
-        assert signalList.size() == in.getSizeNotFilteredOut() : String.format("signalList size (%d) != in.getSizeNotFilteredOut() (%d)", signalList.size(), in.getSizeNotFilteredOut());
-        BasicEvent lastEv = null;
-        for (BasicEvent e : signalList) {
-            if (lastEv != null && lastEv.equals(e)) {
-                log.warning("error, equal events");
-            }
-            assert lastEv == null || !lastEv.equals(e) : String.format("duplicate events [%s] and [%s] in signalList", lastEv, e);
-            lastEv = e;
+        ArrayList<BasicEvent> signalList;
+        try {
+            signalList = createEventList((EventPacket<BasicEvent>) in);
+        } catch (BackwardsTimestampException ex) {
+            log.warning(String.format("%s: skipping nonmonotonic packet [%s]", ex, in));
+            return in;
         }
 
+        assert signalList.size() == in.getSizeNotFilteredOut() : String.format("signalList size (%d) != in.getSizeNotFilteredOut() (%d)", signalList.size(), in.getSizeNotFilteredOut());
+
         // add noise into signalList to get the outputPacketWithNoiseAdded, track noise in noiseList
-        TreeMultiset<BasicEvent> noiseList = createEventList(); //TreeMultiset.create(tim);
+        ArrayList<BasicEvent> noiseList = createEventList(); //List.create(tim);
 
         addNoise(in, signalAndNoisePacket, noiseList, shotNoiseRateHz, leakNoiseRateHz);
 
         // we need to copy the augmented event packet to a HashSet for use with Collections
-        TreeMultiset<BasicEvent> signalAndNoiseList = createEventList((EventPacket<BasicEvent>) signalAndNoisePacket);
+        List<BasicEvent> signalAndNoiseList;
+        try {
+            signalAndNoiseList = createEventList((EventPacket<BasicEvent>) signalAndNoisePacket);
 
-        // filter the augmented packet
-        EventPacket<BasicEvent> passedSignalAndNoisePacket = (EventPacket<BasicEvent>) selectedFilter.filterPacket(signalAndNoisePacket);
+            // filter the augmented packet
+            EventPacket<BasicEvent> passedSignalAndNoisePacket = (EventPacket<BasicEvent>) selectedFilter.filterPacket(signalAndNoisePacket);
 
-        ArrayList<BasicEvent> filteredOutList = selectedFilter.filteredOutEvents;
+            ArrayList<BasicEvent> filteredOutList = selectedFilter.filteredOutEvents;
 
-        // make a copy of the output packet, which has noise filtered out by selected filter
-        TreeMultiset<BasicEvent> passedSignalAndNoiseList = createEventList(passedSignalAndNoisePacket);
+            // make a list of the output packet, which has noise filtered out by selected filter
+            ArrayList<BasicEvent> passedSignalAndNoiseList;
+            passedSignalAndNoiseList = createEventList(passedSignalAndNoisePacket);
 
-        assert (signalList.size() + noiseList.size() == signalAndNoiseList.size());
+            assert (signalList.size() + noiseList.size() == signalAndNoiseList.size());
 
-        // now we sort out the mess
-        // make a list of everything that was removed
-        // False negatives: Signal that was incorrectly removed by filter.
-        TreeMultiset<BasicEvent> fnList = createEventList(signalList); // start with signal
-        fnList.removeAll(passedSignalAndNoiseList);
-        // Signal - (passed Signal (TP)) = FN
-        // Start with signal, remove from signal the filtered output which removes all signal left over.
-        // What is left is signal that is NOT in the output, that was removed by filtering, which are the false negatives
-        FN = fnList.size();
+            // now we sort out the mess
+            TP = countAintersectB(signalList, passedSignalAndNoiseList);   // True positives: Signal that was correctly retained by filtering
+            TN = countAintersectB(noiseList, filteredOutList);             // True negatives: Noise that was correctly removed by filter
+            FP = countAintersectB(noiseList, passedSignalAndNoiseList);    // False positives: Noise that is incorrectly passed by filter
+            FN = countAintersectB(signalList, filteredOutList);            // False negatives: Signal that was incorrectly removed by filter.
 
-        // True positives: Signal that was correctly retained by filtering
-        TreeMultiset<BasicEvent> tpList = createEventList(signalList); // start with passed signal
-        tpList.removeAll(fnList); // S = TP + FN, TP = S - FN
-        TP = tpList.size();
-
-        assert (TP + FN == signalList.size());
-
-        // False positives: Noise that is incorrectly passed by filter
-        TreeMultiset<BasicEvent> fpList = createEventList(noiseList); // start with added noise
-        fpList.retainAll(passedSignalAndNoiseList); // noise intersect with (passed S+N) which means noise are regarded as signal
-        FP = fpList.size();
-
-        // True negatives: Noise that was correctly removed by filter
-        TreeMultiset<BasicEvent> tnList = createEventList(noiseList); // start with noiseList
-        tnList.removeAll(passedSignalAndNoiseList); // N - (passed S + N) is N filtered out
-        TN = tnList.size();
-
-        assert (TN + FP == noiseList.size());
+//        
+            if (TN + FP != noiseList.size()) {
+                log.warning(String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, TN + FP, noiseList.size()));
+            }
+            assert (TN + FP == noiseList.size()) : String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, noiseList.size());
 
 //        System.out.printf("every packet is: %d %d %d %d %d, %d %d %d: %d %d %d %d\n", inList.size(), newInList.size(), outList.size(), outRealList.size(), outNoiseList.size(), outInitList.size(), outInitRealList.size(), outInitNoiseList.size(), TP, TN, FP, FN);
-        TPR = TP + FN == 0 ? 0f : (float) (TP * 1.0 / (TP + FN)); // percentage of true positive events. that's output real events out of all real events
-        TPO = TP + FP == 0 ? 0f : (float) (TP * 1.0 / (TP + FP)); // percentage of real events in the filter's output
+            TPR = TP + FN == 0 ? 0f : (float) (TP * 1.0 / (TP + FN)); // percentage of true positive events. that's output real events out of all real events
+            TPO = TP + FP == 0 ? 0f : (float) (TP * 1.0 / (TP + FP)); // percentage of real events in the filter's output
 
-        TNR = TN + FP == 0 ? 0f : (float) (TN * 1.0 / (TN + FP));
-        accuracy = (float) ((TP + TN) * 1.0 / (TP + TN + FP + FN));
+            TNR = TN + FP == 0 ? 0f : (float) (TN * 1.0 / (TN + FP));
+            accuracy = (float) ((TP + TN) * 1.0 / (TP + TN + FP + FN));
 
-        BR = TPR + TPO == 0 ? 0f : (float) (2 * TPR * TPO / (TPR + TPO)); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
+            BR = TPR + TPO == 0 ? 0f : (float) (2 * TPR * TPO / (TPR + TPO)); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
 //        System.out.printf("shotNoiseRateHz and leakNoiseRateHz is %.2f and %.2f\n", shotNoiseRateHz, leakNoiseRateHz);
 
-        float inSignalRateHz = 0, inNoiseRateHz = 0, outSignalRateHz = 0, outNoiseRateHz = 0;
+            float inSignalRateHz = 0, inNoiseRateHz = 0, outSignalRateHz = 0, outNoiseRateHz = 0;
 
-        if (lastTimestampPreviousPacket != null) {
-            int deltaTime = in.getLastTimestamp() - lastTimestampPreviousPacket;
-            lastTimestampPreviousPacket = in.getLastTimestamp();
-            inSignalRateHz = (1e-6f * in.getSize()) / deltaTime;
-            inNoiseRateHz = (1e-6f * noiseList.size()) / deltaTime;
-            outSignalRateHz = (1e-6f * tpList.size()) / deltaTime;
-            outNoiseRateHz = (1e-6f * fpList.size()) / deltaTime;
-        }
-        if (csvWriter != null) {
-            try {
-                csvWriter.write(String.format("%d,%d,%d,%d,%f,%f,%f,%d,%f,%f,%f,%f\n",
-                        TP, TN, FP, FN, TPR, TNR, BR, firstE.timestamp,
-                        inSignalRateHz, inNoiseRateHz, outSignalRateHz, outNoiseRateHz));
-            } catch (IOException e) {
-                doCloseCsvFile();
+            if (lastTimestampPreviousPacket != null) {
+                int deltaTime = in.getLastTimestamp() - lastTimestampPreviousPacket;
+                lastTimestampPreviousPacket = in.getLastTimestamp();
+                inSignalRateHz = (1e-6f * in.getSize()) / deltaTime;
+                inNoiseRateHz = (1e-6f * noiseList.size()) / deltaTime;
+                outSignalRateHz = (1e-6f * TP) / deltaTime;
+                outNoiseRateHz = (1e-6f * FP) / deltaTime;
             }
-        }
-        totalEventCount = signalAndNoiseList.size();
-        int outputEventCount = passedSignalAndNoiseList.size();
-        filteredOutEventCount = totalEventCount - outputEventCount;
-        if (TP + FP != outputEventCount) {
-            String.format("TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount);
-        }
-        assert TP + TN + FP + FN == totalEventCount : String.format("TP (%d) + TN (%d) + FP (%d) + FN (%d) = %d != totalEventCount (%d)", TP, TN, FP, FN, TP + TN + FP + FN, totalEventCount);
-        assert TP + FP == outputEventCount : String.format("TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount);
-        assert TN + FN == filteredOutEventCount : String.format("TN (%d) + FN (%d) = %d  != filteredOutEventCount (%d)", TN, FN, TN + FN, filteredOutEventCount);
+            if (csvWriter != null) {
+                try {
+                    csvWriter.write(String.format("%d,%d,%d,%d,%f,%f,%f,%d,%f,%f,%f,%f\n",
+                            TP, TN, FP, FN, TPR, TNR, BR, firstE.timestamp,
+                            inSignalRateHz, inNoiseRateHz, outSignalRateHz, outNoiseRateHz));
+                } catch (IOException e) {
+                    doCloseCsvFile();
+                }
+            }
+            totalEventCount = signalAndNoiseList.size();
+            int outputEventCount = passedSignalAndNoiseList.size();
+            filteredOutEventCount = totalEventCount - outputEventCount;
+            if (TP + FP != outputEventCount) {
+                log.warning(String.format("TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount));
+            }
+            assert TP + TN + FP + FN == totalEventCount : String.format("TP (%d) + TN (%d) + FP (%d) + FN (%d) = %d != totalEventCount (%d)", TP, TN, FP, FN, TP + TN + FP + FN, totalEventCount);
+            assert TP + FP == outputEventCount : String.format("TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount);
+            assert TN + FN == filteredOutEventCount : String.format("TN (%d) + FN (%d) = %d  != filteredOutEventCount (%d)", TN, FN, TN + FN, filteredOutEventCount);
 
-        return passedSignalAndNoisePacket;
+            return passedSignalAndNoisePacket;
+        } catch (BackwardsTimestampException ex) {
+            Logger.getLogger(NoiseTesterFilter.class.getName()).log(Level.SEVERE, null, ex);
+            return in;
+        }
     }
 
     @Override
@@ -465,7 +509,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         openCvsFiile();
     }
 
-    private void addNoise(EventPacket<? extends BasicEvent> in, EventPacket<? extends BasicEvent> augmentedPacket, TreeMultiset<BasicEvent> generatedNoise, float shotNoiseRateHz, float leakNoiseRateHz) {
+    private void addNoise(EventPacket<? extends BasicEvent> in, EventPacket<? extends BasicEvent> augmentedPacket, List<BasicEvent> generatedNoise, float shotNoiseRateHz, float leakNoiseRateHz) {
 
         // we need at least 1 event to be able to inject noise before it
         if ((in.isEmpty())) {
@@ -522,7 +566,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
-    private void sampleNoiseEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, TreeMultiset<BasicEvent> noiseList, float shotOffThresholdProb, float shotOnThresholdProb, float leakOnThresholdProb) {
+    private void sampleNoiseEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList, float shotOffThresholdProb, float shotOnThresholdProb, float leakOnThresholdProb) {
         float randomnum = random.nextFloat();
         if (randomnum < shotOffThresholdProb) {
             injectOffEvent(ts, outItr, noiseList);
@@ -534,7 +578,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
-    private void injectOnEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, TreeMultiset<BasicEvent> noiseList) {
+    private void injectOnEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList) {
         ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
         e.setSpecial(false);
         e.polarity = PolarityEvent.Polarity.On;
@@ -546,7 +590,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         noiseList.add(e);
     }
 
-    private void injectOffEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, TreeMultiset<BasicEvent> noiseList) {
+    private void injectOffEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList) {
         ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
         e.setSpecial(false);
         e.polarity = PolarityEvent.Polarity.Off;

@@ -269,7 +269,7 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
 
     /**
      * Overrides default to use hashCode which considers timestamp, address,
-     * special and filtered out.
+     * special, but NOT filteredOut.
      */
     @Override
     public boolean equals(Object obj) {
@@ -291,8 +291,10 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
 
     /**
      * Overrides hashCode to result in identical hashCode (even if for different
-     * objects) if the timestamp, x,y,filteredOut, and special fields are the
-     * same.
+     * objects) if the timestamp, x,y, and special fields are the
+     * same. 
+     * <p>
+     * NOTE: filteredOut is NOT included in hashCode. Events can be equal even if one is filtered out.
      *
      * @return the hashcode
      */
@@ -302,7 +304,7 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
         hash = 89 * hash + this.timestamp;
         hash = 89 * hash + this.x;
         hash = 89 * hash + this.y;
-        hash = 89 * hash + (this.filteredOut ? 1 : 0);
+//        hash = 89 * hash + (this.filteredOut ? 1 : 0); // DO NOT include filteredOut so that even if events has been marked filtered out it is still equal
         hash = 89 * hash + (this.special ? 1 : 0);
         return hash;
     }
