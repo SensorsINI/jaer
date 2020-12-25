@@ -234,13 +234,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         // copy input events to inList
         TreeMultiset<BasicEvent> signalList = createEventList((EventPacket<BasicEvent>)in);
-//        HashSet signalList = new HashSet(in.getSize());
-//        for (BasicEvent e : in) {
-//            totalEventCount += 1;
-//            signalList.add(e);
-//        }
 
-//        
 //        System.out.printf("in count=%d in size=%d and signalList size=%d\n", totalEventCount, in.getSize(), signalList.size());
         // add noise into signalList to get the outputPacketWithNoiseAdded, track noise in noiseList
         if(noiseList==null)    noiseList =createEventList();
@@ -248,34 +242,22 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         addNoise(in, signalAndNoisePacket, noiseList, shotNoiseRateHz, leakNoiseRateHz);
 
         // we need to copy the augmented event packet to a HashSet for use with Collections
-//        HashSet signalAndNoiseList = new HashSet(signalAndNoisePacket.getSize());
-//        EventList signalAndNoiseList = new EventList();
         TreeMultiset<BasicEvent> signalAndNoiseList = createEventList((EventPacket<BasicEvent>)signalAndNoisePacket);
-//        for (BasicEvent e : signalAndNoisePacket) {
-//            signalAndNoiseList.add(e);
-//        }
 
         // filter the augmented packet
         EventPacket<BasicEvent> passedSignalAndNoisePacket = getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
 
         // make a copy of the output packet, which has noise filtered out by selected filter
-//        HashSet passedSignalAndNoiseList = new HashSet(passedSignalAndNoisePacket.getSize());
-//        EventList passedSignalAndTNoiseList = new EventList();
         TreeMultiset<BasicEvent> passedSignalAndNoiseList = createEventList(passedSignalAndNoisePacket);
-//        for (BasicEvent e : passedSignalAndNoisePacket) {
-//            passedSignalAndNoiseList.add(e);
-//        }
 
         assert(signalList.size()+noiseList.size()==signalAndNoiseList.size());
         
         // now we sort out the mess
         // make a list of everything that was removed
-//        Collection removedList = new HashSet(signalAndNoiseList); // start with S+N
         TreeMultiset<BasicEvent>  removedList = createEventList(signalAndNoiseList); // start with S+N
         removedList.removeAll(passedSignalAndNoiseList); // remove the filtered S+N, leaves everything that was filtered out
 
         // False negatives: Signal that was incorrectly removed by filter.
-//        Collection fnList = new HashSet(signalList); // start with signal
         TreeMultiset<BasicEvent> fnList = createEventList(signalList); // start with signal
         fnList.removeAll(passedSignalAndNoiseList);
         // Signal - (passed Signal (TP)) = FN
@@ -285,7 +267,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         FN = fnList.size();
 
         // True positives: Signal that was correctly retained by filtering
-//        Collection tpList = new HashSet(signalList); // start with signal
         TreeMultiset<BasicEvent> tpList = createEventList(signalList); // start with passed signal
         tpList.removeAll(fnList); // S = TP + FN, TP = S - FN
         TP = tpList.size();
@@ -293,13 +274,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         assert(TP+FN==signalList.size());
 
         // False positives: Noise that is incorrectly passed by filter
-//        Collection fpList = new HashSet(noiseList); // start with added noise
         TreeMultiset<BasicEvent> fpList = createEventList(noiseList); // start with added noise
         fpList.retainAll(passedSignalAndNoiseList); // noise intersect with (passed S+N) which means noise are regarded as signal
         FP = fpList.size();
 
         // True negatives: Noise that was correctly removed by filter
-//        Collection tnList = new HashSet(removedList); // start with all N
         TreeMultiset<BasicEvent> tnList = createEventList(noiseList); // start with noiseList
         tnList.removeAll(passedSignalAndNoiseList); // N - (passed S + N) is N filtered out
         TN = tnList.size();
