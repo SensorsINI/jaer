@@ -26,14 +26,12 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.Random;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
@@ -46,6 +44,8 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import com.google.common.collect.TreeMultiset;
+import java.util.ArrayList;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * Filter for testing noise filters
@@ -82,17 +82,16 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //    private EventPacket<ApsDvsEvent> signalAndNoisePacket = null;
     private EventPacket<BasicEvent> signalAndNoisePacket = null;
 //    private EventList<BasicEvent> noiseList = new EventList();
-    private TreeMultiset<BasicEvent> noiseList = null; //TreeMultiset.create(tim);
     private Random random = new Random();
     private AbstractNoiseFilter[] noiseFilters = null;
     private AbstractNoiseFilter selectedFilter = null;
     protected boolean resetCalled = true; // flag to reset on next event
     public static final float RATE_LIMIT_HZ = 10;
 
-    public enum NoiseFilter {
+    public enum NoiseFilterEnum {
         BackgroundActivityFilter, SpatioTemporalCorrelationFilter, SequenceBasedFilter, OrderNBackgroundActivityFilter
     }
-    private NoiseFilter selectedNoiseFilterEnum = NoiseFilter.valueOf(getString("selectedNoiseFilter", NoiseFilter.BackgroundActivityFilter.toString())); //default is BAF
+    private NoiseFilterEnum selectedNoiseFilterEnum = NoiseFilterEnum.valueOf(getString("selectedNoiseFilter", NoiseFilterEnum.BackgroundActivityFilter.toString())); //default is BAF
     private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
 
 //    float BR = 2 * TPR * TPO / (TPR + TPO); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
@@ -101,7 +100,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip("shotNoiseRateHz", "rate per pixel of shot noise events");
         setPropertyTooltip("leakNoiseRateHz", "rate per pixel of leak noise events");
         setPropertyTooltip("csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
-        setPropertyTooltip("selectedNoiseFilter", "Choose a noise filter to test");
+        setPropertyTooltip("selectedNoiseFilterEnum", "Choose a noise filter to test");
         if (chip.getRemoteControl() != null) {
             log.info("adding RemoteControlCommand listener to AEChip\n");
             chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");
@@ -167,7 +166,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         final GLUT glut = new GLUT();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
         gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
-        String s = String.format("TPR=%%%6.1f, TNR=%%%6.1f, BR=%%%6.1f, poissonDt=%d us", 100 * TPR, 100 * TNR, 100 * BR, poissonDtUs);
+        String s = String.format("TPR=%%%6.1f, TNR=%%%6.1f, TPO=%%%6.1f, BR=%%%6.1f, poissonDt=%d us", 100 * TPR, 100 * TNR, 100 * TPO, 100 * BR, poissonDtUs);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glPopMatrix();
     }
@@ -183,22 +182,33 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
-    private TimeStampComparator timestampComparator = new TimeStampComparator<BasicEvent>();
-
+//    private TimeStampComparator timestampComparator = new TimeStampComparator<BasicEvent>();
     private TreeMultiset<BasicEvent> createEventList() {
-        return TreeMultiset.create(timestampComparator);
+//        return TreeMultiset.create(timestampComparator);
+        return TreeMultiset.create();
     }
 
     private TreeMultiset<BasicEvent> createEventList(EventPacket<BasicEvent> p) {
-        TreeMultiset l = TreeMultiset.create(timestampComparator);
+        TreeMultiset l = TreeMultiset.create();
+        BasicEvent lastE = null;
         for (BasicEvent e : p) {
-            l.add(e);
+            if(l.contains(e)){
+                log.warning("list "+l+" already contains "+e);
+            }
+            assert lastE == null || !lastE.equals(e) : String.format("should not be adding duplicate events [%s] == [%s]", lastE, e);
+            int prevCount = l.add(e, 1);
+            
+            if (prevCount > 0) {
+                log.warning("added duplicate element " + e);
+            }
+            lastE=e;
         }
         return l;
     }
+
     private TreeMultiset<BasicEvent> createEventList(TreeMultiset<BasicEvent> list) {
-        TreeMultiset l = TreeMultiset.create(timestampComparator);
-        l.addAll(list);
+//        TreeMultiset l = TreeMultiset.create(timestampComparator);
+        TreeMultiset l = TreeMultiset.create(list);
         return l;
     }
 
@@ -233,45 +243,52 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
 
         // copy input events to inList
-        TreeMultiset<BasicEvent> signalList = createEventList((EventPacket<BasicEvent>)in);
+        TreeMultiset<BasicEvent> signalList = createEventList((EventPacket<BasicEvent>) in);
 
-//        System.out.printf("in count=%d in size=%d and signalList size=%d\n", totalEventCount, in.getSize(), signalList.size());
+        assert signalList.size() == in.getSizeNotFilteredOut() : String.format("signalList size (%d) != in.getSizeNotFilteredOut() (%d)", signalList.size(), in.getSizeNotFilteredOut());
+        BasicEvent lastEv = null;
+        for (BasicEvent e : signalList) {
+            if (lastEv != null && lastEv.equals(e)) {
+                log.warning("error, equal events");
+            }
+            assert lastEv == null || !lastEv.equals(e) : String.format("duplicate events [%s] and [%s] in signalList", lastEv, e);
+            lastEv = e;
+        }
+
         // add noise into signalList to get the outputPacketWithNoiseAdded, track noise in noiseList
-        if(noiseList==null)    noiseList =createEventList();
+        TreeMultiset<BasicEvent> noiseList = createEventList(); //TreeMultiset.create(tim);
 
         addNoise(in, signalAndNoisePacket, noiseList, shotNoiseRateHz, leakNoiseRateHz);
 
         // we need to copy the augmented event packet to a HashSet for use with Collections
-        TreeMultiset<BasicEvent> signalAndNoiseList = createEventList((EventPacket<BasicEvent>)signalAndNoisePacket);
+        TreeMultiset<BasicEvent> signalAndNoiseList = createEventList((EventPacket<BasicEvent>) signalAndNoisePacket);
 
         // filter the augmented packet
-        EventPacket<BasicEvent> passedSignalAndNoisePacket = getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
+        EventPacket<BasicEvent> passedSignalAndNoisePacket = (EventPacket<BasicEvent>) selectedFilter.filterPacket(signalAndNoisePacket);
+
+        ArrayList<BasicEvent> filteredOutList = selectedFilter.filteredOutEvents;
 
         // make a copy of the output packet, which has noise filtered out by selected filter
         TreeMultiset<BasicEvent> passedSignalAndNoiseList = createEventList(passedSignalAndNoisePacket);
 
-        assert(signalList.size()+noiseList.size()==signalAndNoiseList.size());
-        
+        assert (signalList.size() + noiseList.size() == signalAndNoiseList.size());
+
         // now we sort out the mess
         // make a list of everything that was removed
-        TreeMultiset<BasicEvent>  removedList = createEventList(signalAndNoiseList); // start with S+N
-        removedList.removeAll(passedSignalAndNoiseList); // remove the filtered S+N, leaves everything that was filtered out
-
         // False negatives: Signal that was incorrectly removed by filter.
         TreeMultiset<BasicEvent> fnList = createEventList(signalList); // start with signal
         fnList.removeAll(passedSignalAndNoiseList);
         // Signal - (passed Signal (TP)) = FN
-        // remove from signal the filtered output which removes all signal left 
-        //over plus removes all noise (which is not there to start with).
-        // What is left is signal that was removed by filtering, which are the false negatives
+        // Start with signal, remove from signal the filtered output which removes all signal left over.
+        // What is left is signal that is NOT in the output, that was removed by filtering, which are the false negatives
         FN = fnList.size();
 
         // True positives: Signal that was correctly retained by filtering
         TreeMultiset<BasicEvent> tpList = createEventList(signalList); // start with passed signal
         tpList.removeAll(fnList); // S = TP + FN, TP = S - FN
         TP = tpList.size();
-        
-        assert(TP+FN==signalList.size());
+
+        assert (TP + FN == signalList.size());
 
         // False positives: Noise that is incorrectly passed by filter
         TreeMultiset<BasicEvent> fpList = createEventList(noiseList); // start with added noise
@@ -282,8 +299,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         TreeMultiset<BasicEvent> tnList = createEventList(noiseList); // start with noiseList
         tnList.removeAll(passedSignalAndNoiseList); // N - (passed S + N) is N filtered out
         TN = tnList.size();
-        
-        assert(TN+FP==noiseList.size());
+
+        assert (TN + FP == noiseList.size());
 
 //        System.out.printf("every packet is: %d %d %d %d %d, %d %d %d: %d %d %d %d\n", inList.size(), newInList.size(), outList.size(), outRealList.size(), outNoiseList.size(), outInitList.size(), outInitRealList.size(), outInitNoiseList.size(), TP, TN, FP, FN);
         TPR = TP + FN == 0 ? 0f : (float) (TP * 1.0 / (TP + FN)); // percentage of true positive events. that's output real events out of all real events
@@ -314,9 +331,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 doCloseCsvFile();
             }
         }
-        totalEventCount=signalAndNoiseList.size();
+        totalEventCount = signalAndNoiseList.size();
         int outputEventCount = passedSignalAndNoiseList.size();
         filteredOutEventCount = totalEventCount - outputEventCount;
+        if (TP + FP != outputEventCount) {
+            String.format("TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount);
+        }
+        assert TP + TN + FP + FN == totalEventCount : String.format("TP (%d) + TN (%d) + FP (%d) + FN (%d) = %d != totalEventCount (%d)", TP, TN, FP, FN, TP + TN + FP + FN, totalEventCount);
+        assert TP + FP == outputEventCount : String.format("TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount);
+        assert TN + FN == filteredOutEventCount : String.format("TN (%d) + FN (%d) = %d  != filteredOutEventCount (%d)", TN, FN, TN + FN, filteredOutEventCount);
 
         return passedSignalAndNoisePacket;
     }
@@ -362,7 +385,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
             chip.getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_CHIP, this);
         }
-        setSelectedNoiseFilter(selectedNoiseFilterEnum);
+        setSelectedNoiseFilterEnum(selectedNoiseFilterEnum);
         computeProbs();
     }
 
@@ -475,7 +498,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             // we had some previous event
             int lastPacketTs = lastTimestampPreviousPacket; // timestamp of the last event in the last packet
             for (int ts = lastPacketTs; ts < firstTsThisPacket; ts += poissonDtUs) {
-                sampleNoiseEvent(ts, outItr, noiseList, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb);
+                sampleNoiseEvent(ts, outItr, generatedNoise, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb);
             }
         }
 
@@ -493,7 +516,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             preEts = lastEventTs;
             lastEventTs = ie.timestamp;
             for (int ts = preEts; ts <= lastEventTs; ts += poissonDtUs) {  // TODO might be truncation error here with leftover time
-                sampleNoiseEvent(ts, outItr, noiseList, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb);
+                sampleNoiseEvent(ts, outItr, generatedNoise, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb);
             }
             outItr.nextOutput().copyFrom(ie);
         }
@@ -548,14 +571,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     /**
      * @return the selectedNoiseFilter
      */
-    public NoiseFilter getSelectedNoiseFilter() {
+    public NoiseFilterEnum getSelectedNoiseFilterEnum() {
         return selectedNoiseFilterEnum;
     }
 
     /**
      * @param selectedNoiseFilter the selectedNoiseFilter to set
      */
-    synchronized public void setSelectedNoiseFilter(NoiseFilter selectedNoiseFilter) {
+    synchronized public void setSelectedNoiseFilterEnum(NoiseFilterEnum selectedNoiseFilter) {
         this.selectedNoiseFilterEnum = selectedNoiseFilter;
         putString("selectedNoiseFilter", selectedNoiseFilter.toString());
         for (AbstractNoiseFilter n : noiseFilters) {
