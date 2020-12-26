@@ -96,7 +96,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     protected boolean resetCalled = true; // flag to reset on next event
     public static final float RATE_LIMIT_HZ = 10;
     private float annotateAlpha = getFloat("annotateAlpha", 0.5f);
-    private AEChipRenderer renderer;
+    private DavisRenderer renderer = null;
+    private boolean overlayClassifications = getBoolean("overlayClassifications", true);
+    private ArrayList<BasicEvent> tpList = null, fnList = null, fpList = null, tnList = null; // output of classification
 
     public enum NoiseFilterEnum {
         BackgroundActivityFilter, SpatioTemporalCorrelationFilter, SequenceBasedFilter, OrderNBackgroundActivityFilter
@@ -112,6 +114,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip("csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
         setPropertyTooltip("selectedNoiseFilterEnum", "Choose a noise filter to test");
         setPropertyTooltip("annotation", "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
+        setPropertyTooltip("annotation", "overlayClassifications", "Overlay the signal and noise classifications of events in green and red.");
         if (chip.getRemoteControl() != null) {
             log.info("adding RemoteControlCommand listener to AEChip\n");
             chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");
@@ -177,15 +180,17 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         final GLUT glut = new GLUT();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
         gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
-        String s = String.format("TPR=%%%6.1f, TNR=%%%6.1f, TPO=%%%6.1f, BR=%%%6.1f, poissonDt=%d us", 100 * TPR, 100 * TNR, 100 * TPO, 100 * BR, poissonDtUs);
+        String s = String.format("TPR=%6.1f%% TNR=%6.1f%% TPO=%6.1f%%, BR=%6.1f%% dT=%d us", 100 * TPR, 100 * TNR, 100 * TPO, 100 * BR, poissonDtUs);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
-        gl.glRasterPos3f(0, statisticsDrawingPosition+10, 0);
-        String s2 = String.format("Input sigRate=%s noiseRate=%s, Output sigRate=%s noiseRate=%s", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
+        gl.glRasterPos3f(0, statisticsDrawingPosition + 10, 0);
+        String s2 = String.format("Inp. sigRate=%s noiseRate=%s, Output sigRate=%s noiseRate=%s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s2);
         gl.glPopMatrix();
     }
 
     private void annotateNoiseFilteringEvents(ArrayList<BasicEvent> outSig, ArrayList<BasicEvent> outNoise) {
+        if(renderer==null) return;
+        renderer.clearAnnotationMap();
         final float[] noiseColor = {1, 0, 0}, sigColor = {0, 1, 0};
         for (BasicEvent e : outSig) {
             renderer.setAnnotateColorRGB(e.x, e.y, sigColor);
@@ -245,20 +250,19 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     /**
-     * Counts the number of events in a that are in b. Assumes packets are
-     * non-monotonic in timestamp ordering. But after a rewind, the packet can
-     * contain events from end and start of a recording. To prevent this, the
-     * EventList constructor throws BackwardsTimestampException.
+     * Finds the intersection of events in a that are in b. Assumes packets are
+     * non-monotonic in timestamp ordering. 
      *
      *
-     * @param a
-     * @param b
+     * @param a ArrayList<BasicEvent> of a
+     * @param b likewise
+     * @return ArrayList of intersection
      */
-    private int countIntersect(ArrayList<BasicEvent> a, ArrayList<BasicEvent> b) {
-//        ArrayList<BasicEvent> intersect = new ArrayList();
+    private ArrayList<BasicEvent> countIntersect(ArrayList<BasicEvent> a, ArrayList<BasicEvent> b) {
+        ArrayList<BasicEvent> intersect = new ArrayList(a.size() > b.size() ? a.size() : b.size());
         int count = 0;
         if (a.isEmpty() || b.isEmpty()) {
-            return 0;
+            return new ArrayList();
         }
 
         // TODO test case
@@ -285,8 +289,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             } else if (b.get(j).timestamp < a.get(i).timestamp) {
                 j++;
             } else {
-                // If timestamps equal, it mmight be idential events or maybe not
-                // and there might be several events with idential timestamps.
+                // If timestamps equal, it mmight be identical events or maybe not
+                // and there might be several events with identical timestamps.
                 // We MUST match all a with all b.
                 // We don't want to increment both pointers or we can miss matches.
                 // We do an inner double loop for exhaustive matching as long as the timestamps
@@ -297,7 +301,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     while (j1 < nb && i1 < na && a.get(i1).timestamp == b.get(j1).timestamp) {
                         if (a.get(i1).equals(b.get(j1))) {
                             count++;
-//                            intersect.add(b.get(j1)); // TODO debug
+                            intersect.add(b.get(j1)); // TODO debug
                             // we have a match, so use up the a element
                             i1++;
                             match = true;
@@ -317,7 +321,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //        printarr(a, "a");
 //        printarr(b, "b");
 //        printarr(intersect, "intsct");
-        return count;
+        return intersect;
     }
 
     // TODO test case
@@ -395,10 +399,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             assert (signalList.size() + noiseList.size() == signalAndNoiseList.size());
 
             // now we sort out the mess
-            TP = countIntersect(signalList, passedSignalAndNoiseList);   // True positives: Signal that was correctly retained by filtering
-            FP = countIntersect(noiseList, passedSignalAndNoiseList);    // False positives: Noise that is incorrectly passed by filter
-            TN = countIntersect(noiseList, filteredOutList);             // True negatives: Noise that was correctly removed by filter
-            FN = countIntersect(signalList, filteredOutList);            // False negatives: Signal that was incorrectly removed by filter.
+            tpList = countIntersect(signalList, passedSignalAndNoiseList);   // True positives: Signal that was correctly retained by filtering
+            TP = tpList.size();
+            fnList = countIntersect(signalList, filteredOutList);            // False negatives: Signal that was incorrectly removed by filter.
+            FN = fnList.size();
+            fpList = countIntersect(noiseList, passedSignalAndNoiseList);    // False positives: Noise that is incorrectly passed by filter
+            FP = fpList.size();
+            tnList = countIntersect(noiseList, filteredOutList);             // True negatives: Noise that was correctly removed by filter
+            TN = tnList.size();
 
 //            if (TN + FP != noiseList.size()) {
 //                System.err.println(String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, TN + FP, noiseList.size()));
@@ -457,7 +465,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 }
             }
 
-            annotateNoiseFilteringEvents(signalList, noiseList);
+            if(overlayClassifications){
+                annotateNoiseFilteringEvents(signalList, noiseList);
+            }
 
             lastTimestampPreviousPacket = in.getLastTimestamp();
             return passedSignalAndNoisePacket;
@@ -510,9 +520,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         setSelectedNoiseFilterEnum(selectedNoiseFilterEnum);
         computeProbs();
-        renderer = (AEChipRenderer) chip.getRenderer();
-        if (renderer != null) { // might be null on startup, if initFilter is called from AEChip constructor
-            renderer.setExternalRenderer(false);
+        if (chip.getRenderer() instanceof DavisRenderer) {
+            renderer = (DavisRenderer) chip.getRenderer();
         }
         setAnnotateAlpha(annotateAlpha);
     }
@@ -809,10 +818,24 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             annotateAlpha = 0.0f;
         }
         this.annotateAlpha = annotateAlpha;
-        if (renderer != null && renderer instanceof DavisRenderer) {
-            DavisRenderer frameRenderer = (DavisRenderer) renderer;
-            frameRenderer.setAnnotateAlpha(annotateAlpha);
-            renderer.setExternalRenderer(annotateAlpha > 0.1);
+        if (renderer != null) {
+            renderer.setAnnotateAlpha(annotateAlpha);
         }
+    }
+
+    /**
+     * @return the overlayClassifications
+     */
+    public boolean isOverlayClassifications() {
+        return overlayClassifications;
+    }
+
+    /**
+     * @param overlayClassifications the overlayClassifications to set
+     */
+    public void setOverlayClassifications(boolean overlayClassifications) {
+        this.overlayClassifications = overlayClassifications;
+        putBoolean("overlayClassifications", overlayClassifications);
+        if(renderer!=null) renderer.setDisplayAnnotation(overlayClassifications);
     }
 }
