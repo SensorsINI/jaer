@@ -145,10 +145,16 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
      * @param dtUs the dtUs to set
      */
     public void setDtUs(int dtUs) {
-        int old=this.dtUs;
-        
+        if (dtUs > MAX_DT) {
+            dtUs = MAX_DT;
+        } else if (dtUs < MIN_DT) {
+            dtUs = MIN_DT;
+        }
+        int old = this.dtUs;
+
         putInt("dtUs", dtUs);
         getSupport().firePropertyChange("dtUs", old, dtUs);
+        getSupport().firePropertyChange("correlationTimeS", 1e-6f*old, 1e-6f*dtUs);
         this.dtUs = dtUs;
     }
 
@@ -168,7 +174,7 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
     @Override
     public String setParameters(RemoteControlCommand command, String input) {
         String[] tok = input.split("\\s");
-        
+
         if (tok.length < 3) {
             return USAGE;
         }
@@ -177,7 +183,7 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
                 for (int i = 1; i <= tok.length; i++) {
                     if (tok[i].equals("dt")) {
                         setDtUs(Integer.parseInt(tok[i + 1]));
-                    }                    
+                    }
                 }
                 String out = "successfully set OrderNFilter parameters dt " + String.valueOf(dtUs);
                 return out;
@@ -194,19 +200,15 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
     public int[][] getLastTimesMap() {
         return null;
     }
-    
-    
-       @Override
+
+    @Override
     public float getCorrelationTimeS() {
-        return this.dtUs*1e-6f;
+        return this.dtUs * 1e-6f;
     }
 
     @Override
     public void setCorrelationTimeS(float dtS) {
-        setDtUs((int)(dtS*1e6));
+        setDtUs((int) (dtS * 1e6));
     }
-    
-
-    
 
 }

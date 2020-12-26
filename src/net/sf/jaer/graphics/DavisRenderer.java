@@ -412,7 +412,7 @@ public class DavisRenderer extends AEChipRenderer {
                 resetAnnotationFrame(0.0f);
             }
         }
-         if (colorMode == ColorMode.FadingActivity) {
+        if (colorMode == ColorMode.FadingActivity) {
             checkPixmapAllocation();
             float fadeby = 1 - 1f / (colorScale + 1);
             float[] f = dvsEventsMap.array();
@@ -425,6 +425,7 @@ public class DavisRenderer extends AEChipRenderer {
         checkPixmapAllocation();
         resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
         setSpecialCount(0);
+ 
 
         final boolean displayEvents = isDisplayEvents();
 

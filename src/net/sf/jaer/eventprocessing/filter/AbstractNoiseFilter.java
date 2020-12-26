@@ -28,6 +28,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 
@@ -42,13 +43,17 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     protected int totalEventCount = 0;
     protected int filteredOutEventCount = 0;
     /** list of filtered out events */
-    public ArrayList<BasicEvent> filteredOutEvents = new ArrayList();
+    private ArrayList<BasicEvent> filteredOutEvents = new ArrayList();
+    protected EngineeringFormat eng=new EngineeringFormat();
     /**
      * Map from noise filters to drawing positions of noise filtering statistics
      * annotations
      */
     static protected HashMap<AbstractNoiseFilter, Integer> noiseStatDrawingMap = new HashMap<AbstractNoiseFilter, Integer>();
     protected int statisticsDrawingPosition = -10; // y coordinate we write ourselves to, start with -10 so we end up at 0 for first one (hack)
+    final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
+    final int MAX_DT = 100000;
+    final int MIN_DT = 10;
 
     public AbstractNoiseFilter(AEChip chip) {
         super(chip);
@@ -63,7 +68,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     protected void filterOut(BasicEvent e) {
         e.setFilteredOut(true);
         filteredOutEventCount++;
-        filteredOutEvents.add(e);
+        getFilteredOutEvents().add(e);
     }
 
     /** Subclasses should call this before filtering to clear the filteredOutEventCount and filteredOutEvents
@@ -73,7 +78,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     @Override
     public EventPacket<? extends BasicEvent> filterPacket(EventPacket<?> in) {
-        filteredOutEvents.clear();
+        getFilteredOutEvents().clear();
         filteredOutEventCount = 0;
         totalEventCount = 0;
         return in;
@@ -165,6 +170,13 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 
     public float getCorrelationTimeS() {
         return 0;
+    }
+
+    /**
+     * @return the filteredOutEvents
+     */
+    public ArrayList<BasicEvent> getFilteredOutEvents() {
+        return filteredOutEvents;
     }
 
 }

@@ -128,7 +128,7 @@ public class PolarityEvent extends TypedEvent implements PolarityEventInterface 
         }
         PolarityEvent tgt = (PolarityEvent) obj;
 
-        return this.hashCode() == tgt.hashCode();
+        return super.equals(tgt) && this.polarity==tgt.polarity;
     }
 
     @Override

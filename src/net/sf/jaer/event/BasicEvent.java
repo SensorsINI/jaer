@@ -284,8 +284,8 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
         }
         BasicEvent tgt = (BasicEvent) obj;
 
-//        return (this.x == tgt.x) && (this.y == tgt.y) && (this.timestamp == tgt.timestamp) && (this.filteredOut==tgt.filteredOut) && (this.special==tgt.special);
-        return this.hashCode() == tgt.hashCode();
+        return (this.x == tgt.x) && (this.y == tgt.y) && (this.timestamp == tgt.timestamp) /*&& (this.filteredOut==tgt.filteredOut)*/ && (this.special==tgt.special); // DO NOT include filtered out or you cannot match events in different lists, e.g. in NoiseTesterFilter
+//        return this.hashCode() == tgt.hashCode(); // do NOT use hashCode since it is idential for different events
 
     }
 

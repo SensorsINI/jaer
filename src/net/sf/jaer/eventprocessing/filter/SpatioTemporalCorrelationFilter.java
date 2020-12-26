@@ -36,8 +36,6 @@ import net.sf.jaer.util.TobiLogger;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
-    private final int MAX_DT = 100000, MIN_DT = 10;
-    private final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
 
     /**
      * the time in timestamp ticks (1us at present) that a spike needs to be
@@ -288,6 +286,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
         putInt("dt", setValue);
         getSupport().firePropertyChange("dt", this.dt, setValue);
+        getSupport().firePropertyChange("correlationTimeS", 1e-6f*this.dt, 1e-6f*setValue);
         this.dt = setValue;
     }
 
