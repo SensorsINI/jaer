@@ -50,6 +50,8 @@ import java.util.NoSuchElementException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.graphics.AEChipRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 
 /**
  * Filter for testing noise filters
@@ -93,6 +95,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private AbstractNoiseFilter selectedFilter = null;
     protected boolean resetCalled = true; // flag to reset on next event
     public static final float RATE_LIMIT_HZ = 10;
+    private float annotateAlpha = getFloat("annotateAlpha", 0.5f);
+    private AEChipRenderer renderer;
 
     public enum NoiseFilterEnum {
         BackgroundActivityFilter, SpatioTemporalCorrelationFilter, SequenceBasedFilter, OrderNBackgroundActivityFilter
@@ -107,6 +111,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip("leakNoiseRateHz", "rate per pixel of leak noise events");
         setPropertyTooltip("csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
         setPropertyTooltip("selectedNoiseFilterEnum", "Choose a noise filter to test");
+        setPropertyTooltip("annotation", "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
         if (chip.getRemoteControl() != null) {
             log.info("adding RemoteControlCommand listener to AEChip\n");
             chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");
@@ -174,11 +179,20 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
         String s = String.format("TPR=%%%6.1f, TNR=%%%6.1f, TPO=%%%6.1f, BR=%%%6.1f, poissonDt=%d us", 100 * TPR, 100 * TNR, 100 * TPO, 100 * BR, poissonDtUs);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
-        findUnusedDawingY();
-        gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
+        gl.glRasterPos3f(0, statisticsDrawingPosition+10, 0);
         String s2 = String.format("Input sigRate=%s noiseRate=%s, Output sigRate=%s noiseRate=%s", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s2);
         gl.glPopMatrix();
+    }
+
+    private void annotateNoiseFilteringEvents(ArrayList<BasicEvent> outSig, ArrayList<BasicEvent> outNoise) {
+        final float[] noiseColor = {1, 0, 0}, sigColor = {0, 1, 0};
+        for (BasicEvent e : outSig) {
+            renderer.setAnnotateColorRGB(e.x, e.y, sigColor);
+        }
+        for (BasicEvent e : outNoise) {
+            renderer.setAnnotateColorRGB(e.x, e.y, noiseColor);
+        }
     }
 
 //    final private class TimeStampComparator<E extends BasicEvent> implements Comparator<E> {
@@ -191,7 +205,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //            return diff;
 //        }
 //    }
-
 //    private TimeStampComparator timestampComparator = new TimeStampComparator<BasicEvent>();
     private ArrayList<BasicEvent> createEventList() {
         return new ArrayList<BasicEvent>();
@@ -444,6 +457,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 }
             }
 
+            annotateNoiseFilteringEvents(signalList, noiseList);
+
             lastTimestampPreviousPacket = in.getLastTimestamp();
             return passedSignalAndNoisePacket;
         } catch (BackwardsTimestampException ex) {
@@ -495,6 +510,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         setSelectedNoiseFilterEnum(selectedNoiseFilterEnum);
         computeProbs();
+        renderer = (AEChipRenderer) chip.getRenderer();
+        if (renderer != null) { // might be null on startup, if initFilter is called from AEChip constructor
+            renderer.setExternalRenderer(false);
+        }
+        setAnnotateAlpha(annotateAlpha);
     }
 
     /**
@@ -771,4 +791,28 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         putFloat("correlationTimeS", this.correlationTimeS);
     }
 
+    /**
+     * @return the annotateAlpha
+     */
+    public float getAnnotateAlpha() {
+        return annotateAlpha;
+    }
+
+    /**
+     * @param annotateAlpha the annotateAlpha to set
+     */
+    public void setAnnotateAlpha(float annotateAlpha) {
+        if (annotateAlpha > 1.0) {
+            annotateAlpha = 1.0f;
+        }
+        if (annotateAlpha < 0.0) {
+            annotateAlpha = 0.0f;
+        }
+        this.annotateAlpha = annotateAlpha;
+        if (renderer != null && renderer instanceof DavisRenderer) {
+            DavisRenderer frameRenderer = (DavisRenderer) renderer;
+            frameRenderer.setAnnotateAlpha(annotateAlpha);
+            renderer.setExternalRenderer(annotateAlpha > 0.1);
+        }
+    }
 }
