@@ -83,6 +83,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private float TNR = 0;
     private float accuracy = 0;
     private float BR = 0;
+    float inSignalRateHz = 0, inNoiseRateHz = 0, outSignalRateHz = 0, outNoiseRateHz = 0;
+
 //    private EventPacket<ApsDvsEvent> signalAndNoisePacket = null;
     private EventPacket<BasicEvent> signalAndNoisePacket = null;
 //    private EventList<BasicEvent> noiseList = new EventList();
@@ -172,19 +174,23 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
         String s = String.format("TPR=%%%6.1f, TNR=%%%6.1f, TPO=%%%6.1f, BR=%%%6.1f, poissonDt=%d us", 100 * TPR, 100 * TNR, 100 * TPO, 100 * BR, poissonDtUs);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
+        findUnusedDawingY();
+        gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
+        String s2 = String.format("Input sigRate=%s noiseRate=%s, Output sigRate=%s noiseRate=%s", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s2);
         gl.glPopMatrix();
     }
 
-    final private class TimeStampComparator<E extends BasicEvent> implements Comparator<E> {
-
-        // NOTE this hack so that sorted event EventSet does not lose elements with identical timestamps
-        @Override
-        public int compare(final E e1, final E e2) {
-            int diff = e1.timestamp - e2.timestamp;
-
-            return diff;
-        }
-    }
+//    final private class TimeStampComparator<E extends BasicEvent> implements Comparator<E> {
+//
+//        // NOTE this hack so that sorted event EventSet does not lose elements with identical timestamps
+//        @Override
+//        public int compare(final E e1, final E e2) {
+//            int diff = e1.timestamp - e2.timestamp;
+//
+//            return diff;
+//        }
+//    }
 
 //    private TimeStampComparator timestampComparator = new TimeStampComparator<BasicEvent>();
     private ArrayList<BasicEvent> createEventList() {
@@ -235,37 +241,84 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * @param a
      * @param b
      */
-    private int countAintersectB(ArrayList<BasicEvent> a, ArrayList<BasicEvent> b) {
+    private int countIntersect(ArrayList<BasicEvent> a, ArrayList<BasicEvent> b) {
+//        ArrayList<BasicEvent> intersect = new ArrayList();
         int count = 0;
         if (a.isEmpty() || b.isEmpty()) {
             return 0;
         }
 
-        // test case
+        // TODO test case
 //        a = new ArrayList();
 //        b = new ArrayList();
-//        a.add(new BasicEvent(1, (short) 0, (short) 0));
-//        a.add(new BasicEvent(2, (short) 0, (short) 0));
 //        a.add(new BasicEvent(4, (short) 0, (short) 0));
-//        
-//        b.add(new BasicEvent(1, (short) 0, (short) 0));
-//        b.add(new BasicEvent(3, (short) 0, (short) 0));
+//        a.add(new BasicEvent(4, (short) 0, (short) 0));
+//        a.add(new BasicEvent(4, (short) 1, (short) 0));
+//        a.add(new BasicEvent(4, (short) 2, (short) 0));
+////        a.add(new BasicEvent(2, (short) 0, (short) 0));
+////        a.add(new BasicEvent(10, (short) 0, (short) 0));
+//
+//        b.add(new BasicEvent(2, (short) 0, (short) 0));
+//        b.add(new BasicEvent(2, (short) 0, (short) 0));
 //        b.add(new BasicEvent(4, (short) 0, (short) 0));
-
-        int i=0, j=0;
-        while (i<a.size() && j<b.size()) {
+//        b.add(new BasicEvent(4, (short) 0, (short) 0));
+//        b.add(new BasicEvent(4, (short) 1, (short) 0));
+//        b.add(new BasicEvent(10, (short) 0, (short) 0));
+        int i = 0, j = 0;
+        int na = a.size(), nb = b.size();
+        while (i < na && j < nb) {
             if (a.get(i).timestamp < b.get(j).timestamp) {
                 i++;
             } else if (b.get(j).timestamp < a.get(i).timestamp) {
                 j++;
             } else {
-                if (a.get(i).equals(b.get(j))) {
-                    count++;
+                // If timestamps equal, it mmight be idential events or maybe not
+                // and there might be several events with idential timestamps.
+                // We MUST match all a with all b.
+                // We don't want to increment both pointers or we can miss matches.
+                // We do an inner double loop for exhaustive matching as long as the timestamps
+                // are identical. 
+                int i1 = i, j1 = j;
+                while (i1 < na && j1 < nb && a.get(i1).timestamp == b.get(j1).timestamp) {
+                    boolean match = false;
+                    while (j1 < nb && i1 < na && a.get(i1).timestamp == b.get(j1).timestamp) {
+                        if (a.get(i1).equals(b.get(j1))) {
+                            count++;
+//                            intersect.add(b.get(j1)); // TODO debug
+                            // we have a match, so use up the a element
+                            i1++;
+                            match = true;
+                        }
+                        j1++;
+                    }
+                    if (!match) {
+                        i1++; // 
+                    }
+                    j1 = j; // reset j to start of matching ts region
                 }
-                i++; j++;
+                i = i1; // when done, timestamps are different or we reached end of either or both arrays
+                j = j1;
             }
         }
+//        System.out.println("%%%%%%%%%%%%%%");
+//        printarr(a, "a");
+//        printarr(b, "b");
+//        printarr(intersect, "intsct");
         return count;
+    }
+
+    // TODO test case
+    void printarr(ArrayList<BasicEvent> a, String n) {
+        final int MAX = 30;
+        if (a.size() > MAX) {
+            System.out.printf("--------\n%s[%d]>%d\n", n, a.size(), MAX);
+            return;
+        }
+        System.out.printf("%s[%d] --------\n", n, a.size());
+        for (int i = 0; i < a.size(); i++) {
+            BasicEvent e = a.get(i);
+            System.out.printf("%s[%d]=[%d %d %d %d]\n", n, i, e.timestamp, e.x, e.y, (e instanceof PolarityEvent) ? ((PolarityEvent) e).getPolaritySignum() : 0);
+        }
     }
 
     @Override
@@ -311,36 +364,58 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         // add noise into signalList to get the outputPacketWithNoiseAdded, track noise in noiseList
         ArrayList<BasicEvent> noiseList = createEventList(); //List.create(tim);
-
         addNoise(in, signalAndNoisePacket, noiseList, shotNoiseRateHz, leakNoiseRateHz);
 
         // we need to copy the augmented event packet to a HashSet for use with Collections
-        List<BasicEvent> signalAndNoiseList;
+        ArrayList<BasicEvent> signalAndNoiseList;
         try {
             signalAndNoiseList = createEventList((EventPacket<BasicEvent>) signalAndNoisePacket);
 
             // filter the augmented packet
             EventPacket<BasicEvent> passedSignalAndNoisePacket = (EventPacket<BasicEvent>) selectedFilter.filterPacket(signalAndNoisePacket);
 
-            ArrayList<BasicEvent> filteredOutList = selectedFilter.filteredOutEvents;
+            ArrayList<BasicEvent> filteredOutList = selectedFilter.getFilteredOutEvents();
 
             // make a list of the output packet, which has noise filtered out by selected filter
-            ArrayList<BasicEvent> passedSignalAndNoiseList;
-            passedSignalAndNoiseList = createEventList(passedSignalAndNoisePacket);
+            ArrayList<BasicEvent> passedSignalAndNoiseList = createEventList(passedSignalAndNoisePacket);
 
             assert (signalList.size() + noiseList.size() == signalAndNoiseList.size());
 
             // now we sort out the mess
-            TP = countAintersectB(signalList, passedSignalAndNoiseList);   // True positives: Signal that was correctly retained by filtering
-            TN = countAintersectB(noiseList, filteredOutList);             // True negatives: Noise that was correctly removed by filter
-            FP = countAintersectB(noiseList, passedSignalAndNoiseList);    // False positives: Noise that is incorrectly passed by filter
-            FN = countAintersectB(signalList, filteredOutList);            // False negatives: Signal that was incorrectly removed by filter.
+            TP = countIntersect(signalList, passedSignalAndNoiseList);   // True positives: Signal that was correctly retained by filtering
+            FP = countIntersect(noiseList, passedSignalAndNoiseList);    // False positives: Noise that is incorrectly passed by filter
+            TN = countIntersect(noiseList, filteredOutList);             // True negatives: Noise that was correctly removed by filter
+            FN = countIntersect(signalList, filteredOutList);            // False negatives: Signal that was incorrectly removed by filter.
 
-//        
-            if (TN + FP != noiseList.size()) {
-                log.warning(String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, TN + FP, noiseList.size()));
-            }
-            assert (TN + FP == noiseList.size()) : String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, noiseList.size());
+//            if (TN + FP != noiseList.size()) {
+//                System.err.println(String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, TN + FP, noiseList.size()));
+//                printarr(signalList, "signalList");
+//                printarr(noiseList, "noiseList");
+//                printarr(passedSignalAndNoiseList, "passedSignalAndNoiseList");
+//                printarr(signalAndNoiseList, "signalAndNoiseList");
+//            }
+            assert (TN + FP == noiseList.size()) : String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, TN + FP, noiseList.size());
+            totalEventCount = signalAndNoiseList.size();
+            int outputEventCount = passedSignalAndNoiseList.size();
+            filteredOutEventCount = totalEventCount - outputEventCount;
+
+//            if (TP + FP != outputEventCount) {
+//                System.err.printf("@@@@@@@@@ TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount);
+//                printarr(signalList, "signalList");
+//                printarr(noiseList, "noiseList");
+//                printarr(passedSignalAndNoiseList, "passedSignalAndNoiseList");
+//                printarr(signalAndNoiseList, "signalAndNoiseList");
+//            }
+            assert TP + FP == outputEventCount : String.format("TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount);
+//            if (TP + TN + FP + FN != totalEventCount) {
+//                System.err.printf("***************** TP (%d) + TN (%d) + FP (%d) + FN (%d) = %d != totalEventCount (%d)", TP, TN, FP, FN, TP + TN + FP + FN, totalEventCount);
+//                printarr(signalList, "signalList");
+//                printarr(noiseList, "noiseList");
+//                printarr(signalAndNoiseList, "signalAndNoiseList");
+//                printarr(passedSignalAndNoiseList, "passedSignalAndNoiseList");
+//            }
+            assert TP + TN + FP + FN == totalEventCount : String.format("TP (%d) + TN (%d) + FP (%d) + FN (%d) = %d != totalEventCount (%d)", TP, TN, FP, FN, TP + TN + FP + FN, totalEventCount);
+            assert TN + FN == filteredOutEventCount : String.format("TN (%d) + FN (%d) = %d  != filteredOutEventCount (%d)", TN, FN, TN + FN, filteredOutEventCount);
 
 //        System.out.printf("every packet is: %d %d %d %d %d, %d %d %d: %d %d %d %d\n", inList.size(), newInList.size(), outList.size(), outRealList.size(), outNoiseList.size(), outInitList.size(), outInitRealList.size(), outInitNoiseList.size(), TP, TN, FP, FN);
             TPR = TP + FN == 0 ? 0f : (float) (TP * 1.0 / (TP + FN)); // percentage of true positive events. that's output real events out of all real events
@@ -352,15 +427,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             BR = TPR + TPO == 0 ? 0f : (float) (2 * TPR * TPO / (TPR + TPO)); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
 //        System.out.printf("shotNoiseRateHz and leakNoiseRateHz is %.2f and %.2f\n", shotNoiseRateHz, leakNoiseRateHz);
 
-            float inSignalRateHz = 0, inNoiseRateHz = 0, outSignalRateHz = 0, outNoiseRateHz = 0;
-
             if (lastTimestampPreviousPacket != null) {
                 int deltaTime = in.getLastTimestamp() - lastTimestampPreviousPacket;
-                lastTimestampPreviousPacket = in.getLastTimestamp();
-                inSignalRateHz = (1e-6f * in.getSize()) / deltaTime;
-                inNoiseRateHz = (1e-6f * noiseList.size()) / deltaTime;
-                outSignalRateHz = (1e-6f * TP) / deltaTime;
-                outNoiseRateHz = (1e-6f * FP) / deltaTime;
+                inSignalRateHz = (1e6f * in.getSize()) / deltaTime;
+                inNoiseRateHz = (1e6f * noiseList.size()) / deltaTime;
+                outSignalRateHz = (1e6f * TP) / deltaTime;
+                outNoiseRateHz = (1e6f * FP) / deltaTime;
             }
             if (csvWriter != null) {
                 try {
@@ -371,16 +443,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     doCloseCsvFile();
                 }
             }
-            totalEventCount = signalAndNoiseList.size();
-            int outputEventCount = passedSignalAndNoiseList.size();
-            filteredOutEventCount = totalEventCount - outputEventCount;
-            if (TP + FP != outputEventCount) {
-                log.warning(String.format("TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount));
-            }
-            assert TP + TN + FP + FN == totalEventCount : String.format("TP (%d) + TN (%d) + FP (%d) + FN (%d) = %d != totalEventCount (%d)", TP, TN, FP, FN, TP + TN + FP + FN, totalEventCount);
-            assert TP + FP == outputEventCount : String.format("TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount);
-            assert TN + FN == filteredOutEventCount : String.format("TN (%d) + FN (%d) = %d  != filteredOutEventCount (%d)", TN, FN, TN + FN, filteredOutEventCount);
 
+            lastTimestampPreviousPacket = in.getLastTimestamp();
             return passedSignalAndNoisePacket;
         } catch (BackwardsTimestampException ex) {
             Logger.getLogger(NoiseTesterFilter.class.getName()).log(Level.SEVERE, null, ex);
@@ -540,9 +604,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 return;
             }
             // we had some previous event
-            int lastPacketTs = lastTimestampPreviousPacket; // timestamp of the last event in the last packet
+            int lastPacketTs = lastTimestampPreviousPacket + 1; // 1us more than timestamp of the last event in the last packet
             for (int ts = lastPacketTs; ts < firstTsThisPacket; ts += poissonDtUs) {
-                sampleNoiseEvent(ts, outItr, generatedNoise, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb);
+                ts = sampleNoiseEvent(ts, outItr, generatedNoise, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb); // note noise injection updates ts to make sure monotonic
             }
         }
 
@@ -557,25 +621,26 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 continue;
             }
             // save the previous timestamp and get the next one, and then inject noise between them
-            preEts = lastEventTs;
+            preEts = lastEventTs + 1;
             lastEventTs = ie.timestamp;
-            for (int ts = preEts; ts <= lastEventTs; ts += poissonDtUs) {  // TODO might be truncation error here with leftover time
-                sampleNoiseEvent(ts, outItr, generatedNoise, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb);
+            for (int ts = preEts; ts < lastEventTs; ts += poissonDtUs) {  // TODO might be truncation error here with leftover time
+                ts = sampleNoiseEvent(ts, outItr, generatedNoise, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb);
             }
             outItr.nextOutput().copyFrom(ie);
         }
     }
 
-    private void sampleNoiseEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList, float shotOffThresholdProb, float shotOnThresholdProb, float leakOnThresholdProb) {
+    private int sampleNoiseEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList, float shotOffThresholdProb, float shotOnThresholdProb, float leakOnThresholdProb) {
         float randomnum = random.nextFloat();
         if (randomnum < shotOffThresholdProb) {
-            injectOffEvent(ts, outItr, noiseList);
+            injectOffEvent(ts++, outItr, noiseList);
         } else if (randomnum > shotOnThresholdProb) {
-            injectOnEvent(ts, outItr, noiseList);
+            injectOnEvent(ts++, outItr, noiseList);
         }
         if (random.nextFloat() < leakOnThresholdProb) {
-            injectOnEvent(ts, outItr, noiseList);
+            injectOnEvent(ts++, outItr, noiseList);
         }
+        return ts;  // we make sure ts increment and return the new one, which updates loop param
     }
 
     private void injectOnEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList) {
@@ -693,6 +758,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     public void setCorrelationTimeS(float dtS) {
+        if (dtS > 1e-6f * MAX_DT) {
+            dtS = 1e-6f * MAX_DT;
+        } else if (dtS < 1e-6f * MIN_DT) {
+            dtS = 1e-6f * MIN_DT;
+        }
+
         this.correlationTimeS = dtS;
         for (AbstractNoiseFilter f : noiseFilters) {
             f.setCorrelationTimeS(dtS);
