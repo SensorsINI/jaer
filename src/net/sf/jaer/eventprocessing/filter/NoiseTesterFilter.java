@@ -196,13 +196,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             return;
         }
         renderer.clearAnnotationMap();
+        final int offset=2;
         final float a = getAnnotateAlpha();
         final float[] noiseColor = {.5f, 0, 0, a}, sigColor = {0, .5f, 0, a};
         for (BasicEvent e : outSig) {
-            renderer.setAnnotateColorRGBA(e.x, e.y, sigColor);
+            renderer.setAnnotateColorRGBA(e.x+2>=sx? e.x:e.x+offset, e.y-2<0? e.y:e.y-offset, sigColor);
         }
         for (BasicEvent e : outNoise) {
-            renderer.setAnnotateColorRGBA(e.x, e.y, noiseColor);
+            renderer.setAnnotateColorRGBA(e.x+2>=sx? e.x:e.x+offset, e.y-2<0? e.y:e.y-offset, noiseColor);
+//            renderer.setAnnotateColorRGBA(e.x+2, e.y-2, noiseColor);
         }
     }
 
