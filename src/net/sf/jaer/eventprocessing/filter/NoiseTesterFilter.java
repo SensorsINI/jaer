@@ -176,35 +176,40 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
+        int L;
+        float x, y;
         if (!showFilteringStatistics) {
             return;
         }
         findUnusedDawingY();
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushMatrix();
+        L = 3;
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
-        int L = 6;
-        // draw X at TPR / TNR point
-        gl.glLineWidth(4);
-        gl.glBegin(GL.GL_LINES);
-        float x = (1 - TNR) * sx, y = TPR * sy;
-        gl.glVertex2f(x - L, y - L);
-        gl.glVertex2f(x + L, y + L);
-        gl.glVertex2f(x - L, y + L);
-        gl.glVertex2f(x + L, y - L);
-        gl.glEnd();
-        gl.glLineWidth(3);
-        L=3;
         for (Point2D.Float p : rocHistoryList) {
             gl.glBegin(GL.GL_LINES);
             x = (1 - p.y) * sx;
-            y = p.x *sy;
+            y = p.x * sy;
             gl.glVertex2f(x - L, y - L);
             gl.glVertex2f(x + L, y + L);
             gl.glVertex2f(x - L, y + L);
             gl.glVertex2f(x + L, y - L);
             gl.glEnd();
         }
+        gl.glColor3f(.8f, .8f, .2f); // must set color before raster position (raster position is like glVertex)
+        L = 6;
+        // draw X at TPR / TNR point
+        gl.glLineWidth(4);
+        gl.glBegin(GL.GL_LINES);
+        x = (1 - TNR) * sx;
+        y = TPR * sy;
+        gl.glVertex2f(x - L, y - L);
+        gl.glVertex2f(x + L, y + L);
+        gl.glVertex2f(x - L, y + L);
+        gl.glVertex2f(x + L, y - L);
+        gl.glEnd();
+        gl.glLineWidth(3);
+        gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
         final GLUT glut = new GLUT();
         gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
         String s = String.format("TPR=%6.1f%% TNR=%6.1f%% TPO=%6.1f%%, BR=%6.1f%% dT=%d us", 100 * TPR, 100 * TNR, 100 * TPO, 100 * BR, poissonDtUs);
@@ -910,8 +915,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * @param rocHistory the rocHistory to set
      */
     public void setRocHistory(int rocHistory) {
-        if (rocHistory > 1000) {
-            rocHistory = 1000;
+        if (rocHistory > 10000) {
+            rocHistory = 10000;
         }
         this.rocHistory = rocHistory;
         putInt("rocHistory", rocHistory);
