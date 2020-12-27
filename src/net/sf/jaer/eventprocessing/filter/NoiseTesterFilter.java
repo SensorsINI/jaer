@@ -18,6 +18,7 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
+import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
@@ -180,8 +181,18 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         findUnusedDawingY();
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushMatrix();
-        final GLUT glut = new GLUT();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
+        final int L=6;
+        // draw X at TPR / TNR point
+        gl.glLineWidth(4);
+        gl.glBegin(GL.GL_LINES);
+        float x=(1-TNR)*sx, y=TPR*sy;
+        gl.glVertex2f(x-L, y-L);
+        gl.glVertex2f(x+L, y+L);
+        gl.glVertex2f(x-L, y+L);
+        gl.glVertex2f(x+L, y-L);
+        gl.glEnd();
+        final GLUT glut = new GLUT();
         gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
         String s = String.format("TPR=%6.1f%% TNR=%6.1f%% TPO=%6.1f%%, BR=%6.1f%% dT=%d us", 100 * TPR, 100 * TNR, 100 * TPO, 100 * BR, poissonDtUs);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
@@ -196,9 +207,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             return;
         }
         renderer.clearAnnotationMap();
-        final int offset=2;
+        final int offset=1;
         final float a = getAnnotateAlpha();
-        final float[] noiseColor = {.5f, 0, 0, a}, sigColor = {0, .5f, 0, a};
+        final float[] noiseColor = {1f, 0, 0, 1}, sigColor = {0, 1f, 0, 1};
         for (BasicEvent e : outSig) {
             renderer.setAnnotateColorRGBA(e.x+2>=sx? e.x:e.x+offset, e.y-2<0? e.y:e.y-offset, sigColor);
         }
