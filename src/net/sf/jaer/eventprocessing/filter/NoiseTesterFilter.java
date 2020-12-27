@@ -22,12 +22,12 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Comparator;
 import java.util.Random;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -45,13 +45,11 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.DavisRenderer;
 
 /**
@@ -100,6 +98,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private DavisRenderer renderer = null;
     private boolean overlayClassifications = getBoolean("overlayClassifications", false);
     private boolean overlayInput = getBoolean("overlayInput", false);
+    private int rocHistory = getInt("rocHistory", 1);
+    private LinkedList<Point2D.Float> rocHistoryList = new LinkedList();
+
     private ArrayList<BasicEvent> tpList = null, fnList = null, fpList = null, tnList = null; // output of classification
 
     public enum NoiseFilterEnum {
@@ -119,6 +120,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
         setPropertyTooltip(ann, "overlayClassifications", "Overlay the signal and noise classifications of events in green and red.");
         setPropertyTooltip(ann, "overlayInput", "<html><p>If selected, overlay all input events as signal (green) and noise (red). <p>If not selected, overlay true positives as green (signal in output) and false positives as red (noise in output).");
+        setPropertyTooltip(ann, "rocHistory", "Number of samples of ROC point to show.");
         if (chip.getRemoteControl() != null) {
             log.info("adding RemoteControlCommand listener to AEChip\n");
             chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");
@@ -138,7 +140,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         } else {
             for (EventFilter2D f : chain) {
                 f.setFilterEnabled(false);
-
             }
         }
     }
@@ -182,16 +183,28 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushMatrix();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
-        final int L=6;
+        int L = 6;
         // draw X at TPR / TNR point
         gl.glLineWidth(4);
         gl.glBegin(GL.GL_LINES);
-        float x=(1-TNR)*sx, y=TPR*sy;
-        gl.glVertex2f(x-L, y-L);
-        gl.glVertex2f(x+L, y+L);
-        gl.glVertex2f(x-L, y+L);
-        gl.glVertex2f(x+L, y-L);
+        float x = (1 - TNR) * sx, y = TPR * sy;
+        gl.glVertex2f(x - L, y - L);
+        gl.glVertex2f(x + L, y + L);
+        gl.glVertex2f(x - L, y + L);
+        gl.glVertex2f(x + L, y - L);
         gl.glEnd();
+        gl.glLineWidth(3);
+        L=3;
+        for (Point2D.Float p : rocHistoryList) {
+            gl.glBegin(GL.GL_LINES);
+            x = (1 - p.y) * sx;
+            y = p.x *sy;
+            gl.glVertex2f(x - L, y - L);
+            gl.glVertex2f(x + L, y + L);
+            gl.glVertex2f(x - L, y + L);
+            gl.glVertex2f(x + L, y - L);
+            gl.glEnd();
+        }
         final GLUT glut = new GLUT();
         gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
         String s = String.format("TPR=%6.1f%% TNR=%6.1f%% TPO=%6.1f%%, BR=%6.1f%% dT=%d us", 100 * TPR, 100 * TNR, 100 * TPO, 100 * BR, poissonDtUs);
@@ -207,14 +220,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             return;
         }
         renderer.clearAnnotationMap();
-        final int offset=1;
+        final int offset = 1;
         final float a = getAnnotateAlpha();
         final float[] noiseColor = {1f, 0, 0, 1}, sigColor = {0, 1f, 0, 1};
         for (BasicEvent e : outSig) {
-            renderer.setAnnotateColorRGBA(e.x+2>=sx? e.x:e.x+offset, e.y-2<0? e.y:e.y-offset, sigColor);
+            renderer.setAnnotateColorRGBA(e.x + 2 >= sx ? e.x : e.x + offset, e.y - 2 < 0 ? e.y : e.y - offset, sigColor);
         }
         for (BasicEvent e : outNoise) {
-            renderer.setAnnotateColorRGBA(e.x+2>=sx? e.x:e.x+offset, e.y-2<0? e.y:e.y-offset, noiseColor);
+            renderer.setAnnotateColorRGBA(e.x + 2 >= sx ? e.x : e.x + offset, e.y - 2 < 0 ? e.y : e.y - offset, noiseColor);
 //            renderer.setAnnotateColorRGBA(e.x+2, e.y-2, noiseColor);
         }
     }
@@ -490,7 +503,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 } else {
                     annotateNoiseFilteringEvents(tpList, fpList);
                 }
+            }
 
+            Point2D.Float p = new Point2D.Float(TPR, TNR);
+            rocHistoryList.add(p);
+            if (rocHistoryList.size() > rocHistory) {
+                rocHistoryList.removeFirst();
             }
 
             lastTimestampPreviousPacket = in.getLastTimestamp();
@@ -506,6 +524,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         lastTimestampPreviousPacket = null;
         resetCalled = true;
         getEnclosedFilterChain().reset();
+        rocHistoryList.clear();
     }
 
     private void computeProbs() {
@@ -878,5 +897,23 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public void setOverlayInput(boolean overlayInput) {
         this.overlayInput = overlayInput;
         putBoolean("overlayInput", overlayInput);
+    }
+
+    /**
+     * @return the rocHistory
+     */
+    public int getRocHistory() {
+        return rocHistory;
+    }
+
+    /**
+     * @param rocHistory the rocHistory to set
+     */
+    public void setRocHistory(int rocHistory) {
+        if (rocHistory > 1000) {
+            rocHistory = 1000;
+        }
+        this.rocHistory = rocHistory;
+        putInt("rocHistory", rocHistory);
     }
 }
