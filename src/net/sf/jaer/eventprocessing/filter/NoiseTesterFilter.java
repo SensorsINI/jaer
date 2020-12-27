@@ -18,6 +18,7 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
+import com.google.common.collect.EvictingQueue;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -64,7 +65,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     FilterChain chain;
     private float shotNoiseRateHz = getFloat("shotNoiseRateHz", .1f);
     private float leakNoiseRateHz = getFloat("leakNoiseRateHz", .1f);
-    private int poissonDtUs = 1;
+    private float poissonDtUs = 1;
     float shotOffThresholdProb; // bounds for samppling Poisson noise, factor 0.5 so total rate is shotNoiseRateHz
     float shotOnThresholdProb; // for shot noise sample both sides, for leak events just generate ON events
     float leakOnThresholdProb; // bounds for samppling Poisson noise
@@ -93,13 +94,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private AbstractNoiseFilter[] noiseFilters = null;
     private AbstractNoiseFilter selectedFilter = null;
     protected boolean resetCalled = true; // flag to reset on next event
-    public static final float RATE_LIMIT_HZ = 10;
+    public static final float RATE_LIMIT_HZ = 25; //per pixel, separately for leak and shot rates
     private float annotateAlpha = getFloat("annotateAlpha", 0.5f);
     private DavisRenderer renderer = null;
     private boolean overlayClassifications = getBoolean("overlayClassifications", false);
     private boolean overlayInput = getBoolean("overlayInput", false);
     private int rocHistory = getInt("rocHistory", 1);
-    private LinkedList<Point2D.Float> rocHistoryList = new LinkedList();
+    private EvictingQueue<Point2D.Float> rocHistoryList = EvictingQueue.create(rocHistory);
 
     private ArrayList<BasicEvent> tpList = null, fnList = null, fpList = null, tnList = null; // output of classification
 
@@ -175,7 +176,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     @Override
-    public void annotate(GLAutoDrawable drawable) {
+    synchronized public void annotate(GLAutoDrawable drawable) {
         int L;
         float x, y;
         if (!showFilteringStatistics) {
@@ -212,10 +213,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
         final GLUT glut = new GLUT();
         gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
-        String s = String.format("TPR=%6.1f%% TNR=%6.1f%% TPO=%6.1f%%, BR=%6.1f%% dT=%d us", 100 * TPR, 100 * TNR, 100 * TPO, 100 * BR, poissonDtUs);
+        String s = String.format("TPR=%6.1f%% TNR=%6.1f%% TPO=%6.1f%%, BR=%6.1f%% dT=%.2fus", 100 * TPR, 100 * TNR, 100 * TPO, 100 * BR, poissonDtUs);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glRasterPos3f(0, statisticsDrawingPosition + 10, 0);
-        String s2 = String.format("Inp. sigRate=%s noiseRate=%s, Output sigRate=%s noiseRate=%s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
+        String s2 = String.format("In sigRate=%s noiseRate=%s, Out sigRate=%s noiseRate=%s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s2);
         gl.glPopMatrix();
     }
@@ -264,7 +265,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         ArrayList<BasicEvent> l = new ArrayList(p.getSize());
         BasicEvent pe = null;
         for (BasicEvent e : p) {
-            if (pe != null && (e.timestamp < pe.timestamp || pe.equals(e))) {
+            if (pe != null && (e.timestamp < pe.timestamp )) {
                 throw new BackwardsTimestampException(String.format("timestamp %d is earlier than previous %d", e.timestamp, pe.timestamp));
             }
             l.add(e);
@@ -277,7 +278,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         ArrayList<BasicEvent> l = new ArrayList(p.size());
         BasicEvent pe = null;
         for (BasicEvent e : p) {
-            if (pe != null && (e.timestamp < pe.timestamp || pe.equals(e))) {
+            if (pe != null && (e.timestamp < pe.timestamp )) {
                 throw new BackwardsTimestampException(String.format("timestamp %d is earlier than previous %d", e.timestamp, pe.timestamp));
             }
             l.add(e);
@@ -512,9 +513,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
             Point2D.Float p = new Point2D.Float(TPR, TNR);
             rocHistoryList.add(p);
-            if (rocHistoryList.size() > rocHistory) {
-                rocHistoryList.removeFirst();
-            }
+//            if (rocHistoryList.size() > rocHistory) {
+//                rocHistoryList.removeFirst();
+//            }
 
             lastTimestampPreviousPacket = in.getLastTimestamp();
             return passedSignalAndNoisePacket;
@@ -539,10 +540,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         // dt is the time interval such that if we sample a random value 0-1 every dt us, the the overall noise rate will be correct.
         int npix = (chip.getSizeX() * chip.getSizeY());
         float tmp = (float) (1.0 / ((leakNoiseRateHz + shotNoiseRateHz) * npix)); // this value is very small
-        poissonDtUs = (int) ((tmp / 10) * 1000000); // 1s = 1000000 us
+        poissonDtUs = ((tmp / 10) * 1000000); // 1s = 1000000 us // TODO document why 10 here. It is to ensure that prob(>1 event per sample is low)
         if (poissonDtUs < 1) {
-            log.warning(String.format("Poisson sampling rate is less than 1us which is timestep resolution, generated noise rate will too low"));
-            poissonDtUs = 1;
+            log.warning(String.format("Poisson sampling rate is less than 1us which is timestep resolution, could be slow"));
         }
         shotOffThresholdProb = 0.5f * (poissonDtUs * 1e-6f * npix) * shotNoiseRateHz; // bounds for samppling Poisson noise, factor 0.5 so total rate is shotNoiseRateHz
         shotOnThresholdProb = 1 - shotOffThresholdProb; // for shot noise sample both sides, for leak events just generate ON events
@@ -682,9 +682,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
             // we had some previous event
             int lastPacketTs = lastTimestampPreviousPacket + 1; // 1us more than timestamp of the last event in the last packet
-            for (int ts = lastPacketTs; ts < firstTsThisPacket; ts += poissonDtUs) {
-                ts = sampleNoiseEvent(ts, outItr, generatedNoise, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb); // note noise injection updates ts to make sure monotonic
-            }
+            insertNoiseEvents(lastPacketTs, firstTsThisPacket, outItr, generatedNoise);
         }
 
         // insert noise between events of this packet after the first event, record their timestamp
@@ -698,24 +696,30 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 continue;
             }
             // save the previous timestamp and get the next one, and then inject noise between them
-            preEts = lastEventTs + 1;
+            preEts = lastEventTs;
             lastEventTs = ie.timestamp;
-            for (int ts = preEts; ts < lastEventTs; ts += poissonDtUs) {  // TODO might be truncation error here with leftover time
-                ts = sampleNoiseEvent(ts, outItr, generatedNoise, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb);
-            }
+            insertNoiseEvents(preEts, lastEventTs, outItr, generatedNoise);
             outItr.nextOutput().copyFrom(ie);
+        }
+    }
+
+    private void insertNoiseEvents(int lastPacketTs, int firstTsThisPacket, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> generatedNoise) {
+        for (double ts = lastPacketTs; ts < firstTsThisPacket; ts += poissonDtUs) {
+            // note that poissonDtUs is float but we truncate the actual timestamp to int us value here.
+            // It's OK if there are events with duplicate timestamps (there are plenty in input already).
+            sampleNoiseEvent((int)ts, outItr, generatedNoise, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb); // note noise injection updates ts to make sure monotonic
         }
     }
 
     private int sampleNoiseEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList, float shotOffThresholdProb, float shotOnThresholdProb, float leakOnThresholdProb) {
         float randomnum = random.nextFloat();
         if (randomnum < shotOffThresholdProb) {
-            injectOffEvent(ts++, outItr, noiseList);
+            injectOffEvent(ts, outItr, noiseList);
         } else if (randomnum > shotOnThresholdProb) {
-            injectOnEvent(ts++, outItr, noiseList);
+            injectOnEvent(ts, outItr, noiseList);
         }
         if (random.nextFloat() < leakOnThresholdProb) {
-            injectOnEvent(ts++, outItr, noiseList);
+            injectOnEvent(ts, outItr, noiseList);
         }
         return ts;  // we make sure ts increment and return the new one, which updates loop param
     }
@@ -914,11 +918,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     /**
      * @param rocHistory the rocHistory to set
      */
-    public void setRocHistory(int rocHistory) {
+    synchronized public void setRocHistory(int rocHistory) {
         if (rocHistory > 10000) {
             rocHistory = 10000;
         }
         this.rocHistory = rocHistory;
         putInt("rocHistory", rocHistory);
+        rocHistoryList=EvictingQueue.create(rocHistory);
     }
 }
