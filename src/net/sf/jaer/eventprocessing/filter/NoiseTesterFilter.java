@@ -97,7 +97,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public static final float RATE_LIMIT_HZ = 10;
     private float annotateAlpha = getFloat("annotateAlpha", 0.5f);
     private DavisRenderer renderer = null;
-    private boolean overlayClassifications = getBoolean("overlayClassifications", true);
+    private boolean overlayClassifications = getBoolean("overlayClassifications", false);
+    private boolean overlayInput = getBoolean("overlayInput", false);
     private ArrayList<BasicEvent> tpList = null, fnList = null, fpList = null, tnList = null; // output of classification
 
     public enum NoiseFilterEnum {
@@ -109,12 +110,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //    float BR = 2 * TPR * TPO / (TPR + TPO); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
     public NoiseTesterFilter(AEChip chip) {
         super(chip);
+        String ann = "Filtering Annotation";
         setPropertyTooltip("shotNoiseRateHz", "rate per pixel of shot noise events");
         setPropertyTooltip("leakNoiseRateHz", "rate per pixel of leak noise events");
         setPropertyTooltip("csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
         setPropertyTooltip("selectedNoiseFilterEnum", "Choose a noise filter to test");
-        setPropertyTooltip("annotation", "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
-        setPropertyTooltip("annotation", "overlayClassifications", "Overlay the signal and noise classifications of events in green and red.");
+        setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
+        setPropertyTooltip(ann, "overlayClassifications", "Overlay the signal and noise classifications of events in green and red.");
+        setPropertyTooltip(ann, "overlayInput", "Overlay all input events as signal (green) and noise (red). If not selected, overlay true positives as green (signal in output) and false positives as red (noise in output).");
         if (chip.getRemoteControl() != null) {
             log.info("adding RemoteControlCommand listener to AEChip\n");
             chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");
@@ -189,14 +192,17 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     private void annotateNoiseFilteringEvents(ArrayList<BasicEvent> outSig, ArrayList<BasicEvent> outNoise) {
-        if(renderer==null) return;
+        if (renderer == null) {
+            return;
+        }
         renderer.clearAnnotationMap();
-        final float[] noiseColor = {1, 0, 0}, sigColor = {0, 1, 0};
+        final float a = getAnnotateAlpha();
+        final float[] noiseColor = {.5f, 0, 0, a}, sigColor = {0, .5f, 0, a};
         for (BasicEvent e : outSig) {
-            renderer.setAnnotateColorRGB(e.x, e.y, sigColor);
+            renderer.setAnnotateColorRGBA(e.x, e.y, sigColor);
         }
         for (BasicEvent e : outNoise) {
-            renderer.setAnnotateColorRGB(e.x, e.y, noiseColor);
+            renderer.setAnnotateColorRGBA(e.x, e.y, noiseColor);
         }
     }
 
@@ -251,7 +257,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     /**
      * Finds the intersection of events in a that are in b. Assumes packets are
-     * non-monotonic in timestamp ordering. 
+     * non-monotonic in timestamp ordering.
      *
      *
      * @param a ArrayList<BasicEvent> of a
@@ -389,7 +395,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             signalAndNoiseList = createEventList((EventPacket<BasicEvent>) signalAndNoisePacket);
 
             // filter the augmented packet
-            EventPacket<BasicEvent> passedSignalAndNoisePacket = (EventPacket<BasicEvent>) selectedFilter.filterPacket(signalAndNoisePacket);
+            EventPacket<BasicEvent> passedSignalAndNoisePacket = (EventPacket<BasicEvent>) getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
 
             ArrayList<BasicEvent> filteredOutList = selectedFilter.getFilteredOutEvents();
 
@@ -465,8 +471,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 }
             }
 
-            if(overlayClassifications){
-                annotateNoiseFilteringEvents(signalList, noiseList);
+            if (overlayClassifications) {
+                if (overlayInput) {
+                    annotateNoiseFilteringEvents(signalList, noiseList);
+                } else {
+                    annotateNoiseFilteringEvents(tpList, fpList);
+                }
+
             }
 
             lastTimestampPreviousPacket = in.getLastTimestamp();
@@ -836,6 +847,23 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public void setOverlayClassifications(boolean overlayClassifications) {
         this.overlayClassifications = overlayClassifications;
         putBoolean("overlayClassifications", overlayClassifications);
-        if(renderer!=null) renderer.setDisplayAnnotation(overlayClassifications);
+        if (renderer != null) {
+            renderer.setDisplayAnnotation(overlayClassifications);
+        }
+    }
+
+    /**
+     * @return the overlayInput
+     */
+    public boolean isOverlayInput() {
+        return overlayInput;
+    }
+
+    /**
+     * @param overlayInput the overlayInput to set
+     */
+    public void setOverlayInput(boolean overlayInput) {
+        this.overlayInput = overlayInput;
+        putBoolean("overlayInput", overlayInput);
     }
 }
