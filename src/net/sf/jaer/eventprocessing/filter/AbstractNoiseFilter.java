@@ -127,7 +127,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
                     statisticsDrawingPosition = y;
                 }
             }
-            statisticsDrawingPosition = statisticsDrawingPosition + 10;
+            statisticsDrawingPosition = statisticsDrawingPosition + 20; // room for 2 lines per filter
             noiseStatDrawingMap.put(this, statisticsDrawingPosition);
         }
     }

@@ -117,7 +117,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip("selectedNoiseFilterEnum", "Choose a noise filter to test");
         setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
         setPropertyTooltip(ann, "overlayClassifications", "Overlay the signal and noise classifications of events in green and red.");
-        setPropertyTooltip(ann, "overlayInput", "Overlay all input events as signal (green) and noise (red). If not selected, overlay true positives as green (signal in output) and false positives as red (noise in output).");
+        setPropertyTooltip(ann, "overlayInput", "<html><p>If selected, overlay all input events as signal (green) and noise (red). <p>If not selected, overlay true positives as green (signal in output) and false positives as red (noise in output).");
         if (chip.getRemoteControl() != null) {
             log.info("adding RemoteControlCommand listener to AEChip\n");
             chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");

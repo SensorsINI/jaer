@@ -109,6 +109,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
         // rather are rendered exactly as they come from data no matter
         // what zoom.
 
+        gl.glEnable(GL.GL_BLEND);
         if (pixmap != null && displayFrames) {
             gl.glPushMatrix();
             if (imageTransform != null) {
@@ -186,7 +187,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 //		}
         if (annotateMap != null && displayAnnotation) {
             gl.glEnable(GL2.GL_ALPHA_TEST); // only draw annotation when alpha>0
-            gl.glAlphaFunc(GL2.GL_GREATER, 0);
+            gl.glAlphaFunc(GL2.GL_GREATER, 0f);
             gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
             gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);

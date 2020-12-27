@@ -634,7 +634,7 @@ public class DavisRenderer extends AEChipRenderer {
                 break;
                 case GrayLevel: /*|| colorMode == ColorMode.Contrast*/ {
                     if (map[index + 3] == 0) { // nothing there yet
-                        map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
+                        map[index + 3] = 1f;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
                         map[index] = 0.5f;
                         map[index + 1] = 0.5f;
                         map[index + 2] = 0.5f; // gray level
