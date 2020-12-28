@@ -115,6 +115,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public NoiseTesterFilter(AEChip chip) {
         super(chip);
         String ann = "Filtering Annotation";
+        String roc = "ROC display";
         setPropertyTooltip("shotNoiseRateHz", "rate per pixel of shot noise events");
         setPropertyTooltip("leakNoiseRateHz", "rate per pixel of leak noise events");
         setPropertyTooltip("csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
@@ -122,7 +123,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
         setPropertyTooltip(ann, "overlayClassifications", "Overlay the signal and noise classifications of events in green and red.");
         setPropertyTooltip(ann, "overlayInput", "<html><p>If selected, overlay all input events as signal (green) and noise (red). <p>If not selected, overlay true positives as green (signal in output) and false positives as red (noise in output).");
-        setPropertyTooltip(ann, "rocHistory", "Number of samples of ROC point to show.");
+        setPropertyTooltip(roc, "rocHistory", "Number of samples of ROC point to show.");
+        setPropertyTooltip(roc, "clearROCHistory", "Clears samples from display.");
         if (chip.getRemoteControl() != null) {
             log.info("adding RemoteControlCommand listener to AEChip\n");
             chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");
@@ -526,7 +528,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         lastTimestampPreviousPacket = null;
         resetCalled = true;
         getEnclosedFilterChain().reset();
-        rocHistoryList.clear();
+//        rocHistoryList.clear(); // done by doClearROCHistory to preserve
     }
 
     private void computeProbs() {
@@ -568,6 +570,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             renderer = (DavisRenderer) chip.getRenderer();
         }
         setAnnotateAlpha(annotateAlpha);
+        setOverlayClassifications(overlayClassifications); // make sure renderer is properly set up.
+        setOverlayInput(overlayInput);
     }
 
     /**
@@ -921,5 +925,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         this.rocHistory = rocHistory;
         putInt("rocHistory", rocHistory);
         rocHistoryList=EvictingQueue.create(rocHistory);
+    }
+    
+    synchronized public void doClearROCHistory(){
+        rocHistoryList.clear();
     }
 }
