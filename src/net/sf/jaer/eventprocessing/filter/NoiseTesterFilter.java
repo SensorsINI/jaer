@@ -52,6 +52,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.graphics.DavisRenderer;
+import net.sf.jaer.util.DrawGL;
 
 /**
  * Filter for testing noise filters
@@ -184,32 +185,27 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         findUnusedDawingY();
         GL2 gl = drawable.getGL().getGL2();
-        gl.glPushMatrix();
-        L = 3;
+        L = 5;
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
+        gl.glLineWidth(2);
         for (Point2D.Float p : rocHistoryList) {
-            gl.glBegin(GL.GL_LINES);
+        gl.glPushMatrix();
             x = (1 - p.y) * sx;
             y = p.x * sy;
-            gl.glVertex2f(x - L, y - L);
-            gl.glVertex2f(x + L, y + L);
-            gl.glVertex2f(x - L, y + L);
-            gl.glVertex2f(x + L, y - L);
-            gl.glEnd();
+            DrawGL.drawBox(gl,x, y, L, L, 0);
+        gl.glPopMatrix();
         }
-        gl.glColor3f(.8f, .8f, .2f); // must set color before raster position (raster position is like glVertex)
-        L = 6;
         // draw X at TPR / TNR point
+        gl.glPushMatrix();
+        gl.glColor3f(.8f, .8f, .2f); // must set color before raster position (raster position is like glVertex)
+        L = 12;
         gl.glLineWidth(4);
-        gl.glBegin(GL.GL_LINES);
         x = (1 - TNR) * sx;
         y = TPR * sy;
-        gl.glVertex2f(x - L, y - L);
-        gl.glVertex2f(x + L, y + L);
-        gl.glVertex2f(x - L, y + L);
-        gl.glVertex2f(x + L, y - L);
-        gl.glEnd();
-        gl.glLineWidth(3);
+        DrawGL.drawCross(gl,x, y, L, 0);
+        gl.glPopMatrix();
+
+        gl.glPushMatrix();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
         final GLUT glut = new GLUT();
         gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
