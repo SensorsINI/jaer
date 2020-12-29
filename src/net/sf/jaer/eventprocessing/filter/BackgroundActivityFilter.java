@@ -107,7 +107,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
                     if ((xx < 0) || (xx > sx) || (yy < 0) || (yy > sy)) {
                         continue;
                     }
-                    if (xx == x && yy == y) {
+                    if (filterHotPixels && xx == x && yy == y) {
                         continue; // like BAF, don't correlate with ourself
                     }
                     final int lastT = lastTimesMap[xx][yy];
