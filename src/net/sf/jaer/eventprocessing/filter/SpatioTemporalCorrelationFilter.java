@@ -147,14 +147,15 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             final int x1 = x >= ssx - 1 ? ssx - 1 : x + 1, y1 = y >= ssy - 1 ? ssy - 1 : y + 1;
             outerloop:
             for (int xx = x0; xx <= x1; xx++) {
+                final int[] col=lastTimesMap[xx];
                 for (int yy = y0; yy <= y1; yy++) {
 //                    if ((xx < 0) || (xx > sx) || (yy < 0) || (yy > sy)) {
 //                        continue;
 //                    }
-                    if (xx == x && yy == y) {
+                    if (filterHotPixels && xx == x && yy == y) {
                         continue; // like BAF, don't correlate with ourself
                     }
-                    final int lastT = lastTimesMap[xx][yy];
+                    final int lastT = col[yy];
                     final int deltaT = (ts - lastT);
                     if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) {
                         ncorrelated++;
