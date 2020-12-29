@@ -191,11 +191,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
         gl.glLineWidth(2);
         for (Point2D.Float p : rocHistoryList) {
-        gl.glPushMatrix();
+            gl.glPushMatrix();
             x = (1 - p.y) * sx;
             y = p.x * sy;
-            DrawGL.drawBox(gl,x, y, L, L, 0);
-        gl.glPopMatrix();
+            DrawGL.drawBox(gl, x, y, L, L, 0);
+            gl.glPopMatrix();
         }
         // draw X at TPR / TNR point
         gl.glPushMatrix();
@@ -204,7 +204,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         gl.glLineWidth(4);
         x = (1 - TNR) * sx;
         y = TPR * sy;
-        DrawGL.drawCross(gl,x, y, L, 0);
+        DrawGL.drawCross(gl, x, y, L, 0);
         gl.glPopMatrix();
 
         gl.glPushMatrix();
@@ -263,7 +263,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         ArrayList<BasicEvent> l = new ArrayList(p.getSize());
         BasicEvent pe = null;
         for (BasicEvent e : p) {
-            if (pe != null && (e.timestamp < pe.timestamp )) {
+            if (pe != null && (e.timestamp < pe.timestamp)) {
                 throw new BackwardsTimestampException(String.format("timestamp %d is earlier than previous %d", e.timestamp, pe.timestamp));
             }
             l.add(e);
@@ -276,7 +276,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         ArrayList<BasicEvent> l = new ArrayList(p.size());
         BasicEvent pe = null;
         for (BasicEvent e : p) {
-            if (pe != null && (e.timestamp < pe.timestamp )) {
+            if (pe != null && (e.timestamp < pe.timestamp)) {
                 throw new BackwardsTimestampException(String.format("timestamp %d is earlier than previous %d", e.timestamp, pe.timestamp));
             }
             l.add(e);
@@ -425,6 +425,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             signalAndNoiseList = createEventList((EventPacket<BasicEvent>) signalAndNoisePacket);
 
             // filter the augmented packet
+            for (EventFilter2D f : getEnclosedFilterChain()) {
+                ((AbstractNoiseFilter) f).setRecordFilteredOutEvents(true); // make sure to record events, turned off by default for normal use
+            }
             EventPacket<BasicEvent> passedSignalAndNoisePacket = (EventPacket<BasicEvent>) getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
 
             ArrayList<BasicEvent> filteredOutList = selectedFilter.getFilteredOutEvents();
@@ -707,7 +710,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         for (double ts = lastPacketTs; ts < firstTsThisPacket; ts += poissonDtUs) {
             // note that poissonDtUs is float but we truncate the actual timestamp to int us value here.
             // It's OK if there are events with duplicate timestamps (there are plenty in input already).
-            sampleNoiseEvent((int)ts, outItr, generatedNoise, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb); // note noise injection updates ts to make sure monotonic
+            sampleNoiseEvent((int) ts, outItr, generatedNoise, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb); // note noise injection updates ts to make sure monotonic
         }
     }
 
@@ -924,10 +927,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         this.rocHistory = rocHistory;
         putInt("rocHistory", rocHistory);
-        rocHistoryList=EvictingQueue.create(rocHistory);
+        rocHistoryList = EvictingQueue.create(rocHistory);
     }
-    
-    synchronized public void doClearROCHistory(){
+
+    synchronized public void doClearROCHistory() {
         rocHistoryList.clear();
     }
 }

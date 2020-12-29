@@ -42,9 +42,13 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     protected boolean showFilteringStatistics = getBoolean("showFilteringStatistics", true);
     protected int totalEventCount = 0;
     protected int filteredOutEventCount = 0;
-    /** list of filtered out events */
+    /**
+     * list of filtered out events
+     */
     private ArrayList<BasicEvent> filteredOutEvents = new ArrayList();
-    protected EngineeringFormat eng=new EngineeringFormat();
+    protected EngineeringFormat eng = new EngineeringFormat();
+
+    private boolean recordFilteredOutEvents = false;
     /**
      * Map from noise filters to drawing positions of noise filtering statistics
      * annotations
@@ -61,20 +65,25 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         setPropertyTooltip("correlationTimeS", "Correlation time for noise filters that use this parameter");
     }
 
-    /** Use to filter out events, updates the list of such events
-     * 
-     * @param e 
+    /**
+     * Use to filter out events, updates the list of such events
+     *
+     * @param e
      */
     protected void filterOut(BasicEvent e) {
         e.setFilteredOut(true);
         filteredOutEventCount++;
-        getFilteredOutEvents().add(e);
+        if (recordFilteredOutEvents) {
+            getFilteredOutEvents().add(e);
+        }
     }
 
-    /** Subclasses should call this before filtering to clear the filteredOutEventCount and filteredOutEvents
-     * 
+    /**
+     * Subclasses should call this before filtering to clear the
+     * filteredOutEventCount and filteredOutEvents
+     *
      * @param in
-     * @return 
+     * @return
      */
     @Override
     public EventPacket<? extends BasicEvent> filterPacket(EventPacket<?> in) {
@@ -177,6 +186,28 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     public ArrayList<BasicEvent> getFilteredOutEvents() {
         return filteredOutEvents;
+    }
+
+    /**
+     * NoiseTesterFilter sets this boolean true to record filtered out events to
+     * the filteredOutEvents ArrayList. Set false by default to save time and
+     * memory.
+     *
+     * @return the recordFilteredOutEvents
+     */
+    public boolean isRecordFilteredOutEvents() {
+        return recordFilteredOutEvents;
+    }
+
+    /**
+     * NoiseTesterFilter sets this boolean true to record filtered out events to
+     * the filteredOutEvents ArrayList. Set false by default to save time and
+     * memory.
+     *
+     * @param recordFilteredOutEvents the recordFilteredOutEvents to set
+     */
+    public void setRecordFilteredOutEvents(boolean recordFilteredOutEvents) {
+        this.recordFilteredOutEvents = recordFilteredOutEvents;
     }
 
 }
