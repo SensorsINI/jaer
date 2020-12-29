@@ -20,11 +20,10 @@ package net.sf.jaer.eventprocessing.filter;
 
 import ch.unizh.ini.jaer.projects.util.ColorHelper;
 import com.google.common.collect.EvictingQueue;
-import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.gl2.GLUT;
-import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -47,13 +46,18 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JFileChooser;
 import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.graphics.AEPlayer;
+import net.sf.jaer.graphics.ChipDataFilePreview;
 import net.sf.jaer.graphics.DavisRenderer;
+import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.DrawGL;
+import net.sf.jaer.util.IndexFileFilter;
 
 /**
  * Filter for testing noise filters
@@ -72,6 +76,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     float shotOnThresholdProb; // for shot noise sample both sides, for leak events just generate ON events
     float leakOnThresholdProb; // bounds for samppling Poisson noise
 
+    
+    private AEFileInputStream noiseAeFileInputStream=null;
+    
     private static String DEFAULT_CSV_FILENAME_BASE = "NoiseTesterFilter";
     private String csvFileName = getString("csvFileName", DEFAULT_CSV_FILENAME_BASE);
     private File csvFile = null;
@@ -134,6 +141,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         String filt = "Filtering control";
         setPropertyTooltip(noise, "shotNoiseRateHz", "rate per pixel of shot noise events");
         setPropertyTooltip(noise, "leakNoiseRateHz", "rate per pixel of leak noise events");
+        setPropertyTooltip(noise, "openNoiseSourceRecording", "Open a recorded AEDAT file as noise source.");
         setPropertyTooltip(out, "csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
         setPropertyTooltip(filt, "selectedNoiseFilterEnum", "Choose a noise filter to test");
         setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
@@ -964,5 +972,40 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     synchronized public void doClearROCHistory() {
         rocHistoryList.clear();
+    }
+    
+    public void doOpenNoiseSourceRecording(){
+        JFileChooser  fileChooser = new JFileChooser();
+        ChipDataFilePreview preview = new ChipDataFilePreview(fileChooser, getChip());
+        // from book swing hacks
+        fileChooser.addPropertyChangeListener(preview);
+        fileChooser.setAccessory(preview);
+        String lastFilePath = getString("lastFilePath", "");
+        // get the last folder
+        DATFileFilter datFileFilter = new DATFileFilter();
+        fileChooser.addChoosableFileFilter(datFileFilter);
+        fileChooser.setCurrentDirectory(new File(lastFilePath));
+        // sets the working directory of the chooser
+//            boolean wasPaused=isPaused();
+        try {
+            int retValue = fileChooser.showOpenDialog(getChip().getAeViewer().getFilterFrame());
+            if (retValue == JFileChooser.APPROVE_OPTION) {
+                lastFilePath = fileChooser.getSelectedFile().toString();
+                putString("lastFilePath", lastFilePath);
+                try {
+                if(noiseAeFileInputStream!=null){
+                    noiseAeFileInputStream.close();
+                }
+                    noiseAeFileInputStream=new AEFileInputStream(fileChooser.getSelectedFile(),getChip());
+                } catch (IOException ex) {
+                    Logger.getLogger(NoiseTesterFilter.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            } else {
+                preview.showFile(null);
+            }
+        } catch (GLException e) {
+            log.warning(e.toString());
+            preview.showFile(null);
+        } 
     }
 }
