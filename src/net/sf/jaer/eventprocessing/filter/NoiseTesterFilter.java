@@ -116,10 +116,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         super(chip);
         String ann = "Filtering Annotation";
         String roc = "ROC display";
-        setPropertyTooltip("shotNoiseRateHz", "rate per pixel of shot noise events");
-        setPropertyTooltip("leakNoiseRateHz", "rate per pixel of leak noise events");
-        setPropertyTooltip("csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
-        setPropertyTooltip("selectedNoiseFilterEnum", "Choose a noise filter to test");
+        String out = "Output";
+        String noise = "Noise";
+        String filt = "Filtering control";
+        setPropertyTooltip(noise,"shotNoiseRateHz", "rate per pixel of shot noise events");
+        setPropertyTooltip(noise,"leakNoiseRateHz", "rate per pixel of leak noise events");
+        setPropertyTooltip(out,"csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
+        setPropertyTooltip(filt,"selectedNoiseFilterEnum", "Choose a noise filter to test");
         setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
         setPropertyTooltip(ann, "overlayClassifications", "Overlay the signal and noise classifications of events in green and red.");
         setPropertyTooltip(ann, "overlayInput", "<html><p>If selected, overlay all input events as signal (green) and noise (red). <p>If not selected, overlay true positives as green (signal in output) and false positives as red (noise in output).");

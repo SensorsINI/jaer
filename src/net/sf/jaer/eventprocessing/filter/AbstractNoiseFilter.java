@@ -48,7 +48,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     private ArrayList<BasicEvent> filteredOutEvents = new ArrayList();
     protected EngineeringFormat eng = new EngineeringFormat();
 
-    private boolean recordFilteredOutEvents = false;
+    protected boolean recordFilteredOutEvents = false;
     /**
      * Map from noise filters to drawing positions of noise filtering statistics
      * annotations
@@ -61,8 +61,11 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 
     public AbstractNoiseFilter(AEChip chip) {
         super(chip);
-        setPropertyTooltip("showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
-        setPropertyTooltip("correlationTimeS", "Correlation time for noise filters that use this parameter");
+        String filt = "Filtering control";
+        String ann = "Filtering Annotation";
+
+        setPropertyTooltip(ann,"showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
+        setPropertyTooltip(filt,"correlationTimeS", "Correlation time for noise filters that use this parameter");
     }
 
     /**
@@ -188,16 +191,6 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         return filteredOutEvents;
     }
 
-    /**
-     * NoiseTesterFilter sets this boolean true to record filtered out events to
-     * the filteredOutEvents ArrayList. Set false by default to save time and
-     * memory.
-     *
-     * @return the recordFilteredOutEvents
-     */
-    public boolean isRecordFilteredOutEvents() {
-        return recordFilteredOutEvents;
-    }
 
     /**
      * NoiseTesterFilter sets this boolean true to record filtered out events to
