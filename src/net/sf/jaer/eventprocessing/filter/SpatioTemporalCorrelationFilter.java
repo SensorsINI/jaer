@@ -36,7 +36,6 @@ import net.sf.jaer.util.TobiLogger;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
-
     /**
      * the time in timestamp ticks (1us at present) that a spike needs to be
      * supported by a prior event in the neighborhood by to pass through
@@ -64,8 +63,10 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
      * x and y are shifted right by one bit
      */
     private int subsampleBy = getInt("subsampleBy", 0);
-    private int sx;
+    private int sx; // size of chip minus 1
     private int sy;
+    private int ssx; // size of subsampled timestamp map
+    private int ssy;
 
     int[][] lastTimesMap;
     private int ts = 0, lastTimestamp = DEFAULT_TIMESTAMP; // used to reset filter
@@ -98,7 +99,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
         super.filterPacket(in);
-        if (lastTimesMap == null ) {
+        if (lastTimesMap == null) {
             allocateMaps(chip);
         }
         if (adaptiveFilteringEnabled) {
@@ -119,7 +120,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             int ts = e.timestamp;
             lastTimestamp = ts;
             final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy);
-            if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
+            if ((x < 0) || (x > ssx) || (y < 0) || (y > ssy)) {
                 filterOut(e);
                 continue;
             }
@@ -142,12 +143,14 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 }
             }
             int ncorrelated = 0;
+            final int x0 = x < 1 ? 0 : x - 1, y0 = y < 1 ? 0 : y - 1;
+            final int x1 = x >= ssx - 1 ? ssx - 1 : x + 1, y1 = y >= ssy - 1 ? ssy - 1 : y + 1;
             outerloop:
-            for (int xx = x - 1; xx <= x + 1; xx++) {
-                for (int yy = y - 1; yy <= y + 1; yy++) {
-                    if ((xx < 0) || (xx > sx) || (yy < 0) || (yy > sy)) {
-                        continue;
-                    }
+            for (int xx = x0; xx <= x1; xx++) {
+                for (int yy = y0; yy <= y1; yy++) {
+//                    if ((xx < 0) || (xx > sx) || (yy < 0) || (yy > sy)) {
+//                        continue;
+//                    }
                     if (xx == x && yy == y) {
                         continue; // like BAF, don't correlate with ourself
                     }
@@ -230,13 +233,15 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     public final void initFilter() {
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
+        ssx = sx >> subsampleBy;
+        ssy = sy >> subsampleBy;
         allocateMaps(chip);
         resetFilter();
     }
 
     private void allocateMaps(AEChip chip) {
         if ((chip != null) && (chip.getNumCells() > 0) && (lastTimesMap == null || lastTimesMap.length != chip.getSizeX() >> subsampleBy)) {
-            lastTimesMap = new int[chip.getSizeX() >> subsampleBy][chip.getSizeY() >> subsampleBy];
+            lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
         }
         binDim = 1 << activityBinDimBits;
         nBinsX = chip.getSizeX() / binDim;
@@ -286,7 +291,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
         putInt("dt", setValue);
         getSupport().firePropertyChange("dt", this.dt, setValue);
-        getSupport().firePropertyChange("correlationTimeS", 1e-6f*this.dt, 1e-6f*setValue);
+        getSupport().firePropertyChange("correlationTimeS", 1e-6f * this.dt, 1e-6f * setValue);
         this.dt = setValue;
     }
 
@@ -321,6 +326,9 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         }
         this.subsampleBy = subsampleBy;
         putInt("subsampleBy", subsampleBy);
+        ssx = sx >> subsampleBy;
+        ssy = ssy >> subsampleBy;
+        initFilter();
     }
     // </editor-fold>
 

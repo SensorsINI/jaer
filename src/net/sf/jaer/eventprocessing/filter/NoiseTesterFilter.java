@@ -18,6 +18,7 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
+import ch.unizh.ini.jaer.projects.util.ColorHelper;
 import com.google.common.collect.EvictingQueue;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -101,7 +102,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private boolean overlayClassifications = getBoolean("overlayClassifications", false);
     private boolean overlayInput = getBoolean("overlayInput", false);
     private int rocHistory = getInt("rocHistory", 1);
-    private EvictingQueue<Point2D.Float> rocHistoryList = EvictingQueue.create(rocHistory);
+    private EvictingQueue<ROCSample> rocHistoryList = EvictingQueue.create(rocHistory);
 
     private ArrayList<BasicEvent> tpList = null, fnList = null, fpList = null, tnList = null; // output of classification
 
@@ -111,7 +112,19 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private NoiseFilterEnum selectedNoiseFilterEnum = NoiseFilterEnum.valueOf(getString("selectedNoiseFilter", NoiseFilterEnum.BackgroundActivityFilter.toString())); //default is BAF
     private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
 
+    private class ROCSample {
+
+        float x, y, tau;
+
+        public ROCSample(float x, float y, float tau) {
+            this.x = x;
+            this.y = y;
+            this.tau = tau;
+        }
+
+    }
 //    float BR = 2 * TPR * TPO / (TPR + TPO); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
+
     public NoiseTesterFilter(AEChip chip) {
         super(chip);
         String ann = "Filtering Annotation";
@@ -119,10 +132,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         String out = "Output";
         String noise = "Noise";
         String filt = "Filtering control";
-        setPropertyTooltip(noise,"shotNoiseRateHz", "rate per pixel of shot noise events");
-        setPropertyTooltip(noise,"leakNoiseRateHz", "rate per pixel of leak noise events");
-        setPropertyTooltip(out,"csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
-        setPropertyTooltip(filt,"selectedNoiseFilterEnum", "Choose a noise filter to test");
+        setPropertyTooltip(noise, "shotNoiseRateHz", "rate per pixel of shot noise events");
+        setPropertyTooltip(noise, "leakNoiseRateHz", "rate per pixel of leak noise events");
+        setPropertyTooltip(out, "csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
+        setPropertyTooltip(filt, "selectedNoiseFilterEnum", "Choose a noise filter to test");
         setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
         setPropertyTooltip(ann, "overlayClassifications", "Overlay the signal and noise classifications of events in green and red.");
         setPropertyTooltip(ann, "overlayInput", "<html><p>If selected, overlay all input events as signal (green) and noise (red). <p>If not selected, overlay true positives as green (signal in output) and false positives as red (noise in output).");
@@ -181,6 +194,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
+    private int rocSampleCounter = 0;
+    private final int ROC_LABEL_TAU_INTERVAL = 30;
+
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
         int L;
@@ -188,16 +204,30 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (!showFilteringStatistics) {
             return;
         }
+        final GLUT glut = new GLUT();
         findUnusedDawingY();
         GL2 gl = drawable.getGL().getGL2();
         L = 5;
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
         gl.glLineWidth(2);
-        for (Point2D.Float p : rocHistoryList) {
+        for (ROCSample p : rocHistoryList) {
             gl.glPushMatrix();
+            float hue = (float) Math.log(10*p.tau); //. hue is 1 for tau 100ms
+            float[] colors = ColorHelper.HSVtoRGB(hue, 1.0f, 1.0f);
+            gl.glColor3f(colors[0],colors[1],colors[2]); // must set color before raster position (raster position is like glVertex)
+            gl.glLineWidth(2);
             x = (1 - p.y) * sx;
             y = p.x * sy;
-            DrawGL.drawBox(gl, x, y, L, L, 0);
+            // compute area of box propto the tau
+//            final float l = L * (float) Math.sqrt(1e2 * p.tau); // 10ms tau will produce box of dimension L
+            final float l = L; // 10ms tau will produce box of dimension L
+            DrawGL.drawBox(gl, x, y, l, l, 0);
+            if (rocSampleCounter++ % ROC_LABEL_TAU_INTERVAL == 0) {
+                gl.glRasterPos3f(x+L, y, 0);
+                gl.glColor3f(.5f, .5f, .8f); // must set color before raster position (raster position is like glVertex)
+                String s = String.format("%ss", eng.format(p.tau));
+                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
+            }
             gl.glPopMatrix();
         }
         // draw X at TPR / TNR point
@@ -212,7 +242,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         gl.glPushMatrix();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
-        final GLUT glut = new GLUT();
         gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
         String s = String.format("TPR=%6.1f%% TNR=%6.1f%% TPO=%6.1f%%, BR=%6.1f%% dT=%.2fus", 100 * TPR, 100 * TNR, 100 * TPO, 100 * BR, poissonDtUs);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
@@ -515,7 +544,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 }
             }
 
-            Point2D.Float p = new Point2D.Float(TPR, TNR);
+            ROCSample p = new ROCSample(TPR, TNR, getCorrelationTimeS());
             rocHistoryList.add(p);
 //            if (rocHistoryList.size() > rocHistory) {
 //                rocHistoryList.removeFirst();

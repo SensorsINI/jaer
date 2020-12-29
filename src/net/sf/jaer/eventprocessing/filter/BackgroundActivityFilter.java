@@ -145,7 +145,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
 
     private void allocateMaps(AEChip chip) {
         if ((chip != null) && (chip.getNumCells() > 0) && (lastTimesMap == null || lastTimesMap.length != chip.getSizeX() >> subsampleBy)) {
-            lastTimesMap = new int[chip.getSizeX() >> subsampleBy][chip.getSizeY() >> subsampleBy];
+            lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
         }
     }
 
