@@ -47,7 +47,9 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     private ArrayList<BasicEvent> filteredOutEvents = new ArrayList();
     protected EngineeringFormat eng = new EngineeringFormat();
-
+    
+    /** Used by some filters that implement this option*/
+    protected boolean filterHotPixels=getBoolean("filterHotPixels", true);
     protected boolean recordFilteredOutEvents = false;
     /**
      * Map from noise filters to drawing positions of noise filtering statistics
@@ -66,6 +68,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 
         setPropertyTooltip(ann,"showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
         setPropertyTooltip(filt,"correlationTimeS", "Correlation time for noise filters that use this parameter");
+        setPropertyTooltip(filt,"filterHotPixels", "Filter out hot pixels by not considering correlation with ourselves (i.e. self-exclusion of correlation).");
     }
 
     /**
@@ -201,6 +204,21 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     public void setRecordFilteredOutEvents(boolean recordFilteredOutEvents) {
         this.recordFilteredOutEvents = recordFilteredOutEvents;
+    }
+
+    /**
+     * @return the filterHotPixels
+     */
+    public boolean isFilterHotPixels() {
+        return filterHotPixels;
+    }
+
+    /**
+     * @param filterHotPixels the filterHotPixels to set
+     */
+    public void setFilterHotPixels(boolean filterHotPixels) {
+        this.filterHotPixels = filterHotPixels;
+        putBoolean("filterHotPixels",filterHotPixels);
     }
 
 }
