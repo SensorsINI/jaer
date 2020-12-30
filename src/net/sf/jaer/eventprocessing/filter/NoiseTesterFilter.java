@@ -63,9 +63,9 @@ import net.sf.jaer.util.DrawGL;
 /**
  * Filter for testing noise filters
  *
- * @author tobid/shasah
+ * @author Tobi Delbruck, Shasha Guo, Oct-Jan 2020
  */
-@Description("Tests noise filters by injecting known noise and measuring how much signal and noise is filtered")
+@Description("Tests background BA denoising filters by injecting known noise and measuring how much signal and noise is filtered")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnotater, RemoteControlled {
 
