@@ -200,6 +200,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(noise, "leakNoiseRateHz", "rate per pixel of leak noise events");
         setPropertyTooltip(noise, "openNoiseSourceRecording", "Open a pre-recorded AEDAT file as noise source.");
         setPropertyTooltip(noise, "closeNoiseSourceRecording", "Closes the pre-recorded noise input.");
+        setPropertyTooltip(noise, "closeCsvFile", "Closes the output spreadsheet data file.");
         setPropertyTooltip(out, "csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
         setPropertyTooltip(filt, "selectedNoiseFilterEnum", "Choose a noise filter to test");
         setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
