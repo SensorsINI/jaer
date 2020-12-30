@@ -101,7 +101,6 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
             saveEvent(e);
             return; // filter out all edge events since we cannot fully check correlation TDOO not really correct
         }
-        boolean selfCorrelated = false;
         // first check rows around us, if any adjancent row has event then filter in
         for (int y = -1; y <= 1; y++) {
             if (lastRowTs[e.y + y] != 0 && e.timestamp - lastRowTs[e.y + y] < dtUs
