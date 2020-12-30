@@ -69,16 +69,73 @@ import net.sf.jaer.util.DrawGL;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnotater, RemoteControlled {
 
-    FilterChain chain;
+    final int MAX_NUM_RECORDED_EVENTS = 10_0000_0000;
+    final float MAX_TOTAL_NOISE_RATE_HZ = 50e6f;
+
+    private FilterChain chain;
+
     private float shotNoiseRateHz = getFloat("shotNoiseRateHz", .1f);
     private float leakNoiseRateHz = getFloat("leakNoiseRateHz", .1f);
     private float poissonDtUs = 1;
-    float shotOffThresholdProb; // bounds for samppling Poisson noise, factor 0.5 so total rate is shotNoiseRateHz
-    float shotOnThresholdProb; // for shot noise sample both sides, for leak events just generate ON events
-    float leakOnThresholdProb; // bounds for samppling Poisson noise
 
-    final int MAX_NUM_RECORDED_EVENTS = 10_0000_0000;
-    final float MAX_TOTAL_NOISE_RATE_HZ = 50e6f;
+    private float shotOffThresholdProb; // bounds for samppling Poisson noise, factor 0.5 so total rate is shotNoiseRateHz
+    private float shotOnThresholdProb; // for shot noise sample both sides, for leak events just generate ON events
+    private float leakOnThresholdProb; // bounds for samppling Poisson noise
+
+    private PrerecordedNoise prerecordedNoise = null;
+
+    private static String DEFAULT_CSV_FILENAME_BASE = "NoiseTesterFilter";
+    private String csvFileName = getString("csvFileName", DEFAULT_CSV_FILENAME_BASE);
+    private File csvFile = null;
+    private BufferedWriter csvWriter = null;
+
+    // chip size values, set in initFilter()
+    private int sx = 0;
+    private int sy = 0;
+
+    private Integer lastTimestampPreviousPacket = null, firstSignalTimestmap = null; // use Integer Object so it can be null to signify no value yet
+    private float TPR = 0;
+    private float TPO = 0;
+    private float TNR = 0;
+    private float accuracy = 0;
+    private float BR = 0;
+    float inSignalRateHz = 0, inNoiseRateHz = 0, outSignalRateHz = 0, outNoiseRateHz = 0;
+
+//    private EventPacket<ApsDvsEvent> signalAndNoisePacket = null;
+    private EventPacket<BasicEvent> signalAndNoisePacket = null;
+//    private EventList<BasicEvent> noiseList = new EventList();
+    private Random random = new Random();
+    private AbstractNoiseFilter[] noiseFilters = null;
+    private AbstractNoiseFilter selectedFilter = null;
+    protected boolean resetCalled = true; // flag to reset on next event
+    public static final float RATE_LIMIT_HZ = 25; //per pixel, separately for leak and shot rates
+    private float annotateAlpha = getFloat("annotateAlpha", 0.5f);
+    private DavisRenderer renderer = null;
+    private boolean overlayClassifications = getBoolean("overlayClassifications", false);
+    private boolean overlayInput = getBoolean("overlayInput", false);
+    private int rocHistory = getInt("rocHistory", 1);
+    private EvictingQueue<ROCSample> rocHistoryList = EvictingQueue.create(rocHistory);
+
+    private ArrayList<BasicEvent> tpList = null, fnList = null, fpList = null, tnList = null; // output of classification
+
+    public enum NoiseFilterEnum {
+        BackgroundActivityFilter, SpatioTemporalCorrelationFilter, SequenceBasedFilter, OrderNBackgroundActivityFilter
+    }
+    private NoiseFilterEnum selectedNoiseFilterEnum = NoiseFilterEnum.valueOf(getString("selectedNoiseFilter", NoiseFilterEnum.BackgroundActivityFilter.toString())); //default is BAF
+    private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
+
+    private class ROCSample {
+
+        float x, y, tau;
+        boolean labeled = false;
+
+        public ROCSample(float x, float y, float tau) {
+            this.x = x;
+            this.y = y;
+            this.tau = tau;
+        }
+
+    }
 
     // recorded noise to be used as input
     private class PrerecordedNoise {
@@ -133,62 +190,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             nextEvent = firstEvent;
         }
     }
-
-    private PrerecordedNoise prerecordedNoise = null;
-
-    private static String DEFAULT_CSV_FILENAME_BASE = "NoiseTesterFilter";
-    private String csvFileName = getString("csvFileName", DEFAULT_CSV_FILENAME_BASE);
-    private File csvFile = null;
-    private BufferedWriter csvWriter = null;
-
-    // chip size values, set in initFilter()
-    private int sx = 0;
-    private int sy = 0;
-
-    private Integer lastTimestampPreviousPacket = null, firstSignalTimestmap = null; // use Integer Object so it can be null to signify no value yet
-    private float TPR = 0;
-    private float TPO = 0;
-    private float TNR = 0;
-    private float accuracy = 0;
-    private float BR = 0;
-    float inSignalRateHz = 0, inNoiseRateHz = 0, outSignalRateHz = 0, outNoiseRateHz = 0;
-
-//    private EventPacket<ApsDvsEvent> signalAndNoisePacket = null;
-    private EventPacket<BasicEvent> signalAndNoisePacket = null;
-//    private EventList<BasicEvent> noiseList = new EventList();
-    private Random random = new Random();
-    private AbstractNoiseFilter[] noiseFilters = null;
-    private AbstractNoiseFilter selectedFilter = null;
-    protected boolean resetCalled = true; // flag to reset on next event
-    public static final float RATE_LIMIT_HZ = 25; //per pixel, separately for leak and shot rates
-    private float annotateAlpha = getFloat("annotateAlpha", 0.5f);
-    private DavisRenderer renderer = null;
-    private boolean overlayClassifications = getBoolean("overlayClassifications", false);
-    private boolean overlayInput = getBoolean("overlayInput", false);
-    private int rocHistory = getInt("rocHistory", 1);
-    private EvictingQueue<ROCSample> rocHistoryList = EvictingQueue.create(rocHistory);
-
-    private ArrayList<BasicEvent> tpList = null, fnList = null, fpList = null, tnList = null; // output of classification
-
-    public enum NoiseFilterEnum {
-        BackgroundActivityFilter, SpatioTemporalCorrelationFilter, SequenceBasedFilter, OrderNBackgroundActivityFilter
-    }
-    private NoiseFilterEnum selectedNoiseFilterEnum = NoiseFilterEnum.valueOf(getString("selectedNoiseFilter", NoiseFilterEnum.BackgroundActivityFilter.toString())); //default is BAF
-    private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
-
-    private class ROCSample {
-
-        float x, y, tau;
-        boolean labeled=false;
-
-        public ROCSample(float x, float y, float tau) {
-            this.x = x;
-            this.y = y;
-            this.tau = tau;
-        }
-
-    }
-//    float BR = 2 * TPR * TPO / (TPR + TPO); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
 
     public NoiseTesterFilter(AEChip chip) {
         super(chip);
@@ -292,7 +293,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             gl.glPopMatrix();
             if (rocSample.labeled) {
                 gl.glPushMatrix();
-                gl.glRasterPos3f(x + 5*L, y-3*L, 0);
+                gl.glRasterPos3f(x + 5 * L, y - 3 * L, 0);
 //                gl.glColor3f(.5f, .5f, .8f); // must set color before raster position (raster position is like glVertex)
                 String s = String.format("%ss", eng.format(rocSample.tau));
                 glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
@@ -617,8 +618,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
 
             ROCSample p = new ROCSample(TPR, TNR, getCorrelationTimeS());
-            if(rocSampleCounter++ % ROC_LABEL_TAU_INTERVAL == 0){
-                p.labeled=true; // only label every so many to avoid cluttering
+            if (rocSampleCounter++ % ROC_LABEL_TAU_INTERVAL == 0) {
+                p.labeled = true; // only label every so many to avoid cluttering
             }
             rocHistoryList.add(p);
 
