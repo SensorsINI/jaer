@@ -179,6 +179,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private class ROCSample {
 
         float x, y, tau;
+        boolean labeled=false;
 
         public ROCSample(float x, float y, float tau) {
             this.x = x;
@@ -276,25 +277,27 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         GL2 gl = drawable.getGL().getGL2();
         L = 5;
         gl.glLineWidth(2);
-        for (ROCSample p : rocHistoryList) {
-            gl.glPushMatrix();
-            float hue = (float) Math.log10(100 * p.tau); //. hue is 1 for tau=100ms and is 0 for tau = 1ms 
+        for (ROCSample rocSample : rocHistoryList) {
+            float hue = (float) Math.log10(100 * rocSample.tau); //. hue is 1 for tau=100ms and is 0 for tau = 1ms 
             float[] colors = ColorHelper.HSVtoRGB(hue, 1.0f, 1.0f);
             gl.glColor3f(colors[0], colors[1], colors[2]); // must set color before raster position (raster position is like glVertex)
             gl.glLineWidth(2);
-            x = (1 - p.y) * sx;
-            y = p.x * sy;
+            x = (1 - rocSample.y) * sx;
+            y = rocSample.x * sy;
             // compute area of box propto the tau
 //            final float l = L * (float) Math.sqrt(1e2 * p.tau); // 10ms tau will produce box of dimension L
             final float l = L; // 10ms tau will produce box of dimension L
+            gl.glPushMatrix();
             DrawGL.drawBox(gl, x, y, l, l, 0);
-            if (rocSampleCounter++ % ROC_LABEL_TAU_INTERVAL == 0) {
-                gl.glRasterPos3f(x + L, y, 0);
-                gl.glColor3f(.5f, .5f, .8f); // must set color before raster position (raster position is like glVertex)
-                String s = String.format("%ss", eng.format(p.tau));
-                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
-            }
             gl.glPopMatrix();
+            if (rocSample.labeled) {
+                gl.glPushMatrix();
+                gl.glRasterPos3f(x + 5*L, y-3*L, 0);
+//                gl.glColor3f(.5f, .5f, .8f); // must set color before raster position (raster position is like glVertex)
+                String s = String.format("%ss", eng.format(rocSample.tau));
+                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
+                gl.glPopMatrix();
+            }
         }
         // draw X at TPR / TNR point
         gl.glPushMatrix();
@@ -614,10 +617,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
 
             ROCSample p = new ROCSample(TPR, TNR, getCorrelationTimeS());
+            if(rocSampleCounter++ % ROC_LABEL_TAU_INTERVAL == 0){
+                p.labeled=true; // only label every so many to avoid cluttering
+            }
             rocHistoryList.add(p);
-//            if (rocHistoryList.size() > rocHistory) {
-//                rocHistoryList.removeFirst();
-//            }
 
             lastTimestampPreviousPacket = in.getLastTimestamp();
             return passedSignalAndNoisePacket;
