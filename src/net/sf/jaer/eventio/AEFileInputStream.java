@@ -363,7 +363,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * the next timestamp is later than maxTimestamp.
      *
      * @param maxTimestamp the latest timestamp that should be read.
-     * @throws EOFException at end of file
+     * @throws EOFException at end of file or out marker and returns null
      * @throws NonMonotonicTimeException - the event that has wrapped will be
      * returned on the next readEventForwards
      * @throws WrappedTimeException - the event that has wrapped will be
@@ -386,9 +386,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             if (position == markOut) { // TODO check exceptions here for markOut set before markIn
                 getSupport().firePropertyChange(AEInputStream.EVENT_EOF, null, position());
                 if (repeat) {
-                    log.info("calling rewind at end of mark in AEFileInputStream");
+                    log.info("calling rewind at OUT marker (or end of file) in AEFileInputStream");
                     rewind();
-                    return readEventForwards();
+                    throw new EOFException("reached out marker");
                 } else {
                     return null;
                 }
@@ -511,8 +511,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 throw new EOFException("reached end of file");
             }
         } catch (NullPointerException npe) {
+            log.severe(String.format("got NullPointerException reading %s: %s",this.toString(),npe));
             rewind();
-            return readEventForwards(maxTimestamp);
+            return null;
         } finally {
             mostRecentTimestamp = ts;
         }
