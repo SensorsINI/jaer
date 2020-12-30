@@ -46,18 +46,19 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
+import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket.InItr;
 import net.sf.jaer.eventio.AEFileInputStream;
-import net.sf.jaer.graphics.AEPlayer;
 import net.sf.jaer.graphics.ChipDataFilePreview;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.DrawGL;
-import net.sf.jaer.util.IndexFileFilter;
 
 /**
  * Filter for testing noise filters
@@ -76,9 +77,65 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     float shotOnThresholdProb; // for shot noise sample both sides, for leak events just generate ON events
     float leakOnThresholdProb; // bounds for samppling Poisson noise
 
-    
-    private AEFileInputStream noiseAeFileInputStream=null;
-    
+    final int MAX_NUM_RECORDED_EVENTS = 10_0000_0000;
+    final float MAX_TOTAL_NOISE_RATE_HZ = 50e6f;
+
+    // recorded noise to be used as input
+    private class PrerecordedNoise {
+
+        EventPacket<BasicEvent> recordedNoiseFileNoisePacket = null;
+        int firstTs;
+        Iterator<BasicEvent> itr = null;
+        BasicEvent firstEvent, nextEvent;
+
+        private PrerecordedNoise(File chosenPrerecordedNoiseFilePath) throws IOException {
+            AEFileInputStream recordedNoiseAeFileInputStream = new AEFileInputStream(chosenPrerecordedNoiseFilePath, getChip());
+            AEPacketRaw rawPacket = recordedNoiseAeFileInputStream.readPacketByNumber(MAX_NUM_RECORDED_EVENTS);
+            recordedNoiseAeFileInputStream.close();
+
+            EventPacket<BasicEvent> inpack = getChip().getEventExtractor().extractPacket(rawPacket);
+            EventPacket<BasicEvent> recordedNoiseFileNoisePacket = new EventPacket(PolarityEvent.class);
+            OutputEventIterator outItr = recordedNoiseFileNoisePacket.outputIterator();
+            for (BasicEvent p : inpack) {
+                outItr.nextOutput().copyFrom(p);
+            }
+            this.recordedNoiseFileNoisePacket = recordedNoiseFileNoisePacket;
+            itr = recordedNoiseFileNoisePacket.inputIterator();
+            firstEvent = recordedNoiseFileNoisePacket.getFirstEvent();
+            firstTs = recordedNoiseFileNoisePacket.getFirstTimestamp();
+
+            this.nextEvent = this.firstEvent;
+            computeProbs(); // set noise sample rate via poissonDtUs
+            log.info(String.format("Loaded %s pre-recorded events with duration %ss from %s", eng.format(recordedNoiseFileNoisePacket.getSize()), eng.format(1e-6f * recordedNoiseAeFileInputStream.getDurationUs()), chosenPrerecordedNoiseFilePath));
+        }
+
+        BasicEvent nextEventInRange(Integer signalFirstTs, int ts, float dT) {
+            if (signalFirstTs == null) {
+                return null;
+            }
+            if (nextEvent.timestamp - firstTs < ts - signalFirstTs + dT) {
+                BasicEvent rtn = nextEvent;
+                if (itr.hasNext()) {
+                    nextEvent = itr.next();
+                } else {
+                    itr = recordedNoiseFileNoisePacket.inputIterator();
+                    firstTs += recordedNoiseFileNoisePacket.getDurationUs();
+                    nextEvent = itr.next();
+                    log.info(String.format("restart noise input from file after %d us", recordedNoiseFileNoisePacket.getDurationUs()));
+                }
+                return rtn;
+            }
+            return null;
+        }
+
+        private void rewind() {
+            this.itr = recordedNoiseFileNoisePacket.inputIterator();
+            nextEvent = firstEvent;
+        }
+    }
+
+    private PrerecordedNoise prerecordedNoise = null;
+
     private static String DEFAULT_CSV_FILENAME_BASE = "NoiseTesterFilter";
     private String csvFileName = getString("csvFileName", DEFAULT_CSV_FILENAME_BASE);
     private File csvFile = null;
@@ -88,7 +145,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private int sx = 0;
     private int sy = 0;
 
-    private Integer lastTimestampPreviousPacket = null; // use Integer Object so it can be null to signify no value yet
+    private Integer lastTimestampPreviousPacket = null, firstSignalTimestmap = null; // use Integer Object so it can be null to signify no value yet
     private float TPR = 0;
     private float TPO = 0;
     private float TNR = 0;
@@ -141,7 +198,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         String filt = "Filtering control";
         setPropertyTooltip(noise, "shotNoiseRateHz", "rate per pixel of shot noise events");
         setPropertyTooltip(noise, "leakNoiseRateHz", "rate per pixel of leak noise events");
-        setPropertyTooltip(noise, "openNoiseSourceRecording", "Open a recorded AEDAT file as noise source.");
+        setPropertyTooltip(noise, "openNoiseSourceRecording", "Open a pre-recorded AEDAT file as noise source.");
+        setPropertyTooltip(noise, "closeNoiseSourceRecording", "Closes the pre-recorded noise input.");
         setPropertyTooltip(out, "csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
         setPropertyTooltip(filt, "selectedNoiseFilterEnum", "Choose a noise filter to test");
         setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
@@ -216,13 +274,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         findUnusedDawingY();
         GL2 gl = drawable.getGL().getGL2();
         L = 5;
-        gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
         gl.glLineWidth(2);
         for (ROCSample p : rocHistoryList) {
             gl.glPushMatrix();
-            float hue = (float) Math.log(10*p.tau); //. hue is 1 for tau 100ms
+            float hue = (float) Math.log10(100 * p.tau); //. hue is 1 for tau=100ms and is 0 for tau = 1ms 
             float[] colors = ColorHelper.HSVtoRGB(hue, 1.0f, 1.0f);
-            gl.glColor3f(colors[0],colors[1],colors[2]); // must set color before raster position (raster position is like glVertex)
+            gl.glColor3f(colors[0], colors[1], colors[2]); // must set color before raster position (raster position is like glVertex)
             gl.glLineWidth(2);
             x = (1 - p.y) * sx;
             y = p.x * sy;
@@ -231,7 +288,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             final float l = L; // 10ms tau will produce box of dimension L
             DrawGL.drawBox(gl, x, y, l, l, 0);
             if (rocSampleCounter++ % ROC_LABEL_TAU_INTERVAL == 0) {
-                gl.glRasterPos3f(x+L, y, 0);
+                gl.glRasterPos3f(x + L, y, 0);
                 gl.glColor3f(.5f, .5f, .8f); // must set color before raster position (raster position is like glVertex)
                 String s = String.format("%ss", eng.format(p.tau));
                 glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
@@ -430,6 +487,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             return in;
         }
         BasicEvent firstE = in.getFirstEvent();
+        if (firstSignalTimestmap == null) {
+            firstSignalTimestmap = firstE.timestamp;
+        }
         if (resetCalled) {
             resetCalled = false;
             int ts = in.getLastTimestamp(); // we use getLastTimestamp because getFirstTimestamp contains event from BEFORE the rewind :-(
@@ -569,8 +629,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     @Override
     synchronized public void resetFilter() {
         lastTimestampPreviousPacket = null;
+        firstSignalTimestmap = null;
         resetCalled = true;
         getEnclosedFilterChain().reset();
+        if (prerecordedNoise != null) {
+            prerecordedNoise.rewind();
+        }
 //        rocHistoryList.clear(); // done by doClearROCHistory to preserve
     }
 
@@ -582,10 +646,19 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         int npix = (chip.getSizeX() * chip.getSizeY());
         float tmp = (float) (1.0 / ((leakNoiseRateHz + shotNoiseRateHz) * npix)); // this value is very small
         poissonDtUs = ((tmp / 10) * 1000000); // 1s = 1000000 us // TODO document why 10 here. It is to ensure that prob(>1 event per sample is low)
-        if (poissonDtUs < 1) {
-            log.warning(String.format("Poisson sampling rate is less than 1us which is timestep resolution, could be slow"));
+        final float minPoissonDtUs = 1f / (1e-6f * MAX_TOTAL_NOISE_RATE_HZ);
+        if (prerecordedNoise != null) {
+            log.info("Prerecoded noise input: clipping max noise rate to MAX_TOTAL_NOISE_RATE_HZ=" + eng.format(MAX_TOTAL_NOISE_RATE_HZ) + "Hz");
+            poissonDtUs = minPoissonDtUs;
+        } else if (poissonDtUs < minPoissonDtUs) {
+            log.info("clipping max noise rate to MAX_TOTAL_NOISE_RATE_HZ=" + eng.format(MAX_TOTAL_NOISE_RATE_HZ) + "Hz");
+            poissonDtUs = minPoissonDtUs;
+        } else //        if (poissonDtUs < 1) {
+        //            log.warning(String.format("Poisson sampling rate is less than 1us which is timestep resolution, could be slow"));
+        //        }
+        {
+            shotOffThresholdProb = 0.5f * (poissonDtUs * 1e-6f * npix) * shotNoiseRateHz; // bounds for samppling Poisson noise, factor 0.5 so total rate is shotNoiseRateHz
         }
-        shotOffThresholdProb = 0.5f * (poissonDtUs * 1e-6f * npix) * shotNoiseRateHz; // bounds for samppling Poisson noise, factor 0.5 so total rate is shotNoiseRateHz
         shotOnThresholdProb = 1 - shotOffThresholdProb; // for shot noise sample both sides, for leak events just generate ON events
         leakOnThresholdProb = (poissonDtUs * 1e-6f * npix) * leakNoiseRateHz; // bounds for samppling Poisson noise
     }
@@ -706,7 +779,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         generatedNoise.clear();
         // make the itertor to save events with added noise events
         OutputEventIterator<ApsDvsEvent> outItr = (OutputEventIterator<ApsDvsEvent>) augmentedPacket.outputIterator();
-        if (leakNoiseRateHz == 0 && shotNoiseRateHz == 0) {
+        if (prerecordedNoise == null && leakNoiseRateHz == 0 && shotNoiseRateHz == 0) {
             for (BasicEvent ie : in) {
                 outItr.nextOutput().copyFrom(ie);
             }
@@ -755,40 +828,52 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     private int sampleNoiseEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList, float shotOffThresholdProb, float shotOnThresholdProb, float leakOnThresholdProb) {
-        float randomnum = random.nextFloat();
-        if (randomnum < shotOffThresholdProb) {
-            injectOffEvent(ts, outItr, noiseList);
-        } else if (randomnum > shotOnThresholdProb) {
-            injectOnEvent(ts, outItr, noiseList);
+        if (prerecordedNoise == null) {
+            float randomnum = random.nextFloat();
+            if (randomnum < shotOffThresholdProb) {
+                injectOffEvent(ts, outItr, noiseList);
+            } else if (randomnum > shotOnThresholdProb) {
+                injectOnEvent(ts, outItr, noiseList);
+            }
+            if (random.nextFloat() < leakOnThresholdProb) {
+                injectOnEvent(ts, outItr, noiseList);
+            }
+            return ts;
+        } else {
+            BasicEvent e = prerecordedNoise.nextEventInRange(this.firstSignalTimestmap, ts, poissonDtUs);
+            if (e != null) {
+                PolarityEvent pe = (PolarityEvent) e;
+                if (pe.polarity == PolarityEvent.Polarity.On) {
+                    injectOnEvent(ts, outItr, noiseList);
+                } else {
+                    injectOffEvent(ts, outItr, noiseList);
+                }
+            }
+            return ts;
         }
-        if (random.nextFloat() < leakOnThresholdProb) {
-            injectOnEvent(ts, outItr, noiseList);
-        }
-        return ts;  // we make sure ts increment and return the new one, which updates loop param
     }
 
     private void injectOnEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList) {
-        ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
-        e.setSpecial(false);
-        e.polarity = PolarityEvent.Polarity.On;
         int x = (short) random.nextInt(sx);
         int y = (short) random.nextInt(sy);
+        ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
+        e.setSpecial(false);
         e.x = (short) (x);
         e.y = (short) (y);
         e.timestamp = ts;
+        e.polarity = PolarityEvent.Polarity.On;
         noiseList.add(e);
     }
 
     private void injectOffEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList) {
-        ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
-        e.setSpecial(false);
-        e.polarity = PolarityEvent.Polarity.Off;
-
         int x = (short) random.nextInt(sx);
         int y = (short) random.nextInt(sy);
+        ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
+        e.setSpecial(false);
         e.x = (short) (x);
         e.y = (short) (y);
         e.timestamp = ts;
+        e.polarity = PolarityEvent.Polarity.Off;
         noiseList.add(e);
     }
 
@@ -973,32 +1058,37 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     synchronized public void doClearROCHistory() {
         rocHistoryList.clear();
     }
-    
-    public void doOpenNoiseSourceRecording(){
-        JFileChooser  fileChooser = new JFileChooser();
+
+    synchronized public void doCloseNoiseSourceRecording() {
+        if (prerecordedNoise != null) {
+            log.info("clearing recoerded noise input data");
+            prerecordedNoise = null;
+        }
+    }
+
+    synchronized public void doOpenNoiseSourceRecording() {
+        JFileChooser fileChooser = new JFileChooser();
         ChipDataFilePreview preview = new ChipDataFilePreview(fileChooser, getChip());
         // from book swing hacks
         fileChooser.addPropertyChangeListener(preview);
         fileChooser.setAccessory(preview);
-        String lastFilePath = getString("lastFilePath", "");
+        String chosenPrerecordedNoiseFilePath = getString("chosenPrerecordedNoiseFilePath", "");
         // get the last folder
         DATFileFilter datFileFilter = new DATFileFilter();
         fileChooser.addChoosableFileFilter(datFileFilter);
-        fileChooser.setCurrentDirectory(new File(lastFilePath));
+        fileChooser.setCurrentDirectory(new File(chosenPrerecordedNoiseFilePath));
         // sets the working directory of the chooser
 //            boolean wasPaused=isPaused();
         try {
             int retValue = fileChooser.showOpenDialog(getChip().getAeViewer().getFilterFrame());
             if (retValue == JFileChooser.APPROVE_OPTION) {
-                lastFilePath = fileChooser.getSelectedFile().toString();
-                putString("lastFilePath", lastFilePath);
+                chosenPrerecordedNoiseFilePath = fileChooser.getSelectedFile().toString();
+                putString("chosenPrerecordedNoiseFilePath", chosenPrerecordedNoiseFilePath);
                 try {
-                if(noiseAeFileInputStream!=null){
-                    noiseAeFileInputStream.close();
-                }
-                    noiseAeFileInputStream=new AEFileInputStream(fileChooser.getSelectedFile(),getChip());
+                    prerecordedNoise = new PrerecordedNoise(fileChooser.getSelectedFile());
+                    computeProbs(); // set poissonDtUs after we construct prerecordedNoise so it is set properly
                 } catch (IOException ex) {
-                    Logger.getLogger(NoiseTesterFilter.class.getName()).log(Level.SEVERE, null, ex);
+                    log.warning(String.format("Exception trying to open data file: " + ex));
                 }
             } else {
                 preview.showFile(null);
@@ -1006,6 +1096,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         } catch (GLException e) {
             log.warning(e.toString());
             preview.showFile(null);
-        } 
+        }
     }
 }
