@@ -898,6 +898,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     private void clearFilterButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearFilterButActionPerformed
         availFilterTextField.setText("");
         availClassesListModel.clearFilter();
+        availFilterTextField.requestFocus();
     }//GEN-LAST:event_clearFilterButActionPerformed
 
     private void availFilterTextFieldKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_availFilterTextFieldKeyTyped
