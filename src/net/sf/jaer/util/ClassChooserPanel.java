@@ -355,7 +355,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                     foreground = Color.BLACK;
                     develStatusTF.setText(develStatus.toString());
                 } else if (develStatus == DevelopmentStatus.Status.Stable) {
-                    foreground = Color. BLACK;
+                    foreground = Color.BLACK;
                     develStatusTF.setText(develStatus.toString());
                 } else {
                     foreground = Color.BLACK;
@@ -442,6 +442,13 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             if (onlyStable && ((filterString == null) || filterString.equals(""))) {
                 passAllStable = true; // pass all stable filters 
             }
+            boolean useCamelCase = false;
+            for (int i = 0; i < filterString.length(); i++) {
+                if (Character.isUpperCase(filterString.charAt(i))) {
+                    useCamelCase = true;
+                    break;
+                }
+            }
 
             boolean includeExperimental = includeExperimentalCB.isSelected();
 
@@ -478,14 +485,19 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                     } else {
                         str = cn.toString();
                     }
-                    String match=CamelCaseSearch.matchCamelCase(filterString, str);
-                    if(match==null || (!isStable && onlyStable)){
-                        v.add(o);
+                    // if filterString (that user types into box) contains any uppercase chars, then search
+                    // by CamelCase, otherwise match all by lowercase
+                    if (useCamelCase) {
+                        String match = CamelCaseSearch.matchCamelCase(filterString, str);
+                        if (match == null || (!isStable && onlyStable)) { // no match or should not be in list, so remove from list
+                            v.add(o);
+                        }
+                    } else {
+                        int ind = str.toLowerCase().indexOf(filterString);
+                        if (ind == -1 || (!isStable && onlyStable)) {
+                            v.add(o);
+                        }
                     }
-//                    int ind = str.indexOf(filterString);
-//                    if (ind == -1 || (!isStable && onlyStable)) {
-//                        v.add(o);
-//                    }
                 }
             }
             // prune list
@@ -570,7 +582,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
         filterLabel.setText("Filter");
 
-        availFilterTextField.setToolTipText("<html>\nStart typing any part of your filter name or description here to filter list.\n<br>\nYou can use CamelCase, e.g. use <i>BAFi</i> for <i>BackgroundActivityFilter</i>");
+        availFilterTextField.setToolTipText("<html>\nStart typing any part of your filter name or description here to filter list.\n<br>\nIf you type any uppercase character, search will use CamelCase, e.g. use <i>BAFi</i> for <i>BackgroundActivityFilter</i>");
         availFilterTextField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 availFilterTextFieldActionPerformed(evt);
@@ -1002,8 +1014,10 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         }
         int last = chosenClassesListModel.getSize() - 1;
-        int selectedIdx=classJList.getSelectedIndex();
-        if(selectedIdx>0) last=selectedIdx;
+        int selectedIdx = classJList.getSelectedIndex();
+        if (selectedIdx > 0) {
+            last = selectedIdx;
+        }
         chosenClassesListModel.add(last + 1, o);
         classJList.setSelectedIndex(last + 1);
     }//GEN-LAST:event_addClassButtonActionPerformed
