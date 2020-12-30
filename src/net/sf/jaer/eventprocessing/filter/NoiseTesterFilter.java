@@ -69,8 +69,9 @@ import net.sf.jaer.util.DrawGL;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnotater, RemoteControlled {
 
-    final int MAX_NUM_RECORDED_EVENTS = 10_0000_0000;
-    final float MAX_TOTAL_NOISE_RATE_HZ = 50e6f;
+    public static final int MAX_NUM_RECORDED_EVENTS = 10_0000_0000;
+    public static final float MAX_TOTAL_NOISE_RATE_HZ = 50e6f;
+    public static final float RATE_LIMIT_HZ = 25; //per pixel, separately for leak and shot rates
 
     private FilterChain chain;
 
@@ -102,17 +103,18 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     float inSignalRateHz = 0, inNoiseRateHz = 0, outSignalRateHz = 0, outNoiseRateHz = 0;
 
 //    private EventPacket<ApsDvsEvent> signalAndNoisePacket = null;
+    private Random random = new Random();
     private EventPacket<BasicEvent> signalAndNoisePacket = null;
 //    private EventList<BasicEvent> noiseList = new EventList();
-    private Random random = new Random();
     private AbstractNoiseFilter[] noiseFilters = null;
     private AbstractNoiseFilter selectedFilter = null;
     protected boolean resetCalled = true; // flag to reset on next event
-    public static final float RATE_LIMIT_HZ = 25; //per pixel, separately for leak and shot rates
+
     private float annotateAlpha = getFloat("annotateAlpha", 0.5f);
     private DavisRenderer renderer = null;
     private boolean overlayClassifications = getBoolean("overlayClassifications", false);
     private boolean overlayInput = getBoolean("overlayInput", false);
+
     private int rocHistory = getInt("rocHistory", 1);
     private EvictingQueue<ROCSample> rocHistoryList = EvictingQueue.create(rocHistory);
 
@@ -122,6 +124,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         BackgroundActivityFilter, SpatioTemporalCorrelationFilter, SequenceBasedFilter, OrderNBackgroundActivityFilter
     }
     private NoiseFilterEnum selectedNoiseFilterEnum = NoiseFilterEnum.valueOf(getString("selectedNoiseFilter", NoiseFilterEnum.BackgroundActivityFilter.toString())); //default is BAF
+
     private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
 
     private class ROCSample {
@@ -134,7 +137,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             this.y = y;
             this.tau = tau;
         }
-
     }
 
     // recorded noise to be used as input
@@ -230,36 +232,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             for (EventFilter2D f : chain) {
                 f.setFilterEnabled(false);
             }
-        }
-    }
-
-    public void doCloseCsvFile() {
-        if (csvFile != null) {
-            try {
-                log.info("closing statistics output file" + csvFile);
-                csvWriter.close();
-            } catch (IOException e) {
-                log.warning("could not close " + csvFile + ": caught " + e.toString());
-            } finally {
-                csvFile = null;
-                csvWriter = null;
-            }
-        }
-    }
-
-    private void openCvsFiile() {
-        String fn = csvFileName + ".csv";
-        csvFile = new File(fn);
-        log.info(String.format("opening %s for output", fn));
-        try {
-            csvWriter = new BufferedWriter(new FileWriter(csvFile, true));
-            if (!csvFile.exists()) { // write header
-                log.info("file did not exist, so writing header");
-                csvWriter.write(String.format("TP,TN,FP,FN,TPR,TNR,BR,firstE.timestamp,"
-                        + "inSignalRateHz,inNoiseRateHz,outSignalRateHz,outNoiseRateHz\n"));
-            }
-        } catch (IOException ex) {
-            log.warning(String.format("could not open %s for output; caught %s", fn, ex.toString()));
         }
     }
 
@@ -463,7 +435,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     // TODO test case
-    void printarr(ArrayList<BasicEvent> a, String n) {
+    private void printarr(ArrayList<BasicEvent> a, String n) {
         final int MAX = 30;
         if (a.size() > MAX) {
             System.out.printf("--------\n%s[%d]>%d\n", n, a.size(), MAX);
@@ -631,6 +603,117 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
+    private void addNoise(EventPacket<? extends BasicEvent> in, EventPacket<? extends BasicEvent> augmentedPacket, List<BasicEvent> generatedNoise, float shotNoiseRateHz, float leakNoiseRateHz) {
+
+        // we need at least 1 event to be able to inject noise before it
+        if ((in.isEmpty())) {
+            log.warning("no input events in this packet, cannot inject noise because there is no end event");
+            return;
+        }
+
+        // save input packet
+        augmentedPacket.clear();
+        generatedNoise.clear();
+        // make the itertor to save events with added noise events
+        OutputEventIterator<ApsDvsEvent> outItr = (OutputEventIterator<ApsDvsEvent>) augmentedPacket.outputIterator();
+        if (prerecordedNoise == null && leakNoiseRateHz == 0 && shotNoiseRateHz == 0) {
+            for (BasicEvent ie : in) {
+                outItr.nextOutput().copyFrom(ie);
+            }
+            return; // no noise, just return which returns the copy from filterPacket
+        }
+
+        int firstTsThisPacket = in.getFirstTimestamp();
+        // insert noise between last event of last packet and first event of current packet
+        // but only if there waa a previous packet and we are monotonic
+        if (lastTimestampPreviousPacket != null) {
+            if (firstTsThisPacket < lastTimestampPreviousPacket) {
+                log.warning(String.format("non-monotonic timestamp: Resetting filter. (first event %d is smaller than previous event %d by %d)",
+                        firstTsThisPacket, lastTimestampPreviousPacket, firstTsThisPacket - lastTimestampPreviousPacket));
+                resetFilter();
+                return;
+            }
+            // we had some previous event
+            int lastPacketTs = lastTimestampPreviousPacket + 1; // 1us more than timestamp of the last event in the last packet
+            insertNoiseEvents(lastPacketTs, firstTsThisPacket, outItr, generatedNoise);
+        }
+
+        // insert noise between events of this packet after the first event, record their timestamp
+        int preEts = 0;
+
+        int lastEventTs = in.getFirstTimestamp();
+        for (BasicEvent ie : in) {
+            // if it is the first event or any with first event timestamp then just copy them
+            if (ie.timestamp == firstTsThisPacket) {
+                outItr.nextOutput().copyFrom(ie);
+                continue;
+            }
+            // save the previous timestamp and get the next one, and then inject noise between them
+            preEts = lastEventTs;
+            lastEventTs = ie.timestamp;
+            insertNoiseEvents(preEts, lastEventTs, outItr, generatedNoise);
+            outItr.nextOutput().copyFrom(ie);
+        }
+    }
+
+    private void insertNoiseEvents(int lastPacketTs, int firstTsThisPacket, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> generatedNoise) {
+        for (double ts = lastPacketTs; ts < firstTsThisPacket; ts += poissonDtUs) {
+            // note that poissonDtUs is float but we truncate the actual timestamp to int us value here.
+            // It's OK if there are events with duplicate timestamps (there are plenty in input already).
+            sampleNoiseEvent((int) ts, outItr, generatedNoise, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb); // note noise injection updates ts to make sure monotonic
+        }
+    }
+
+    private int sampleNoiseEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList, float shotOffThresholdProb, float shotOnThresholdProb, float leakOnThresholdProb) {
+        if (prerecordedNoise == null) {
+            float randomnum = random.nextFloat();
+            if (randomnum < shotOffThresholdProb) {
+                injectOffEvent(ts, outItr, noiseList);
+            } else if (randomnum > shotOnThresholdProb) {
+                injectOnEvent(ts, outItr, noiseList);
+            }
+            if (random.nextFloat() < leakOnThresholdProb) {
+                injectOnEvent(ts, outItr, noiseList);
+            }
+            return ts;
+        } else {
+            BasicEvent e = prerecordedNoise.nextEventInRange(this.firstSignalTimestmap, ts, poissonDtUs);
+            if (e != null) {
+                PolarityEvent pe = (PolarityEvent) e;
+                if (pe.polarity == PolarityEvent.Polarity.On) {
+                    injectOnEvent(ts, outItr, noiseList);
+                } else {
+                    injectOffEvent(ts, outItr, noiseList);
+                }
+            }
+            return ts;
+        }
+    }
+
+    private void injectOnEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList) {
+        int x = (short) random.nextInt(sx);
+        int y = (short) random.nextInt(sy);
+        ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
+        e.setSpecial(false);
+        e.x = (short) (x);
+        e.y = (short) (y);
+        e.timestamp = ts;
+        e.polarity = PolarityEvent.Polarity.On;
+        noiseList.add(e);
+    }
+
+    private void injectOffEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList) {
+        int x = (short) random.nextInt(sx);
+        int y = (short) random.nextInt(sy);
+        ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
+        e.setSpecial(false);
+        e.x = (short) (x);
+        e.y = (short) (y);
+        e.timestamp = ts;
+        e.polarity = PolarityEvent.Polarity.Off;
+        noiseList.add(e);
+    }
+
     @Override
     synchronized public void resetFilter() {
         lastTimestampPreviousPacket = null;
@@ -771,115 +854,34 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         openCvsFiile();
     }
 
-    private void addNoise(EventPacket<? extends BasicEvent> in, EventPacket<? extends BasicEvent> augmentedPacket, List<BasicEvent> generatedNoise, float shotNoiseRateHz, float leakNoiseRateHz) {
-
-        // we need at least 1 event to be able to inject noise before it
-        if ((in.isEmpty())) {
-            log.warning("no input events in this packet, cannot inject noise because there is no end event");
-            return;
-        }
-
-        // save input packet
-        augmentedPacket.clear();
-        generatedNoise.clear();
-        // make the itertor to save events with added noise events
-        OutputEventIterator<ApsDvsEvent> outItr = (OutputEventIterator<ApsDvsEvent>) augmentedPacket.outputIterator();
-        if (prerecordedNoise == null && leakNoiseRateHz == 0 && shotNoiseRateHz == 0) {
-            for (BasicEvent ie : in) {
-                outItr.nextOutput().copyFrom(ie);
+    public void doCloseCsvFile() {
+        if (csvFile != null) {
+            try {
+                log.info("closing statistics output file" + csvFile);
+                csvWriter.close();
+            } catch (IOException e) {
+                log.warning("could not close " + csvFile + ": caught " + e.toString());
+            } finally {
+                csvFile = null;
+                csvWriter = null;
             }
-            return; // no noise, just return which returns the copy from filterPacket
-        }
-
-        int firstTsThisPacket = in.getFirstTimestamp();
-        // insert noise between last event of last packet and first event of current packet
-        // but only if there waa a previous packet and we are monotonic
-        if (lastTimestampPreviousPacket != null) {
-            if (firstTsThisPacket < lastTimestampPreviousPacket) {
-                log.warning(String.format("non-monotonic timestamp: Resetting filter. (first event %d is smaller than previous event %d by %d)",
-                        firstTsThisPacket, lastTimestampPreviousPacket, firstTsThisPacket - lastTimestampPreviousPacket));
-                resetFilter();
-                return;
-            }
-            // we had some previous event
-            int lastPacketTs = lastTimestampPreviousPacket + 1; // 1us more than timestamp of the last event in the last packet
-            insertNoiseEvents(lastPacketTs, firstTsThisPacket, outItr, generatedNoise);
-        }
-
-        // insert noise between events of this packet after the first event, record their timestamp
-        int preEts = 0;
-
-        int lastEventTs = in.getFirstTimestamp();
-        for (BasicEvent ie : in) {
-            // if it is the first event or any with first event timestamp then just copy them
-            if (ie.timestamp == firstTsThisPacket) {
-                outItr.nextOutput().copyFrom(ie);
-                continue;
-            }
-            // save the previous timestamp and get the next one, and then inject noise between them
-            preEts = lastEventTs;
-            lastEventTs = ie.timestamp;
-            insertNoiseEvents(preEts, lastEventTs, outItr, generatedNoise);
-            outItr.nextOutput().copyFrom(ie);
         }
     }
 
-    private void insertNoiseEvents(int lastPacketTs, int firstTsThisPacket, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> generatedNoise) {
-        for (double ts = lastPacketTs; ts < firstTsThisPacket; ts += poissonDtUs) {
-            // note that poissonDtUs is float but we truncate the actual timestamp to int us value here.
-            // It's OK if there are events with duplicate timestamps (there are plenty in input already).
-            sampleNoiseEvent((int) ts, outItr, generatedNoise, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb); // note noise injection updates ts to make sure monotonic
+    private void openCvsFiile() {
+        String fn = csvFileName + ".csv";
+        csvFile = new File(fn);
+        log.info(String.format("opening %s for output", fn));
+        try {
+            csvWriter = new BufferedWriter(new FileWriter(csvFile, true));
+            if (!csvFile.exists()) { // write header
+                log.info("file did not exist, so writing header");
+                csvWriter.write(String.format("TP,TN,FP,FN,TPR,TNR,BR,firstE.timestamp,"
+                        + "inSignalRateHz,inNoiseRateHz,outSignalRateHz,outNoiseRateHz\n"));
+            }
+        } catch (IOException ex) {
+            log.warning(String.format("could not open %s for output; caught %s", fn, ex.toString()));
         }
-    }
-
-    private int sampleNoiseEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList, float shotOffThresholdProb, float shotOnThresholdProb, float leakOnThresholdProb) {
-        if (prerecordedNoise == null) {
-            float randomnum = random.nextFloat();
-            if (randomnum < shotOffThresholdProb) {
-                injectOffEvent(ts, outItr, noiseList);
-            } else if (randomnum > shotOnThresholdProb) {
-                injectOnEvent(ts, outItr, noiseList);
-            }
-            if (random.nextFloat() < leakOnThresholdProb) {
-                injectOnEvent(ts, outItr, noiseList);
-            }
-            return ts;
-        } else {
-            BasicEvent e = prerecordedNoise.nextEventInRange(this.firstSignalTimestmap, ts, poissonDtUs);
-            if (e != null) {
-                PolarityEvent pe = (PolarityEvent) e;
-                if (pe.polarity == PolarityEvent.Polarity.On) {
-                    injectOnEvent(ts, outItr, noiseList);
-                } else {
-                    injectOffEvent(ts, outItr, noiseList);
-                }
-            }
-            return ts;
-        }
-    }
-
-    private void injectOnEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList) {
-        int x = (short) random.nextInt(sx);
-        int y = (short) random.nextInt(sy);
-        ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
-        e.setSpecial(false);
-        e.x = (short) (x);
-        e.y = (short) (y);
-        e.timestamp = ts;
-        e.polarity = PolarityEvent.Polarity.On;
-        noiseList.add(e);
-    }
-
-    private void injectOffEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList) {
-        int x = (short) random.nextInt(sx);
-        int y = (short) random.nextInt(sy);
-        ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
-        e.setSpecial(false);
-        e.x = (short) (x);
-        e.y = (short) (y);
-        e.timestamp = ts;
-        e.polarity = PolarityEvent.Polarity.Off;
-        noiseList.add(e);
     }
 
     @Override
