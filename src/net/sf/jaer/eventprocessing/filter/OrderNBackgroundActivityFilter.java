@@ -210,4 +210,9 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
         setDtUs((int) (dtS * 1e6));
     }
 
+    @Override
+    public String infoString() {
+        return super.infoString(); 
+    }
+
 }

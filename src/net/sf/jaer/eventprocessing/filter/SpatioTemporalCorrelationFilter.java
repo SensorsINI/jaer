@@ -147,7 +147,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             final int x1 = x >= ssx - 1 ? ssx - 1 : x + 1, y1 = y >= ssy - 1 ? ssy - 1 : y + 1;
             outerloop:
             for (int xx = x0; xx <= x1; xx++) {
-                final int[] col=lastTimesMap[xx];
+                final int[] col = lastTimesMap[xx];
                 for (int yy = y0; yy <= y1; yy++) {
 //                    if ((xx < 0) || (xx > sx) || (yy < 0) || (yy > sy)) {
 //                        continue;
@@ -211,11 +211,11 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
         String s = null;
         if (adaptiveFilteringEnabled) {
-            s = String.format("STCF: dt=%.1fms filOut=%%%.1f entropy bef/aft/reduc=%.1f/%.1f/%.1f",
-                    dt * 1e-3f, filteredOutPercent, entropyInput, entropyFiltered, entropyReduction);
+            s = String.format("%s: dt=%.1fms filOut=%%%.1f entropy bef/aft/reduc=%.1f/%.1f/%.1f",
+                    infoString(), dt * 1e-3f, filteredOutPercent, entropyInput, entropyFiltered, entropyReduction);
         } else {
             s = String.format("%s: filtered out %%%6.1f",
-                    getClass().getSimpleName(),
+                    infoString(),
                     filteredOutPercent);
         }
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
@@ -577,6 +577,12 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     @Override
     public void setCorrelationTimeS(float dtS) {
         setDt((int) (dtS * 1e6));
+    }
+
+    @Override
+    public String infoString() {
+        String s=super.infoString()+" k="+numMustBeCorrelated;
+        return s;
     }
 
 }

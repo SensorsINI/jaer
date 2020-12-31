@@ -60,7 +60,7 @@ import net.sf.jaer.util.RemoteControlCommand;
  *
  * @author Shssha Guo
  */
-public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer {
+public class SequenceBasedFilter extends AbstractNoiseFilter  {
 
     /**
      * the time in timestamp ticks (1us at present) that a spike needs to be
@@ -121,9 +121,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
 
     public SequenceBasedFilter(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
         initFilter();
-//        setPropertyTooltip("mode", "mode (min:1 avg31:2)");
         setPropertyTooltip("wlen", "window length");
         setPropertyTooltip("letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
         setPropertyTooltip("useDoubleMode", "use two separate windows for storing real and noise events");
@@ -250,7 +248,6 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
         frameid = 0;
     }
 
-
     @Override
     public final void initFilter() {
         allocateMaps();
@@ -321,7 +318,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
 
     /**
      * Sets the window length in events.
-     * 
+     *
      * @param wlen the wlen to set
      */
     synchronized public void setWLen(int wlen) {
@@ -343,8 +340,9 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
     }
 
     /**
-     * Sets to use double mode, where noise and signal events that are detected are put to different halves of the window.
-     * 
+     * Sets to use double mode, where noise and signal events that are detected
+     * are put to different halves of the window.
+     *
      * @param wlen the useDoubleMode to set
      */
     public void setUseDoubleMode(int useDoubleMode) {
@@ -422,8 +420,13 @@ public class SequenceBasedFilter extends AbstractNoiseFilter implements Observer
     }
 
     @Override
-    public void update(Observable o, Object o1) {
-        return;
+    public String infoString() {
+        String s=getClass().getSimpleName();
+        s=s.replaceAll("[a-z]", "");
+        s=s+": L="+wlen+" sigma="+eng.format(disThr);
+        return s;
     }
+
+   
 
 }

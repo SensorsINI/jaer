@@ -23,6 +23,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.regex.Pattern;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -128,7 +129,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
         String s = null;
         s = String.format("%s: filtered out %%%6.1f",
-                getClass().getSimpleName(),
+                infoString(),
                 filteredOutPercent);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glPopMatrix();
@@ -220,5 +221,16 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         this.filterHotPixels = filterHotPixels;
         putBoolean("filterHotPixels",filterHotPixels);
     }
+    
+    /** Returns short info string with key control parameters and short name. Subclasses should override.
+     * @return  the info string
+     */
+    public String infoString(){
+        String s=getClass().getSimpleName();
+        s=s.replaceAll("[a-z]", "");
+        s=s+": dT="+eng.format(getCorrelationTimeS())+"s";
+        return s;
+    }
+    
 
 }

@@ -226,6 +226,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             log.info("adding RemoteControlCommand listener to AEChip\n");
             chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");
         }
+        getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
     }
 
     @Override
@@ -680,9 +681,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             ArrayList<BasicEvent> noiseEvents = prerecordedNoise.nextEvents(ts); // these have timestamps of the prerecorded noise
             for (BasicEvent e : noiseEvents) {
                 PolarityEvent pe = (PolarityEvent) e;
-                BasicEvent ecopy=outItr.nextOutput(); // get the next event from output packet
+                BasicEvent ecopy = outItr.nextOutput(); // get the next event from output packet
                 ecopy.copyFrom(e); // copy its fields from the noise event
-                ecopy.timestamp=ts; // update the timestamp to the current timestamp
+                ecopy.timestamp = ts; // update the timestamp to the current timestamp
                 noiseList.add(ecopy); // add it to the list of noise events we keep for analysis
             }
             return ts;
@@ -889,6 +890,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             log.info(String.format("got rewound event %s, setting reset on next packet flat", evt));
             resetCalled = true;
+        } else if (evt.getPropertyName() == AEViewer.EVENT_FILEOPEN) {
+            if (prerecordedNoise != null) {
+                prerecordedNoise.rewind();
+            }
         }
     }
 
