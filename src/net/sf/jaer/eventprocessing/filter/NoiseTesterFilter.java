@@ -222,11 +222,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(ann, "overlayInput", "<html><p>If selected, overlay all input events as signal (green) and noise (red). <p>If not selected, overlay true positives as green (signal in output) and false positives as red (noise in output).");
         setPropertyTooltip(roc, "rocHistory", "Number of samples of ROC point to show.");
         setPropertyTooltip(roc, "clearROCHistory", "Clears samples from display.");
-        if (chip.getRemoteControl() != null) {
-            log.info("adding RemoteControlCommand listener to AEChip\n");
-            chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");
-        }
-        getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
     }
 
     @Override
@@ -764,9 +759,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
         signalAndNoisePacket = new EventPacket<>(ApsDvsEvent.class);
-        if (chip.getAeViewer() != null) {
-            chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
-            chip.getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_CHIP, this);
+        if (getChip().getAeViewer() != null) {
+            getChip().getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
+            getChip().getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_CHIP, this);
+            getChip().getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
+        }
+        if (chip.getRemoteControl() != null) {
+            log.info("adding RemoteControlCommand listener to AEChip\n");
+            chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");
         }
         setSelectedNoiseFilterEnum(selectedNoiseFilterEnum);
         computeProbs();
@@ -1087,9 +1087,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         // get the last folder
         DATFileFilter datFileFilter = new DATFileFilter();
         fileChooser.addChoosableFileFilter(datFileFilter);
-        fileChooser.setCurrentDirectory(new File(chosenPrerecordedNoiseFilePath));
-        // sets the working directory of the chooser
-//            boolean wasPaused=isPaused();
+        File sf=new File(chosenPrerecordedNoiseFilePath);
+        fileChooser.setCurrentDirectory(sf);
+        fileChooser.setSelectedFile(sf);
         try {
             int retValue = fileChooser.showOpenDialog(getChip().getAeViewer().getFilterFrame());
             if (retValue == JFileChooser.APPROVE_OPTION) {
