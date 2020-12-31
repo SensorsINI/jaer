@@ -143,9 +143,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private class PrerecordedNoise {
 
         EventPacket<BasicEvent> recordedNoiseFileNoisePacket = null;
-        int firstTs;
         Iterator<BasicEvent> itr = null;
-        BasicEvent firstEvent, nextEvent;
+        BasicEvent noiseFirstEvent, noiseNextEvent;
+        int noiseFirstTs;
+        Integer signalMostRecentTs;
+        private ArrayList<BasicEvent> returnedEvents = new ArrayList();
+        int noiseEventCounter = 0;
 
         private PrerecordedNoise(File chosenPrerecordedNoiseFilePath) throws IOException {
             AEFileInputStream recordedNoiseAeFileInputStream = new AEFileInputStream(chosenPrerecordedNoiseFilePath, getChip());
@@ -160,36 +163,43 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
             this.recordedNoiseFileNoisePacket = recordedNoiseFileNoisePacket;
             itr = recordedNoiseFileNoisePacket.inputIterator();
-            firstEvent = recordedNoiseFileNoisePacket.getFirstEvent();
-            firstTs = recordedNoiseFileNoisePacket.getFirstTimestamp();
+            noiseFirstEvent = recordedNoiseFileNoisePacket.getFirstEvent();
+            noiseFirstTs = recordedNoiseFileNoisePacket.getFirstTimestamp();
 
-            this.nextEvent = this.firstEvent;
+            this.noiseNextEvent = this.noiseFirstEvent;
             computeProbs(); // set noise sample rate via poissonDtUs
             log.info(String.format("Loaded %s pre-recorded events with duration %ss from %s", eng.format(recordedNoiseFileNoisePacket.getSize()), eng.format(1e-6f * recordedNoiseAeFileInputStream.getDurationUs()), chosenPrerecordedNoiseFilePath));
         }
 
-        BasicEvent nextEventInRange(Integer signalFirstTs, int ts, float dT) {
-            if (signalFirstTs == null) {
-                return null;
+        ArrayList<BasicEvent> nextEvents(int ts) {
+            returnedEvents.clear();
+            if (signalMostRecentTs == null) {
+                signalMostRecentTs = ts;
+                return returnedEvents; // no events at first, just get the timestamap
             }
-            if (nextEvent.timestamp - firstTs < ts - signalFirstTs + dT) {
-                BasicEvent rtn = nextEvent;
+            if (ts < signalMostRecentTs) { // time went backwards, rewind noise events
+                rewind();
+                return nextEvents(ts);
+            }
+            while (noiseNextEvent.timestamp - noiseFirstTs < ts - signalMostRecentTs) {
+                returnedEvents.add(noiseNextEvent);
+                noiseEventCounter++;
                 if (itr.hasNext()) {
-                    nextEvent = itr.next();
+                    noiseNextEvent = itr.next();
                 } else {
-                    itr = recordedNoiseFileNoisePacket.inputIterator();
-                    firstTs += recordedNoiseFileNoisePacket.getDurationUs();
-                    nextEvent = itr.next();
-                    log.info(String.format("restart noise input from file after %d us", recordedNoiseFileNoisePacket.getDurationUs()));
+                    rewind();
+                    return returnedEvents;
                 }
-                return rtn;
             }
-            return null;
+            return returnedEvents;
         }
 
         private void rewind() {
+            log.info(String.format("rewinding noise events after %d events", noiseEventCounter));
             this.itr = recordedNoiseFileNoisePacket.inputIterator();
-            nextEvent = firstEvent;
+            noiseNextEvent = noiseFirstEvent;
+            signalMostRecentTs = null;
+            noiseEventCounter = 0;
         }
     }
 
@@ -285,7 +295,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         gl.glPushMatrix();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
         gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
-        String s = String.format("TPR=%6.1f%% TNR=%6.1f%% TPO=%6.1f%%, BR=%6.1f%% dT=%.2fus", 100 * TPR, 100 * TNR, 100 * TPO, 100 * BR, poissonDtUs);
+        String s = String.format("TPR=%6.1f%% TNR=%6.1f%% TPO=%6.1f%%, dT=%.2fus", 100 * TPR, 100 * TNR, 100 * TPO, poissonDtUs);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glRasterPos3f(0, statisticsDrawingPosition + 10, 0);
         String s2 = String.format("In sigRate=%s noiseRate=%s, Out sigRate=%s noiseRate=%s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
@@ -310,16 +320,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
-//    final private class TimeStampComparator<E extends BasicEvent> implements Comparator<E> {
-//
-//        // NOTE this hack so that sorted event EventSet does not lose elements with identical timestamps
-//        @Override
-//        public int compare(final E e1, final E e2) {
-//            int diff = e1.timestamp - e2.timestamp;
-//
-//            return diff;
-//        }
-//    }
 //    private TimeStampComparator timestampComparator = new TimeStampComparator<BasicEvent>();
     private ArrayList<BasicEvent> createEventList() {
         return new ArrayList<BasicEvent>();
@@ -677,14 +677,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
             return ts;
         } else {
-            BasicEvent e = prerecordedNoise.nextEventInRange(this.firstSignalTimestmap, ts, poissonDtUs);
-            if (e != null) {
+            ArrayList<BasicEvent> noiseEvents = prerecordedNoise.nextEvents(ts); // these have timestamps of the prerecorded noise
+            for (BasicEvent e : noiseEvents) {
                 PolarityEvent pe = (PolarityEvent) e;
-                if (pe.polarity == PolarityEvent.Polarity.On) {
-                    injectOnEvent(ts, outItr, noiseList);
-                } else {
-                    injectOffEvent(ts, outItr, noiseList);
-                }
+                BasicEvent ecopy=outItr.nextOutput(); // get the next event from output packet
+                ecopy.copyFrom(e); // copy its fields from the noise event
+                ecopy.timestamp=ts; // update the timestamp to the current timestamp
+                noiseList.add(ecopy); // add it to the list of noise events we keep for analysis
             }
             return ts;
         }
