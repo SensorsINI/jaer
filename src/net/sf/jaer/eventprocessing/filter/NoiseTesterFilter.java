@@ -24,6 +24,7 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.awt.Color;
 import java.beans.PropertyChangeEvent;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -257,9 +258,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         L = 5;
         gl.glLineWidth(2);
         for (ROCSample rocSample : rocHistoryList) {
-            float hue = (float) Math.log10(100 * rocSample.tau); //. hue is 1 for tau=100ms and is 0 for tau = 1ms 
-            float[] colors = ColorHelper.HSVtoRGB(hue, 1.0f, 1.0f);
-            gl.glColor3f(colors[0], colors[1], colors[2]); // must set color before raster position (raster position is like glVertex)
+            float hue = (float) (Math.log10(rocSample.tau)/2+1.5); //. hue is 1 for tau=0.1s and is 0 for tau = 1ms 
+            System.out.println("tau="+rocSample.tau+"     hue="+hue);
+            Color c = Color.getHSBColor(hue, 1f, hue);
+            float[] rgb = c.getRGBComponents(null);
+            gl.glColor3fv(rgb, 0);
             gl.glLineWidth(2);
             x = (1 - rocSample.y) * sx;
             y = rocSample.x * sy;
