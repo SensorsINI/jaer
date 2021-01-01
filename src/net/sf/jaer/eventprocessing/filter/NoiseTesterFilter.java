@@ -18,7 +18,8 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
-import ch.unizh.ini.jaer.projects.util.ColorHelper;
+import java.util.SplittableRandom;
+
 import com.google.common.collect.EvictingQueue;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -30,7 +31,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Random;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -49,12 +49,13 @@ import net.sf.jaer.util.RemoteControlled;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.EventPacket.InItr;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.graphics.ChipDataFilePreview;
 import net.sf.jaer.graphics.DavisRenderer;
@@ -104,7 +105,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     float inSignalRateHz = 0, inNoiseRateHz = 0, outSignalRateHz = 0, outNoiseRateHz = 0;
 
 //    private EventPacket<ApsDvsEvent> signalAndNoisePacket = null;
-    private Random random = new Random();
+    private final SplittableRandom random = new SplittableRandom();
     private EventPacket<BasicEvent> signalAndNoisePacket = null;
 //    private EventList<BasicEvent> noiseList = new EventList();
     private AbstractNoiseFilter[] noiseFilters = null;
@@ -118,8 +119,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     private int rocHistory = getInt("rocHistory", 1);
     private EvictingQueue<ROCSample> rocHistoryList = EvictingQueue.create(rocHistory);
+    private final int LIST_LENGTH = 10000;
 
-    private ArrayList<BasicEvent> tpList = null, fnList = null, fpList = null, tnList = null; // output of classification
+    private ArrayList<BasicEvent> tpList = new ArrayList<BasicEvent>(LIST_LENGTH),
+            fnList = new ArrayList<BasicEvent>(LIST_LENGTH),
+            fpList = new ArrayList<BasicEvent>(LIST_LENGTH),
+            tnList = new ArrayList<BasicEvent>(LIST_LENGTH); // output of classification
+    private ArrayList<BasicEvent> noiseList = new ArrayList<BasicEvent>(LIST_LENGTH); // TODO make it lazy, when filter is enabled
 
     public enum NoiseFilterEnum {
         BackgroundActivityFilter, SpatioTemporalCorrelationFilter, SequenceBasedFilter, OrderNBackgroundActivityFilter
@@ -127,6 +133,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private NoiseFilterEnum selectedNoiseFilterEnum = NoiseFilterEnum.valueOf(getString("selectedNoiseFilter", NoiseFilterEnum.BackgroundActivityFilter.toString())); //default is BAF
 
     private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
+    private volatile boolean stopMe = false; // to interrupt if filterPacket takes too long
+    private final long MAX_FILTER_PROCESSING_TIME_MS = 2000; // times out to avoid using up all heap
 
     private class ROCSample {
 
@@ -227,8 +235,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
-        filterEnabled = yes;
+        boolean wasEnabled = this.filterEnabled;
+        this.filterEnabled=yes;
         if (yes) {
+            resetFilter();
             for (EventFilter2D f : chain) {
                 if (selectedFilter != null && selectedFilter == f) {
                     f.setFilterEnabled(yes);
@@ -240,7 +250,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 f.setFilterEnabled(false);
             }
         }
-    }
+         if (!isEnclosed()) {
+            String key = prefsEnabledKey();
+            getPrefs().putBoolean(key, this.filterEnabled);
+        }
+        support.firePropertyChange("filterEnabled", wasEnabled, this.filterEnabled);
+  }
 
     private int rocSampleCounter = 0;
     private final int ROC_LABEL_TAU_INTERVAL = 30;
@@ -258,8 +273,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         L = 5;
         gl.glLineWidth(2);
         for (ROCSample rocSample : rocHistoryList) {
-            float hue = (float) (Math.log10(rocSample.tau)/2+1.5); //. hue is 1 for tau=0.1s and is 0 for tau = 1ms 
-            System.out.println("tau="+rocSample.tau+"     hue="+hue);
+            float hue = (float) (Math.log10(rocSample.tau) / 2 + 1.5); //. hue is 1 for tau=0.1s and is 0 for tau = 1ms 
+            System.out.println("tau=" + rocSample.tau + "     hue=" + hue);
             Color c = Color.getHSBColor(hue, 1f, hue);
             float[] rgb = c.getRGBComponents(null);
             gl.glColor3fv(rgb, 0);
@@ -319,11 +334,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
-//    private TimeStampComparator timestampComparator = new TimeStampComparator<BasicEvent>();
-    private ArrayList<BasicEvent> createEventList() {
-        return new ArrayList<BasicEvent>();
-    }
-
     private class BackwardsTimestampException extends Exception {
 
         public BackwardsTimestampException(String string) {
@@ -358,21 +368,31 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         return l;
     }
 
+    private final boolean checkStopMe(String where) {
+        if (stopMe) {
+            log.severe(where+"\n: Processing took longer than "+MAX_FILTER_PROCESSING_TIME_MS+"ms, disabling filter");
+            setFilterEnabled(false);
+            return true;
+        }
+        return false;
+    }
+
     /**
      * Finds the intersection of events in a that are in b. Assumes packets are
-     * non-monotonic in timestamp ordering.
-     *
+     * non-monotonic in timestamp ordering. Handles duplicates. Each duplicate
+     * is matched once. The matching is by event .equals() method.
      *
      * @param a ArrayList<BasicEvent> of a
      * @param b likewise
-     * @return ArrayList of intersection
+     * @param intersect the target list to fill with intersections
+     * @return count of intersections
      */
-    private ArrayList<BasicEvent> countIntersect(ArrayList<BasicEvent> a, ArrayList<BasicEvent> b) {
-        ArrayList<BasicEvent> intersect = new ArrayList(a.size() > b.size() ? a.size() : b.size());
-        int count = 0;
+    private int countIntersect(ArrayList<BasicEvent> a, ArrayList<BasicEvent> b, ArrayList<BasicEvent> intersect) {
+        intersect.clear();
         if (a.isEmpty() || b.isEmpty()) {
-            return new ArrayList();
+            return 0;
         }
+        int count = 0;
 
         // TODO test case
 //        a = new ArrayList();
@@ -391,7 +411,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //        b.add(new BasicEvent(4, (short) 1, (short) 0));
 //        b.add(new BasicEvent(10, (short) 0, (short) 0));
         int i = 0, j = 0;
-        int na = a.size(), nb = b.size();
+        final int na = a.size(), nb = b.size();
         while (i < na && j < nb) {
             if (a.get(i).timestamp < b.get(j).timestamp) {
                 i++;
@@ -430,7 +450,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //        printarr(a, "a");
 //        printarr(b, "b");
 //        printarr(intersect, "intsct");
-        return intersect;
+        return count;
     }
 
     // TODO test case
@@ -462,6 +482,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             log.warning("empty packet, cannot inject noise");
             return in;
         }
+
+        stopMe = false;
+        Timer stopper = new Timer("NoiseTesterFilter.Stopper", true);
+        stopper.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                stopMe = true;
+            }
+        }, MAX_FILTER_PROCESSING_TIME_MS );
         BasicEvent firstE = in.getFirstEvent();
         if (firstSignalTimestmap == null) {
             firstSignalTimestmap = firstE.timestamp;
@@ -492,7 +521,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         assert signalList.size() == in.getSizeNotFilteredOut() : String.format("signalList size (%d) != in.getSizeNotFilteredOut() (%d)", signalList.size(), in.getSizeNotFilteredOut());
 
         // add noise into signalList to get the outputPacketWithNoiseAdded, track noise in noiseList
-        ArrayList<BasicEvent> noiseList = createEventList(); //List.create(tim);
+        noiseList.clear();
         addNoise(in, signalAndNoisePacket, noiseList, shotNoiseRateHz, leakNoiseRateHz);
 
         // we need to copy the augmented event packet to a HashSet for use with Collections
@@ -514,14 +543,23 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             assert (signalList.size() + noiseList.size() == signalAndNoiseList.size());
 
             // now we sort out the mess
-            tpList = countIntersect(signalList, passedSignalAndNoiseList);   // True positives: Signal that was correctly retained by filtering
-            TP = tpList.size();
-            fnList = countIntersect(signalList, filteredOutList);            // False negatives: Signal that was incorrectly removed by filter.
-            FN = fnList.size();
-            fpList = countIntersect(noiseList, passedSignalAndNoiseList);    // False positives: Noise that is incorrectly passed by filter
-            FP = fpList.size();
-            tnList = countIntersect(noiseList, filteredOutList);             // True negatives: Noise that was correctly removed by filter
-            TN = tnList.size();
+            TP = countIntersect(signalList, passedSignalAndNoiseList, tpList);   // True positives: Signal that was correctly retained by filtering
+            if (checkStopMe("after TP")) {
+                return in;
+            }
+            FN = countIntersect(signalList, filteredOutList, fnList);            // False negatives: Signal that was incorrectly removed by filter.
+            if (checkStopMe("after FN")) {
+                return in;
+            }
+            FP = countIntersect(noiseList, passedSignalAndNoiseList, fpList);    // False positives: Noise that is incorrectly passed by filter
+            if (checkStopMe("after FP")) {
+                return in;
+            }
+            TN = countIntersect(noiseList, filteredOutList, tnList);             // True negatives: Noise that was correctly removed by filter
+            if (checkStopMe("after TN")) {
+                return in;
+            }
+            stopper.cancel();
 
 //            if (TN + FP != noiseList.size()) {
 //                System.err.println(String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, TN + FP, noiseList.size()));
@@ -635,6 +673,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             // we had some previous event
             int lastPacketTs = lastTimestampPreviousPacket + 1; // 1us more than timestamp of the last event in the last packet
             insertNoiseEvents(lastPacketTs, firstTsThisPacket, outItr, generatedNoise);
+            checkStopMe(String.format("after insertNoiseEvents at start of packet over interval of %ss",
+                    eng.format(1e-6f*(lastPacketTs-firstTsThisPacket))));
         }
 
         // insert noise between events of this packet after the first event, record their timestamp
@@ -656,6 +696,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     private void insertNoiseEvents(int lastPacketTs, int firstTsThisPacket, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> generatedNoise) {
+//         check that we don't have too many events, packet will get too large
+        int tstepUs = (firstTsThisPacket - lastPacketTs);
+        if (tstepUs > 100_0000) {
+            stopMe=true;
+            checkStopMe("timestep longer than 100ms for inserting noise events, disabling filter");
+            return;
+        }
         for (double ts = lastPacketTs; ts < firstTsThisPacket; ts += poissonDtUs) {
             // note that poissonDtUs is float but we truncate the actual timestamp to int us value here.
             // It's OK if there are events with duplicate timestamps (there are plenty in input already).
@@ -665,13 +712,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     private int sampleNoiseEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList, float shotOffThresholdProb, float shotOnThresholdProb, float leakOnThresholdProb) {
         if (prerecordedNoise == null) {
-            float randomnum = random.nextFloat();
+            final double randomnum = random.nextDouble();
             if (randomnum < shotOffThresholdProb) {
                 injectOffEvent(ts, outItr, noiseList);
             } else if (randomnum > shotOnThresholdProb) {
                 injectOnEvent(ts, outItr, noiseList);
             }
-            if (random.nextFloat() < leakOnThresholdProb) {
+            if (random.nextDouble() < leakOnThresholdProb) {
                 injectOnEvent(ts, outItr, noiseList);
             }
             return ts;
@@ -689,8 +736,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     private void injectOnEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList) {
-        int x = (short) random.nextInt(sx);
-        int y = (short) random.nextInt(sy);
+        final int x = (short) random.nextInt(sx);
+        final int y = (short) random.nextInt(sy);
         ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
         e.setSpecial(false);
         e.x = (short) (x);
@@ -701,8 +748,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     private void injectOffEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList) {
-        int x = (short) random.nextInt(sx);
-        int y = (short) random.nextInt(sy);
+        final int x = (short) random.nextInt(sx);
+        final int y = (short) random.nextInt(sy);
         ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
         e.setSpecial(false);
         e.x = (short) (x);
@@ -721,7 +768,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (prerecordedNoise != null) {
             prerecordedNoise.rewind();
         }
-//        rocHistoryList.clear(); // done by doClearROCHistory to preserve
     }
 
     private void computeProbs() {
@@ -966,7 +1012,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     protected void initializeLastTimesMapForNoiseRate(int[][] lastTimesMap, float noiseRateHz, int lastTimestampUs) {
         for (final int[] arrayRow : lastTimesMap) {
             for (int i = 0; i < arrayRow.length; i++) {
-                final float p = random.nextFloat();
+                final double p = random.nextDouble();
                 final double t = -noiseRateHz * Math.log(1 - p);
                 final int tUs = (int) (1000000 * t);
                 arrayRow[i] = lastTimestampUs - tUs;
@@ -1090,7 +1136,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         // get the last folder
         DATFileFilter datFileFilter = new DATFileFilter();
         fileChooser.addChoosableFileFilter(datFileFilter);
-        File sf=new File(chosenPrerecordedNoiseFilePath);
+        File sf = new File(chosenPrerecordedNoiseFilePath);
         fileChooser.setCurrentDirectory(sf);
         fileChooser.setSelectedFile(sf);
         try {
