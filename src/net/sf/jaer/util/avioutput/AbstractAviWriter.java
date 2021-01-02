@@ -17,11 +17,18 @@ import java.awt.image.DataBufferInt;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.io.FilePermission;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Paths;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.AccessControlException;
+import java.security.AccessController;
 import java.util.Date;
+import java.util.Iterator;
+import javax.imageio.ImageIO;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
@@ -29,10 +36,8 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -48,6 +53,8 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
 
     protected final int LOG_EVERY_THIS_MANY_FRAMES = 100; // for logging concole messages
     private AVIOutputStream aviOutputStream = null;
+    protected AVIOutputStream.VideoFormat format = AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
+    protected File frameSequenceOutputFolder = null;
     protected static String DEFAULT_FILENAME = "jAER.avi";
     protected String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
     protected File lastFile = null;
@@ -60,7 +67,6 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     private boolean rewindBeforeRecording = getBoolean("rewindBeforeRecording", true);
     protected boolean ignoreRewinwdEventFlag = false; // used to signal to igmore first rewind event for closing file on rewind if rewindBeforeRecording=true
     private boolean chipPropertyChangeListenerAdded = false;
-    protected AVIOutputStream.VideoFormat format = AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
     protected int maxFrames = getInt("maxFrames", 0);
     protected float compressionQuality = getFloat("compressionQuality", 0.9f);
     private String[] additionalComments = null;
@@ -71,8 +77,8 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
 
     public AbstractAviWriter(AEChip chip) {
         super(chip);
-        setPropertyTooltip("startRecordingAndSaveAVIAs", "Opens the output file and starts writing to it. The AVI file is in RAW format with pixel values 0-255 coming from ApsFrameExtractor displayed frames, which are offset and scaled by it.");
-        setPropertyTooltip("closeFile", "Closes the output file if it is open.");
+        setPropertyTooltip("startRecordingAndSaveAs", "Opens the output file or folder and starts writing to it. The AVI file is in specified format with pixel values 0-255 coming from ApsFrameExtractor displayed frames, which are offset and scaled by it. See saveFramesAsIndividualImageFiles to select a folder for the frames.");
+        setPropertyTooltip("finishRecording", "Stops recording and closes the output file if it is open.");
         setPropertyTooltip("writeTimecodeFile", "writes a file alongside AVI file (with suffix " + TIMECODE_SUFFIX + ") that maps from AVI frame to AER timestamp for that frame (the frame end timestamp)");
         setPropertyTooltip("closeOnRewind", "closes recording on rewind event, to allow unattended operation");
         setPropertyTooltip("rewindBeforeRecording", "rewinds file before recording");
@@ -87,6 +93,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         setPropertyTooltip("saveFramesAsIndividualImageFiles", "If selected, then the frames are saved as individual image files in the selected folder");
         setPropertyTooltip("writeOnlyWhenMousePressed", "If selected, then the frames are are saved only when the mouse is pressed in the AEViewer window");
         setPropertyTooltip("writeEnabled", "Selects if writing frames is enabled. Use this to temporarily disable output, or in conjunction with writeOnlyWhenMousePressed");
+        setPropertyTooltip("saveFramesAsIndividualImageFiles", "Writes PNG image sequence to a selected folder rather than single AVI movie");
         chip.getSupport().addPropertyChangeListener(this);
 
     }
@@ -159,49 +166,142 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         }
     }
 
-    synchronized public void doStartRecordingAndSaveAVIAs() {
-        if (getAviOutputStream() != null) {
-            JOptionPane.showMessageDialog(null, "AVI output stream is already opened");
-            return;
-        }
-        JFileChooser c = new JFileChooser(lastFileName);
-        c.setFileFilter(new FileFilter() {
-
-            @Override
-            public boolean accept(File f) {
-                return f.isDirectory() || f.getName().toLowerCase().endsWith(".avi");
+    private static boolean isDirEmpty(final Path directory) throws IOException {
+        try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(directory)) {
+            Iterator<Path> itr = dirStream.iterator();
+            if (!itr.hasNext()) {
+                return true;
             }
-
-            @Override
-            public String getDescription() {
-                return "AVI (Audio Video Interleave) Microsoft video file";
+            int count = 0;
+            boolean hasDesktopIni = false;
+            while (itr.hasNext()) {
+                Path p = itr.next();
+                hasDesktopIni = p.getFileName().toString().equals("desktop.ini");
+                if (count++ > 1) {
+                    return false;
+                }
             }
-        });
-        c.setSelectedFile(new File(lastFileName));
-        int ret = c.showSaveDialog(null);
-        if (ret != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-        if (!c.getSelectedFile().getName().toLowerCase().endsWith(".avi")) {
-            String newName = c.getSelectedFile().toString() + ".avi";
-            c.setSelectedFile(new File(newName));
-        }
-        lastFileName = c.getSelectedFile().toString();
-
-        if (c.getSelectedFile().exists()) {
-            int r = JOptionPane.showConfirmDialog(null, "File " + c.getSelectedFile().toString() + " already exists, overwrite it?");
-            if (r != JOptionPane.OK_OPTION) {
-                return;
+            if (count == 1 && hasDesktopIni) {
+                return true;
             }
-        }
-        setAviOutputStream(openAVIOutputStream(c.getSelectedFile(), additionalComments));
-        if (rewindBeforeRecording) {
-            ignoreRewinwdEventFlag = true;
-            chip.getAeViewer().getAePlayer().rewind();
+            return false;
         }
     }
 
-    synchronized public void doCloseFile() {
+    synchronized public void doStartRecordingAndSaveAs() {
+        if (saveFramesAsIndividualImageFiles) {
+            if (frameSequenceOutputFolder != null) {
+                JOptionPane.showMessageDialog(getChip().getAeViewer().getFilterFrame(), "Folder " + frameSequenceOutputFolder + " is already opened for writing, close the recording first");
+                return;
+            }
+            JFileChooser c = new JFileChooser(lastFileName);
+            c.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            c.setFileFilter(new FileFilter() {
+
+                @Override
+                public boolean accept(File f) {
+                    return f.isDirectory();
+                }
+
+                @Override
+                public String getDescription() {
+                    return "Folder to save frames to";
+                }
+            });
+            c.setSelectedFile(new File(lastFileName));
+            int ret = c.showSaveDialog(getChip().getAeViewer().getFilterFrame());
+            if (ret != JFileChooser.APPROVE_OPTION) {
+                return;
+            }
+
+            File selectedFile = c.getSelectedFile();
+
+            lastFileName = selectedFile.toString();
+            putString("lastFileName", lastFileName);
+
+            if (selectedFile.exists() && selectedFile.isDirectory()) {
+                try {
+                    boolean isempty = isDirEmpty(selectedFile.toPath());
+                    if (!isempty) {
+                        int r = JOptionPane.showConfirmDialog(getChip().getAeViewer().getFilterFrame(), "Folder " + selectedFile.toString() + " is not empty, write to it?");
+                        if (r != JOptionPane.OK_OPTION) {
+                            return;
+                        }
+                    }
+                } catch (IOException e) {
+                    JOptionPane.showMessageDialog(getChip().getAeViewer().getFilterFrame(), "<html>Could not mkdir folder " + selectedFile);
+                    return;
+                }
+            } else if (selectedFile.exists()) {
+                try {
+                    AccessController.checkPermission(new FilePermission(selectedFile.toString(), "read,write"));
+                } catch (AccessControlException ex) {
+                    JOptionPane.showMessageDialog(getChip().getAeViewer().getFilterFrame(), "<html>Cannot write to folder " + selectedFile + ": <p> " + ex);
+                    return;
+                }
+            } else if (!selectedFile.exists()) {
+                if (!selectedFile.mkdir()) {
+                    JOptionPane.showMessageDialog(getChip().getAeViewer().getFilterFrame(), "<html>Could not mkdir folder " + selectedFile);
+                    return;
+                }
+                log.info("created folder " + selectedFile);
+            }
+            if (!selectedFile.canWrite()) {
+                JOptionPane.showMessageDialog(getChip().getAeViewer().getFilterFrame(), "Cannot write to folder " + selectedFile);
+                return;
+            }
+            frameSequenceOutputFolder = selectedFile;
+            if (rewindBeforeRecording) {
+                ignoreRewinwdEventFlag = true;
+                chip.getAeViewer().getAePlayer().rewind();
+            }
+        } else {
+            if (getAviOutputStream() != null) {
+                JOptionPane.showMessageDialog(getChip().getAeViewer().getFilterFrame(), "AVI output stream is already opened");
+                return;
+            }
+            JFileChooser c = new JFileChooser(lastFileName);
+            c.setFileFilter(new FileFilter() {
+
+                @Override
+                public boolean accept(File f) {
+                    return f.isDirectory() || f.getName().toLowerCase().endsWith(".avi");
+                }
+
+                @Override
+                public String getDescription() {
+                    return "AVI (Audio Video Interleave) Microsoft video file";
+                }
+            });
+            c.setSelectedFile(new File(lastFileName));
+            int ret = c.showSaveDialog(getChip().getAeViewer().getFilterFrame());
+            if (ret != JFileChooser.APPROVE_OPTION) {
+                return;
+            }
+            if (!c.getSelectedFile().getName().toLowerCase().endsWith(".avi")) {
+                String newName = c.getSelectedFile().toString() + ".avi";
+                c.setSelectedFile(new File(newName));
+            }
+            lastFileName = c.getSelectedFile().toString();
+            File selectedFile = c.getSelectedFile();
+
+            lastFileName = selectedFile.toString();
+
+            if (selectedFile.exists()) {
+                int r = JOptionPane.showConfirmDialog(getChip().getAeViewer().getFilterFrame(), "File " + selectedFile.toString() + " already exists, overwrite it?");
+                if (r != JOptionPane.OK_OPTION) {
+                    return;
+                }
+            }
+            setAviOutputStream(openAVIOutputStream(selectedFile, additionalComments));
+            if (rewindBeforeRecording) {
+                ignoreRewinwdEventFlag = true;
+                chip.getAeViewer().getAePlayer().rewind();
+            }
+        }
+    }
+
+    synchronized public void doFinishRecording() {
         if (getAviOutputStream() != null) {
             try {
                 getAviOutputStream().close();
@@ -218,6 +318,10 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
                 ex.printStackTrace();
                 setAviOutputStream(null);
             }
+        }
+        if (frameSequenceOutputFolder != null) {
+            log.info("Finished recording frames to " + frameSequenceOutputFolder + " in format " + format + " with " + framesWritten + " frames");
+            frameSequenceOutputFolder = null;
         }
 
     }
@@ -241,7 +345,6 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
 //            aviOutputStream.setVideoDimension(chip.getSizeX(), chip.getSizeY());
             lastFile = f;
             lastFileName = f.toString();
-            putString("lastFileName", lastFileName);
             if (writeTimecodeFile) {
                 String s = f.toString().subSequence(0, f.toString().lastIndexOf(".")).toString() + TIMECODE_SUFFIX;
                 timecodeFile = new File(s);
@@ -323,6 +426,47 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
 
     }
 
+    /** Returns true if either AVI or frame output is active
+     * 
+     * @return true if active
+     */
+    protected boolean isRecordingActive() {
+        return getAviOutputStream() != null || frameSequenceOutputFolder != null;
+    }
+
+    /**
+     * Helper method to write the frame either to AVI or file
+     *
+     * @param bufferedImage
+     * @param timecode
+     */
+    protected void writeFrame(BufferedImage bufferedImage, int timecode) {
+        if ((!isSaveFramesAsIndividualImageFiles() && getAviOutputStream() == null)
+                && (isSaveFramesAsIndividualImageFiles() && frameSequenceOutputFolder == null)) {
+            return;
+        }
+        if (isWriteEnabled()) {
+            try {
+                if (saveFramesAsIndividualImageFiles) {
+                    String fmt = getFormat().toString().toLowerCase();
+                    String filename = String.format("%05d.%s", framesWritten, fmt);
+                    String path = frameSequenceOutputFolder + File.separator + filename;
+                    File file = new File(path);
+                    ImageIO.write(bufferedImage, fmt, file);
+                } else {
+                    getAviOutputStream().writeFrame(bufferedImage);
+                }
+                if (isWriteTimecodeFile()) {
+                    writeTimecode(timecode);
+                }
+                incrementFramecountAndMaybeCloseOutput();
+            } catch (Exception e) {
+                log.warning("While writing frame, caught exception, closing file: " + e.toString());
+                doFinishRecording();
+            }
+        }
+    }
+
     /**
      * Turns gl to BufferedImage with fixed format
      *
@@ -367,8 +511,8 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         getSupport().firePropertyChange("framesWritten", null, framesWritten);
         if (maxFrames > 0 && framesWritten >= maxFrames) {
             log.info("wrote maxFrames=" + maxFrames + " frames; closing AVI file");
-            doCloseFile();
-            if(chip.getAeViewer()!=null){ // only show if interactive
+            doFinishRecording();
+            if (chip.getAeViewer() != null) { // only show if interactive
                 JOptionPane.showMessageDialog(chip.getAeViewer(), "Closed file " + lastFileName + " after " + framesWritten + " maxFrames frames were written");
             }
         }
@@ -442,11 +586,16 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         putFloat("compressionQuality", compressionQuality);
     }
 
+    /**
+     * Subclasses should override this method to write frames
+     *
+     * @param evt
+     */
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
-            if (!ignoreRewinwdEventFlag && closeOnRewind && getAviOutputStream()!=null) {
-                doCloseFile();
+            if (!ignoreRewinwdEventFlag && closeOnRewind && getAviOutputStream() != null) {
+                doFinishRecording();
                 JOptionPane.showMessageDialog(chip.getAeViewer(), "Closed file" + lastFileName + " on Rewind event after " + framesWritten + " frames were written");
             }
             ignoreRewinwdEventFlag = false;
@@ -562,6 +711,22 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      */
     public void setAviOutputStream(AVIOutputStream aviOutputStream) {
         this.aviOutputStream = aviOutputStream;
+    }
+
+    /**
+     * @return the saveFramesAsIndividualImageFiles
+     */
+    public boolean isSaveFramesAsIndividualImageFiles() {
+        return saveFramesAsIndividualImageFiles;
+    }
+
+    /**
+     * @param saveFramesAsIndividualImageFiles the
+     * saveFramesAsIndividualImageFiles to set
+     */
+    public void setSaveFramesAsIndividualImageFiles(boolean saveFramesAsIndividualImageFiles) {
+        this.saveFramesAsIndividualImageFiles = saveFramesAsIndividualImageFiles;
+        putBoolean("saveFramesAsIndividualImageFiles", saveFramesAsIndividualImageFiles);
     }
 
 }

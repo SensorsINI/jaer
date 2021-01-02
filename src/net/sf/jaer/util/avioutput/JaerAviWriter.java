@@ -60,24 +60,11 @@ public class JaerAviWriter extends AbstractAviWriter {
             MultilineAnnotationTextRenderer.renderMultilineString(s);
         }
 
-        if (getAviOutputStream() == null) {
-            return;
-        }
-        if (isWriteEnabled()) {
+        if (isRecordingActive() && isWriteEnabled()) {
             GL2 gl = drawable.getGL().getGL2();
             BufferedImage bi = toImage(gl, drawable.getNativeSurface().getSurfaceWidth(), drawable.getNativeSurface().getSurfaceHeight());
-
-            try {
-                getAviOutputStream().writeFrame(bi);
-                if (isWriteTimecodeFile()) {
-                    writeTimecode(chip.getAeViewer().getAePlayer().getTime());
-                }
-                incrementFramecountAndMaybeCloseOutput();
-
-            } catch (Exception e) {
-                log.warning("While writing AVI frame, caught exception, closing file: " + e.toString());
-                doCloseFile();
-            }
+            int timecode = chip.getAeViewer().getAePlayer().getTime();
+            writeFrame(bi, timecode);
         }
     }
 
