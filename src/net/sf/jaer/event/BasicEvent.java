@@ -72,6 +72,17 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
      */
     public byte source;
 
+    /** Utility Comparator that compares BasicEvent by timestamp */
+    final public class TimeStampComparator<E extends BasicEvent> implements Comparator<E> {
+
+        @Override
+        public int compare(final E e1, final E e2) {
+            int diff = e1.timestamp - e2.timestamp;
+
+            return diff;
+        }
+    }
+
     /**
      * Creates a new instance of BasicEvent
      */
@@ -284,17 +295,17 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
         }
         BasicEvent tgt = (BasicEvent) obj;
 
-        return (this.x == tgt.x) && (this.y == tgt.y) && (this.timestamp == tgt.timestamp) /*&& (this.filteredOut==tgt.filteredOut)*/ && (this.special==tgt.special); // DO NOT include filtered out or you cannot match events in different lists, e.g. in NoiseTesterFilter
+        return (this.x == tgt.x) && (this.y == tgt.y) && (this.timestamp == tgt.timestamp) /*&& (this.filteredOut==tgt.filteredOut)*/ && (this.special == tgt.special); // DO NOT include filtered out or you cannot match events in different lists, e.g. in NoiseTesterFilter
 //        return this.hashCode() == tgt.hashCode(); // do NOT use hashCode since it is idential for different events
 
     }
 
     /**
      * Overrides hashCode to result in identical hashCode (even if for different
-     * objects) if the timestamp, x,y, and special fields are the
-     * same. 
+     * objects) if the timestamp, x,y, and special fields are the same.
      * <p>
-     * NOTE: filteredOut is NOT included in hashCode. Events can be equal even if one is filtered out.
+     * NOTE: filteredOut is NOT included in hashCode. Events can be equal even
+     * if one is filtered out.
      *
      * @return the hashcode
      */
@@ -319,9 +330,15 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
      */
     @Override
     public int compareTo(Object t) {
-        if(t==null) return 1;
-        if(!(t instanceof BasicEvent)) return 1;
-        if(this.hashCode()==t.hashCode()) return 0;
+        if (t == null) {
+            return 1;
+        }
+        if (!(t instanceof BasicEvent)) {
+            return 1;
+        }
+        if (this.hashCode() == t.hashCode()) {
+            return 0;
+        }
         return this.timestamp - ((BasicEvent) t).timestamp; // if not, compare timestamps
     }
 

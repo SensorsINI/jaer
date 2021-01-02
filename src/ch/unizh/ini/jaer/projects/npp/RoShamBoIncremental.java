@@ -188,7 +188,7 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 
     private void closeSymbolFileAndSendMessage() {
         log.info("stopping sample recording, starting training");
-        aviWriter.doCloseFile(); // saves tmpfile.avi
+        aviWriter.doFinishRecording(); // saves tmpfile.avi
         String newname = JOptionPane.showInputDialog(chip.getFilterFrame(), "Class name for this sample (e.g. thumbsup or peacesign)?", lastNewClassName);
         if (newname == null) {
             try {
