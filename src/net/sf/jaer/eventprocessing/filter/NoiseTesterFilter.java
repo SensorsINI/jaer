@@ -722,10 +722,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             checkStopMe("timestep longer than 100ms for inserting noise events, disabling filter");
             return;
         }
+        final int checkStopInterval = 100000;
+        int checks = 0;
         for (double ts = lastPacketTs; ts < firstTsThisPacket; ts += poissonDtUs) {
             // note that poissonDtUs is float but we truncate the actual timestamp to int us value here.
             // It's OK if there are events with duplicate timestamps (there are plenty in input already).
             sampleNoiseEvent((int) ts, outItr, generatedNoise, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb); // note noise injection updates ts to make sure monotonic
+            if (checks++ > checkStopInterval) {
+                checkStopMe("sampling noise events");
+            }
         }
     }
 
