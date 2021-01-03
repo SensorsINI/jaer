@@ -729,7 +729,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             // It's OK if there are events with duplicate timestamps (there are plenty in input already).
             sampleNoiseEvent((int) ts, outItr, generatedNoise, shotOffThresholdProb, shotOnThresholdProb, leakOnThresholdProb); // note noise injection updates ts to make sure monotonic
             if (checks++ > checkStopInterval) {
-                checkStopMe("sampling noise events");
+                if (checkStopMe("sampling noise events")) {
+                    break;
+                }
             }
         }
     }
